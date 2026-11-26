@@ -8,7 +8,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -55,6 +55,7 @@ export default function AnnotationDetails({
           <TabsTab value="history" disabled={isPending}>
             {t(($) => $['viewModal.hitHistory'], { ns: 'appAnnotation' })}
           </TabsTab>
+          <TabsIndicator />
         </TabsList>
         <DialogBody>
           <TabsPanel value="annotation" keepMounted>

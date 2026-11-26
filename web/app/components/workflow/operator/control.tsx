@@ -1,9 +1,16 @@
 import type { MouseEvent } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Toggle } from '@langgenius/dify-ui/toggle'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  collaborationUpgradeDialogAtom,
+  collaborationUpgradeOpenedAtom,
+} from '../collaboration/upgrade-state'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
@@ -13,12 +20,12 @@ import AddBlock from './add-block'
 import { ExportImage } from './export-image'
 import { useOperator } from './hooks'
 import TipPopup from './tip-popup'
-
-const pressedModeClassName =
-  'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-base-hover data-pressed:hover:text-text-secondary data-disabled:data-pressed:text-text-disabled data-disabled:data-pressed:hover:bg-transparent data-disabled:data-pressed:hover:text-text-disabled'
+import { toolbarClassName, toolbarModeToggleClassName } from './toolbar-styles'
 
 const Control = () => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'billing'])
+  const upgradeDialog = useAtomValue(collaborationUpgradeDialogAtom)
+  const upgradeOpened = useSetAtom(collaborationUpgradeOpenedAtom)
   const controlMode = useStore((s) => s.controlMode)
   const {
     handleModePointer,
@@ -30,6 +37,8 @@ const Control = () => {
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const commentModeLabel = t(($) => $['common.commentMode'], { ns: 'workflow' })
+  const upgradeLabel = t(($) => $['upgrade.workflowCollaboration.title'], { ns: 'billing' })
 
   const addNote = (e: MouseEvent<HTMLButtonElement>) => {
     if (getNodesReadOnly()) return
@@ -39,7 +48,7 @@ const Control = () => {
   }
 
   return (
-    <div className="pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
+    <div className={cn('pointer-events-auto', toolbarClassName)}>
       <AddBlock />
       <TipPopup title={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}>
         <IconButton
@@ -47,7 +56,7 @@ const Control = () => {
           aria-label={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
           focusableWhenDisabled
-          className="ml-px rounded-md"
+          className="ms-px rounded-md"
           onClick={addNote}
         >
           <span aria-hidden className="i-ri-sticky-note-add-line size-4" />
@@ -62,14 +71,14 @@ const Control = () => {
           pressed={controlMode === ControlMode.Pointer}
           onPressedChange={handleModePointer}
           disabled={nodesReadOnly}
-          className={pressedModeClassName}
+          className={toolbarModeToggleClassName}
           render={
             <IconButton
               size="lg"
               aria-label={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
               disabled={nodesReadOnly}
               focusableWhenDisabled
-              className="mr-px rounded-md"
+              className="me-px rounded-md"
             >
               <span aria-hidden className="i-ri-cursor-line size-4" />
             </IconButton>
@@ -84,7 +93,7 @@ const Control = () => {
           pressed={controlMode === ControlMode.Hand}
           onPressedChange={handleModeHand}
           disabled={nodesReadOnly}
-          className={pressedModeClassName}
+          className={toolbarModeToggleClassName}
           render={
             <IconButton
               size="lg"
@@ -98,30 +107,39 @@ const Control = () => {
           }
         />
       </TipPopup>
-      {isCommentModeAvailable && (
-        <TipPopup
-          title={t(($) => $['common.commentMode'], { ns: 'workflow' })}
-          shortcut="workflow.comment-mode"
-        >
+      {isCommentModeAvailable ? (
+        <TipPopup title={commentModeLabel} shortcut="workflow.comment-mode">
           <Toggle
             pressed={controlMode === ControlMode.Comment}
             onPressedChange={handleModeComment}
             disabled={!canUseCommentMode}
-            className={pressedModeClassName}
+            className={toolbarModeToggleClassName}
             render={
               <IconButton
                 size="lg"
-                aria-label={t(($) => $['common.commentMode'], { ns: 'workflow' })}
+                aria-label={commentModeLabel}
                 disabled={!canUseCommentMode}
                 focusableWhenDisabled
-                className="ml-px rounded-md"
+                className="ms-px rounded-md"
               >
                 <span aria-hidden className="i-custom-public-other-comment size-4" />
               </IconButton>
             }
           />
         </TipPopup>
-      )}
+      ) : upgradeDialog ? (
+        <TipPopup title={upgradeLabel}>
+          <DialogTrigger
+            handle={upgradeDialog}
+            onClick={() => upgradeOpened('canvas_comment_tool')}
+            render={
+              <IconButton size="lg" aria-label={upgradeLabel} className="ms-px rounded-md">
+                <span aria-hidden className="i-custom-public-other-comment size-4" />
+              </IconButton>
+            }
+          />
+        </TipPopup>
+      ) : null}
       <Separator className="my-1 h-[0.5px] w-3.5" />
       <TipPopup
         title={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}

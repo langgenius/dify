@@ -1,9 +1,7 @@
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -106,34 +104,12 @@ def _trace_scope() -> TraceScope:
     )
 
 
-class DummyMessage:
-    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None):
-        self.content: str | None = content
-        self.tool_calls: list[Any] = tool_calls or []
+def _chunk(message: AssistantPromptMessage, usage: LLMUsage | None = None) -> LLMResultChunk:
+    return LLMResultChunk(model="m", delta=LLMResultChunkDelta(index=0, message=message, usage=usage))
 
 
-@dataclass(eq=False, repr=False)
-class DummyDelta:
-    message: DummyMessage | None = None
-    usage: LLMUsage | None = None
-
-
-class DummyChunk:
-    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
-        self.delta: DummyDelta = DummyDelta(message=message, usage=usage)
-
-
-class DummyResult:
-    def __init__(
-        self,
-        message: DummyMessage | None = None,
-        usage: LLMUsage | None = None,
-        prompt_messages: list[DummyMessage] | None = None,
-    ):
-        self.message: DummyMessage | None = message
-        self.usage: LLMUsage | None = usage
-        self.prompt_messages: list[DummyMessage] = prompt_messages or []
-        self.system_fingerprint: str = ""
+def _result(message: AssistantPromptMessage, usage: LLMUsage | None = None) -> LLMResult:
+    return LLMResult(model="m", message=message, prompt_messages=[], usage=usage or LLMUsage.empty_usage())
 
 
 # ==============================
@@ -188,10 +164,6 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
         "core.agent.base_agent_runner.BaseAgentRunner.__init__",
         return_value=None,
     )
-
-    # Patch streaming chunk models to avoid validation on dummy message objects
-    mocker.patch("core.agent.fc_agent_runner.LLMResultChunk", MagicMock)
-    mocker.patch("core.agent.fc_agent_runner.LLMResultChunkDelta", MagicMock)
 
     app_config = MagicMock()
     app_config.app_id = "app"
@@ -528,8 +500,8 @@ class TestBuildDatasetToolImageContents:
 class TestRunMethod:
     def test_run_non_streaming_no_tool_calls(self, runner: FunctionCallAgentRunner):
         message = _make_message()
-        dummy_message = DummyMessage(content="hello")
-        result = DummyResult(message=dummy_message, usage=build_usage())
+        dummy_message = AssistantPromptMessage(content="hello")
+        result = _result(message=dummy_message, usage=build_usage())
 
         runner.model_instance.invoke_llm.return_value = result
 
@@ -567,7 +539,7 @@ class TestRunMethod:
         event.listen(session, "persistent_to_detached", record_detach)
 
         content = [TextPromptMessageContent(data="hi")]
-        chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
+        chunk = _chunk(message=AssistantPromptMessage(content=content), usage=build_usage())
 
         def generator():
             events.append("first-chunk")
@@ -583,19 +555,16 @@ class TestRunMethod:
         message = _make_message()
         runner.stream_tool_call = True
 
-        tool_call = MagicMock()
-        tool_call.id = "1"
-        tool_call.function.name = "tool"
-        tool_call.function.arguments = json.dumps({"a": 1})
+        tool_call = _tool_call("1", "tool", json.dumps({"a": 1}))
 
         content = [TextPromptMessageContent(data="hi")]
-        chunk = DummyChunk(message=DummyMessage(content=content, tool_calls=[tool_call]), usage=build_usage())
+        chunk = _chunk(message=AssistantPromptMessage(content=content, tool_calls=[tool_call]), usage=build_usage())
 
         def generator():
             yield chunk
 
-        final_message = DummyMessage(content="done", tool_calls=[])
-        final_result = DummyResult(message=final_message, usage=build_usage())
+        final_message = AssistantPromptMessage(content="done", tool_calls=[])
+        final_result = _result(message=final_message, usage=build_usage())
 
         runner.model_instance.invoke_llm.side_effect = [generator(), final_result]
 
@@ -605,8 +574,8 @@ class TestRunMethod:
     def test_run_non_streaming_list_content(self, runner: FunctionCallAgentRunner):
         message = _make_message()
         content = [TextPromptMessageContent(data="hi")]
-        dummy_message = DummyMessage(content=content)
-        result = DummyResult(message=dummy_message, usage=build_usage())
+        dummy_message = AssistantPromptMessage(content=content)
+        result = _result(message=dummy_message, usage=build_usage())
 
         runner.model_instance.invoke_llm.return_value = result
 
@@ -618,12 +587,9 @@ class TestRunMethod:
         message = _make_message()
         runner.stream_tool_call = True
 
-        tool_call = MagicMock()
-        tool_call.id = "1"
-        tool_call.function.name = "tool"
-        tool_call.function.arguments = json.dumps({"a": 1})
+        tool_call = _tool_call("1", "tool", json.dumps({"a": 1}))
 
-        chunk = DummyChunk(message=DummyMessage(content="hi", tool_calls=[tool_call]), usage=build_usage())
+        chunk = _chunk(message=AssistantPromptMessage(content="hi", tool_calls=[tool_call]), usage=build_usage())
 
         def generator():
             yield chunk
@@ -645,15 +611,12 @@ class TestRunMethod:
     def test_run_with_missing_tool_instance(self, runner: FunctionCallAgentRunner):
         message = _make_message()
 
-        tool_call = MagicMock()
-        tool_call.id = "1"
-        tool_call.function.name = "missing"
-        tool_call.function.arguments = json.dumps({})
+        tool_call = _tool_call("1", "missing", json.dumps({}))
 
-        dummy_message = DummyMessage(content="", tool_calls=[tool_call])
-        result = DummyResult(message=dummy_message, usage=build_usage())
-        final_message = DummyMessage(content="done", tool_calls=[])
-        final_result = DummyResult(message=final_message, usage=build_usage())
+        dummy_message = AssistantPromptMessage(content="", tool_calls=[tool_call])
+        result = _result(message=dummy_message, usage=build_usage())
+        final_message = AssistantPromptMessage(content="done", tool_calls=[])
+        final_result = _result(message=final_message, usage=build_usage())
 
         runner.model_instance.invoke_llm.side_effect = [result, final_result]
 
@@ -665,14 +628,11 @@ class TestRunMethod:
         trace_scope = _trace_scope()
         runner.application_generate_entity.trace_scope = trace_scope
 
-        tool_call = MagicMock()
-        tool_call.id = "1"
-        tool_call.function.name = "tool"
-        tool_call.function.arguments = json.dumps({"a": 1})
+        tool_call = _tool_call("1", "tool", json.dumps({"a": 1}))
 
-        dummy_message = DummyMessage(content="", tool_calls=[tool_call])
-        result = DummyResult(message=dummy_message, usage=build_usage())
-        final_result = DummyResult(message=DummyMessage(content="done", tool_calls=[]), usage=build_usage())
+        dummy_message = AssistantPromptMessage(content="", tool_calls=[tool_call])
+        result = _result(message=dummy_message, usage=build_usage())
+        final_result = _result(message=AssistantPromptMessage(content="done", tool_calls=[]), usage=build_usage())
 
         runner.model_instance.invoke_llm.side_effect = [result, final_result]
 
@@ -703,13 +663,10 @@ class TestRunMethod:
 
         message = _make_message()
 
-        tool_call = MagicMock()
-        tool_call.id = "1"
-        tool_call.function.name = "tool"
-        tool_call.function.arguments = "{}"
+        tool_call = _tool_call("1", "tool", "{}")
 
-        dummy_message = DummyMessage(content="", tool_calls=[tool_call])
-        result = DummyResult(message=dummy_message, usage=build_usage())
+        dummy_message = AssistantPromptMessage(content="", tool_calls=[tool_call])
+        result = _result(message=dummy_message, usage=build_usage())
 
         runner.model_instance.invoke_llm.return_value = result
 

@@ -1,5 +1,6 @@
 from http import HTTPStatus
 
+from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
 
 
@@ -30,6 +31,12 @@ class WebhookTriggerNotFoundError(BaseHTTPException):
     error_code = "webhook_trigger_not_found"
     description = "Webhook trigger not found for this node."
     code = HTTPStatus.NOT_FOUND
+
+
+class AgentPreviewUnavailableError(BaseHTTPException):
+    error_code = "agent_preview_unavailable"
+    description = "Agent preview is not available in this edition."
+    code = HTTPStatus.FORBIDDEN
 
 
 class ProviderNotInitializeError(BaseHTTPException):
@@ -218,3 +225,20 @@ class TracingConfigConflictError(BaseHTTPException):
     error_code = "tracing_config_conflict"
     description = "Tracing configuration changed. Refresh and try again."
     code = 409
+
+
+class TriggerNodeLimitDetails(ResponseModel):
+    count: int
+    limit: int
+
+
+class TriggerNodeLimitExceededError(BaseHTTPException):
+    error_code = "trigger_node_limit_exceeded"
+    description = "The workflow has more trigger nodes than the workspace plan allows."
+    code = HTTPStatus.FORBIDDEN
+    details_model = TriggerNodeLimitDetails
+
+    def __init__(self, *, count: int, limit: int) -> None:
+        super().__init__()
+        assert self.data is not None
+        self.data["details"] = TriggerNodeLimitDetails(count=count, limit=limit).model_dump(mode="json")

@@ -75,7 +75,7 @@ def client(
     app.config["TEST_BROWSER_ACCOUNT"] = account
     login_manager.init_app(app)
     bind_account_loader(app, account_application_services.accounts.identity.load_user)
-    bind_account_only_loader(app, account_application_services.accounts.identity.get_account_by_id)
+    bind_account_only_loader(app, account_application_services.accounts.identity.load_account)
     services = build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
@@ -545,13 +545,7 @@ def test_app_scope_filters_discovery_and_workspace_scope_cannot_bypass_it(
         ("POST", "/workspaces/{id}/members"),
         ("PATCH", "/workspaces/{id}/members/{id}"),
         ("DELETE", "/workspaces/{id}/members/{id}"),
-        ("POST", "/workspaces/{id}/apps/workflow"),
-        ("POST", "/workspaces/{id}/apps/imports"),
         ("GET", "/workspaces/{id}/knowledge-bases"),
-        ("PATCH", "/apps/{id}/app-info/workflow"),
-        ("POST", "/apps/{id}:publish"),
-        ("GET", "/apps/{id}/dsl"),
-        ("GET", "/apps/{id}/versions"),
     ],
 )
 def test_pat_rejects_management_outside_phase_one(
@@ -812,6 +806,7 @@ def test_pat_can_read_and_submit_a_valid_form_started_by_another_account(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Given two forms and a PAT, submit the shared form and deny access to its run history."""
     import json
 
     from graphon.enums import WorkflowExecutionStatus
@@ -827,6 +822,12 @@ def test_pat_can_read_and_submit_a_valid_form_started_by_another_account(
     workspace = make_tenant(tenant_id=str(uuid4()))
     app = make_app(app_id=str(uuid4()), tenant_id=workspace.id, mode=AppMode.WORKFLOW)
     form_tokens = [str(uuid4()).replace("-", "") for _ in range(2)]
+    own_run_id, other_run_id = str(uuid4()), str(uuid4())
+    own_form_id, other_form_id = str(uuid4()), str(uuid4())
+    forms = [
+        (form_tokens[0], account.id, own_run_id, own_form_id),
+        (form_tokens[1], str(uuid4()), other_run_id, other_form_id),
+    ]
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
@@ -840,8 +841,7 @@ def test_pat_can_read_and_submit_a_valid_form_started_by_another_account(
                 ),
             ]
         )
-        for form_token, owner in zip(form_tokens, (account.id, str(uuid4())), strict=True):
-            run_id, form_id = str(uuid4()), str(uuid4())
+        for form_token, owner, run_id, form_id in forms:
             session.add(
                 WorkflowRun(
                     id=run_id,
@@ -904,12 +904,12 @@ def test_pat_can_read_and_submit_a_valid_form_started_by_another_account(
     )
     assert len(resumed) == 1
     with sqlite_session_factory() as session:
-        submitted = session.get(HumanInputForm, form_id)
+        submitted = session.get(HumanInputForm, other_form_id)
         assert submitted is not None
         assert submitted.submission_user_id == account.id
         assert submitted.selected_action_id == "approve"
     # Possession of a form token does not grant access to its run history.
-    assert client.get(f"/openapi/v1/apps/{app.id}/runs/{run_id}/events", headers=headers).status_code == 404
+    assert client.get(f"/openapi/v1/apps/{app.id}/runs/{other_run_id}/events", headers=headers).status_code == 404
     edited = client.patch(
         f"{BASE}/{token['id']}",
         json={

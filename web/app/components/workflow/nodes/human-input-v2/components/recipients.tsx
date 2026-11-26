@@ -23,7 +23,7 @@ import {
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -120,7 +120,7 @@ const RecipientsContent = ({
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
       enabled: open,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -368,6 +368,24 @@ const RecipientsContent = ({
                       !(resolved.data?.data ?? []).some(
                         (contact) => contact.id === recipient.contact_id,
                       ))
+                  const recipientDetails =
+                    recipient.type === 'onetime_email'
+                      ? {
+                          title: t(($) => $['nodes.humanInputV2.recipients.emailLabel'], {
+                            ns: 'workflow',
+                          }),
+                          description: recipient.email,
+                        }
+                      : recipient.type === 'all_workspace_contacts'
+                        ? {
+                            title: item.label,
+                            description: t(
+                              ($) =>
+                                $['nodes.humanInputV2.recipients.allWorkspaceContactsDescription'],
+                              { ns: 'workflow' },
+                            ),
+                          }
+                        : undefined
                   return (
                     <ComboboxChip
                       key={item.key}
@@ -473,6 +491,22 @@ const RecipientsContent = ({
                             <span className="i-ri-information-line size-3" aria-hidden />
                           </IconButton>
                         </RecipientContactPreview>
+                      )}
+                      {!invalid && recipientDetails && (
+                        <Infotip>
+                          <InfotipTrigger
+                            aria-label={infoName(item.label)}
+                            iconVariant="information"
+                            size="sm"
+                            className="m-0.5"
+                          />
+                          <InfotipContent side="left" align="start">
+                            <InfotipTitle className="wrap-anywhere">
+                              {recipientDetails.title}
+                            </InfotipTitle>
+                            <p className="wrap-anywhere">{recipientDetails.description}</p>
+                          </InfotipContent>
+                        </Infotip>
                       )}
                       {!readonly && (
                         <ComboboxChipRemove
@@ -870,7 +904,7 @@ const Recipients = (props: RecipientsProps) => {
       input,
       queryKey: [...operation.queryKey({ input }), { workspaceId }],
       select: (response) => response.total,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )

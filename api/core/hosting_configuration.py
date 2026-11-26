@@ -35,19 +35,30 @@ class HostingProvider(BaseModel):
     quota_unit: QuotaUnit | None = None
     quotas: list[HostingQuota] = []
 
+    def select_quota_type(
+        self, credit_pool_type: ProviderQuotaType | None, *, has_free_quota: bool
+    ) -> ProviderQuotaType | None:
+        """Select an offered bucket for a Cloud workspace, or None if hosting is unavailable.
 
-class HostedModerationConfig(BaseModel):
-    enabled: bool = False
-    providers: list[str] = []
+        The workspace plan supplies its trial or paid pool (None outside Cloud). Only a valid
+        workspace provider row grants third-party free quota. Selection does not check balances:
+        an exhausted pool is configured and must still report its own exhaustion.
+        """
+        if not self.enabled or credit_pool_type not in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
+            return None
+        offered = {quota.quota_type for quota in self.quotas}
+        if credit_pool_type in offered:
+            return credit_pool_type
+        if has_free_quota and ProviderQuotaType.FREE in offered:
+            return ProviderQuotaType.FREE
+        return None
 
 
 class HostingConfiguration:
     provider_map: dict[str, HostingProvider]
-    moderation_config: HostedModerationConfig | None = None
 
     def __init__(self):
         self.provider_map = {}
-        self.moderation_config = None
 
     def init_app(self, app: Flask):
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
@@ -63,8 +74,6 @@ class HostingConfiguration:
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/x/x"] = self.init_xai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/deepseek/deepseek"] = self.init_deepseek()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/tongyi/tongyi"] = self.init_tongyi()
-
-        self.moderation_config = self.init_moderation_config()
 
     @staticmethod
     def init_azure_openai() -> HostingProvider:
@@ -199,8 +208,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED:
@@ -229,8 +238,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_TONGYI_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_TONGYI_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_TONGYI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_TONGYI_PAID_ENABLED:
@@ -258,8 +267,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_XAI_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_XAI_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_XAI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_XAI_PAID_ENABLED:
@@ -288,8 +297,8 @@ class HostingConfiguration:
 
         if dify_config.HOSTED_DEEPSEEK_TRIAL_ENABLED:
             hosted_quota_limit = 0
-            trail_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_TRIAL_MODELS")
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            trial_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_DEEPSEEK_PAID_ENABLED:
@@ -365,20 +374,6 @@ class HostingConfiguration:
             enabled=False,
             quota_unit=quota_unit,
         )
-
-    @staticmethod
-    def init_moderation_config() -> HostedModerationConfig:
-        if dify_config.HOSTED_MODERATION_ENABLED and dify_config.HOSTED_MODERATION_PROVIDERS:
-            providers = dify_config.HOSTED_MODERATION_PROVIDERS.split(",")
-            hosted_providers = []
-            for provider in providers:
-                if "/" not in provider:
-                    provider = f"{DEFAULT_PLUGIN_ID}/{provider}/{provider}"
-                hosted_providers.append(provider)
-
-            return HostedModerationConfig(enabled=True, providers=hosted_providers)
-
-        return HostedModerationConfig(enabled=False)
 
     @staticmethod
     def parse_restrict_models_from_env(env_var: str) -> list[RestrictModel]:

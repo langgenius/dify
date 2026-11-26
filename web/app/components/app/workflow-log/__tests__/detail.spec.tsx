@@ -11,7 +11,11 @@ const { fetchRunDetail, fetchTracingList } = vi.hoisted(() => ({
   fetchRunDetail: vi.fn(),
   fetchTracingList: vi.fn(),
 }))
-vi.mock('@/service/log', () => ({ fetchRunDetail, fetchTracingList }))
+vi.mock('@/service/log', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/log')>()),
+  fetchRunDetail,
+  fetchTracingList,
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -23,27 +27,22 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 beforeEach(() => {
-  fetchRunDetail.mockImplementation(async (url: string) => createLogRun(url.split('/').at(-1)!))
-  fetchTracingList.mockImplementation(async ({ url }: { url: string }) => ({
-    data: [createNodeTracing({ title: `Execution for ${url.split('/').at(-2)}` })],
+  fetchRunDetail.mockImplementation(async (_owner: unknown, runId: string) => createLogRun(runId))
+  fetchTracingList.mockImplementation(async (_owner: unknown, runId: string) => ({
+    data: [createNodeTracing({ title: `Execution for ${runId}` })],
   }))
 })
 
 it('loads and displays the selected run and its execution trace', async () => {
   const user = userEvent.setup()
   render(<DetailPanel appId="app-456" runID="run-789" onClose={vi.fn()} />)
-  expect(fetchRunDetail).toHaveBeenCalledWith('/apps/app-456/workflow-runs/run-789', {
-    silent: true,
-  })
+  expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-456' }, 'run-789')
   expect(
     screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' }),
   ).not.toBeInTheDocument()
   await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
   expect(await screen.findByText('Execution for run-789')).toBeInTheDocument()
-  expect(fetchTracingList).toHaveBeenCalledWith(
-    { url: '/apps/app-456/workflow-runs/run-789/node-executions' },
-    { silent: true },
-  )
+  expect(fetchTracingList).toHaveBeenCalledWith({ kind: 'app', appId: 'app-456' }, 'run-789')
 })
 
 it('requests no run data without a selected run', () => {

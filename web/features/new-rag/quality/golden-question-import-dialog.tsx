@@ -14,17 +14,12 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { useKnowledgeSpace } from '../space/context'
-import {
-  maxGoldenQuestionCsvBytes,
-  maxGoldenQuestionCsvRows,
-  parseGoldenQuestionCsv,
-} from './golden-question-csv'
-import { goldenQuestionQueriesKey } from './quality-model'
+import { maxGoldenQuestionCsvBytes, maxGoldenQuestionCsvRows } from './golden-question-csv-limits'
 
 export function GoldenQuestionImportDialog({
   onOpenChange,
@@ -46,7 +41,6 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   const { t } = useTranslation(['dataset', 'knowledgeQuality', 'knowledgeSpace'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
-  const queryClient = useQueryClient()
   const [rows, setRows] = useState<KnowledgeFsGoldenQuestionBulkImportRowPayload[]>([])
   const [fileName, setFileName] = useState('')
   const [csvError, setCsvError] = useState<GoldenQuestionCsvError>()
@@ -86,7 +80,11 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
     let nextRows: KnowledgeFsGoldenQuestionBulkImportRowPayload[] = []
     let nextError: GoldenQuestionCsvError | undefined
     try {
-      nextRows = parseGoldenQuestionCsv(await file.text())
+      const [{ parseGoldenQuestionCsv }, csv] = await Promise.all([
+        import('./golden-question-csv'),
+        file.text(),
+      ])
+      nextRows = parseGoldenQuestionCsv(csv)
     } catch (error) {
       const code = error instanceof Error ? error.message : 'parse'
       nextError = ['empty', 'headers', 'parse', 'required', 'tooManyRows'].includes(code)
@@ -105,9 +103,6 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
       await mutation.mutateAsync({
         body: { rows },
         params: { control_space_id: knowledgeSpaceId },
-      })
-      await queryClient.invalidateQueries({
-        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
     } catch {
       setSubmitError(true)
@@ -153,7 +148,13 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           </DialogFooter>
         </>
       ) : (
-        <>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submit()
+          }}
+        >
           <DialogBody>
             <label
               htmlFor="golden-question-csv-file"
@@ -224,16 +225,15 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
               {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
             </Button>
             <Button
-              type="button"
+              type="submit"
               variant="primary"
               loading={mutation.isPending}
               disabled={rows.length === 0 || reading}
-              onClick={() => void submit()}
             >
               {t(($) => $['qualityPage.importCsv'], { ns: 'knowledgeQuality' })}
             </Button>
           </DialogFooter>
-        </>
+        </form>
       )}
     </>
   )

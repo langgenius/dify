@@ -34,10 +34,10 @@ const ConditionCommonVariableSelector = ({
         render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {selected && (
-              <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-1.25 system-xs-medium text-text-secondary shadow-xs">
+              <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark ps-1.25 pe-1.5 system-xs-medium text-text-secondary shadow-xs">
                 <span
                   aria-hidden
-                  className="mr-1 i-custom-vender-solid-development-variable-02 size-3.5 text-text-accent"
+                  className="me-1 i-custom-vender-solid-development-variable-02 size-3.5 text-text-accent"
                 />
                 {selected.value}
               </div>
@@ -47,7 +47,7 @@ const ConditionCommonVariableSelector = ({
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
                   <span
                     aria-hidden
-                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4"
+                    className="me-1 i-custom-vender-solid-development-variable-02 size-4"
                   />
                   {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.select'], {
                     ns: 'workflowModels',
@@ -78,7 +78,7 @@ const ConditionCommonVariableSelector = ({
             >
               <span
                 aria-hidden
-                className="mr-1 i-custom-vender-solid-development-variable-02 size-4 text-text-accent"
+                className="me-1 i-custom-vender-solid-development-variable-02 size-4 text-text-accent"
               />
               {v.value}
             </div>

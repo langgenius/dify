@@ -11,6 +11,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
 import Crawling from '../base/crawling'
@@ -186,7 +187,10 @@ const JinaReader: FC<Props> = ({
           }
         }
       } catch (e) {
-        setCrawlErrorMessage(t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' })!)
+        setCrawlErrorMessage(
+          getRequestErrorMessage(e) ??
+            t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),
+        )
         console.log(e)
       } finally {
         setStep(Step.finished)
@@ -211,7 +215,7 @@ const JinaReader: FC<Props> = ({
         </OptionsWrap>
 
         {!isInit && (
-          <div className="relative -left-4 mt-3 w-[calc(100%+32px)] rounded-b-xl">
+          <div className="relative -inset-s-4 mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning && (
               <Crawling
                 className="mt-2"

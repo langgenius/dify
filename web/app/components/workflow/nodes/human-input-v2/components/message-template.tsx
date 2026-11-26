@@ -118,6 +118,7 @@ const MessageTemplateSession = ({
   }, [canTest, testContext])
   const testMutation = useMutation({
     mutationKey,
+    meta: { errorToast: false },
     retry: false,
     mutationFn: async ({
       inputs,
@@ -143,10 +144,7 @@ const MessageTemplateSession = ({
             .messageTemplate.test.post
         : consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test
             .post
-      await operation(
-        { params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } },
-        { context: { silent: true } },
-      )
+      await operation({ params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } })
       return true
     },
   })
@@ -244,7 +242,8 @@ const MessageTemplateSession = ({
           (!Array.isArray(value) || !value.every((item) => typeof item === 'string'))
         )
           throw new Error('invalid-array')
-        if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('invalid-number')
+        if (typeof value === 'number' && !Number.isFinite(value))
+          throw new TypeError('invalid-number')
         inputs[variable.key] = value
       } catch {
         setTestInputError({

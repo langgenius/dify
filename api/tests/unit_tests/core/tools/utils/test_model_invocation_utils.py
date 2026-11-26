@@ -10,11 +10,10 @@ results, while invocation logging uses real SQLite-backed SQLAlchemy sessions.
 from __future__ import annotations
 
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.model_manager import ModelManager
@@ -53,7 +52,12 @@ CALLER_ID = "33333333-3333-3333-3333-333333333333"
         "schema-context-size",
     ],
 )
-def test_get_max_llm_context_tokens_branches(model_exists, properties, expected, error_match):
+def test_get_max_llm_context_tokens_branches(
+    model_exists: bool,
+    properties: dict[ModelPropertyKey, object] | None,
+    expected: int | None,
+    error_match: str | None,
+) -> None:
     manager = ModelManager.for_tenant("tenant", user_id="user-1")
     model_instance = make_model_instance(provider="provider", model="model-a")
     schema = make_model_config(provider="provider", model="model-a", mode="chat").model_schema
@@ -78,7 +82,7 @@ def test_get_max_llm_context_tokens_branches(model_exists, properties, expected,
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id="user-1")
 
 
-def test_calculate_tokens_handles_missing_model():
+def test_calculate_tokens_handles_missing_model() -> None:
     manager = ModelManager.for_tenant("tenant")
     with (
         patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
@@ -89,7 +93,7 @@ def test_calculate_tokens_handles_missing_model():
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id=None)
 
 
-def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]):
+def test_invoke_success_and_error_mappings(sqlite_session_factory: sessionmaker[Session]) -> None:
     model_instance = make_model_instance(provider="provider", model="model-a")
     result = LLMResult(
         model="model-a",
@@ -111,27 +115,21 @@ def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_sessi
     )
     manager = ModelManager.for_tenant(TENANT_ID, user_id=CALLER_ID)
 
-    database = SimpleNamespace(session=sqlite_session)
-    attached_invocations: list[ToolModelInvoke] = []
-    commit_count = 0
+    responses_seen_during_call: list[str] = []
 
-    def _record_attach(_session: Session, instance: object) -> None:
-        if isinstance(instance, ToolModelInvoke):
-            attached_invocations.append(instance)
-
-    def _record_commit(_session: Session) -> None:
-        nonlocal commit_count
-        commit_count += 1
-
-    event.listen(sqlite_session, "after_attach", _record_attach)
-    event.listen(sqlite_session, "after_commit", _record_commit)
+    def _invoke_llm(**_kwargs: object) -> LLMResult:
+        # The log row must already be committed by its own session before the model call starts.
+        with sqlite_session_factory() as observer_session:
+            pending = observer_session.scalar(select(ToolModelInvoke))
+            assert pending is not None
+            responses_seen_during_call.append(pending.model_response)
+        return result
 
     with (
         patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
         patch.object(manager, "get_default_model_instance", return_value=model_instance),
         patch.object(model_instance, "get_llm_num_tokens", return_value=5),
-        patch.object(model_instance, "invoke_llm", return_value=result),
-        patch("core.tools.utils.model_invocation_utils.db", database),
+        patch.object(model_instance, "invoke_llm", side_effect=_invoke_llm),
     ):
         response = ModelInvocationUtils.invoke(
             user_id=USER_ID,
@@ -140,12 +138,11 @@ def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_sessi
             tool_name="tool-a",
             prompt_messages=[],
             caller_user_id=CALLER_ID,
+            session_maker=sqlite_session_factory,
         )
 
     assert response.message.content == "ok"
-    assert len(attached_invocations) == 1
-    assert commit_count == 2
-    assert not sqlite_session.in_transaction()
+    assert responses_seen_during_call == [""]
     with sqlite_session_factory() as observer_session:
         persisted = observer_session.scalar(select(ToolModelInvoke))
         assert persisted is not None
@@ -178,18 +175,17 @@ def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_sessi
         "generic-error",
     ],
 )
-def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
+def test_invoke_error_mappings(
+    exc: Exception, expected: str, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     model_instance = make_model_instance(provider="provider", model="model-a")
     manager = ModelManager.for_tenant(TENANT_ID, user_id=USER_ID)
-
-    database = SimpleNamespace(session=sqlite_session)
 
     with (
         patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
         patch.object(manager, "get_default_model_instance", return_value=model_instance),
         patch.object(model_instance, "get_llm_num_tokens", return_value=5),
         patch.object(model_instance, "invoke_llm", side_effect=exc),
-        patch("core.tools.utils.model_invocation_utils.db", database),
     ):
         with pytest.raises(InvokeModelError, match=expected):
             ModelInvocationUtils.invoke(
@@ -198,8 +194,8 @@ def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
                 tool_type=ToolProviderType.BUILT_IN,
                 tool_name="tool-a",
                 prompt_messages=[],
+                session_maker=sqlite_session_factory,
             )
-    assert not sqlite_session.in_transaction()
     persisted = sqlite_session.scalar(select(ToolModelInvoke))
     assert persisted is not None
     assert persisted.model_response == ""

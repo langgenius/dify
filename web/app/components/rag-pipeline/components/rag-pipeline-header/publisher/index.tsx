@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
@@ -27,10 +27,9 @@ const Publisher = () => {
   const canPipelineRelease = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const docLink = useDocLink()
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
-  const queryClient = useQueryClient()
   const { mutateAsync: publishAsCustomizedPipeline } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =
@@ -81,11 +80,6 @@ const Publisher = () => {
             ),
           },
         )
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
-            input: { query: { type: 'customized' } },
-          }),
-        })
       } catch (error) {
         toast.error(
           getErrorMessage(error) ??
@@ -96,14 +90,7 @@ const Publisher = () => {
         hidePublishAsKnowledgePipelineModal()
       }
     },
-    [
-      docLink,
-      hidePublishAsKnowledgePipelineModal,
-      queryClient,
-      pipelineId,
-      publishAsCustomizedPipeline,
-      t,
-    ],
+    [docLink, hidePublishAsKnowledgePipelineModal, pipelineId, publishAsCustomizedPipeline, t],
   )
 
   return (

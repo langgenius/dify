@@ -4,21 +4,21 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import exists, inspect, select
+from sqlalchemy import and_, exists, inspect, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import DatabaseFileAccessController
 from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,
@@ -39,6 +39,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import retire_standalone_node_execution_workspaces
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -87,15 +88,23 @@ from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now, to_utc_timestamp
+from libs.helper import escape_like_pattern
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowKind,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+    resolve_workflow_kind,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
-from services.billing_service import BillingService
+from services.app.access import AppRunAccessFilter
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -103,6 +112,13 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.errors.billing import BillingError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
+from services.feature_service import FeatureService
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
@@ -274,7 +290,14 @@ class WorkflowService:
         )
 
     def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
-        """Return the app draft while holding its row lock for the caller's transaction."""
+        """Lock and refresh the admitted App's draft for the caller's transaction.
+
+        Preconditions: the App belongs to the admitted tenant and pending draft
+        changes have not been written before acquiring this lock. Postconditions:
+        an existing draft is refreshed from the database and locked until commit
+        or rollback, so graph and Agent-binding writers share one serialization
+        boundary. A missing draft returns None; no state is written by this read.
+        """
         return session.scalar(
             select(Workflow)
             .where(
@@ -284,6 +307,7 @@ class WorkflowService:
             )
             .limit(1)
             .with_for_update()
+            .execution_options(populate_existing=True, autoflush=False)
         )
 
     @staticmethod
@@ -410,6 +434,72 @@ class WorkflowService:
             workflows = workflows[:-1]
 
         return workflows, has_more
+
+    def list_published_evaluation_workflows(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        page: int,
+        limit: int,
+        user_id: str | None = None,
+        named_only: bool = False,
+        keyword: str | None = None,
+        run_access: AppRunAccessFilter | None = None,
+    ) -> tuple[Sequence[Workflow], bool]:
+        """List tenant evaluators, filtering run access before offset and has-more calculation.
+
+        ``run_access=None`` preserves unrestricted internal callers. When a
+        caller supplies a scope, neither an inaccessible App nor its workflow
+        consumes a page slot or appears in the result.
+        """
+        stmt = (
+            select(Workflow)
+            .join(
+                App,
+                and_(
+                    Workflow.app_id == App.id,
+                    App.tenant_id == tenant_id,
+                    App.workflow_id == Workflow.id,
+                ),
+            )
+            .where(
+                Workflow.tenant_id == tenant_id,
+                Workflow.type == WorkflowType.WORKFLOW,
+                Workflow.kind == WorkflowKind.EVALUATION,
+                Workflow.version != Workflow.VERSION_DRAFT,
+                App.status == "normal",
+            )
+        )
+        if user_id:
+            stmt = stmt.where(Workflow.created_by == user_id)
+        if named_only:
+            stmt = stmt.where(Workflow.marked_name != "")
+        if keyword and (normalized_keyword := keyword.strip()):
+            escaped_keyword = escape_like_pattern(normalized_keyword)
+            pattern = f"%{escaped_keyword}%"
+            stmt = stmt.where(
+                or_(
+                    Workflow.marked_name.ilike(pattern, escape="\\"),
+                    App.name.ilike(pattern, escape="\\"),
+                )
+            )
+
+        if run_access is not None:
+            if run_access.allowed_app_ids is None:
+                if run_access.denied_app_ids:
+                    stmt = stmt.where(
+                        or_(App.maintainer == run_access.account_id, App.id.not_in(run_access.denied_app_ids))
+                    )
+            else:
+                allowed_app_ids = run_access.allowed_app_ids - run_access.denied_app_ids
+                stmt = stmt.where(or_(App.maintainer == run_access.account_id, App.id.in_(allowed_app_ids)))
+
+        workflows = session.scalars(
+            stmt.order_by(Workflow.created_at.desc()).offset((page - 1) * limit).limit(limit + 1)
+        ).all()
+        has_more = len(workflows) > limit
+        return workflows[:limit], has_more
 
     def sync_draft_workflow(
         self,
@@ -643,6 +733,11 @@ class WorkflowService:
 
         Secret environment variables are copied server-side from the selected
         published workflow so the normal draft sync flow stays stateless.
+
+        Preconditions: the caller has admitted the App, account and source ID.
+        Postconditions: the source and destination draft stay locked while their
+        graph and Agent bindings are copied atomically; a concurrent Composer
+        save cannot interleave. Validation failure commits no draft changes.
         """
         source_workflow = self.get_published_workflow_by_id(
             app_model=app_model,
@@ -656,7 +751,7 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -697,15 +792,30 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
+        workflow_kind: WorkflowKind | None = None,
     ) -> Workflow:
-        draft_workflow_stmt = select(Workflow).where(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.version == Workflow.VERSION_DRAFT,
-        )
-        draft_workflow = session.scalar(draft_workflow_stmt)
+        """Publish an existing draft, preserving the active kind unless one is requested.
+
+        The caller supplies the app, account and session. A successful call adds
+        a version with the resolved kind. Evaluator publication requires Evaluation
+        to be enabled and a paid plan on Cloud.
+
+        Preconditions: the caller has admitted the App and account. Postconditions:
+        the refreshed draft is locked until the caller commits or rolls back, so
+        the copied graph and Agent node jobs represent the same session-policy
+        generation. Validation or entitlement failure publishes no version.
+        """
+        draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
+
+        workflow_kind = self._resolve_publish_workflow_kind(
+            session=session,
+            app_model=app_model,
+            requested_kind=workflow_kind,
+        )
+        if workflow_kind == WorkflowKind.EVALUATION:
+            self._require_evaluation_workflow_access(app_model.tenant_id)
 
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,
@@ -727,6 +837,8 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             graph=draft_workflow.graph_dict,
         )
+        if workflow_kind == WorkflowKind.EVALUATION:
+            self._validate_evaluation_workflow_nodes(draft_workflow)
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -735,10 +847,10 @@ class WorkflowService:
             draft_workflow=draft_workflow,
         )
 
-        # billing check
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            limit_info = BillingService.get_info(app_model.tenant_id)
-            if limit_info.subscription.plan == CloudPlan.SANDBOX:
+        # Evaluators already passed the Cloud paid-plan check above; only standard
+        # workflows need the Sandbox trigger limit lookup.
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and workflow_kind != WorkflowKind.EVALUATION:
+            if FeatureService.get_workspace_plan(app_model.tenant_id) == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
                 trigger_node_count = sum(
                     1
@@ -765,6 +877,7 @@ class WorkflowService:
             marked_comment=marked_comment,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             features=draft_workflow.features,
+            kind=workflow_kind.value,
         )
 
         # commit db session changes
@@ -784,6 +897,183 @@ class WorkflowService:
 
         # return new workflow
         return workflow
+
+    @staticmethod
+    def _resolve_publish_workflow_kind(
+        *,
+        session: Session,
+        app_model: App,
+        requested_kind: WorkflowKind | None,
+    ) -> WorkflowKind:
+        """Keep evaluator apps as evaluators across ordinary draft publishes."""
+        if requested_kind is not None:
+            return requested_kind
+        if not app_model.workflow_id:
+            return WorkflowKind.STANDARD
+
+        active_kind = session.scalar(
+            select(Workflow.kind).where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+            )
+        )
+        return (
+            WorkflowKind.EVALUATION
+            if resolve_workflow_kind(active_kind) == WorkflowKind.EVALUATION
+            else WorkflowKind.STANDARD
+        )
+
+    @staticmethod
+    def _require_evaluation_workflow_access(tenant_id: str) -> None:
+        """Check deployment availability and Cloud billing for a trusted tenant.
+
+        A disabled deployment raises an error before billing. When enabled,
+        Cloud Sandbox raises a plan error and billing failures raise an unavailable
+        error. The check performs no workflow writes.
+        """
+        if not dify_config.ENABLE_EVALUATION:
+            raise EvaluationDisabledError()
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
+        try:
+            plan = FeatureService.get_workspace_plan(tenant_id)
+        except BillingError as exc:
+            raise EvaluationEntitlementUnavailableError() from exc
+        if plan is None or not plan.is_paid:
+            raise EvaluationPlanRequiredError()
+
+    def publish_evaluation_workflow(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> Workflow:
+        """Publish through the standard pipeline while marking the version as an evaluator."""
+        return self.publish_workflow(
+            session=session,
+            app_model=app_model,
+            account=account,
+            marked_name=marked_name,
+            marked_comment=marked_comment,
+            workflow_kind=WorkflowKind.EVALUATION,
+        )
+
+    def publish_evaluation_workflow_for_app(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> datetime:
+        """Publish and activate an evaluator in one transaction."""
+        with sessionmaker(db.engine).begin() as session:
+            workflow = self.publish_evaluation_workflow(
+                session=session,
+                app_model=app_model,
+                account=account,
+                marked_name=marked_name,
+                marked_comment=marked_comment,
+            )
+            app_in_session = session.get(App, app_model.id)
+            if app_in_session is not None:
+                app_in_session.workflow_id = workflow.id
+                app_in_session.updated_by = account.id
+                app_in_session.updated_at = naive_utc_now()
+            return workflow.created_at
+
+    def convert_published_workflow_kind(
+        self,
+        *,
+        session: Session,
+        app_model: App,
+        target_kind: WorkflowKind,
+        account: Account,
+    ) -> Workflow:
+        """Convert a published version between standard and evaluation kinds.
+
+        The caller supplies a valid target kind, app, account and session. Both
+        conversion directions require Evaluation to be enabled and a paid plan on
+        Cloud. Denied requests leave the published workflow unchanged. Publication
+        receivers use the same session, so their failures do not commit a conversion.
+        """
+        if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
+            raise ValueError("target_kind must be either 'standard' or 'evaluation'")
+        self._require_evaluation_workflow_access(app_model.tenant_id)
+        if not app_model.workflow_id:
+            raise WorkflowNotFoundError("Published workflow not found")
+
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+                Workflow.version != Workflow.VERSION_DRAFT,
+            )
+        )
+        if workflow is None:
+            raise WorkflowNotFoundError("Published workflow not found")
+        if workflow.resolved_kind == target_kind:
+            return workflow
+        if target_kind == WorkflowKind.EVALUATION:
+            self._validate_evaluation_workflow_nodes(workflow)
+
+        workflow.kind = target_kind
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
+        return workflow
+
+    def convert_published_workflow_kind_for_app(
+        self, *, app_model: App, target_kind: WorkflowKind, account: Account
+    ) -> tuple[str, str, str, datetime]:
+        """Convert a published workflow kind and return its response fields."""
+        with sessionmaker(db.engine).begin() as session:
+            workflow = self.convert_published_workflow_kind(
+                session=session, app_model=app_model, target_kind=target_kind, account=account
+            )
+            return (
+                workflow.id,
+                workflow.type.value,
+                workflow.resolved_kind.value,
+                workflow.updated_at or workflow.created_at,
+            )
+
+    @staticmethod
+    def _validate_evaluation_workflow_nodes(workflow: Workflow) -> None:
+        """Validate that an evaluator has synchronous workflow inputs and declared outputs."""
+        if workflow.type != WorkflowType.WORKFLOW:
+            raise ValueError("Evaluation workflows must use the workflow app type.")
+
+        disallowed_nodes: list[tuple[str, str]] = []
+        has_declared_output = False
+        for node_id, node_data in workflow.walk_nodes():
+            node_type = node_data.get("type")
+            if not isinstance(node_type, str):
+                continue
+            if node_type == BuiltinNodeTypes.HUMAN_INPUT or is_trigger_node_type(node_type):
+                disallowed_nodes.append((node_id, node_type))
+            if node_type == BuiltinNodeTypes.END:
+                outputs = node_data.get("outputs")
+                if isinstance(outputs, list) and any(
+                    isinstance(output, Mapping) and isinstance(output.get("variable"), str) and output["variable"]
+                    for output in outputs
+                ):
+                    has_declared_output = True
+
+        if disallowed_nodes:
+            formatted_nodes = ", ".join(f"{node_id}:{node_type}" for node_id, node_type in disallowed_nodes)
+            raise ValueError(
+                "Evaluation workflow cannot contain trigger or human-input nodes. "
+                f"Found disallowed nodes: {formatted_nodes}"
+            )
+        if not has_declared_output:
+            raise ValueError("Evaluation workflows must declare at least one End node output.")
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """
@@ -1176,192 +1466,191 @@ class WorkflowService:
         query: str = "",
         files: Sequence[File] | None = None,
     ) -> WorkflowNodeExecutionModel:
-        """Run an admitted account's draft node within the application tenant.
-
-        Keep file access scoped through input loading, execution, and persistence.
-        Finalize started executions as failed when execution or terminal persistence raises.
-        Restore the previous scope on success or failure.
         """
-        with bind_file_access_scope(
-            FileAccessScope(
-                tenant_id=app_model.tenant_id,
-                user_id=account.id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            )
+        Run draft workflow node
+        """
+        files = files or []
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        node_data = node_config["data"]
+        is_agent_preview = is_dify_agent_node_data(node_data)
+        if is_agent_preview and (
+            draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id
         ):
-            files = files or []
-            node_config = draft_workflow.get_node_config_by_id(node_id)
-            node_type = Workflow.get_node_type_from_node_config(node_config)
-            node_data = node_config["data"]
-            is_agent_preview = is_dify_agent_node_data(node_data)
-            if is_agent_preview and (
-                draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id
-            ):
-                raise ValueError("Workflow does not belong to the application")
+            raise ValueError("Workflow does not belong to the application")
 
-            with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
+        with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
+            draft_var_srv = WorkflowDraftVariableService(session)
+            draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
+
+        if is_start_node_type(node_type):
+            with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
-                draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
-
-            if is_start_node_type(node_type):
-                with Session(bind=db.engine) as session, session.begin():
-                    draft_var_srv = WorkflowDraftVariableService(session)
-                    conversation_id = draft_var_srv.get_or_create_conversation(
-                        account_id=account.id,
-                        app=app_model,
-                        workflow=draft_workflow,
-                    )
-                    if node_type == BuiltinNodeTypes.START:
-                        start_data = StartNodeData.model_validate(node_data, from_attributes=True)
-                        user_inputs = _rebuild_file_for_user_inputs_in_start_node(
-                            tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
-                        )
-                    # init variable pool
-                    variable_pool = _setup_variable_pool(
-                        query=query,
-                        files=files or [],
-                        user_id=account.id,
-                        user_inputs=user_inputs,
-                        workflow=draft_workflow,
-                        node_id=node_id,
-                        # NOTE(QuantumGhost): We rely on `DraftVarLoader` to load conversation variables.
-                        conversation_variables=[],
-                        node_type=node_type,
-                        conversation_id=conversation_id,
-                    )
-
-            else:
-                variable_pool = VariablePool()
-                add_variables_to_pool(
-                    variable_pool,
-                    build_bootstrap_variables(
-                        system_variables=build_system_variables(),
-                        environment_variables=draft_workflow.environment_variables,
-                    ),
+                conversation_id = draft_var_srv.get_or_create_conversation(
+                    account_id=account.id,
+                    app=app_model,
+                    workflow=draft_workflow,
                 )
-
-            variable_loader = DraftVarLoader(
-                engine=db.engine,
-                app_id=app_model.id,
-                tenant_id=app_model.tenant_id,
-                user_id=account.id,
-            )
-
-            enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
-            if enclosing_node_type_and_id:
-                _, enclosing_node_id = enclosing_node_type_and_id
-            else:
-                enclosing_node_id = None
-
-            run = WorkflowEntry.single_step_run(
-                execution_driver=WorkflowRunAgg.run,
-                workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs=user_inputs,
-                user_id=account.id,
-                variable_pool=variable_pool,
-                variable_loader=variable_loader,
-            )
-
-            repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                session_factory=db.engine,
-                tenant_id=app_model.tenant_id,
-                user=account,
-                app_id=app_model.id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
-            )
-            node, node_events = run
-            if is_agent_preview:
-                # Standalone previews have no WorkflowRun. The general debug bootstrap
-                # inserts a synthetic run ID; do not use it as this caller's owner.
-                variable_pool.remove(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID))
-
-            started_event: NodeRunStartedEvent | None = None
-            started_execution: WorkflowNodeExecution | None = None
-
-            def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
-                nonlocal started_event, started_execution
-                for event in node_events:
-                    if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
-                        started_event = event
-                        # Agent workspace allocation requires this caller row before the node body runs.
-                        started_execution = WorkflowNodeExecution(
-                            id=event.id,
-                            node_execution_id=event.id,
-                            workflow_id=draft_workflow.id,
-                            index=1,
-                            predecessor_node_id=event.predecessor_node_id,
-                            node_id=event.node_id,
-                            node_type=event.node_type,
-                            title=event.node_title,
-                            process_data=event.node_run_result.process_data or None,
-                            metadata=event.node_run_result.metadata,
-                            created_at=event.start_at,
-                        )
-                        repository.save_synchronously(started_execution)
-                    yield event
-
-            start_at = time.perf_counter()
-            try:
-                node_execution = self._handle_single_step_result(
-                    invoke_node_fn=lambda: (node, persist_node_start()),
-                    start_at=start_at,
+                if node_type == BuiltinNodeTypes.START:
+                    start_data = StartNodeData.model_validate(node_data, from_attributes=True)
+                    user_inputs = _rebuild_file_for_user_inputs_in_start_node(
+                        tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
+                    )
+                # init variable pool
+                variable_pool = _setup_variable_pool(
+                    query=query,
+                    files=files or [],
+                    user_id=account.id,
+                    user_inputs=user_inputs,
+                    workflow=draft_workflow,
                     node_id=node_id,
+                    # NOTE(QuantumGhost): We rely on `DraftVarLoader` to load conversation variables.
+                    conversation_variables=[],
+                    node_type=node_type,
+                    conversation_id=conversation_id,
                 )
-                node_execution.workflow_id = draft_workflow.id
-                if started_event is not None:
-                    node_execution.id = started_event.id
-                    node_execution.node_execution_id = started_event.id
-                    node_execution.created_at = started_event.start_at
-                    node_execution.predecessor_node_id = started_event.predecessor_node_id
-                repository.save_synchronously(node_execution)
-                # LogStore needs its terminal append in addition to the synchronous SQL caller row.
-                repository.save(node_execution)
-            except BaseException:
-                if started_execution is not None:
-                    started_execution.status = WorkflowNodeExecutionStatus.FAILED
-                    started_execution.error = "Node execution interrupted"
-                    started_execution.elapsed_time = time.perf_counter() - start_at
-                    started_execution.finished_at = naive_utc_now()
-                    try:
-                        repository.save_synchronously(started_execution)
-                        # Keep the terminal append for LogStore and other async repositories.
-                        repository.save(started_execution)
-                    except Exception as persistence_error:
-                        logging.getLogger(__name__).warning(
-                            "Node execution terminal persistence failed (%s)", type(persistence_error).__name__
-                        )
-                raise
 
-            workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
-            if workflow_node_execution is None:
-                raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
+        else:
+            variable_pool = VariablePool()
+            add_variables_to_pool(
+                variable_pool,
+                build_bootstrap_variables(
+                    system_variables=build_system_variables(),
+                    environment_variables=draft_workflow.environment_variables,
+                ),
+            )
 
-            with sessionmaker(db.engine).begin() as session:
-                outputs = workflow_node_execution.load_full_outputs(session, storage)
+        variable_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=app_model.id,
+            tenant_id=app_model.tenant_id,
+            user_id=account.id,
+        )
 
-            with sessionmaker(bind=db.engine).begin() as session:
-                draft_var_saver = DraftVariableSaver(
-                    session=session,
+        enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+        if enclosing_node_type_and_id:
+            _, enclosing_node_id = enclosing_node_type_and_id
+        else:
+            enclosing_node_id = None
+
+        run = WorkflowEntry.single_step_run(
+            execution_driver=WorkflowRunAgg.run,
+            workflow=draft_workflow,
+            node_id=node_id,
+            user_inputs=user_inputs,
+            user_id=account.id,
+            variable_pool=variable_pool,
+            variable_loader=variable_loader,
+        )
+
+        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            session_factory=db.engine,
+            tenant_id=app_model.tenant_id,
+            user=account,
+            app_id=app_model.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+        )
+        node, node_events = run
+        if is_agent_preview:
+            # Standalone previews have no WorkflowRun. The general debug bootstrap
+            # inserts a synthetic run ID; do not use it as this caller's owner.
+            variable_pool.remove(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID))
+
+        started_event: NodeRunStartedEvent | None = None
+        started_execution: WorkflowNodeExecution | None = None
+
+        def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
+            nonlocal started_event, started_execution
+            for event in node_events:
+                if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
+                    started_event = event
+                    # Agent workspace allocation requires this caller row before the node body runs.
+                    started_execution = WorkflowNodeExecution(
+                        id=event.id,
+                        node_execution_id=event.id,
+                        workflow_id=draft_workflow.id,
+                        index=1,
+                        predecessor_node_id=event.predecessor_node_id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        title=event.node_title,
+                        process_data=event.node_run_result.process_data or None,
+                        metadata=event.node_run_result.metadata,
+                        created_at=event.start_at,
+                    )
+                    repository.save_synchronously(started_execution)
+                yield event
+
+        start_at = time.perf_counter()
+        try:
+            node_execution = self._handle_single_step_result(
+                invoke_node_fn=lambda: (node, persist_node_start()),
+                start_at=start_at,
+                node_id=node_id,
+            )
+        except BaseException:
+            if is_agent_preview and started_execution is not None:
+                started_execution.status = WorkflowNodeExecutionStatus.FAILED
+                started_execution.error = "Agent preview execution interrupted"
+                started_execution.elapsed_time = time.perf_counter() - start_at
+                started_execution.finished_at = naive_utc_now()
+                try:
+                    repository.save_synchronously(started_execution)
+                    # Keep the terminal append for LogStore and other async repositories.
+                    repository.save(started_execution)
+                except Exception as persistence_error:
+                    logging.getLogger(__name__).warning(
+                        "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
+                    )
+            raise
+        finally:
+            if is_agent_preview and started_event is not None:
+                # Single-step previews bypass the Workflow Run retirement layer and
+                # cannot pause, so the sandbox is retired as soon as the node ends.
+                retire_standalone_node_execution_workspaces(
                     tenant_id=app_model.tenant_id,
                     app_id=app_model.id,
-                    node_id=workflow_node_execution.node_id,
-                    node_type=workflow_node_execution.node_type,
-                    enclosing_node_id=enclosing_node_id,
-                    node_execution_id=node_execution.id,
-                    user=account,
+                    node_execution_id=started_event.id,
                 )
-                draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
 
-            enqueue_draft_node_execution_trace(
-                execution=workflow_node_execution,
-                outputs=outputs,
-                workflow_execution_id=None,
-                user_id=account.id,
+        node_execution.workflow_id = draft_workflow.id
+        if started_event is not None:
+            node_execution.id = started_event.id
+            node_execution.node_execution_id = started_event.id
+            node_execution.created_at = started_event.start_at
+            node_execution.predecessor_node_id = started_event.predecessor_node_id
+        repository.save_synchronously(node_execution)
+        # LogStore needs its terminal append in addition to the synchronous SQL caller row.
+        repository.save(node_execution)
+
+        workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
+        if workflow_node_execution is None:
+            raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
+
+        with sessionmaker(db.engine).begin() as session:
+            outputs = workflow_node_execution.load_full_outputs(session, storage)
+
+        with sessionmaker(bind=db.engine).begin() as session:
+            draft_var_saver = DraftVariableSaver(
+                session=session,
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                node_id=workflow_node_execution.node_id,
+                node_type=workflow_node_execution.node_type,
+                enclosing_node_id=enclosing_node_id,
+                node_execution_id=node_execution.id,
+                user=account,
             )
+            draft_var_saver.save(process_data=node_execution.process_data, outputs=outputs)
 
-            return workflow_node_execution
+        enqueue_draft_node_execution_trace(
+            execution=workflow_node_execution,
+            outputs=outputs,
+            workflow_execution_id=None,
+            user_id=account.id,
+        )
+
+        return workflow_node_execution
 
     def get_human_input_form_preview(
         self,
@@ -1711,35 +2000,25 @@ class WorkflowService:
     def run_free_workflow_node(
         self, node_data: dict[str, Any], tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
     ) -> WorkflowNodeExecution:
-        """Run a free node for an admitted account in the supplied tenant.
-
-        File access stays scoped through execution and result serialization.
-        Restore the previous scope on success or failure.
         """
-        with bind_file_access_scope(
-            FileAccessScope(
+        Run free workflow node
+        """
+        # run free workflow node
+        start_at = time.perf_counter()
+
+        node_execution = self._handle_single_step_result(
+            invoke_node_fn=lambda: WorkflowEntry.run_free_node(
+                node_id=node_id,
+                node_data=node_data,
                 tenant_id=tenant_id,
                 user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-            )
-        ):
-            # run free workflow node
-            start_at = time.perf_counter()
+                user_inputs=user_inputs,
+            ),
+            start_at=start_at,
+            node_id=node_id,
+        )
 
-            node_execution = self._handle_single_step_result(
-                invoke_node_fn=lambda: WorkflowEntry.run_free_node(
-                    node_id=node_id,
-                    node_data=node_data,
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    user_inputs=user_inputs,
-                ),
-                start_at=start_at,
-                node_id=node_id,
-            )
-
-            return node_execution
+        return node_execution
 
     def _handle_single_step_result(
         self,

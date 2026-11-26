@@ -22,12 +22,12 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
 import { useKnowledgeSpacePermission } from '../space/context'
@@ -78,6 +78,20 @@ export function SourceActions({
   const canToggle = canManageSources && !initializing && !initialWorkflowId
   const syncAction = displayStatus === 'error' ? 'retry' : 'sync'
   const sourceUri = getOpenableSourceUri(source.uri)
+  const spaceApi = consoleQuery.knowledgeFs.spaces.byControlSpaceId
+  const noErrorToast = { meta: { errorToast: false as const } }
+  const { mutateAsync: requestSync } = useMutation(
+    spaceApi.sources.bySourceId.sync.post.mutationOptions(noErrorToast),
+  )
+  const { mutateAsync: requestWorkflowRetry } = useMutation(
+    spaceApi.sourceWorkflows.byRunId.retry.post.mutationOptions(noErrorToast),
+  )
+  const { mutateAsync: requestSourcePatch } = useMutation(
+    spaceApi.sources.bySourceId.patch.mutationOptions(noErrorToast),
+  )
+  const { mutateAsync: requestSourceDelete } = useMutation(
+    spaceApi.sources.bySourceId.delete.mutationOptions(noErrorToast),
+  )
 
   const runAction = async <Result,>(
     action: SourceAction,
@@ -139,13 +153,10 @@ export function SourceActions({
     runAction(
       'sync',
       () =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post(
-          {
-            headers: { 'Idempotency-Key': createIdempotencyKey() },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          },
-          { context: { silent: true } },
-        ),
+        requestSync({
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+        }),
       applyAcceptedWorkflow,
       ensureModelSetupReady,
     )
@@ -158,10 +169,9 @@ export function SourceActions({
     return runAction(
       'sync',
       () =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post(
-          { params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId } },
-          { context: { silent: true } },
-        ),
+        requestWorkflowRetry({
+          params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId },
+        }),
       applyAcceptedWorkflow,
       ensureModelSetupReady,
     )
@@ -172,16 +182,13 @@ export function SourceActions({
       'toggle',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
-            {
-              body: {
-                ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-                status: source.status === 'disabled' ? 'active' : 'disabled',
-              },
-              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          await requestSourcePatch({
+            body: {
+              ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+              status: source.status === 'disabled' ? 'active' : 'disabled',
             },
-            { context: { silent: true } },
-          ),
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
         ),
       (updatedSource) => {
         const nextSyncWorkflow =
@@ -202,13 +209,10 @@ export function SourceActions({
       'edit',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
-            {
-              body: values,
-              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-            },
-            { context: { silent: true } },
-          ),
+          await requestSourcePatch({
+            body: values,
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
           { useResponseStatus: true },
         ),
       acceptSourceSnapshot,
@@ -219,15 +223,12 @@ export function SourceActions({
       'remove',
       async () => {
         if (source.version === undefined) throw new Error('Source version is required')
-        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete(
-          {
-            body: { expectedRevision: source.version },
-            headers: { 'Idempotency-Key': createIdempotencyKey() },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-            query: { documents: 'keep' },
-          },
-          { context: { silent: true } },
-        )
+        return requestSourceDelete({
+          body: { expectedRevision: source.version },
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          query: { documents: 'keep' },
+        })
       },
       () => removeSourceFromList(source.id),
     )

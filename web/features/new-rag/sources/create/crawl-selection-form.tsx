@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { createRequestId } from '../../request-id'
@@ -129,33 +129,9 @@ function ReadyCrawlSelectionForm({
   const selectionRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(
     undefined,
   )
-  const importPages = useMutation({
-    mutationFn: async ({
-      idempotencyKey,
-      pageIds,
-      previewWorkflowId,
-      syncPolicy,
-    }: {
-      idempotencyKey: string
-      pageIds: string[]
-      previewWorkflowId: string
-      syncPolicy: ReturnType<typeof policyConfiguration>
-    }) =>
-      sourceWorkflowFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post(
-          {
-            body: {
-              kind: 'crawl-preview-selection',
-              pageIds,
-              previewWorkflowId,
-              syncPolicy,
-            },
-            headers: { 'Idempotency-Key': idempotencyKey },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          },
-        ),
-      ),
-  })
+  const importPages = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mutationOptions(),
+  )
   const canSubmit = selectedPageIds.size > 0
   const formBusy = busy || submitting
   const submissionLocked = formBusy || selectionUncertain
@@ -222,13 +198,18 @@ function ReadyCrawlSelectionForm({
       if (discardRequested()) return
 
       try {
-        const selectionRequest = importPages.mutateAsync({
-          idempotencyKey: selectionRequestRef.current.requestId,
-          pageIds: sortedPageIds,
-          previewWorkflowId: run.id,
-          syncPolicy: desiredPolicy,
-        })
-        const selectionRun = await selectionRequest
+        const selectionRun = sourceWorkflowFromApi(
+          await importPages.mutateAsync({
+            body: {
+              kind: 'crawl-preview-selection',
+              pageIds: sortedPageIds,
+              previewWorkflowId: run.id,
+              syncPolicy: desiredPolicy,
+            },
+            headers: { 'Idempotency-Key': selectionRequestRef.current.requestId },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
+        )
         transactionRun = selectionRun
         onWorkflowRun(selectionRun)
       } catch (error) {

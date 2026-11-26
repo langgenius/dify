@@ -18,6 +18,8 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 - Follow the [overlay contract] for primitive choice and shared mechanics. The nearest consumer `AGENTS.md` owns application-specific composite reuse policy.
 - Compose Root, Trigger, and content at the entry that owns the business behavior, so the whole anatomy is visible there. A shared layer exports content and state parts; it does not take a trigger prop or wrap the Root and hide the content it renders. The caller owns slots, offsets, and alignment.
 - Keep menu and dialog surfaces as siblings when a menu command opens a dialog. Mount the dialog outside popup content.
+- A dialog that items of a collection open has one Root owned by the collection. Items keep only the surfaces anchored to themselves.
+- A shared dialog module exports its content. Session state lives inside that content and resets when it unmounts, not through a `key`.
 - Use the [overlay contract] to determine content lifetime and preserve the Root's closing lifecycle. Follow [state ownership] for draft placement and semantic identity; portal placement alone does not locate the state owner.
 - Place query subscriptions and mutation observers at the owner whose lifetime matches when they should run. Mounted-session work may belong inside content; work that must start or stop exactly with `open` needs an explicit open-state condition.
 - Data inside a surface follows its owner's mount, not the `open` flag. A query declared in popup content under a Suspense boundary takes the content lifetime; a result the surface displays stays with its owner until that owner unmounts.

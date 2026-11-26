@@ -73,7 +73,7 @@ const successfulProducer = {
 
 test('starts consuming the current artifact without waiting for producer cache saves', async () => {
   const { options, calls } = fixture({ artifacts: (elapsed) => (elapsed ? [artifact] : []) })
-  assert.equal(await waitForBuild(options), '42')
+  assert.deepEqual(await waitForBuild(options), { id: '42', name: 'core-e2e-web-build-2' })
   assert.equal(options.now(), 10000)
   assert.deepEqual(
     calls.map((call) => call.endpoint),
@@ -91,7 +91,7 @@ test('full reruns ignore the old artifact until the rebuilding producer publishe
   const { options } = fixture({
     artifacts: (elapsed) => (elapsed ? [oldArtifact, artifact] : [oldArtifact]),
   })
-  assert.equal(await waitForBuild(options), '42')
+  assert.equal((await waitForBuild(options)).id, '42')
   assert.equal(options.now(), 10000)
 })
 
@@ -109,7 +109,7 @@ test('consumer-only reruns reuse the actual successful upload despite a relabele
     artifacts: [oldArtifact, artifact],
     jobs: [{ ...successfulProducer, run_attempt: 4 }],
   })
-  assert.equal(await waitForBuild(options), '42')
+  assert.deepEqual(await waitForBuild(options), { id: '42', name: 'core-e2e-web-build-2' })
   assert.equal(options.now(), 0)
 })
 
@@ -137,7 +137,7 @@ test('ignores unrelated and expired artifacts and stops at the deadline', async 
 
 test('completed rebuilt producers select their upload instead of the old artifact', async () => {
   const { options } = fixture({ artifacts: [oldArtifact, artifact], jobs: [successfulProducer] })
-  assert.equal(await waitForBuild(options), '42')
+  assert.equal((await waitForBuild(options)).id, '42')
 })
 
 test('allows artifact visibility to catch up after a successful producer finishes', async () => {
@@ -145,7 +145,7 @@ test('allows artifact visibility to catch up after a successful producer finishe
     artifacts: (elapsed) => (elapsed ? [oldArtifact, artifact] : [oldArtifact]),
     jobs: [successfulProducer],
   })
-  assert.equal(await waitForBuild(options), '42')
+  assert.equal((await waitForBuild(options)).id, '42')
   assert.equal(options.now(), 10000)
 })
 
@@ -161,4 +161,29 @@ test('reports API errors rather than silently waiting until timeout', async () =
   const { options } = fixture({ error: new Error('Resource not accessible by integration') })
   await assert.rejects(waitForBuild(options), /Resource not accessible/)
   assert.equal(options.now(), 0)
+})
+
+test('finds the upload when GitHub skews the upload step timestamps off the artifact clock', async () => {
+  // Observed on 2026-11-01 (US DST fall-back): steps[].started_at/completed_at came
+  // back one hour before the artifact's created_at, so a step-only window never
+  // matched and the shard burned its full 30 minute deadline.
+  const { options } = fixture({
+    artifacts: [{ ...artifact, created_at: '2026-09-22T05:08:11Z' }],
+    jobs: [
+      {
+        ...successfulProducer,
+        started_at: '2026-09-22T05:08:05Z',
+        completed_at: '2026-09-22T05:08:20Z',
+        steps: [
+          {
+            name: 'Upload Web build',
+            conclusion: 'success',
+            started_at: '2026-09-22T04:08:08Z',
+            completed_at: '2026-09-22T04:08:12Z',
+          },
+        ],
+      },
+    ],
+  })
+  assert.equal((await waitForBuild(options)).id, '42')
 })

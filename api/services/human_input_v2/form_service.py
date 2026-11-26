@@ -10,7 +10,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
-import secrets
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import timedelta
@@ -70,7 +69,7 @@ from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchem
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 
-from .delivery_service import ResolvedMessageTemplate, build_form_request_url
+from .delivery_service import ResolvedMessageTemplate, build_form_request_url, generate_form_link_token
 
 logger = logging.getLogger(__name__)
 _EMAIL = TypeAdapter(EmailStr)
@@ -135,7 +134,7 @@ class HumanInputDeliveryTestFormService:
             resolved_form = compile_resolved_form(node_data, variable_pool)
         except (MissingResolvedInputError, TypeError) as exc:
             raise HumanInputTestFormError("A valid Human Input v2 form is required.") from exc
-        token = SecretStr(secrets.token_urlsafe(32))
+        token = generate_form_link_token()
         try:
             request_url = build_form_request_url(token, SubmissionAuthType.CONSOLE)
         except ValueError as exc:

@@ -23,7 +23,6 @@ from core.app.entities.queue_entities import (
     QueueMessageFileEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.db.session_factory import session_factory
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -33,6 +32,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
+from extensions.application_services.moderation_policy import platform_owns_openai_moderation
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -464,16 +464,7 @@ class AppRunner:
         query: str | None = None,
         message_id: str,
     ) -> tuple[bool, Mapping[str, Any], str]:
-        """
-        Process sensitive_word_avoidance.
-        :param app_id: app id
-        :param tenant_id: tenant id
-        :param app_generate_entity: app generate entity
-        :param inputs: inputs
-        :param query: query
-        :param message_id: message id
-        :return:
-        """
+        """Check the admitted app input; defer OpenAI checks only on the selected platform route."""
         moderation_feature = InputModeration()
         return moderation_feature.check(
             app_id=app_id,
@@ -483,36 +474,8 @@ class AppRunner:
             query=query or "",
             message_id=message_id,
             trace_scope=app_generate_entity.trace_scope,
+            platform_owned=platform_owns_openai_moderation(app_generate_entity),
         )
-
-    def check_hosting_moderation(
-        self,
-        application_generate_entity: EasyUIBasedAppGenerateEntity,
-        queue_manager: AppQueueManager,
-        prompt_messages: list[PromptMessage],
-    ) -> bool:
-        """
-        Check hosting moderation
-        :param application_generate_entity: application generate entity
-        :param queue_manager: queue manager
-        :param prompt_messages: prompt messages
-        :return:
-        """
-        hosting_moderation_feature = HostingModerationFeature()
-        moderation_result = hosting_moderation_feature.check(
-            application_generate_entity=application_generate_entity, prompt_messages=prompt_messages
-        )
-
-        if moderation_result:
-            self.direct_output(
-                queue_manager=queue_manager,
-                app_generate_entity=application_generate_entity,
-                prompt_messages=prompt_messages,
-                text="I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
-                stream=application_generate_entity.stream,
-            )
-
-        return moderation_result
 
     def fill_in_inputs_from_external_data_tools(
         self,

@@ -1,8 +1,21 @@
 import type { QueryFunction } from '@tanstack/react-query'
+import type { createErrorToastCaches } from '@/app/query-error-toast'
 import { QueryClient } from '@tanstack/react-query'
 
-export const createTestQueryClient = (queryFn?: QueryFunction) =>
+type TestQueryClientOptions = {
+  /**
+   * Pass `createErrorToastCaches()` to report request errors through the app's cache-level toasts.
+   * Specs import it themselves so this helper keeps no runtime dependency on app modules.
+   */
+  caches?: ReturnType<typeof createErrorToastCaches>
+}
+
+export const createTestQueryClient = (
+  queryFn?: QueryFunction,
+  { caches }: TestQueryClientOptions = {},
+) =>
   new QueryClient({
+    ...caches,
     defaultOptions: {
       queries: {
         retry: false,

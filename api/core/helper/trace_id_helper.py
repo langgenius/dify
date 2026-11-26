@@ -1,4 +1,3 @@
-import contextlib
 import re
 from collections.abc import Mapping
 from typing import Any
@@ -188,6 +187,13 @@ def get_trace_id_from_otel_context() -> str | None:
         return None
 
 
+_TRACEPARENT_PATTERN = re.compile(
+    r"(?P<version>[0-9a-f]{2})-(?P<trace_id>[0-9a-f]{32})-(?P<parent_id>[0-9a-f]{16})-(?P<flags>[0-9a-f]{2})"
+)
+_ALL_ZERO_TRACE_ID = "0" * 32
+_ALL_ZERO_PARENT_ID = "0" * 16
+
+
 def parse_traceparent_header(traceparent: str) -> str | None:
     """
     Parse the `traceparent` header to extract the trace_id.
@@ -197,12 +203,20 @@ def parse_traceparent_header(traceparent: str) -> str | None:
 
     Reference:
         W3C Trace Context Specification: https://www.w3.org/TR/trace-context/
+
+    Returns None when the header does not follow that format, and when the version is the
+    forbidden `ff`, or the trace-id / parent-id is all zeroes. The specification requires
+    vendors to ignore such a traceparent instead of propagating its values.
     """
-    with contextlib.suppress(Exception):
-        parts = traceparent.split("-")
-        if len(parts) == 4 and len(parts[1]) == 32:
-            return parts[1]
-    return None
+    if not isinstance(traceparent, str):
+        return None
+    match = _TRACEPARENT_PATTERN.fullmatch(traceparent.strip())
+    if match is None or match.group("version") == "ff":
+        return None
+    if match.group("parent_id") == _ALL_ZERO_PARENT_ID:
+        return None
+    trace_id = match.group("trace_id")
+    return None if trace_id == _ALL_ZERO_TRACE_ID else trace_id
 
 
 def get_span_id_from_otel_context() -> str | None:

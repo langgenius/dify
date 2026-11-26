@@ -2,19 +2,11 @@ import type { ChatItem } from '../../../types'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { PromptMode } from '@/models/debug'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
 const feedback = vi.hoisted(() => ({ onFeedback: vi.fn() }))
-
-// These independently owned features do not participate in feedback focus restoration.
-vi.mock('@/app/components/app/annotation/edit-annotation-modal', () => ({ default: () => null }))
-vi.mock(
-  '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button',
-  () => ({ default: () => null }),
-)
-vi.mock('@/app/components/base/new-audio-button', () => ({ default: () => null }))
-vi.mock('@/app/components/base/chat/chat/log', () => ({ default: () => null }))
 
 const item: ChatItem = { id: 'answer', content: 'An answer', isAnswer: true }
 
@@ -70,6 +62,7 @@ it.each(['cancel', 'submit'])(
     const settings = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
     const animationsDisabled = settings.BASE_UI_ANIMATIONS_DISABLED
     settings.BASE_UI_ANIMATIONS_DISABLED = false
+    await emulateReducedMotion(false)
     feedback.onFeedback.mockReset().mockResolvedValue(undefined)
     try {
       const screen = await render(<FeedbackAnswer />)

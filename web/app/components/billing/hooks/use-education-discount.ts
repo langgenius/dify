@@ -22,10 +22,9 @@ export function useEducationDiscount() {
 
     setIsEducationDiscountLoading(true)
     try {
-      const { url } = await consoleClient.billing.subscription.get(
-        { query: { plan: 'professional', interval: 'year' } },
-        { context: { silent: true } },
-      )
+      const { url } = await consoleClient.billing.subscription.get({
+        query: { plan: 'professional', interval: 'year' },
+      })
       window.location.href = url
     } catch (error) {
       toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))

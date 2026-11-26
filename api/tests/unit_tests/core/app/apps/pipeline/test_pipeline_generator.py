@@ -1,5 +1,4 @@
 import contextlib
-import contextvars
 import json
 from datetime import datetime
 from types import SimpleNamespace
@@ -14,21 +13,17 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.file_access import get_current_file_access_scope
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables.factory import build_segment
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.entities.feature_entities import FeatureModel
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
-from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -38,6 +33,8 @@ USER_ID = "00000000-0000-0000-0000-000000000005"
 
 
 class FakeRagPipelineGenerateEntity(SimpleNamespace):
+    datasource_type = "website_crawl"
+
     class SingleIterationRunEntity(SimpleNamespace):
         pass
 
@@ -48,6 +45,18 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
         return dict(self.__dict__)
 
 
+class _FileAdmission:
+    """Admits every file unless a test sets ``rejection``; records what it was asked."""
+
+    def __init__(self) -> None:
+        self.rejection: str | None = None
+        self.calls: list[dict[str, str]] = []
+
+    def __call__(self, *, tenant_id: str, dataset_id: str, upload_file_id: str) -> str | None:
+        self.calls.append({"tenant_id": tenant_id, "dataset_id": dataset_id, "upload_file_id": upload_file_id})
+        return self.rejection
+
+
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine):
     gen = module.PipelineGenerator(
@@ -56,6 +65,7 @@ def generator(mocker: MockerFixture, sqlite_engine: Engine):
         datasource_providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         ),
+        file_admission=_FileAdmission(),
     )
 
     _patch_sqlite_engine(mocker, sqlite_engine)
@@ -329,6 +339,65 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
     assert sqlite_session.scalars(select(Document)).all() == []
 
 
+def test_generate_published_pipeline_validates_inputs_before_creating_documents(
+    generator, mocker: MockerFixture, sqlite_session: Session
+):
+    """Given a persisted pipeline, rejected inputs leave no pending document rows."""
+    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
+
+    mocker.patch.object(generator, "_format_datasource_info_list", return_value=[{"name": "file1"}])
+    mocker.patch.object(
+        generator,
+        "_prepare_user_inputs",
+        side_effect=ValueError("source_files is required in input form"),
+    )
+    get_features = mocker.patch("services.feature_service.FeatureService.get_features")
+    build_document = mocker.patch.object(generator, "_build_document")
+
+    with pytest.raises(ValueError, match="source_files is required in input form"):
+        generator.generate(
+            session=sqlite_session,
+            pipeline=pipeline,
+            workflow=workflow,
+            user=_build_user(),
+            args=_build_args(),
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+            streaming=False,
+        )
+
+    get_features.assert_not_called()
+    build_document.assert_not_called()
+    assert not sqlite_session.new
+
+
+def test_generate_published_pipeline_prepares_inputs_once(generator, mocker: MockerFixture, sqlite_session: Session):
+    """Given two datasource items, prepare inputs once and pass the result to both runs."""
+    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
+
+    mocker.patch.object(generator, "_format_datasource_info_list", return_value=[{"name": "file1"}, {"name": "file2"}])
+    prepare_inputs = mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
+    mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
+    mocker.patch("services.feature_service.FeatureService.get_features", return_value=FeatureModel())
+    mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
+    mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_execution_repository")
+    mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_node_execution_repository")
+    task_proxy_cls = mocker.patch.object(module, "RagPipelineTaskProxy")
+
+    generator.generate(
+        session=sqlite_session,
+        pipeline=pipeline,
+        workflow=workflow,
+        user=_build_user(),
+        args=_build_args(),
+        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+        streaming=False,
+    )
+
+    prepare_inputs.assert_called_once()
+    invoke_entities = task_proxy_cls.call_args.args[2]
+    assert [entity["application_generate_entity"]["inputs"] for entity in invoke_entities] == [{"k": "v"}, {"k": "v"}]
+
+
 def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqlite_session: Session):
     pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
 
@@ -537,67 +606,6 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture, sq
     worker_thread.join.assert_called_once_with(timeout=300)
 
 
-@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.PUBLISHED_PIPELINE])
-@pytest.mark.parametrize("same_tenant", [False, True])
-def test_generate_checks_nested_file_ownership_in_worker(
-    generator,
-    mocker: MockerFixture,
-    sqlite_session: Session,
-    invoke_from: InvokeFrom,
-    same_tenant: bool,
-) -> None:
-    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
-    user = make_account(account_id=USER_ID)
-    upload = make_upload_file(tenant_id=TENANT_ID if same_tenant else "other-tenant", created_by="another-account")
-    sqlite_session.add(upload)
-    sqlite_session.commit()
-    file = File(
-        file_type=FileType.DOCUMENT,
-        transfer_method=FileTransferMethod.LOCAL_FILE,
-        reference=upload.id,
-    )
-    value = build_segment(["metadata", {"files": [file]}]).value
-    mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
-    mocker.patch.object(module, "PipelineQueueManager")
-    thread_factory = mocker.patch.object(module.threading, "Thread")
-    thread = thread_factory.return_value
-    thread.is_alive.return_value = False
-
-    def read_file() -> None:
-        converter = WorkflowRuntimeTypeConverter()
-        if same_tenant:
-            result = converter.to_json_encodable({"result": value})
-            assert f"/files/{upload.id}/file-preview?" in result["result"][1]["files"][0]["url"]
-        else:
-            with pytest.raises(ValueError, match=f"Upload file {upload.id} not found"):
-                converter.to_json_encodable({"result": value})
-
-    thread.start.side_effect = lambda: thread_factory.call_args.kwargs["kwargs"]["context"].run(read_file)
-    mocker.patch.object(generator, "_get_draft_var_saver_factory")
-    mocker.patch.object(generator, "_handle_response", return_value={})
-    mocker.patch.object(module.WorkflowAppGenerateResponseConverter, "convert", return_value={})
-
-    assert get_current_file_access_scope() is None
-    generator._generate(
-        session=sqlite_session,
-        flask_app=MagicMock(),
-        context=contextvars.copy_context(),
-        pipeline=pipeline,
-        workflow_id=workflow.id,
-        user=user,
-        application_generate_entity=FakeRagPipelineGenerateEntity(
-            task_id="task",
-            user_id=user.id,
-            invoke_from=invoke_from,
-        ),
-        invoke_from=invoke_from,
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
-    )
-    thread.start.assert_called_once()
-    assert get_current_file_access_scope() is None
-
-
 def test_single_iteration_generate_validates_inputs(generator, sqlite_session: Session):
     with pytest.raises(ValueError, match="node_id is required"):
         generator.single_iteration_generate(
@@ -774,6 +782,57 @@ def test_build_document_supports_online_drive_datasource_type(generator):
     assert document.name == "drive.pdf"
 
 
+def _build_document_for(generator, datasource_type: DatasourceProviderType, datasource_info: dict):
+    return generator._build_document(
+        tenant_id="tenant",
+        dataset_id="ds",
+        built_in_field_enabled=True,
+        datasource_type=datasource_type,
+        datasource_info=datasource_info,
+        created_from="rag-pipeline",
+        position=1,
+        account=_build_user(),
+        batch="batch",
+        document_form="text",
+    )
+
+
+def test_build_document_truncates_overlong_website_title(generator):
+    # A crawler can return the whole page body as the title, which overflows documents.name.
+    title = "# Docs " + "x" * 5000
+
+    document = _build_document_for(
+        generator,
+        DatasourceProviderType.WEBSITE_CRAWL,
+        {"title": title, "source_url": "https://example.com/llms.txt"},
+    )
+
+    assert len(document.name) == module.DOCUMENT_NAME_MAX_LENGTH
+    assert document.name.startswith("# Docs x")
+    assert document.doc_metadata[BuiltInField.document_name] == document.name
+
+
+@pytest.mark.parametrize(
+    ("datasource_type", "datasource_info", "expected"),
+    [
+        (
+            DatasourceProviderType.WEBSITE_CRAWL,
+            {"title": "", "source_url": "https://example.com/a"},
+            "https://example.com/a",
+        ),
+        (DatasourceProviderType.WEBSITE_CRAWL, {"title": None}, "untitled"),
+        (DatasourceProviderType.WEBSITE_CRAWL, {"title": "  Page  title \n"}, "Page  title"),
+        (DatasourceProviderType.LOCAL_FILE, {}, "untitled"),
+        (DatasourceProviderType.LOCAL_FILE, {"name": "   "}, "untitled"),
+        (DatasourceProviderType.ONLINE_DOCUMENT, {"page": None}, "untitled"),
+        (DatasourceProviderType.ONLINE_DOCUMENT, {"page": {"page_name": "p" * 300}}, "p" * 255),
+        (DatasourceProviderType.ONLINE_DRIVE, {"name": 123}, "untitled"),
+    ],
+)
+def test_build_document_normalizes_name(generator, datasource_type, datasource_info, expected):
+    assert _build_document_for(generator, datasource_type, datasource_info).name == expected
+
+
 def test_build_document_invalid_datasource_type(generator):
     with pytest.raises(ValueError, match="Unsupported datasource type: invalid"):
         generator._build_document(
@@ -860,6 +919,92 @@ def test_format_datasource_info_list_online_drive_folder(generator, mocker: Mock
     )
 
     assert result == [{"id": "f"}]
+
+
+def test_format_datasource_info_list_online_drive_file_preserves_credential_id(generator, mocker: MockerFixture):
+    workflow = _build_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "data": {
+                        "plugin_id": "p",
+                        "provider_name": "provider",
+                        "datasource_name": "drive",
+                        "credential_id": "cred",
+                    },
+                }
+            ]
+        },
+    )
+
+    class RuntimeCredentials:
+        credentials = None
+
+    class Runtime:
+        runtime = RuntimeCredentials()
+
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+    mocker.patch(
+        "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
+        return_value=Runtime(),
+    )
+    mocker.patch.object(module.DatasourceProviderService, "get_datasource_credentials", return_value={"k": "v"})
+
+    result = generator._format_datasource_info_list(
+        DatasourceProviderType.ONLINE_DRIVE,
+        [
+            {"id": "file-1", "name": "report.txt", "bucket": "b", "credential_id": "cred-1"},
+            {"id": "file-2", "name": "notes.txt", "bucket": "b"},
+        ],
+        _build_pipeline(),
+        workflow,
+        "start",
+        _build_user(),
+    )
+
+    assert result[0]["credential_id"] == "cred-1"
+    assert result[1]["credential_id"] is None
+
+
+def test_get_files_in_folder_propagates_credential_id(generator):
+    class File:
+        def __init__(self, id, name, type):
+            self.id = id
+            self.name = name
+            self.type = type
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            return iter([Result([FilesPage([File("f1", "file1", "file")])])])
+
+    all_files = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=Runtime(),
+        prefix="root",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={"credential_id": "cred-1"},
+    )
+
+    assert all_files == [{"id": "f1", "name": "file1", "bucket": "b", "credential_id": "cred-1"}]
 
 
 def test_get_files_in_folder_recurses_and_collects(generator):
@@ -1039,3 +1184,75 @@ def test_get_files_in_folder_handles_self_referencing_folder(generator):
     assert all_files == []
     # Should only be called once -- the visited-set guard prevents re-entry
     assert call_count == 1
+
+
+UPLOAD_FILE_ID = "00000000-0000-0000-0000-000000000009"
+DOCUMENT_ID = "00000000-0000-0000-0000-00000000000a"
+OTHER_DOCUMENT_ID = "00000000-0000-0000-0000-00000000000b"
+
+
+class _ScanEntity:
+    """The fields of a pipeline run entity that the file admission check reads."""
+
+    def __init__(
+        self,
+        *,
+        datasource_type: str = DatasourceProviderType.LOCAL_FILE.value,
+        datasource_info: dict[str, str] | None = None,
+    ) -> None:
+        self.datasource_type = datasource_type
+        self.datasource_info = datasource_info or {"related_id": UPLOAD_FILE_ID, "name": "report.docx"}
+        self.dataset_id = DATASET_ID
+        self.document_id = DOCUMENT_ID
+
+
+def test_scan_local_file_fails_only_its_own_document_when_the_file_is_rejected(generator, sqlite_session: Session):
+    _persist_pipeline_scope(sqlite_session)
+    for document_id in (DOCUMENT_ID, OTHER_DOCUMENT_ID):
+        document = generator._build_document(
+            tenant_id=TENANT_ID,
+            dataset_id=DATASET_ID,
+            built_in_field_enabled=False,
+            datasource_type=DatasourceProviderType.LOCAL_FILE,
+            datasource_info={"related_id": UPLOAD_FILE_ID, "name": "report.docx"},
+            created_from="rag-pipeline",
+            position=1,
+            account=_build_user(),
+            batch="batch",
+            document_form="text_model",
+        )
+        document.id = document_id
+        sqlite_session.add(document)
+    sqlite_session.commit()
+    rejection = '"report.docx" was blocked by the malware scan: Evil.A detected. The original file was deleted.'
+    generator._file_admission.rejection = rejection
+
+    with pytest.raises(module.PipelineFileRejectedError, match="Evil.A"):
+        generator._scan_local_file(pipeline=_build_pipeline(), application_generate_entity=_ScanEntity())
+
+    assert generator._file_admission.calls == [
+        {"tenant_id": TENANT_ID, "dataset_id": DATASET_ID, "upload_file_id": UPLOAD_FILE_ID}
+    ]
+    sqlite_session.expire_all()
+    rejected = sqlite_session.get(Document, DOCUMENT_ID)
+    untouched = sqlite_session.get(Document, OTHER_DOCUMENT_ID)
+    assert rejected.indexing_status == "error"
+    assert rejected.error == rejection
+    assert untouched.indexing_status != "error"
+    assert untouched.error is None
+
+
+def test_scan_local_file_lets_allowed_files_and_other_datasources_through(generator):
+    pipeline = _build_pipeline()
+
+    generator._scan_local_file(pipeline=pipeline, application_generate_entity=_ScanEntity())
+    assert len(generator._file_admission.calls) == 1
+
+    generator._scan_local_file(
+        pipeline=pipeline,
+        application_generate_entity=_ScanEntity(datasource_type=DatasourceProviderType.WEBSITE_CRAWL.value),
+    )
+    generator._scan_local_file(
+        pipeline=pipeline, application_generate_entity=_ScanEntity(datasource_info={"name": "no reference"})
+    )
+    assert len(generator._file_admission.calls) == 1

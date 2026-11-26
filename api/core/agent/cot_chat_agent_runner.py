@@ -75,6 +75,18 @@ class CotChatAgentRunner(CotAgentRunner):
         # organize system prompt
         system_message = self._organize_system_prompt()
 
+        # A formatted scratchpad cannot carry a signed assistant turn or ordered content blocks.
+        if any(
+            isinstance(turn, AssistantPromptMessage)
+            and (turn.opaque_body is not None or isinstance(turn.content, list))
+            for turn in self._current_thoughts
+        ):
+            query_messages = self._organize_user_query(self._query, [])
+            history = self._organize_historic_prompt_messages(
+                [system_message, *query_messages, *self._current_thoughts]
+            )
+            return [system_message, *history, *query_messages, *self._current_thoughts]
+
         # organize current assistant messages
         agent_scratchpad = self._agent_scratchpad
         if not agent_scratchpad:

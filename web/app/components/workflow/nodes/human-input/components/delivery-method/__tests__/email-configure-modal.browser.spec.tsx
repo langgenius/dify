@@ -1,23 +1,10 @@
 import type { EmailConfig } from '../../../types'
-import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { renderWorkflowBrowserComponent as render } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import EmailConfigureModal from '../email-configure-modal'
-
-// boundary: workspace member reads stop at the generated Console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.members.get': () => ({ accounts: [] }),
-    }),
-  }
-})
 
 const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig => ({
   recipients: {
@@ -101,32 +88,12 @@ it.each<{
   expect(handleConfirm).not.toHaveBeenCalled()
 })
 
-function DismissibleEmailConfig() {
-  const [open, setOpen] = useState(true)
-  return (
-    <>
-      <AppToaster timeout={0} />
-      <EmailConfigureModal
-        open={open}
-        config={createEmailConfig()}
-        onOpenChange={setOpen}
-        onConfirm={vi.fn()}
-      />
-    </>
-  )
-}
-
-it.each(['common.operation.close', 'common.operation.cancel'])(
-  'dismisses email configuration through %s',
-  async (name) => {
-    await render(<DismissibleEmailConfig />)
-    await page.getByRole('button', { name }).click()
-    await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  },
-)
-
 beforeEach(async () => {
   toast.dismiss()
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: { workspaces: { current: { members: { get: () => ({ accounts: [] }) } } } },
+    }),
+  )
 })

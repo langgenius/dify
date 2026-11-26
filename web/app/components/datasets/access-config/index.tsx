@@ -231,7 +231,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
           {t(($) => $['accessRule.datasetDescription'], { ns: 'permission' })}
         </p>
       </header>
-      <div className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
+      <div className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:ps-12.5 sm:pe-20">
         <AccessRulesEditor
           className="min-h-0 w-full flex-1"
           rules={datasetAccessRules}

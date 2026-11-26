@@ -2,6 +2,7 @@
 
 import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -14,6 +15,7 @@ import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
+import DeleteRoleDialog from './role-list/delete-role-dialog'
 import RoleModal from './role-modal'
 
 type PermissionsPageProps = {
@@ -32,6 +34,12 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const locale = useLocale()
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
+  const addRoleRef = useRef<HTMLButtonElement>(null)
+  const [deleteRoleHandle] = useState(() => createAlertDialogHandle<Role>())
+  const openDeleteRole = useCallback(
+    (role: Role) => deleteRoleHandle.openWithPayload(role),
+    [deleteRoleHandle],
+  )
 
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
@@ -127,7 +135,13 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
           </div>
           {canManageRoles && (
             <div className="flex shrink-0 items-center">
-              <Button variant="primary" size="small" onClick={openCreate} disabled={isLoading}>
+              <Button
+                ref={addRoleRef}
+                variant="primary"
+                size="small"
+                onClick={openCreate}
+                disabled={isLoading}
+              >
                 {t(($) => $['role.addRole'], { ns: 'permission' })}
               </Button>
             </div>
@@ -139,9 +153,15 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
           isFetchingNextPage={isFetchingNextPage}
           onView={handleView}
           onEdit={handleEdit}
+          onDelete={openDeleteRole}
         />
         <div ref={anchorRef} className="h-0" />
       </div>
+      <DeleteRoleDialog
+        handle={deleteRoleHandle}
+        fallbackFocus={addRoleRef}
+        canManageRoles={canManageRoles}
+      />
       {modalState && (
         <RoleModal
           mode={modalState?.mode ?? 'create'}

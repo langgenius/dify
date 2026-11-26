@@ -20,13 +20,14 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { newKnowledgeDetailPath } from '../../routes'
 import { useKnowledgeSpacePermission } from '../../space/context'
 import {
@@ -277,6 +278,9 @@ function ConnectionForm({
   const [credentials, setCredentials] = useState<Record<string, string>>({})
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
+  const { mutateAsync: createConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions(),
+  )
   const configurableFields = provider.configuration.filter(
     (field) => !isManagedSourceProviderFieldName(field.name),
   )
@@ -325,7 +329,7 @@ function ConnectionForm({
           .map((field) => [field.name, fieldValue(credentials[field.name] ?? '', field.type)]),
       )
       const createdConnection = sourceConnectionFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+        await createConnection({
           body: {
             authKind,
             configuration: safeConfiguration,
@@ -428,7 +432,7 @@ function ManagedProviderConnection({
   const { t } = useTranslation(['knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const [attempt, setAttempt] = useState(0)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<{ message?: string } | false>(false)
   const requestRef = useRef<
     | {
         key: string
@@ -458,8 +462,11 @@ function ManagedProviderConnection({
                 params: { control_space_id: knowledgeSpaceId },
               }),
             )
-          } catch {
-            return onReconcile()
+          } catch (error) {
+            // A failed reconcile still reports the create request's own failure.
+            const reconciled = await onReconcile().catch(() => undefined)
+            if (reconciled) return reconciled
+            throw error
           }
         })(),
       }
@@ -470,10 +477,10 @@ function ManagedProviderConnection({
       .then((connection) => {
         if (!subscribed) return
         if (connection) onConnected(connection)
-        else setError(true)
+        else setError({})
       })
-      .catch(() => {
-        if (subscribed) setError(true)
+      .catch((error: unknown) => {
+        if (subscribed) setError({ message: getRequestErrorMessage(error) })
       })
     return () => {
       subscribed = false
@@ -495,7 +502,8 @@ function ManagedProviderConnection({
         <>
           <span aria-hidden className="i-ri-error-warning-line size-5 text-text-destructive" />
           <p role="alert" className="mt-2 system-sm-semibold text-text-primary">
-            {t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
+            {error.message ??
+              t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
           </p>
           <Button
             className="mt-3"
@@ -619,6 +627,9 @@ function ConnectionProblem({
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
+  const { mutateAsync: refreshConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.byConnectionId.refresh.post.mutationOptions(),
+  )
 
   const refresh = async () => {
     if (pending) return
@@ -626,15 +637,13 @@ function ConnectionProblem({
     setError(false)
     try {
       const refreshed = sourceConnectionFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.byConnectionId.refresh.post(
-          {
-            body: { expectedVersion: connection.version },
-            params: {
-              connection_id: connection.id,
-              control_space_id: knowledgeSpaceId,
-            },
+        await refreshConnection({
+          body: { expectedVersion: connection.version },
+          params: {
+            connection_id: connection.id,
+            control_space_id: knowledgeSpaceId,
           },
-        ),
+        }),
       )
       onConnected(refreshed)
     } catch {
@@ -819,8 +828,9 @@ function AddSourcePageContent({
   }, [sourceDraftKey])
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
       select: sourceProviderListFromApi,
@@ -828,7 +838,8 @@ function AddSourcePageContent({
   )
   const datasourceAuthQuery = useQuery(
     consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       enabled: websiteSourceSelected,
       retry: false,
     }),
@@ -840,7 +851,8 @@ function AddSourcePageContent({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },

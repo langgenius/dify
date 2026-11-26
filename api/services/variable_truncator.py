@@ -256,7 +256,7 @@ class VariableTruncator(BaseTruncator):
                 raise UnknownTypeError(f"got unknown type {type(value)}")
 
     def _truncate_string(self, value: str, target_size: int) -> _PartResult[str]:
-        if (size := self.calculate_json_size(value)) < target_size:
+        if (size := self.calculate_json_size(value)) <= target_size:
             return _PartResult(value, size, False)
         if target_size < 5:
             return _PartResult("...", 5, True)
