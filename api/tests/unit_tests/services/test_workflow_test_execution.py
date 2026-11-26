@@ -47,13 +47,23 @@ def test_worker_checks_its_loaded_graph_without_a_client_version(
     assert harness.calls == ["credential", "replacement"]
 
 
+@pytest.mark.parametrize(
+    ("version", "app_id", "tenant_id"),
+    [
+        ("published", SCOPE.app_id, SCOPE.tenant_id),
+        ("draft", "other", SCOPE.tenant_id),
+        ("draft", SCOPE.app_id, "other"),
+    ],
+)
 def test_test_execution_does_not_accept_a_published_or_cross_app_workflow(
     execution: tuple[App, Account, Workflow, BuilderCredentialHarness],
+    version: str,
+    app_id: str,
+    tenant_id: str,
 ) -> None:
     app, user, workflow, _ = execution
-    for field, value in [("version", "published"), ("app_id", "other"), ("tenant_id", "other")]:
-        original = getattr(workflow, field)
-        setattr(workflow, field, value)
-        with pytest.raises(CredentialError):
-            require_workflow_test_credentials(app=app, user=user, workflow=workflow, node_id=None)
-        setattr(workflow, field, original)
+    workflow.version = version
+    workflow.app_id = app_id
+    workflow.tenant_id = tenant_id
+    with pytest.raises(CredentialError):
+        require_workflow_test_credentials(app=app, user=user, workflow=workflow, node_id=None)

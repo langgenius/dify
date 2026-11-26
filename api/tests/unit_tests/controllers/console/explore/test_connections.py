@@ -85,6 +85,7 @@ def test_list_serializes_webapp_fields_and_admitted_member_scope(transport):
         "created_at",
         "updated_at",
         "last_active_at",
+        "manual_revocation_required_on_expiry",
     }
     assert isinstance(result["data"][0]["created_at"], int)
     assert result["data"][0]["last_active_at"] is None

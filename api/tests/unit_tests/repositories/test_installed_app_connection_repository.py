@@ -59,7 +59,10 @@ def test_conflicting_owner_is_not_overwritten(sqlite_session_factory, data, owne
         connections="{}",
     )
     foreign_owner = str(uuid4())
-    setattr(saved, owner_field, foreign_owner)
+    if owner_field == "tenant_id":
+        saved.tenant_id = foreign_owner
+    else:
+        saved.app_id = foreign_owner
     with sqlite_session_factory.begin() as session:
         session.add(saved)
     with pytest.raises(ConnectionIdentityError):
@@ -67,7 +70,7 @@ def test_conflicting_owner_is_not_overwritten(sqlite_session_factory, data, owne
     with sqlite_session_factory() as session:
         unchanged = session.get(InstalledAppConnectionConfiguration, saved.id)
         assert unchanged is not None
-        assert getattr(unchanged, owner_field) == foreign_owner
+        assert (unchanged.tenant_id if owner_field == "tenant_id" else unchanged.app_id) == foreign_owner
         assert unchanged.connections == "{}"
 
 

@@ -19,7 +19,7 @@ from models.knowledge_fs import (
     KnowledgeFSLifecycleOutbox,
 )
 from repositories.workspace.workspace_repository import WorkspaceRepository
-from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError
+from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError, WorkspaceOwnerNotFoundError
 from services.workspace.contracts import (
     EffectiveCreditPool,
     WorkspaceCreation,
@@ -402,6 +402,12 @@ class TestWorkspaceMembersCases:
 
 
 class TestWorkspaceRepositoryCases:
+    @staticmethod
+    def test_get_activation_rejects_a_missing_account(sqlite_session_factory: sessionmaker[Session]) -> None:
+        repository = WorkspaceRepository(sqlite_session_factory)
+        with pytest.raises(WorkspaceOwnerNotFoundError):
+            repository.get_activation("019a0000-0000-7000-8000-000000000001")
+
     @staticmethod
     @pytest.fixture
     def seeded(sqlite_session_factory: sessionmaker[Session]) -> WorkspaceRepository:

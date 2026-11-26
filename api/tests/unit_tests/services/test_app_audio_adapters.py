@@ -11,7 +11,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from models import App, AppMode, AppModelConfig, Message
+from models import App, AppMode, AppModelConfig, Conversation, Message
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
@@ -22,6 +22,7 @@ from services.app_audio_adapters import AppAudioRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.errors.audio import NoAudioUploadedServiceError, SpeechToTextDisabledServiceError
+from tests.helpers.unit.model_factories import make_conversation
 
 _ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 
@@ -72,9 +73,14 @@ def harness(
         session.add(config)
         session.flush()
         app.app_model_config_id = config.id
+        conversation = make_conversation(
+            app_id=app.id, from_account_id=_ACCOUNT_ID, from_source=ConversationFromSource.CONSOLE
+        )
+        session.add(conversation)
+        session.flush()
         message = Message(
             app_id=app.id,
-            conversation_id=str(uuid4()),
+            conversation_id=conversation.id,
             query="Question",
             answer=" Message answer ",
             _inputs={},
@@ -191,7 +197,9 @@ def test_tts_unavailable_message_does_not_fall_back_to_text_or_invoke_provider(
             if case == "app":
                 message.app_id = str(uuid4())
             elif case == "account":
-                message.from_account_id = str(uuid4())
+                conversation = session.get(Conversation, message.conversation_id)
+                assert conversation is not None
+                conversation.from_account_id = str(uuid4())
             else:
                 message.answer = ""
                 message.status = MessageStatus.NORMAL if case == "empty-normal" else MessageStatus.PAUSED

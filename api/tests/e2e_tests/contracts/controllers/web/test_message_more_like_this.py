@@ -150,7 +150,9 @@ def harness(
 
     event.listen(admission_factory, "after_begin", track)
     event.listen(query_factory, "after_begin", track_query)
-    passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_code": site.code, "app_id": target.id, "end_user_id": end_user.id}
+    )
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)
@@ -335,11 +337,9 @@ def test_corrupt_persisted_configuration_returns_app_unavailable(
     harness.assert_closed()
 
 
-@pytest.mark.parametrize("field", ["app_id", "from_end_user_id", "from_account_id", "from_source"])
-def test_message_ownership_is_enforced_through_http(harness: _Harness, field: str) -> None:
-    value = ConversationFromSource.CONSOLE if field == "from_source" else str(uuid4())
+def test_message_outside_the_app_is_rejected_through_http(harness: _Harness) -> None:
     with harness.factory.begin() as session:
-        session.execute(update(Message).where(Message.id == harness.message.id).values({field: value}))
+        session.execute(update(Message).where(Message.id == harness.message.id).values(app_id=str(uuid4())))
     response = harness.get()
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.get_json()["code"] == "not_found"
@@ -365,13 +365,22 @@ def test_foreign_conversation_cannot_supply_historical_config(harness: _Harness,
             update(Conversation).where(Conversation.id == harness.message.conversation_id).values({field: value})
         )
     response = harness.get()
-    assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.get_json()["code"] == "app_unavailable"
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["code"] == "not_found"
     harness.assert_closed()
 
 
-@pytest.mark.parametrize("resource", ["conversation", "historical_config", "foreign_config"])
-def test_missing_or_foreign_history_is_app_unavailable(harness: _Harness, resource: str) -> None:
+@pytest.mark.parametrize(
+    ("resource", "status", "code"),
+    [
+        ("conversation", HTTPStatus.NOT_FOUND, "not_found"),
+        ("historical_config", HTTPStatus.BAD_REQUEST, "app_unavailable"),
+        ("foreign_config", HTTPStatus.BAD_REQUEST, "app_unavailable"),
+    ],
+)
+def test_missing_or_foreign_history_returns_specific_error(
+    harness: _Harness, resource: str, status: HTTPStatus, code: str
+) -> None:
     with harness.factory.begin() as session:
         if resource == "conversation":
             session.execute(delete(Conversation).where(Conversation.id == harness.message.conversation_id))
@@ -384,8 +393,8 @@ def test_missing_or_foreign_history_is_app_unavailable(harness: _Harness, resour
                 .values(app_id=str(uuid4()))
             )
     response = harness.get()
-    assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.get_json()["code"] == "app_unavailable"
+    assert response.status_code == status
+    assert response.get_json()["code"] == code
     harness.assert_closed()
 
 
