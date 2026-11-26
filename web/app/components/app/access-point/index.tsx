@@ -71,6 +71,43 @@ function AccessPointContent({
   const selectedHighlightedAccessPoint =
     environment === selectedEnvironment ? highlightedAccessPoint : null
 
+  const accessPoints = (
+    <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+      <ScrollAreaViewport
+        {...(!showEnvironmentTabs && { 'aria-labelledby': 'access-point-title', role: 'region' })}
+        className="overscroll-contain"
+        data-environment={selectedEnvironment}
+        style={{ overflowX: 'hidden' }}
+      >
+        <ScrollAreaContent
+          className="min-h-full w-full max-w-full px-6 py-2"
+          style={{ minWidth: 0 }}
+        >
+          {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
+            <BuiltInAccessPoints
+              appId={appId}
+              canViewLayout={canViewLayout}
+              canDeploy={canDeploy}
+              canManageAccessPoint={canManageAccessPoint}
+              canReleaseAndVersion={canReleaseAndVersion}
+              highlightedAccessPoint={selectedHighlightedAccessPoint}
+            />
+          ) : (
+            <DeployedEnvironmentAccessPoints
+              appId={appId}
+              environmentId={selectedEnvironment}
+              canManageAccessPoint={canManageAccessPoint}
+              highlightedAccessPoint={selectedHighlightedAccessPoint}
+            />
+          )}
+        </ScrollAreaContent>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar>
+        <ScrollAreaThumb />
+      </ScrollAreaScrollbar>
+    </ScrollArea>
+  )
+
   return (
     <Tabs
       value={selectedEnvironment}
@@ -127,46 +164,17 @@ function AccessPointContent({
         )}
       </header>
 
-      <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
-        <ScrollAreaViewport
-          render={
-            showEnvironmentTabs ? (
-              // oxlint-disable-next-line shadcn/no-restyle -- ScrollArea paints the focus indicator above the viewport contents.
-              <TabsPanel value={selectedEnvironment} className="focus-visible:inset-ring-0" />
-            ) : undefined
-          }
-          {...(!showEnvironmentTabs && { 'aria-labelledby': 'access-point-title', role: 'region' })}
-          className="overscroll-contain"
-          data-environment={selectedEnvironment}
-          style={{ overflowX: 'hidden' }}
+      {showEnvironmentTabs ? (
+        <TabsPanel
+          value={selectedEnvironment}
+          tabIndex={-1}
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <ScrollAreaContent
-            className="min-h-full w-full max-w-full px-6 py-2"
-            style={{ minWidth: 0 }}
-          >
-            {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
-              <BuiltInAccessPoints
-                appId={appId}
-                canViewLayout={canViewLayout}
-                canDeploy={canDeploy}
-                canManageAccessPoint={canManageAccessPoint}
-                canReleaseAndVersion={canReleaseAndVersion}
-                highlightedAccessPoint={selectedHighlightedAccessPoint}
-              />
-            ) : (
-              <DeployedEnvironmentAccessPoints
-                appId={appId}
-                environmentId={selectedEnvironment}
-                canManageAccessPoint={canManageAccessPoint}
-                highlightedAccessPoint={selectedHighlightedAccessPoint}
-              />
-            )}
-          </ScrollAreaContent>
-        </ScrollAreaViewport>
-        <ScrollAreaScrollbar>
-          <ScrollAreaThumb />
-        </ScrollAreaScrollbar>
-      </ScrollArea>
+          {accessPoints}
+        </TabsPanel>
+      ) : (
+        accessPoints
+      )}
     </Tabs>
   )
 }
