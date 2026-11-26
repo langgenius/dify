@@ -163,14 +163,14 @@ it('keeps the existing canvas blocked when an established session cannot rejoin'
   expect(manager.canPersistLocalGraph()).toBe(false)
 })
 
-it('does not start concurrent rejoins and accepts status before the successful acknowledgement', async () => {
+it('does not start concurrent rejoins and reloads if the join required a fresh election', async () => {
   const { manager, acknowledge, receive, emit } = await createSession()
   manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
   acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   manager.emitCursorMove({ x: 2, y: 3, userId: 'user-1', timestamp: 2 })
   acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
-  receive('status', { isLeader: true })
+  receive('status', { isLeader: true, retainedLeadership: false })
   acknowledge('user_connect', { msg: 'connected' })
   const reload = vi.fn<(request: GraphReloadRequest) => void>()
   manager.onGraphReloadRequired(reload)
@@ -198,14 +198,13 @@ it.each(['before', 'after'] as const)(
     expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
 
     if (oldAckOrder === 'before') initialAck({ msg: 'not_entitled' }, 403)
-    receive('status', { isLeader: true })
+    receive('status', { isLeader: true, retainedLeadership: true })
     acknowledge('user_connect', { msg: 'connected' })
     if (oldAckOrder === 'after') initialAck({ msg: 'not_entitled' }, 403)
     expect(failures).toHaveBeenLastCalledWith(null)
     const reload = vi.fn<(request: GraphReloadRequest) => void>()
     manager.onGraphReloadRequired(reload)
-    expect(reload).toHaveBeenCalledOnce()
-    expect(manager.replaceGraphFromReactFlow(reload.mock.calls[0]![0])).toBe(true)
+    expect(reload).not.toHaveBeenCalled()
     expect(manager.canPersistLocalGraph()).toBe(true)
   },
 )

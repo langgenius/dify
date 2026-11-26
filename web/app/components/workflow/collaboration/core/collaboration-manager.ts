@@ -191,6 +191,7 @@ export class CollaborationManager {
   private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
   private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
+  private rejoiningLeaderSid: string | undefined
   private joinFailure: JoinFailure | null = null
   private joinPending = false
   private hasJoinedRoom = false
@@ -256,6 +257,7 @@ export class CollaborationManager {
     else return
 
     this.joinPending = false
+    this.rejoiningLeaderSid = undefined
     this.crdtTrusted = false
     this.eventEmitter.emit('joinFailure', this.joinFailure)
     this.emitGraphReadyState()
@@ -296,6 +298,7 @@ export class CollaborationManager {
     if (
       this.joinFailure ||
       this.rejoinInProgress ||
+      this.rejoiningLeaderSid !== undefined ||
       (this.joinPending && !this.receivedConnectionStatus)
     )
       return
@@ -306,7 +309,7 @@ export class CollaborationManager {
 
     this.rejoinInProgress = true
     this.receivedConnectionStatus = false
-    this.prepareGraphReconnect()
+    this.prepareGraphReconnect(this.crdtTrusted && this.isLeader ? socket.id : undefined)
     this.emitGraphReadyState()
     console.warn('Collaboration session expired, attempting to rejoin workflow.')
     this.joinWorkflow(socket)
@@ -707,9 +710,10 @@ export class CollaborationManager {
     this.setupSubscriptions()
   }
 
-  private prepareGraphReconnect(): void {
+  private prepareGraphReconnect(rejoiningLeaderSid?: string): void {
     this.crdtTrusted = false
     this.reconnecting = true
+    this.rejoiningLeaderSid = rejoiningLeaderSid
     this.awaitingSnapshotImport = false
     this.snapshotRequestId = undefined
     this.bufferedGraphUpdates = []
@@ -892,6 +896,13 @@ export class CollaborationManager {
   private handleSnapshotImported = (): void => {
     if (!this.awaitingSnapshotImport) return
 
+    this.finishGraphRecovery()
+    this.emitGraphReadyState()
+    // The snapshot may predate local commits that peers still need.
+    this.handleMissingDependencies()
+  }
+
+  private finishGraphRecovery(): void {
     this.importFailureCount = 0
     if (this.doc) {
       for (const { historyId, data } of this.bufferedGraphUpdates) {
@@ -905,9 +916,6 @@ export class CollaborationManager {
     }
     this.refreshGraphSynchronously()
     this.markGraphTrusted()
-    this.emitGraphReadyState()
-    // The snapshot may predate local commits that peers still need.
-    this.handleMissingDependencies()
   }
 
   private markGraphTrusted(): void {
@@ -1030,6 +1038,7 @@ export class CollaborationManager {
     this.nodePanelPresence = {}
     this.isUndoRedoInProgress = false
     this.rejoinInProgress = false
+    this.rejoiningLeaderSid = undefined
     this.clearGraphImportLog()
 
     // Only reset leader status when actually disconnecting
@@ -2152,13 +2161,19 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: { isLeader: boolean }) => {
+    socket.on('status', (data: { isLeader: boolean; retainedLeadership?: boolean }) => {
       try {
         if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
           console.warn('Invalid status data:', data)
           return
         }
+
+        const rejoiningLeader =
+          this.rejoiningLeaderSid !== undefined && this.rejoiningLeaderSid === socket.id
+        // A role broadcast can precede the join response, which confirms whether leadership was retained.
+        if (rejoiningLeader && data.isLeader && data.retainedLeadership === undefined) return
+        this.rejoiningLeaderSid = undefined
 
         this.hasJoinedRoom = true
         this.receivedConnectionStatus = true
@@ -2167,7 +2182,9 @@ export class CollaborationManager {
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
 
-        if (
+        if (rejoiningLeader && this.isLeader && data.retainedLeadership === true) {
+          this.finishGraphRecovery()
+        } else if (
           this.isLeader &&
           (this.reconnecting || this.awaitingSnapshotImport || this.graphReloadRequired)
         ) {

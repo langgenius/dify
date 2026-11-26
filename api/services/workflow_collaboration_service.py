@@ -128,6 +128,7 @@ class WorkflowCollaborationService:
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
         `App.id`. Missing access returns `None`; an ineligible workspace raises
         `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
+        The join status tells the session whether it retained active leadership so it can keep its live graph.
         """
         socket_session = self._socketio.get_session(sid)
         user_id = socket_session.get("user_id")
@@ -164,13 +165,13 @@ class WorkflowCollaborationService:
 
         self._repository.set_session_info(workflow_id, session_info)
 
-        leader_sid = self.get_or_set_leader(workflow_id, sid)
+        leader_sid, retained_leadership = self.get_or_set_leader(workflow_id, sid)
         is_leader = leader_sid == sid
 
         self._socketio.enter_room(sid, workflow_id)
         self.broadcast_online_users(workflow_id)
 
-        self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
+        self._socketio.emit("status", {"isLeader": is_leader, "retainedLeadership": retained_leadership}, room=sid)
 
         return str(user_id), is_leader
 
@@ -385,12 +386,13 @@ class WorkflowCollaborationService:
 
         return {"msg": "graph_update_broadcasted"}, 200
 
-    def get_or_set_leader(self, workflow_id: str, sid: str) -> str:
+    def get_or_set_leader(self, workflow_id: str, sid: str) -> tuple[str, bool]:
+        """Resolve a joined session's leader and whether it already held active leadership."""
         current_leader = self._repository.get_current_leader(workflow_id)
 
         if current_leader:
             if self.is_session_active(workflow_id, current_leader):
-                return current_leader
+                return current_leader, current_leader == sid
             self._repository.delete_session(workflow_id, current_leader)
             self._repository.delete_leader(workflow_id)
 
@@ -399,13 +401,10 @@ class WorkflowCollaborationService:
         if was_set:
             if current_leader:
                 self.broadcast_leader_change(workflow_id, sid)
-            return sid
+            return sid, False
 
         current_leader = self._repository.get_current_leader(workflow_id)
-        if current_leader:
-            return current_leader
-
-        return sid
+        return current_leader or sid, False
 
     def handle_leader_disconnect(self, workflow_id: str, disconnected_sid: str) -> None:
         current_leader = self._repository.get_current_leader(workflow_id)

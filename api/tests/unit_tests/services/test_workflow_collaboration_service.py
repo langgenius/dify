@@ -148,8 +148,9 @@ class TestWorkflowCollaborationService:
         socketio.enter_room.assert_not_called()
         socketio.emit.assert_not_called()
 
+    @pytest.mark.parametrize("retained_leadership", [False, True])
     def test_authorize_and_join_workflow_room_returns_leader_status(
-        self, real_service: ServiceFixture, db_session: Session
+        self, real_service: ServiceFixture, db_session: Session, retained_leadership: bool
     ) -> None:
         # Arrange
         collaboration_service, repository, socketio = real_service
@@ -161,13 +162,16 @@ class TestWorkflowCollaborationService:
         }
         db_session.add(_app(app_id="wf-1", tenant_id="t-1", maintainer="owner-1"))
         db_session.commit()
+        socketio.manager.is_connected.return_value = True
+        if retained_leadership:
+            repository.set_leader("wf-1", "sid-1")
+        assert repository.get_sid_mapping("sid-1") is None
 
         with (
             config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=True
             ) as check_access,
-            patch.object(collaboration_service, "get_or_set_leader", return_value="sid-1") as get_leader,
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             # Act
@@ -187,10 +191,12 @@ class TestWorkflowCollaborationService:
         assert session_info["server_id"] == "server-1"
         assert repository.server_heartbeat_exists("server-1")
         socketio.start_background_task.assert_called_once()
-        get_leader.assert_called_once_with("wf-1", "sid-1")
+        assert repository.get_current_leader("wf-1") == "sid-1"
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
         broadcast_online_users.assert_called_once_with("wf-1")
-        socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
+        socketio.emit.assert_called_once_with(
+            "status", {"isLeader": True, "retainedLeadership": retained_leadership}, room="sid-1"
+        )
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
         self, real_service: ServiceFixture, db_session: Session
@@ -1086,7 +1092,7 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
 
         # Assert
-        assert result == "sid-1"
+        assert result == ("sid-1", False)
         assert repository.get_current_leader("wf-1") == "sid-1"
 
     def test_get_or_set_leader_replaces_dead_leader(self, real_service: ServiceFixture) -> None:
@@ -1115,7 +1121,7 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
 
         # Assert
-        assert result == "sid-2"
+        assert result == ("sid-2", False)
         assert not repository.session_exists("wf-1", "sid-1")
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
 
@@ -1149,7 +1155,7 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
 
         # Assert
-        assert result == "sid-3"
+        assert result == ("sid-3", False)
 
     def test_get_or_set_leader_returns_sid_when_leader_still_missing(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, _socketio = real_service
@@ -1164,7 +1170,7 @@ class TestWorkflowCollaborationService:
         with patch.object(repository, "set_leader_if_absent", side_effect=disappearing_leader):
             result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
 
-        assert result == "sid-2"
+        assert result == ("sid-2", False)
 
     def test_handle_leader_disconnect_elects_new(self, real_service: ServiceFixture) -> None:
         # Arrange

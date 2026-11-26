@@ -103,6 +103,42 @@ it('exchanges a local update the relay dropped once the session rejoins', async 
   expect(leader.manager.getNodes()[0]?.data).toMatchObject({ title: 'Dropped' })
 })
 
+it.each(['status first', 'acknowledgement first'] as const)(
+  'keeps the live graph when the leader renews the same session with %s',
+  async (order) => {
+    const node = createNode('n-1', 'Saved title')
+    const { leader, follower, historyId } = await createReplicas(node)
+    const edited = withData(node, { title: 'Unsaved title' })
+    leader.manager.setNodes([node], [edited])
+    for (const update of graphUpdates(leader.emit)) follower.receive('graph_update', update)
+    leader.emit.mockClear()
+
+    const reload = vi.fn()
+    leader.manager.onGraphReloadRequired(reload)
+    leader.manager.emitCursorMove({ x: 0, y: 0, userId: 'leader', timestamp: Date.now() })
+    leader.acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
+    expect(leader.manager.canPersistLocalGraph()).toBe(false)
+
+    const peerEdit = withData(edited, { desc: 'Edited during renewal' })
+    follower.manager.setNodes([edited], [peerEdit])
+    for (const update of graphUpdates(follower.emit)) leader.receive('graph_update', update)
+    leader.receive('status', { isLeader: true })
+    expect(leader.manager.canPersistLocalGraph()).toBe(false)
+    expect(reload).not.toHaveBeenCalled()
+
+    if (order === 'acknowledgement first') leader.acknowledge('user_connect', { msg: 'connected' })
+    leader.receive('status', { isLeader: true, retainedLeadership: true })
+    if (order === 'status first') leader.acknowledge('user_connect', { msg: 'connected' })
+
+    expect(leader.manager.canPersistLocalGraph()).toBe(true)
+    expect(reload).not.toHaveBeenCalled()
+    expect(leader.snapshot().historyId).toBe(historyId)
+    expect(leader.manager.getNodes()).toMatchObject([peerEdit])
+    expect(leader.manager.getNodes()).toEqual(follower.manager.getNodes())
+    expect(leader.messages('graph_missing_request').at(-1)?.[1].data).toMatchObject({ historyId })
+  },
+)
+
 it('retains the first undelivered node after reconnecting to the same empty history', async () => {
   const { leader, follower, historyId } = await createReplicas()
   const firstNode = createNode('first', 'First local node')
