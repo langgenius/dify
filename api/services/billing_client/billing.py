@@ -582,11 +582,16 @@ def subscription_get_knowledge_rate_limit(*, tenant_id: str) -> GetKnowledgeRate
 
 
 def subscription_get_subscription_payment_link(
-    *, plan: str, interval: str, prefilled_email: str, tenant_id: str
+    *,
+    plan: str,
+    interval: str,
+    prefilled_email: str,
+    tenant_id: str,
+    upstream: Literal[Upstream.BILLING, Upstream.TOKENER_CHECKOUT] = Upstream.BILLING,
 ) -> GetSubscriptionPaymentLinkReply:
     """GET /v1/subscription/payment-link (BillingSubscription_GetSubscriptionPaymentLink)."""
     return request(
-        Upstream.BILLING,
+        upstream,
         "GET",
         "/subscription/payment-link",
         response_model=GetSubscriptionPaymentLinkReply,

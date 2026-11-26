@@ -15,6 +15,8 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 
 import json
 import logging
+from collections.abc import Callable, Generator, Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -22,10 +24,16 @@ from unittest.mock import MagicMock, call, patch
 import httpx
 import pytest
 import tenacity
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
-from enums import CloudPlan
+from configs.feature import AgentDevTokenerEnvironment, TokenerSignupBillingCandidate
+from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from services import billing_service as billing_service_module
+from services.billing_client import transport as billing_transport
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -2470,3 +2478,193 @@ def test_pooled_billing_client_carries_bounded_timeout() -> None:
     assert client.timeout is not None
     assert client.timeout.read == 30.0
     assert client.timeout.connect == 5.0
+
+
+_TOKENER_CHECKOUT_ORIGIN = "http://dify-saas-billing:8081"
+_LEGACY_CHECKOUT_ORIGIN = "https://legacy-billing.example.invalid"
+_CHECKOUT_PATH = "/v1/subscription/payment-link"
+_CHECKOUT_TEST_EMAIL = "owner@example.invalid"
+_CHECKOUT_TEST_SECRET = "fixture-billing-secret"
+_CHECKOUT_LINK = "https://checkout.example.invalid/session"
+
+
+@pytest.fixture
+def agent_dev_checkout_config(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Configure the genuine shared staging selector with two distinct test origins."""
+    monkeypatch.setattr(BillingService, "base_url", f"{_LEGACY_CHECKOUT_ORIGIN}/v1")
+    monkeypatch.setattr(BillingService, "secret_key", _CHECKOUT_TEST_SECRET)
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        AGENT_DEV_TOKENER_ENVIRONMENT=AgentDevTokenerEnvironment.STAGING,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.DISABLED,
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/tokener-staging:0.4.5@" + "a" * 64,
+        TOKENER_BILLING_API_URL=_TOKENER_CHECKOUT_ORIGIN,
+        TOKENER_LEGACY_MIGRATION_ENABLED=False,
+        BILLING_API_URL=f"{_LEGACY_CHECKOUT_ORIGIN}/v1",
+        BILLING_API_SECRET_KEY=_CHECKOUT_TEST_SECRET,
+    ):
+        yield
+
+
+@pytest.fixture
+def agent_dev_tokener_workspace(sqlite_session: Session) -> str:
+    """Persist a ready Tokener profile so checkout uses the real cohort resolver."""
+    tenant = Tenant(name="Managed Checkout test workspace")
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    sqlite_session.add_all(
+        [
+            TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"),
+            TenantTokenerIntegration(tenant_id=tenant.id, status=TenantTokenerIntegrationStatus.READY),
+        ]
+    )
+    sqlite_session.commit()
+    return tenant.id
+
+
+@contextmanager
+def _checkout_wire(responder: Callable[[httpx.Request], httpx.Response]) -> Generator[None]:
+    """Intercept both genuine Billing clients at the HTTP boundary; never use a live origin."""
+    with (
+        httpx.Client(transport=httpx.MockTransport(responder)) as client,
+        patch.object(billing_service_module, "_http_client", client),
+        patch.object(billing_transport, "_http_client", client),
+    ):
+        yield
+
+
+def _assert_checkout_request(
+    request: httpx.Request,
+    origin: str,
+    tenant_id: str,
+    *,
+    plan: str = "professional",
+    interval: str = "month",
+) -> None:
+    """Reject unexpected origins or redirects, and verify the exact checkout wire arguments."""
+    assert request.method == "GET"
+    assert request.url.copy_with(query=None) == httpx.URL(origin + _CHECKOUT_PATH)
+    assert dict(request.url.params) == {
+        "plan": plan,
+        "interval": interval,
+        "prefilled_email": _CHECKOUT_TEST_EMAIL,
+        "tenant_id": tenant_id,
+    }
+    assert request.headers["Billing-Api-Secret-Key"] == _CHECKOUT_TEST_SECRET
+
+
+def test_agent_dev_checkout_uses_private_billing_for_persisted_tokener_profile(
+    agent_dev_checkout_config: None, agent_dev_tokener_workspace: str
+) -> None:
+    """Managed monthly Pro calls the trusted private origin once and returns its link."""
+    seen: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        _assert_checkout_request(request, _TOKENER_CHECKOUT_ORIGIN, agent_dev_tokener_workspace)
+        seen.append(request)
+        return httpx.Response(200, json={"url": _CHECKOUT_LINK})
+
+    with _checkout_wire(respond):
+        assert BillingService.get_subscription(
+            "professional", "month", _CHECKOUT_TEST_EMAIL, agent_dev_tokener_workspace
+        ) == {"url": _CHECKOUT_LINK}
+    assert len(seen) == 1
+
+
+@pytest.mark.parametrize("explicit_legacy_profile", [False, True])
+def test_agent_dev_checkout_keeps_legacy_origin_for_legacy_profiles(
+    agent_dev_checkout_config: None, sqlite_session: Session, explicit_legacy_profile: bool
+) -> None:
+    """Missing and explicit NULL profiles leave the pre-existing legacy wire request intact."""
+    tenant = Tenant(name="Legacy Checkout test workspace")
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    if explicit_legacy_profile:
+        sqlite_session.add(TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source=None))
+    sqlite_session.commit()
+    seen: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        _assert_checkout_request(request, _LEGACY_CHECKOUT_ORIGIN, tenant.id)
+        seen.append(request)
+        return httpx.Response(200, json={"url": _CHECKOUT_LINK})
+
+    with _checkout_wire(respond):
+        assert BillingService.get_subscription("professional", "month", _CHECKOUT_TEST_EMAIL, tenant.id) == {
+            "url": _CHECKOUT_LINK
+        }
+    assert len(seen) == 1
+
+
+@pytest.mark.parametrize(("plan", "interval"), [("professional", "year"), ("team", "month")])
+def test_agent_dev_checkout_split_does_not_change_other_plan_interval_paths(
+    agent_dev_checkout_config: None, agent_dev_tokener_workspace: str, plan: str, interval: str
+) -> None:
+    """The managed route is intentionally limited to the contract of monthly Pro."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        _assert_checkout_request(
+            request, _LEGACY_CHECKOUT_ORIGIN, agent_dev_tokener_workspace, plan=plan, interval=interval
+        )
+        return httpx.Response(200, json={"url": _CHECKOUT_LINK})
+
+    with _checkout_wire(respond):
+        assert BillingService.get_subscription(plan, interval, _CHECKOUT_TEST_EMAIL, agent_dev_tokener_workspace) == {
+            "url": _CHECKOUT_LINK
+        }
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_error"),
+    [
+        (302, BillingUpstreamInvalidResponseError),
+        (409, BillingUpstreamInvalidResponseError),
+        (503, BillingUpstreamUnavailableError),
+        (200, BillingUpstreamInvalidResponseError),
+    ],
+    ids=["redirect", "conflict", "unavailable", "malformed-success"],
+)
+def test_agent_dev_checkout_private_failure_never_follows_redirect_or_falls_back(
+    agent_dev_checkout_config: None,
+    agent_dev_tokener_workspace: str,
+    status: int,
+    expected_error: type[Exception],
+) -> None:
+    """A failed private request never sends a second request to a legacy or redirect target."""
+    seen: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        _assert_checkout_request(request, _TOKENER_CHECKOUT_ORIGIN, agent_dev_tokener_workspace)
+        seen.append(request)
+        if status == 302:
+            return httpx.Response(302, headers={"Location": f"{_LEGACY_CHECKOUT_ORIGIN}{_CHECKOUT_PATH}"})
+        if status == 409:
+            return httpx.Response(409, json={"code": 409, "reason": "TOKENER_PAID_GRANTS_DISABLED"})
+        return httpx.Response(status, json={})
+
+    with _checkout_wire(respond), pytest.raises(expected_error):
+        BillingService.get_subscription("professional", "month", _CHECKOUT_TEST_EMAIL, agent_dev_tokener_workspace)
+    assert len(seen) == 1
+
+
+@pytest.mark.parametrize("origin", ["", "https://elsewhere.example.invalid"])
+def test_agent_dev_checkout_refuses_missing_or_untrusted_private_origin_before_http(
+    agent_dev_checkout_config: None, agent_dev_tokener_workspace: str, origin: str
+) -> None:
+    """A misconfigured managed origin does not forward the Billing credential anywhere."""
+    with (
+        config_overrides_context(TOKENER_BILLING_API_URL=origin),
+        _checkout_wire(lambda _: pytest.fail("untrusted configuration performed an HTTP request")),
+        pytest.raises(BillingUpstreamUnavailableError),
+    ):
+        BillingService.get_subscription("professional", "month", _CHECKOUT_TEST_EMAIL, agent_dev_tokener_workspace)
+
+
+@pytest.mark.usefixtures("unbound_session_factory")
+def test_agent_dev_checkout_does_not_treat_profile_storage_failure_as_legacy(agent_dev_checkout_config: None) -> None:
+    """A real profile-store read failure cannot create a legacy Checkout."""
+    with (
+        _checkout_wire(lambda _: pytest.fail("profile read failure performed an HTTP request")),
+        pytest.raises(BillingUpstreamUnavailableError),
+    ):
+        BillingService.get_subscription("professional", "month", _CHECKOUT_TEST_EMAIL, TENANT_ID)
