@@ -54,7 +54,6 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   const form = useQuery(
     consoleQuery.form.humanInput.v2.byFormToken.get.queryOptions({
       input: { params: { form_token: formToken } },
-      context: { silent: true },
       meta: { errorToast: false },
       select: normalizeConsoleFormDefinition,
       retry: false,
@@ -73,7 +72,6 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   }, [expiresAt, now])
   const submission = useMutation(
     consoleQuery.form.humanInput.v2.byFormToken.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

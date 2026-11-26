@@ -43,35 +43,30 @@ export function useSaveContactImCredentials() {
   const channels = consoleQuery.workspaces.current.humanInput.v2.channels
   const createEmail = useMutation(
     channels.email.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
   )
   const updateEmail = useMutation(
     channels.email.byChannelId.put.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
   )
   const createIM = useMutation(
     channels.im.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
   )
   const updateIM = useMutation(
     channels.im.byChannelId.put.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
   )
   const replaceIM = useMutation(
     channels.im.byChannelId.replacement.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
@@ -130,7 +125,6 @@ export function useSaveContactImCredentials() {
               ? await queryClient.query(
                   channels.email.byChannelId.get.queryOptions({
                     input,
-                    context: { silent: true },
                     meta: { errorToast: false },
                     staleTime: 0,
                   }),
@@ -138,7 +132,6 @@ export function useSaveContactImCredentials() {
               : await queryClient.query(
                   channels.im.byChannelId.get.queryOptions({
                     input,
-                    context: { silent: true },
                     meta: { errorToast: false },
                     staleTime: 0,
                   }),
@@ -168,28 +161,24 @@ export function useTestContactImConnection() {
   const channels = consoleQuery.workspaces.current.humanInput.v2.channels
   const createEmail = useMutation(
     channels.email.test.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
   )
   const updateEmail = useMutation(
     channels.email.byChannelId.test.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
   )
   const createIM = useMutation(
     channels.im.test.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),
   )
   const updateIM = useMutation(
     channels.im.byChannelId.test.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       gcTime: 0,
     }),

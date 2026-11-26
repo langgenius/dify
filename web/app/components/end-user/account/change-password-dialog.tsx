@@ -22,7 +22,10 @@ export default function ChangePasswordDialog({
   const { t } = useTranslation(['accountSettings', 'login'])
   const actionsRef = useRef<DialogActions>(null)
   const updatePassword = useMutation(
-    webAppQuery.account.password.post.mutationOptions({ context: { authSession, silent: true } }),
+    webAppQuery.account.password.post.mutationOptions({
+      context: { authSession },
+      meta: { errorToast: false },
+    }),
   )
   let errorField: 'current-password' | 'new-password' | 'confirm-password' | undefined
   if (updatePassword.error instanceof ORPCError) {

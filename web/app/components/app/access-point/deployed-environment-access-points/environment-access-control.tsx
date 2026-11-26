@@ -75,7 +75,6 @@ function EnvironmentAccessControlContainer({
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentWebAppAccessMode.mutationOptions(
       {
         meta: { errorToast: false },
-        context: { silent: true },
         onError: (error) => {
           toast.error(
             getErrorMessage(error) ??

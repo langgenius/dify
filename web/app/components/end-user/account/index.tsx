@@ -22,14 +22,15 @@ function AccountSession({ authSession }: { authSession: number }) {
   const profile = useQuery(
     webAppQuery.account.profile.get.queryOptions({
       queryKey: [...webAppQuery.account.profile.get.queryKey(), authSession],
-      context: { authSession, silent: true },
+      context: { authSession },
+      meta: { errorToast: false },
       retry: false,
       gcTime: 0,
     }),
   )
   const features = useQuery(
     webAppQuery.systemFeatures.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
       staleTime: Infinity,
     }),

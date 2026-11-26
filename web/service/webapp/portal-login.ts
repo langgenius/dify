@@ -28,7 +28,7 @@ function openPortalSignIn(returnPath: string, signingOut: boolean) {
   }
   const promise = (async () => {
     const [features, proof] = await Promise.all([
-      webAppClient.systemFeatures.get(undefined, { context: { silent: true } }),
+      webAppClient.systemFeatures.get(undefined),
       createWebAppLoginProof(),
     ])
     assertCurrentNavigation()
@@ -46,7 +46,7 @@ function openPortalSignIn(returnPath: string, signingOut: boolean) {
     if (signingOut) {
       // End the Console session on its own origin before it can reissue the Web App session.
       signin.searchParams.set('switch_account', '1')
-      await webAppLogout(null, { silent: true })
+      await webAppLogout(null)
       assertCurrentNavigation()
     }
     storeWebAppLoginTransaction(PORTAL_LOGIN_STORAGE_KEY, proof.verifier, redirectUrl.href)
@@ -84,14 +84,13 @@ export function completeWebAppPortalLogin() {
       throw new Error('Missing or expired Web App portal login transaction.')
 
     removeWebAppLoginTransaction(PORTAL_LOGIN_STORAGE_KEY)
-    await webAppClient.account.session.post(
-      { body: { login_code: loginCode, code_verifier: transaction.verifier } },
-      { context: { silent: true } },
-    )
+    await webAppClient.account.session.post({
+      body: { login_code: loginCode, code_verifier: transaction.verifier },
+    })
     if (!isCurrentSession() || window.location.href !== location)
       throw new DOMException('The Web App login changed.', 'AbortError')
     // Check the Cookie before mounting queries that could start another sign-in.
-    await webAppClient.account.profile.get(undefined, { context: { silent: true } })
+    await webAppClient.account.profile.get(undefined)
     if (!isCurrentSession() || window.location.href !== location)
       throw new DOMException('The Web App login changed.', 'AbortError')
     startWebAppAccountSession()

@@ -9,6 +9,7 @@ import {
   editorResourceKindAtom,
   isChatflowAtom,
 } from '@/app/components/workflow/editor-resource/state'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import { useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
@@ -17,6 +18,7 @@ import { filterSnippetSystemVars } from '../_base/hooks/snippet-input-field-vars
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
 
@@ -71,7 +73,7 @@ export const useVariableAssigner = () => {
       value: ValueSelector,
       varDetail: Var,
     ) => {
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
       const { setShowAssignVariablePopup } = workflowStore.getState()
 
       const newNodes = produce(getNodes(), (draft) => {
@@ -85,7 +87,7 @@ export const useVariableAssigner = () => {
           }
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       setShowAssignVariablePopup(undefined)
       handleAssignVariableValueChange(
         variableAssignerNodeId,
@@ -94,7 +96,7 @@ export const useVariableAssigner = () => {
         variableAssignerNodeHandleId,
       )
     },
-    [store, workflowStore, handleAssignVariableValueChange],
+    [collaborativeWorkflow, store, workflowStore, handleAssignVariableValueChange],
   )
 
   const handleGroupItemMouseEnter = useCallback(

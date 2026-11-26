@@ -58,8 +58,6 @@ type UnhandledEventError = {
 export type StreamCallbacks = {
   /** The request goes to the public WebApp API, whose sign-in errors redirect instead of reporting. */
   isPublicAPI?: boolean
-  /** Suppresses the default error notification. */
-  silent?: boolean
   onData?: IOnData
   onReasoning?: (reasoningChunk: ReasoningChunkResponse) => void
   onThought?: (thought: ThoughtItem) => void
@@ -151,12 +149,12 @@ type PayloadEvents = typeof payloadEvents
  */
 export type StreamRequestOptions = {
   signal: AbortSignal
-  context: { silent: true; stream: true }
+  context: { stream: true }
 }
 
 const streamRequestOptions = (signal: AbortSignal): StreamRequestOptions => ({
   signal,
-  context: { silent: true, stream: true },
+  context: { stream: true },
 })
 
 /**
@@ -232,7 +230,7 @@ const notify = (callbacks: StreamCallbacks, message: string, code?: string) => {
 
 /** Maps a failed request (before the stream starts) to the callbacks `ssePost` used. */
 const handleRequestError = (error: unknown, callbacks: StreamCallbacks) => {
-  const { onError, onCompleted, silent } = callbacks
+  const { onError, onCompleted } = callbacks
   if (isAppAccessError(error)) {
     // The app-access dialog owns this failure, so it is reported without a toast.
     if (!(error instanceof ORPCError)) {
@@ -255,11 +253,11 @@ const handleRequestError = (error: unknown, callbacks: StreamCallbacks) => {
       return
     }
     onError?.(message, code)
-    if (!silent) notify(callbacks, message, code)
+    notify(callbacks, message, code)
     return
   }
   const errorMessage = String(error)
-  if (!silent && shouldNotifyStreamError(error)) notify(callbacks, errorMessage)
+  if (shouldNotifyStreamError(error)) notify(callbacks, errorMessage)
   onError?.(errorMessage)
 }
 
@@ -269,7 +267,7 @@ const consumeFrames = async (
   isRequestCurrent: () => boolean,
   abortController: AbortController,
 ) => {
-  const { onCompleted, onUnhandledEvent, silent } = callbacks
+  const { onCompleted, onUnhandledEvent } = callbacks
   let isFirstMessage = true
   let lastFrame: Frame | undefined
 
@@ -277,7 +275,7 @@ const consumeFrames = async (
     if (moreInfo.errorMessage) {
       callbacks.onError?.(moreInfo.errorMessage, moreInfo.errorCode, moreInfo)
       // These errors can happen when a stream is intentionally stopped or its page is left.
-      if (!silent && shouldNotifyStreamError(moreInfo.errorMessage))
+      if (shouldNotifyStreamError(moreInfo.errorMessage))
         notify(callbacks, moreInfo.errorMessage, moreInfo.errorCode)
       return
     }

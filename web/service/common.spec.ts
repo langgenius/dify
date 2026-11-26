@@ -69,9 +69,9 @@ describe('webAppLogout', () => {
     localStorage.clear()
   })
 
-  it('clears the stored credentials after logging out remotely', async () => {
+  it('clears the stored account credentials after remote logout', async () => {
     const address = { kind: 'default' as const, code: 'workflow-app' }
-    setWebAppAccessToken('access-token')
+    setWebAppAccessToken('access-token', 'end_user')
     setWebAppPassport(address, 'passport')
     webAppClientMock.logout.post.mockResolvedValue({ result: 'success' })
 
@@ -80,7 +80,7 @@ describe('webAppLogout', () => {
     expect(localStorage.getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)).toBeNull()
     expect(getWebAppPassport(address)).toBe('')
     expect(webAppClientMock.logout.post).toHaveBeenCalledWith(undefined, {
-      context: { address, silent: undefined },
+      context: { address },
     })
   })
 })

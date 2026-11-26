@@ -11,6 +11,7 @@ import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toastRequestError } from '@/app/query-error-toast'
 import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/console'
 // oxlint-disable-next-line no-restricted-imports
@@ -115,8 +116,9 @@ export const useNodesSyncDraft = (snippetId: string) => {
       )
       try {
         if (error) {
-          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-            handleRefreshWorkflowDraft(onRefresh)
+          const isDraftNotSync = isDefined && error.code === 'draft_workflow_not_sync'
+          if (isDraftNotSync && !notRefreshWhenSyncError) handleRefreshWorkflowDraft(onRefresh)
+          if (!isDraftNotSync) toastRequestError(error)
           callback?.onError?.()
           return undefined
         }

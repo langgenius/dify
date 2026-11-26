@@ -26,7 +26,7 @@ export default function ProviderConnectionsPage({ providerId }: { providerId: st
     params: { provider: providerId },
     query: { limit: 100, cursor },
   })
-  const context = { authSession, silent: true }
+  const context = { authSession }
   const list = useInfiniteQuery(
     webAppQuery.me.connections.providers.byProvider.connections.get.infiniteOptions({
       input,
@@ -48,7 +48,10 @@ export default function ProviderConnectionsPage({ providerId }: { providerId: st
     }),
   )
   const removal = useMutation(
-    webAppQuery.me.connections.byConnectionKey.delete.mutationOptions({ context }),
+    webAppQuery.me.connections.byConnectionKey.delete.mutationOptions({
+      meta: { errorToast: false },
+      context,
+    }),
   )
   const connections = Array.from(
     new Map(

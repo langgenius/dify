@@ -60,7 +60,7 @@ function ConfigurationSession({
         target.integration?.kind === 'email'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const im = useQuery(
@@ -69,7 +69,7 @@ function ConfigurationSession({
         target.integration?.kind === 'im'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const detail = target.integration?.kind === 'email' ? email : im
@@ -124,23 +124,21 @@ export function ContactsImPlatformManagementSurface() {
   })
   const api = consoleQuery.workspaces.current.humanInput.v2
   const integrationsQuery = useQuery(
-    api.channels.get.queryOptions({ enabled: organization.canManage, context: { silent: true } }),
+    api.channels.get.queryOptions({ enabled: organization.canManage, meta: { errorToast: false } }),
   )
   const providersQuery = useQuery(
     api.channelProviders.get.queryOptions({
       enabled: organization.canManage,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const deleteEmail = useMutation(
     api.channels.email.byChannelId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const deleteIM = useMutation(
     api.channels.im.byChannelId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

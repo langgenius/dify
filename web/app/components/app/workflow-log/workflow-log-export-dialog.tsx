@@ -55,15 +55,14 @@ export function WorkflowLogExportDialog({
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
     cancelExport: (taskId) =>
-      consoleClient.apps.byAppId.workflowLogExports.byTaskId.cancel.post(
-        { params: { ...params, task_id: taskId } },
-        logExportRequest,
-      ),
+      consoleClient.apps.byAppId.workflowLogExports.byTaskId.cancel.post({
+        params: { ...params, task_id: taskId },
+      }),
     updateEmailNotification: (taskId, enabled) =>
-      consoleClient.apps.byAppId.workflowLogExports.byTaskId.put(
-        { params: { ...params, task_id: taskId }, body: { enabled } },
-        logExportRequest,
-      ),
+      consoleClient.apps.byAppId.workflowLogExports.byTaskId.put({
+        params: { ...params, task_id: taskId },
+        body: { enabled },
+      }),
   })
   const fileUrl = (taskId: string) =>
     `${API_PREFIX}/apps/${appId}/workflow-log-exports/${taskId}/file`

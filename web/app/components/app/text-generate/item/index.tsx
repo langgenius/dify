@@ -110,11 +110,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
     if (!childMessageId) return
-    await updateFeedback(
-      { messageId: childMessageId, body: { rating: childFeedback.rating } },
-      appSourceType,
-      installedAppId,
-    )
+    try {
+      await updateFeedback(
+        { messageId: childMessageId, body: { rating: childFeedback.rating } },
+        appSourceType,
+        installedAppId,
+      )
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     setChildFeedback(childFeedback)
   }
 
@@ -147,13 +152,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
-    setCompletionRes(res.answer)
-    setChildFeedback({
-      rating: null,
-    })
-    setChildMessageId(res.id)
-    stopQuerying()
+    try {
+      const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
+      setCompletionRes(res.answer)
+      setChildFeedback({
+        rating: null,
+      })
+      setChildMessageId(res.id)
+    } catch (error) {
+      toastRequestError(error)
+    } finally {
+      stopQuerying()
+    }
   }
 
   useEffect(() => {
@@ -176,10 +186,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     if (!onOpenLog) return
     let data: Awaited<ReturnType<typeof fetchTextGenerationMessage>>
     try {
-      data = await fetchTextGenerationMessage(
-        { appId: params.appId as string, messageId: messageId! },
-        { silent: true },
-      )
+      data = await fetchTextGenerationMessage({
+        appId: params.appId as string,
+        messageId: messageId!,
+      })
     } catch (error) {
       toastRequestError(error)
       return
@@ -209,15 +219,20 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       const { form_version: formVersion, ...submission } = formData
       if (appSourceType === AppSourceType.installedApp) {
         try {
-          await submitHumanInputFormService(formToken, submission, formVersion, { silent: true })
+          await submitHumanInputFormService(formToken, submission, formVersion)
         } catch (error) {
           toastRequestError(error)
           throw error
         }
       } else {
-        if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
-          await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-        await submitHumanInputForm(formToken, submission, formVersion)
+        try {
+          if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
+            await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+          await submitHumanInputForm(formToken, submission, formVersion)
+        } catch (error) {
+          toastRequestError(error)
+          throw error
+        }
       }
     },
     [appSourceType, connectionsReady, prepareHumanInputSubmission],

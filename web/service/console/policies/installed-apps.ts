@@ -1,10 +1,29 @@
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { isNotFoundError } from '@/service/http-error'
+import { installedAppConnectionConfigurationKey } from '../installed-app-connection-key'
 import { invalidateQueryKeys } from './shared'
 
 export function installedAppPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['installedApps'] {
   return {
     byInstalledAppId: {
+      connections: {
+        configuration: {
+          put: {
+            mutationOptions: {
+              onSuccess: (result, { params, body }, _onMutateResult, context) => {
+                const query =
+                  consoleQuery.installedApps.byInstalledAppId.connections.configuration.get
+                const queryKey = installedAppConnectionConfigurationKey(
+                  query,
+                  { params, query: { conversation_id: body.conversation_id ?? undefined } },
+                  body.connection_revision,
+                )
+                context.client.setQueryData(queryKey, result)
+              },
+            },
+          },
+        },
+      },
       get: {
         queryOptions: {
           retry: (failureCount, error) => {

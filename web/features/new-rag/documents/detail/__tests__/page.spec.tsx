@@ -1245,7 +1245,7 @@ describe('DocumentDetailPage', () => {
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       1,
       { params: assetParams },
-      { signal: expect.any(AbortSignal), context: expect.objectContaining({ silent: true }) },
+      { signal: expect.any(AbortSignal) },
     )
     fireEvent.error(image)
     await waitFor(() =>
@@ -1256,7 +1256,7 @@ describe('DocumentDetailPage', () => {
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       2,
       { params: assetParams, query: { variant: 'thumbnail' } },
-      { signal: expect.any(AbortSignal), context: expect.objectContaining({ silent: true }) },
+      { signal: expect.any(AbortSignal) },
     )
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
     expect(
@@ -1528,7 +1528,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { category: 'security' } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     await waitFor(() => expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'))
     await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
@@ -1598,7 +1598,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { priority: 42 } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
   })
 
@@ -1676,7 +1676,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { category: 'product' } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
   })
 
@@ -1717,20 +1717,14 @@ describe('DocumentDetailPage', () => {
     )
     await user.keyboard('{Enter}')
 
-    expect(createMetadataField).toHaveBeenCalledWith(
-      {
-        body: { name: 'priority', type: 'number' },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: expect.objectContaining({ silent: true }) },
-    )
-    expect(patchDocumentMetadata).toHaveBeenCalledWith(
-      {
-        body: { expectedRowVersion: 2, patch: { priority: 0 } },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(createMetadataField).toHaveBeenCalledWith({
+      body: { name: 'priority', type: 'number' },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { priority: 0 } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     expect(patchDocumentMetadata).toHaveBeenCalledOnce()
     expect(listLogicalDocuments).not.toHaveBeenCalled()
   })
@@ -2752,7 +2746,7 @@ describe('DocumentDetailPage', () => {
     )
     expect(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeEnabled()
     expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything(), {
-      context: expect.objectContaining({ silent: true }),
+      context: expect.any(Object),
     })
     expect(permissionState.refresh).not.toHaveBeenCalled()
   })
@@ -3195,7 +3189,7 @@ describe('DocumentDetailPage', () => {
             body: { expectedRowVersion: 2, patch: { category: 'security' } },
             params: { control_space_id: 'space-1', document_id: 'document-1' },
           },
-          { context: expect.objectContaining({ silent: true }) },
+          { context: expect.any(Object) },
         ),
       )
     })

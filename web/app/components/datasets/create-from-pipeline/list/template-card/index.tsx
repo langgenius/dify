@@ -30,7 +30,6 @@ const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
 
   const { refetch: getPipelineTemplateInfo } = useQuery(
     consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
-      context: { silent: true },
       input: { params: { template_id: pipeline.id }, query: { type } },
       enabled: false,
       select: selectPipelineTemplate,
@@ -40,7 +39,6 @@ const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
   )
   const { mutate: createDataset } = useMutation(
     consoleQuery.rag.pipeline.dataset.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -100,7 +98,6 @@ const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
 
   const { mutate: exportPipelineDSL, isPending: isExporting } = useMutation(
     consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

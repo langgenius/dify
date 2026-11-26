@@ -457,7 +457,6 @@ describe('debug-and-preview components', () => {
         'token-1',
         { inputs: { answer: 'ok' }, action: 'approve' },
         '2',
-        { silent: true },
       )
     })
 
@@ -539,7 +538,6 @@ describe('debug-and-preview components', () => {
           action: 'approve',
         },
         undefined,
-        { silent: true },
       )
       await user.click(screen.getByRole('button', { name: 'send-chat' }))
       sendChunk('Pending answer', 'answer-3', 'task-3')

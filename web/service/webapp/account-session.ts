@@ -15,7 +15,7 @@ export async function restoreWebAppAccountSession(
 ) {
   const isSameSession = captureWebAppAuthSession()
   const canContinue = () => isActive() && isSameSession()
-  const context = { address, authSession: getWebAppAuthSessionSnapshot(), silent: true }
+  const context = { address, authSession: getWebAppAuthSessionSnapshot() }
 
   try {
     const status = await webAppClient.login.status.get(

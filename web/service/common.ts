@@ -14,8 +14,8 @@ export const changeWebAppPasswordWithToken = (body: {
   password_confirm: string
 }) => webAppClient.forgotPassword.resets.post({ body })
 
-export const uploadPublicRemoteFileInfo = (url: string, options?: { silent?: boolean }) => {
-  return webAppClient.remoteFiles.upload.post({ body: { url } }, { context: options })
+export const uploadPublicRemoteFileInfo = (url: string) => {
+  return webAppClient.remoteFiles.upload.post({ body: { url } })
 }
 
 export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>
@@ -36,5 +36,4 @@ export const verifyWebAppResetPasswordCode = (body: {
 export const webAppLoginStatus = (shareCode: string, userId?: string) =>
   getWebAppLoginStatus(shareCode, userId)
 
-export const webAppLogout = (address: WebAppAddress | null, options?: { silent?: boolean }) =>
-  logoutWebApp(address, options)
+export const webAppLogout = (address: WebAppAddress | null) => logoutWebApp(address)

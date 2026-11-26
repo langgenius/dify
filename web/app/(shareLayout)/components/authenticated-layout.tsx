@@ -9,10 +9,10 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getWebAppEntryState, WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import WebAppSignInHandoff from '@/app/components/share/webapp-sign-in-handoff'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { webAppLogout } from '@/service/common'
 import {
   useGetWebAppAccountStatus,
   useGetWebAppParams,
@@ -20,7 +20,7 @@ import {
   webAppMetaQueryOptions,
 } from '@/service/share-queries'
 import { getWebAppScopeKey, resolveWebAppAddress } from '@/service/webapp-address'
-import { expireWebAppAccountSession, getWebAppLoginMode } from '@/service/webapp-auth'
+import { expireWebAppAccountSession, getWebAppLoginMode, webAppLogout } from '@/service/webapp-auth'
 
 const AuthenticatedApp = ({
   address,
@@ -103,7 +103,12 @@ const AuthenticatedApp = ({
   }, [searchParams, pathname])
 
   const backToHome = useCallback(async () => {
-    await webAppLogout(resolveWebAppAddress())
+    try {
+      await webAppLogout(resolveWebAppAddress())
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, router])

@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
@@ -53,7 +54,11 @@ const createUserProfile = (
 })
 
 const renderPage = () => {
-  const queryClient = createAccountProfileQueryClient(mockUserProfile)
+  const queryClient = createAccountProfileQueryClient(
+    mockUserProfile,
+    {},
+    { caches: createErrorToastCaches() },
+  )
   return render(
     <QueryClientProvider client={queryClient}>
       <PreferencePage />
@@ -264,7 +269,7 @@ describe('PreferencePage - Interactions', () => {
     expect(mockRefresh).toHaveBeenCalledOnce()
   })
 
-  it('should show one request-layer error and restore controls when language saving fails', async () => {
+  it('should show one cache-level error and restore controls when language saving fails', async () => {
     const chinese = getLanguageOption('zh-Hans')
     await mockProfileFailure('Update failed')
 
@@ -332,7 +337,7 @@ describe('PreferencePage - Interactions', () => {
     await waitFor(() => expect(trigger).toHaveTextContent(midwayTimezone.name))
   }, 15000)
 
-  it('should show one request-layer error and preserve the saved timezone on failure', async () => {
+  it('should show one cache-level error and preserve the saved timezone on failure', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
     await mockProfileFailure('Timezone failed')
 

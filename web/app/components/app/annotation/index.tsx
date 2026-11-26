@@ -71,7 +71,6 @@ function Annotation({ appDetail }: AnnotationProps) {
       consoleQuery.apps.byAppId.annotationSetting.get.queryOptions({
         input: annotationSettingInput,
         meta: { errorToast: false },
-        context: { silent: true },
         staleTime: 0,
       }),
     )
@@ -111,10 +110,9 @@ function Annotation({ appDetail }: AnnotationProps) {
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     while (true) {
-      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get(
-        { params: { app_id: appDetail.id, action: status, job_id: jobId } },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get({
+        params: { app_id: appDetail.id, action: status, job_id: jobId },
+      })
       if (res.job_status === JobStatus.completed) break
       if (res.job_status === JobStatus.error) {
         throw new Error(res.error_msg || t(($) => $['api.actionFailed'], { ns: 'common' }))
@@ -125,13 +123,10 @@ function Annotation({ appDetail }: AnnotationProps) {
 
   const handleBatchDelete = async () => {
     try {
-      await consoleClient.apps.byAppId.annotations.delete(
-        {
-          params: { app_id: appDetail.id },
-          query: { annotation_id: selectedIds },
-        },
-        { context: { silent: true } },
-      )
+      await consoleClient.apps.byAppId.annotations.delete({
+        params: { app_id: appDetail.id },
+        query: { annotation_id: selectedIds },
+      })
       void invalidateAnnotations()
       setSelectedIds([])
     } catch (e: any) {
@@ -288,13 +283,10 @@ function Annotation({ appDetail }: AnnotationProps) {
               }
               const annotationId = await fetchAnnotationConfig()
               if (score !== annotationConfig?.score_threshold)
-                await consoleClient.apps.byAppId.annotationSettings.byAnnotationSettingId.post(
-                  {
-                    params: { app_id: appDetail.id, annotation_setting_id: annotationId! },
-                    body: { score_threshold: score },
-                  },
-                  { context: { silent: true } },
-                )
+                await consoleClient.apps.byAppId.annotationSettings.byAnnotationSettingId.post({
+                  params: { app_id: appDetail.id, annotation_setting_id: annotationId! },
+                  body: { score_threshold: score },
+                })
 
               await fetchAnnotationConfig()
               toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))

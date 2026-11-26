@@ -50,6 +50,7 @@ import { selectToolsWithProvider } from '@/app/components/tools/utils/query-sele
 import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
@@ -66,6 +67,7 @@ import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
 import { HooksStoreContextProvider } from './hooks-store'
+import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
 import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
@@ -156,6 +158,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
     const store = useStoreApi()
+    const collaborativeWorkflow = useCollaborativeWorkflow()
     const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
     const [nodes, setNodes] = useNodesState(originalNodes)
     const [edges, setEdges] = useEdgesState(originalEdges)
@@ -233,15 +236,15 @@ export const Workflow: FC<WorkflowProps> = memo(
         ({ nodes: importedNodes, edges: importedEdges }) => {
           if (!isEqual(nodes, importedNodes)) {
             setNodes(importedNodes)
-            store.getState().setNodes(importedNodes)
+            collaborativeWorkflow.setNodes(importedNodes, false)
           }
           if (!isEqual(edges, importedEdges)) {
             setEdges(importedEdges)
-            store.getState().setEdges(importedEdges)
+            collaborativeWorkflow.setEdges(importedEdges, false)
           }
         },
       )
-    }, [edges, nodes, setEdges, setNodes, store])
+    }, [collaborativeWorkflow, edges, nodes, setEdges, setNodes])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {
@@ -275,7 +278,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
         const payload = v.payload as WorkflowDataUpdatePayload
         setNodes(payload.nodes)
-        store.getState().setNodes(payload.nodes)
+        collaborativeWorkflow.setNodes(payload.nodes, false)
         setEdges(payload.edges)
         workflowStore.setState({ contextMenuTarget: undefined })
 
@@ -501,9 +504,13 @@ export const Workflow: FC<WorkflowProps> = memo(
     useEffect(() => {
       ;(async () => {
         if (!getEditorResourceId(resource)) return
-        const data = await fetchAllInspectVars(resource)
-        setVars(data)
-        setIsLoadedVars(true)
+        try {
+          const data = await fetchAllInspectVars(resource)
+          setVars(data)
+          setIsLoadedVars(true)
+        } catch (error) {
+          toastRequestError(error)
+        }
       })()
     }, [resource])
     useEffect(() => {

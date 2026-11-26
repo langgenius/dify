@@ -29,7 +29,9 @@ const InitPasswordPopup = () => {
   const initStatus = useQuery(consoleQuery.init.get.queryOptions({ retry: false }))
   const isInitFinished = initStatus.data?.status === 'finished'
   const validatePassword = useMutation(
-    consoleQuery.init.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.init.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const isSubmitting = validatePassword.isPending || validatePassword.isSuccess
   const fieldErrors = useMemo(

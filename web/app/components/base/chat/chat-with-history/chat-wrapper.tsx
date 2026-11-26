@@ -1,6 +1,5 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
-import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,20 +19,18 @@ import { useOptionalWebAppConnections } from '@/app/components/share/connections
 import WebAppConnectionDialog from '@/app/components/share/connections/webapp-connection-dialog'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
-import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   chatMessagesSender,
   fetchChatList,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
-  submitHumanInputForm,
 } from '@/service/share'
-import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
+import { getChatRunConnectionFields, useChatHumanInputSubmission } from '../submission'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 
@@ -74,10 +71,6 @@ const ChatWrapper = () => {
   } = useChatWithHistoryContext()
 
   const connectionsReady = connections?.canRun ?? true
-  const connectionsReadyRef = useRef(connectionsReady)
-  useEffect(() => {
-    connectionsReadyRef.current = connectionsReady
-  }, [connectionsReady])
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const timezone =
@@ -229,12 +222,12 @@ const ChatWrapper = () => {
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
-      if (
-        connections &&
-        (!connections.canRun ||
-          (!currentConversationId && !connectionSetupComplete && connections.status !== 'inactive'))
+      const connectionFields = getChatRunConnectionFields(
+        connections,
+        currentConversationId,
+        connectionSetupComplete,
       )
-        return false
+      if (connectionFields === null) return false
       if (!currentConversationId) setHasSent(true)
       const data: any = {
         query: message,
@@ -242,10 +235,7 @@ const ChatWrapper = () => {
         inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
-        ...(connections?.runConfiguration && {
-          connection_revision: connections.runConfiguration.connection_revision,
-          connections: { ...connections.runConfiguration.connections },
-        }),
+        ...connectionFields,
       }
 
       const accepted = handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
@@ -319,18 +309,11 @@ const ChatWrapper = () => {
     return chatList.filter((item) => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
 
-  const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (!connectionsReadyRef.current) return
-      const { form_version: formVersion, ...submission } = formData
-      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-      if (!connectionsReadyRef.current) return
-
-      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
-      else await submitHumanInputForm(formToken, submission, formVersion)
-    },
-    [isInstalledApp, prepareHumanInputSubmission],
-  )
+  const handleSubmitHumanInputForm = useChatHumanInputSubmission({
+    connectionsReady,
+    isInstalledApp,
+    prepare: prepareHumanInputSubmission,
+  })
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
   const [descExpanded, setDescExpanded] = useState(false)

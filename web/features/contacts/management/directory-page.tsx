@@ -246,7 +246,7 @@ export function ContactsDirectoryPage() {
         Boolean(context.workspaceId) &&
         context.permissions.canViewContacts &&
         context.imCentrallyManaged !== undefined,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const contacts = [
@@ -268,7 +268,7 @@ export function ContactsDirectoryPage() {
         im_binding_details: response.im_binding_details,
       }),
       retry: false,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const kinds = ['workspace', 'platform', 'external'] as const
@@ -282,7 +282,7 @@ export function ContactsDirectoryPage() {
           context.imCentrallyManaged !== undefined &&
           (group !== 'platform' || context.imCentrallyManaged === true),
         select: (page) => page.total,
-        context: { silent: true },
+        meta: { errorToast: false },
       }),
     ),
   })
@@ -292,7 +292,7 @@ export function ContactsDirectoryPage() {
     external: counts[2]?.data,
   }
   const removeContacts = useMutation(
-    api.remove.post.mutationOptions({ context: { silent: true }, meta: { errorToast: false } }),
+    api.remove.post.mutationOptions({ meta: { errorToast: false } }),
   )
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(

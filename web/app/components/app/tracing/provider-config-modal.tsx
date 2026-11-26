@@ -64,37 +64,31 @@ export function ProviderConfigModal({
   const createAppConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const createAgentConfig = useMutation(
     consoleQuery.agent.byAgentId.traceConfig.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const updateAppConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const updateAgentConfig = useMutation(
     consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const removeAppConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const removeAgentConfig = useMutation(
     consoleQuery.agent.byAgentId.traceConfig.delete.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const createConfig = resource.kind === 'agent' ? createAgentConfig : createAppConfig

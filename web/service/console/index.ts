@@ -10,7 +10,6 @@ import { createConsoleQuery } from './query-policies'
 
 export type ConsoleClientContext = TanstackQueryOperationContext & {
   keepalive?: boolean
-  silent?: boolean
   handleUnauthorizedLocally?: boolean
   /** The response is an event stream: no time limit on its first frame. */
   stream?: boolean

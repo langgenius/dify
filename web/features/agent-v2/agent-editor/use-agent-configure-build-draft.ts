@@ -160,9 +160,6 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: { agent_id: agentId },
     },
-    context: {
-      silent: true,
-    },
     meta: { errorToast: false },
   })
   const buildDraftQuery = useQuery(
@@ -298,7 +295,6 @@ export function useAgentConfigureBuildDraftActions({
   )
   const discardBuildDraftMutation = useMutation(
     consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

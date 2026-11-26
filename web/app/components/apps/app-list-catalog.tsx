@@ -131,7 +131,6 @@ function AppListCatalogContent({
   const deletion = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const openDeleteDialog = useCallback(

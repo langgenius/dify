@@ -1,5 +1,4 @@
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type { ConsoleClientContext } from '@/service/console'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { consoleQuery } from '@/service/console'
@@ -17,23 +16,20 @@ type UpdateVersionParams = {
   releaseNotes: string
 }
 
-export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
+export const useUpdateWorkflow = () => {
   const { mutateAsync: updateAppVersion } = useMutation(
     consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({
       meta: { errorToast: false },
-      context,
     }),
   )
   const { mutateAsync: updatePipelineVersion } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions({
       meta: { errorToast: false },
-      context,
     }),
   )
   const { mutateAsync: updateSnippetVersion } = useMutation(
     consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions({
       meta: { errorToast: false },
-      context,
     }),
   )
   const mutateAsync = useCallback(
@@ -62,23 +58,20 @@ export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
   return { mutateAsync }
 }
 
-export const useDeleteWorkflow = (resource: EditorResource, context?: ConsoleClientContext) => {
+export const useDeleteWorkflow = (resource: EditorResource) => {
   const { mutateAsync: deleteAppVersion } = useMutation(
     consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions({
       meta: { errorToast: false },
-      context,
     }),
   )
   const { mutateAsync: deletePipelineVersion } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions({
       meta: { errorToast: false },
-      context,
     }),
   )
   const { mutateAsync: deleteSnippetVersion } = useMutation(
     consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions({
       meta: { errorToast: false },
-      context,
     }),
   )
 

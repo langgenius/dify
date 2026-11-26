@@ -24,7 +24,7 @@ export function useConnectionProvider(providerId: string, authSession: number) {
         do {
           const page = await webAppClient.me.connections.get(
             { query: { limit: 100, cursor } },
-            { signal, context: { authSession, silent: true } },
+            { signal, context: { authSession } },
           )
           const provider = page.data.find((item) => item.provider === providerId)
           if (provider) return provider

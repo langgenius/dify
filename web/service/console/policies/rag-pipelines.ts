@@ -90,9 +90,9 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
       },
       // DSL import failures are reported by the import flow.
       imports: {
-        post: { mutationOptions: { context: { silent: true } } },
+        post: { mutationOptions: { meta: { errorToast: false } } },
         byImportId: {
-          confirm: { post: { mutationOptions: { context: { silent: true } } } },
+          confirm: { post: { mutationOptions: { meta: { errorToast: false } } } },
         },
       },
       byPipelineId: {

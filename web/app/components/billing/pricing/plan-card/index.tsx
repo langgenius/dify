@@ -101,19 +101,15 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
 
     setPendingAction(action)
     try {
-      const options = { context: { silent: true } }
       const { url } =
         isCurrentPaidPlan && !needsCycleNotice
-          ? await consoleClient.billing.invoices.get(undefined, options)
-          : await consoleClient.billing.subscription.get(
-              {
-                query:
-                  action === 'education'
-                    ? { plan: 'professional', interval: 'year' }
-                    : { plan, interval: billingInterval },
-              },
-              options,
-            )
+          ? await consoleClient.billing.invoices.get()
+          : await consoleClient.billing.subscription.get({
+              query:
+                action === 'education'
+                  ? { plan: 'professional', interval: 'year' }
+                  : { plan, interval: billingInterval },
+            })
       if (!url) throw new Error('Missing billing URL')
       window.location.href = url
     } catch (error) {

@@ -27,6 +27,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { newKnowledgeDetailPath } from '../../routes'
 import { useKnowledgeSpacePermission } from '../../space/context'
 import {
@@ -431,7 +432,7 @@ function ManagedProviderConnection({
   const { t } = useTranslation(['knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
   const [attempt, setAttempt] = useState(0)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<{ message?: string } | false>(false)
   const requestRef = useRef<
     | {
         key: string
@@ -461,8 +462,11 @@ function ManagedProviderConnection({
                 params: { control_space_id: knowledgeSpaceId },
               }),
             )
-          } catch {
-            return onReconcile()
+          } catch (error) {
+            // A failed reconcile still reports the create request's own failure.
+            const reconciled = await onReconcile().catch(() => undefined)
+            if (reconciled) return reconciled
+            throw error
           }
         })(),
       }
@@ -473,10 +477,10 @@ function ManagedProviderConnection({
       .then((connection) => {
         if (!subscribed) return
         if (connection) onConnected(connection)
-        else setError(true)
+        else setError({})
       })
-      .catch(() => {
-        if (subscribed) setError(true)
+      .catch((error: unknown) => {
+        if (subscribed) setError({ message: getRequestErrorMessage(error) })
       })
     return () => {
       subscribed = false
@@ -498,7 +502,8 @@ function ManagedProviderConnection({
         <>
           <span aria-hidden className="i-ri-error-warning-line size-5 text-text-destructive" />
           <p role="alert" className="mt-2 system-sm-semibold text-text-primary">
-            {t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
+            {error.message ??
+              t(($) => $.connectionFailed, { ns: 'knowledgeSources', provider: providerName })}
           </p>
           <Button
             className="mt-3"
@@ -826,7 +831,6 @@ function AddSourcePageContent({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
       select: sourceProviderListFromApi,
@@ -836,7 +840,6 @@ function AddSourcePageContent({
     consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
     }),
@@ -850,7 +853,6 @@ function AddSourcePageContent({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },

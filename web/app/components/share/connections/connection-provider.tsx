@@ -22,6 +22,7 @@ import { useState, useSyncExternalStore } from 'react'
 import { webAppQuery } from '@/service/webapp'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 import { useWebAppEntry } from '../webapp-entry'
+import { webAppConnectionConfigurationKey } from './connection-configuration-key'
 import { getConnectionData } from './connection-data'
 import useConnectionActions, { connectionDetailQueryKey } from './use-connection-actions'
 import useConnectionPreflight from './use-connection-preflight'
@@ -66,7 +67,7 @@ function ConnectionSession({
     (entry.account === 'authenticated' ||
       (entry.account === 'anonymous' && parameters?.allow_anonymous_end_user_auth))
   const enabled = Boolean(isActive && accountReady)
-  const context = { address, authSession, silent: true }
+  const context = { address, authSession }
   const queryClient = useQueryClient()
   const configurationInput = { query: { conversation_id: conversationId } }
   const listInput = (cursor: string | undefined) => ({ query: { limit: 100, cursor } })
@@ -76,14 +77,13 @@ function ConnectionSession({
     address,
     authSession,
   ]
-  const configurationKey = [
-    'webapp',
-    ...webAppQuery.connections.configuration.get.queryKey({ input: configurationInput }),
+  const configurationKey = webAppConnectionConfigurationKey({
+    input: configurationInput,
     address,
     authSession,
-    parameters?.connection_revision,
+    connectionRevision: parameters?.connection_revision,
     selectionSession,
-  ]
+  })
   const list = useInfiniteQuery(
     webAppQuery.connections.get.infiniteOptions({
       input: enabled ? listInput : skipToken,
@@ -95,6 +95,7 @@ function ConnectionSession({
       },
       queryKey: listKey,
       context,
+      meta: { errorToast: false },
       staleTime: 0,
       gcTime: 0,
       retry: false,
@@ -105,6 +106,7 @@ function ConnectionSession({
       input: enabled ? configurationInput : skipToken,
       queryKey: configurationKey,
       context,
+      meta: { errorToast: false },
       staleTime: 0,
       gcTime: 0,
       retry: false,
@@ -133,6 +135,7 @@ function ConnectionSession({
         input: enabled ? { params: { connection_id: connectionId } } : skipToken,
         queryKey: connectionDetailQueryKey(address, authSession, connectionId),
         context,
+        meta: { errorToast: false },
         staleTime: Infinity,
         refetchOnWindowFocus: 'always',
         gcTime: 0,

@@ -88,7 +88,10 @@ export const useOAuthClientState = ({
     verifyAndUpdateTriggerSubscriptionBuilderMutationOptions(),
   )
   const { mutate: configureOAuth } = useMutation(configureTriggerOAuthMutationOptions())
-  const { mutate: deleteOAuth } = useMutation(deleteTriggerOAuthMutationOptions({ silent: true }))
+  const { mutate: deleteOAuth } = useMutation({
+    ...deleteTriggerOAuthMutationOptions(),
+    meta: { errorToast: false },
+  })
 
   // Compute OAuth client schema with default values
   const oauthClientSchema = useMemo(() => {

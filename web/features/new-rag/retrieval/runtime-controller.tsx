@@ -117,13 +117,11 @@ export function RetrievalRuntimeController() {
   const setRuntimeBridge = useSetAtom(retrievalRuntimeBridgeAtom)
   const { mutateAsync: createResearchTask } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: deleteResearchTask } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -433,17 +431,14 @@ export function RetrievalRuntimeController() {
           return
         if (session.signal.aborted) return
         const plan =
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post(
-            {
-              body: {
-                mode: 'research',
-                query: cleanQuery,
-                ...(imageReferences.length ? { queryImages: imageReferences } : {}),
-              },
-              params: { control_space_id: knowledgeSpaceId },
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
+            body: {
+              mode: 'research',
+              query: cleanQuery,
+              ...(imageReferences.length ? { queryImages: imageReferences } : {}),
             },
-            { context: { silent: true } },
-          )
+            params: { control_space_id: knowledgeSpaceId },
+          })
         if (session.signal.aborted) return
         const task = await createResearchTask({
           body: {

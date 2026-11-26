@@ -131,7 +131,7 @@ describe('Invitation activation', () => {
             timezone: 'Asia/Shanghai',
           },
         },
-        { context: { silent: true, handleUnauthorizedLocally: true } },
+        { context: { handleUnauthorizedLocally: true } },
       )
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
@@ -148,7 +148,7 @@ describe('Invitation activation', () => {
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
       expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
         { body: { token: 'invite-token' } },
-        { context: { silent: true, handleUnauthorizedLocally: true } },
+        { context: { handleUnauthorizedLocally: true } },
       )
       expect(setLocaleOnClient).not.toHaveBeenCalled()
     },

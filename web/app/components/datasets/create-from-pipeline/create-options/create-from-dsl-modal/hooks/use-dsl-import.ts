@@ -47,13 +47,11 @@ export const useDSLImport = ({
   const isCreatingRef = useRef(false)
   const { mutateAsync: importDSL } = useMutation(
     consoleQuery.rag.pipelines.imports.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: importDSLConfirm } = useMutation(
     consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

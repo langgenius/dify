@@ -118,7 +118,8 @@ export const useGetWebAppAccountStatus = (address: WebAppAddress) => {
     webAppQuery.login.status.get.queryOptions({
       input,
       queryKey: [...webAppQuery.login.status.get.queryKey({ input }), address, authSession],
-      context: { address, authSession, silent: true },
+      context: { address, authSession },
+      meta: { errorToast: false },
       staleTime: 0,
       gcTime: 0,
       retry: false,

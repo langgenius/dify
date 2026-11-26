@@ -118,10 +118,7 @@ export default function InviteSettingsPage() {
             token,
           }
       const [error, res, isDefined] = await safe(
-        consoleClient.activate.post(
-          { body },
-          { context: { silent: true, handleUnauthorizedLocally: true } },
-        ),
+        consoleClient.activate.post({ body }, { context: { handleUnauthorizedLocally: true } }),
       )
       if (error) {
         setIsActivating(false)

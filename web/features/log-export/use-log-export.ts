@@ -25,7 +25,7 @@ export type LogExportEmailNotification = {
   onChange: (enabled: boolean) => void
 }
 
-export const logExportRequest = { context: { silent: true } } as const
+export const logExportRequest = { meta: { errorToast: false } } as const
 
 function isActive(status: ConversationLogExportStatusResponse['status'] | undefined) {
   return status === 'pending' || status === 'processing'
@@ -83,6 +83,7 @@ export function useLogExport<
   })
   const cancelMutation = useMutation({
     mutationFn: cancelExport,
+    meta: logExportRequest.meta,
     onSuccess: (_task, taskId) => {
       if (progressTask?.task_id === taskId)
         setDialog((current) => (current === 'progress' ? null : current))
@@ -101,6 +102,7 @@ export function useLogExport<
     },
   })
   const emailMutation = useMutation({
+    meta: logExportRequest.meta,
     mutationFn: ({ taskId, enabled }: { taskId: string; enabled: boolean }) =>
       updateEmailNotification(taskId, enabled),
     onSettled: async (_result, _error, { taskId }) => {

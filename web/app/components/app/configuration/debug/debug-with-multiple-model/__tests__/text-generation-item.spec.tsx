@@ -191,10 +191,7 @@ describe('TextGenerationItem', () => {
         }),
       ),
     )
-    expect(requests.log).toHaveBeenCalledWith(
-      { appId: 'app-123', messageId: 'msg-123' },
-      { silent: true },
-    )
+    expect(requests.log).toHaveBeenCalledWith({ appId: 'app-123', messageId: 'msg-123' })
   })
 
   it('sends the configured prompt, input schema, model and datasets to the completion service', () => {

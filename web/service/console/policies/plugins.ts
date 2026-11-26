@@ -152,14 +152,14 @@ export function workspacePluginPolicies(
       readme: {
         get: {
           queryOptions: {
-            context: { silent: true },
+            meta: { errorToast: false },
             retry: false,
           },
         },
       },
       asset: {
         get: {
-          queryOptions: { context: { silent: true } },
+          queryOptions: { meta: { errorToast: false } },
         },
       },
       autoUpgrade: {

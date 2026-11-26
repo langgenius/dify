@@ -98,22 +98,19 @@ describe('CodeGenerateBtn', () => {
     await user.click(within(dialog).getByRole('button', { name: 'appGeneration.codegen.generate' }))
 
     expect(await within(dialog).findByDisplayValue('print("hello")')).toBeInTheDocument()
-    expect(generateRule).toHaveBeenCalledExactlyOnceWith(
-      {
-        flow_id: 'app-1',
-        node_id: 'node-1',
-        current: 'print("before")',
-        instruction: 'Return a greeting',
-        model_config: expect.objectContaining({
-          name: 'gpt-4o-mini',
-          provider: 'openai',
-          mode: 'chat',
-        }),
-        ideal_output: '',
-        language: 'python',
-      },
-      { silent: true },
-    )
+    expect(generateRule).toHaveBeenCalledExactlyOnceWith({
+      flow_id: 'app-1',
+      node_id: 'node-1',
+      current: 'print("before")',
+      instruction: 'Return a greeting',
+      model_config: expect.objectContaining({
+        name: 'gpt-4o-mini',
+        provider: 'openai',
+        mode: 'chat',
+      }),
+      ideal_output: '',
+      language: 'python',
+    })
     await user.click(within(dialog).getByRole('button', { name: 'appGeneration.generate.apply' }))
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {

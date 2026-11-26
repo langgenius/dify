@@ -21,7 +21,9 @@ const intervalOptionClassName =
 
 export function PricingContent() {
   const { t } = useTranslation(['appApi', 'billing', 'common'])
-  const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
+  const featuresQuery = useQuery(
+    consoleQuery.features.get.queryOptions({ meta: { errorToast: false } }),
+  )
   const { data: features } = featuresQuery
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const currentCloudPlan = features?.billing.subscription.plan
@@ -33,6 +35,7 @@ export function PricingContent() {
   const educationQuery = useQuery(
     consoleQuery.account.education.get.queryOptions({
       enabled: checkEducationEligibility,
+      meta: { errorToast: false },
       select: ({ can_redeem_discount }) => can_redeem_discount,
     }),
   )

@@ -315,13 +315,11 @@ export function SkillFileTree({
 
   const fileMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const fileCheckMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.check.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

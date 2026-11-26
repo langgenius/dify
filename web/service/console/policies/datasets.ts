@@ -77,7 +77,7 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
       knowledgeFsUpgrades: {
         post: {
           mutationOptions: {
-            context: { silent: true },
+            meta: { errorToast: false },
             // Waits for the running-upgrades list the job joins; dataset cards refresh in the background.
             onSuccess: (_job, _variables, _result, { client }) => {
               void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])

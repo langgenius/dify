@@ -1,6 +1,5 @@
 import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { MutationMeta } from '@tanstack/react-query'
-import type { ConsoleClientContext } from '@/service/console'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
@@ -108,7 +107,6 @@ export const useEmbeddingStatus = ({
 }
 
 type UsePauseResumeOptions = {
-  context?: ConsoleClientContext
   meta?: MutationMeta
   datasetId?: string
   documentId?: string
@@ -117,7 +115,6 @@ type UsePauseResumeOptions = {
 }
 
 export const usePauseIndexing = ({
-  context,
   meta,
   datasetId,
   documentId,
@@ -127,14 +124,13 @@ export const usePauseIndexing = ({
   return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'pause', datasetId, documentId],
     meta,
-    mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }, context),
+    mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,
     onError,
   })
 }
 
 export const useResumeIndexing = ({
-  context,
   meta,
   datasetId,
   documentId,
@@ -144,8 +140,7 @@ export const useResumeIndexing = ({
   return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'resume', datasetId, documentId],
     meta,
-    mutationFn: () =>
-      resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }, context),
+    mutationFn: () => resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,
     onError,
   })

@@ -28,7 +28,6 @@ export function DeleteDatasetConfirmation({
     consoleQuery.datasets.byDatasetId.useCheck.get.queryOptions({
       input: { params: { dataset_id: datasetId } },
       retry: false,
-      context: { silent: true },
       // A failed check is shown inline with a retry button.
       meta: { errorToast: false },
     }),

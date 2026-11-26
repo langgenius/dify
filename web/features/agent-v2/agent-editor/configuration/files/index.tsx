@@ -208,32 +208,23 @@ function AgentFileItem({
 
       const fileName = getAgentFilePreviewKey(targetFile)
       const result = apiContext.trialAppId
-        ? await consoleClient.trialApps.byAppId.agent.config.files.byName.download.get(
-            {
-              params: { app_id: apiContext.trialAppId, name: fileName },
-              query: { version_id: apiContext.versionId },
-            },
-            { context: { silent: true } },
-          )
+        ? await consoleClient.trialApps.byAppId.agent.config.files.byName.download.get({
+            params: { app_id: apiContext.trialAppId, name: fileName },
+            query: { version_id: apiContext.versionId },
+          })
         : apiContext.workflow
-          ? await consoleClient.apps.byAppId.agent.config.files.byName.download.get(
-              {
-                params: { app_id: apiContext.workflow.appId, name: fileName },
-                query: {
-                  node_id: apiContext.workflow.nodeId,
-                  draft_type: apiContext.draftType,
-                  version_id: apiContext.versionId,
-                },
+          ? await consoleClient.apps.byAppId.agent.config.files.byName.download.get({
+              params: { app_id: apiContext.workflow.appId, name: fileName },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
               },
-              { context: { silent: true } },
-            )
-          : await consoleClient.agent.byAgentId.config.files.byName.download.get(
-              {
-                params: { agent_id: apiContext.agentId, name: fileName },
-                query: { draft_type: apiContext.draftType, version_id: apiContext.versionId },
-              },
-              { context: { silent: true } },
-            )
+            })
+          : await consoleClient.agent.byAgentId.config.files.byName.download.get({
+              params: { agent_id: apiContext.agentId, name: fileName },
+              query: { draft_type: apiContext.draftType, version_id: apiContext.versionId },
+            })
       downloadUrl({ url: result.url, fileName: targetFile.name })
     },
     [apiContext],

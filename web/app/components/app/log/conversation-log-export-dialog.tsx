@@ -58,15 +58,14 @@ export function ConversationLogExportDialog({
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
     cancelExport: (taskId) =>
-      consoleClient.apps.byAppId.conversationLogExports.byTaskId.cancel.post(
-        { params: { ...params, task_id: taskId } },
-        logExportRequest,
-      ),
+      consoleClient.apps.byAppId.conversationLogExports.byTaskId.cancel.post({
+        params: { ...params, task_id: taskId },
+      }),
     updateEmailNotification: (taskId, enabled) =>
-      consoleClient.apps.byAppId.conversationLogExports.byTaskId.put(
-        { params: { ...params, task_id: taskId }, body: { enabled } },
-        logExportRequest,
-      ),
+      consoleClient.apps.byAppId.conversationLogExports.byTaskId.put({
+        params: { ...params, task_id: taskId },
+        body: { enabled },
+      }),
   })
   const fileUrl = (taskId: string) =>
     `${API_PREFIX}/apps/${appId}/conversation-log-exports/${taskId}/file`

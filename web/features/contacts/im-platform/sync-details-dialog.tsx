@@ -68,7 +68,6 @@ function SyncDetailsContent({ runId }: { runId: string }) {
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest
   const runQuery = useQuery(
     api.get.queryOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -82,7 +81,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
         : skipToken,
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const items = itemsQuery.data?.pages.flatMap((page) => page.data) ?? []

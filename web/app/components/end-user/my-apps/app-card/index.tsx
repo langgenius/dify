@@ -19,19 +19,22 @@ type Props = {
 
 export default function EndUserAppCard({ app, authSession }: Props) {
   const { t } = useTranslation(['app', 'common'])
-  const context = { authSession, silent: true }
+  const context = { authSession }
   const favorite = useMutation(
     webAppQuery.me.apps.byAppId.favorite.put.mutationOptions({
+      meta: { errorToast: false },
       context,
     }),
   )
   const unfavorite = useMutation(
     webAppQuery.me.apps.byAppId.favorite.delete.mutationOptions({
+      meta: { errorToast: false },
       context,
     }),
   )
   const removeApp = useMutation(
     webAppQuery.me.apps.byAppId.delete.mutationOptions({
+      meta: { errorToast: false },
       context,
     }),
   )

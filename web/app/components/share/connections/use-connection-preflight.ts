@@ -77,7 +77,8 @@ export default function useConnectionPreflight({
         ),
         validationRevision,
       ],
-      context: { address, authSession, silent: true },
+      context: { address, authSession },
+      meta: { errorToast: false },
       // A suspended snapshot must not silently retry a failed check when it resumes.
       enabled: (current) => canCheck && current.state.error === null,
       retry: false,

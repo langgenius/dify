@@ -13,7 +13,8 @@ export function connectionProvidersQueryOptions(authSession: number) {
       ...webAppQuery.me.connections.get.key({ type: 'infinite', input: input(undefined) }),
       authSession,
     ],
-    context: { authSession, silent: true },
+    context: { authSession },
+    meta: { errorToast: false },
     retry: false,
     gcTime: 0,
   })

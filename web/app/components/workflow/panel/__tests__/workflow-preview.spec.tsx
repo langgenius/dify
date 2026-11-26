@@ -493,7 +493,6 @@ it('opens pending human input on pause and submits the token with the entered re
         form_version: undefined,
       },
       undefined,
-      { silent: true },
     ),
   )
 })

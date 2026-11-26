@@ -53,19 +53,16 @@ const SnippetCard = ({
   const updateSnippetMutation = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.patch.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const exportSnippetMutation = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.export.get.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const deleteSnippetMutation = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.delete.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)

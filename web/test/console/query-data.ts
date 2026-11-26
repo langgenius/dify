@@ -106,8 +106,9 @@ const getCurrentWorkspaceQueryKey = () => {
  * mirrors the behaviour of an in-flight network request without touching the
  * real fetch layer.
  */
-export const createConsoleQueryClient = (): QueryClient =>
-  createTestQueryClient(() => new Promise(() => {}))
+export const createConsoleQueryClient = (
+  options?: Parameters<typeof createTestQueryClient>[1],
+): QueryClient => createTestQueryClient(() => new Promise(() => {}), options)
 
 export const seedSystemFeatures = (
   queryClient: QueryClient,

@@ -224,14 +224,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       let apiRes: GenRes
       let hasError = false
       if (isBasicMode || !currentPrompt) {
-        const { error, ...res } = await generateBasicAppFirstTimeRule(
-          {
-            instruction,
-            model_config: model,
-            no_variable: false,
-          },
-          { silent: true },
-        )
+        const { error, ...res } = await generateBasicAppFirstTimeRule({
+          instruction,
+          model_config: model,
+          no_variable: false,
+        })
         apiRes = {
           ...res,
           modified: res.prompt,
@@ -241,17 +238,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           toast.error(error)
         }
       } else {
-        const { error, ...res } = await generateRule(
-          {
-            flow_id: flowId,
-            node_id: nodeId,
-            current: currentPrompt,
-            instruction,
-            ideal_output: ideaOutput,
-            model_config: model,
-          },
-          { silent: true },
-        )
+        const { error, ...res } = await generateRule({
+          flow_id: flowId,
+          node_id: nodeId,
+          current: currentPrompt,
+          instruction,
+          ideal_output: ideaOutput,
+          model_config: model,
+        })
         apiRes = res
         if (error) {
           hasError = true

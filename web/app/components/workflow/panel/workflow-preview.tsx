@@ -111,7 +111,7 @@ const WorkflowPreview = () => {
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       const form = humanInputFormDataList?.find((item) => item.form_token === formToken)
       try {
-        await submitHumanInputForm(formToken, formData, form?.form_version, { silent: true })
+        await submitHumanInputForm(formToken, formData, form?.form_version)
       } catch (error) {
         // HITL IM forms leave request failures unreported, as before.
         if (!ENABLE_HITL_IM) toastRequestError(error)

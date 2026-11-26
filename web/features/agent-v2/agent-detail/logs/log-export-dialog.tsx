@@ -58,15 +58,14 @@ export function AgentLogExportDialog({
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
     cancelExport: (taskId) =>
-      consoleClient.agent.byAgentId.logExports.byTaskId.cancel.post(
-        { params: { ...params, task_id: taskId } },
-        logExportRequest,
-      ),
+      consoleClient.agent.byAgentId.logExports.byTaskId.cancel.post({
+        params: { ...params, task_id: taskId },
+      }),
     updateEmailNotification: (taskId, enabled) =>
-      consoleClient.agent.byAgentId.logExports.byTaskId.put(
-        { params: { ...params, task_id: taskId }, body: { enabled } },
-        logExportRequest,
-      ),
+      consoleClient.agent.byAgentId.logExports.byTaskId.put({
+        params: { ...params, task_id: taskId },
+        body: { enabled },
+      }),
   })
   const fileUrl = (taskId: string) => `${API_PREFIX}/agent/${agentId}/log-exports/${taskId}/file`
   const task = latest?.task

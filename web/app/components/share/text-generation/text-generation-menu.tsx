@@ -20,15 +20,19 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
-import { webAppLogout } from '@/service/common'
 import { webAppQuery } from '@/service/webapp'
 import { resolveWebAppAddress } from '@/service/webapp-address'
-import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
+import {
+  getWebAppAuthSessionSnapshot,
+  subscribeWebAppAuthSession,
+  webAppLogout,
+} from '@/service/webapp-auth'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useWebAppEntry } from '../webapp-entry'
 import InfoModal from './info-modal'
@@ -52,7 +56,8 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
   const profile = useQuery(
     webAppQuery.account.profile.get.queryOptions({
       queryKey: [...webAppQuery.account.profile.get.queryKey(), authSession],
-      context: { authSession, silent: true },
+      context: { authSession },
+      meta: { errorToast: false },
       enabled: Boolean(accountAuthenticated),
       staleTime: 0,
       gcTime: 0,
@@ -67,7 +72,12 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
 
   const handleLogout = async () => {
     const address = resolveWebAppAddress()
-    await webAppLogout(address)
+    try {
+      await webAppLogout(address)
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     if (accountAuthenticated && address?.kind === 'default') window.location.reload()
     else router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }

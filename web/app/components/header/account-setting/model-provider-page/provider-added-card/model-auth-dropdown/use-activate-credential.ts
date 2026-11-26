@@ -12,7 +12,7 @@ export function useActivateCredential(provider: ModelProvider) {
   const updateModelList = useUpdateModelList()
   const { mutate, isPending } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.credentials.switch.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const [optimisticId, setOptimisticId] = useState<string>()

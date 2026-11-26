@@ -54,7 +54,11 @@ function useLogIdentityMatches(
   const identityOptions = workflow
     ? consoleQuery.apps.byAppId.workflowAppLogs.identityOptions
     : consoleQuery.apps.byAppId.chatConversations.identityOptions
-  const settings = { context: { silent: true }, retry: false, refetchOnWindowFocus: false } as const
+  const settings = {
+    meta: { errorToast: false },
+    retry: false,
+    refetchOnWindowFocus: false,
+  } as const
   const appSearch = useQuery(
     identityOptions.get.queryOptions({
       ...settings,
