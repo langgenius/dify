@@ -1,5 +1,6 @@
 import type { ResourceAccessTokenListResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function resourceAccessTokenPolicies(
   consoleQuery: ConsoleQuery,
@@ -7,22 +8,22 @@ export function resourceAccessTokenPolicies(
   return {
     post: {
       mutationOptions: {
+        // Waits for the token list the new token appears in.
         onSettled: (_data, error, _variables, _result, context) => {
           if (error) return
-          void context.client.invalidateQueries({
-            queryKey: consoleQuery.resourceAccessTokens.get.key(),
-          })
+          return invalidateQueryKeys(context.client, [consoleQuery.resourceAccessTokens.get.key()])
         },
       },
     },
     byTokenId: {
       patch: {
         mutationOptions: {
+          // Waits for the token list it edits.
           onSettled: (_data, error, _variables, _result, context) => {
             if (error) return
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.resourceAccessTokens.get.key(),
-            })
+            return invalidateQueryKeys(context.client, [
+              consoleQuery.resourceAccessTokens.get.key(),
+            ])
           },
         },
       },

@@ -26,8 +26,24 @@ always run. `mutationOptions({ onSuccess })` runs the caller's callback together
 with the policy's: `onMutate` runs the policy first (so cancellation precedes an
 optimistic write), and the other callbacks start both at once and wait for both.
 A returned invalidation promise keeps the mutation pending until active consumers
-have refreshed, while caller feedback does not wait for that refetch. When both
-define `onMutate`, each side receives its own result in later callbacks. Other
+have refreshed, while caller feedback does not wait for that refetch.
+
+Await the primary source; detach everything else:
+
+- **Primary source, awaited:** the list and detail the mutated entity itself is read
+  from (the roles list after a role edit, the group list after a group update, the
+  list a new entity appears in, a run's own history row). Either return its
+  invalidation, or write the response into that cache before the callback resolves.
+  Editors and flows copy these values into local state right after a save (reopening
+  a dialog, "deploy latest", resending a batch), so a late refetch would let them act
+  on the old row. Creates that reveal a one-time secret (tokens, API keys) write the
+  created entry into the list instead, so the secret shows without waiting.
+- **Secondary, `void`:** plan and quota, counts, catalogs and option lists, other
+  resources' lists or details, summaries. Awaiting them would delay success feedback
+  and keep `isPending` buttons pending on unrelated refetches.
+
+When the policy and the caller both define `onMutate`, each side receives its own
+result in later callbacks. Other
 options (`retry`, `context`, `meta`) still merge shallowly: the caller's value
 wins.
 
@@ -43,6 +59,14 @@ next to them (for example `invalidateEndpointQueries`); helpers used by more tha
 one domain live in `policies/shared.ts`. Whether invalidation runs after an error
 depends on the write contract: a rejected request does not imply the server
 rolled back. Record that decision per module.
+
+Invalidate through `invalidateQueryKeys` (`policies/shared.ts`) rather than
+`client.invalidateQueries`. TanStack Query joins an invalidation onto a first
+load that is already in flight, so a page that started loading before the write
+would keep the pre-write response, and an unobserved query's read keeps running.
+The helper cancels those fetches before invalidating, so the refetch starts after
+the write. Observed queries with data are left to `invalidateQueries`, which
+restarts them without showing earlier data.
 
 ## Freshness
 

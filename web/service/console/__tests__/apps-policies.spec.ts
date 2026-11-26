@@ -110,7 +110,7 @@ describe('app mutation policies', () => {
     ).resolves.toBeUndefined()
     await expect(
       success(consoleQuery.apps.byAppId.modelConfig.post.mutationOptions(), {}, { params }),
-    ).resolves.toBeUndefined()
+    ).resolves.toBeDefined()
     await expect(
       success(consoleQuery.workspaces.customConfig.post.mutationOptions(), {}, { body: {} }),
     ).resolves.toBeUndefined()
@@ -222,15 +222,17 @@ describe('snippet mutation policies', () => {
 })
 
 describe('agent mutation policies', () => {
-  it('waits for the published agent versions, detail, and API access', async () => {
+  it('refreshes the published agent versions and API access, and waits for its detail', async () => {
     const { consoleQuery, invalidatedKeys, success } = await setup()
     const input = { params: { agent_id: 'agent-1' } }
 
-    await success(
-      consoleQuery.agent.byAgentId.publish.post.mutationOptions(),
-      { active_config_snapshot_id: 'snapshot-2' },
-      { ...input, body: {} },
-    )
+    await expect(
+      success(
+        consoleQuery.agent.byAgentId.publish.post.mutationOptions(),
+        { active_config_snapshot_id: 'snapshot-2' },
+        { ...input, body: {} },
+      ),
+    ).resolves.toBeDefined()
 
     expect(invalidatedKeys()).toEqual(
       expect.arrayContaining([
@@ -251,11 +253,14 @@ describe('agent mutation policies', () => {
       { params: { agent_id: 'agent-1', version_id: 'version-1' } },
     )
 
-    expect(invalidatedKeys()).toEqual([
-      consoleQuery.agent.byAgentId.get.queryKey({ input }),
-      consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
-      consoleQuery.agent.byAgentId.versions.get.key({ input }),
-    ])
+    expect(invalidatedKeys()).toHaveLength(3)
+    expect(invalidatedKeys()).toEqual(
+      expect.arrayContaining([
+        consoleQuery.agent.byAgentId.get.queryKey({ input }),
+        consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
+        consoleQuery.agent.byAgentId.versions.get.key({ input }),
+      ]),
+    )
   })
 
   it('writes the saved or checked-out build draft and refreshes the agent after applying it', async () => {

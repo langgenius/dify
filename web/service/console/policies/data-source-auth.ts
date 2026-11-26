@@ -8,7 +8,8 @@ export function dataSourceAuthPolicies(
   return {
     auth: {
       plugin: {
-        // Credential writes change the provider's credentials and both data source lists.
+        // Credential writes change the provider's credentials and both data source lists, and
+        // each waits for them.
         datasource: {
           list: { get: { queryOptions: { retry: false } } },
           defaultList: { get: { queryOptions: { retry: false } } },
@@ -19,6 +20,7 @@ export function dataSourceAuthPolicies(
                   invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
               },
             },
+            // The credential editor reopens with the values from the credential list.
             update: {
               post: {
                 mutationOptions: {

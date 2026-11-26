@@ -1,4 +1,6 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { addCreatedKeyToLists, invalidateQueryKeys } from './shared'
 
 export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['enterprise'] {
   return {
@@ -55,10 +57,7 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                     },
                   },
               )
-              return Promise.all([
-                context.client.invalidateQueries({ queryKey: list.queryKey }),
-                context.client.invalidateQueries({ queryKey: detail.queryKey }),
-              ])
+              void invalidateQueryKeys(context.client, [list.queryKey, detail.queryKey])
             },
           },
         },
@@ -113,10 +112,7 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                     },
                   },
               )
-              return Promise.all([
-                context.client.invalidateQueries({ queryKey: list.queryKey }),
-                context.client.invalidateQueries({ queryKey: detail.queryKey }),
-              ])
+              void invalidateQueryKeys(context.client, [list.queryKey, detail.queryKey])
             },
           },
         },
@@ -132,7 +128,8 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                 }),
                 site,
               )
-              void client.invalidateQueries({
+              // The site comes from the response; waits for the subjects the save may replace.
+              return client.invalidateQueries({
                 queryKey:
                   consoleQuery.enterprise.appDeploy.accessService.getEnvironmentWebAppSubjects.queryKey(
                     { input },
@@ -155,108 +152,67 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
             },
           },
         },
+        // API key writes wait for the key list; the environment API settings refresh in the
+        // background.
         createEnvironmentApiKey: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
-              const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
-                }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
-                      input: { params: { app_id, environment_id } },
-                    }),
-                }),
+            // Writes the new key into its list, so the one-time secret shows at once.
+            onSuccess: (created, variables, _result, context) => {
+              const input = { params: variables.params }
+              const access = consoleQuery.enterprise.appDeploy.accessService
+              void invalidateQueryKeys(context.client, [
+                access.getEnvironmentApi.queryKey({ input }),
               ])
+              addCreatedKeyToLists(
+                context.client,
+                access.listEnvironmentApiKeys.queryKey({ input }),
+                created,
+              )
             },
           },
         },
         deleteEnvironmentApiKey: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
-              const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
-                }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
-                      input: { params: { app_id, environment_id } },
-                    }),
-                }),
-              ])
-            },
+            onSuccess: (_data, variables, _result, context) =>
+              invalidateEnvironmentApiKeyQueries(consoleQuery, context.client, variables.params),
           },
         },
       },
       deploymentService: {
         deployWorkflow: {
           mutationOptions: {
+            // Waits for the environment's deployment list and detail.
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
-                      {
-                        input: { params: { app_id } },
-                      },
-                    ),
-                }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
-                }),
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
+                  { input: { params: { app_id } } },
+                ),
+                consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
+                  { input: { params: { app_id, environment_id } } },
+                ),
               ])
             },
           },
         },
         undeployWorkflow: {
           mutationOptions: {
+            // Waits for the environment's deployment list and detail; the app's environments
+            // refresh in the background.
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
-                      {
-                        input: { params: { app_id } },
-                      },
-                    ),
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey({
+                  input: { params: { app_id } },
                 }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
-                }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey(
-                      {
-                        input: { params: { app_id } },
-                      },
-                    ),
-                }),
+              ])
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
+                  { input: { params: { app_id } } },
+                ),
+                consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
+                  { input: { params: { app_id, environment_id } } },
+                ),
               ])
             },
           },
@@ -267,28 +223,32 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
       updateWebAppWhitelistSubjects: {
         mutationOptions: {
           onSuccess: (_data, _variables, _result, context) => {
-            void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.starred.get.key(),
-            })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.recent.get.key(),
-            })
-
-            return Promise.all([
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
-              }),
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
-              }),
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.agent.byAgentId.get.key(),
-              }),
+            void invalidateQueryKeys(context.client, [
+              consoleQuery.apps.get.key(),
+              consoleQuery.apps.starred.get.key(),
+              consoleQuery.apps.recent.get.key(),
+            ])
+            // The access dialog reopens with the access mode and subjects from these
+            // queries (the agent detail on the agent page), so the save waits for them.
+            return invalidateQueryKeys(context.client, [
+              consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+              consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+              consoleQuery.agent.byAgentId.get.key(),
             ])
           },
         },
       },
     },
   }
+}
+
+function invalidateEnvironmentApiKeyQueries(
+  query: ConsoleQuery,
+  client: QueryClient,
+  { app_id, environment_id }: { app_id: string; environment_id: string },
+) {
+  const input = { params: { app_id, environment_id } }
+  const access = query.enterprise.appDeploy.accessService
+  void invalidateQueryKeys(client, [access.getEnvironmentApi.queryKey({ input })])
+  return invalidateQueryKeys(client, [access.listEnvironmentApiKeys.queryKey({ input })])
 }

@@ -10,20 +10,18 @@ export function skillPolicies(
 ): Pick<WorkspaceCurrentPolicies, 'skills' | 'agents'> {
   return {
     skills: {
-      // A new skill shows in the lists; the caller navigates without waiting for them.
+      // Creates wait for the skill lists the new skill appears in; tags refresh in the background.
       post: {
         mutationOptions: {
-          onSuccess: (_data, _variables, _result, { client }) => {
-            void invalidateSkillListQueries(consoleQuery, client)
-          },
+          onSuccess: (_data, _variables, _result, { client }) =>
+            invalidateSkillListQueries(consoleQuery, client),
         },
       },
       import: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, _variables, _result, { client }) => {
-              void invalidateSkillListQueries(consoleQuery, client)
-            },
+            onSuccess: (_data, _variables, _result, { client }) =>
+              invalidateSkillListQueries(consoleQuery, client),
           },
         },
       },
@@ -31,27 +29,25 @@ export function skillPolicies(
         duplicate: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _result, { client }) => {
-                void invalidateSkillListQueries(consoleQuery, client)
-              },
+              onSuccess: (_data, _variables, _result, { client }) =>
+                invalidateSkillListQueries(consoleQuery, client),
             },
           },
         },
-        // The publisher writes the published detail itself and waits for it; versions and
-        // lists refresh in the background.
+        // The publisher writes the published detail itself; waits for the version list the new
+        // version appears in and the skill lists.
         publish: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, { params }, _result, { client }) => {
-                void invalidateQueryKeys(client, [
+              onSuccess: (_data, { params }, _result, { client }) =>
+                invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({
                     type: 'query',
                     input: { params: { skill_id: params.skill_id } },
                   }),
                   consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
                   consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
-                ])
-              },
+                ]),
             },
           },
         },
@@ -82,16 +78,23 @@ export function skillPolicies(
         restore: {
           post: {
             mutationOptions: {
+              // Waits for the restored skill's detail and the skill lists; versions and agent
+              // bindings refresh in the background.
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
-                void invalidateSkillVersionQueries(
-                  consoleQuery,
-                  context.client,
-                  variables.params.skill_id,
-                )
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.workspaces.current.skills.get.key(),
-                })
+                const input = { params: { skill_id: variables.params.skill_id } }
+                const skills = consoleQuery.workspaces.current.skills
+                const restored = invalidateQueryKeys(context.client, [
+                  skills.bySkillId.get.key({ input }),
+                ])
+                void invalidateQueryKeys(context.client, [
+                  skills.bySkillId.versions.get.key({ input }),
+                  consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+                ])
+                return Promise.all([
+                  restored,
+                  invalidateQueryKeys(context.client, [skills.get.key()]),
+                ])
               },
             },
           },
@@ -100,22 +103,26 @@ export function skillPolicies(
           byVersionId: {
             patch: {
               mutationOptions: {
+                // Waits for the version list and the edited version; the skill detail and agent
+                // bindings refresh in the background.
                 onSuccess: (_data, { params }, _result, { client }) => {
-                  void invalidateSkillVersionQueries(consoleQuery, client, params.skill_id)
-                  void client.invalidateQueries({
-                    queryKey:
-                      consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.get.key(
-                        { input: { params } },
-                      ),
-                  })
+                  const { versions } = consoleQuery.workspaces.current.skills.bySkillId
+                  return Promise.all([
+                    invalidateSkillVersionQueries(consoleQuery, client, params.skill_id),
+                    invalidateQueryKeys(client, [
+                      versions.byVersionId.get.key({ input: { params } }),
+                    ]),
+                  ])
                 },
               },
             },
             delete: {
               mutationOptions: {
+                // Waits for the version list it deletes from; the skill detail and agent bindings
+                // refresh in the background.
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  void invalidateSkillVersionQueries(
+                  return invalidateSkillVersionQueries(
                     consoleQuery,
                     context.client,
                     variables.params.skill_id,
@@ -129,10 +136,13 @@ export function skillPolicies(
           mutationOptions: {
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              void invalidateSkillListQueries(consoleQuery, context.client)
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
-              })
+              // Waits for the skill lists it deletes from; tags and agent bindings refresh in the
+              // background.
+              const lists = invalidateSkillListQueries(consoleQuery, context.client)
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+              ])
+              return lists
             },
           },
         },
@@ -143,15 +153,20 @@ export function skillPolicies(
         skills: {
           put: {
             mutationOptions: {
+              // Waits for the agent's skill bindings it replaces; the composer refreshes in the
+              // background.
               onSuccess: (_data, { params }, _result, { client }) => {
                 const input = { params: { agent_id: params.agent_id } }
-                void invalidateQueryKeys(client, [
+                const bindings = invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.agents.byAgentId.skills.get.key({
                     type: 'query',
                     input,
                   }),
+                ])
+                void invalidateQueryKeys(client, [
                   consoleQuery.agent.byAgentId.composer.get.key({ type: 'query', input }),
                 ])
+                return bindings
               },
             },
           },
@@ -161,23 +176,29 @@ export function skillPolicies(
   }
 }
 
+// Refreshes a skill's versions; the returned promise waits for the version list only.
 export function invalidateSkillVersionQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
   skillId: string,
 ) {
   const input = { params: { skill_id: skillId } }
-  return invalidateQueryKeys(client, [
-    query.workspaces.current.skills.bySkillId.get.key({ input }),
+  void invalidateQueryKeys(client, [query.workspaces.current.skills.bySkillId.get.key({ input })])
+  const versions = invalidateQueryKeys(client, [
     query.workspaces.current.skills.bySkillId.versions.get.key({ input }),
-    query.workspaces.current.agents.byAgentId.skills.get.key(),
   ])
+  void invalidateQueryKeys(client, [query.workspaces.current.agents.byAgentId.skills.get.key()])
+  return versions
 }
 
+// Refreshes the skill lists and tags; the returned promise waits for the lists only.
 function invalidateSkillListQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
-  return invalidateQueryKeys(client, [
+  const lists = invalidateQueryKeys(client, [
     query.workspaces.current.skills.get.key({ type: 'query' }),
     query.workspaces.current.skills.get.key({ type: 'infinite' }),
+  ])
+  void invalidateQueryKeys(client, [
     query.workspaces.current.skills.tags.get.key({ type: 'query' }),
   ])
+  return lists
 }

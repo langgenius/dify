@@ -14,42 +14,42 @@ import {
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from '../workflow-version-cache'
-import { invalidateNetworkAccessGroupQueries, invalidateQueryKeys } from './shared'
+import {
+  addCreatedKeyToLists,
+  invalidateNetworkAccessGroupQueries,
+  invalidateQueryKeys,
+} from './shared'
 
 export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps'] {
   return {
     post: {
       mutationOptions: {
+        // Waits for the app list the new app appears in; quota and other lists refresh in the background.
         onSuccess: (_data, _variables, _onMutateResult, context) => {
-          void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
-          void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-          void context.client.invalidateQueries({
-            queryKey: consoleQuery.apps.starred.get.key(),
-          })
-          void context.client.invalidateQueries({
-            queryKey: consoleQuery.apps.recent.get.key(),
-          })
+          void invalidateQueryKeys(context.client, [
+            consoleQuery.features.get.key(),
+            consoleQuery.apps.starred.get.key(),
+            consoleQuery.apps.recent.get.key(),
+          ])
+          return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
         },
       },
     },
     imports: {
       post: {
         mutationOptions: {
+          // Waits for the app list the imported app appears in; quota and other lists refresh in
+          // the background.
           onSuccess: (data, variables, _onMutateResult, context) => {
             if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
-            if (!('app_id' in variables.body) || !variables.body.app_id) {
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.features.get.key(),
-              })
-            }
-            void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.starred.get.key(),
-            })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.recent.get.key(),
-            })
+            const isNewApp = !('app_id' in variables.body) || !variables.body.app_id
+            void invalidateQueryKeys(context.client, [
+              ...(isNewApp ? [consoleQuery.features.get.key()] : []),
+              consoleQuery.apps.starred.get.key(),
+              consoleQuery.apps.recent.get.key(),
+            ])
+            return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
           },
         },
       },
@@ -57,21 +57,17 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         confirm: {
           post: {
             mutationOptions: {
+              // Waits for the app list the imported app appears in; quota and other lists
+              // refresh in the background.
               onSuccess: (data, _variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.features.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.recent.get.key(),
-                })
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.features.get.key(),
+                  consoleQuery.apps.starred.get.key(),
+                  consoleQuery.apps.recent.get.key(),
+                ])
+                return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
               },
             },
           },
@@ -130,50 +126,52 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           },
         },
       },
+      // An annotation added from a chat answer can land while the annotation page is
+      // still loading its first list, so refreshes cancel that pre-write load. Writes wait
+      // for the annotation list and count (their primary source) but not for the quota.
       annotations: {
         byAnnotationId: {
           post: {
             mutationOptions: {
-              onSettled: (_data, error, variables, _result, context) => {
+              onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                return context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.annotations.key({
-                    input: { params: { app_id: variables.params.app_id } },
-                  }),
-                })
+                // Waits for the annotation list and count it edits.
+                return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
               },
             },
           },
           delete: {
             mutationOptions: {
-              onSettled: (_data, error, variables, _result, context) => {
+              onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.annotations.key({
-                      input: { params: { app_id: variables.params.app_id } },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.features.get.key(),
-                  }),
-                ])
+                // Waits for the annotation list and count it changes; the quota refreshes in the
+                // background, so adding from a chat answer does not wait for it.
+                void invalidateQueryKeys(client, [consoleQuery.features.get.key()])
+                return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
               },
             },
           },
         },
         post: {
           mutationOptions: {
-            onSettled: (_data, error, variables, _result, context) => {
+            onSettled: (_data, error, { params }, _result, { client }) => {
               if (error) return
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.annotations.key({
-                    input: { params: { app_id: variables.params.app_id } },
-                  }),
-                }),
-                context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
-              ])
+              // Waits for the annotation list and count it changes; the quota refreshes in the
+              // background, so adding from a chat answer does not wait for it.
+              void invalidateQueryKeys(client, [consoleQuery.features.get.key()])
+              return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
+            },
+          },
+        },
+        // Batch delete and clear all free annotation quota, like a single delete.
+        delete: {
+          mutationOptions: {
+            onSettled: (_data, error, { params }, _result, { client }) => {
+              if (error) return
+              // Waits for the annotation list and count it changes; the quota refreshes in the
+              // background, so adding from a chat answer does not wait for it.
+              void invalidateQueryKeys(client, [consoleQuery.features.get.key()])
+              return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
             },
           },
         },
@@ -191,19 +189,13 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             stop: {
               post: {
                 mutationOptions: {
-                  // A failed response can still follow an accepted stop request.
+                  // A failed response can still follow an accepted stop request. Waits for the
+                  // run histories and details the stopped run is read from.
                   onSettled: (_data, _error, variables, _result, context) => {
-                    return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.apps.byAppId.workflowRuns.key({
-                          input: { params: { app_id: variables.params.app_id } },
-                        }),
-                      }),
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.apps.byAppId.advancedChat.workflowRuns.key({
-                          input: { params: { app_id: variables.params.app_id } },
-                        }),
-                      }),
+                    const input = { params: { app_id: variables.params.app_id } }
+                    return invalidateQueryKeys(context.client, [
+                      consoleQuery.apps.byAppId.workflowRuns.key({ input }),
+                      consoleQuery.apps.byAppId.advancedChat.workflowRuns.key({ input }),
                     ])
                   },
                 },
@@ -212,6 +204,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           },
         },
       },
+      // Tracing reloads run in the background: a saved status is written into the cache, and
+      // the provider dialog closes without waiting for the configs to reload.
       trace: {
         post: {
           mutationOptions: {
@@ -229,26 +223,11 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             },
             onSettled: (_data, error, variables, _result, context) => {
               if (error && getHttpErrorStatus(error) !== 409) return
-              return Promise.all([
-                ...(error
-                  ? [
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.apps.byAppId.traceConfig.get.key({
-                          input: { params: variables.params },
-                        }),
-                      }),
-                    ]
-                  : []),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
-                    input: { params: variables.params },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
-                    input: { params: variables.params },
-                  }),
-                }),
+              const input = { params: variables.params }
+              void invalidateQueryKeys(context.client, [
+                ...(error ? [consoleQuery.apps.byAppId.traceConfig.get.key({ input })] : []),
+                consoleQuery.apps.byAppId.trace.get.queryKey({ input }),
+                consoleQuery.apps.byAppId.traceCapabilities.get.key({ input }),
               ])
             },
           },
@@ -259,24 +238,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           mutationOptions: {
             onSettled: (_data, error, variables, _result, context) => {
               if (error && getHttpErrorStatus(error) !== 409) return
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
-                    input: { params: variables.params },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                    input: {
-                      params: variables.params,
-                      query: { tracing_provider: variables.body.tracing_provider },
-                    },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
-                    input: { params: variables.params },
-                  }),
+              const { params } = variables
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.traceCapabilities.get.key({ input: { params } }),
+              ])
+              // The provider dialog reopens from this config (and status toggles send the
+              // cached status), so the save waits for both reloads.
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params } }),
+                consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                  input: { params, query: { tracing_provider: variables.body.tracing_provider } },
                 }),
               ])
             },
@@ -286,24 +257,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           mutationOptions: {
             onSettled: (_data, error, variables, _result, context) => {
               if (error && getHttpErrorStatus(error) !== 409) return
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
-                    input: { params: variables.params },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                    input: {
-                      params: variables.params,
-                      query: { tracing_provider: variables.body.tracing_provider },
-                    },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
-                    input: { params: variables.params },
-                  }),
+              const { params } = variables
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.traceCapabilities.get.key({ input: { params } }),
+              ])
+              // The provider dialog reopens from this config (and status toggles send the
+              // cached status), so the save waits for both reloads.
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params } }),
+                consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                  input: { params, query: { tracing_provider: variables.body.tracing_provider } },
                 }),
               ])
             },
@@ -313,24 +276,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           mutationOptions: {
             onSettled: (_data, error, variables, _result, context) => {
               if (error && getHttpErrorStatus(error) !== 409) return
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
-                    input: { params: variables.params },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                    input: {
-                      params: variables.params,
-                      query: { tracing_provider: variables.query.tracing_provider },
-                    },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
-                    input: { params: variables.params },
-                  }),
+              const { params } = variables
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.traceCapabilities.get.key({ input: { params } }),
+              ])
+              // The provider dialog reopens from this config (and status toggles send the
+              // cached status), so the save waits for both reloads.
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params } }),
+                consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                  input: { params, query: { tracing_provider: variables.query.tracing_provider } },
                 }),
               ])
             },
@@ -340,24 +295,24 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       server: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, { params }, _result, { client }) => {
-              void client.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+            // Waits for the MCP server it saves.
+            onSuccess: (_data, { params }, _result, { client }) =>
+              invalidateQueryKeys(client, [
+                consoleQuery.apps.byAppId.server.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-              })
-            },
+              ]),
           },
         },
         put: {
           mutationOptions: {
-            onSuccess: (_data, { params }, _result, { client }) => {
-              void client.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+            // Waits for the MCP server it saves.
+            onSuccess: (_data, { params }, _result, { client }) =>
+              invalidateQueryKeys(client, [
+                consoleQuery.apps.byAppId.server.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-              })
-            },
+              ]),
           },
         },
         refresh: {
@@ -390,19 +345,23 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                 (current) => (current ? { ...current, ...data } : current),
               )
             },
-            // A version conflict means another write landed first: reload what it changed.
+            // A version conflict means another write landed first: waits for the app's binding to
+            // reload; the group list refreshes in the background.
             onError: (error, { params }, _result, { client }) => {
               if (!isDefinedError(error) || error.code !== 'network_access_version_conflict') return
               void invalidateQueryKeys(client, [
+                consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
+              ])
+              return invalidateQueryKeys(client, [
                 consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-                consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
               ])
             },
+            // The binding is written above, so the save does not wait for the group lists.
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+              void invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
             },
           },
         },
@@ -436,15 +395,15 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           onError: (_error, { params }) => markAppDeletionFailed(params.app_id),
           onSuccess: (_data, { params }, _onMutateResult, context) => {
             markAppDeletionSucceeded(params.app_id)
-            void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
-            return Promise.all([
-              context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.starred.get.key(),
-              }),
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.recent.get.key(),
-              }),
+            void invalidateQueryKeys(context.client, [
+              consoleQuery.features.get.key(),
+              consoleQuery.apps.recent.get.key(),
+            ])
+            // The app list's delete dialog stays open until both lists drop the app, then
+            // moves focus to the card next to it.
+            return invalidateQueryKeys(context.client, [
+              consoleQuery.apps.get.key(),
+              consoleQuery.apps.starred.get.key(),
             ])
           },
         },
@@ -458,13 +417,13 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               }),
               data,
             )
-            void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.starred.get.key(),
-            })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.recent.get.key(),
-            })
+            // The detail is written above; waits for the app lists it edits, recent apps refresh
+            // in the background.
+            void invalidateQueryKeys(context.client, [consoleQuery.apps.recent.get.key()])
+            return invalidateQueryKeys(context.client, [
+              consoleQuery.apps.get.key(),
+              consoleQuery.apps.starred.get.key(),
+            ])
           },
         },
       },
@@ -494,20 +453,20 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       site: {
         post: {
           mutationOptions: {
+            // Waits for the app detail the site settings are read from; app lists refresh in the
+            // background.
             onSettled: (_data, error, variables, _onMutateResult, context) => {
               if (error) return
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.apps.get.key(),
+                consoleQuery.apps.starred.get.key(),
+                consoleQuery.apps.recent.get.key(),
+              ])
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.get.queryKey({
                   input: { params: variables.params },
                 }),
-              })
-              void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.starred.get.key(),
-              })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.recent.get.key(),
-              })
+              ])
             },
           },
         },
@@ -546,14 +505,14 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       convertToWorkflow: {
         post: {
           mutationOptions: {
+            // Waits for the app list the converted app appears in; other lists refresh in the
+            // background.
             onSuccess: (_data, _variables, _onMutateResult, context) => {
-              void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.starred.get.key(),
-              })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.recent.get.key(),
-              })
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.apps.starred.get.key(),
+                consoleQuery.apps.recent.get.key(),
+              ])
+              return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
             },
           },
         },
@@ -561,43 +520,39 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       copy: {
         post: {
           mutationOptions: {
+            // Waits for the app list the copy appears in; quota and other lists refresh in the
+            // background.
             onSuccess: (data, _variables, _onMutateResult, context) => {
               if (!('mode' in data)) return
 
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.features.get.key(),
-              })
-              void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.starred.get.key(),
-              })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.recent.get.key(),
-              })
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.features.get.key(),
+                consoleQuery.apps.starred.get.key(),
+                consoleQuery.apps.recent.get.key(),
+              ])
+              return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
             },
           },
         },
       },
+      // The app card's star toggle shows `is_starred` from these lists and stays disabled
+      // until they reload, so it never re-enables showing the old value.
       star: {
         delete: {
           mutationOptions: {
             onSuccess: (_data, _variables, _onMutateResult, context) =>
-              Promise.all([
-                context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                }),
+              invalidateQueryKeys(context.client, [
+                consoleQuery.apps.get.key(),
+                consoleQuery.apps.starred.get.key(),
               ]),
           },
         },
         post: {
           mutationOptions: {
             onSuccess: (_data, _variables, _onMutateResult, context) =>
-              Promise.all([
-                context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                }),
+              invalidateQueryKeys(context.client, [
+                consoleQuery.apps.get.key(),
+                consoleQuery.apps.starred.get.key(),
               ]),
           },
         },
@@ -615,15 +570,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           },
         },
       },
+      // Waits for the app detail the model config is read from.
       modelConfig: {
         post: {
           mutationOptions: {
             onSuccess: (_data, { params }, _result, { client }) =>
-              client.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({
+              invalidateQueryKeys(client, [
+                consoleQuery.apps.byAppId.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-              }),
+              ]),
           },
         },
       },
@@ -631,50 +587,36 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         publish: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                // Evaluation metrics follow the published graph; the publisher does not wait for them.
-                void invalidateEvaluationDefaultMetrics(
-                  consoleQuery,
-                  context.client,
-                  variables.params.app_id,
-                )
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.workflows.publish.get.key({
-                      input: { params: variables.params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.workflows.get.key({
-                      input: { params: variables.params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.get.key({
-                      input: { params: variables.params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.triggers.get.key({
-                      input: { params: variables.params },
-                    }),
-                  }),
+              // "Deploy latest" stores the published version from `publish.get` in its
+              // flow, so publishing waits for it; the other refreshes run in the background.
+              onSuccess: (_data, { params }, _result, { client }) => {
+                void invalidateEvaluationDefaultMetrics(consoleQuery, client, params.app_id)
+                void invalidateQueryKeys(client, [
+                  consoleQuery.apps.byAppId.workflows.get.key({ input: { params } }),
+                  consoleQuery.apps.byAppId.get.key({ input: { params } }),
+                  consoleQuery.apps.byAppId.triggers.get.key({ input: { params } }),
+                ])
+                return invalidateQueryKeys(client, [
+                  consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
                 ])
               },
             },
           },
-          // Not awaited: the publisher reports the result before the refresh finishes.
+          // Same as the default publish: "Deploy latest" and "Edit version" read the published
+          // version from `publish.get`, so that one is awaited; the rest refresh in the background.
           evaluation: {
             post: {
               mutationOptions: {
                 onSuccess: (_data, { params }, _result, { client }) => {
                   void invalidateQueryKeys(client, [
-                    consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
                     consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
                     consoleQuery.apps.byAppId.triggers.get.key({ input: { params } }),
                     consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
                   ])
                   void invalidateEvaluationDefaultMetrics(consoleQuery, client, params.app_id)
+                  return invalidateQueryKeys(client, [
+                    consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
+                  ])
                 },
               },
             },
@@ -683,12 +625,17 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         convertType: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, { params }, _result, { client }) =>
-                invalidateQueryKeys(client, [
+              onSuccess: (_data, { params }, _result, { client }) => {
+                void invalidateQueryKeys(client, [
                   consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
-                  consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
                   consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
-                ]),
+                ])
+                // The publisher's kind switch reads `workflow_kind` from the app detail and
+                // stays pending until it reloads, so it cannot re-enable on the old kind.
+                return invalidateQueryKeys(client, [
+                  consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
+                ])
+              },
             },
           },
         },
@@ -708,19 +655,12 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                   variables.params.app_id,
                   data,
                 )
-                // Callers do not wait for the published workflow to reload.
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.workflows.publish.get.queryKey({
-                    input: { params: { app_id: variables.params.app_id } },
-                  }),
-                })
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.workflows.get.key({
-                      input: { params: { app_id: variables.params.app_id } },
-                    }),
-                  }),
-                  context.client.invalidateQueries({ queryKey: deploymentsKey }),
+                // The caches above already show the new name, so callers do not wait for reloads.
+                const input = { params: { app_id: variables.params.app_id } }
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.apps.byAppId.workflows.publish.get.queryKey({ input }),
+                  consoleQuery.apps.byAppId.workflows.get.key({ input }),
+                  deploymentsKey,
                 ])
               },
             },
@@ -782,6 +722,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                 saveToRoster: {
                   post: {
                     mutationOptions: {
+                      // The composer is written from the response; waits for the roster agent
+                      // list and the saved agent's detail, invite options refresh in the background.
                       onSuccess: (composerState, variables, _onMutateResult, context) => {
                         context.client.setQueryData(
                           consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
@@ -793,28 +735,24 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                           ),
                           composerState,
                         )
-                        context.client.invalidateQueries({
-                          queryKey: consoleQuery.agent.get.key(),
-                        })
-                        context.client.invalidateQueries({
-                          queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                        })
+                        void invalidateQueryKeys(context.client, [
+                          consoleQuery.agent.inviteOptions.get.key(),
+                        ])
 
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'
                             ? composerState.binding.agent_id
                             : undefined
-                        if (agentId) {
-                          context.client.invalidateQueries({
-                            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-                              input: {
-                                params: {
-                                  agent_id: agentId,
-                                },
-                              },
-                            }),
-                          })
-                        }
+                        return invalidateQueryKeys(context.client, [
+                          consoleQuery.agent.get.key(),
+                          ...(agentId
+                            ? [
+                                consoleQuery.agent.byAgentId.get.queryKey({
+                                  input: { params: { agent_id: agentId } },
+                                }),
+                              ]
+                            : []),
+                        ])
                       },
                     },
                   },
@@ -829,25 +767,27 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       apiKeys: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, variables, _onMutateResult, context) => {
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+            // Writes the new key into its list, so the one-time secret shows at once.
+            onSuccess: (created, variables, _onMutateResult, context) =>
+              addCreatedKeyToLists(
+                context.client,
+                consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                   input: { params: { resource_id: variables.params.resource_id } },
                 }),
-              })
-            },
+                created,
+              ),
           },
         },
         byApiKeyId: {
           delete: {
             mutationOptions: {
-              onSuccess: (_data, variables, _onMutateResult, context) => {
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+              // Waits for the API key list it deletes from.
+              onSuccess: (_data, variables, _onMutateResult, context) =>
+                invalidateQueryKeys(context.client, [
+                  consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                     input: { params: { resource_id: variables.params.resource_id } },
                   }),
-                })
-              },
+                ]),
             },
           },
         },
@@ -896,4 +836,8 @@ function invalidateEvaluationDefaultMetrics(
       input: { params: { evaluate_target_id: appId, evaluate_target_type: 'apps' } },
     }),
   })
+}
+
+function annotationListKey(query: ConsoleQuery, appId: string) {
+  return query.apps.byAppId.annotations.key({ input: { params: { app_id: appId } } })
 }

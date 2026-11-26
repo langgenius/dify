@@ -1,4 +1,5 @@
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['snippets'] {
   return {
@@ -9,14 +10,14 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
             stop: {
               post: {
                 mutationOptions: {
-                  // A failed response can still follow an accepted stop request.
-                  onSettled: (_data, _error, variables, _result, context) => {
-                    return context.client.invalidateQueries({
-                      queryKey: consoleQuery.snippets.bySnippetId.workflowRuns.key({
+                  // A failed response can still follow an accepted stop request. Waits for the
+                  // run history and details the stopped run is read from.
+                  onSettled: (_data, _error, variables, _result, context) =>
+                    invalidateQueryKeys(context.client, [
+                      consoleQuery.snippets.bySnippetId.workflowRuns.key({
                         input: { params: { snippet_id: variables.params.snippet_id } },
                       }),
-                    })
-                  },
+                    ]),
                 },
               },
             },
@@ -34,37 +35,33 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                   }),
                   (snippet) => (snippet ? { ...snippet, is_published: true } : snippet),
                 )
-                // The version list reloads from its first page; the publisher does not wait.
-                void context.client.resetQueries({
+                // Waits for the version list (reloaded from its first page) and the published
+                // workflow the new version is read from; the draft and runs refresh in the background.
+                const versions = context.client.resetQueries({
                   queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                     type: 'infinite',
                     input: { params: { snippet_id: variables.params.snippet_id } },
                   }),
                 })
+                const input = { params: { snippet_id: variables.params.snippet_id } }
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
+                    type: 'query',
+                    input,
+                  }),
+                  consoleQuery.snippets.bySnippetId.workflowRuns.get.key({ type: 'query' }),
+                  consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key({
+                    type: 'query',
+                  }),
+                ])
                 return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
+                  versions,
+                  invalidateQueryKeys(context.client, [
+                    consoleQuery.snippets.bySnippetId.workflows.publish.get.key({
                       type: 'query',
-                      input: { params: { snippet_id: variables.params.snippet_id } },
+                      input,
                     }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflows.publish.get.key({
-                      type: 'query',
-                      input: { params: { snippet_id: variables.params.snippet_id } },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflowRuns.get.key({
-                      type: 'query',
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey:
-                      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key(
-                        { type: 'query' },
-                      ),
-                  }),
+                  ]),
                 ])
               },
             },
@@ -73,12 +70,12 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
         byWorkflowId: {
           patch: {
             mutationOptions: {
+              // The version editor reopens with the name and notes from this list, and saves
+              // both, so the edit waits for the reload.
               onSuccess: (_data, variables, _result, context) => {
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
-                      input: { params: { snippet_id: variables.params.snippet_id } },
-                    }),
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.snippets.bySnippetId.workflows.get.key({
+                    input: { params: { snippet_id: variables.params.snippet_id } },
                   }),
                 ])
               },
@@ -141,6 +138,8 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                 saveToRoster: {
                   post: {
                     mutationOptions: {
+                      // The composer is written from the response; waits for the roster agent
+                      // list and the saved agent's detail, invite options refresh in the background.
                       onSuccess: (composerState, variables, _onMutateResult, context) => {
                         context.client.setQueryData(
                           consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
@@ -152,28 +151,24 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                           ),
                           composerState,
                         )
-                        context.client.invalidateQueries({
-                          queryKey: consoleQuery.agent.get.key(),
-                        })
-                        context.client.invalidateQueries({
-                          queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                        })
+                        void invalidateQueryKeys(context.client, [
+                          consoleQuery.agent.inviteOptions.get.key(),
+                        ])
 
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'
                             ? composerState.binding.agent_id
                             : undefined
-                        if (agentId) {
-                          context.client.invalidateQueries({
-                            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-                              input: {
-                                params: {
-                                  agent_id: agentId,
-                                },
-                              },
-                            }),
-                          })
-                        }
+                        return invalidateQueryKeys(context.client, [
+                          consoleQuery.agent.get.key(),
+                          ...(agentId
+                            ? [
+                                consoleQuery.agent.byAgentId.get.queryKey({
+                                  input: { params: { agent_id: agentId } },
+                                }),
+                              ]
+                            : []),
+                        ])
                       },
                     },
                   },

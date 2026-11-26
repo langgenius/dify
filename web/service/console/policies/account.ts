@@ -1,9 +1,10 @@
+import type { PersonalAccessTokenListResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
-import { noop } from 'es-toolkit/function'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { invalidateQueryKeys } from './shared'
 
 export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['account'] {
   return {
@@ -11,15 +12,16 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
       byTokenId: {
         delete: {
           mutationOptions: {
-            onSuccess: async (_data, variables, _onMutateResult, context) => {
+            // Drops the token's detail and waits for the token list it leaves.
+            onSuccess: (_data, variables, _onMutateResult, context) => {
               context.client.removeQueries({
                 queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
                   input: { params: variables.params },
                 }),
               })
-              await context.client.invalidateQueries({
-                queryKey: consoleQuery.account.personalAccessTokens.get.key(),
-              })
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.account.personalAccessTokens.get.key(),
+              ])
             },
           },
         },
@@ -32,15 +34,15 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
                 variables.params.token_id,
                 consoleQuery,
               ),
-            onSuccess: async (_data, variables, _onMutateResult, context) => {
-              await Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.account.personalAccessTokens.get.key(),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
-                    input: { params: variables.params },
-                  }),
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.account.personalAccessTokens.get.key(),
+              ])
+              // The edit form seeds its next draft and version from this detail, and closing it
+              // would cancel an unfinished refetch, so the save waits for the new version.
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                  input: { params: variables.params },
                 }),
               ])
             },
@@ -49,12 +51,20 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
       },
       post: {
         mutationOptions: {
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            void context.client
-              .invalidateQueries({
-                queryKey: consoleQuery.account.personalAccessTokens.get.key(),
-              })
-              .catch(noop)
+          // The dialog shows the one-time secret as soon as the create resolves, so the new
+          // token is written into the cached lists instead of waiting for their refetch.
+          onSuccess: (created, _variables, _onMutateResult, context) => {
+            const { secret: _secret, ...token } = created
+            context.client.setQueriesData<PersonalAccessTokenListResponse>(
+              { queryKey: consoleQuery.account.personalAccessTokens.get.key() },
+              (list) =>
+                list && list.page === 1 && !list.data.some((row) => row.id === token.id)
+                  ? { ...list, data: [token, ...list.data], total: list.total + 1 }
+                  : list,
+            )
+            void invalidateQueryKeys(context.client, [
+              consoleQuery.account.personalAccessTokens.get.key(),
+            ])
           },
         },
       },
@@ -72,12 +82,13 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
           onSuccess: (data, _variables, _onMutateResult, context) => {
             if (data.message !== 'success') return
 
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.account.education.get.key(),
-            })
-            // Verified education changes the plan features.
+            // Verified education changes the plan features, which refresh in the background;
+            // the save waits for the education status.
             void context.client.invalidateQueries({
               queryKey: consoleQuery.features.get.queryKey(),
+            })
+            return context.client.invalidateQueries({
+              queryKey: consoleQuery.account.education.get.key(),
             })
           },
         },
@@ -98,11 +109,10 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
     profile: {
       patch: {
         mutationOptions: {
-          onSuccess: async (_data, _variables, _onMutateResult, context) => {
-            await context.client.invalidateQueries({
-              queryKey: consoleQuery.account.profile.get.key(),
-            })
-          },
+          // The preference page shows the saved timezone from the refreshed profile and stays
+          // read-only until it lands, so the picker does not flip back to the old value.
+          onSuccess: (_data, _variables, _onMutateResult, context) =>
+            invalidateQueryKeys(context.client, [consoleQuery.account.profile.get.key()]),
         },
       },
     },
@@ -117,12 +127,12 @@ async function refreshRejectedPersonalToken(
 ) {
   const status = getHttpErrorStatus(error)
   if (status !== 403 && status !== 404 && status !== 409) return
-  await Promise.all([
-    client.invalidateQueries({ queryKey: query.account.personalAccessTokens.get.key() }),
-    client.invalidateQueries({
-      queryKey: query.account.personalAccessTokens.byTokenId.get.queryKey({
-        input: { params: { token_id: tokenId } },
-      }),
+  void invalidateQueryKeys(client, [query.account.personalAccessTokens.get.key()])
+  // The edit form keeps Save disabled while pending, then blocks it once the refreshed
+  // detail reports the token as expired or gone.
+  await invalidateQueryKeys(client, [
+    query.account.personalAccessTokens.byTokenId.get.queryKey({
+      input: { params: { token_id: tokenId } },
     }),
   ])
 }

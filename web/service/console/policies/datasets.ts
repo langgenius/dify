@@ -5,6 +5,7 @@ import type {
 import type { InfiniteData } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { addCreatedKeyToLists, invalidateQueryKeys } from './shared'
 
 export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['datasets'] {
   return {
@@ -77,31 +78,30 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         post: {
           mutationOptions: {
             context: { silent: true },
-            // An upgrade job changes the dataset card and the list of running upgrades.
+            // Waits for the running-upgrades list the job joins; dataset cards refresh in the background.
             onSuccess: (_job, _variables, _result, { client }) => {
-              void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-              void client.invalidateQueries({
-                queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-              })
+              void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
+              return invalidateQueryKeys(client, [
+                consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+              ])
             },
           },
         },
         byJobId: {
           post: {
             mutationOptions: {
+              // Waits for the job's detail and the running-upgrades list; dataset cards refresh in
+              // the background.
               onSuccess: (_job, { params }, _result, { client }) => {
-                void client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryKey({
-                      input: {
-                        params: { dataset_id: params.dataset_id, job_id: params.job_id },
-                      },
-                    }),
-                })
-                void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-                void client.invalidateQueries({
-                  queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-                })
+                void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
+                return invalidateQueryKeys(client, [
+                  consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryKey({
+                    input: {
+                      params: { dataset_id: params.dataset_id, job_id: params.job_id },
+                    },
+                  }),
+                  consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+                ])
               },
             },
           },
@@ -113,27 +113,30 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
             onSettled: (_data, error, variables, _onMutateResult, context) => {
               if (error) return
 
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.evaluation.get.key({
+              // The editor hydrates the whole draft from this config, so the save stays
+              // pending until it lands; a later response would wipe newer edits.
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.datasets.byDatasetId.evaluation.get.key({
                   type: 'query',
                   input: { params: variables.params },
                 }),
-              })
+              ])
             },
           },
         },
         run: {
           post: {
             mutationOptions: {
+              // Waits for the run history the new run joins.
               onSettled: (_data, error, variables, _onMutateResult, context) => {
                 if (error) return
 
-                return context.client.invalidateQueries({
-                  queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
                     type: 'query',
                     input: { params: variables.params },
                   }),
-                })
+                ])
               },
             },
           },
@@ -148,20 +151,14 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
 
                     const params = variables.params
                     const targetParams = { dataset_id: params.dataset_id }
-                    return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
-                          type: 'query',
-                          input: { params: targetParams },
-                        }),
+                    return invalidateQueryKeys(context.client, [
+                      consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                        type: 'query',
+                        input: { params: targetParams },
                       }),
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key(
-                          {
-                            type: 'query',
-                            input: { params },
-                          },
-                        ),
+                      consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                        type: 'query',
+                        input: { params },
                       }),
                     ])
                   },
@@ -176,20 +173,14 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
 
                     const params = variables.params
                     const targetParams = { dataset_id: params.dataset_id }
-                    return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
-                          type: 'query',
-                          input: { params: targetParams },
-                        }),
+                    return invalidateQueryKeys(context.client, [
+                      consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                        type: 'query',
+                        input: { params: targetParams },
                       }),
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key(
-                          {
-                            type: 'query',
-                            input: { params },
-                          },
-                        ),
+                      consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                        type: 'query',
+                        input: { params },
                       }),
                     ])
                   },
@@ -211,21 +202,17 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         },
       },
       documents: {
-        // Creating or re-saving a document changes the dataset card, the document list and
-        // the document's detail.
+        // Waits for the document list and the document's detail; the dataset card refreshes in
+        // the background.
         post: {
           mutationOptions: {
             onSuccess: (_data, { params }, _result, { client }) => {
               const input = { params: { dataset_id: params.dataset_id } }
-              void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-              void client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({ input }),
-              })
-              void client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                  input,
-                }),
-              })
+              void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
+              return invalidateQueryKeys(client, [
+                consoleQuery.datasets.byDatasetId.documents.get.key({ input }),
+                consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({ input }),
+              ])
             },
           },
         },
@@ -278,16 +265,13 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           rename: {
             post: {
               mutationOptions: {
+                // Waits for the document list and the renamed document's detail.
                 onSuccess: (_data, { params }, _result, { client }) => {
                   const documents = consoleQuery.datasets.byDatasetId.documents
-                  void client.invalidateQueries({
-                    queryKey: documents.get.key({
-                      input: { params: { dataset_id: params.dataset_id } },
-                    }),
-                  })
-                  void client.invalidateQueries({
-                    queryKey: documents.byDocumentId.get.key({ input: { params } }),
-                  })
+                  return invalidateQueryKeys(client, [
+                    documents.get.key({ input: { params: { dataset_id: params.dataset_id } } }),
+                    documents.byDocumentId.get.key({ input: { params } }),
+                  ])
                 },
               },
             },
@@ -302,21 +286,16 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                      input: { params },
-                    }),
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
+                ])
+                // The document panel leaves edit mode for the values in the refreshed detail,
+                // and the batch editor reopens from the document list (rewriting every field
+                // it holds), so saving waits for both instead of seeding the old values.
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                    input: { params },
                   }),
                 ])
               },
@@ -329,11 +308,13 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           mutationOptions: {
             onSettled: (_data, error, variables, _result, context) => {
               if (error) return
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+              // The metadata picker returns to its list right after creating a field, so the
+              // new field is there to select.
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
                   input: { params: variables.params },
                 }),
-              })
+              ])
             },
           },
         },
@@ -343,22 +324,15 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
-                      input: { params },
-                    }),
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                    input: { params },
                   }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                      input: { params },
-                    }),
-                  }),
+                ])
+                // The rename dialog reopens with the name from this list.
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
                 ])
               },
             },
@@ -368,21 +342,13 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                      input: { params },
-                    }),
+                // The batch editor and the field picker read these right after a delete; a
+                // stale copy would send the deleted field back and fail the whole batch.
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                    input: { params },
                   }),
                 ])
               },
@@ -393,13 +359,14 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           byAction: {
             post: {
               mutationOptions: {
+                // Waits for the field list that shows the built-in fields.
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                  return invalidateQueryKeys(context.client, [
+                    consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
                       input: { params: { dataset_id: variables.params.dataset_id } },
                     }),
-                  })
+                  ])
                 },
               },
             },
@@ -407,12 +374,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         },
       },
     },
-    // A dataset created with its first document joins the dataset list.
+    // Waits for the dataset list the new dataset (created with its first document) joins.
     init: {
       post: {
         mutationOptions: {
           onSuccess: (_data, _variables, _result, { client }) => {
-            void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+            return invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
           },
         },
       },
@@ -444,20 +411,17 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
     apiKeys: {
       post: {
         mutationOptions: {
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.datasets.apiKeys.get.key(),
-            })
-          },
+          // Writes the new key into its list, so the one-time secret shows at once.
+          onSuccess: (created, _variables, _onMutateResult, context) =>
+            addCreatedKeyToLists(context.client, consoleQuery.datasets.apiKeys.get.key(), created),
         },
       },
       byApiKeyId: {
         delete: {
           mutationOptions: {
+            // Waits for the key list the deleted key leaves.
             onSuccess: (_data, _variables, _onMutateResult, context) => {
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.datasets.apiKeys.get.key(),
-              })
+              return invalidateQueryKeys(context.client, [consoleQuery.datasets.apiKeys.get.key()])
             },
           },
         },

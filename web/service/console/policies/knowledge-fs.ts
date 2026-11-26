@@ -6,6 +6,7 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['knowledgeFs'] {
   return {
@@ -19,10 +20,8 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
               })
               await client.cancelQueries({ queryKey })
               client.setQueryData(queryKey, space)
-              // List cards render the same name, icon and visibility; refresh every list variant.
-              void client.invalidateQueries({
-                queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-              })
+              // Stores the detail from the response and waits for every space list variant.
+              return invalidateQueryKeys(client, [consoleQuery.knowledgeFs.spaces.get.key()])
             },
           },
         },
@@ -97,24 +96,26 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           },
         },
         goldenQuestions: {
-          // Creating, importing or deleting questions changes the space's question list.
+          // Creating, importing or deleting questions waits for the space's question list.
           post: {
             mutationOptions: {
-              onSuccess: (_data, { params }, _result, { client }) =>
-                invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+              onSuccess: (_data, { params }, _result, { client }) => {
+                return invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id)
+              },
             },
           },
           bulkImport: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) =>
-                  invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  return invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id)
+                },
               },
             },
           },
           byQuestionId: {
-            // Bulk deletes run one mutation per question: refresh the list once,
-            // after the last pending delete of the space settles.
+            // Bulk deletes run one mutation per question: the last pending delete of the space
+            // refreshes the list once and waits for it.
             delete: {
               mutationOptions: {
                 onMutate: ({ params }, { client }) => {
@@ -153,23 +154,18 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           },
         },
         documents: {
-          // Queued re-index tasks change document status and the space's task list.
+          // Waits for the document list (status) and the task list the queued re-index tasks
+          // join; golden questions refresh in the background.
           reindex: {
             post: {
               mutationOptions: {
                 onSuccess: (_data, { params }, _result, { client }) => {
                   const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
                   const input = { params: { control_space_id: params.control_space_id } }
-                  void Promise.allSettled([
-                    client.invalidateQueries({
-                      queryKey: space.logicalDocuments.get.key({ input }),
-                    }),
-                    client.invalidateQueries({
-                      queryKey: space.backgroundTasks.get.key({ input }),
-                    }),
-                    client.invalidateQueries({
-                      queryKey: space.goldenQuestions.get.key({ input }),
-                    }),
+                  void invalidateQueryKeys(client, [space.goldenQuestions.get.key({ input })])
+                  return invalidateQueryKeys(client, [
+                    space.logicalDocuments.get.key({ input }),
+                    space.backgroundTasks.get.key({ input }),
                   ])
                 },
               },
@@ -178,21 +174,17 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           byDocumentId: {
             patch: {
               mutationOptions: {
+                // Waits for the document's detail and the document list; golden questions that
+                // show a renamed document refresh in the background.
                 onSuccess: (_data, { params, body }, _result, { client }) => {
                   const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
                   const input = { params: { control_space_id: params.control_space_id } }
-                  void client.invalidateQueries({
-                    queryKey: space.logicalDocuments.byDocumentId.get.key({
-                      input: { params },
-                    }),
-                  })
-                  void client.invalidateQueries({
-                    queryKey: space.logicalDocuments.get.key({ input }),
-                  })
                   if ('displayName' in body.patch)
-                    void client.invalidateQueries({
-                      queryKey: space.goldenQuestions.get.key({ input }),
-                    })
+                    void invalidateQueryKeys(client, [space.goldenQuestions.get.key({ input })])
+                  return invalidateQueryKeys(client, [
+                    space.logicalDocuments.byDocumentId.get.key({ input: { params } }),
+                    space.logicalDocuments.get.key({ input }),
+                  ])
                 },
               },
             },
@@ -294,9 +286,9 @@ function invalidateGoldenQuestionList(
   client: QueryClient,
   controlSpaceId: string,
 ) {
-  return client.invalidateQueries({
-    queryKey: query.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
+  return invalidateQueryKeys(client, [
+    query.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
       input: { params: { control_space_id: controlSpaceId } },
     }),
-  })
+  ])
 }

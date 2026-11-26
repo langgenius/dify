@@ -10,12 +10,13 @@ export function humanInputPolicies(
   return {
     humanInput: {
       v2: {
+        // Contact writes wait for the contacts they change; option lists refresh in the background.
         contacts: {
           platform: {
             post: {
               mutationOptions: {
                 onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  invalidateContactQueries(consoleQuery, context.client),
               },
             },
           },
@@ -24,13 +25,13 @@ export function humanInputPolicies(
               put: {
                 mutationOptions: {
                   onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    invalidateContactQueries(consoleQuery, context.client),
                 },
               },
               delete: {
                 mutationOptions: {
                   onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    invalidateContactQueries(consoleQuery, context.client),
                 },
               },
             },
@@ -38,13 +39,13 @@ export function humanInputPolicies(
               put: {
                 mutationOptions: {
                   onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    invalidateContactQueries(consoleQuery, context.client),
                 },
               },
               delete: {
                 mutationOptions: {
                   onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    invalidateContactQueries(consoleQuery, context.client),
                 },
               },
             },
@@ -53,10 +54,12 @@ export function humanInputPolicies(
             post: {
               mutationOptions: {
                 onSuccess: (_data, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  invalidateContactQueries(consoleQuery, context.client),
               },
             },
             byContactId: {
+              // The contact dialog reopens with the details from these queries, so the edit
+              // waits for them.
               patch: {
                 mutationOptions: {
                   onSuccess: (_data, _variables, _onMutateResult, context) =>
@@ -69,7 +72,7 @@ export function humanInputPolicies(
             post: {
               mutationOptions: {
                 onSuccess: (_data, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  invalidateContactQueries(consoleQuery, context.client),
               },
             },
           },
@@ -82,7 +85,7 @@ export function humanInputPolicies(
                   consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey(),
                   data,
                 )
-                return context.client.resetQueries({
+                void context.client.resetQueries({
                   queryKey:
                     consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.results.key(),
                 })
@@ -90,6 +93,8 @@ export function humanInputPolicies(
             },
           },
         },
+        // Channel writes wait for the channel list; contacts, identities and sync runs refresh
+        // in the background.
         channels: {
           email: {
             post: {
@@ -149,17 +154,23 @@ export function humanInputPolicies(
   }
 }
 
+function invalidateContactQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+  const v2 = query.workspaces.current.humanInput.v2
+  void invalidateQueryKeys(client, [
+    v2.contactOptions.key(),
+    v2.imIdentities.key(),
+    v2.organizationCandidates.key(),
+  ])
+  return invalidateQueryKeys(client, [v2.contacts.key()])
+}
+
 function invalidateHumanInputChannelQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
 ) {
-  return Promise.all([
-    invalidateHumanInputContactQueries(query, client),
-    invalidateQueryKeys(client, [
-      query.workspaces.current.humanInput.v2.channels.key(),
-      query.workspaces.current.humanInput.v2.testChannels.key(),
-      query.workspaces.current.humanInput.v2.imIdentities.key(),
-      query.workspaces.current.humanInput.v2.imSyncRuns.key(),
-    ]),
-  ])
+  const v2 = query.workspaces.current.humanInput.v2
+  // The contact helper also refreshes IM identities.
+  void invalidateHumanInputContactQueries(query, client)
+  void invalidateQueryKeys(client, [v2.testChannels.key(), v2.imSyncRuns.key()])
+  return invalidateQueryKeys(client, [v2.channels.key()])
 }
