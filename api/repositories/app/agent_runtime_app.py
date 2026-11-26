@@ -133,6 +133,15 @@ def find_runtime_app(session: Session, *, tenant_id: str, app_id: str) -> App | 
     )
 
 
+def find_existing_agent_runtime_app(session: Session, *, tenant_id: str, agent_id: str) -> App | None:
+    """Resolve the tenant's runtime App without creating a missing inline backing App."""
+    agent = find_runtime_resolvable_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+    if agent is None:
+        return None
+    app_id = agent.backing_app_id if agent.scope == AgentScope.WORKFLOW_ONLY else agent.backing_app_id or agent.app_id
+    return find_runtime_app(session, tenant_id=tenant_id, app_id=app_id) if app_id else None
+
+
 def resolve_agent_runtime_app(session: Session, *, tenant_id: str, agent_id: str) -> App | None:
     """Resolve the tenant's runtime App and persist any missing workflow-only backing App.
 

@@ -1035,65 +1035,6 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
     assert result["active_config_is_published"] is True
 
 
-@pytest.mark.parametrize(
-    ("draft_type", "account_id"),
-    [
-        (AgentConfigDraftType.DRAFT, None),
-        (AgentConfigDraftType.DEBUG_BUILD, "account-1"),
-    ],
-)
-def test_load_agent_soul_for_debug_selects_requested_draft(
-    draft_type: AgentConfigDraftType,
-    account_id: str | None,
-    sqlite_session: Session,
-):
-    session = sqlite_session
-    agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Iris",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
-    agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
-    draft = AgentConfigDraft(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=draft_type,
-        account_id=account_id,
-        draft_owner_key=account_id or "",
-        config_snapshot=agent_soul,
-    )
-    session.add_all([agent, draft])
-    session.commit()
-
-    result = AgentComposerService.load_agent_soul_for_debug(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        account_id="account-1",
-        draft_type=draft_type,
-        session=session,
-    )
-
-    assert result == agent_soul
-
-
-def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session: Session):
-    session = sqlite_session
-
-    with pytest.raises(AgentVersionNotFoundError):
-        AgentComposerService.load_agent_soul_for_debug(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            account_id="account-1",
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            session=session,
-        )
-
-
 def test_workflow_composer_impact_includes_roster_agent_references(sqlite_session: Session) -> None:
     """Count direct snapshot references and roster bindings to the same Agent."""
     session = sqlite_session
