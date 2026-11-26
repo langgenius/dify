@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentAccessConfigPage } from '../page'
@@ -32,6 +33,8 @@ function setup({
   permissions = [AgentPermission.AccessConfig] as string[],
 } = {}) {
   const { wrapper, queryClient } = createConsoleQueryWrapper({
+    // Like the app's client: a write refreshes its domain in the background.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     systemFeatures: { rbac_enabled: true },
   })
   const detailKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params } })
@@ -150,11 +153,16 @@ describe('AgentAccessConfigPage', () => {
 
   it('updates automatic inclusion and refreshes resource permissions', async () => {
     const user = userEvent.setup()
-    const { queryClient, detailKey } = setup()
+    const { queryClient } = setup()
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     await user.click(inclusionSwitch())
     await waitFor(() => expect(inclusionSwitch()).toHaveAttribute('aria-checked', 'true'))
-    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: detailKey }))
+    // The agent detail refreshes through the fallback (`alsoInvalidate`).
+    await waitFor(() =>
+      expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual([
+        ['console', 'agent', 'byAgentId', 'get'],
+      ]),
+    )
     const mutation = sent.find((req) => req.method === 'PUT')!
     expect(new URL(mutation.url).pathname).toMatch(/\/agents\/agent-1\/whitelist$/)
     expect(await mutation.json()).toEqual({ automatic_include_workspace_members: true })
