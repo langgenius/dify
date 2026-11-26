@@ -5455,6 +5455,88 @@ export default interface Resources {
     'subscription.subscriptionRemoved': 'Subscription removed'
   }
   register: {}
+  requestErrors: {
+    'code.account_banned': 'This account has been banned.'
+    'code.account_in_freeze': "This email belongs to an account deleted in the past 30 days and can't be used to register yet."
+    'code.account_not_found': 'The account was not found.'
+    'code.agent_not_published': 'The Agent has not been published. Publish it and try again.'
+    'code.already_setup': 'Dify is already set up. Refresh the page or go to the dashboard.'
+    'code.app_more_like_this_disabled': 'The More like this feature is turned off. Refresh the page.'
+    'code.app_suggested_questions_after_answer_disabled': 'Suggested questions after answers are turned off. Refresh the page.'
+    'code.app_unavailable': 'The app is unavailable. Check its configuration.'
+    'code.archived_document_immutable': "Archived documents can't be edited."
+    'code.authentication_failed': 'The email or password is incorrect.'
+    'code.billing_unavailable': 'This operation is temporarily unavailable. Try again later.'
+    'code.conversation_not_found': 'The conversation was not found.'
+    'code.dataset_name_duplicate': 'A knowledge base with this name already exists. Choose another name.'
+    'code.document_already_finished': 'The document has already been processed. Refresh the page or open the document details.'
+    'code.draft_workflow_not_exist': 'The draft workflow has not been initialized yet.'
+    'code.draft_workflow_not_sync': 'The workflow was changed elsewhere. Refresh the page and submit again.'
+    'code.email_already_in_use': 'A user with this email already exists.'
+    'code.email_code_error': 'The verification code is invalid or has expired.'
+    'code.email_send_ip_limit': 'Too many emails have been sent from this IP address. Try again later.'
+    'code.file_extension_blocked': 'This file type is blocked for security reasons.'
+    'code.forbidden': "You don't have permission to do this."
+    'code.init_validate_failed': 'Initialization validation failed. Check the password and try again.'
+    'code.invalid_email': 'The email address is not valid.'
+    'code.invalid_invitation_code': 'The invitation code is invalid.'
+    'code.invalid_or_expired_token': 'The link is invalid or has expired.'
+    'code.member_not_in_tenant': 'The member is not in this workspace.'
+    'code.model_currently_not_support': "The hosted trial provider doesn't support this model. Add your own model provider credentials to use it."
+    'code.network_access_version_conflict': 'The network access settings changed. Refresh and try again.'
+    'code.no_audio_uploaded': 'Upload an audio file.'
+    'code.no_file_uploaded': 'Upload a file.'
+    'code.not_chat_app': 'This action is only available for chat apps.'
+    'code.not_completion_app': 'This action is only available for completion apps.'
+    'code.not_init_validated': 'Initialization validation has not been completed. Complete it first.'
+    'code.not_setup': 'Dify has not been set up yet. Complete the setup first.'
+    'code.not_workflow_app': 'This action is only available for workflow apps.'
+    'code.paid_plan_required': 'This feature requires a paid plan.'
+    'code.password_mismatch': "The passwords don't match."
+    'code.pending_invitation_not_found': 'There is no pending invitation for this email in the workspace.'
+    'code.provider_not_support_speech_to_text': "The model provider doesn't support speech to text."
+    'code.provider_quota_exceeded': 'The quota for the hosted model provider is used up. Add your own credentials in Settings > Model Provider.'
+    'code.speech_to_text_disabled': 'Speech to text is turned off.'
+    'code.trigger_node_limit_exceeded': 'The workflow has more trigger nodes than the workspace plan allows.'
+    'code.unsupported_audio_type': 'This audio type is not supported.'
+    'code.unsupported_file_type': 'This file type is not supported.'
+    'code.web_app_access_unavailable': 'The app access service is unavailable. Try again later.'
+    'code.workspace_member_limit_reached': "The workspace has reached its member limit, so this invitation can't be accepted right now."
+    'forbidden.executionDetails': "You don't have permission to view this tool's internal execution details."
+    'forbidden.invalidOAuthContext': 'The authorization session is invalid. Start the authorization again.'
+    'forbidden.invalidSignedRequest': 'The request link is invalid.'
+    'forbidden.licenseRequired': 'A valid license is required. Contact your administrator.'
+    'forbidden.memberInvitationPolicy': "The workspace policy doesn't allow inviting members."
+    'forbidden.oauthClientMissing': 'No OAuth client is configured for this tool provider.'
+    'forbidden.oauthContextMissing': 'The authorization session was not found. Start the authorization again.'
+    'forbidden.ownerTransferPlan': "Your current plan doesn't allow transferring workspace ownership."
+    'forbidden.ownerTransferPolicy': "The workspace policy doesn't allow transferring ownership."
+    'forbidden.personalAccessTokenExpired': 'The personal access token has expired.'
+    'generic.network': "Can't reach the server. Check your network connection and try again."
+    'generic.rateLimited': 'Too many requests. Wait a moment and try again.'
+    'generic.server': 'The server ran into a problem. Try again later.'
+    'generic.timeout': 'The request timed out. Try again.'
+    'generic.unknown': 'Something went wrong. Try again.'
+    'planLimit.annotation': 'The annotation quota of your plan has been reached. Upgrade your plan to add more.'
+    'planLimit.apps': "Your plan's app limit has been reached. Upgrade your plan to create more apps."
+    'planLimit.documents': "Your plan's document limit has been reached. Upgrade your plan to upload more documents."
+    'planLimit.knowledgeRateLimit': "Your plan's knowledge base request rate limit has been reached. Try again later or upgrade your plan."
+    'planLimit.members': "Your plan's member limit has been reached. Upgrade your plan to add more members."
+    'planLimit.paidPlan': 'This feature requires a paid plan. Upgrade your plan to use it.'
+    'planLimit.vectorSpace': "Your plan's knowledge storage space is full. Upgrade your plan or free up space."
+    'planLimit.workspaceCustom': "Customizing the workspace isn't included in your plan. Upgrade your plan to use it."
+    'template.dataset_name_duplicate': 'A knowledge base named “{{name}}” already exists. Choose another name.'
+    'template.email_change_rate_limit_exceeded': 'Too many email change emails have been sent. Try again in {{minutes}} min.'
+    'template.email_code_account_deletion_rate_limit_exceeded': 'Too many account deletion emails have been sent. Try again in {{minutes}} min.'
+    'template.email_code_login_rate_limit_exceeded': 'Too many sign-in emails have been sent. Try again in {{minutes}} min.'
+    'template.email_register_rate_limit_exceeded': 'Too many sign-up emails have been sent. Try again in {{minutes}} min.'
+    'template.file_extension_blocked': 'Files with the .{{extension}} extension are blocked for security reasons.'
+    'template.invalid_metadata': 'The metadata value {{value}} is invalid. Check it and try again.'
+    'template.network_access_unsupported_access_points': "These access points aren't supported for this app: {{accessPoints}}."
+    'template.network_access_unsupported_app_mode': "IP policies aren't supported for {{mode}} apps."
+    'template.owner_transfer_rate_limit_exceeded': 'Too many ownership transfer emails have been sent. Try again in {{minutes}} min.'
+    'template.password_reset_rate_limit_exceeded': 'Too many password reset emails have been sent. Try again in {{minutes}} min.'
+  }
   runLog: {
     circularInvocationTip: 'There is circular invocation of tools/nodes in the current workflow.'
     detail: 'DETAIL'
