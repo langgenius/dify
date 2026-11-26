@@ -81,7 +81,6 @@ const documentOutlineQueryAtom = atomWithQuery((get) => {
   const documentAssetId = get(documentDetailAssetAtom)?.documentAssetId
   return consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.outline.get.queryOptions(
     {
-      context: { silent: true },
       input: documentAssetId
         ? {
             params: {
@@ -90,6 +89,8 @@ const documentOutlineQueryAtom = atomWithQuery((get) => {
             },
           }
         : skipToken,
+      // The outline is optional; the chunks render flat without it.
+      meta: { errorToast: false },
       retry: false,
     },
   )
@@ -99,7 +100,6 @@ const documentMultimodalQueryAtom = atomWithQuery((get) => {
   const documentAssetId = get(documentDetailAssetAtom)?.documentAssetId
   return consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.multimodal.get.queryOptions(
     {
-      context: { silent: true },
       input: documentAssetId
         ? {
             params: {
@@ -108,6 +108,8 @@ const documentMultimodalQueryAtom = atomWithQuery((get) => {
             },
           }
         : skipToken,
+      // The media manifest is optional; the content renders without its images.
+      meta: { errorToast: false },
       retry: false,
     },
   )

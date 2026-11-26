@@ -8,11 +8,23 @@ const generatedConsoleContractLoaders: Partial<Record<string, () => Promise<AnyC
 
 export async function loadConsoleContractForSegment(segment: string): Promise<AnyContractRouter> {
   if (segment === 'enterprise') {
-    const [{ contract: enterpriseContract }, { contract: appDeployContract }] = await Promise.all([
+    const [
+      { contract: enterpriseContract },
+      { contract: appDeployContract },
+      { consoleSsoContract },
+    ] = await Promise.all([
       import('@dify/contracts/enterprise/orpc.gen'),
       import('@dify/contracts/enterprise-app-deploy/orpc.gen'),
+      import('@dify/contracts/sso'),
     ])
-    return { enterprise: { ...enterpriseContract, appDeploy: appDeployContract } }
+    return {
+      enterprise: {
+        ...enterpriseContract,
+        // The generated console SSO routes take no input, so they cannot send the invite token.
+        consoleSso: consoleSsoContract,
+        appDeploy: appDeployContract,
+      },
+    }
   }
   const loader = generatedConsoleContractLoaders[segment]
   if (!loader) throw new Error(`Console contract segment "${segment}" is not configured.`)

@@ -5,15 +5,14 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import { useUpdateModelList, useUpdateModelProviders } from '../../hooks'
+import { useUpdateModelList } from '../../hooks'
 
 export function useActivateCredential(provider: ModelProvider) {
   const { t } = useTranslation(['common'])
-  const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
   const { mutate, isPending } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.credentials.switch.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const [optimisticId, setOptimisticId] = useState<string>()
@@ -37,7 +36,6 @@ export function useActivateCredential(provider: ModelProvider) {
         },
         {
           onSuccess: () => {
-            updateModelProviders()
             supportedModelTypesRef.current.forEach((type) => updateModelList(type))
           },
           onError: (error) => {
@@ -50,7 +48,7 @@ export function useActivateCredential(provider: ModelProvider) {
         },
       )
     },
-    [mutate, provider.provider, t, updateModelProviders, updateModelList],
+    [mutate, provider.provider, t, updateModelList],
   )
   return {
     selectedCredentialId,

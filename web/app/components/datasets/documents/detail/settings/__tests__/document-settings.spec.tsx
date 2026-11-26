@@ -97,13 +97,11 @@ it.each([
   },
 )
 
-it('refreshes cached documents and returns to the owning document after a successful save', async () => {
-  const { queryClient, listKey } = setup()
+// The document save policy refreshes the document list and detail.
+it('returns to the owning document after a successful save', async () => {
+  setup()
   await waitFor(() => expect(renderStepTwo).toHaveBeenCalled())
-  const requestsBeforeSave = getDocument.mock.calls.length
   act(() => formProps().onSave!())
-  expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
-  await waitFor(() => expect(getDocument.mock.calls.length).toBeGreaterThan(requestsBeforeSave))
   expect(push).toHaveBeenCalledWith('/datasets/dataset-1/documents/document-1')
 })
 

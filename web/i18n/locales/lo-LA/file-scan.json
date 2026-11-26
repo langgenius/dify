@@ -50,7 +50,7 @@
   "scanner.lastTested": "ທົດສອບຫຼ້າສຸດ: {{time}}",
   "scanner.loadFailed": "ບໍ່ສາມາດໂຫຼດຕົວສະແກນໄດ້.",
   "scanner.neverTested": "ຍັງບໍ່ໄດ້ທົດສອບ",
-  "scanner.readOnly": "ມີພຽງເຈົ້າຂອງ ແລະ ຜູ້ດູແລພື້ນທີ່ເຮັດວຽກເທົ່ານັ້ນທີ່ສາມາດຈັດການຕົວສະແກນໄດ້.",
+  "scanner.readOnly": "ທ່ານບໍ່ມີສິດຈັດການຕົວສະແກນ.",
   "scanner.status.active": "ໃຊ້ງານໄດ້",
   "scanner.status.error": "ຜິດພາດ",
   "scanner.test": "ທົດສອບ",

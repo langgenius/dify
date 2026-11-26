@@ -2,12 +2,12 @@
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 
 type AnnotationCtrlButtonProps = {
   appId: string
@@ -31,16 +31,24 @@ export default function AnnotationCtrlButton({
   )
   const isAnnotationQuotaUnavailable = annotationQuota === undefined
   const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
+  // The mutation's cache policy refreshes the annotation list, its export and the quota.
+  const creation = useMutation(consoleQuery.apps.byAppId.annotations.post.mutationOptions())
   if (!answer) return null
 
-  const handleAdd = async () => {
-    const res = await consoleClient.apps.byAppId.annotations.post({
-      params: { app_id: appId },
-      body: { message_id: messageId, question: query, answer },
-    })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
-    // The create response does not include the author.
-    onAdded(res.id, '')
+  const handleAdd = () => {
+    creation.mutate(
+      {
+        params: { app_id: appId },
+        body: { message_id: messageId, question: query, answer },
+      },
+      {
+        onSuccess: (res) => {
+          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
+          // The create response does not include the author.
+          onAdded(res.id, '')
+        },
+      },
+    )
   }
   const label = t(($) => $['feature.annotation.add'], { ns: 'appDebug' })
   const button = (

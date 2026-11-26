@@ -10,24 +10,8 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { BlockClassification, TabType } from '../types'
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({
-    plugins: [],
-    isLoading: false,
-  }),
-  useFeaturedTriggersRecommendations: () => ({
-    plugins: [],
-    isLoading: false,
-  }),
-}))
-
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-  useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -36,6 +20,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggers.get': async () => [],
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],

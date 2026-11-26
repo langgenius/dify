@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,7 +44,6 @@ export function AgentVersionRestore({
   onRestored?: () => void | Promise<void>
 }) {
   const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflowHistory'])
-  const queryClient = useQueryClient()
   const { canReleaseAndVersion: canRestore } = useAgentPermissions(agentId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -60,29 +59,9 @@ export function AgentVersionRestore({
     externallyDisabled || !canRestore || (deploymentEdition === 'CLOUD' && plan === undefined)
   const mutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onMutate: async () => {
         await onBeforeRestore?.()
-      },
-      onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-          }),
-        ])
-        await onRestored?.()
-        setStage('closed')
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       },
       onError: (error) => {
         toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
@@ -106,7 +85,18 @@ export function AgentVersionRestore({
       setStage('upgrade')
       return
     }
-    mutation.mutate({ params: { agent_id: agentId, version_id: version.id } })
+    // Per-call callbacks run after the restore policy has reloaded the agent and its
+    // composer, so the editor rebases onto the restored config, not the old draft.
+    mutation.mutate(
+      { params: { agent_id: agentId, version_id: version.id } },
+      {
+        onSuccess: async () => {
+          await onRestored?.()
+          setStage('closed')
+          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+        },
+      },
+    )
   }
 
   const versionLabel = version

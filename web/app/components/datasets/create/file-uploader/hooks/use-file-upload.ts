@@ -9,8 +9,7 @@ import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/u
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LanguagesSupported } from '@/i18n/language'
-import { upload } from '@/service/base'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getFileExtension } from '@/utils/format'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 
@@ -152,25 +151,18 @@ export const useFileUpload = ({
 
   const fileUpload = useCallback(
     async (fileItem: FileItem): Promise<FileItem> => {
-      const formData = new FormData()
-      formData.append('file', fileItem.file)
-      const onProgress = (e: ProgressEvent) => {
-        if (e.lengthComputable) {
-          const percent = Math.floor((e.loaded / e.total) * 100)
-          onFileUpdate(fileItem, percent, fileListRef.current)
-        }
-      }
-
-      return upload(
-        {
-          xhr: new XMLHttpRequest(),
-          data: formData,
-          onprogress: onProgress,
-        },
-        false,
-        undefined,
-        '?source=datasets',
-      )
+      return consoleClient.files.upload
+        .post(
+          { body: { file: fileItem.file, source: 'datasets' } },
+          {
+            context: {
+              onUploadProgress: ({ loaded, total }) => {
+                const percent = Math.floor((loaded / total) * 100)
+                onFileUpdate(fileItem, percent, fileListRef.current)
+              },
+            },
+          },
+        )
         .then((res) => {
           const completeFile = {
             fileID: fileItem.fileID,

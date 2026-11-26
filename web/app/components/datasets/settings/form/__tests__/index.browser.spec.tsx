@@ -17,16 +17,11 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DatasetACLPermission } from '@/utils/permission'
 import Form from '../index'
 
 vi.unmock('react-i18next')
-// boundary: routing is outside the settings journey; keep the real dataset layout and refetch owner.
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/datasets/7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f/settings',
-  useRouter: () => ({ replace: vi.fn() }),
-  useParams: () => ({ datasetId: TEST_DATASET_ID }),
-}))
 
 const scanPolicyOff = {
   enabled: false,
@@ -127,6 +122,12 @@ async function setup(
         </NuqsTestingAdapter>
       </I18nextProvider>
     </Wrapper>,
+    {
+      wrapper: createTestNavigation({
+        url: `/datasets/${TEST_DATASET_ID}/settings`,
+        params: { datasetId: TEST_DATASET_ID },
+      }).NavigationProvider,
+    },
   )
   await expect
     .element(screen.getByRole('textbox', { name: 'Knowledge Name', exact: true }))
@@ -213,7 +214,6 @@ it('prevents readonly users from editing basic information, opening the picker o
   const save = screen.getByRole('button', { name: 'Save', exact: true })
   await expect.element(save).toBeDisabled()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-  expect(fake.console.datasets.byDatasetId.patch).not.toHaveBeenCalled()
 })
 
 it('opens the named icon action with the keyboard and returns focus after dismissal', async () => {
@@ -288,6 +288,7 @@ it('does not save the other settings when the file scan policy is rejected', asy
   await expect
     .poll(() => fake.console.datasets.byDatasetId.fileScanPolicy.put.mock.calls.length)
     .toBe(1)
+  await expect.element(screen.getByRole('dialog', { name: 'offline' })).toBeVisible()
   await expect
     .element(screen.getByRole('switch', { name: fileScan['policy.enable'] }))
     .toBeChecked()

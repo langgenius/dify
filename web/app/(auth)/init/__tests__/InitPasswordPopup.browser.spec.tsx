@@ -1,20 +1,23 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import InitPasswordPopup from '../InitPasswordPopup'
 
-const replace = vi.hoisted(() => vi.fn())
-
-// boundary: Next.js navigation context is not mounted in a focused Browser Mode component render.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace }) }))
+let navigation: TestNavigation
 
 const renderPopup = () => {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({ url: '/init' })
+  const { NavigationProvider } = navigation
   return render(
-    <ConsoleProvider>
-      <InitPasswordPopup />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <InitPasswordPopup />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -26,10 +29,6 @@ const fake = setupFakeApi(() => ({
     },
   },
 }))
-
-beforeEach(() => {
-  replace.mockReset()
-})
 
 it('puts the cursor in the password field on arrival', async () => {
   const screen = await renderPopup()
@@ -65,7 +64,7 @@ it('reports an incorrect password on the field until it is edited', async () => 
   await userEvent.type(password, '!')
 
   await expect.element(password).not.toHaveAttribute('aria-invalid', 'true')
-  expect(replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
 })
 
 it('reports other failures inside the form until the password is edited', async () => {
@@ -78,12 +77,22 @@ it('reports other failures inside the form until the password is edited', async 
   await userEvent.fill(password, 'secret')
   await userEvent.keyboard('{Enter}')
 
-  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('Internal error')
   await expect.element(password).not.toHaveAttribute('aria-invalid', 'true')
 
   await userEvent.type(password, '!')
 
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
+})
+
+it('falls back to a generic message when the failure carries no server message', async () => {
+  fake.console.init.post.mockRejectedValue(networkError())
+  const screen = await renderPopup()
+
+  await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'secret')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
 })
 
 it('continues to install once after a correct password', async () => {
@@ -92,8 +101,8 @@ it('continues to install once after a correct password', async () => {
   await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'correct')
   await userEvent.click(screen.getByRole('button', { name: 'login.validate' }))
 
-  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/install'))
-  expect(replace).toHaveBeenCalledTimes(1)
+  await vi.waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith('/install'))
+  expect(navigation.router.replace).toHaveBeenCalledTimes(1)
 })
 
 it('sends an already validated instance to install', async () => {
@@ -101,6 +110,6 @@ it('sends an already validated instance to install', async () => {
 
   await renderPopup()
 
-  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/install'))
+  await vi.waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith('/install'))
   expect(fake.console.init.post).not.toHaveBeenCalled()
 })

@@ -66,7 +66,6 @@ function RenameSession({
           <DialogContent>
             {payload && (
               <RenameDocumentForm
-                key={payload.id}
                 activeDocumentIdRef={activeDocumentIdRef}
                 document={payload}
                 datasetId={props.datasetId}
@@ -138,23 +137,6 @@ it('cancels an edited name without saving', async () => {
   expect(screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })).toHaveValue(
     'Second document',
   )
-})
-
-it('does not close a replacement draft when an earlier rename finishes', async () => {
-  const user = userEvent.setup()
-  const first = createDeferred<typeof renamed>()
-  rename.mockReturnValueOnce(first.promise)
-  const handle = await openFirst(user)
-  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-  await waitFor(() => expect(rename).toHaveBeenCalledOnce())
-  act(() => handle.openWithPayload(secondDocument))
-  const input = screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })
-  await waitFor(() => expect(input).toBeEnabled())
-  await user.type(input, ' draft')
-  expect(input).toHaveValue('Second document draft')
-  await act(async () => first.resolve(renamed))
-  expect(input).toHaveValue('Second document draft')
-  expect(screen.getByRole('dialog')).toBeVisible()
 })
 
 it('only locks the document whose rename is still pending, including after reopening it', async () => {

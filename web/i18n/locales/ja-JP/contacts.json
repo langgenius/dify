@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "連絡先を削除できませんでした。再試行してください。",
   "directory.removalSingleTitle": "{{name}} を削除しますか？",
   "directory.resultCount": "検索結果：{{count}}",
-  "imPlatform.action.configure": "設定",
   "imPlatform.action.configureChannel": "{{provider}} を構成する",
   "imPlatform.action.connect": "接続",
   "imPlatform.action.copied": "コピーしました",

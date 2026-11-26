@@ -3,9 +3,11 @@ import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowFailed = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowFailed = useCallback(
@@ -29,7 +31,7 @@ export const useWorkflowFailed = () => {
         return
       }
 
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
+      const { getNodes, edges } = store.getState()
 
       setWorkflowRunningData(
         produce(workflowRunningData, (draft) => {
@@ -44,7 +46,7 @@ export const useWorkflowFailed = () => {
         }),
       )
 
-      setNodes(
+      collaborativeWorkflow.setNodes(
         produce(getNodes(), (draft) => {
           draft.forEach((node) => {
             if (node.data._runningStatus === NodeRunningStatus.Running)
@@ -52,8 +54,9 @@ export const useWorkflowFailed = () => {
             node.data._waitingRun = false
           })
         }),
+        false,
       )
-      setEdges(
+      collaborativeWorkflow.setEdges(
         produce(edges, (draft) => {
           draft.forEach((edge) => {
             if (!edge.data) return
@@ -64,9 +67,10 @@ export const useWorkflowFailed = () => {
             edge.data._waitingRun = false
           })
         }),
+        false,
       )
     },
-    [store, workflowStore],
+    [collaborativeWorkflow, store, workflowStore],
   )
 
   return {

@@ -119,6 +119,12 @@ class ChatAudioApi(Resource):
         SpeechToTextDisabledError,
         UnsupportedAudioTypeError,
     )
+    @console_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "file": {"description": "Audio file to transcribe", "in": "formData", "type": "file", "required": True}
+        },
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_installed_app

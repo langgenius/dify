@@ -22,7 +22,7 @@ export const useDatasetCardActions = ({ dataset }: UseDatasetCardActionsOptions)
 
   const { mutateAsync: exportPipelineConfig, isPending: exporting } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

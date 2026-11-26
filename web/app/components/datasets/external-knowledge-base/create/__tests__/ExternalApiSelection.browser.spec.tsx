@@ -4,11 +4,8 @@ import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConfigurationModalTestWrapper } from '@/test/configuration-modals-browser'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import ExternalApiSelection from '../ExternalApiSelection'
-
-const mocks = vi.hoisted(() => ({ refresh: vi.fn() }))
-// boundary: Browser Mode has no Next App Router; creation keeps the real modal and query owners.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
 
 const response: ExternalKnowledgeApiListResponse = {
   data: ['One', 'Two'].map((name, index) => ({
@@ -50,11 +47,14 @@ const fake = setupFakeApi(() => ({
 }))
 async function setup() {
   const { wrapper: Providers } = createConfigurationModalTestWrapper()
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/connect' })
   return render(
-    <Providers>
-      <KnowledgeConnectionForm />
-      <AppToaster />
-    </Providers>,
+    <NavigationProvider>
+      <Providers>
+        <KnowledgeConnectionForm />
+        <AppToaster />
+      </Providers>
+    </NavigationProvider>,
   )
 }
 

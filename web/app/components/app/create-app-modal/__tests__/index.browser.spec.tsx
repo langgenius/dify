@@ -1,3 +1,4 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
@@ -10,6 +11,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, hold, route, setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { basePath } from '@/utils/var'
 import CreateAppModal from '../index'
 
@@ -34,20 +36,15 @@ const emojiMessages = {
 }
 
 const mocks = vi.hoisted(() => ({
-  push: vi.fn(),
   track: vi.fn(),
   flush: vi.fn(),
-}))
-// boundary: observe navigation without a running application router.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mocks.push }),
-  useParams: () => ({}),
 }))
 // boundary: replace the external analytics client; attribution, event construction and awaiting remain real.
 vi.mock('@/app/components/base/amplitude/init', () => ({
   getAmplitudeClient: () => ({ track: mocks.track, flush: mocks.flush }),
 }))
 // The emoji picker loads static emojibase data from the app origin, outside the API.
+let navigation: TestNavigation
 const emojiCatalog = `${basePath}/emoji/emojibase-17.0.0/en`
 const fake = setupFakeApi(() => ({
   routes: [
@@ -95,12 +92,16 @@ async function renderModal({ quota = { size: 0, limit: 1 }, show = true } = {}) 
       </>
     )
   }
+  navigation = createTestNavigation({ url: '/apps' })
+  const { NavigationProvider } = navigation
   const ui = (forcedShow?: boolean) => (
-    <Wrapper>
-      <NuqsTestingAdapter>
-        <Owner forcedShow={forcedShow} />
-      </NuqsTestingAdapter>
-    </Wrapper>
+    <NavigationProvider>
+      <Wrapper>
+        <NuqsTestingAdapter>
+          <Owner forcedShow={forcedShow} />
+        </NuqsTestingAdapter>
+      </Wrapper>
+    </NavigationProvider>
   )
   const view = await render(ui())
   return { ...view, setShow: (value: boolean) => view.rerender(ui(value)) }
@@ -113,7 +114,6 @@ const submitShortcut = () => userEvent.keyboard(`{${mod}>}{Enter}{/${mod}}`)
 
 beforeEach(async () => {
   await page.viewport(1440, 1000)
-  mocks.push.mockReset()
   mocks.track.mockReset().mockReturnValue({ promise: Promise.resolve() })
   mocks.flush.mockReset().mockReturnValue({ promise: Promise.resolve() })
   setAnalyticsConsent('granted')
@@ -139,7 +139,9 @@ it('creates the named app and keeps submission busy until navigation replaces th
   await renderModal()
   await nameInput().fill('My App')
   await createButton().click()
-  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
+  await expect
+    .poll(() => navigation.router.push.mock.calls)
+    .toEqual([['/app/created-app/workflow']])
   expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
     body: {
       name: 'My App',
@@ -168,7 +170,7 @@ it('waits for analytics completion before navigating without submitting twice', 
   await createButton().click()
   await expect.element(createButton()).toHaveAttribute('aria-disabled', 'true')
   await expect.poll(() => mocks.track.mock.calls.length).toBe(1)
-  expect(mocks.push).not.toHaveBeenCalled()
+  expect(navigation.router.push).not.toHaveBeenCalled()
   const bounds = createButton().element().getBoundingClientRect()
   await userEvent.pointer({
     keys: '[MouseLeft]',
@@ -176,7 +178,9 @@ it('waits for analytics completion before navigating without submitting twice', 
   })
   expect(fake.console.apps.post).toHaveBeenCalledOnce()
   tracking.resolve()
-  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
+  await expect
+    .poll(() => navigation.router.push.mock.calls)
+    .toEqual([['/app/created-app/workflow']])
 })
 
 it('shows the creation error while keeping the dialog available for correction', async () => {
@@ -235,7 +239,9 @@ it('creates a beginner chat app with the selected icon color through the scoped 
     .fill('Created from shortcut')
   await nameInput().click()
   await submitShortcut()
-  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/chat-app/configuration']])
+  await expect
+    .poll(() => navigation.router.push.mock.calls)
+    .toEqual([['/app/chat-app/configuration']])
   expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
     body: {
       name: 'Keyboard App',
@@ -257,7 +263,9 @@ it('restores keyboard creation after closing and reopening the outer dialog with
   await view.setShow(true)
   await nameInput().fill('Reopened App')
   await submitShortcut()
-  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
+  await expect
+    .poll(() => navigation.router.push.mock.calls)
+    .toEqual([['/app/created-app/workflow']])
   expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
     body: expect.objectContaining({ name: 'Reopened App' }),
   })
@@ -290,7 +298,9 @@ it('submits the final selected app type after switching between advanced and beg
       ],
     ])
   // Wait for the post-create navigation so it cannot land in the next test.
-  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
+  await expect
+    .poll(() => navigation.router.push.mock.calls)
+    .toEqual([['/app/created-app/workflow']])
 })
 
 it('keeps an in-flight create request single-submission until it succeeds', async () => {
@@ -306,9 +316,9 @@ it('keeps an in-flight create request single-submission until it succeeds', asyn
   })
   await pending.arrived
   expect(fake.console.apps.post).toHaveBeenCalledOnce()
-  expect(mocks.push).not.toHaveBeenCalled()
+  expect(navigation.router.push).not.toHaveBeenCalled()
   pending.resolve(
     createAppDetailFixture({ id: 'slow-app', mode: 'advanced-chat', maintainer: 'user-1' }),
   )
-  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/slow-app/workflow']])
+  await expect.poll(() => navigation.router.push.mock.calls).toEqual([['/app/slow-app/workflow']])
 })

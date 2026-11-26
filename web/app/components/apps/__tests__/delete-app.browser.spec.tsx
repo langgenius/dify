@@ -15,16 +15,11 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
 import { installFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { AppACLPermission } from '@/utils/permission'
 import { List } from '../list'
 
 vi.unmock('react-i18next')
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/apps',
-  useSearchParams: () => new URLSearchParams(),
-}))
 // The contract requires UUID app ids; derive a stable one from each readable key.
 const uuidFor = (key: string) =>
   `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
@@ -85,16 +80,19 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
       enable_learn_app: false,
     },
   })
+  const { NavigationProvider } = createTestNavigation({ url: '/apps' })
   const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter>
-        <I18nextProvider i18n={i18n}>
-          <div className="flex h-screen flex-col">
-            <List />
-          </div>
-        </I18nextProvider>
-      </NuqsTestingAdapter>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsTestingAdapter>
+          <I18nextProvider i18n={i18n}>
+            <div className="flex h-screen flex-col">
+              <List />
+            </div>
+          </I18nextProvider>
+        </NuqsTestingAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
   await expect.element(screen.getByRole('list', { name: 'All Apps' })).toBeVisible()
   const actions = (listName: string, name: string) =>
@@ -177,7 +175,9 @@ it.each(['pointer', 'keyboard'] as const)(
       } else {
         trigger.element().focus()
         await userEvent.keyboard('{Enter}')
-        await expect.element(screen.getByRole('menu')).toBeVisible()
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'Open Sidebar Web App', exact: true }))
+          .toHaveFocus()
         await userEvent.keyboard('{End}')
         await expect
           .element(screen.getByRole('menuitem', { name: 'Delete', exact: true }))

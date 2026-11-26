@@ -114,6 +114,8 @@ it('dismisses only the inner picker with Escape and starts a fresh search after 
   await input.fill('missing')
   await expect.element(page.getByText('common.noData')).toBeVisible()
   await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('missing')
+  await expect.element(page.getByText('common.noData')).toBeVisible()
   expect(onSubmit).not.toHaveBeenCalled()
   await userEvent.keyboard('{Escape}')
   await expect.element(input).not.toBeInTheDocument()
@@ -148,6 +150,7 @@ it('removes a highlighted stale result during remote search and selects the new 
   await input.fill('sales')
   await expect.element(page.getByRole('option')).not.toBeInTheDocument()
   await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('sales')
   expect(onSelect).not.toHaveBeenCalled()
   expect(onSubmit).not.toHaveBeenCalled()
   await expect

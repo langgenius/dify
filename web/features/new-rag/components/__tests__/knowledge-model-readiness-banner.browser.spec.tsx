@@ -3,12 +3,8 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { KnowledgeModelReadinessBanner } from '../knowledge-model-readiness-banner'
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/datasets/new/space-1/documents',
-  useSearchParams: () => new URLSearchParams('status=failed'),
-}))
 
 const allCapabilities = {
   deep: true,
@@ -35,11 +31,16 @@ const readiness = (
 
 async function renderBanner(capability?: 'index') {
   const { wrapper: QueryProvider } = createConsoleQueryWrapper()
+  const { NavigationProvider } = createTestNavigation({
+    url: '/datasets/new/space-1/documents?status=failed',
+  })
   return render(
-    <QueryProvider>
-      <KnowledgeModelReadinessBanner capability={capability} knowledgeSpaceId="space-1" />
-      <button type="button">After readiness</button>
-    </QueryProvider>,
+    <NavigationProvider>
+      <QueryProvider>
+        <KnowledgeModelReadinessBanner capability={capability} knowledgeSpaceId="space-1" />
+        <button type="button">After readiness</button>
+      </QueryProvider>
+    </NavigationProvider>,
   )
 }
 

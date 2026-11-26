@@ -7,10 +7,9 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DatasetACLPermission } from '@/utils/permission'
 import Datasets from '../datasets'
-
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 // Dataset routes take UUID path parameters; names stay readable for the accessible queries.
 const datasetId = (name: string) =>
@@ -68,10 +67,12 @@ async function setup(ids: string[]) {
   })
   onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets' })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <Catalog />
     </QueryClientTestProvider>,
+    { wrapper: NavigationProvider },
   )
   const open = async (id: string) => {
     const link = screen.getByRole('link', { name: id, exact: true })
@@ -105,7 +106,7 @@ describe('Classic dataset deletion', () => {
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Usage check failed' }),
     )
     await open('Alpha')
-    await expect.element(screen.getByRole('alert')).toBeVisible()
+    await expect.element(screen.getByRole('alert')).toHaveTextContent('Usage check failed')
     expect(fake.console.datasets.byDatasetId.delete).not.toHaveBeenCalled()
     await screen.getByRole('button', { name: 'common.operation.retry' }).click()
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
@@ -165,7 +166,7 @@ describe('Classic dataset deletion', () => {
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
-    await expect.element(screen.getByRole('alert')).toBeVisible()
+    await expect.element(screen.getByRole('alert')).toHaveTextContent('Failed')
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect.element(screen.getByRole('region')).toHaveFocus()

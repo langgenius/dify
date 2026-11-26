@@ -8,10 +8,9 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { route, setupFakeApi } from '@/test/fake-api'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
-
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/apps' }))
 
 const MIB = 1024 * 1024
 const pixel = Uint8Array.from(
@@ -30,12 +29,15 @@ async function openFileDefaults(payload: InputVar, limits: Partial<UploadConfig>
     consoleQuery.files.upload.get.queryKey(),
     createFileUploadConfigFixture(limits),
   )
+  const { NavigationProvider } = createTestNavigation({ url: '/apps' })
   const onConfirm = vi.fn<(value: InputVar, moreInfo?: MoreInfo) => void>()
   await render(
-    <Query>
-      <AppToaster />
-      <ConfigModal isShow supportFile payload={payload} onClose={vi.fn()} onConfirm={onConfirm} />
-    </Query>,
+    <NavigationProvider>
+      <Query>
+        <AppToaster />
+        <ConfigModal isShow supportFile payload={payload} onClose={vi.fn()} onConfirm={onConfirm} />
+      </Query>
+    </NavigationProvider>,
   )
   return onConfirm
 }

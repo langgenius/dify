@@ -51,7 +51,15 @@ vi.mock('@/service/share', () => ({
   fetchAccessToken: (...args: unknown[]) => fetchAccessTokenMock(...args),
 }))
 
-vi.mock('@/service/webapp-auth', () => webAppAuthMocks)
+vi.mock('@/service/webapp-auth', () => ({
+  setWebAppAccessToken: webAppAuthMocks.setWebAppAccessToken,
+  setWebAppPassport: webAppAuthMocks.setWebAppPassport,
+}))
+
+vi.mock('@/service/common', () => ({
+  webAppLoginStatus: webAppAuthMocks.webAppLoginStatus,
+  webAppLogout: webAppAuthMocks.webAppLogout,
+}))
 
 describe('Splash', () => {
   beforeEach(() => {
@@ -295,6 +303,39 @@ describe('Splash', () => {
     expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
     expect(navigationMocks.replace).not.toHaveBeenCalled()
     expect(screen.queryByText('share application')).not.toBeInTheDocument()
+  })
+
+  it('should show the server message when login status fails with an HTTP error', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.webAppLoginStatus.mockRejectedValue(
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'Web App is under maintenance',
+      }),
+    )
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    expect(await screen.findByText('Web App is under maintenance')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '503' })).toBeInTheDocument()
+    expect(screen.queryByText('share.common.appUnknownError')).not.toBeInTheDocument()
+  })
+
+  it('should show the generic unavailable copy when login status fails without a response', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.webAppLoginStatus.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    expect(await screen.findByText('share.common.appUnknownError')).toBeInTheDocument()
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument()
   })
 
   it('should keep authentication and block initialization when the passport policy service is unavailable', async () => {

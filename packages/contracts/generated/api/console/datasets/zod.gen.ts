@@ -230,6 +230,13 @@ export const zDocumentBatchDownloadZipPayload = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * GenerateSummaryPayload
  */
 export const zGenerateSummaryPayload = z.object({
@@ -2600,10 +2607,7 @@ export const zPostDatasetsByDatasetIdDocumentsDownloadZipPath = z.object({
 /**
  * ZIP archive downloaded successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = zBinaryFileResponse
 
 export const zPostDatasetsByDatasetIdDocumentsGenerateSummaryBody = zGenerateSummaryPayload
 

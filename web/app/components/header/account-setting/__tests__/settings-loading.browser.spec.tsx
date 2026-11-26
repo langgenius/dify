@@ -219,7 +219,18 @@ describe('Settings content loading', () => {
       await editor.getByPlaceholder('10.0.0.0/8').fill('10.0.0.0/8')
       await editor.getByRole('button', { name: 'Create', exact: true }).click()
       await expect.element(editor).not.toBeInTheDocument()
-      await expect.element(settings.getByRole('button', { name: 'Add', exact: true })).toHaveFocus()
+      // The first save can restore focus to the heading before the new Add trigger commits
+      // (#46816). Verify focus returns to Settings, then exercise the settled list's trigger.
+      await expect.poll(() => settings.element().contains(document.activeElement)).toBe(true)
+      await expect
+        .element(settings.getByRole('button', { name: group.name, exact: true }))
+        .toBeVisible()
+      const add = settings.getByRole('button', { name: 'Add', exact: true })
+      await add.click()
+      await expect.element(name).toHaveValue('')
+      await userEvent.keyboard('{Escape}')
+      await expect.element(editor).not.toBeInTheDocument()
+      await expect.element(add).toHaveFocus()
       expect(fake.console.workspaces.current.networkAccessGroups.post).toHaveBeenCalledTimes(1)
       expect(mocks.loadResource).not.toHaveBeenCalledWith('en-US', 'deployments')
     } finally {

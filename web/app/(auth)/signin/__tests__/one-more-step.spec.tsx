@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { createHttpError } from '@/service/http-error'
 import OneMoreStep from '../one-more-step'
 
 vi.mock('@/next/navigation', () => ({
@@ -59,6 +61,48 @@ describe('OneMoreStep', () => {
           timezone: 'Asia/Shanghai',
         },
       })
+    })
+  })
+
+  describe('Submission failure', () => {
+    it.each([
+      {
+        name: 'the invitation code message for an invalid code',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_invitation_code',
+          message: 'Invalid invitation code.',
+        }),
+        expected: 'login.invalidInvitationCode',
+      },
+      {
+        name: 'the server message for another failure',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'account_already_inited',
+          message: 'Server says why',
+        }),
+        expected: 'Server says why',
+      },
+      {
+        name: 'a generic message without a server message',
+        error: new TypeError('Failed to fetch'),
+        expected: 'common.api.actionFailed',
+      },
+    ])('should show $name', async ({ error, expected }) => {
+      const toastError = vi.spyOn(toast, 'error')
+      mockSubmitOneMoreStep.mockRejectedValueOnce(error)
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      onTestFinished(() => queryClient.clear())
+      render(
+        <QueryClientProvider client={queryClient}>
+          <OneMoreStep />
+        </QueryClientProvider>,
+      )
+
+      await user.type(screen.getByRole('textbox', { name: 'login.invitationCode' }), '{Enter}')
+
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith(expected))
+      expect(mockReplace).not.toHaveBeenCalled()
     })
   })
 })
