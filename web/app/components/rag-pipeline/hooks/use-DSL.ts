@@ -28,13 +28,15 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       if (!pipelineId) return false
 
       let syncFailed = false
+      let syncError: unknown
       await doSyncWorkflowDraft(undefined, {
-        onError: () => {
+        onError: (error) => {
           syncFailed = true
+          syncError = error
         },
       })
       if (syncFailed) {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+        toast.error(getRequestErrorMessage(syncError) ?? t(($) => $.exportFailed, { ns: 'app' }))
         return false
       }
 

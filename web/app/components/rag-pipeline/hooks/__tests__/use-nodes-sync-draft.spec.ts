@@ -4,6 +4,7 @@ import { act } from '@testing-library/react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
@@ -90,8 +91,16 @@ const draftNotSyncError = () =>
     status: 409,
   })
 
+const draftUnavailableError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
+  )
+const toastError = vi.spyOn(toast, 'error')
+
 describe('useNodesSyncDraft', () => {
   beforeEach(() => {
+    toastError.mockClear()
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1_704_067_200 })
   })
 
@@ -292,4 +301,33 @@ describe('useNodesSyncDraft', () => {
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(refreshes)
     },
   )
+
+  it('shows the server message when an autosave fails', async () => {
+    mockSyncWorkflowDraft.mockRejectedValueOnce(draftUnavailableError())
+    const { result } = renderPipelineDraftSync()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft()
+    })
+
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable')
+  })
+
+  it.each([
+    { scenario: 'an out-of-date draft', error: draftNotSyncError, callbacks: undefined },
+    {
+      scenario: 'a caller that handles the failure',
+      error: draftUnavailableError,
+      callbacks: { onError: vi.fn() },
+    },
+  ])('does not show a toast for $scenario', async ({ error, callbacks }) => {
+    mockSyncWorkflowDraft.mockRejectedValueOnce(error())
+    const { result } = renderPipelineDraftSync()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, callbacks)
+    })
+
+    expect(toastError).not.toHaveBeenCalled()
+  })
 })
