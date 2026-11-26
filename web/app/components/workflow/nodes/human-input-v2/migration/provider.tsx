@@ -7,13 +7,14 @@ import { useTranslation } from 'react-i18next'
 import { useNodes, useStoreApi } from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesMetaData } from '@/app/components/workflow/hooks/use-nodes-meta-data'
-import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import {
   useWorkflowHistory,
   WorkflowHistoryEvent,
 } from '@/app/components/workflow/hooks/use-workflow-history'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { ENABLE_HITL_IM } from '@/config'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { syncHumanInputDraft } from '../../human-input/shared/sync-draft'
 import { HumanInputMigrationContext } from './context'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from './executor'
@@ -62,7 +63,7 @@ const ActiveHumanInputMigrationProvider = ({
   const nodes = useNodes() as Node[]
   const store = useStoreApi()
   const collaborativeWorkflow = useCollaborativeWorkflow()
-  const { doSyncWorkflowDraft } = useScheduleDraftSave()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { nodesMap } = useNodesMetaData()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -90,6 +91,8 @@ const ActiveHumanInputMigrationProvider = ({
   )
 
   const migration = useMutation({
+    // The dialog shows migration failures.
+    meta: { errorToast: false },
     mutationFn: () =>
       executeHumanInputV2Migration({
         getGraph: () => {
@@ -122,7 +125,8 @@ const ActiveHumanInputMigrationProvider = ({
   }
   const result = migration.data
   const error = migration.isError
-    ? t(($) => $['nodes.humanInputMigration.error.preflight'], { ns: 'workflow' })
+    ? (getRequestErrorMessage(migration.error) ??
+      t(($) => $['nodes.humanInputMigration.error.preflight'], { ns: 'workflow' }))
     : result?.status === 'blocked'
       ? (() => {
           const blocker = result.blockers[0]

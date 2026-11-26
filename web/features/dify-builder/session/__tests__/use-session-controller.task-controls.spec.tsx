@@ -104,7 +104,7 @@ it('stops planning through the independent JSON endpoint while the first respons
       params: { session_id: 'session-1' },
       body: { base_version: 4, client_action_id: expect.any(String) },
     },
-    { context: { silent: true }, signal: expect.any(AbortSignal) },
+    { signal: expect.any(AbortSignal) },
   )
   expect(api.create.mock.calls[0]![1].signal.aborted).toBe(true)
   expect(api.stop.mock.calls[0]![1].signal.aborted).toBe(false)
@@ -165,7 +165,7 @@ it('saves pause-period changes before reading the latest version and resuming th
         client_action_id: expect.any(String),
       },
     },
-    { context: { silent: true }, signal: expect.any(AbortSignal) },
+    { signal: expect.any(AbortSignal) },
   )
   expect(store.get(difyBuilderTaskControlAtom)).toBeNull()
   expect(store.get(difyBuilderDraftAtom)).toBe('Keep this unsent draft')

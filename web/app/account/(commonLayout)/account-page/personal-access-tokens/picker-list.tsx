@@ -4,10 +4,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { noop } from 'es-toolkit/function'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getRequestErrorMessage } from '@/service/http-error'
 import PickerPagination from './picker-pagination'
 
 type PickerListQuery = ComponentProps<typeof PickerPagination>['query'] &
-  Pick<UseInfiniteQueryResult, 'isPending' | 'isError' | 'refetch'>
+  Pick<UseInfiniteQueryResult, 'isPending' | 'isError' | 'error' | 'refetch'>
 
 const feedbackClassName = 'flex min-h-40 flex-col items-center justify-center gap-1 text-center'
 const messageClassName = 'system-xs-regular text-text-tertiary'
@@ -57,7 +58,9 @@ export default function PickerList({
       )}
       {loadFailed && (
         <div role="alert" className={feedbackClassName}>
-          <p className={messageClassName}>{labels.loadError}</p>
+          <p className={messageClassName}>
+            {getRequestErrorMessage(query.error) ?? labels.loadError}
+          </p>
           <p className={messageClassName}>
             {t(($) => $['resourceAccessToken.selectionPreservedError'])}
           </p>

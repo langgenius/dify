@@ -42,10 +42,9 @@ from core.dify_builder.contract import (
     TestResultCard,
     TestResultStatus,
 )
-from core.dify_builder.errors import ConflictError, DraftWouldNotStartError, HashMismatchError, NotFoundError
+from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, NotFoundError
 from core.dify_builder.input_schema import SYSTEM_QUERY, schema_hash, start_schema, validate_runtime_inputs
 from core.dify_builder.models import (
-    CONFIRMED_TOOL_ACTION,
     Actor,
     ApplyResult,
     ChangeSet,
@@ -71,9 +70,8 @@ from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import BuilderPresentation, BuilderText, copy_text, stored_text, text_parts
-from services.dify_builder.application.execution_policy import BuilderExecutionRefusal
 from services.dify_builder.application.runner import Env, Handler, StepResult
-from services.dify_builder.application.testdata import mock_input_business_context, stamp_testdata_http_fixtures
+from services.dify_builder.application.testdata import mock_input_business_context
 from services.dify_builder.application.verification import (
     SUCCESS_REPLY,
     has_output_blocker,
@@ -103,7 +101,6 @@ __all__ = [
     "append_item",
     "build_change_set",
     "build_form_fields",
-    "confirmed_tool_test",
     "dead_end_branch_node_id",
     "decode_checklist_errors",
     "drop_unapplied_repair",
@@ -123,7 +120,6 @@ __all__ = [
     "handle_propose",
     "handle_publish",
     "handle_verify",
-    "is_confirmed_tool_turn",
     "is_input_failure",
     "merge_known_keys",
     "mint_checkpoint",
@@ -168,142 +164,6 @@ UNKNOWN_OUTCOME_STUCK_BODY = copy_text(BuilderCopyId.REPLIES_THE_TEST_S_OUTCOME_
 CONFIRMED_COMPLETED_REPLY = copy_text(BuilderCopyId.CONFIRMED_COMPLETED)
 _DUPLICATE_LAUNCH_REASONS = frozenset({"execution_already_launched", "execution_already_claimed"})
 CONFIRMED_NOT_COMPLETED_REPLY = copy_text(BuilderCopyId.CONFIRMED_NOT_COMPLETED)
-
-
-def is_confirmed_tool_turn(turn: Turn, fc: DifyBuilderContext) -> bool:
-    """True only for the server-reserved confirmed command of this session; any other refuses.
-
-    Model text, plan approval and resource binding cannot create this action;
-    the default path never passes a consent reference to the port.
-    """
-    action = turn.action
-    if action is None or action.kind != CONFIRMED_TOOL_ACTION:
-        return False
-    if not fc.confirmed_consent_id or not fc.confirmed_command_id or action.command_id != fc.confirmed_command_id:
-        raise ConflictError("dify_builder: confirmed command is not reserved for this session")
-    return True
-
-
-def confirmed_tool_test(
-    env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, review_state: PcState, step_prefix: str
-) -> StepResult:
-    """(working) Run the reserved confirmed Tool test once with the saved approved input.
-
-    No mock inputs, no repair, no retry and no post-run diagnosis or model
-    call: the outcome is deterministic status metadata and returns to the
-    mode's existing review/decision state with the new Run. The pending
-    consent/command reference is cleared in this terminal commit; the durable
-    consent and Run records keep the IDs.
-    """
-    run_step = f"{step_prefix}-run-confirmed-test"
-    progress = ProgressReporter.for_session(
-        emit=env.emit_progress,
-        operation_id=env.operation_id,
-        session=s,
-        reply_language=fc.reply_language,
-        stage_id=str(s.current_state),
-        steps=[
-            (
-                f"{step_prefix}-prepare-confirmed-test",
-                copy_text(BuilderCopyId.PROGRESS_PREPARE_THE_CONFIRMED_TOOL_TEST),
-            ),
-            (run_step, copy_text(BuilderCopyId.PROGRESS_RUN_CONFIRMED_TOOL_TEST)),
-            (
-                f"{step_prefix}-record-confirmed-test",
-                copy_text(BuilderCopyId.PROGRESS_RECORD_THE_CONFIRMED_TEST_RESULT),
-            ),
-        ],
-    )
-    progress.activate(f"{step_prefix}-prepare-confirmed-test")
-    consent_id, command_id = fc.confirmed_consent_id, fc.confirmed_command_id
-    fc.confirmed_consent_id = ""
-    fc.confirmed_command_id = ""
-    fc.diagnosis = None
-    fc.staged_repair = []
-    saved: TestInput | None = None
-    if fc.test_input_ref:
-        try:
-            saved = env.repo.get_test_input(fc.test_input_ref)
-        except NotFoundError:
-            saved = None
-    progress.activate(run_step)
-
-    def emit(event: NodeEvent) -> None:
-        progress.observe_node(run_step, NodeEvent(node_id=event.node_id, status=event.status, run_id=event.run_id))
-
-    if saved is None:
-        raw = Run(
-            kind="verify",
-            status="failed",
-            execution_refusal=BuilderExecutionRefusal(reason_code="test_input_binding_mismatch"),
-        )
-    else:
-        try:
-            raw = env.dify.run_draft(
-                s.app_id,
-                turn.actor,
-                dict(saved.inputs),
-                emit,
-                session_id=s.id,
-                test_input_id=saved.id,
-                on_workflow_event=env.emit_workflow,
-                confirmed_consent_id=consent_id,
-                command_id=command_id,
-            )
-        except Exception as exc:
-            # The type name only: provider and credential text never reach logs or cards.
-            logger.warning(
-                "dify_builder confirmed tool test returned no run (session=%s, command=%s, error=%s)",
-                s.id,
-                command_id,
-                type(exc).__name__,
-            )
-            raw = Run(kind="verify", status="running")
-    refusal = raw.execution_refusal
-    if refusal is not None and refusal.reason_code in _DUPLICATE_LAUNCH_REASONS:
-        # Another delivery owns this command's launch: commit nothing for this one.
-        raise ConflictError("dify_builder: confirmed command was already launched")
-    verification = raw.verification
-    if verification is not None:
-        verification = replace(verification, terminal_outputs=None)
-    run = Run(
-        execution_refusal=raw.execution_refusal,
-        id=str(uuid.uuid4()),
-        session_id=s.id,
-        verification=verification,
-        kind="verify",
-        dify_run_id=raw.dify_run_id,
-        status=raw.status,
-        per_node=[NodeOutput(node_id=node.node_id, status=node.status) for node in raw.per_node],
-        error="",
-        inputs_ref=saved.id if saved is not None else fc.test_input_ref,
-        immutable=True,
-    )
-    fc.verify_run_id = run.id
-    if fc.business_acceptance_contract:
-        # Confirmed content is already redacted. Annotation cannot justify any
-        # new graph I/O after the effect or discard the completed native Run.
-        revision = run.verification.execution_revision if run.verification else ""
-        record_run_acceptance(s, fc, run, saved, None, revision)
-    card = result_card(run, reply_language=fc.reply_language)
-    if card.outcome == "execution_succeeded_needs_review":
-        progress.complete(run_step)
-        reply = CONFIRMED_COMPLETED_REPLY
-    else:
-        progress.fail_step(run_step)
-        reply = CONFIRMED_NOT_COMPLETED_REPLY
-    progress.activate(f"{step_prefix}-record-confirmed-test")
-    items = append_card(fc, card)
-    items += append_assistant(
-        env,
-        s,
-        fc,
-        reply,
-        execution=progress.finish(),
-        cards=["test_result"],
-        turn_id=progress.operation_id,
-    )
-    return StepResult(next=review_state, context=fc, items=items, run=run, run_id_sink=[run.id])
 
 
 def note_unknown_outcome(fc: DifyBuilderContext) -> bool:
@@ -1243,7 +1103,6 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
 def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Prepare inputs for the verify run. Port of
     ``handlers_fix.go:176``."""
-    http_fixtures = stamp_testdata_http_fixtures(env.dify, app_id=s.app_id, turn=turn)
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     mode, _ = action_string(turn, "mode")
@@ -1280,7 +1139,6 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         source=_mode_or_default(mode),
         inputs=inputs,
         start_schema_hash=schema_hash(schema),
-        http_fixtures=http_fixtures,
     )
     env.repo.save_test_input(ti)
     fc.test_input_ref = ti.id
@@ -1292,8 +1150,6 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     to ``fix.await_decision`` on pass or graph failure; Chatflow input
     failures return to ``fix.await_testdata``. Never touches the original
     failed run. Port of ``handlers_fix.go:206``."""
-    if is_confirmed_tool_turn(turn, fc):
-        return confirmed_tool_test(env, turn, s, fc, review_state=PcState.FIX_AWAIT_DECISION, step_prefix="fix")
     if not fc.test_input_ref:
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))

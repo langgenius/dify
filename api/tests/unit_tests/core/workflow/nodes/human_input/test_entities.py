@@ -25,8 +25,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
+from core.app.apps.advanced_chat.generate_task_pipeline import (
+    AdvancedChatAppGenerateTaskPipeline,
+    ConversationSnapshot,
+    MessageSnapshot,
+    WorkflowSnapshot,
+)
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     DIFY_RUN_CONTEXT_KEY,
     AdvancedChatAppGenerateEntity,
@@ -83,6 +90,7 @@ from core.workflow.nodes.human_input.enums import (
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import build_system_variables
+from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine.filter import EngineEventFilterContext, filter_engine_events
@@ -115,14 +123,6 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, MessageStatus
 from models.human_input import HumanInputForm
 from models.model import AppMode
-from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
-from services.workflow_runtime.chatflow_pipeline import (
-    AdvancedChatAppGenerateTaskPipeline,
-    ConversationSnapshot,
-    MessageSnapshot,
-    WorkflowSnapshot,
-)
-from services.workflow_runtime.entry import WorkflowEntry, iter_dify_graph_engine_events
 from tests.helpers.unit.model_factories import make_account, make_message, make_tenant
 
 

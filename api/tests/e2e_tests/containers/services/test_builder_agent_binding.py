@@ -20,18 +20,24 @@ from models.account import Tenant
 from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.workflow import Workflow
-from services.agent import access_service
-from services.dify_builder.native_testing.agent_binding import (
+from services.dify_builder import agent_access as access_service
+from services.dify_builder.agent_binding import (
     AgentBindingSelection,
     AgentBindingService,
 )
-from services.dify_builder.native_testing.agent_catalog import AgentCatalogService, project_published_agent
+from services.dify_builder.agent_catalog import AgentCatalogService, project_published_agent
 from tests.builder_agent_fixtures import add_agent
-from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import NativeOwner
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared fixture
 )
+
+
+def _require_instance[T](value: object, expected: type[T]) -> T:
+    """Assert the actual ORM/payload class at a positive test boundary."""
+    assert isinstance(value, expected)
+    return value
+
 
 type BindingCase = tuple[sessionmaker[Session], Actor, str, AgentBindingSelection]
 
@@ -56,7 +62,7 @@ def test_real_catalog_filters_publication_tenant_and_actor_before_pagination(
 ) -> None:
     factory, actor, workflow_id, selection = binding_case
     with factory.begin() as session:
-        workflow = require_instance(session.get(Workflow, workflow_id), Workflow)
+        workflow = _require_instance(session.get(Workflow, workflow_id), Workflow)
         unpublished, _ = add_agent(session, tenant_id=actor.tenant_id, name="Unpublished", published=False)
         archived, _ = add_agent(session, tenant_id=actor.tenant_id, name="Archived", status=AgentStatus.ARCHIVED)
         hidden, _ = add_agent(session, tenant_id=actor.tenant_id, name="Actor inaccessible")
@@ -76,7 +82,7 @@ def test_real_catalog_filters_publication_tenant_and_actor_before_pagination(
         result = AgentCatalogService(session).list_candidates(
             tenant_id=actor.tenant_id,
             actor_id=actor.account_id,
-            app_id=require_instance(workflow, Workflow).app_id,
+            app_id=_require_instance(workflow, Workflow).app_id,
             query=None,
             limit=1,
         )
@@ -84,7 +90,7 @@ def test_real_catalog_filters_publication_tenant_and_actor_before_pagination(
         unpaginated = AgentCatalogService(session).list_candidates(
             tenant_id=actor.tenant_id,
             actor_id=actor.account_id,
-            app_id=require_instance(workflow, Workflow).app_id,
+            app_id=_require_instance(workflow, Workflow).app_id,
             query=None,
         )
         assert [candidate.agent_id for candidate in unpaginated] == [selection.agent_id]
@@ -97,14 +103,14 @@ def test_draft_graph_and_native_binding_rollback_together(binding_case: BindingC
     factory, actor, workflow_id, selection = binding_case
     with factory() as session:
         assert session is not None
-        original_graph = require_instance(session.get(Workflow, workflow_id), Workflow).graph
+        original_graph = _require_instance(session.get(Workflow, workflow_id), Workflow).graph
 
     class AbortError(Exception):
         pass
 
     with pytest.raises(AbortError):  # noqa: PT012 - verify transaction rollback on abort
         with factory.begin() as session:
-            workflow = require_instance(session.get(Workflow, workflow_id), Workflow)
+            workflow = _require_instance(session.get(Workflow, workflow_id), Workflow)
             service = AgentBindingService(session)
             data = service.prepare_node(
                 actor=actor,
@@ -125,7 +131,7 @@ def test_draft_graph_and_native_binding_rollback_together(binding_case: BindingC
             raise AbortError()
     with factory() as session:
         assert session is not None
-        assert require_instance(session.get(Workflow, workflow_id), Workflow).graph == original_graph
+        assert _require_instance(session.get(Workflow, workflow_id), Workflow).graph == original_graph
         assert (
             session.scalar(
                 select(WorkflowAgentNodeBinding.id).where(WorkflowAgentNodeBinding.workflow_id == workflow_id)
@@ -137,7 +143,7 @@ def test_draft_graph_and_native_binding_rollback_together(binding_case: BindingC
 def test_publication_pointer_cannot_change_between_prepare_and_native_sync(binding_case: BindingCase) -> None:
     factory, actor, workflow_id, selection = binding_case
     with factory.begin() as session:
-        old = require_instance(session.get(AgentConfigSnapshot, selection.snapshot_id), AgentConfigSnapshot)
+        old = _require_instance(session.get(AgentConfigSnapshot, selection.snapshot_id), AgentConfigSnapshot)
         assert old is not None
         replacement = AgentConfigSnapshot(
             tenant_id=actor.tenant_id, agent_id=selection.agent_id, version=2, config_snapshot=old.config_snapshot
@@ -158,7 +164,7 @@ def test_publication_pointer_cannot_change_between_prepare_and_native_sync(bindi
             )
 
     with factory.begin() as session:
-        workflow = require_instance(session.get(Workflow, workflow_id), Workflow)
+        workflow = _require_instance(session.get(Workflow, workflow_id), Workflow)
         service = AgentBindingService(session)
         data = service.prepare_node(
             actor=actor, workflow=workflow, node_id="review", selection=selection, node_job=WorkflowNodeJobConfig()
@@ -179,7 +185,7 @@ def test_publication_pointer_cannot_change_between_prepare_and_native_sync(bindi
     with factory() as session:
         assert session is not None
         assert (
-            require_instance(session.get(Agent, selection.agent_id), Agent).active_config_snapshot_id
+            _require_instance(session.get(Agent, selection.agent_id), Agent).active_config_snapshot_id
             == selection.snapshot_id
         )
         binding = session.scalar(

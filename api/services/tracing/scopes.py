@@ -49,11 +49,9 @@ class TraceScopes:
         policy: AppTraceSettings,
         user_id: str | None,
         correlation: TraceCorrelation,
-        external_tracing_disabled: bool = False,
     ) -> TraceScope | None:
-        """Use the admitted execution policy; restricted scopes retain only enterprise telemetry."""
-        external_enabled = not external_tracing_disabled and policy.enabled and policy.tracing_provider is not None
-        if not (external_enabled or self._enterprise_enabled()):
+        """The scope of an execution whose app policy the caller holds; ``None`` when nobody consumes it."""
+        if not ((policy.enabled and policy.tracing_provider is not None) or self._enterprise_enabled()):
             return None
         return TraceScope(
             emitter=self._emitter,
@@ -61,7 +59,6 @@ class TraceScopes:
             app_id=app_id,
             user_id=user_id,
             correlation=correlation,
-            external_tracing_disabled=external_tracing_disabled,
         )
 
     def for_app(

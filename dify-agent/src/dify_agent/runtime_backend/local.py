@@ -11,9 +11,7 @@ import logging
 import posixpath
 import re
 import shlex
-from dataclasses import dataclass, field
-
-import httpx2 as httpx
+from dataclasses import dataclass
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientFactory
@@ -38,12 +36,23 @@ from dify_agent.runtime_backend.shellctl import (
     run_shellctl_control_command,
 )
 
-from shellctl.client.sdk import ShellctlClient, ShellctlClientError
-from shellctl.shared.schemas import NativeScopeHandle, NativeScopeSpec
-
 _SAFE_REF_PART = re.compile(r"^[A-Za-z0-9._-]+$")
 _BINDING_REF_SEPARATOR = ":"
 logger = logging.getLogger(__name__)
+
+_RESTORE_HOME_SNAPSHOT_SCRIPT = """\
+import os
+import subprocess
+import sys
+
+snapshot_dir, home_dir = sys.argv[1:]
+try:
+    os.lstat(snapshot_dir)
+except FileNotFoundError:
+    print('home_snapshot_missing')
+else:
+    subprocess.run(['cp', '-a', snapshot_dir + '/.', home_dir + '/'], check=True)
+"""
 
 
 @dataclass(slots=True)
@@ -141,11 +150,12 @@ class LocalExecutionBindingBackend:
             f"mkdir -p {shlex.quote(workspace_dir)}" if creates_workspace else f"test -d {shlex.quote(workspace_dir)}"
         )
         setup = ["set -eu"]
-        if snapshot_dir is not None:
-            setup.append(f"test -d {shlex.quote(snapshot_dir)}")
         setup.extend([workspace_setup, f"mkdir -p {shlex.quote(home_dir)}"])
         if snapshot_dir is not None:
-            setup.append(f"cp -a {shlex.quote(snapshot_dir)}/. {shlex.quote(home_dir)}/")
+            setup.append(
+                f"python3 -c {shlex.quote(_RESTORE_HOME_SNAPSHOT_SCRIPT)} "
+                f"{shlex.quote(snapshot_dir)} {shlex.quote(home_dir)}"
+            )
         setup.append(f"chmod 700 {shlex.quote(home_dir)} {shlex.quote(workspace_dir)}")
         script = "\n".join(setup)
         lease = self._control_lease(binding_ref)
@@ -153,6 +163,8 @@ class LocalExecutionBindingBackend:
             result = await run_shellctl_control_command(lease.commands, script)
             if result.exit_code != 0:
                 raise BindingCreateError(result.output)
+            if snapshot_dir is not None and result.output.strip() == "home_snapshot_missing":
+                logger.warning("Local Home Snapshot %r is missing; starting with an empty Home", spec.home_snapshot_ref)
             return ExecutionBindingAllocation(binding_ref=binding_ref, workspace_ref=workspace_ref)
         except BaseException as exc:
             targets = [home_dir]
@@ -318,53 +330,4 @@ async def _close_best_effort(lease: ShellctlRuntimeLease, *, resource_ref: str) 
         logger.warning("failed to close local RuntimeLease", exc_info=True, extra={"resource_ref": resource_ref})
 
 
-__all__ = ["LocalExecutionBindingBackend", "LocalHomeSnapshotBackend", "LocalNativeScopeClient"]
-
-
-@dataclass(slots=True)
-class LocalNativeScopeClient:
-    """Private native scope transport. Lost scopes are never recreated by inspect."""
-
-    endpoint: str
-    auth_token: str = field(repr=False)
-
-    async def _request(
-        self, method: str, path: str, *, generation: int | None = None, spec: NativeScopeSpec | None = None
-    ) -> dict[str, object]:
-        headers = {"Authorization": f"Bearer {self.auth_token}"}
-        if generation is not None:
-            headers["X-Scope-Generation"] = str(generation)
-        async with httpx.AsyncClient(base_url=self.endpoint, follow_redirects=False, timeout=15.0) as client:
-            response = await client.request(
-                method, path, headers=headers, json=spec.model_dump(mode="json") if spec else None
-            )
-        if response.status_code not in (200, 201):
-            raise ShellctlClientError(response.status_code, "native_scope_unavailable", "Native scope request failed")
-        result: object = response.json()
-        if not isinstance(result, dict):
-            raise ShellctlClientError(502, "native_scope_invalid_response", "Invalid native scope response")
-        return result
-
-    async def create(self, spec: NativeScopeSpec) -> NativeScopeHandle:
-        handle = NativeScopeHandle.model_validate(await self._request("POST", "/v1/test-scopes", spec=spec))
-        if handle.scope_id != spec.scope_id or handle.generation != spec.generation:
-            raise ShellctlClientError(502, "native_scope_identity_mismatch", "Scope identity mismatch")
-        return handle
-
-    async def inspect(self, scope_id: str, generation: int) -> NativeScopeHandle:
-        scope_id = _validated_ref_part(scope_id)
-        handle = NativeScopeHandle.model_validate(
-            await self._request("GET", f"/v1/test-scopes/{scope_id}", generation=generation)
-        )
-        if handle.scope_id != scope_id or handle.generation != generation:
-            raise ShellctlClientError(502, "native_scope_identity_mismatch", "Scope identity mismatch")
-        return handle
-
-    async def destroy(self, scope_id: str, generation: int) -> None:
-        scope_id = _validated_ref_part(scope_id)
-        result = await self._request("DELETE", f"/v1/test-scopes/{scope_id}", generation=generation)
-        if result.get("status") != "destroyed":
-            raise ShellctlClientError(502, "native_scope_cleanup_unconfirmed", "Scope cleanup is unconfirmed")
-
-    def job_client(self, handle: NativeScopeHandle) -> ShellctlClient:
-        return ShellctlClient(base_url=self.endpoint, token=self.auth_token, native_scope=handle)
+__all__ = ["LocalExecutionBindingBackend", "LocalHomeSnapshotBackend"]

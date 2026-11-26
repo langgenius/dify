@@ -441,5 +441,6 @@ def forbid_secret_and_business_calls(monkeypatch: pytest.MonkeyPatch) -> list[st
     import core.tools.tool_manager as tool_manager_module
 
     for attribute in ("create_provider_encrypter", "create_tool_provider_encrypter"):
-        monkeypatch.setattr(tool_manager_module, attribute, _forbidden(f"tool_manager.{attribute}"))
+        if hasattr(tool_manager_module, attribute):
+            monkeypatch.setattr(tool_manager_module, attribute, _forbidden(f"tool_manager.{attribute}"))
     return calls

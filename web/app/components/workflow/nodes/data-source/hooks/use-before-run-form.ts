@@ -9,13 +9,14 @@ import {
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { selectDatasourceSingleRun } from '@/app/components/rag-pipeline/utils/query-select'
+import { toastRequestError } from '@/app/query-error-toast'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { lastRunQueryKey } from '@/service/workflow-queries'
 import { TransferMethod } from '@/types/app'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
-import { useScheduleDraftSave } from '../../../hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '../../../hooks/use-nodes-sync-draft'
 import { NodeRunningStatus } from '../../../types'
 
 const useBeforeRunForm = ({
@@ -103,7 +104,13 @@ const useBeforeRunForm = ({
     }
 
     // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(resource, nodeId)
+    let vars: Awaited<ReturnType<typeof fetchNodeInspectVars>>
+    try {
+      vars = await fetchNodeInspectVars(resource, nodeId)
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(nodeId, vars, nodes)
@@ -202,7 +209,7 @@ const useBeforeRunForm = ({
     )
   }
 
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleRunWithSyncDraft = () => {
     setNodeRunning()

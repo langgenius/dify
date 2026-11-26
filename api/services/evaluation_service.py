@@ -1016,7 +1016,7 @@ class EvaluationService:
 
     @staticmethod
     def _extract_llm_context_node_mapping(workflow: Workflow | None) -> dict[str, list[str]]:
-        """Capture retrieval sources explicitly configured as each LLM node's context."""
+        """Keep the legacy source-node mapping for evaluation tasks already in flight."""
         if workflow is None:
             return {}
         mapping: dict[str, list[str]] = {}
@@ -1029,6 +1029,27 @@ class EvaluationService:
             selector = context_config.get("variable_selector")
             if isinstance(selector, list) and selector and isinstance(selector[0], str):
                 mapping[node_id] = [selector[0]]
+        return mapping
+
+    @staticmethod
+    def _extract_llm_context_selector_mapping(workflow: Workflow | None) -> dict[str, list[str]]:
+        """Capture enabled LLM context selectors from the pinned workflow.
+
+        A selector names the source node and output; later scoring reads that
+        exact output, including a text output from another LLM node.
+        """
+        if workflow is None:
+            return {}
+        mapping: dict[str, list[str]] = {}
+        for node_id, node_data in workflow.walk_nodes():
+            if node_data.get("type") != "llm":
+                continue
+            context_config = node_data.get("context")
+            if not isinstance(context_config, Mapping) or not context_config.get("enabled"):
+                continue
+            selector = context_config.get("variable_selector")
+            if isinstance(selector, list) and len(selector) >= 2 and all(isinstance(part, str) for part in selector):
+                mapping[node_id] = selector
         return mapping
 
     # ---- Evaluation Run Management ----
@@ -1181,6 +1202,7 @@ class EvaluationService:
             customized_metrics=pinned_run_request.customized_metrics,
             judgment_config=pinned_run_request.judgment_config,
             llm_context_node_mapping=cls._extract_llm_context_node_mapping(target_workflow),
+            llm_context_selector_mapping=cls._extract_llm_context_selector_mapping(target_workflow),
             input_list=items,
         )
 
@@ -1300,6 +1322,7 @@ class EvaluationService:
             customized_metrics=run_request.customized_metrics,
             judgment_config=run_request.judgment_config,
             llm_context_node_mapping=cls._extract_llm_context_node_mapping(pinned_workflow),
+            llm_context_selector_mapping=cls._extract_llm_context_selector_mapping(pinned_workflow),
             input_list=items,
         )
 
@@ -2625,11 +2648,11 @@ class EvaluationService:
         :raises ValueError: If the target itself is invalid or missing.
         :raises EvaluationWorkflowVersionNotFoundError: If the pinned published version was deleted.
         """
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         from core.app.entities.app_invoke_entities import InvokeFrom
         from core.evaluation.runners import get_service_account_for_app, get_service_account_for_snippet
         from services.workflow_execution_identity import build_workflow_execution_identity
         from services.workflow_run_agg import WorkflowRunAgg
-        from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
         if target_type == EvaluationTargetType.SNIPPETS.value:
             from services.snippet_generate_service import SnippetGenerateService

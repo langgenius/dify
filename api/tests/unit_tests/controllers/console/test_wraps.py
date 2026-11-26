@@ -874,11 +874,22 @@ class TestEditionChecks:
         def evaluation_view():
             return "evaluation_success"
 
-        config_overrides(DEPLOYMENT_EDITION=edition)
+        config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=True)
 
         assert evaluation_view() == "evaluation_success"
 
-    def test_evaluation_edition_required_rejects_community(self) -> None:
+    @pytest.mark.parametrize(
+        ("edition", "enabled"),
+        [
+            (DeploymentEdition.COMMUNITY, True),
+            (DeploymentEdition.ENTERPRISE, False),
+            (DeploymentEdition.CLOUD, False),
+        ],
+    )
+    def test_evaluation_edition_required_rejects_unavailable_deployments(
+        self, config_overrides: Callable[..., None], edition: DeploymentEdition, enabled: bool
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=enabled)
         app = Flask(__name__)
 
         @evaluation_edition_required
@@ -960,7 +971,7 @@ class TestBillingPaidPlanRequired:
 
     @pytest.mark.parametrize("plan", ["professional", "team"])
     def test_evaluation_guard_allows_cloud_paid_plan(self, config_overrides: Callable[..., None], plan: str) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
 
         @evaluation_paid_plan_required
         def evaluation_view() -> str:
@@ -981,7 +992,7 @@ class TestBillingPaidPlanRequired:
         get_workspace_plan.assert_called_once_with("tenant123")
 
     def test_evaluation_guard_rejects_cloud_sandbox(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
 
         @evaluation_paid_plan_required
         def evaluation_view() -> str:
@@ -1005,7 +1016,7 @@ class TestBillingPaidPlanRequired:
         assert exc_info.value.error_code == "paid_plan_required"
 
     def test_evaluation_guard_skips_billing_for_enterprise(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_EVALUATION=True)
 
         @evaluation_paid_plan_required
         def evaluation_view() -> str:
@@ -1023,7 +1034,7 @@ class TestBillingPaidPlanRequired:
             assert evaluation_view() == "allowed"
 
     def test_evaluation_guard_fails_closed_on_billing_error(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
 
         @evaluation_paid_plan_required
         def evaluation_view() -> str:
@@ -1045,7 +1056,7 @@ class TestBillingPaidPlanRequired:
         assert exc_info.value.code == 503
 
     def test_evaluation_guard_serves_documented_paid_plan_error(self, config_overrides: Callable[..., None]) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
         app = Flask(__name__)
         blueprint = Blueprint("evaluation_plan_guard", __name__, url_prefix="/check")
         api = ExternalApi(blueprint)

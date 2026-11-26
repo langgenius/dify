@@ -62,7 +62,7 @@ export function AppCreationFlow({ children, onCreateTemplate }: AppCreationFlowP
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const setPendingCreation = useSetAtom(difyBuilderPendingCreationAtom)
   const { mutateAsync: createApp } = useMutation(
-    consoleQuery.apps.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.post.mutationOptions({ meta: { errorToast: false } }),
   )
   const [starter, setStarter] = useState<{ mode: PromptAppMode; open: boolean } | null>(null)
   const [showQuota, setShowQuota] = useState(false)

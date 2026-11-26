@@ -10,7 +10,7 @@ import { useWorkflowStore } from '../store'
 import { BlockEnum, ControlMode } from '../types'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
-import { useScheduleDraftSave } from './use-schedule-draft-save'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
@@ -19,7 +19,7 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
   const workflowStore = useWorkflowStore()
   const workflow = useCollaborativeWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { t } = useTranslation(['workflow'])
 

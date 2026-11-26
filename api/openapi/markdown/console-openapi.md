@@ -368,6 +368,25 @@ Get account avatar url
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /accounts/{account_id}/avatars/{file_id}
+**Serve an account's assigned raster avatar to an authenticated Console account**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| account_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Avatar image | **image/bmp**: binary<br>**image/gif**: binary<br>**image/jpeg**: binary<br>**image/png**: binary<br>**image/webp**: binary<br> |
+| 304 | Avatar image has not changed |  |
+| 404 | Avatar file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /activate
 **Accept an invitation without letting an existing session act for another account**
 
@@ -832,6 +851,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
+**Return the Agent's effective shared configuration without creating a draft**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -847,6 +868,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/composer
+**Save the shared draft and return the committed state with validation findings**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -869,6 +892,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer/candidates
+**Return mention candidates from tenant-scoped configuration and workspace tools**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -884,6 +909,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/composer/validate
+**Check publish rules for the supplied configuration and report findings without writing**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -906,6 +933,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -923,6 +952,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -946,6 +977,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files/batch
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -969,6 +1002,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/files/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -987,6 +1022,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1005,6 +1042,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1023,6 +1062,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/manifest
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1040,6 +1081,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1057,6 +1100,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/skills/upload
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1080,6 +1125,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/skills/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1098,6 +1145,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1116,6 +1165,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/content
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1132,6 +1183,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1151,6 +1204,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1170,6 +1225,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/inspect
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1188,6 +1245,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
+**Copy an admitted roster Agent App and render its committed private detail**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1371,6 +1430,8 @@ Get Agent App message details by ID
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
+**Publish the current shared draft and return the committed version and draft metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1391,6 +1452,7 @@ Get Agent App message details by ID
 | 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
@@ -2382,6 +2444,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2401,6 +2465,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2426,6 +2492,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files/batch
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2451,6 +2519,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/files/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2471,6 +2541,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2491,6 +2563,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2511,6 +2585,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/manifest
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2530,6 +2606,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2549,6 +2627,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/skills/upload
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2574,6 +2654,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/skills/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2594,6 +2676,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2614,6 +2698,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/content
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2631,6 +2717,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2652,6 +2740,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2673,6 +2763,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/inspect
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2870,6 +2962,12 @@ Batch import annotations from CSV file with rate limiting and security checks
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -4819,16 +4917,9 @@ Get draft workflow for an application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft
-**Save the graph and explicit environment-variable patches**
+**Sync draft workflow**
 
-Save draft graph and environment patches; initialize configuration for new drafts
-Existing draft
-features and conversation variables are owned by their dedicated endpoints;
-the submitted snapshots only initialize a new draft. Legacy clients that
-edit configuration through this POST must use those dedicated endpoints.
-
-Empty initialization or clearing requires force=true;
-an already-empty draft may be saved with its current hash without force.
+Sync draft workflow configuration
 
 #### Parameters
 
@@ -4849,8 +4940,8 @@ an already-empty draft may be saved with its current hash without force.
 | 200 | Draft workflow synced successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
 | 400 | Invalid workflow configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | App owner not found for draft initialization | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Draft hash changed or multiple draft workflows require repair | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/conversation-variables
@@ -5109,6 +5200,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5126,6 +5219,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5150,6 +5245,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5166,6 +5263,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5190,6 +5289,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5212,6 +5313,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5236,6 +5339,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5869,7 +5974,6 @@ Restore a published workflow version into the draft workflow
 | 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Multiple draft workflows require repair | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{resource_id}/api-keys
@@ -6723,7 +6827,7 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | ZIP archive downloaded successfully |  |
+| 200 | ZIP archive downloaded successfully | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
@@ -8097,98 +8201,6 @@ Delete an API key for a dataset
 | 409 | Session conflict | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /dify-builder/sessions/{session_id}/real-call-consents
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| session_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [DifyBuilderPrepareRealCallPayload](#difybuilderpreparerealcallpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Real call consent prepared for review | **application/json**: [DifyBuilderRealCallConsentResponse](#difybuilderrealcallconsentresponse)<br> |
-| 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Access refused | **application/json**: [DifyBuilderRealCallForbiddenResponse](#difybuilderrealcallforbiddenresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Session not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Real call refused | **application/json**: [DifyBuilderRealCallRefusalResponse](#difybuilderrealcallrefusalresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /dify-builder/sessions/{session_id}/real-call-consents/{consent_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| consent_id | path |  | Yes | string |
-| session_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Current real call consent receipt | **application/json**: [DifyBuilderRealCallConsentResponse](#difybuilderrealcallconsentresponse)<br> |
-| 403 | Access refused | **application/json**: [DifyBuilderRealCallForbiddenResponse](#difybuilderrealcallforbiddenresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Consent not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Real call refused | **application/json**: [DifyBuilderRealCallRefusalResponse](#difybuilderrealcallrefusalresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /dify-builder/sessions/{session_id}/real-call-consents/{consent_id}/confirm
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| consent_id | path |  | Yes | string |
-| session_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [DifyBuilderConfirmRealCallPayload](#difybuilderconfirmrealcallpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Saved decision receipt | **application/json**: [DifyBuilderRealCallConsentResponse](#difybuilderrealcallconsentresponse)<br> |
-| 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Access refused | **application/json**: [DifyBuilderRealCallForbiddenResponse](#difybuilderrealcallforbiddenresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Consent not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Real call refused | **application/json**: [DifyBuilderRealCallRefusalResponse](#difybuilderrealcallrefusalresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /dify-builder/sessions/{session_id}/real-call-consents/{consent_id}/execute
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| consent_id | path |  | Yes | string |
-| session_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [DifyBuilderExecuteRealCallPayload](#difybuilderexecuterealcallpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 202 | Current receipt of the reserved real call | **application/json**: [DifyBuilderRealCallConsentResponse](#difybuilderrealcallconsentresponse)<br> |
-| 400 | Invalid request | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Access refused | **application/json**: [DifyBuilderRealCallForbiddenResponse](#difybuilderrealcallforbiddenresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Consent not found | **application/json**: [DifyBuilderErrorResponse](#difybuildererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Real call refused | **application/json**: [DifyBuilderRealCallRefusalResponse](#difybuilderrealcallrefusalresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /dify-builder/sessions/{session_id}/resume
 #### Parameters
 
@@ -8755,6 +8767,12 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -13825,6 +13843,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13842,6 +13862,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13866,6 +13888,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13881,6 +13905,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13905,6 +13931,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13926,6 +13954,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13950,6 +13980,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14659,6 +14691,12 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -17465,6 +17503,12 @@ performs no writes or provider I/O. Storage failures propagate normally.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"bundle"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -18664,7 +18708,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft Skill zip archive |  |
+| 200 | Draft Skill zip archive | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
@@ -26891,25 +26935,6 @@ The same safe availability projection after App-scoped admission.
 | pending | boolean |  | Yes |
 | session | [DifyBuilderSessionViewResponse](#difybuildersessionviewresponse) |  | No |
 
-#### DifyBuilderConfirmRealCallPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| at_version | integer |  | Yes |
-| decision | string, <br>**Available values:** "confirm", "decline" | *Enum:* `"confirm"`, `"decline"` | Yes |
-| idempotency_key | string |  | Yes |
-| scope_digest | string |  | Yes |
-
-#### DifyBuilderConsoleForbiddenResponse
-
-Console permission-guard denial as serialized by the shared console HTTP error handler.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| code | string |  | Yes |
-| message | string |  | Yes |
-| status | integer |  | Yes |
-
 #### DifyBuilderConversationItemAppendedEventData
 
 | Name | Type | Description | Required |
@@ -27073,14 +27098,6 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | reason_code | string |  | No |
 | recoverable | boolean |  | No |
 
-#### DifyBuilderExecuteRealCallPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| at_version | integer |  | Yes |
-| idempotency_key | string |  | Yes |
-| scope_digest | string |  | Yes |
-
 #### DifyBuilderExecutionActivityResponse
 
 | Name | Type | Description | Required |
@@ -27241,17 +27258,6 @@ Builder is not enabled for the workspace (the shared ``dify_builder_required`` g
 | payload | [PreflightContextCard](#preflightcontextcard) |  | Yes |
 | seq | integer |  | Yes |
 
-#### DifyBuilderPrepareRealCallPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| at_version | integer |  | Yes |
-| base_app_revision | string |  | Yes |
-| credential_id | string |  | Yes |
-| idempotency_key | string |  | Yes |
-| node_id | string |  | Yes |
-| test_input_id | string |  | Yes |
-
 #### DifyBuilderProgressEventData
 
 | Name | Type | Description | Required |
@@ -27300,86 +27306,6 @@ Complete observed activity state before subsequent live progress deltas.
 | operation_id | string |  | Yes |
 | revision | integer |  | Yes |
 | session_id | string |  | Yes |
-
-#### DifyBuilderRealCallConsentResponse
-
-Current or saved receipt of one real-call consent.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| at_version | integer |  | Yes |
-| business_claimed | boolean |  | Yes |
-| can_retry | boolean | Whether a new consent may be prepared; always false once a launch is reserved or claimed | Yes |
-| command_id | string |  | Yes |
-| consent_id | string |  | Yes |
-| disclosure | [DifyBuilderRealCallDisclosureResponse](#difybuilderrealcalldisclosureresponse) |  | Yes |
-| execution_request_id | string |  | Yes |
-| native_node_execution_id | string |  | Yes |
-| native_run_id | string |  | Yes |
-| reason_code | string | Fixed server reason code; never provider text | Yes |
-| refresh_claimed | boolean |  | Yes |
-| result | string, <br>**Default:** receipt |  | Yes |
-| scope_digest | string |  | Yes |
-| state | string, <br>**Available values:** "claimed", "completed", "confirmed", "declined", "expired", "failed", "invalidated", "prepared", "unknown" | Consent lifecycle state. 'unknown' is final: a claimed call whose real effect could not be confirmed. It is bounded by the disclosed limits of one native attempt and at most one token refresh, is never replayed automatically, and any further real call needs a new human-approved consent<br>*Enum:* `"claimed"`, `"completed"`, `"confirmed"`, `"declined"`, `"expired"`, `"failed"`, `"invalidated"`, `"prepared"`, `"unknown"` | Yes |
-
-#### DifyBuilderRealCallDisclosureResponse
-
-The approved public disclosure of one real Tool call; no credential revision or secret.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| action | string |  | Yes |
-| automatic_replay | boolean |  | Yes |
-| credential_alias | string |  | Yes |
-| credential_id | string |  | Yes |
-| credential_type | string |  | Yes |
-| data_description | string |  | Yes |
-| expires_at | dateTime |  | Yes |
-| identity_basis | string | The alias names a workspace credential, not a verified remote account identity | Yes |
-| include_attachments | boolean |  | Yes |
-| include_body | boolean |  | Yes |
-| message_id | string |  | Yes |
-| monetary_estimate | string |  | Yes |
-| native_attempt_limit | integer |  | Yes |
-| oauth_refresh | string | One OAuth token refresh request is made only if the stored access token must be refreshed before the call; otherwise no refresh request is sent | Yes |
-| oauth_refresh_method | string |  | Yes |
-| oauth_refresh_url | string |  | Yes |
-| output_retention | string |  | Yes |
-| prior_uncertain_consent_id | string |  | No |
-| quota_usage | string |  | Yes |
-| refresh_limit | integer |  | Yes |
-| remote_account_status | string |  | Yes |
-| request_method | string |  | Yes |
-| request_url | string |  | Yes |
-| response_format | string |  | Yes |
-
-#### DifyBuilderRealCallForbiddenResponse
-
-Every HTTP 403 body a real-call consent route can return.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DifyBuilderRealCallForbiddenResponse | [DifyBuilderRealCallPermissionRefusalResponse](#difybuilderrealcallpermissionrefusalresponse)<br>[DifyBuilderFeatureUnavailableResponse](#difybuilderfeatureunavailableresponse)<br>[DifyBuilderConsoleForbiddenResponse](#difybuilderconsoleforbiddenresponse) | Every HTTP 403 body a real-call consent route can return. |  |
-
-#### DifyBuilderRealCallPermissionRefusalResponse
-
-Execution permission refused after ownership was established; nothing foreign is disclosed.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| code | string |  | Yes |
-| reason_code | string |  | Yes |
-| result | string |  | Yes |
-
-#### DifyBuilderRealCallRefusalResponse
-
-Sanitized refusal of a real-call consent operation; carries fixed codes only.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "conflict", "needs_permission", "needs_setup", "unavailable_metadata", "unsupported_action" | *Enum:* `"conflict"`, `"needs_permission"`, `"needs_setup"`, `"unavailable_metadata"`, `"unsupported_action"` | Yes |
-| reason_code | string, <br>**Available values:** "command_lineage_changed", "consent_already_claimed", "consent_decision_conflict", "consent_expired", "consent_invalidated", "consent_not_confirmed", "consent_not_prepared", "consent_scope_changed", "consent_scope_mismatch", "credential_binding_mismatch", "credential_policy_refused", "credential_provider_mismatch", "credential_reference_unavailable", "credential_required", "execution_already_launched", "idempotency_conflict", "installed_tool_unavailable", "invalid_graph_metadata", "invalid_node_configuration", "needs_setup", "real_call_unavailable", "session_busy", "session_conflict", "session_state_unavailable", "stale_app_revision", "stale_consent_version", "stale_execution_revision", "stale_session_version", "test_input_binding_mismatch", "unsafe_message_id", "unsupported_action", "unsupported_default_output", "unsupported_external_tracing", "unsupported_features", "unsupported_graph", "unsupported_input_value", "unsupported_node_configuration", "unsupported_node_implementation", "unsupported_node_retry", "unsupported_selector", "unsupported_session_state", "unsupported_start_input", "unsupported_test_input", "unsupported_tool_configuration", "unsupported_tool_node", "unsupported_tool_parameters", "unsupported_variables", "unsupported_workflow" | *Enum:* `"command_lineage_changed"`, `"consent_already_claimed"`, `"consent_decision_conflict"`, `"consent_expired"`, `"consent_invalidated"`, `"consent_not_confirmed"`, `"consent_not_prepared"`, `"consent_scope_changed"`, `"consent_scope_mismatch"`, `"credential_binding_mismatch"`, `"credential_policy_refused"`, `"credential_provider_mismatch"`, `"credential_reference_unavailable"`, `"credential_required"`, `"execution_already_launched"`, `"idempotency_conflict"`, `"installed_tool_unavailable"`, `"invalid_graph_metadata"`, `"invalid_node_configuration"`, `"needs_setup"`, `"real_call_unavailable"`, `"session_busy"`, `"session_conflict"`, `"session_state_unavailable"`, `"stale_app_revision"`, `"stale_consent_version"`, `"stale_execution_revision"`, `"stale_session_version"`, `"test_input_binding_mismatch"`, `"unsafe_message_id"`, `"unsupported_action"`, `"unsupported_default_output"`, `"unsupported_external_tracing"`, `"unsupported_features"`, `"unsupported_graph"`, `"unsupported_input_value"`, `"unsupported_node_configuration"`, `"unsupported_node_implementation"`, `"unsupported_node_retry"`, `"unsupported_selector"`, `"unsupported_session_state"`, `"unsupported_start_input"`, `"unsupported_test_input"`, `"unsupported_tool_configuration"`, `"unsupported_tool_node"`, `"unsupported_tool_parameters"`, `"unsupported_variables"`, `"unsupported_workflow"` | Yes |
-| result | string, <br>**Default:** refusal |  | Yes |
 
 #### DifyBuilderReasoningEventData
 
@@ -41339,6 +41265,7 @@ with every node that writes `NodeRunResult.metadata`.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| continue_agent_session | boolean, <br>**Default:** true | Reuse this node's Agent history and working resources across messages in the same Chatflow chat. | No |
 | declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
@@ -41346,6 +41273,7 @@ with every node that writes `NodeRunResult.metadata`.
 | output_routes | [WorkflowOutputRoutes](#workflowoutputroutes) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
+| session_generation | string | Server-managed session generation. Empty preserves the scope of legacy Chatflow nodes. | No |
 | workflow_prompt | string |  | No |
 
 #### WorkflowNodeJobMetadata

@@ -13,7 +13,7 @@ from models.dataset import Dataset, DatasetPermission, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, PermissionEnum, TagType
 from models.model import Tag, TagBinding
 from services.dify_builder.agent import resources
-from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
+from services.dify_builder.agent_catalog import AgentCatalogService
 from services.enterprise.rbac_service import RBACService
 from services.rbac.contracts import ResourceWhitelistResources
 from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase

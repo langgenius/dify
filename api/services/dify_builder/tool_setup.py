@@ -11,7 +11,7 @@ never reads these descriptions or stores a readiness Boolean on the node.
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from services.tools.draft_tool_setup import (
+from services.dify_builder.tool_declarations import (
     ToolDeclaration,
     inventory_tool_nodes,
     selected_credential_is_available,

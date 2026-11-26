@@ -34,12 +34,9 @@ from models.workflow import (
     WorkflowNodeExecutionOffload,
     WorkflowRun,
 )
-from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
-from tests.helpers.unit.config_override import apply_config_overrides
 
 GRAPH: Graph = {
     "nodes": [
@@ -79,11 +76,6 @@ class FullRunCase:
     native_finish: Callable[[WorkflowServiceDifyPort, str, str, dict[str, object], str], tuple[Run, object]]
 
 
-def prepared_agent_context() -> BuilderAgentExecutionContext:
-    return BuilderAgentExecutionContext(
-        ref=NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64),
-        native_run_id=str(uuid4()),
-    )
 
 
 def _actor() -> Actor:
@@ -144,7 +136,6 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
         _environment_variables="{}",
         _conversation_variables="{}",
     )
-    apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_RUN_ENABLED=True)
     finished = Run(
         status="succeeded",
         dify_run_id="native-1",
@@ -162,7 +153,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
         patch.object(dify_port, "resolve_account", return_value=account),
         patch.object(dify_port, "load_app", return_value=app),
         patch.object(dify_port, "_load_draft_workflow_or_raise", return_value=draft),
-        patch.object(dify_port.AppGenerateService, "generate") as generate,
+        patch.object(WorkflowServiceDifyPort, "_start_draft_debugger") as generate,
     ):
         generate.return_value = {"data": {"id": "native-1", "status": "succeeded"}}
         state = FullRunCase(
@@ -181,7 +172,6 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
 
 def _run(
     harness: FullRunCase,
-    confirmation: Mapping[str, str] | None = None,
     inputs: dict[str, object] | None = None,
     test_input_id: str = "ti-1",
     *,
@@ -199,7 +189,6 @@ def _run(
         lambda _event: None,
         session_id=harness.ids["session"],
         test_input_id=harness.ids["input"] if test_input_id == "ti-1" else test_input_id,
-        effect_confirmation=confirmation,
         on_workflow_event=on_workflow_event,
     )
 

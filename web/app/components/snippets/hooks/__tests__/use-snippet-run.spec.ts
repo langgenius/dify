@@ -54,11 +54,34 @@ const mockStopWorkflowRun = vi
   .fn()
   .mockImplementation(async () => Response.json({ result: 'success' }))
 
-const mockSsePost = vi.fn()
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: unknown[]) => mockSsePost(...args),
   request: (...args: unknown[]) => mockStopWorkflowRun(...args),
 }))
+
+const mockStreamEvents = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/event-stream').streamEvents>(),
+)
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: mockStreamEvents,
+}))
+
+const mockRunSnippetDraft = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'snippets.bySnippetId.workflows.draft.run.post': mockRunSnippetDraft,
+    }),
+  }
+})
+
+const streamRequestOptions = {
+  signal: new AbortController().signal,
+  context: { stream: true },
+} as const
 
 type SnippetRun = ReturnType<typeof useSnippetRun>
 type RunOptions = NonNullable<Parameters<SnippetRun['handleRun']>[1]>
@@ -109,7 +132,7 @@ const startRun = async (run: SnippetRun, callback?: RunOptions) => {
   await act(async () => {
     await run.handleRun(RUN_PAYLOAD, callback)
   })
-  return mockSsePost.mock.calls.at(-1)![2] as Required<RunOptions>
+  return mockStreamEvents.mock.calls.at(-1)![1] as Required<RunOptions>
 }
 
 describe('useSnippetRun', () => {
@@ -216,7 +239,7 @@ describe('useSnippetRun', () => {
         selected: false,
         _runningStatus: undefined,
       })
-      expect(mockSsePost).not.toHaveBeenCalled()
+      expect(mockStreamEvents).not.toHaveBeenCalled()
 
       await act(async () => {
         pending.resolve()
@@ -227,10 +250,14 @@ describe('useSnippetRun', () => {
         historyWorkflowData: undefined,
         workflowRunningData: { result: { status: WorkflowRunningStatus.Running }, tracing: [] },
       })
-      expect(mockSsePost).toHaveBeenCalledExactlyOnceWith(
-        '/snippets/snippet-1/workflows/draft/run',
-        { body: RUN_PAYLOAD },
+      expect(mockStreamEvents).toHaveBeenCalledExactlyOnceWith(
+        expect.any(Function),
         expect.any(Object),
+      )
+      await mockStreamEvents.mock.calls[0]![0](streamRequestOptions)
+      expect(mockRunSnippetDraft).toHaveBeenCalledExactlyOnceWith(
+        { params: { snippet_id: 'snippet-1' }, body: RUN_PAYLOAD },
+        streamRequestOptions,
       )
     })
 

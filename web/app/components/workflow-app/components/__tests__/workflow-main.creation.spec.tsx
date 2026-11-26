@@ -1,6 +1,5 @@
 import type { DifyBuilderStreamEventResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ReactNode } from 'react'
-import type { WorkflowDraftRefreshResult } from '../../draft/use-draft-refresh'
 import type { consoleClient } from '@/service/console'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -69,7 +68,7 @@ const mocks = vi.hoisted(() => ({
     >(),
   session: vi.fn<BuilderSessions['bySessionId']['get']>(),
   conversation: vi.fn(),
-  refreshDraft: vi.fn(async (): Promise<WorkflowDraftRefreshResult> => 'refreshed'),
+  refreshDraft: vi.fn(async (): Promise<boolean> => true),
   getNodes: () => [{ id: 'start-placeholder', data: { type: 'start-placeholder' } }],
   getEdges: () => [],
 }))
@@ -131,6 +130,7 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
     isEnabled: mocks.collaborative,
     isConnected: mocks.graphReady,
     onlineUsers: [],
+    cursors: {},
     startCursorTracking: () => {},
     stopCursorTracking: () => {},
   }),
@@ -172,6 +172,7 @@ vi.mock('@/service/console', async (importOriginal) => ({
         workflows: {
           draft: {
             post: mocks.syncWorkflowDraft,
+            get: async () => ({ hash: 'initial-hash', graph: { nodes: [], edges: [] } }),
           },
         },
       },
@@ -195,10 +196,10 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
   useSetWorkflowVarsWithValue: () => ({}),
 }))
-vi.mock('../../draft/use-draft-graph-for-canvas', () => ({
+vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
   useWorkflowDraftGraphForCanvas: () => ({}),
 }))
-vi.mock('../../draft/use-draft-refresh', () => ({
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mocks.refreshDraft }),
 }))
 vi.mock('../../hooks/use-workflow-run', () => ({ useWorkflowRunByCanEdit: () => ({}) }))
@@ -261,11 +262,12 @@ describe('Workflow creation with App Builder', () => {
     workflowStore.setState({
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'initial-hash',
+      syncWorkflowDraftIsEmpty: true,
       setShowDifyBuilderPanel: mocks.setShowPanel,
     })
     mocks.refreshDraft.mockImplementation(async () => {
       workflowStore.getState().setWorkflowDraftSyncPhase('idle')
-      return 'refreshed'
+      return true
     })
     mocks.conversation.mockResolvedValue({
       data: [],

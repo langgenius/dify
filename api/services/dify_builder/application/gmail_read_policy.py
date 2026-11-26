@@ -300,10 +300,10 @@ def admit_get_message_workflow(snapshot: RestrictedAdmissionSnapshot) -> GmailRe
     Class identity and version resolve before class-owned data validation, and
     the raw workflow/feature restrictions are the restricted policy's own.
     """
+    from core.workflow.node_factory import resolve_workflow_node_class
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.start.start_node import StartNode
     from graphon.nodes.tool.tool_node import ToolNode
-    from services.workflow_runtime.node_factory import resolve_workflow_node_class
 
     admit_raw_execution_metadata(snapshot)
     graph = snapshot.graph

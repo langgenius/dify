@@ -11,7 +11,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 
 if TYPE_CHECKING:
-    from runtime_contracts.workflow_driver import WorkflowRunDriver
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 
 class PluginToolBackwardsInvocation(BaseBackwardsInvocation):

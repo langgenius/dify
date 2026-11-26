@@ -68,7 +68,6 @@ from .dify_builder import (
 )
 from .dify_builder_cognition_policy import DifyBuilderCognitionPolicy
 from .dify_builder_material import DifyBuilderMaterial
-from .dify_builder_native_code import NativeCodePhysicalOperation
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -195,7 +194,6 @@ from .model import (
     Site,
     Tag,
     TagBinding,
-    TenantCreditPool,
     TraceAppConfig,
     TrialApp,
     UploadFile,
@@ -432,7 +430,6 @@ __all__ = [
     "MessageChain",
     "MessageFeedback",
     "MessageFile",
-    "NativeCodePhysicalOperation",
     "OAuthAccessToken",
     "OperationLog",
     "PermissionEnum",
@@ -461,7 +458,6 @@ __all__ = [
     "Tenant",
     "TenantAccountJoin",
     "TenantAccountRole",
-    "TenantCreditPool",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
     "TenantStatus",
@@ -486,7 +482,6 @@ __all__ = [
     "WorkflowComment",
     "WorkflowCommentMention",
     "WorkflowCommentReply",
-    "WorkflowDraftCoordination",
     "WorkflowKind",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
@@ -513,4 +508,3 @@ from .dify_builder_native_tests import (  # noqa: F401
     NativeTestInvocation,
     NativeTestScope,
 )
-from .workflow_draft_coordination import WorkflowDraftCoordination

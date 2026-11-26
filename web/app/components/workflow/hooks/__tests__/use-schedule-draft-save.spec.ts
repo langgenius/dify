@@ -1,12 +1,12 @@
 import { baseRunningData, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '../../types'
-import { useScheduleDraftSave } from '../use-schedule-draft-save'
+import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
-describe('useScheduleDraftSave', () => {
+describe('useNodesSyncDraft', () => {
   it('should call doSyncWorkflowDraft synchronously when sync=true', () => {
     const mockDoSync = vi.fn().mockResolvedValue(undefined)
 
-    const { result } = renderWorkflowHook(() => useScheduleDraftSave(), {
+    const { result } = renderWorkflowHook(() => useNodesSyncDraft(), {
       hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
     })
 
@@ -19,7 +19,7 @@ describe('useScheduleDraftSave', () => {
   it('should use debounced path when sync is falsy, then flush triggers doSync', () => {
     const mockDoSync = vi.fn().mockResolvedValue(undefined)
 
-    const { result, store } = renderWorkflowHook(() => useScheduleDraftSave(), {
+    const { result, store } = renderWorkflowHook(() => useNodesSyncDraft(), {
       hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
     })
 
@@ -34,7 +34,7 @@ describe('useScheduleDraftSave', () => {
   it('should do nothing when nodes are read-only (workflow running)', () => {
     const mockDoSync = vi.fn().mockResolvedValue(undefined)
 
-    const { result } = renderWorkflowHook(() => useScheduleDraftSave(), {
+    const { result } = renderWorkflowHook(() => useNodesSyncDraft(), {
       initialStoreState: {
         workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Running } }),
       },

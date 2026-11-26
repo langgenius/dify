@@ -9,6 +9,7 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from models.account import Account
@@ -18,7 +19,6 @@ from services.trigger.execution_layer import TriggerPostLayer
 from services.trigger.execution_store import TriggerExecution, TriggerExecutionStore
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
-from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
 
 class TriggerExecutionModels(Protocol):

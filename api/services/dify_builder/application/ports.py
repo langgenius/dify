@@ -47,7 +47,6 @@ from core.dify_builder.models import (
     TestInput,
 )
 from core.dify_builder.state import PcState
-from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from services.dify_builder.plan import BuildClarification, WorkflowPlan
 
 __all__ = [
@@ -224,10 +223,6 @@ class DifyPort(Protocol):
         """Return the graph and its execution revision, excluding canvas presentation."""
         ...
 
-    def stamp_http_fixtures(
-        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
-    ) -> HttpFixtureSetV1: ...
-
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         """Return the persisted app mode after actor/tenant-scoped authorization."""
         ...
@@ -259,21 +254,8 @@ class DifyPort(Protocol):
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
-        confirmed_consent_id: str | None = None,
-        command_id: str | None = None,
-        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
-        """Run the saved draft test. Both confirmed IDs ``None``: the default restricted run.
-
-        Both set: launch the server-reserved confirmed command for this
-        invocation only; the adapter reloads the reservation and refuses a
-        mismatch. Supplying exactly one is a refusal, never a fallback.
-
-        ``effect_confirmation`` (node ID -> effect signature, see
-        ``disclose_effects``) applies only when the draft takes the confirmed
-        full run: a side effect runs for real only while its signature still
-        matches, and every other side effect or destructive node is mocked.
-        """
+        """Run owned, saved inputs in the ordinary Workflow debugger."""
         ...
 
     def publish(

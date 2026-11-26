@@ -272,7 +272,7 @@ def test_additional_protected_routes_drop_scoped_exception_and_restore_ordinary_
     output = io.StringIO()
     handler = logging.StreamHandler(output)
     handler.addFilter(module.SensitiveHttpLogFilter())
-    logger = logging.getLogger("services.workflow_runtime.workflow_generator")
+    logger = logging.getLogger("core.app.apps.workflow.app_generator")
     monkeypatch.setattr(logger, "handlers", [handler])
     routes = (logger.name, "graphon.graph_engine.worker")
 

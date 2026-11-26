@@ -263,7 +263,12 @@ vi.mock('@/service/console', async (importOriginal) => {
                 queryOptions: query.workspaces.current.skills.bySkillId.get.queryOptions,
               },
               patch: {
-                mutationOptions: () => ({ mutationFn: mocks.skillMetadataMutationFn }),
+                // Keep the real cache policy: it writes the returned detail.
+                mutationOptions: (options?: object) =>
+                  actual.consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
+                    ...options,
+                    mutationFn: mocks.skillMetadataMutationFn,
+                  }),
               },
               publish: {
                 post: {

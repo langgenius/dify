@@ -937,7 +937,7 @@ class TestPersistenceLayerCases:
         def test_prepare_workflow_inputs_excludes_conversation_id(self, monkeypatch: pytest.MonkeyPatch):
             layer, _, _, _ = _make_layer()
             monkeypatch.setattr(
-                "services.workflow_runtime.entry.WorkflowEntry.handle_special_values", lambda inputs: inputs
+                "core.workflow.workflow_entry.WorkflowEntry.handle_special_values", lambda inputs: inputs
             )
             inputs = layer._prepare_workflow_inputs()
             assert "sys.conversation_id" not in inputs

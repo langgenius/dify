@@ -456,10 +456,7 @@ def _failure_reason(error: BaseException) -> FailureReason:
     from core.tools.errors import ToolProviderCredentialValidationError
     from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
     from services.enterprise.plugin_manager_service import CredentialPolicyViolationError
-    from services.tools.draft_tool_setup import DraftToolSetupError
 
-    if isinstance(error, DraftToolSetupError) and error.setup_failure is not None:
-        return ExecutionFailureReason(error.setup_failure.reason)
     if isinstance(error, CredentialPolicyViolationError):
         return (
             ExecutionFailureReason.PERMISSION_DENIED

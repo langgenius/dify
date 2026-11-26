@@ -55,14 +55,12 @@ from services.dify_builder.application.handlers_fix import (
     append_card,
     build_change_set,
     build_form_fields,
-    confirmed_tool_test,
     dead_end_branch_node_id,
     drop_unapplied_repair,
     emit_canvas,
     failure_signature,
     first_failed_node,
     input_gate_result,
-    is_confirmed_tool_turn,
     is_input_failure,
     launch_error_text,
     merge_known_keys,
@@ -82,7 +80,7 @@ from services.dify_builder.application.handlers_fix import (
     without_upload_values,
 )
 from services.dify_builder.application.runner import Env, Handler, StepResult
-from services.dify_builder.application.testdata import mock_input_business_context, stamp_testdata_http_fixtures
+from services.dify_builder.application.testdata import mock_input_business_context
 from services.dify_builder.application.verification import (
     SUCCESS_REPLY,
     has_output_blocker,
@@ -884,7 +882,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     """(waiting) On ``confirm_resources`` bind resources into plan v1 and
     snapshot the pre-build graph as the backend restore checkpoint. Transition
     to build.plan_approval."""
-    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+    from services.dify_builder.agent_binding import AgentSnapshotChanged
 
     kind = action_kind(turn)
     if kind == "rediscover_resources" and fc.resource_selection.get("refresh_required"):
@@ -1269,7 +1267,6 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     """(waiting) Prepare inputs for the live test run. mock -> schema-shaped
     generate_mock_inputs; provide/upload -> the payload's inputs dict (may carry
     file refs). Persists a TestInput and advances to build.test_and_repair."""
-    http_fixtures = stamp_testdata_http_fixtures(env.dify, app_id=s.app_id, turn=turn)
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     mode, _ = action_string(turn, "mode")
@@ -1306,7 +1303,6 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         source=mode or "upload",
         inputs=inputs,
         start_schema_hash=schema_hash(schema),
-        http_fixtures=http_fixtures,
     )
     env.repo.save_test_input(ti)
     fc.test_input_ref = ti.id
@@ -1317,8 +1313,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     """(working, auto) Live test: run the built draft with mock inputs. Success
     -> build.review. Failure -> real diagnose + propose_repair, staged for the
     build.await_repair approval gate. No auto-apply (human-gated)."""
-    if is_confirmed_tool_turn(turn, fc):
-        return confirmed_tool_test(env, turn, s, fc, review_state=PcState.BUILD_REVIEW, step_prefix="build")
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,

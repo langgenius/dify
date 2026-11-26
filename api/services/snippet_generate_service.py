@@ -26,6 +26,7 @@ from typing import Any, cast
 from sqlalchemy.orm import Session, make_transient, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
@@ -39,7 +40,6 @@ from models.workflow import Workflow, WorkflowNodeExecutionModel
 from services.snippet_service import SnippetService
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
-from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)

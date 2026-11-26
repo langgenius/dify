@@ -1,4 +1,4 @@
-import type { AgentLogItem, AgentLogStreamData, NodeTracing } from '@/types/workflow'
+import type { AgentLogItem, AgentLogStreamData } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { isWorkflowAgentToolLog } from '@/app/components/base/chat/workflow-agent-tool-activity'
@@ -62,7 +62,7 @@ export const useWorkflowAgentLog = () => {
             } else {
               current!.execution_metadata = {
                 agent_log: [item],
-              } as unknown as NodeTracing['execution_metadata']
+              } as any
             }
           }
         }),

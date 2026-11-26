@@ -2285,12 +2285,6 @@ def test_a_determinate_outcome_resets_the_unknown_outcome_count() -> None:
     assert res.context.unknown_outcome_count == 0
 
 
-def test_confirmed_build_test_uses_saved_input_without_repair_and_returns_to_review() -> None:
-    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import assert_confirmed_handler_outcome
-
-    assert_confirmed_handler_outcome("build", PcState.BUILD_TEST_AND_REPAIR, PcState.BUILD_REVIEW)
-
-
 def test_default_build_test_never_passes_consent_even_with_a_pending_reference(monkeypatch: pytest.MonkeyPatch) -> None:
     from collections.abc import Callable, Mapping
 

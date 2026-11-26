@@ -25,8 +25,8 @@ from clients.agent_backend import DifyAgentBackendRunClient
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import StreamCompletedEvent
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeSessionStore, _node
 from tests.unit_tests.services.dify_builder import test_confirmed_full_run as full_run_tests
-from tests.unit_tests.services.workflow_runtime.test_agent_node import FakeSessionStore, _node
 
 harness = full_run_tests.harness
 _bind_native_result = WorkflowServiceDifyPort._bind_run

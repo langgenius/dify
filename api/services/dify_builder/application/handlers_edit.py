@@ -49,13 +49,11 @@ from services.dify_builder.application.handlers_fix import (
     append_assistant,
     append_card,
     build_change_set,
-    confirmed_tool_test,
     dead_end_branch_node_id,
     drop_unapplied_repair,
     emit_canvas,
     first_failed_node,
     input_gate_result,
-    is_confirmed_tool_turn,
     is_input_failure,
     launch_error_text,
     merge_known_keys,
@@ -75,7 +73,7 @@ from services.dify_builder.application.handlers_fix import (
     without_endpoint_values,
 )
 from services.dify_builder.application.runner import Env, Handler, StepResult
-from services.dify_builder.application.testdata import mock_input_business_context, stamp_testdata_http_fixtures
+from services.dify_builder.application.testdata import mock_input_business_context
 from services.dify_builder.application.verification import (
     SUCCESS_REPLY,
     has_output_blocker,
@@ -701,7 +699,6 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     """(waiting) Prepare inputs for the affected-path test. mock -> schema-shaped
     generate_mock_inputs; provide/upload -> the payload's inputs dict (may carry
     file refs). Persists a TestInput and advances to edit.test_affected_paths."""
-    http_fixtures = stamp_testdata_http_fixtures(env.dify, app_id=s.app_id, turn=turn)
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
     mode, _ = action_string(turn, "mode")
@@ -738,7 +735,6 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         source=mode or "upload",
         inputs=inputs,
         start_schema_hash=schema_hash(schema),
-        http_fixtures=http_fixtures,
     )
     env.repo.save_test_input(ti)
     fc.test_input_ref = ti.id
@@ -780,8 +776,6 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     """(working, auto) Live affected-path test via run_draft. Success ->
     edit.review; failure -> real diagnose + propose_repair, staged for the
     edit.await_repair approval gate. No auto-apply (human-gated)."""
-    if is_confirmed_tool_turn(turn, fc):
-        return confirmed_tool_test(env, turn, s, fc, review_state=PcState.EDIT_REVIEW, step_prefix="edit")
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,

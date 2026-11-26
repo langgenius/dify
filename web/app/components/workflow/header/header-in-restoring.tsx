@@ -12,6 +12,7 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import {
   lastRunQueryKey,
   restoreWorkflowMutationOptions,
@@ -136,8 +137,11 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       invalidAllLastRun()
       await emitRestoreComplete(true)
       await emitWorkflowUpdate()
-    } catch {
-      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
+    } catch (error) {
+      toast.error(
+        getRequestErrorMessage(error) ??
+          t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }),
+      )
       await emitRestoreComplete(false, 'restore failed')
     } finally {
       resetWorkflowVersionHistory()

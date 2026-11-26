@@ -29,7 +29,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from services.dify_builder import service as service_module
-from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from services.dify_builder.plan import WorkflowPlan
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import (
@@ -2235,85 +2234,6 @@ def test_fixture_submit_strict_after_full_authorization(
         )
     assert "private" not in str(error.value)
     assert not enqueued
-
-
-def test_fixture_stamp_precedes_revision_and_stale_failure_is_synchronous(
-    repo: SqlDifyBuilderRepository, lock: FakeSessionLock
-) -> None:
-    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-
-    events: list[str | AppAccess] = []
-
-    def stamp(_app_id: str, _actor: Actor, **_kwargs: object) -> HttpFixtureSetV1:
-        events.append("stamp")
-        raise BuilderExecutionPolicyError("stale_http_fixtures")
-
-    def revision(*_args: object) -> Never:
-        pytest.fail("broad revision helper reached before refused fixture stamp")
-
-    service = DifyBuilderService(
-        repo,
-        lock,
-        lambda *_args: pytest.fail("enqueued stale fixture"),
-        stamp_http_fixtures_fn=stamp,
-        get_app_revision_fn=revision,
-        get_verification_identity_fn=lambda *_args: pytest.fail("publication helper reached before refused stamp"),
-        authorize_app_fn=lambda _actor, _app, access: events.append(access),
-    )
-    s = _seed_session_at(repo, PcState.FIX_AWAIT_TESTDATA)
-    with pytest.raises(BadRequestError, match="stale_http_fixtures"):
-        service.submit_action(
-            s.id,
-            _actor(),
-            Action(
-                kind="provide_testdata",
-                base_version=s.version,
-                base_app_revision="stale",
-                payload={"http_fixtures": []},
-            ),
-        )
-    assert events == [AppAccess.EDIT, AppAccess.TEST_AND_RUN, "stamp"]
-
-
-def test_fixture_submission_stamps_immutable_values_and_keeps_celery_json_safe(
-    repo: SqlDifyBuilderRepository, lock: FakeSessionLock
-) -> None:
-    from services.dify_builder.application.execution_policy import HttpFixtureSetV1
-
-    captured: list[tuple[HttpResponseFixtureV1, ...]] = []
-    enqueued: list[Action] = []
-    sample = {"node_id": "http", "status_code": 201, "content_type": "text/plain", "body": "sample"}
-    revision = "a" * 64
-
-    def stamp(
-        _app_id: str, _actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
-    ) -> HttpFixtureSetV1:
-        assert base_app_revision == revision
-        assert isinstance(fixtures, tuple)
-        assert isinstance(fixtures[0], HttpResponseFixtureV1)
-        captured.append(fixtures)
-        return HttpFixtureSetV1(execution_revision=revision, fixtures=fixtures)
-
-    service = DifyBuilderService(
-        repo,
-        lock,
-        lambda _sid, action, *_args: enqueued.append(action),
-        stamp_http_fixtures_fn=stamp,
-        get_app_revision_fn=lambda *_args: revision,
-    )
-    s = _seed_session_at(repo, PcState.FIX_AWAIT_TESTDATA)
-    service.submit_action(
-        s.id,
-        _actor(),
-        Action(
-            kind="provide_testdata",
-            base_version=s.version,
-            base_app_revision=revision,
-            payload={"http_fixtures": [sample]},
-        ),
-    )
-    assert captured[0][0].source == "user_sample"
-    assert json.loads(json.dumps(enqueued[0].payload))["http_fixtures"][0]["source"] == "user_sample"
 
 
 def test_foreign_actor_is_refused_before_fixture_decode(repo: SqlDifyBuilderRepository, lock: FakeSessionLock) -> None:

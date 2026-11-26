@@ -23,7 +23,7 @@ from core.workflow.generator.prompts.planner_prompts import (
 from core.workflow.generator.prompts.planner_prompts import (
     format_tool_catalogue_section as format_planner_tool_catalogue_section,
 )
-from services.workflow_runtime.node_factory import validate_node_config
+from core.workflow.node_factory import validate_node_config
 
 
 class TestPlannerSystemPrompt:
@@ -342,7 +342,7 @@ def _substitute_placeholders(value: _JSONValue) -> _JSONValue:
 
 def _node_config_for_snippet(node_type: str) -> dict[str, _JSONValue]:
     """Wrap one ``_NODE_SNIPPETS`` example as a node config, exactly the shape
-    ``services.workflow_runtime.node_factory.validate_node_config`` (== ``Graph.init``'s
+    ``core.workflow.node_factory.validate_node_config`` (== ``Graph.init``'s
     node-data validation, == ``services/dify_builder/preflight.py``'s check)
     takes."""
     example = {

@@ -10,14 +10,8 @@ class DraftWorkflowDeletionError(ValueError):
     pass
 
 
-class EmptyWorkflowConfirmationRequiredError(ValueError):
-    """Raised when an unconfirmed empty save would initialize or clear a draft."""
-
-
-class DuplicateDraftWorkflowError(ValueError):
-    """Historical duplicate drafts require explicit repair before any draft write."""
+class WorkflowDraftInitializationBusyError(RuntimeError):
+    """The request could not acquire the Redis lease required to create a draft."""
 
     def __init__(self) -> None:
-        super().__init__(
-            "Multiple draft workflows exist for this app. Resolve the duplicate drafts before saving or restoring."
-        )
+        super().__init__("Workflow draft initialization is busy. Please try again.")

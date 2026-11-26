@@ -12,7 +12,6 @@ from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import llm
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.cognition_model_gateway import PolicyModelInstance
-from services.tools.draft_tool_setup import DraftToolSetupError, ToolSetupReason
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
@@ -91,19 +90,6 @@ def test_policy_wrapped_provider_reason_survives_without_retry_or_secret_project
     assert records[0]["exception_type"] == "CognitionPolicyDeniedError"
     assert "private" not in json.dumps(records)
     assert "secret" not in json.dumps(records)
-
-
-def test_explicit_setup_refusal_keeps_priority_over_underlying_timeout() -> None:
-    error = DraftToolSetupError(
-        "private-token timeout",
-        reason=ToolSetupReason.CREDENTIAL_UNAVAILABLE,
-        node={"id": "tool", "data": {"provider_id": "provider", "tool_name": "action"}},
-    )
-    error.__cause__ = TimeoutError()
-    assert diagnostics.failure_reason(error) == "credential_unavailable"
-    wrapper = RuntimeError("private-token")
-    wrapper.__cause__ = error
-    assert diagnostics.failure_reason(wrapper) == "credential_unavailable"
 
 
 def test_nested_explicit_causes_preserve_known_reason_and_terminate_cycles() -> None:

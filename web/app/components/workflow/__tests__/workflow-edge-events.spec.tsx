@@ -14,6 +14,7 @@ import { useReactFlow } from 'reactflow'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
@@ -223,6 +224,22 @@ it('reports a persistent error when the final save fails', async () => {
   saveDraft.mockImplementation(async (_skipRefresh, callback) => callback?.onError?.())
   await act(async () => unmount())
   expect(toast.error).toHaveBeenCalledWith('workflow.common.draftSaveFailed', { timeout: 0 })
+})
+
+it('reports the server message when the final save fails', async () => {
+  const { saveDraft, unmount } = renderSubject({
+    initialStoreState: { isWorkflowDataLoaded: true },
+  })
+  saveDraft.mockImplementation(async (_skipRefresh, callback) =>
+    callback?.onError?.(
+      createHttpError(
+        { status: 400, statusText: '', headers: new Headers() },
+        { message: 'Draft is invalid' },
+      ),
+    ),
+  )
+  await act(async () => unmount())
+  expect(toast.error).toHaveBeenCalledWith('Draft is invalid', { timeout: 0 })
 })
 
 it('cancels the queued debounce and saves exactly once on unmount', async () => {

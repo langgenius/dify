@@ -49,7 +49,6 @@ from models.dify_builder import (
 from models.model import App, AppMode
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
-from models.workflow_draft_coordination import WorkflowDraftCoordination
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.repository import SqlDifyBuilderRepository
@@ -115,7 +114,6 @@ def task_postgres_engine() -> Iterator[Engine]:
                         Account,
                         App,
                         Workflow,
-                        WorkflowDraftCoordination,
                         WorkflowAgentNodeBinding,
                         WorkflowWebhookTrigger,
                         DifyBuilderSession,
@@ -210,6 +208,7 @@ def task_world(task_postgres_engine: Engine, task_flask_app: Flask, monkeypatch:
     monkeypatch.setattr(dify_port, "_session_factory", lambda: factory)
     monkeypatch.setattr(dify_port, "WorkflowService", lambda: WorkflowService(session_maker=factory))
     monkeypatch.setattr(dify_port, "notify_workflow_draft_changed", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(dify_port.app_draft_workflow_was_synced, "send", lambda *_args, **_kwargs: None)
     account = Account(name="Task fence owner", email=f"{uuid4()}@example.invalid")
     tenant_id = str(uuid4())
     graph: Graph = {

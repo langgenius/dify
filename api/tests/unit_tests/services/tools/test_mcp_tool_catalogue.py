@@ -303,6 +303,7 @@ def test_bound_mcp_graph_uses_native_tool_adapter_and_end_returns_transport_outp
     import core.tools.mcp_tool.tool as mcp_module
     from core.entities.mcp_provider import MCPProviderEntity
     from core.mcp.types import CallToolResult, TextContent
+    from core.workflow.node_factory import DifyNodeFactory
     from extensions import ext_database
     from graphon.enums import WorkflowNodeExecutionStatus
     from graphon.graph.graph import Graph
@@ -312,7 +313,6 @@ def test_bound_mcp_graph_uses_native_tool_adapter_and_end_returns_transport_outp
     from graphon.nodes.tool.tool_node import ToolNode
     from graphon.runtime import RuntimeState, VariablePool
     from services.dify_builder.agent.build import bind_resources
-    from services.workflow_runtime.node_factory import DifyNodeFactory
     from tests.unit_tests.services.dify_builder.installed_tool_inventory import InventoryDatabase
     from tests.workflow_test_utils import build_test_graph_init_params
 

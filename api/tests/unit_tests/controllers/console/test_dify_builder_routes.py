@@ -12,16 +12,14 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from pathlib import Path
 from types import FunctionType
-from typing import Annotated, NamedTuple, NoReturn, Self, override
-from unittest.mock import Mock, call
+from typing import NamedTuple, NoReturn, Self, override
 
 import pytest
 import pytest_mock
-from flask import Flask, Response, current_app, g, has_request_context
+from flask import Flask, Response, current_app, has_request_context
 from flask.testing import FlaskClient
 from flask_restx.model import SchemaModel
-from pydantic import Field, TypeAdapter, ValidationError
-from sqlalchemy import Engine, create_engine, event, insert, select
+from sqlalchemy import Engine, create_engine, event, select
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, HTTPException
@@ -33,12 +31,6 @@ from controllers.common.rbac import RBACPermission
 from controllers.console import bp as console_bp
 from controllers.console import wraps as wraps_mod
 from controllers.console.dify_builder_fields import (
-    DifyBuilderConfirmRealCallPayload,
-    DifyBuilderExecuteRealCallPayload,
-    DifyBuilderPrepareRealCallPayload,
-    DifyBuilderRealCallConsentResponse,
-    DifyBuilderRealCallForbiddenResponse,
-    DifyBuilderRealCallRefusalResponse,
     DifyBuilderSessionViewResponse,
 )
 from core.dify_builder.contract import ConversationPage, RunStatus
@@ -51,25 +43,21 @@ from core.dify_builder.models import (
     EntryMode,
 )
 from core.dify_builder.models import Session as DomainSession
-from core.dify_builder.real_call_consent import ConsentReceipt, gmail_message_url
 from core.dify_builder.state import PcState
 from enums import DeploymentEdition
 from extensions.ext_application_services import init_app as init_application_services
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
 from libs.token import _real_cookie_name, generate_csrf_token
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
 from models.model import App, AppMode, DifySetup
 from services.dify_builder import wiring
-from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import CommandSubmission, DifyBuilderService, SessionView
 from services.enterprise.rbac_service import RBACService
 from services.entities.feature_entities import FeatureModel
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_tenant
 from tests.unit_tests.installed_spies import installed_mock
 
 
@@ -77,23 +65,6 @@ from tests.unit_tests.installed_spies import installed_mock
 class _RouteDatabase:
     session: scoped_session[OrmSession]
     engine: Engine
-
-
-def _consent_calls(owner: BuilderRealCallConsentService) -> list[object]:
-    """Inspect only the five explicit public boundary methods patched in these route tests."""
-    boundaries = (
-        (owner.prepare, call.prepare),
-        (owner.confirm, call.confirm),
-        (owner.get, call.get),
-        (owner.reserve_execution, call.reserve_execution),
-        (owner.replay_execution, call.replay_execution),
-    )
-    return [
-        recorded(*entry.args, **entry.kwargs)
-        for method, recorded in boundaries
-        if isinstance(method, Mock)
-        for entry in method.call_args_list
-    ]
 
 
 def _session_view(session_id: str = "s1", *, run_status: RunStatus = RunStatus.PROCESSING) -> SessionView:
@@ -728,10 +699,6 @@ def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch: pytest.Monkey
         mod.DifyBuilderSessionStreamApi.get,
         mod.DifyBuilderActionsApi.post,
         mod.DifyBuilderMessagesApi.post,
-        mod.DifyBuilderRealCallConsentsApi.post,
-        mod.DifyBuilderRealCallConsentApi.get,
-        mod.DifyBuilderRealCallConsentConfirmApi.post,
-        mod.DifyBuilderRealCallConsentExecuteApi.post,
     ],
 )
 def test_session_routes_require_legacy_edit_permission(method: Callable[..., object]) -> None:
@@ -849,7 +816,6 @@ def test_conversation_historical_result_keeps_missing_evidence_unavailable(
 # -- explicit native Tool consent routes --------------------------------------
 
 _SESSION_ID = "0192a4b0-0000-7000-8000-000000000001"
-_CONSENT_ID = "0192a4b0-0000-7000-8000-000000000002"
 _TEST_INPUT_ID = "0192a4b0-0000-7000-8000-000000000003"
 _CREDENTIAL_ID = "0192a4b0-0000-7000-8000-000000000004"
 _COMMAND_ID = "0192a4b0-0000-7000-8000-000000000005"
@@ -884,102 +850,9 @@ _INTERNAL_FIELDS = frozenset(
     }
 )
 
-_PREPARE_BODY: dict[str, object] = {
-    "node_id": "tool-1",
-    "test_input_id": _TEST_INPUT_ID,
-    "credential_id": _CREDENTIAL_ID,
-    "at_version": 3,
-    "base_app_revision": _REVISION,
-    "idempotency_key": "prepare-1",
-}
-_CONFIRM_BODY: dict[str, object] = {
-    "decision": "confirm",
-    "scope_digest": _SCOPE,
-    "at_version": 3,
-    "idempotency_key": "confirm-1",
-}
-_EXECUTE_BODY: dict[str, object] = {"scope_digest": _SCOPE, "at_version": 3, "idempotency_key": "execute-1"}
-
-
-def _receipt(**overrides: object) -> ConsentReceipt:
-    disclosure: dict[str, object] = {
-        "action": "get_message",
-        "credential_id": _CREDENTIAL_ID,
-        "credential_alias": "Ops mailbox",
-        "credential_type": "oauth2",
-        "identity_basis": "workspace_credential",
-        "remote_account_status": "unknown",
-        "message_id": "msg-1",
-        "request_method": "GET",
-        "request_url": gmail_message_url("msg-1"),
-        "response_format": "full",
-        "include_body": True,
-        "include_attachments": False,
-        "oauth_refresh": "if_needed",
-        "oauth_refresh_method": "POST",
-        "oauth_refresh_url": "https://oauth2.googleapis.com/token",
-        "native_attempt_limit": 1,
-        "refresh_limit": 1,
-        "automatic_replay": False,
-        "quota_usage": "possible",
-        "monetary_estimate": "unknown",
-        "output_retention": "native_run_retention",
-        "data_description": "gmail_message_headers_snippet_and_selected_body_or_attachment_metadata",
-        "expires_at": datetime(2026, 10, 11, 12, 10, tzinfo=UTC),
-        "prior_uncertain_consent_id": None,
-    }
-    base: dict[str, object] = {
-        "consent_id": _CONSENT_ID,
-        "scope_digest": _SCOPE,
-        "state": "prepared",
-        "at_version": 3,
-        "disclosure": disclosure,
-        "command_id": None,
-        "execution_request_id": None,
-        "native_run_id": None,
-        "native_node_execution_id": None,
-        "reason_code": None,
-        "refresh_claimed": False,
-        "business_claimed": False,
-        "can_retry": False,
-    }
-    return ConsentReceipt.model_validate(base | overrides)
-
-
-def _claimed_receipt() -> ConsentReceipt:
-    return _receipt(
-        state="claimed",
-        command_id=_COMMAND_ID,
-        execution_request_id=_REQUEST_ID,
-        native_run_id="run-1",
-        native_node_execution_id="node-execution-1",
-        refresh_claimed=True,
-        business_claimed=True,
-        can_retry=False,
-    )
-
-
-def _reserved_receipt() -> ConsentReceipt:
-    return _receipt(state="confirmed", command_id=_COMMAND_ID, execution_request_id=_REQUEST_ID)
-
 
 def _no_dispatch() -> DifyBuilderService:
     raise AssertionError("prepare/confirm/status must not build the dispatch owner")
-
-
-def _no_consent_factory() -> BuilderRealCallConsentService:
-    raise AssertionError("execute must go through the DifyBuilderService confirmed coordinator")
-
-
-def _consent_service(
-    monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture
-) -> BuilderRealCallConsentService:
-    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
-    for method in ("prepare", "confirm", "get"):
-        mocker.patch.object(consent, method)
-    monkeypatch.setattr(mod, "build_real_call_consent_service", lambda: consent)
-    monkeypatch.setattr(mod, "build_service", _no_dispatch)
-    return consent
 
 
 def _decorator_chain(method: Callable[..., object]) -> list[str]:
@@ -1022,393 +895,6 @@ def _response_model_names(value: object) -> dict[str, str]:
     return names
 
 
-def test_execute_cannot_change_parameters_or_forge_credentials() -> None:
-    body = {"scope_digest": "a" * 64, "at_version": 1, "idempotency_key": "execute-1"}
-    for injected in ({"parameters": {"message_id": "other"}}, {"credential_id": "other"}, {"at_version": True}):
-        with pytest.raises(ValidationError):
-            DifyBuilderExecuteRealCallPayload.model_validate(body | injected)
-
-
-@pytest.mark.parametrize(
-    "injected",
-    [
-        {"inputs": {"message_id": "other"}},
-        {"graph": {"nodes": []}},
-        {"context": {"mode": "confirmed_tool"}},
-        {"execution_context": {}},
-        {"guard": {}},
-        {"binding": {}},
-        {"authority": "confirmed"},
-        {"command_id": _COMMAND_ID},
-        {"at_version": 0},
-        {"at_version": "1"},
-        {"at_version": 1.0},
-        {"at_version": None},
-        {"scope_digest": "A" * 64},
-        {"scope_digest": "a" * 63},
-        {"scope_digest": "a" * 64 + "\n"},
-        {"scope_digest": "g" * 64},
-        {"idempotency_key": ""},
-        {"idempotency_key": "k" * 129},
-        {"idempotency_key": 7},
-    ],
-)
-def test_execute_payload_rejects_authority_and_unbounded_fields(injected: dict[str, object]) -> None:
-    with pytest.raises(ValidationError):
-        DifyBuilderExecuteRealCallPayload.model_validate(_EXECUTE_BODY | injected)
-
-
-@pytest.mark.parametrize(
-    "injected",
-    [
-        {"parameters": {"message_id": "other"}},
-        {"credential": {"id": _CREDENTIAL_ID}},
-        {"inputs": {}},
-        {"binding": {}},
-        {"node_id": ""},
-        {"node_id": "n" * 129},
-        {"test_input_id": ""},
-        {"credential_id": "c" * 129},
-        {"credential_id": 4},
-        {"base_app_revision": ""},
-        {"base_app_revision": "r" * 129},
-        {"at_version": True},
-        {"at_version": 0},
-        {"at_version": "3"},
-        {"idempotency_key": ""},
-        {"idempotency_key": "k" * 129},
-    ],
-)
-def test_prepare_payload_is_strict_and_bounded(injected: dict[str, object]) -> None:
-    with pytest.raises(ValidationError):
-        DifyBuilderPrepareRealCallPayload.model_validate(_PREPARE_BODY | injected)
-
-
-@pytest.mark.parametrize(
-    "injected",
-    [
-        {"decision": "approve"},
-        {"decision": "CONFIRM"},
-        {"decision": None},
-        {"scope_digest": "z" * 64},
-        {"at_version": False},
-        {"at_version": -1},
-        {"idempotency_key": ""},
-        {"credential_id": _CREDENTIAL_ID},
-        {"parameters": {}},
-    ],
-)
-def test_confirm_payload_is_strict(injected: dict[str, object]) -> None:
-    with pytest.raises(ValidationError):
-        DifyBuilderConfirmRealCallPayload.model_validate(_CONFIRM_BODY | injected)
-
-
-def test_prepare_route_passes_trusted_actor_and_returns_created_receipt(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    _installed_spy_41 = installed_mock(consent.prepare)
-    _installed_spy_41.return_value = _receipt()
-
-    body, status = mod._prepare_real_call(_SESSION_ID, dict(_PREPARE_BODY), _ACTOR)
-
-    assert status == 201
-    assert body["result"] == "receipt"
-    assert body["state"] == "prepared"
-    assert body["scope_digest"] == _SCOPE
-    assert body["disclosure"]["identity_basis"] == "workspace_credential"
-    assert body["disclosure"]["remote_account_status"] == "unknown"
-    # Prepare only freezes metadata: the single consent call, nothing runtime/dispatch.
-    assert _consent_calls(consent) == [
-        call.prepare(
-            actor=_ACTOR,
-            session_id=_SESSION_ID,
-            node_id="tool-1",
-            test_input_id=_TEST_INPUT_ID,
-            credential_id=_CREDENTIAL_ID,
-            at_version=3,
-            base_app_revision=_REVISION,
-            idempotency_key="prepare-1",
-        )
-    ]
-
-
-@pytest.mark.parametrize(
-    "route",
-    [
-        lambda body: mod._prepare_real_call(_SESSION_ID, body, _ACTOR),
-        lambda body: mod._confirm_real_call(_SESSION_ID, _CONSENT_ID, body, _ACTOR),
-        lambda body: mod._execute_real_call(_SESSION_ID, _CONSENT_ID, body, _ACTOR),
-    ],
-)
-@pytest.mark.parametrize("body", [{}, [], "text", {"at_version": True}])
-def test_consent_routes_reject_invalid_bodies_before_any_service(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, route: Callable[[object], object], body: object
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-
-    assert route(body) == ({"code": "bad_request"}, 400)
-    assert not _consent_calls(consent)
-
-
-@pytest.mark.parametrize(
-    ("reason", "status", "expected"),
-    [
-        ("needs_setup", 409, {"result": "refusal", "code": "needs_setup", "reason_code": "needs_setup"}),
-        (
-            "credential_required",
-            409,
-            {"result": "refusal", "code": "needs_setup", "reason_code": "credential_required"},
-        ),
-        (
-            "credential_reference_unavailable",
-            409,
-            {"result": "refusal", "code": "needs_permission", "reason_code": "credential_reference_unavailable"},
-        ),
-        (
-            "unsupported_action",
-            409,
-            {"result": "refusal", "code": "unsupported_action", "reason_code": "unsupported_action"},
-        ),
-        (
-            "unsupported_session_state",
-            409,
-            {"result": "refusal", "code": "unsupported_action", "reason_code": "unsupported_session_state"},
-        ),
-        (
-            "installed_tool_unavailable",
-            409,
-            {"result": "refusal", "code": "unavailable_metadata", "reason_code": "installed_tool_unavailable"},
-        ),
-        (
-            "stale_session_version",
-            409,
-            {"result": "refusal", "code": "conflict", "reason_code": "stale_session_version"},
-        ),
-        ("stale_app_revision", 409, {"result": "refusal", "code": "conflict", "reason_code": "stale_app_revision"}),
-        (
-            "idempotency_conflict",
-            409,
-            {"result": "refusal", "code": "conflict", "reason_code": "idempotency_conflict"},
-        ),
-        (
-            "execution_permission_denied",
-            403,
-            {"result": "refusal", "code": "needs_permission", "reason_code": "execution_permission_denied"},
-        ),
-        ("execution_owner_mismatch", 404, {"code": "not_found"}),
-        ("consent_not_found", 404, {"code": "not_found"}),
-        ("invalid_version", 400, {"code": "bad_request"}),
-        # Corrupt records and unlisted internal reasons collapse into one fixed public answer.
-        (
-            "consent_record_invalid",
-            409,
-            {"result": "refusal", "code": "unavailable_metadata", "reason_code": "real_call_unavailable"},
-        ),
-        (
-            "an_unlisted_internal_reason",
-            409,
-            {"result": "refusal", "code": "unavailable_metadata", "reason_code": "real_call_unavailable"},
-        ),
-    ],
-)
-def test_prepare_maps_domain_refusals_to_fixed_public_codes(
-    mocker: pytest_mock.MockerFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    reason: str,
-    status: int,
-    expected: dict[str, str],
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    _installed_spy_42 = installed_mock(consent.prepare)
-    _installed_spy_42.side_effect = BuilderExecutionPolicyError(reason)
-
-    result = mod._prepare_real_call(_SESSION_ID, dict(_PREPARE_BODY), _ACTOR)
-
-    assert result == (expected, status)
-    # Each body conforms to the model documented for its status.
-    if status == 403:
-        DifyBuilderRealCallForbiddenResponse.model_validate(expected)
-    elif "result" in expected:
-        assert DifyBuilderRealCallRefusalResponse.model_validate(expected).reason_code == expected["reason_code"]
-
-
-def test_refusal_never_echoes_exception_text(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    leaked = "provider said token=ya29.secret for alice@example.com"
-    _installed_spy_43 = installed_mock(consent.prepare)
-    _installed_spy_43.side_effect = BuilderExecutionPolicyError(leaked)
-
-    result = mod._prepare_real_call(_SESSION_ID, dict(_PREPARE_BODY), _ACTOR)
-
-    assert "secret" not in json.dumps(result)
-    assert "alice" not in json.dumps(result)
-    assert result == (
-        {"result": "refusal", "code": "unavailable_metadata", "reason_code": "real_call_unavailable"},
-        409,
-    )
-
-
-def test_unexpected_consent_failure_is_not_serialized(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    _installed_spy_44 = installed_mock(consent.get)
-    _installed_spy_44.side_effect = RuntimeError("ciphertext=abc")
-
-    with pytest.raises(RuntimeError):
-        mod._get_real_call(_SESSION_ID, _CONSENT_ID, _ACTOR)
-
-
-@pytest.mark.parametrize("decision", ["confirm", "decline"])
-def test_confirm_route_records_decision_without_dispatch(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, decision: str
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    state = "confirmed" if decision == "confirm" else "declined"
-    _installed_spy_45 = installed_mock(consent.confirm)
-    _installed_spy_45.return_value = _receipt(state=state, can_retry=decision == "decline")
-
-    body, status = mod._confirm_real_call(_SESSION_ID, _CONSENT_ID, _CONFIRM_BODY | {"decision": decision}, _ACTOR)
-
-    assert status == 200
-    assert body["state"] == state
-    # A decision (including decline) never reaches the dispatch owner or enqueues.
-    assert _consent_calls(consent) == [
-        call.confirm(
-            actor=_ACTOR,
-            session_id=_SESSION_ID,
-            consent_id=_CONSENT_ID,
-            decision=decision,
-            scope_digest=_SCOPE,
-            at_version=3,
-            idempotency_key="confirm-1",
-        )
-    ]
-
-
-def test_confirm_replay_returns_the_saved_decision_receipt(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    saved = _receipt(state="confirmed")
-    # The owner answers an identical replay from the saved decision even after later advancement.
-    _installed_spy_46 = installed_mock(consent.confirm)
-    _installed_spy_46.side_effect = [saved, saved]
-
-    first = mod._confirm_real_call(_SESSION_ID, _CONSENT_ID, dict(_CONFIRM_BODY), _ACTOR)
-    replay = mod._confirm_real_call(_SESSION_ID, _CONSENT_ID, dict(_CONFIRM_BODY), _ACTOR)
-
-    assert first == replay
-    assert first[1] == 200
-
-
-@pytest.mark.parametrize(
-    "reason",
-    [
-        "consent_scope_mismatch",
-        "stale_consent_version",
-        "idempotency_conflict",
-        "consent_decision_conflict",
-        "consent_not_prepared",
-        "consent_scope_changed",
-        "consent_invalidated",
-        "consent_expired",
-    ],
-)
-def test_confirm_scope_version_and_body_conflicts_are_409(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch, reason: str
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    _installed_spy_47 = installed_mock(consent.confirm)
-    _installed_spy_47.side_effect = BuilderExecutionPolicyError(reason)
-
-    assert mod._confirm_real_call(_SESSION_ID, _CONSENT_ID, dict(_CONFIRM_BODY), _ACTOR) == (
-        {"result": "refusal", "code": "conflict", "reason_code": reason},
-        409,
-    )
-
-
-def test_cross_owner_consent_is_indistinguishable_from_missing(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent = _consent_service(monkeypatch, mocker)
-    _installed_spy_48 = installed_mock(consent.confirm)
-    _installed_spy_48.side_effect = BuilderExecutionPolicyError("consent_not_found")
-    _installed_spy_49 = installed_mock(consent.get)
-    _installed_spy_49.side_effect = BuilderExecutionPolicyError("consent_not_found")
-
-    assert mod._confirm_real_call(_SESSION_ID, _CONSENT_ID, dict(_CONFIRM_BODY), _ACTOR) == (
-        {"code": "not_found"},
-        404,
-    )
-    assert mod._get_real_call(_SESSION_ID, _CONSENT_ID, _ACTOR) == ({"code": "not_found"}, 404)
-
-
-def test_execute_route_uses_only_the_confirmed_dispatch_coordinator(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service = _route_service()
-    mocker.patch.object(service, "execute_confirmed_tool")
-    _installed_spy_51 = installed_mock(service.execute_confirmed_tool)
-    _installed_spy_51.return_value = _reserved_receipt()
-    monkeypatch.setattr(mod, "build_service", lambda: service)
-    monkeypatch.setattr(mod, "build_real_call_consent_service", _no_consent_factory)
-
-    body, status = mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR)
-
-    assert status == 202
-    assert body["command_id"] == _COMMAND_ID
-    assert body["can_retry"] is False
-    _installed_spy_52 = installed_mock(service.execute_confirmed_tool)
-    assert _installed_spy_52.call_args_list == [
-        call(
-            _SESSION_ID,
-            _ACTOR,
-            consent_id=_CONSENT_ID,
-            scope_digest=_SCOPE,
-            at_version=3,
-            idempotency_key="execute-1",
-        )
-    ]
-
-
-@pytest.mark.parametrize(
-    ("error", "expected"),
-    [
-        (BusyError("session busy"), ({"result": "refusal", "code": "conflict", "reason_code": "session_busy"}, 409)),
-        (
-            ConflictError("stale"),
-            ({"result": "refusal", "code": "conflict", "reason_code": "session_conflict"}, 409),
-        ),
-        (NotFoundError("session not found"), ({"code": "not_found"}, 404)),
-        (
-            Forbidden(),
-            ({"result": "refusal", "code": "needs_permission", "reason_code": "execution_permission_denied"}, 403),
-        ),
-        (
-            BuilderExecutionPolicyError("consent_not_confirmed"),
-            ({"result": "refusal", "code": "conflict", "reason_code": "consent_not_confirmed"}, 409),
-        ),
-    ],
-)
-def test_execute_route_maps_coordinator_failures(
-    mocker: pytest_mock.MockerFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    error: Exception,
-    expected: tuple[dict[str, str], int],
-) -> None:
-    service = _route_service()
-    mocker.patch.object(service, "execute_confirmed_tool")
-    _installed_spy_53 = installed_mock(service.execute_confirmed_tool)
-    _installed_spy_53.side_effect = error
-    monkeypatch.setattr(mod, "build_service", lambda: service)
-
-    assert mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR) == expected
-
-
 class _HeldLease:
     """Per-session advance lease: the first acquire wins until its own token is released."""
 
@@ -1437,111 +923,6 @@ class _HeldLease:
         return session_id in self.tokens
 
 
-def _coordinator(
-    monkeypatch: pytest.MonkeyPatch, mocker: pytest_mock.MockerFixture, *, owner_account_id: str = "acc-1"
-) -> tuple[BuilderRealCallConsentService, _HeldLease, list[tuple[str, Action, Actor, str]], list[str]]:
-    """Wire the real DifyBuilderService confirmed coordinator behind the execute route."""
-    repo = SqlDifyBuilderRepository(session_factory_module.get_session_maker())
-    stored_session = DomainSession(
-        id=_SESSION_ID,
-        app_id="app-1",
-        tenant_id="ten-1",
-        owner_account_id=owner_account_id,
-        entry_mode=EntryMode.BUILD,
-        current_state=PcState.BUILD_REVIEW,
-        version=3,
-    )
-    repo.create_session(stored_session, DifyBuilderContext(), [])
-    for version in (1, 2):
-        repo.compare_and_advance(stored_session.id, version, PcState.BUILD_REVIEW, DifyBuilderContext(), [])
-    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
-    for method in ("reserve_execution", "replay_execution"):
-        mocker.patch.object(consent, method)
-    lease = _HeldLease()
-    enqueued: list[tuple[str, Action, Actor, str]] = []
-    authorized: list[str] = []
-
-    def enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
-        enqueued.append((session_id, action, actor, token))
-
-    def authorize(actor: Actor, app_id: str, access: object) -> None:
-        authorized.append(f"{actor.account_id}:{app_id}:{access}")
-
-    service = DifyBuilderService(
-        repo,
-        lease,
-        enqueue,
-        authorize_app_fn=authorize,
-        real_call_consent=consent,
-    )
-    monkeypatch.setattr(mod, "build_service", lambda: service)
-    monkeypatch.setattr(mod, "build_real_call_consent_service", _no_consent_factory)
-    return consent, lease, enqueued, authorized
-
-
-def test_held_lease_without_saved_execute_is_busy(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent, lease, enqueued, _authorized = _coordinator(monkeypatch, mocker)
-    lease.tokens[_SESSION_ID] = "other-command"
-    _installed_spy_58 = installed_mock(consent.replay_execution)
-    _installed_spy_58.return_value = None
-
-    assert mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR) == (
-        {"result": "refusal", "code": "conflict", "reason_code": "session_busy"},
-        409,
-    )
-    _installed_spy_59 = installed_mock(consent.reserve_execution)
-    _installed_spy_59.assert_not_called()
-    assert enqueued == []
-
-
-def test_execute_refusal_releases_only_its_own_lease_and_never_enqueues(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent, lease, enqueued, _authorized = _coordinator(monkeypatch, mocker)
-    _installed_spy_60 = installed_mock(consent.reserve_execution)
-    _installed_spy_60.side_effect = BuilderExecutionPolicyError("consent_scope_mismatch")
-
-    assert mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR) == (
-        {"result": "refusal", "code": "conflict", "reason_code": "consent_scope_mismatch"},
-        409,
-    )
-    assert lease.released == ["g0:token-1"]
-    assert enqueued == []
-
-
-def test_execute_on_another_owners_session_is_not_found(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    consent, lease, enqueued, authorized = _coordinator(monkeypatch, mocker, owner_account_id="someone-else")
-
-    assert mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR) == (
-        {"code": "not_found"},
-        404,
-    )
-    assert not _consent_calls(consent)
-    assert (lease.acquired, enqueued, authorized) == (0, [], [])
-
-
-def test_public_receipt_omits_internal_fields_and_disables_retry_after_claim() -> None:
-    receipt = _claimed_receipt().model_dump()
-    # Even if a caller hands over a richer internal object, only declared public fields serialize.
-    internal = receipt | dict.fromkeys(_INTERNAL_FIELDS, "leak")
-    internal["disclosure"] = receipt["disclosure"] | {"revision": "leak", "oauth_client_revision": "leak"}
-
-    body = mod.dump_response(DifyBuilderRealCallConsentResponse, internal)
-
-    assert body["can_retry"] is False
-    assert body["refresh_claimed"] is True
-    assert body["business_claimed"] is True
-    assert not _INTERNAL_FIELDS & set(body)
-    assert not _INTERNAL_FIELDS & set(body["disclosure"])
-    assert "leak" not in json.dumps(body)
-    assert set(body) == {"result", *ConsentReceipt.model_fields}
-    assert body["disclosure"]["expires_at"] == "2026-10-11T12:10:00Z"
-
-
 def _schema_property_names(schema: object) -> set[str]:
     names: set[str] = set()
     if isinstance(schema, dict):
@@ -1556,278 +937,9 @@ def _schema_property_names(schema: object) -> set[str]:
     return names
 
 
-def test_consent_response_schema_is_public_with_bounded_unknown_and_conditional_refresh() -> None:
-    schema = DifyBuilderRealCallConsentResponse.model_json_schema(mode="serialization")
-    properties = schema["properties"]
-    disclosure = schema["$defs"]["DifyBuilderRealCallDisclosureResponse"]["properties"]
-
-    assert not _INTERNAL_FIELDS & _schema_property_names(schema)
-    assert "result" in schema["required"]
-    assert properties["result"]["const"] == "receipt"
-    assert "unknown" in properties["state"]["enum"]
-    state_text = properties["state"]["description"]
-    assert "unknown" in state_text
-    assert "never replayed automatically" in state_text
-    assert "one native attempt and at most one token refresh" in state_text
-    assert "new human-approved consent" in state_text
-    assert "reserved or claimed" in properties["can_retry"]["description"]
-    assert "only if the stored access token must be refreshed" in disclosure["oauth_refresh"]["description"]
-    assert disclosure["oauth_refresh_url"]["const"] == "https://oauth2.googleapis.com/token"
-    assert disclosure["identity_basis"]["const"] == "workspace_credential"
-    assert disclosure["remote_account_status"]["const"] == "unknown"
-    assert disclosure["automatic_replay"]["const"] is False
-
-
-def test_receipt_and_refusal_round_trip_through_the_result_discriminator() -> None:
-    adapter: TypeAdapter[DifyBuilderRealCallConsentResponse | DifyBuilderRealCallRefusalResponse] = TypeAdapter(
-        Annotated[
-            DifyBuilderRealCallConsentResponse | DifyBuilderRealCallRefusalResponse,
-            Field(discriminator="result"),
-        ]
-    )
-    receipt = mod.dump_response(DifyBuilderRealCallConsentResponse, _claimed_receipt())
-    refusal = {"result": "refusal", "code": "needs_setup", "reason_code": "needs_setup"}
-
-    assert isinstance(adapter.validate_python(receipt), DifyBuilderRealCallConsentResponse)
-    assert isinstance(adapter.validate_python(refusal), DifyBuilderRealCallRefusalResponse)
-    assert adapter.validate_python(receipt).model_dump(mode="json") == receipt
-    refusal_schema = DifyBuilderRealCallRefusalResponse.model_json_schema(mode="serialization")
-    assert set(refusal_schema["required"]) == {"result", "code", "reason_code"}
-    assert set(refusal_schema["properties"]["code"]["enum"]) == {
-        "needs_setup",
-        "needs_permission",
-        "unsupported_action",
-        "unavailable_metadata",
-        "conflict",
-    }
-    with pytest.raises(ValidationError):
-        DifyBuilderRealCallRefusalResponse.model_validate(refusal | {"reason_code": "provider said no"})
-
-
-_CONSENT_METHODS: list[Callable[..., object]] = [
-    mod.DifyBuilderRealCallConsentsApi.post,
-    mod.DifyBuilderRealCallConsentApi.get,
-    mod.DifyBuilderRealCallConsentConfirmApi.post,
-    mod.DifyBuilderRealCallConsentExecuteApi.post,
-]
-
-
-@pytest.mark.parametrize("method", _CONSENT_METHODS)
-def test_consent_routes_use_the_authenticated_builder_decorator_stack(method: Callable[..., object]) -> None:
-    assert _decorator_chain(method) == [
-        "setup_required",
-        "login_required",
-        "account_initialization_required",
-        "edit_permission_required",
-        "with_current_user",
-        "with_current_tenant_id",
-        "real_call_without_request_sql",
-        "dify_builder_required",
-    ]
-
-
-@pytest.mark.parametrize(
-    ("method", "path_kwargs", "body", "service_method", "status"),
-    [
-        (mod.DifyBuilderRealCallConsentsApi.post, {}, _PREPARE_BODY, "prepare", 201),
-        (mod.DifyBuilderRealCallConsentConfirmApi.post, {"consent_id": _CONSENT_ID}, _CONFIRM_BODY, "confirm", 200),
-        (mod.DifyBuilderRealCallConsentApi.get, {"consent_id": _CONSENT_ID}, None, "get", 200),
-    ],
-)
-def test_consent_routes_propagate_current_tenant_and_user_through_decorators(
-    mocker: pytest_mock.MockerFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    method: Callable[..., object],
-    path_kwargs: dict[str, str],
-    body: dict[str, object] | None,
-    service_method: str,
-    status: int,
-) -> None:
-    account = _account("acc-9")
-    monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
-    monkeypatch.setattr(mod.FeatureService, "get_features", lambda _tenant_id: FeatureModel(dify_builder_enabled=True))
-    consent = _consent_service(monkeypatch, mocker)
-    consent_method = {"prepare": consent.prepare, "confirm": consent.confirm, "get": consent.get}[service_method]
-    installed_mock(consent_method).return_value = _receipt()
-    view = unwrap(method, stop=lambda wrapper: "with_current_user" in wrapper.__code__.co_qualname)
-
-    with Flask(__name__).test_request_context(method="GET" if body is None else "POST", json=body):
-        result = view(object(), session_id=_SESSION_ID, **path_kwargs)
-
-    assert isinstance(result, tuple)
-    assert result[1] == status
-    called = installed_mock(consent_method).call_args
-    assert called.kwargs["actor"] == Actor(account_id="acc-9", tenant_id="ten-9")
-    assert called.kwargs["session_id"] == _SESSION_ID
-
-
 # -- real Flask/RESTX requests through the console blueprint and its error handlers --
 
 _CONSENTS_URL = f"/console/api/dify-builder/sessions/{_SESSION_ID}/real-call-consents"
-_CONSENT_URL = f"{_CONSENTS_URL}/{_CONSENT_ID}"
-_CONSENT_POSTS: list[tuple[str, dict[str, object]]] = [
-    (_CONSENTS_URL, _PREPARE_BODY),
-    (f"{_CONSENT_URL}/confirm", _CONFIRM_BODY),
-    (f"{_CONSENT_URL}/execute", _EXECUTE_BODY),
-]
-
-
-class _ConsentHttp(NamedTuple):
-    client: FlaskClient
-    consent: BuilderRealCallConsentService
-    dispatch: DifyBuilderService
-
-
-def _consent_http(
-    monkeypatch: pytest.MonkeyPatch,
-    mocker: pytest_mock.MockerFixture,
-    *,
-    role: TenantAccountRole = TenantAccountRole.EDITOR,
-    enabled: bool = True,
-) -> _ConsentHttp:
-    """Serve the real console blueprint with the real decorator stack; only identity and owners are faked."""
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=False, LOGIN_DISABLED=False)
-    monkeypatch.setattr(wraps_mod, "_is_setup_completed", lambda: True)
-    monkeypatch.setattr("libs.login.check_csrf_token", lambda _request, _user_id: None)
-    monkeypatch.setattr(
-        mod.FeatureService, "get_features", lambda _tenant_id: FeatureModel(dify_builder_enabled=enabled)
-    )
-    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
-    for method in ("prepare", "confirm", "get"):
-        mocker.patch.object(consent, method)
-    dispatch = _route_service()
-    mocker.patch.object(dispatch, "execute_confirmed_tool")
-    monkeypatch.setattr(mod, "build_real_call_consent_service", lambda: consent)
-    monkeypatch.setattr(mod, "build_service", lambda: dispatch)
-    account = Account(name="tester", email="tester@example.com")
-    account.role = role
-    account.status = AccountStatus.ACTIVE
-    account._current_tenant = make_tenant(tenant_id="ten-1")
-    app = Flask("dify-builder-consent-http")
-    app.config["TESTING"] = True
-    app.register_blueprint(console_bp)
-
-    def login() -> None:
-        g._login_user = account
-
-    app.before_request(login)
-    return _ConsentHttp(app.test_client(), consent, dispatch)
-
-
-@pytest.mark.parametrize("url", [url for url, _body in _CONSENT_POSTS])
-@pytest.mark.parametrize(
-    ("data", "content_type"),
-    [
-        ("node_id=tool-1", "application/x-www-form-urlencoded"),
-        ("not json", "text/plain"),
-        ("", None),
-        ('{"scope_digest": ', "application/json"),
-        ("{", "application/json"),
-    ],
-)
-def test_consent_posts_reject_non_json_and_malformed_bodies_with_fixed_400(
-    mocker: pytest_mock.MockerFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    url: str,
-    data: str,
-    content_type: str | None,
-) -> None:
-    http = _consent_http(monkeypatch, mocker)
-
-    response = http.client.post(url, data=data, content_type=content_type)
-
-    assert response.status_code == 400
-    assert response.get_json() == {"code": "bad_request"}
-    assert not _consent_calls(http.consent)
-    _installed_spy_61 = installed_mock(http.dispatch.execute_confirmed_tool)
-    assert not _installed_spy_61.call_args_list
-
-
-_ALL_CONSENT_REQUESTS: list[tuple[str, str, dict[str, object] | None]] = [
-    ("POST", _CONSENTS_URL, _PREPARE_BODY),
-    ("GET", _CONSENT_URL, None),
-    ("POST", f"{_CONSENT_URL}/confirm", _CONFIRM_BODY),
-    ("POST", f"{_CONSENT_URL}/execute", _EXECUTE_BODY),
-]
-
-
-@pytest.mark.parametrize(("method", "url", "body"), _ALL_CONSENT_REQUESTS)
-def test_inherited_edit_permission_guard_403_shape(
-    mocker: pytest_mock.MockerFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    method: str,
-    url: str,
-    body: dict[str, object] | None,
-) -> None:
-    http = _consent_http(monkeypatch, mocker, role=TenantAccountRole.NORMAL)
-
-    response = http.client.open(url, method=method, json=body)
-
-    assert response.status_code == 403
-    assert response.get_json() == {"code": "forbidden", "message": Forbidden.description, "status": 403}
-    DifyBuilderRealCallForbiddenResponse.model_validate(response.get_json())
-    assert not _consent_calls(http.consent)
-    _installed_spy_66 = installed_mock(http.dispatch.execute_confirmed_tool)
-    assert not _installed_spy_66.call_args_list
-
-
-@pytest.mark.parametrize(("method", "url", "body"), _ALL_CONSENT_REQUESTS)
-def test_inherited_feature_gate_403_shape(
-    mocker: pytest_mock.MockerFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    method: str,
-    url: str,
-    body: dict[str, object] | None,
-) -> None:
-    http = _consent_http(monkeypatch, mocker, enabled=False)
-
-    response = http.client.open(url, method=method, json=body)
-
-    assert response.status_code == 403
-    assert response.get_json() == {"code": "feature_unavailable"}
-    DifyBuilderRealCallForbiddenResponse.model_validate(response.get_json())
-    assert not _consent_calls(http.consent)
-    _installed_spy_67 = installed_mock(http.dispatch.execute_confirmed_tool)
-    assert not _installed_spy_67.call_args_list
-
-
-def test_domain_permission_refusal_403_shape(
-    mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    http = _consent_http(monkeypatch, mocker)
-    _installed_spy_68 = installed_mock(http.consent.get)
-    _installed_spy_68.side_effect = BuilderExecutionPolicyError("execution_permission_denied")
-    _installed_spy_69 = installed_mock(http.dispatch.execute_confirmed_tool)
-    _installed_spy_69.side_effect = Forbidden()
-
-    status = http.client.get(_CONSENT_URL)
-    execute = http.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
-
-    refusal = {"result": "refusal", "code": "needs_permission", "reason_code": "execution_permission_denied"}
-    assert (status.status_code, status.get_json()) == (403, refusal)
-    assert (execute.status_code, execute.get_json()) == (403, refusal)
-    DifyBuilderRealCallForbiddenResponse.model_validate(refusal)
-
-
-def test_documented_403_union_accepts_exactly_the_real_403_bodies() -> None:
-    bodies: list[dict[str, object]] = [
-        {"code": "forbidden", "message": Forbidden.description, "status": 403},
-        {"code": "feature_unavailable"},
-        {"result": "refusal", "code": "needs_permission", "reason_code": "execution_permission_denied"},
-    ]
-    for body in bodies:
-        assert DifyBuilderRealCallForbiddenResponse.model_validate(body).model_dump(mode="json") == body
-    # The narrowed domain refusal cannot carry any other category or reason.
-    for loose in (
-        {"result": "refusal", "code": "needs_permission", "reason_code": "needs_setup"},
-        {"result": "refusal", "code": "conflict", "reason_code": "execution_permission_denied"},
-        {"code": "forbidden", "message": "x", "status": 404},
-        {"code": "not_found"},
-    ):
-        with pytest.raises(ValidationError):
-            DifyBuilderRealCallForbiddenResponse.model_validate(loose)
-    schema = DifyBuilderRealCallForbiddenResponse.model_json_schema(mode="serialization")
-    assert set(schema["discriminator"]["mapping"]) == {"forbidden", "feature_unavailable", "needs_permission"}
 
 
 # -- request SQL lifetime at the dispatch coordinator's external boundaries --
@@ -1855,11 +967,13 @@ class _OpenTransactions:
         event.remove(self._engine, "rollback", self._end)
 
 
+_STAGED = select(DifySetup.version).where(DifySetup.version == "staged-by-another-owner")
+
+
 class _RequestSqlWorld(NamedTuple):
     client: FlaskClient
     registry: scoped_session[OrmSession]
     witness: _OpenTransactions
-    consent: BuilderRealCallConsentService
     boundaries: list[tuple[str, bool, int]]
     enqueued: list[tuple[str, Action, Actor, str]]
     # Per request, just before teardown removes the session: (scoped transaction open,
@@ -1867,20 +981,17 @@ class _RequestSqlWorld(NamedTuple):
     teardown: list[tuple[bool, bool, bool]]
 
 
-_STAGED = select(DifySetup.version).where(DifySetup.version == "staged-by-another-owner")
-
-
 @pytest.fixture
 def request_sql_world(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mocker: pytest_mock.MockerFixture
 ) -> Iterator[_RequestSqlWorld]:
-    """The real consent routes, decorator stack, uncached setup read and production authorizer on real SQL.
+    """The task control routes and their authenticated request SQL boundaries.
 
     ``db`` of the console wraps, the controller and the wiring is one real ``scoped_session`` over
     SQLite (the unit app does not initialize Flask-SQLAlchemy); request teardown removes it, as the
     extension does. Real incoming application services bind the account identity and RBAC query
     owners; signed Passport/CSRF tokens enter through the actual request loader and wrappers.
-    The Redis advance lease and the consent owner remain unit boundary spies that record whether the
+    The Redis advance lease records whether the
     request-scoped session is in a transaction and how many connection transactions are open.
     """
     engine = create_engine(f"sqlite:///{tmp_path / 'request-sql.sqlite3'}")
@@ -1946,9 +1057,6 @@ def request_sql_world(
             observe("lease_release")
             super().release(session_id, token)
 
-    consent = BuilderRealCallConsentService(session_factory_module.get_session_maker())
-    for method in ("prepare", "confirm", "get", "reserve_execution", "replay_execution"):
-        mocker.patch.object(consent, method)
     repo = SqlDifyBuilderRepository(session_factory_module.get_session_maker())
     stored_session = DomainSession(
         id=_SESSION_ID,
@@ -1973,10 +1081,8 @@ def request_sql_world(
         _ObservedLease(),
         enqueue,
         authorize_app_fn=wiring._authorize_app,
-        real_call_consent=consent,
     )
     monkeypatch.setattr(mod, "build_service", lambda: service)
-    monkeypatch.setattr(mod, "build_real_call_consent_service", lambda: consent)
     app = Flask("dify-builder-request-sql")
     app.config["TESTING"] = True
     app.register_blueprint(console_bp)
@@ -2008,22 +1114,12 @@ def request_sql_world(
     client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     client.environ_base[f"HTTP_{HEADER_NAME_CSRF_TOKEN.upper().replace('-', '_')}"] = csrf
     try:
-        yield _RequestSqlWorld(client, registry, witness, consent, boundaries, enqueued, teardown)
+        yield _RequestSqlWorld(client, registry, witness, boundaries, enqueued, teardown)
     finally:
         setup_check.reset_success()
         witness.close()
         registry.remove()
         engine.dispose()
-
-
-def _observed_consent(world: _RequestSqlWorld, name: str, result: object) -> Callable[..., object]:
-    def call(**_kwargs: object) -> object:
-        world.boundaries.append((name, world.registry().in_transaction(), world.witness.count))
-        if isinstance(result, BaseException):
-            raise result
-        return result
-
-    return call
 
 
 @pytest.fixture
@@ -2047,149 +1143,6 @@ def enabled_rbac(
 
     monkeypatch.setattr(RBACService.CheckAccess, "check", check)
     return permissions
-
-
-@pytest.mark.parametrize("enabled_rbac", [False, True], ids=["legacy", "rbac"], indirect=True)
-def test_execute_request_holds_no_sql_at_the_lease_reservation_or_enqueue(
-    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool]
-) -> None:
-    world = request_sql_world
-    _installed_spy_70 = installed_mock(world.consent.reserve_execution)
-    _installed_spy_70.side_effect = _observed_consent(world, "reserve", (_reserved_receipt(), True))
-    _installed_spy_71 = installed_mock(world.consent.replay_execution)
-    _installed_spy_71.side_effect = _observed_consent(world, "replay", _claimed_receipt())
-
-    first = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
-    # The lease is still held: a matching duplicate is answered by the replay owner.
-    replay = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
-
-    assert (first.status_code, replay.status_code) == (202, 202)
-    assert len(world.enqueued) == 1
-    rbac: list[str] = ["rbac:app_edit", "rbac:app_test_and_run"] if enabled_rbac else []
-    assert [name for name, _scoped, _open in world.boundaries] == [
-        "feature",
-        *rbac,
-        "lease_acquire",
-        "reserve",
-        "enqueue",
-        "feature",
-        *rbac,
-        "lease_acquire",
-        "replay",
-    ]
-    # No request-scoped (wrapper/authorizer) or other SQL transaction at any external boundary.
-    assert [(name, scoped, count) for name, scoped, count in world.boundaries if scoped or count] == []
-
-
-@pytest.mark.parametrize("enabled_rbac", [False, True], ids=["legacy", "rbac"], indirect=True)
-def test_execute_refusal_holds_no_sql_at_the_lease_or_reservation(
-    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool]
-) -> None:
-    world = request_sql_world
-    _installed_spy_72 = installed_mock(world.consent.reserve_execution)
-    _installed_spy_72.side_effect = _observed_consent(
-        world, "reserve", BuilderExecutionPolicyError("consent_scope_mismatch")
-    )
-
-    refused = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
-
-    assert refused.status_code == 409
-    assert refused.get_json()["reason_code"] == "consent_scope_mismatch"
-    assert world.enqueued == []
-    assert [name for name, _scoped, _open in world.boundaries] == [
-        "feature",
-        *(["rbac:app_edit", "rbac:app_test_and_run"] if enabled_rbac else []),
-        "lease_acquire",
-        "reserve",
-        "lease_release",
-    ]
-    assert [(name, scoped, count) for name, scoped, count in world.boundaries if scoped or count] == []
-
-
-def test_execute_rbac_maintainer_shortcut_preserves_permission_semantics(
-    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool]
-) -> None:
-    world = request_sql_world
-    enabled_rbac.update(dict.fromkeys(enabled_rbac, False))
-    with sessionmaker(bind=world.registry.get_bind()).begin() as session:
-        app = session.get(App, "app-1")
-        assert app is not None
-        app.maintainer = session.scalar(
-            select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == "ten-1")
-        )
-    _installed_spy_73 = installed_mock(world.consent.reserve_execution)
-    _installed_spy_73.side_effect = _observed_consent(world, "reserve", (_reserved_receipt(), True))
-
-    response = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
-
-    assert response.status_code == 202
-    assert len(world.enqueued) == 1
-    assert world.boundaries == [(name, False, 0) for name in ["feature", "lease_acquire", "reserve", "enqueue"]]
-
-
-@pytest.mark.parametrize(
-    ("method", "url", "body", "owner_call"),
-    [
-        ("POST", _CONSENTS_URL, _PREPARE_BODY, "prepare"),
-        ("POST", f"{_CONSENT_URL}/confirm", _CONFIRM_BODY, "confirm"),
-        ("GET", _CONSENT_URL, None, "get"),
-    ],
-)
-def test_consent_owner_calls_start_without_request_sql(
-    request_sql_world: _RequestSqlWorld, method: str, url: str, body: dict[str, object] | None, owner_call: str
-) -> None:
-    """The consent owner reads external metadata first; the wrappers' request reads must be over."""
-    world = request_sql_world
-    consent_method = {"prepare": world.consent.prepare, "confirm": world.consent.confirm, "get": world.consent.get}[
-        owner_call
-    ]
-    installed_mock(consent_method).side_effect = _observed_consent(world, owner_call, _receipt())
-
-    response = world.client.open(url, method=method, json=body)
-
-    assert response.status_code in (200, 201)
-    assert world.boundaries == [("feature", False, 0), (owner_call, False, 0)]
-
-
-@pytest.mark.parametrize("write", ["orm_flushed", "core_dml", "orm_pending"])
-@pytest.mark.parametrize("enabled_rbac", [False, True], ids=["legacy", "rbac"], indirect=True)
-@pytest.mark.usefixtures("enabled_rbac")
-def test_another_owners_request_write_is_preserved_and_refused(
-    request_sql_world: _RequestSqlWorld,
-    monkeypatch: pytest.MonkeyPatch,
-    write: str,
-) -> None:
-    """A real-call request never commits or rolls back a request transaction holding another owner's write.
-
-    The write is staged before the guard (already flushed, Core DML, or still pending); the request
-    is refused before any external boundary and the write is still exactly in the open request
-    transaction at request teardown, invisible to any other session.
-    """
-    world = request_sql_world
-    original = wraps_mod._is_setup_completed
-
-    def stage_then_check_setup() -> bool:
-        if write == "orm_flushed":
-            world.registry.add(DifySetup(version="staged-by-another-owner"))
-            world.registry.flush()
-        elif write == "core_dml":
-            world.registry.execute(insert(DifySetup).values(version="staged-by-another-owner"))
-        else:
-            world.registry.add(DifySetup(version="staged-by-another-owner"))
-        return original()
-
-    monkeypatch.setattr(wraps_mod, "_is_setup_completed", stage_then_check_setup)
-    _installed_spy_74 = installed_mock(world.consent.reserve_execution)
-    _installed_spy_74.side_effect = _observed_consent(world, "reserve", (_reserved_receipt(), True))
-
-    refused = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
-
-    # The guard's RuntimeError is the framework's generic 500; nothing external ran.
-    assert refused.status_code == 500
-    assert world.boundaries == []
-    assert world.enqueued == []
-    # Captured at request teardown, before the extension's own removal: neither ended nor committed.
-    assert world.teardown == [(True, True, False)]
 
 
 @pytest.mark.parametrize("operation", ["stop", "resume"])
@@ -2218,7 +1171,7 @@ def test_task_control_routes_delegate_fixed_operation_and_return_session_json(
         "edit_permission_required",
         "with_current_user",
         "with_current_tenant_id",
-        "real_call_without_request_sql",
+        "without_request_read_transaction",
         "dify_builder_required",
     ]
     docs = _apidoc(resource.post)

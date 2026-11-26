@@ -23,6 +23,7 @@ import { ModelCostNotice } from '@/features/new-rag/components/model-cost-notice
 import { CreationModelField } from '@/features/new-rag/create/model-settings'
 import { createRequestId } from '@/features/new-rag/request-id'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import {
   UPGRADE_MODEL_KEYS,
   upgradeModelsFingerprint,
@@ -51,6 +52,8 @@ export function KnowledgeUpgradeDialog({
   const modelSettingsLabelId = useId()
   const discoveryQuery = useQuery(
     consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.get.queryOptions({
+      // The dialog shows discovery and start failures in its description.
+      meta: { errorToast: false },
       input: dataset ? { params: { dataset_id: dataset.id } } : skipToken,
     }),
   )
@@ -59,18 +62,21 @@ export function KnowledgeUpgradeDialog({
     datasetId: dataset?.id,
     recommendations: canUpgrade ? discoveryQuery.data?.models : undefined,
   })
-  const startMutation = useMutation({
-    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.post.mutationOptions(),
-    onSuccess: (job) => {
-      idempotencyKeyRef.current = undefined
-      if (dataset) onStarted(dataset, job)
-    },
-    onError: (error, { body }) => {
-      if (!isDefinedError(error) || error.code !== 'knowledge_fs_upgrade_models_unavailable') return
-      if (body.models) models.reject(body.models, error.data.details?.issues ?? [])
-      void models.refresh()
-    },
-  })
+  const startMutation = useMutation(
+    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.post.mutationOptions({
+      meta: { errorToast: false },
+      onSuccess: (job) => {
+        idempotencyKeyRef.current = undefined
+        if (dataset) onStarted(dataset, job)
+      },
+      onError: (error, { body }) => {
+        if (!isDefinedError(error) || error.code !== 'knowledge_fs_upgrade_models_unavailable')
+          return
+        if (body.models) models.reject(body.models, error.data.details?.issues ?? [])
+        void models.refresh()
+      },
+    }),
+  )
   const modelsRejected =
     isDefinedError(startMutation.error) &&
     startMutation.error.code === 'knowledge_fs_upgrade_models_unavailable'
@@ -175,7 +181,8 @@ export function KnowledgeUpgradeDialog({
               <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
                 {modelsRejected
                   ? t(($) => $['upgrade.modelsUnavailable'], { ns: 'knowledgeUpgrade' })
-                  : t(($) => $['upgrade.startFailed'], { ns: 'knowledgeUpgrade' })}
+                  : (getRequestErrorMessage(startMutation.error ?? discoveryQuery.error) ??
+                    t(($) => $['upgrade.startFailed'], { ns: 'knowledgeUpgrade' }))}
               </p>
             )}
           </AlertDialogDescription>

@@ -15,6 +15,7 @@ import {
   PasswordFieldInput,
   PasswordFieldToggle,
 } from '@langgenius/dify-ui/password-field'
+import { useMutation } from '@tanstack/react-query'
 import { useCountDown } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +23,7 @@ import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 
 type PasswordFormValues = {
   password: string
@@ -37,7 +38,9 @@ const ChangePasswordForm = () => {
 
   const formActionsRef = useRef<FormActions>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { isPending: isSubmitting, mutateAsync: resetPassword } = useMutation(
+    consoleQuery.forgotPassword.resets.post.mutationOptions(),
+  )
   const [showSuccess, setShowSuccess] = useState(false)
   useDocumentTitle(
     showSuccess
@@ -74,9 +77,8 @@ const ChangePasswordForm = () => {
   const handleChangePassword = useCallback(
     async (formValues: PasswordFormValues) => {
       if (isSubmitting) return
-      setIsSubmitting(true)
       try {
-        await consoleClient.forgotPassword.resets.post({
+        await resetPassword({
           body: {
             token,
             new_password: formValues.password,
@@ -87,11 +89,9 @@ const ChangePasswordForm = () => {
         setLeftTime(AUTO_REDIRECT_TIME)
       } catch (error) {
         console.error(error)
-      } finally {
-        setIsSubmitting(false)
       }
     },
-    [isSubmitting, token],
+    [isSubmitting, resetPassword, token],
   )
 
   return (

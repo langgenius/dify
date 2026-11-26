@@ -1,7 +1,5 @@
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-// oxlint-disable-next-line no-restricted-imports -- Test the existing datasource SSE and upload transport boundaries without replacing their consumers.
-import type { ssePost, upload } from '@/service/base'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -14,7 +12,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DatasourceType, PipelineInputVarType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
-import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
@@ -23,12 +20,13 @@ import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-confi
 import { createPipelineVariable } from '@/test/pipeline-variables'
 import Preparation from '../index'
 
-const api = vi.hoisted(() => ({ stream: vi.fn<typeof ssePost>(), upload: vi.fn<typeof upload>() }))
-const processingParameters = vi.hoisted(() => vi.fn())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.stream,
-  upload: api.upload,
+const api = vi.hoisted(() => ({
+  stream: vi.fn<typeof import('@/service/event-stream').streamEvents>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
+}))
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: api.stream,
 }))
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 // Virtualizer measurement is supplied by the browser in production.
@@ -36,11 +34,28 @@ vi.mock('@tanstack/react-virtual')
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  // The stubbed datasource runs echo their input so the stream stub can answer by its body.
+  const echo = async (input: unknown) => input
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
+      'rag.pipelines.byPipelineId.workflows.draft.datasource.nodes.byNodeId.run.post': echo,
+      'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.run.post': echo,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': processingParameters,
+      'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': async () => ({
+        variables: [
+          createPipelineVariable({
+            variable: 'limit',
+            label: 'Limit',
+            type: PipelineInputVarType.number,
+            default_value: 5,
+          }),
+        ],
+      }),
       'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': async () => ({
         variables: [
           createPipelineVariable({
@@ -133,19 +148,12 @@ const uploadedFile = {
 } satisfies FileResponse
 const handleRun = vi.fn()
 beforeEach(() => {
-  handleRun.mockReset().mockResolvedValue(true)
-  processingParameters.mockReset().mockResolvedValue({
-    variables: [
-      createPipelineVariable({
-        variable: 'limit',
-        label: 'Limit',
-        type: PipelineInputVarType.number,
-        default_value: 5,
-      }),
-    ],
-  })
   api.upload.mockReset().mockResolvedValue(uploadedFile)
-  api.stream.mockReset().mockImplementation(async (_url, { body }, callbacks) => {
+  api.stream.mockReset().mockImplementation(async (request, callbacks) => {
+    const { body } = (await request({
+      signal: new AbortController().signal,
+      context: { stream: true },
+    })) as { body: unknown }
     if (!body || typeof body !== 'object' || !('datasource_type' in body))
       throw new Error('Expected a datasource request')
     const hasBucket =
@@ -263,41 +271,6 @@ const selectItem = async (id: string, user: ReturnType<typeof userEvent.setup>) 
   }
   await waitFor(() => expect(next()).toBeEnabled())
 }
-
-it('keeps the processing form and selected file after a failed save, then allows retry', async () => {
-  processingParameters.mockResolvedValue({
-    variables: [
-      createPipelineVariable({ variable: 'query', label: 'Query', default_value: 'original' }),
-    ],
-  })
-  const starting = createDeferred<boolean>()
-  handleRun.mockReturnValueOnce(starting.promise)
-  const { user, workflowStore } = await setup()
-  await selectItem('local', user)
-  await user.click(next())
-  const input = screen.getByRole('textbox', { name: 'Query' })
-  await user.clear(input)
-  await user.type(input, 'edited')
-  await user.click(process())
-
-  expect(workflowStore.getState().isPreparingDataSource).toBe(true)
-  expectLoadingButton(process())
-  await user.click(process())
-  expect(handleRun).toHaveBeenCalledOnce()
-  await act(async () => starting.resolve(false))
-  await waitFor(() => expect(process()).not.toHaveAttribute('aria-disabled', 'true'))
-  expect(input).toHaveValue('edited')
-  expect(workflowStore.getState().isPreparingDataSource).toBe(true)
-
-  await user.click(process())
-  await waitFor(() => expect(workflowStore.getState().isPreparingDataSource).toBe(false))
-  expect(handleRun).toHaveBeenLastCalledWith({
-    inputs: { query: 'edited' },
-    start_node_id: 'local',
-    datasource_type: DatasourceType.localFile,
-    datasource_info_list: [expectedInfo.local],
-  })
-})
 
 it.each(sources)(
   'requires a selected item before processing $title and sends its complete run payload',

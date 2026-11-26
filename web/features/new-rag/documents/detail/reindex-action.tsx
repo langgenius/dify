@@ -60,7 +60,8 @@ export function DocumentReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : (result.errorMessage ??
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
         )
       }
     },
@@ -69,7 +70,7 @@ export function DocumentReindexAction() {
 
   const stopReindex = async () => {
     const result = await cancelReindex(refreshWritePermission)
-    if (result === 'failed') toast.error(t(($) => $.taskActionFailed))
+    if (result.status === 'failed') toast.error(result.message ?? t(($) => $.taskActionFailed))
   }
 
   return (

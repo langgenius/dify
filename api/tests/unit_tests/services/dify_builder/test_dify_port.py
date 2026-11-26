@@ -812,7 +812,6 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
     assert publish.call_args.kwargs["session"] is mock_session
     assert publish.call_args.kwargs["app_model"].id == app.id
     assert publish.call_args.kwargs["account"].id == account.id
-    assert publish.call_args.kwargs["expected_draft_id"] == draft.id
     stored_app = mock_session.get(App, app.id)
     assert stored_app is not None
     assert stored_app.workflow_id == "new-wf-id"
@@ -1026,7 +1025,6 @@ def test_publish_verification_locked_guard(mock_session: TrackedPortSession, sta
             WorkflowServiceDifyPort().publish(
                 "app-1", _actor(), expected_revision=expected, expected_graph_revision=expected_graph
             )
-            assert ws.return_value.publish_workflow.call_args.kwargs["expected_draft_id"] == "locked-draft"
             published_app = mock_session.get(App, app.id)
             assert published_app is not None
             assert published_app.workflow_id == "published"
@@ -1038,29 +1036,3 @@ def test_publish_verification_locked_guard(mock_session: TrackedPortSession, sta
     assert _installed_spy_10.call_args.args[0].id == draft.id
     _installed_spy_11 = installed_mock(mock_session.refresh)
     assert _installed_spy_11.call_args.kwargs == {"with_for_update": True}
-
-
-@pytest.mark.parametrize(
-    ("consent_id", "command_id"), [("consent-1", None), (None, "command-1"), ("", None), ("consent-1", "")]
-)
-def test_confirmed_run_requires_both_server_reserved_identifiers_together(
-    mock_session: TrackedPortSession, consent_id: str | None, command_id: str | None
-) -> None:
-    with patch("services.dify_builder.dify_port.AppGenerateService.generate") as generate:
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1",
-            _actor(),
-            {},
-            lambda _event: None,
-            session_id="session-1",
-            test_input_id="input-1",
-            confirmed_consent_id=consent_id,
-            command_id=command_id,
-        )
-    generate.assert_not_called()
-    _installed_spy_12 = installed_mock(mock_session.get)
-    _installed_spy_12.assert_not_called()
-    assert run.status == "failed"
-    assert run.execution_refusal is not None
-    assert run.execution_refusal.reason_code == "confirmed_launch_incomplete"
-    assert run.dify_run_id == ""

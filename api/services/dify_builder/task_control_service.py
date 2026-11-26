@@ -89,7 +89,7 @@ def control(
     saved = _saved(service, session_id, client_action_id, intent)
     if saved:
         if saved.get("settlement") in {"pending", "unknown"}:
-            _settle_stop(service._repo, service._test_actions, session_id, actor, client_action_id)
+            _settle_stop(service._repo, session_id, actor, client_action_id)
             saved = _saved(service, session_id, client_action_id, intent)
         view = _replay(service, session_id, saved)
         if kind == "resume" and saved.get("enqueue") in {"pending", "dispatching", "claimed"}:
@@ -217,7 +217,7 @@ def control(
         candidate = service._session_lock.current_owner(session_id)
         if candidate and candidate.startswith(f"g{expected_generation}:"):
             service._session_lock.release(session_id, candidate)
-        _settle_stop(service._repo, service._test_actions, session_id, actor, client_action_id)
+        _settle_stop(service._repo, session_id, actor, client_action_id)
     else:
         # Finalize the exact receipt before a worker can capture its CAS base.
         # Response persistence must never advance the head of active cognition.
@@ -229,35 +229,12 @@ def control(
     return _replay(service, session_id, saved)
 
 
-def _settle_stop(repo, test_actions, session_id, actor, key, *, deliver=True):
+def _settle_stop(repo, session_id, actor, key, *, deliver=True):
     _, context = repo.get_session(session_id)
     controls = context.task_control
     if controls.get("settlement") not in {"pending", "unknown"} or controls.get("receipt", {}).get("id") != key:
         return
-    settlement = "settled"
-    request_id = controls.get("native_request_id")
-    if request_id:
-        settlement = "pending"
-    if request_id and test_actions is not None:
-        try:
-            if deliver:
-                receipt = test_actions.cancel(
-                    actor=actor,
-                    session_id=session_id,
-                    test_input_id=context.test_input_ref,
-                    request_id=request_id,
-                    idempotency_key="task-stop:" + key,
-                )
-            else:
-                receipt = test_actions.current(actor=actor, session_id=session_id, test_input_id=context.test_input_ref)
-                if receipt is None or receipt.request_id != request_id:
-                    return
-            settlement = (
-                "unknown" if receipt.outcome == "unknown" else "settled" if receipt.status == "terminal" else "pending"
-            )
-        except Exception:
-            # Intent is durable. An authenticated retry reconciles this identity.
-            settlement = "pending"
+    settlement = "unknown" if controls.get("native_request_id") else "settled"
     if controls.get("ordinary_run_ids") or controls.get("ordinary_request_ids"):
         from services.dify_builder.task_native_cancel import settle_ordinary
 
@@ -426,11 +403,11 @@ def refresh_continuation(repo, dify, session_id, actor, action):
     action.base_version = current.version
 
 
-def observe_stop(repo, test_actions, session_id, actor):
+def observe_stop(repo, session_id, actor):
     """Reconcile terminal evidence without delivering cancellation or execution."""
     _, context = repo.get_session(session_id)
     if context.paused and context.task_control.get("settlement") in {"pending", "unknown"}:
-        _settle_stop(repo, test_actions, session_id, actor, context.task_control["receipt"]["id"], deliver=False)
+        _settle_stop(repo, session_id, actor, context.task_control["receipt"]["id"], deliver=False)
 
 
 def release_unstarted_continuation(repo, session_id, action):

@@ -3,7 +3,7 @@ import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -58,7 +58,7 @@ import {
 } from '@/app/components/workflow/utils'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
 import useInspectVarsCrud from '../../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
@@ -381,7 +381,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [data.type, currToolCollection?.allow_delete])
 
   // only fetch trigger plugins when the node is a trigger plugin
-  const { data: triggerPlugins = [] } = useAllTriggerPlugins(data.type === BlockEnum.TriggerPlugin)
+  const { data: triggerPlugins = [] } = useQuery(
+    allTriggerPluginsQueryOptions(data.type === BlockEnum.TriggerPlugin),
+  )
   const currentTriggerPlugin = useMemo(
     () => getCurrentTriggerPlugin(data, triggerPlugins),
     [data, triggerPlugins],
@@ -591,6 +593,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
       <TabsTab value={TabType.lastRun}>
         {t(($) => $['debug.lastRunTab'], { ns: 'workflowDebug' }).toLocaleUpperCase()}
       </TabsTab>
+      <TabsIndicator />
     </TabsList>
   )
 

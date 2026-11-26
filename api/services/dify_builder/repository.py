@@ -636,7 +636,6 @@ class SqlDifyBuilderRepository:
                 raise ConflictError("lifecycle control targets a superseded task")
             old_generation = generation(context)
             if operation == "clear":
-                self._revoke_cleared_native_authority(sql, session, client_action_id)
                 settlement = self._clear_execution_settlement(sql, session, context)
             else:
                 self._stop_context(sql, row, context, client_action_id)
@@ -703,18 +702,6 @@ class SqlDifyBuilderRepository:
             DifyBuilderExecutionRequest.context["policy_version"].as_string() == "builder-native-test-v1"
         )
 
-    def _revoke_cleared_native_authority(self, sql: Session, session: DomainSession, key: str) -> None:
-        """Revoke live native authority under the caller's Session lock, without external I/O."""
-        from runtime_contracts.builder.execution import canonical_digest
-        from services.dify_builder.native_testing.lifecycle import revoke_request_authority
-
-        request_ids = self._native_request_ids(session).where(
-            DifyBuilderExecutionRequest.state.in_(("running", "waiting"))
-        )
-        for request_id in list(sql.scalars(request_ids.with_for_update())):
-            revoke_request_authority(
-                sql, request_id=request_id, tenant_id=session.tenant_id, cancellation_key=canonical_digest(key)
-            )
 
     def _clear_execution_settlement(
         self, sql: Session, session: DomainSession, context: DifyBuilderContext

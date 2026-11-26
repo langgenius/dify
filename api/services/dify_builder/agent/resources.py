@@ -491,7 +491,7 @@ def list_tenant_resources(
     agent_source_error = None
     if account_id is not None:
         try:
-            from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
+            from services.dify_builder.agent_catalog import AgentCatalogService
 
             with Session(db.engine) as session:
                 catalog = AgentCatalogService(session)

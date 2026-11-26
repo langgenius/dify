@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
-import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import {
   useWorkflowHistory,
@@ -24,7 +24,7 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const { removeBranchEdges } = useEdgesInteractions()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { removeUsedVarInNodes } = useWorkflow()
   const routes = data.agent_output_routes

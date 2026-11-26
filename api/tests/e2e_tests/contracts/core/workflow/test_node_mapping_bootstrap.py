@@ -23,13 +23,13 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints() -> No
         from services.workflow_runtime import workflow_runner
         from services.workflow_runtime import entry as workflow_entry
         from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
-        from services.workflow_runtime.node_factory import (
+        from core.workflow.node_factory import (
             DifyNodeFactory,
             NODE_TYPE_CLASSES_MAPPING,
             resolve_workflow_node_class,
         )
         from core.workflow.nodes.agent import AgentNode
-        from services.workflow_runtime.agent_node import DifyAgentNode
+        from core.workflow.nodes.agent_v2.agent_node import DifyAgentNode
         from graphon.enums import BuiltinNodeTypes
         from services import workflow_service
         from services.rag_pipeline import rag_pipeline

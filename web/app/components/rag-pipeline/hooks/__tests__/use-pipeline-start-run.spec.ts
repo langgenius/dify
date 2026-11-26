@@ -1,4 +1,3 @@
-import type { SyncDraftResult } from '@/app/components/workflow/hooks-store'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store/workflow'
 import { act } from '@testing-library/react'
 import {
@@ -27,11 +26,11 @@ const renderStartRun = (initialStoreState: Record<string, unknown> = {}) =>
 
 describe('usePipelineStartRunByCanEdit', () => {
   beforeEach(() => {
-    mockDoSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 1234 })
+    mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
   })
 
   it('saves the draft before opening datasource preparation in the run panel', async () => {
-    const pending = createDeferred<SyncDraftResult>()
+    const pending = createDeferred<void>()
     mockDoSyncWorkflowDraft.mockReturnValue(pending.promise)
     const { result, store } = renderStartRun({
       showEnvPanel: true,
@@ -53,7 +52,7 @@ describe('usePipelineStartRunByCanEdit', () => {
     })
 
     await act(async () => {
-      pending.resolve({ hash: 'saved-hash', updatedAt: 1234 })
+      pending.resolve()
       await running
     })
 
@@ -61,20 +60,6 @@ describe('usePipelineStartRunByCanEdit', () => {
     expect(store.getState()).toMatchObject({
       isPreparingDataSource: true,
       showDebugAndPreviewPanel: true,
-    })
-  })
-
-  it('keeps the run panel closed when the draft cannot be saved', async () => {
-    mockDoSyncWorkflowDraft.mockResolvedValue(null)
-    const { result, store } = renderStartRun()
-
-    await act(async () => {
-      await result.current.handleWorkflowStartRunInWorkflow()
-    })
-
-    expect(store.getState()).toMatchObject({
-      isPreparingDataSource: false,
-      showDebugAndPreviewPanel: false,
     })
   })
 

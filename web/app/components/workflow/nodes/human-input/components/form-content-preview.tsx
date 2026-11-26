@@ -15,10 +15,11 @@ import { Markdown } from '@/app/components/base/markdown'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import Form from '../../_base/components/before-run-form/form'
 import {
   buildSubmitData,
@@ -167,7 +168,7 @@ const ServerPreviewTrigger = ({
 }: PreviewTriggerProps & { nodeId: string }) => {
   const { t } = useTranslation(['appDebug', 'workflow', 'common', 'workflowHumanInput'])
   const resource = useAtomValue(editorResourceAtom)
-  const { doSyncWorkflowDraft } = useScheduleDraftSave()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { hasSetInspectVar, systemVars, conversationVars } = useInspectVarsCrud()
   const panelWidth = useStore((state) => state.panelWidth)
   const [open, setOpen] = React.useState(false)
@@ -197,6 +198,7 @@ const ServerPreviewTrigger = ({
     },
   ]
   const preview = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ inputs }: { inputs: Record<string, unknown>; session: number }) => {
       if (resource.kind !== 'app') throw new Error('Missing application')
       await syncHumanInputDraft(doSyncWorkflowDraft)
@@ -204,13 +206,10 @@ const ServerPreviewTrigger = ({
         resource.mode === 'workflow'
           ? consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form
           : consoleClient.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form
-      const response = await api.preview.post(
-        {
-          params: { app_id: resource.appId, node_id: nodeId },
-          body: { inputs },
-        },
-        { context: { silent: true } },
-      )
+      const response = await api.preview.post({
+        params: { app_id: resource.appId, node_id: nodeId },
+        body: { inputs },
+      })
       return {
         content: response.form_content,
         formInputs: (response.inputs ?? []).map((input) =>
@@ -292,8 +291,10 @@ const ServerPreviewTrigger = ({
               {preview.isError ? (
                 <p role="alert">
                   {preview.error instanceof HumanInputDraftSyncError
-                    ? t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' })
-                    : t(($) => $.error, { ns: 'common' })}
+                    ? (getRequestErrorMessage(preview.error.cause) ??
+                      t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }))
+                    : (getRequestErrorMessage(preview.error) ??
+                      t(($) => $.error, { ns: 'common' }))}
                 </p>
               ) : inputVars.length ? (
                 <p className="system-sm-semibold text-text-secondary">

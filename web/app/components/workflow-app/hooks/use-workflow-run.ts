@@ -1,7 +1,7 @@
 import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
@@ -13,7 +13,6 @@ import { v4 as uuidV4 } from 'uuid'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useWorkflowAppStore as useWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 import {
   editorResourceAtom,
   workflowAppIdentityAtom,
@@ -22,16 +21,18 @@ import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   toEnvironmentVariables,
   toGraphEdges,
   toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
 import { usePathname } from '@/next/navigation'
-import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
-import { useWorkflowDraftSave, useWorkflowDraftSaveByCanEdit } from '../draft/use-draft-save'
+import { useCollaborativeWorkflow } from '../../workflow/hooks/use-collaborative-workflow'
+import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
   createFinalWorkflowRunCallbacks,
@@ -46,7 +47,7 @@ import {
   isDebuggableTriggerType,
   mapPublishedWorkflowFeatures,
   normalizePublishedWorkflowNodes,
-  resolveWorkflowRunUrl,
+  resolveWorkflowRunRequest,
   runTriggerDebug,
   validateWorkflowRunRequest,
 } from './use-workflow-run-utils'
@@ -115,10 +116,11 @@ const getWorkflowTracingCount = (workflowData: unknown) => {
   return Array.isArray(tracing) ? tracing.length : undefined
 }
 
-type DoSyncWorkflowDraft = ReturnType<typeof useWorkflowDraftSave>['doSyncWorkflowDraft']
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
@@ -206,22 +208,20 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const handleRun = useCallback(
     async (
       params: WorkflowRunParams | null | undefined,
-      callback?: IOtherOptions,
+      callback?: StreamCallbacks,
       options?: HandleRunOptions,
     ) => {
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
       const runMode = options?.mode ?? TriggerType.UserInput
       const resolvedParams: WorkflowRunParams = params ?? {}
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft: Node[]) => {
         draft.forEach((node) => {
           node.data.selected = false
           node.data._runningStatus = undefined
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       await doSyncWorkflowDraft()
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
 
       const {
         onWorkflowStarted,
@@ -251,10 +251,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       const isInWorkflowDebug = appDetail.mode === 'workflow'
 
-      const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
       const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
+      const request = resolveWorkflowRunRequest(appDetail, runMode, isInWorkflowDebug, requestBody)
 
-      if (!url) return
+      if (!request) return
 
       const validationMessage = validateWorkflowRunRequest(runMode, options)
       if (validationMessage) {
@@ -416,8 +416,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       if (isDebuggableTriggerType(runMode)) {
         await runTriggerDebug({
           debugType: runMode,
-          url,
-          requestBody,
+          request,
           baseSseOptions,
           controllerTarget: window as unknown as Record<string, unknown>,
           setAbortController: (controller) => {
@@ -451,15 +450,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         },
       })
 
-      ssePost(
-        url,
-        {
-          body: requestBody,
-        },
-        finalCallbacks,
-      )
+      streamEvents(request, finalCallbacks)
     },
     [
+      collaborativeWorkflow,
       store,
       doSyncWorkflowDraft,
       workflowStore,
@@ -581,13 +575,13 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 }
 
 export const useWorkflowRunByCanEdit = (canEdit: boolean) => {
-  const { doSyncWorkflowDraft } = useWorkflowDraftSaveByCanEdit(canEdit)
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
 
   return useWorkflowRunBase(doSyncWorkflowDraft)
 }
 
 export const useWorkflowRun = () => {
-  const { doSyncWorkflowDraft } = useWorkflowDraftSave()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   return useWorkflowRunBase(doSyncWorkflowDraft)
 }

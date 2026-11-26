@@ -12,13 +12,13 @@ import {
   updateEdgeHoverState,
   updateEdgeSelectionState,
 } from './use-edges-interactions.helpers'
-import { useScheduleDraftSave } from './use-schedule-draft-save'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 export const useEdgesInteractions = () => {
   const store = useStoreApi()
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
   const workflowStore = useWorkflowStore()
@@ -54,20 +54,20 @@ export const useEdgesInteractions = () => {
     (_, edge) => {
       if (getNodesReadOnly()) return
 
-      const { edges, setEdges } = store.getState()
-      setEdges(updateEdgeHoverState(edges, edge.id, true))
+      const { edges } = store.getState()
+      collaborativeWorkflow.setEdges(updateEdgeHoverState(edges, edge.id, true), false)
     },
-    [getNodesReadOnly, store],
+    [collaborativeWorkflow, getNodesReadOnly, store],
   )
 
   const handleEdgeLeave = useCallback<EdgeMouseHandler>(
     (_, edge) => {
       if (getNodesReadOnly()) return
 
-      const { edges, setEdges } = store.getState()
-      setEdges(updateEdgeHoverState(edges, edge.id, false))
+      const { edges } = store.getState()
+      collaborativeWorkflow.setEdges(updateEdgeHoverState(edges, edge.id, false), false)
     },
-    [getNodesReadOnly, store],
+    [collaborativeWorkflow, getNodesReadOnly, store],
   )
 
   // The caller owns draft synchronization and history for the complete user action.

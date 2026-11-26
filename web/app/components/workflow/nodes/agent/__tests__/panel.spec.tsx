@@ -16,10 +16,23 @@ import Panel from '../panel'
 import { createProvider, createStrategy } from './strategy-fixture'
 
 // Plugin metadata is an external service; the configuration and strategy owners stay real.
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
-  useCheckInstalled: () => ({ data: { plugins: [] } }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
+})
+
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: async () => ({ data: { plugins: [], total: 0 } }),
+  })
+})
 
 // The strategy picker/form has its own interaction suite; drive its public callbacks here.
 vi.mock('../../_base/components/agent-strategy', () => ({

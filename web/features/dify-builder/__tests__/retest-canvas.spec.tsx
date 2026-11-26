@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import type { WorkflowDraftRefreshResult } from '@/app/components/workflow-app/draft/use-draft-refresh'
 import type { Node } from '@/app/components/workflow/types'
+import type { WorkflowDraftRefreshResult } from '@/features/dify-builder/editor/use-canvas-refresh'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

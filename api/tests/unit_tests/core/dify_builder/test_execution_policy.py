@@ -203,19 +203,6 @@ def test_admission_rejects_unsupported_effect_shapes(mutation: str) -> None:
     assert "private" not in str(error.value)
 
 
-def test_exact_implementation_identity_precedes_native_validation(monkeypatch: pytest.MonkeyPatch) -> None:
-    from services.workflow_runtime import node_factory
-
-    class Unreviewed:
-        @staticmethod
-        def validate_node_data(_data: object) -> NoReturn:
-            pytest.fail("unreviewed node validated")
-
-    monkeypatch.setattr(node_factory, "resolve_workflow_node_class", lambda **_kwargs: Unreviewed)
-    with pytest.raises(policy().BuilderExecutionPolicyError, match="unsupported_node_implementation"):
-        policy().admitted_node_bindings(snapshot())
-
-
 def test_native_start_end_identity_and_raw_digest_binding() -> None:
     p = policy()
     bindings = p.admitted_node_bindings(snapshot())
@@ -540,17 +527,6 @@ def normal_workflow_features(*, citation: bool = True) -> dict[str, object]:
     }
 
 
-@pytest.mark.parametrize("citation", [True, False], ids=["enabled", "disabled"])
-def test_normal_workflow_citation_display_metadata_admits_native_template(citation: bool) -> None:
-    from tests.unit_tests.services.dify_builder.test_template_execution import template_graph
-
-    value = snapshot(template_graph(), features=normal_workflow_features(citation=citation))
-    bindings = policy().admitted_node_bindings(value)
-    assert [binding.node_id for binding in bindings] == ["start", "template", "end"]
-    assert value.features["retriever_resource"] == {"enabled": citation}
-    assert value.features["file_upload"] == {}
-
-
 @pytest.mark.parametrize("features", [{}, {"retriever_resource": {}}], ids=["absent", "empty"])
 def test_citation_display_absent_or_empty_metadata_compatibility(features: dict[str, object] | None) -> None:
     value = snapshot(features=features)
@@ -591,14 +567,3 @@ def test_citation_display_flag_never_admits_enabled_external_features(feature: s
         policy().admit_raw_execution_metadata(snapshot(features=features))
     assert error.value.reason_code == "unsupported_features"
     assert "PRIVATE-METADATA" not in str(error.value)
-
-
-@pytest.mark.parametrize("node_type", ["knowledge-retrieval", "llm", "tool"])
-def test_citation_display_flag_never_admits_retrieval_model_or_tool_nodes(node_type: str) -> None:
-    from tests.unit_tests.services.dify_builder.test_template_execution import template_graph
-
-    raw_graph = template_graph()
-    raw_graph["nodes"][1]["data"]["type"] = node_type
-    with pytest.raises(policy().BuilderExecutionPolicyError) as error:
-        policy().admitted_node_bindings(snapshot(raw_graph, features=normal_workflow_features()))
-    assert error.value.reason_code == "unsupported_node_implementation"

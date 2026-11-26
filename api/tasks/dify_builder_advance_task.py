@@ -1,29 +1,8 @@
-"""Celery task that runs the dify_builder engine's ``Runner.advance`` off the
-request thread (P3b Task 4).
+"""Advance one Builder session on its worker and release the owned lease.
 
-The usecase's ``dispatch`` (Task 3) acquires the cross-process advance lock
-(``services.dify_builder.session_lock``) in the web process and enqueues
-this task; this task runs the actual engine step in the Celery process and
-releases the lock in ``finally`` -- regardless of whether the step succeeded,
-lost a version-CAS race, or raised. Progress (curated phase deltas,
-native workflow events during test runs, plus the settled command projection) is
-forwarded to the session's progress bus
-(``services.dify_builder.progress_bus``) for the P3c SSE endpoint to relay.
-
-Each invocation opens its own ``sessionmaker(bind=db.engine, ...)`` --
-mirrors ``services.dify_builder.dify_port._session_factory`` -- rather
-than reusing the Flask-request-scoped ``db.session``, since this runs in a
-Celery worker, not a Flask request. The ``FlaskTask`` base
-(``extensions.ext_celery.init_app``) already wraps the task body in
-``app.app_context()``, so this module must NOT push its own context.
-
-Once a message's user half is durable, a failed assistant half remains at
-the current waiting gate. The client can then retry with the same
-``client_turn_id`` without duplicating the user bubble.
-
-A reserved confirmed Tool command (``CONFIRMED_TOOL_ACTION``) is reloaded from
-the consent owner before any environment or agent setup; a forged, duplicate
-or already launched delivery ends as a conflict without running anything.
+The Console enqueues a versioned action. The worker runs the durable state
+machine, relays ordinary debugger events, and publishes the current projection.
+A failed assistant reply can retry the same turn without duplicating user input.
 """
 
 import logging
@@ -61,23 +40,17 @@ from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.localize import LanguageDetector
 from services.dify_builder.agent_factory import build_dify_builder_agent
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
-from services.dify_builder.application.execution_policy import (
-    BuilderExecutionPolicyError,
-    ConfirmedToolExecutionContext,
-)
 from services.dify_builder.application.handlers_build import build_registry
 from services.dify_builder.application.handlers_edit import edit_registry
 from services.dify_builder.application.handlers_fix import fix_registry
 from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError
-from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import DifyBuilderService, _phase_for
 from services.dify_builder.session_lock import active_advance_time_limit
 from services.dify_builder.task_controls import ExecutionFence, execution_scope, generation, require_active
-from services.dify_builder.test_actions import BuilderTestActions
 
 logger = logging.getLogger(__name__)
 
@@ -90,50 +63,6 @@ def _build_repo() -> SqlDifyBuilderRepository:
     # Per-task sessionmaker (never the Flask-request-scoped db.session) --
     # mirrors dify_port._session_factory().
     return SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
-
-
-def _build_consent_service() -> BuilderRealCallConsentService:
-    return BuilderRealCallConsentService(sessionmaker(bind=db.engine, expire_on_commit=False))
-
-
-def _build_test_actions(repo: SqlDifyBuilderRepository) -> BuilderTestActions:
-    from services.dify_builder.wiring import build_native_test_api_service
-
-    return BuilderTestActions(repo._session_factory, build_native_test_api_service)
-
-
-def _require_reserved_launch(
-    repo: SqlDifyBuilderRepository, session_id: str, action: Action, actor: Actor
-) -> ConfirmedToolExecutionContext:
-    """Reload the server-reserved confirmed command before any environment or agent setup.
-
-    The queued payload is only a pointer: its consent reference must equal the
-    session's committed pending reference, and the consent owner must still
-    hold this exact command unlaunched for this actor/session. A forged,
-    serialized, duplicate or already launched delivery never runs.
-    """
-    consent_id = action.payload.get("consent_id")
-    _session, fc = repo.get_session(session_id)
-    if (
-        set(action.payload) != {"consent_id"}
-        or not isinstance(consent_id, str)
-        or not consent_id
-        or (fc.confirmed_consent_id, fc.confirmed_command_id) != (consent_id, action.command_id)
-    ):
-        logger.warning("dify_builder confirmed command not reserved (session=%s)", session_id)
-        raise ConflictError(f"dify_builder: confirmed command is not reserved for session {session_id}")
-    try:
-        return _build_consent_service().reserved_launch(
-            actor=actor, session_id=session_id, consent_id=consent_id, command_id=action.command_id
-        )
-    except BuilderExecutionPolicyError as error:
-        logger.warning(
-            "dify_builder confirmed command refused (session=%s, command=%s, reason=%s)",
-            session_id,
-            action.command_id,
-            error.reason_code,
-        )
-        raise ConflictError(f"dify_builder: confirmed command cannot launch for session {session_id}") from None
 
 
 def _persist_failed_state(
@@ -170,23 +99,6 @@ def _persist_failed_state(
     return repo.compare_and_advance(session.id, session.version, PcState.FAILED, context, [item])
 
 
-def _settle_reserved_grant(context: ConfirmedToolExecutionContext) -> None:
-    """Close this worker's own reloaded grant from its durable record after a terminal failure.
-
-    The consent owner decides: failed/expired before any claim, unknown after
-    one unless a sealed completion exists; counters are never touched and a
-    final grant is left as is. A failed write is repaired by the sweeper.
-    """
-    try:
-        _build_consent_service().settle_launch(context=context)
-    except Exception:
-        logger.warning(
-            "dify_builder confirmed grant settlement deferred to reconciliation (session=%s, command=%s)",
-            context.session_id,
-            context.command_id,
-        )
-
-
 @shared_task(
     queue="dify_builder",
     soft_time_limit=dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS,
@@ -218,8 +130,6 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     progress_activities: dict[str, ExecutionActivity] = {}
     progress_operation_id = ""
     action: Action | None = None
-    # Set only after this worker reloaded its own server-reserved confirmed command.
-    confirmed_context: ConfirmedToolExecutionContext | None = None
     fence: ExecutionFence | None = None
 
     def delivery_active() -> bool:
@@ -241,6 +151,9 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         dify = WorkflowServiceDifyPort()
         actor = Actor(**actor_dict)
         action = Action(**action_dict)
+        if action.kind == CONFIRMED_TOOL_ACTION:
+            # A queued approval from the retired executor cannot authorize an ordinary run.
+            return
         expected_generation = action.execution_generation
         if expected_generation is None:
             _, observed = repo.get_session_at_version(session_id, action.base_version)
@@ -259,9 +172,6 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
 
             claim_continuation(repo, session_id, actor, action)
             refresh_continuation(repo, dify, session_id, actor, action)
-        confirmed = action.kind == CONFIRMED_TOOL_ACTION
-        if confirmed:
-            confirmed_context = _require_reserved_launch(repo, session_id, action, actor)
         # The per-session model choice lives on the context (stable for the session).
         # Read the head so the real agent is constructed with the user's chosen model.
         loaded_session, _fc = repo.get_session(session_id)
@@ -280,7 +190,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             logger.warning("Builder command start notification unavailable for session %s", session_id)
         from services.dify_builder.application.cognition_policy import cognition_admission_required
 
-        if not confirmed and cognition_admission_required(action.kind):
+        if cognition_admission_required(action.kind):
             from extensions.application_services.dify_builder_cognition_policy import select_cognition_config
 
             select_cognition_config(actor, _fc.model_config)
@@ -451,12 +361,10 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             emit_reasoning=emit_reasoning,
             # Native controls/history must not gain an optional inference just
             # because an old session has no persisted reply language.
-            detect_language=language_detector.detect_language
-            if not confirmed and cognition_admission_required(action.kind)
-            else None,
-            rename_app=None if confirmed else rename_app,
-            describe_app=None if confirmed else describe_app,
-            consume_material=None if confirmed else build_attachment_intake(repo).consume,
+            detect_language=language_detector.detect_language if cognition_admission_required(action.kind) else None,
+            rename_app=rename_app,
+            describe_app=describe_app,
+            consume_material=build_attachment_intake(repo).consume,
             command_id=action.command_id,
         )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
@@ -621,10 +529,6 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 "session_id": session_id,
                 "command_id": action.command_id if action is not None else action_dict.get("command_id"),
             }
-        if confirmed_context is not None:
-            # Terminal failure of this worker's own reserved command: settle its grant once
-            # (idempotent; a grant the port already settled is final and left as is).
-            _settle_reserved_grant(confirmed_context)
     finally:
         execution.close()
         # Only this worker's owner value releases the activated lease.
@@ -639,7 +543,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             from services.dify_builder.task_control_service import observe_stop
 
             try:
-                observe_stop(repo, _build_test_actions(repo), session_id, actor)
+                observe_stop(repo, session_id, actor)
             except Exception:
                 logger.exception("dify_builder stop settlement observation failed for session %s", session_id)
 
@@ -676,7 +580,6 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 lambda *a, **k: None,
                 get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
                 get_verification_identity_fn=get_verification_identity,
-                test_actions=_build_test_actions(repo),
                 attachment_intake=build_attachment_intake(repo),
             ).get_session_view(session_id, actor)
             progress_bus.publish(
@@ -717,23 +620,3 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             dispatch_pending_builder_material(completed_repo, session_id, completed_actor)
         except Exception:
             logger.exception("dify_builder pending material handoff unavailable for session %s", session_id)
-
-
-@shared_task(queue="dify_builder")
-def advance_native_test(*, ref: dict, generation: int, dispatch_id: str, actor: dict) -> None:
-    """V2-only delivery: trusted SQL reload, never ordinary Runner fallback.
-
-    The application composition owner supplies qualified native collaborators.
-    Queue arguments are references, not approval flags or serialized state.
-    """
-    from runtime_contracts.builder.native.contracts import decode_native_ref
-    from services.dify_builder.wiring import build_native_dispatch_lifecycle
-
-    actual_ref = decode_native_ref(ref)
-    service = build_native_dispatch_lifecycle(
-        ref=actual_ref,
-        generation=generation,
-        dispatch_id=dispatch_id,
-        actor_hint=Actor(**actor),
-    )
-    service.execute_dispatch(ref=actual_ref, generation=generation, dispatch_id=dispatch_id)

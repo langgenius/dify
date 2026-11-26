@@ -49,8 +49,6 @@ def create_runs_router(
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CreateRunResponse:
         """Return HTTP 202 for a new run or exact replay; conflicting keyed requests get 409."""
-        if request.execution_mode != "ordinary":
-            raise HTTPException(status_code=409, detail={"code": "native_test_protocol_unsupported"})
         try:
             record = await scheduler.create_run(request)
         except SchedulerStoppingError as exc:

@@ -8,7 +8,6 @@ from datetime import datetime
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Literal, cast, override
-from unittest.mock import Mock
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID, uuid4
 
@@ -16,6 +15,7 @@ import httpx
 import pytest
 from flask import Flask, Request, got_request_exception
 from pydantic import JsonValue
+from redis import Redis
 from sqlalchemy import Connection, Engine, delete, event, func, select, text, update
 from sqlalchemy.engine import ExecutionContext
 from sqlalchemy.orm import Mapper, Session, SessionTransaction, sessionmaker
@@ -39,7 +39,6 @@ from controllers.common.errors import UnauthorizedError
 from controllers.console import api as console_api
 from controllers.console import console_ns
 from controllers.console.app import agent_config_inspector as inspector
-from controllers.console.app import preview_admission
 from controllers.console.app import preview_admission as _trial_preview_admission_module
 from controllers.console.app import preview_admission as _trial_preview_details_admission_module
 from controllers.console.explore import trial
@@ -61,7 +60,9 @@ from core.tools.errors import ToolSSRFError
 from core.tools.tool_manager import ToolManager
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
+from extensions.ext_application_services import build_application_services
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
+from extensions.ext_redis import RedisClientWrapper
 from extensions.ext_storage import StorageType
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError, InvokeError
 from graphon.variables import SecretVariable, StringVariable
@@ -103,11 +104,9 @@ from models.tools import ToolFile, WorkflowToolProvider
 from models.workflow import Workflow
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
-from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.account_errors import AccountNotFoundError
 from services.agent.errors import AgentVersionNotFoundError
-from services.agent_config_service import AgentConfigService
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_query_service import AppPreviewQueryService
@@ -212,8 +211,12 @@ class TestTrialAgentConfigCases:
         sqlite_session_factory: sessionmaker[Session],
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
-    ) -> Harness:
-        config_overrides(SECRET_KEY="trial-config-test", FILES_URL="http://localhost")
+    ) -> Iterator[Harness]:
+        config_overrides(
+            SECRET_KEY="trial-config-test",
+            FILES_URL="http://localhost",
+            HOSTED_FETCH_APP_TEMPLATES_MODE="db",
+        )
         tenant_id, agent_id, snapshot_id, account_id = (str(uuid4()) for _ in range(4))
         source = _trial_agent_config_App(
             id=str(uuid4()),
@@ -324,18 +327,7 @@ class TestTrialAgentConfigCases:
             reads.append(key)
             return payloads[key]
 
-        monkeypatch.setattr("services.agent_config_service.storage", SimpleNamespace(load_once=load_once))
-        catalog = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory, redis=Mock())
-        services = SimpleNamespace(
-            app_previews=AppPreviewQueryService(
-                apps=AppPreviewQueryRepository(session_factory=sqlite_session_factory),
-                is_previewable=catalog.contains,
-            )
-        )
-        monkeypatch.setattr(preview_admission, "application_services", lambda: services)
-        monkeypatch.setattr(inspector, "application_services", lambda: services)
-        monkeypatch.setattr(trial, "application_services", lambda: services)
-        monkeypatch.setattr(inspector, "_service", lambda: AgentConfigService(session_factory=sqlite_session_factory))
+        monkeypatch.setattr("services.agent.config_service.storage", SimpleNamespace(load_once=load_once))
         app = Flask(__name__)
         api = ExternalApi(app)
         api.add_resource(trial.TrialAgentComposerApi, "/console/api/trial-apps/<uuid:app_id>/agent-composer")
@@ -357,7 +349,17 @@ class TestTrialAgentConfigCases:
             prefix + "skills/<string:name>/files/content",
             endpoint="console.trial_agent_config_skill_file_content",
         )
-        return Harness(app, sqlite_session_factory, source, agent, snapshot, upload.id, skill_id, reads)
+
+        with Redis() as redis_client:
+            redis = RedisClientWrapper()
+            redis.initialize(redis_client)
+            app.extensions["application_services"] = build_application_services(
+                database_client=sqlite_session_factory,
+                deployment_edition=DeploymentEdition.COMMUNITY,
+                initialization_password="",
+                redis=redis,
+            )
+            yield Harness(app, sqlite_session_factory, source, agent, snapshot, upload.id, skill_id, reads)
 
     @staticmethod
     def test_published_template_configuration_is_readable_without_workspace_membership(harness: Harness) -> None:

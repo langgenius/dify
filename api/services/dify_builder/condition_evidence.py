@@ -344,7 +344,7 @@ def build_evidence(
         else []
     )
     native_type = target_nodes[0]["data"].get("type") if len(target_nodes) == 1 else None
-    from services.workflow_runtime.node_factory import get_node_type_classes_mapping
+    from core.workflow.node_factory import get_node_type_classes_mapping
 
     known_type = isinstance(native_type, str) and native_type in get_node_type_classes_mapping()
     identity = "unavailable"

@@ -14,18 +14,12 @@ api = ExternalApi(
     title="Inner API",
     description="Internal APIs for enterprise features, billing, knowledge retrieval, and plugin communication",
     authorizations={
-        "AgentBearer": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "Authorization",
-            "description": "Bearer AGENT_BACKEND_API_TOKEN; runtime routes also require X-Dify-Agent-Run.",
-        },
         "InnerApiKey": {
             "type": "apiKey",
             "in": "header",
             "name": "X-Inner-Api-Key",
             "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
-        },
+        }
     },
     security="InnerApiKey",
 )
@@ -39,7 +33,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespace exists."""
 
     from . import datasource_credentials, mail, runtime_credentials
-    from .agent import files, knowledge, llm, runtime, runtime_usage, tools, tracing
+    from .agent import files, knowledge, llm, runtime_usage, tools, tracing
     from .app import app, dsl, file_grants
     from .knowledge import retrieval
     from .knowledge_fs import background, storage, texts, vectors
@@ -53,7 +47,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         files,
         knowledge,
         llm,
-        runtime,
         runtime_usage,
         tools,
         tracing,
@@ -79,7 +72,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _agent_files,
     _agent_knowledge,
     _agent_llm,
-    _agent_runtime,
     _agent_runtime_usage,
     _agent_tools,
     _agent_tracing,
@@ -97,14 +89,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _workspace,
 ) = _register_controllers()
 
-
-@bp.record_once
-def _install_agent_lineage(state):
-    from services.dify_builder.wiring import build_native_agent_endpoint_lineage
-
-    state.app.extensions["native_agent_endpoint_lineage"] = build_native_agent_endpoint_lineage()
-
-
 api.add_namespace(inner_api_ns)
 
 __all__ = [
@@ -112,7 +96,6 @@ __all__ = [
     "_agent_files",
     "_agent_knowledge",
     "_agent_llm",
-    "_agent_runtime",
     "_agent_runtime_usage",
     "_agent_tools",
     "_app_app",

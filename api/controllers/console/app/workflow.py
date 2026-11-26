@@ -17,7 +17,7 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, Conflict, Forbidden, InternalServerError, NotFound, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound, ServiceUnavailable
 
 import services
 from configs import dify_config
@@ -74,14 +74,11 @@ from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
 from fields.workflow_run_fields import (
-    IterationNodeRunPayload,
-    LoopNodeRunPayload,
     WorkflowRunNodeExecutionResponse,
     node_execution_response_source,
 )
 from graphon.enums import NodeType
 from graphon.file import File
-from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
@@ -100,11 +97,14 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
 from services.errors.llm import InvokeRateLimitError
-from services.errors.workflow_service import DuplicateDraftWorkflowError, EmptyWorkflowConfirmationRequiredError
+from services.errors.workflow_service import WorkflowDraftInitializationBusyError
 from services.trigger.debug_service import TriggerDebugEvent
-from services.workflow.webhook_policy import WorkflowWebhookLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -179,6 +179,14 @@ class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
         if value is None:
             return value
         return uuid_value(value)
+
+
+class IterationNodeRunPayload(BaseModel):
+    inputs: dict[str, Any] | None = Field(default=None)
+
+
+class LoopNodeRunPayload(BaseModel):
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class DraftWorkflowRunPayload(BaseWorkflowRunPayload):
@@ -649,7 +657,7 @@ class DraftWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @console_ns.doc("sync_draft_workflow")
-    @console_ns.doc(description="Save draft graph and environment patches; initialize configuration for new drafts")
+    @console_ns.doc(description="Sync draft workflow configuration")
     @console_ns.expect(console_ns.models[SyncDraftWorkflowPayload.__name__])
     @console_ns.response(
         200,
@@ -657,21 +665,13 @@ class DraftWorkflowApi(Resource):
         console_ns.models[SyncDraftWorkflowResponse.__name__],
     )
     @console_ns.response(400, "Invalid workflow configuration")
-    @console_ns.response(404, "App owner not found for draft initialization")
-    @console_ns.response(409, "Draft hash changed or multiple draft workflows require repair")
     @console_ns.response(403, "Permission denied")
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def post(self, current_user: Account, app_model: App):
         """
-        Save the graph and explicit environment-variable patches. Existing draft
-        features and conversation variables are owned by their dedicated endpoints;
-        the submitted snapshots only initialize a new draft. Legacy clients that
-        edit configuration through this POST must use those dedicated endpoints.
-
-        Empty initialization or clearing requires force=true;
-        an already-empty draft may be saved with its current hash without force.
+        Sync draft workflow
         """
         content_type = request.headers.get("Content-Type", "")
 
@@ -687,6 +687,11 @@ class DraftWorkflowApi(Resource):
                 raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             abort(415)
+
+        # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
+        # Require explicit confirmation for both regular saves and text/plain unload beacons.
+        if args_model.graph.get("nodes") == [] and args_model.graph.get("edges") == [] and not args_model.force:
+            raise InvalidArgumentError(description="Saving an empty workflow requires force=true.")
 
         workflow_service = WorkflowService()
 
@@ -707,32 +712,26 @@ class DraftWorkflowApi(Resource):
                 variable_factory.build_conversation_variable_from_mapping(obj)
                 for obj in args_model.conversation_variables
             ]
-            # Keep this accepted snapshot while the post-commit handoff may wait.
-            with session_factory.create_session() as write_session:
-                workflow = workflow_service.sync_draft_workflow(
-                    app_model=app_model,
-                    graph=args_model.graph,
-                    features=args_model.features,
-                    unique_hash=args_model.hash,
-                    account=current_user,
-                    environment_variables=[],
-                    conversation_variables=conversation_variables,
-                    session=write_session,
-                    environment_variable_upserts=environment_variable_upserts,
-                    deleted_environment_variable_ids=deleted_environment_variable_ids,
-                    preserve_environment_variables=True,
-                    # Both editor modes submit cached configuration alongside the graph.
-                    # Only a new draft consumes those initial features/conversation values.
-                    graph_only=True,
-                    require_empty_graph_confirmation=not args_model.force,
-                )
-        except DuplicateDraftWorkflowError as exc:
-            raise Conflict(str(exc)) from exc
-        except WorkflowNotFoundError as exc:
-            raise NotFound(str(exc)) from exc
+            workflow = workflow_service.sync_draft_workflow(
+                app_model=app_model,
+                graph=args_model.graph,
+                features=args_model.features,
+                unique_hash=args_model.hash,
+                account=current_user,
+                environment_variables=[],
+                conversation_variables=conversation_variables,
+                session=db.session(),
+                environment_variable_upserts=environment_variable_upserts,
+                deleted_environment_variable_ids=deleted_environment_variable_ids,
+                preserve_environment_variables=True,
+                graph_only=args_model.is_collaborative,
+                serialize_creation=True,
+            )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
-        except (VariableError, EmptyWorkflowConfirmationRequiredError, WorkflowWebhookLimitError) as e:
+        except WorkflowDraftInitializationBusyError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
+        except VariableError as e:
             raise InvalidArgumentError(description=str(e)) from e
 
         return dump_response(
@@ -1368,7 +1367,6 @@ class PublishedWorkflowApi(Resource):
         """
 
         workflow_service = WorkflowService()
-        workflow_service.prepare_draft_tool_publish(app_model=app_model)
         with session_factory.get_session_maker().begin() as session:
             try:
                 workflow = workflow_service.publish_workflow(
@@ -1378,6 +1376,8 @@ class PublishedWorkflowApi(Resource):
                     marked_name=args.marked_name or "",
                     marked_comment=args.marked_comment or "",
                 )
+            except EvaluationDisabledError as exc:
+                raise NotFound() from exc
             except EvaluationPlanRequiredError as exc:
                 raise PaidPlanRequiredError() from exc
             except EvaluationEntitlementUnavailableError as exc:
@@ -1437,6 +1437,8 @@ class EvaluationPublishedWorkflowApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationDisabledError as exc:
+            raise NotFound() from exc
         except EvaluationPlanRequiredError as exc:
             raise PaidPlanRequiredError() from exc
         except EvaluationEntitlementUnavailableError as exc:
@@ -1477,6 +1479,8 @@ class WorkflowKindConvertApi(Resource):
             raise NotFound(str(exc)) from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationDisabledError as exc:
+            raise NotFound() from exc
         except EvaluationPlanRequiredError as exc:
             raise PaidPlanRequiredError() from exc
         except EvaluationEntitlementUnavailableError as exc:
@@ -1684,7 +1688,6 @@ class PublishedAllWorkflowApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
 class DraftWorkflowRestoreApi(Resource):
     @console_ns.doc("restore_workflow_to_draft")
-    @console_ns.response(409, "Multiple draft workflows require repair")
     @console_ns.doc(description="Restore a published workflow version into the draft workflow")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
     @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
@@ -1701,16 +1704,12 @@ class DraftWorkflowRestoreApi(Resource):
         workflow_service = WorkflowService()
 
         try:
-            # Keep this accepted snapshot while the post-commit handoff may wait.
-            with session_factory.create_session() as write_session:
-                workflow = workflow_service.restore_published_workflow_to_draft(
-                    app_model=app_model,
-                    workflow_id=workflow_id,
-                    account=current_user,
-                    session=write_session,
-                )
-        except DuplicateDraftWorkflowError as exc:
-            raise Conflict(str(exc)) from exc
+            workflow = workflow_service.restore_published_workflow_to_draft(
+                app_model=app_model,
+                workflow_id=workflow_id,
+                account=current_user,
+                session=db.session(),
+            )
         except IsDraftWorkflowError as exc:
             raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
         except WorkflowNotFoundError as exc:
@@ -2130,11 +2129,12 @@ class WorkflowOnlineUsersApi(Resource):
             for app_id, users_json in zip(app_id_batch, users_json_batch, strict=False):
                 users_json_by_app_id[app_id] = users_json
 
-        results = []
+        users_by_app_id: dict[str, list[dict[str, str]]] = {}
+        account_ids: list[str] = []
         for app_id in ordered_accessible_app_ids:
             users_json = users_json_by_app_id.get(app_id, {})
 
-            users = []
+            users: list[dict[str, str]] = []
             for _, user_info_json in users_json.items():
                 try:
                     user_info = json.loads(user_info_json)
@@ -2149,23 +2149,24 @@ class WorkflowOnlineUsersApi(Resource):
                 if not isinstance(user_id, str) or not isinstance(username, str):
                     continue
 
-                avatar = user_info.get("avatar")
-                if avatar is not None and not isinstance(avatar, str):
-                    avatar = None
+                users.append({"user_id": user_id, "username": username})
+                account_ids.append(user_id)
+            users_by_app_id[app_id] = users
 
-                if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
-                    try:
-                        avatar = file_helpers.get_signed_file_url(avatar)
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed to sign workflow online user avatar; using original value. "
-                            "app_id=%s avatar=%s error=%s",
-                            app_id,
-                            avatar,
-                            exc,
-                        )
-
-                users.append({"user_id": user_id, "username": username, "avatar": avatar})
-            results.append({"app_id": app_id, "users": users})
+        avatar_urls: dict[str, str] = {}
+        if account_ids:
+            try:
+                avatar_urls = application_services().accounts.avatar.resolve_current_for_accounts(
+                    account_ids=tuple(dict.fromkeys(account_ids))
+                )
+            except Exception:
+                logger.warning("Failed to resolve workflow online user avatars", exc_info=True)
+        results = [
+            {
+                "app_id": app_id,
+                "users": [{**user, "avatar": avatar_urls.get(user["user_id"])} for user in users_by_app_id[app_id]],
+            }
+            for app_id in ordered_accessible_app_ids
+        ]
 
         return WorkflowOnlineUsersResponse.model_validate({"data": results}).model_dump(mode="json")

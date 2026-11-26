@@ -1,26 +1,25 @@
-import type { useWorkflowDraftSave } from '../draft/use-draft-save'
+import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
-import { useWorkflowAppStore as useWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
-import { useWorkflowDraftSaveByCanEdit } from '../draft/use-draft-save'
+import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
-type DoSyncWorkflowDraft = ReturnType<typeof useWorkflowDraftSave>['doSyncWorkflowDraft']
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
   const queryClient = useQueryClient()
   const { eventEmitter } = useEventEmitterContextContext()
-  const workflowStore = useWorkflowStore()
 
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useQuery(
@@ -30,20 +29,21 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
       if (!appDetail) return false
 
       if (!workflowId) {
-        if (workflowStore.getState().hasWorkflowDraftConflict) return false
         let syncFailed = false
+        let syncError: unknown
         await doSyncWorkflowDraft(undefined, {
-          onError: () => {
+          onError: (error) => {
             syncFailed = true
+            syncError = error
           },
         })
-        if (workflowStore.getState().hasWorkflowDraftConflict) return false
         if (syncFailed) {
-          toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+          toast.error(getRequestErrorMessage(syncError) ?? t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }
       }
@@ -60,8 +60,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
   const handleExportDSL = useCallback(
     async (include = false, workflowId?: string): Promise<boolean> => {
-      if (isExporting || (!workflowId && workflowStore.getState().hasWorkflowDraftConflict))
-        return false
+      if (isExporting) return false
 
       try {
         return await exportWorkflow({ include, workflowId })
@@ -73,17 +72,16 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         return false
       }
     },
-    [exportWorkflow, isExporting, t, workflowStore],
+    [exportWorkflow, isExporting, t],
   )
 
   const exportCheck = useCallback(async () => {
-    if (!appDetail || workflowStore.getState().hasWorkflowDraftConflict) return
+    if (!appDetail) return
     try {
       const { items } = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          context: { silent: true },
-          staleTime: 0,
+          meta: { errorToast: false },
         }),
       )
       const list = items.filter((env) => env.value_type === 'secret')
@@ -105,7 +103,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         },
       )
     }
-  }, [appDetail, eventEmitter, handleExportDSL, queryClient, t, workflowStore])
+  }, [appDetail, eventEmitter, handleExportDSL, queryClient, t])
 
   return {
     exportCheck,
@@ -115,7 +113,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 }
 
 export const useDSLByCanEdit = (canEdit: boolean) => {
-  const { doSyncWorkflowDraft } = useWorkflowDraftSaveByCanEdit(canEdit)
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
 
   return useDSLBase(doSyncWorkflowDraft)
 }

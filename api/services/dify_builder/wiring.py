@@ -42,20 +42,14 @@ from services.dify_builder.attachment_extraction import AttachmentExtractionStat
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_policy_service import check_app_permissions
 from services.dify_builder.progress_snapshot import ProgressSnapshot
-from services.dify_builder.real_call_consent_service import (
-    BuilderRealCallConsentService,
-)
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
 from tasks.dify_builder_advance_task import advance_session
 
 __all__ = [
-    "REAL_CALL_REFUSAL_REASONS",
-    "build_real_call_consent_service",
     "build_service",
     "dify_builder_error_response",
-    "real_call_error_response",
     "session_view_to_dict",
     "stream_advance_frames",
 ]
@@ -156,9 +150,6 @@ def _get_app_name(app_id: str, actor: Actor) -> str:
     return app_naming.current_app_name(app_id=app_id, tenant_id=actor.tenant_id)
 
 
-def build_real_call_consent_service() -> BuilderRealCallConsentService:
-    """The consent owner for prepare/confirm/status and the confirmed dispatch coordinator."""
-    return BuilderRealCallConsentService(sessionmaker(bind=db.engine, expire_on_commit=False))
 
 
 def build_service() -> DifyBuilderService:
@@ -173,11 +164,8 @@ def build_service() -> DifyBuilderService:
         subscribe_fn=progress_bus.subscribe,
         authorize_app_fn=_authorize_app,
         get_app_revision_fn=_get_app_revision,
-        stamp_http_fixtures_fn=WorkflowServiceDifyPort().stamp_http_fixtures,
         get_verification_identity_fn=_get_verification_identity,
         get_app_name_fn=_get_app_name,
-        real_call_consent=build_real_call_consent_service(),
-        test_actions=_build_test_actions(),
         stream_read_scope_fn=app.app_context,
         attachment_intake=build_attachment_intake(repo),
         cognition_policy_fn=select_cognition_config,
@@ -225,10 +213,6 @@ def dispatch_pending_builder_material(repo, session_id: str, actor: Actor) -> st
     return service.dispatch_pending_material(session_id, actor)
 
 
-def _build_test_actions():
-    from services.dify_builder.test_actions import BuilderTestActions
-
-    return BuilderTestActions(sessionmaker(bind=db.engine, expire_on_commit=False), build_native_test_api_service)
 
 
 def _public_actions(actions: object) -> list[dict[str, object]]:
@@ -362,134 +346,7 @@ def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
 
 # Public refusal category of each consent/dispatch reason code. Only these
 # fixed codes are disclosed; any other refusal collapses to one fixed answer.
-_REAL_CALL_REFUSAL_CODES: dict[str, str] = {
-    **dict.fromkeys(
-        (
-            "needs_setup",
-            "credential_required",
-            "credential_binding_mismatch",
-            "credential_provider_mismatch",
-            "unsupported_test_input",
-        ),
-        "needs_setup",
-    ),
-    # The same answer for a missing or invisible credential: nothing foreign is disclosed.
-    **dict.fromkeys(
-        ("credential_reference_unavailable", "credential_policy_refused"),
-        "needs_permission",
-    ),
-    **dict.fromkeys(
-        (
-            "unsupported_action",
-            "unsupported_tool_node",
-            "unsupported_tool_parameters",
-            "unsupported_tool_configuration",
-            "unsafe_message_id",
-            "unsupported_session_state",
-            "unsupported_graph",
-            "unsupported_workflow",
-            "unsupported_node_retry",
-            "unsupported_default_output",
-            "unsupported_selector",
-            "unsupported_node_implementation",
-            "unsupported_node_configuration",
-            "invalid_node_configuration",
-            "unsupported_start_input",
-            "unsupported_input_value",
-            "unsupported_features",
-            "unsupported_variables",
-            "unsupported_external_tracing",
-        ),
-        "unsupported_action",
-    ),
-    **dict.fromkeys(
-        (
-            "installed_tool_unavailable",
-            "invalid_graph_metadata",
-            "session_state_unavailable",
-        ),
-        "unavailable_metadata",
-    ),
-    **dict.fromkeys(
-        (
-            "stale_session_version",
-            "stale_app_revision",
-            "stale_consent_version",
-            "stale_execution_revision",
-            "test_input_binding_mismatch",
-            "consent_scope_mismatch",
-            "consent_scope_changed",
-            "consent_invalidated",
-            "consent_expired",
-            "consent_not_prepared",
-            "consent_not_confirmed",
-            "consent_already_claimed",
-            "consent_decision_conflict",
-            "idempotency_conflict",
-            "execution_already_launched",
-            "command_lineage_changed",
-        ),
-        "conflict",
-    ),
-}
-# Missing and cross-owner sessions/consents/inputs are indistinguishable.
-_REAL_CALL_NOT_FOUND = frozenset({"consent_not_found", "execution_owner_mismatch"})
-_REAL_CALL_BAD_REQUEST = frozenset(
-    {
-        "invalid_version",
-        "invalid_scope_digest",
-        "invalid_idempotency_key",
-        "invalid_decision",
-    }
-)
-# Raised only after ownership is established, so a 403 reveals nothing foreign.
-_REAL_CALL_PERMISSION_DENIED = "execution_permission_denied"
-_REAL_CALL_UNAVAILABLE = "real_call_unavailable"
 _REASON_CODE = re.compile(r"[a-z][a-z0-9_]{0,127}\Z")
-# Every reason a 409 refusal can carry; the 403 permission refusal has its own fixed reason.
-REAL_CALL_REFUSAL_REASONS = frozenset(
-    {
-        *_REAL_CALL_REFUSAL_CODES,
-        _REAL_CALL_UNAVAILABLE,
-        "session_busy",
-        "session_conflict",
-    }
-)
-
-
-def _real_call_refusal(code: str, reason_code: str) -> dict[str, str]:
-    return {"result": "refusal", "code": code, "reason_code": reason_code}
-
-
-def real_call_error_response(exc: Exception) -> tuple[dict, int] | None:
-    """Map a consent or confirmed-dispatch failure to a fixed public answer.
-
-    Never echoes exception text: only allowlisted reason codes are disclosed.
-    Returns ``None`` for unexpected failures, which the caller re-raises.
-    """
-    if isinstance(exc, BuilderExecutionPolicyError):
-        reason = exc.reason_code
-        if reason in _REAL_CALL_NOT_FOUND:
-            return {"code": "not_found"}, 404
-        if reason in _REAL_CALL_BAD_REQUEST:
-            return {"code": "bad_request"}, 400
-        if reason == _REAL_CALL_PERMISSION_DENIED:
-            return _real_call_refusal("needs_permission", reason), 403
-        code = _REAL_CALL_REFUSAL_CODES.get(reason)
-        if code is None:
-            logger.warning(
-                "dify_builder real call refusal without a public code (reason=%s)",
-                reason if _REASON_CODE.fullmatch(reason) else "invalid",
-            )
-            return _real_call_refusal("unavailable_metadata", _REAL_CALL_UNAVAILABLE), 409
-        return _real_call_refusal(code, reason), 409
-    if isinstance(exc, Forbidden):
-        return _real_call_refusal("needs_permission", _REAL_CALL_PERMISSION_DENIED), 403
-    if isinstance(exc, BusyError):
-        return _real_call_refusal("conflict", "session_busy"), 409
-    if isinstance(exc, ConflictError):
-        return _real_call_refusal("conflict", "session_conflict"), 409
-    return dify_builder_error_response(exc)
 
 
 def _event_frame(event: str, data: object) -> str:
@@ -940,154 +797,3 @@ def stream_advance_frames(
                 subscription.close()
 
     return _ClosingFrameStream(_frames(), subscription)
-
-
-def native_runtime_owner():
-    """One bounded process-local owner attached to the actual Flask application."""
-    from flask import current_app
-
-    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
-
-    owner = current_app.extensions.setdefault("builder_native_runtime_owner", DifyNativeRuntimeOwner())
-    if type(owner) is not DifyNativeRuntimeOwner:
-        raise BuilderExecutionPolicyError("native_runtime_composition_mismatch")
-    return owner
-
-
-def build_native_test_api_service(*, actor: Actor):
-    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
-    from services.dify_builder.native_testing.runtime import build_native_api
-    from tasks.dify_builder_advance_task import advance_native_test
-
-    sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
-    return ProfiledNativeTestCommands(
-        sessions=sessions,
-        actor=actor,
-        confirmed_factory=lambda: build_confirmed_agent_command_service(actor=actor),
-        legacy_factory=lambda: build_native_api(
-            sessions=sessions,
-            actor=actor,
-            owner=native_runtime_owner(),
-            publish=advance_native_test.delay,
-        ),
-    )
-
-
-def build_native_dispatch_lifecycle(*, ref, generation, dispatch_id, actor_hint=None):
-    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
-
-    return native_runtime_owner().delivery(
-        sessions=sessionmaker(bind=db.engine, expire_on_commit=False),
-        delivery=NativeDispatchRef(ref=ref, generation=generation, dispatch_id=dispatch_id),
-        actor_hint=actor_hint,
-    )
-
-
-class _NativeAgentIdentityReader:
-    """One short-lived authenticated SDK owner per private identity read."""
-
-    def read_run_identity_sync(self, run_id, selection):
-        from clients.agent_backend.factory import create_agent_backend_client
-        from configs import dify_config
-
-        if (
-            not dify_config.AGENT_BACKEND_BASE_URL
-            or not dify_config.AGENT_BACKEND_API_TOKEN
-            or dify_config.AGENT_BACKEND_USE_FAKE
-        ):
-            raise BuilderExecutionPolicyError("native_agent_identity_unavailable")
-        with create_agent_backend_client(
-            base_url=dify_config.AGENT_BACKEND_BASE_URL,
-            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
-            timeout=10.0,
-        ) as client:
-            return client.read_run_identity_sync(run_id, selection)
-
-
-def build_native_agent_preparation_service(*, actor: Actor, workspace_limits=None):
-    """S1 private config/bind owner; no native execution or continuation installation.
-
-    The later bound-node owner must supply its actual A7 limits to enable workspace
-    preparation. Callbacks need no workspace factory and can only bind a previously
-    protected reservation after authenticated persisted-Run readback.
-    """
-    from services.dify_builder.native_testing.agent_preparation import (
-        AgentPreparationService,
-    )
-    from services.dify_builder.native_testing.agent_runtime_config import (
-        NativeAgentRuntimeConfigBuilder,
-    )
-    from services.dify_builder.native_testing.agent_workspace import (
-        AgentTestWorkspaceService,
-    )
-    from services.dify_builder.native_testing.http_binding import (
-        NativeHttpBindingResolver,
-    )
-    from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
-    from services.dify_builder.native_testing.state_store import (
-        NativeExecutionStateStore,
-    )
-
-    loader = OwnedNativeTestLoader(
-        sessionmaker(bind=db.engine, expire_on_commit=False),
-        actor=actor,
-        resolver=NativeHttpBindingResolver(),
-    )
-    store = NativeExecutionStateStore(loader)
-    workspace = (
-        None
-        if workspace_limits is None
-        else AgentTestWorkspaceService(loader, state_store=store, limits=workspace_limits)
-    )
-    return AgentPreparationService(
-        state_store=store,
-        backend=_NativeAgentIdentityReader(),
-        workspace=workspace,
-        config_builder=NativeAgentRuntimeConfigBuilder(loader=loader),
-    )
-
-
-def build_native_agent_endpoint_lineage():
-    """Install strict dormant API lineage without enabling an Agent capability."""
-    from services.dify_builder.native_testing.agent_lineage import (
-        NativeAgentEndpointLineage,
-    )
-    from services.dify_builder.native_testing.agent_preparation import (
-        agent_preparation_for_ref,
-    )
-
-    return NativeAgentEndpointLineage(
-        backend=_NativeAgentIdentityReader(),
-        preparation_for_ref=agent_preparation_for_ref,
-    )
-
-
-def build_native_agent_operation_service(*, actor: Actor):
-    """Actual API dispatch owner; model reasoning has no grant authority."""
-    from services.dify_builder.native_testing.agent_operations import build_native_agent_operations
-    from services.dify_builder.native_testing.agent_risk_assessor import builder_call_assessor
-
-    return build_native_agent_operations(actor=actor, assessor=builder_call_assessor)
-
-
-def build_confirmed_agent_command_service(*, actor: Actor, backend=None):
-    from clients.agent_backend.factory import create_agent_backend_run_client
-    from services.dify_builder.native_testing.confirmed_agent_commands import build_confirmed_agent_commands
-
-    if backend is None:
-        if (
-            not dify_config.AGENT_BACKEND_BASE_URL
-            or not dify_config.AGENT_BACKEND_API_TOKEN
-            or dify_config.AGENT_BACKEND_USE_FAKE
-        ):
-            raise BuilderExecutionPolicyError("native_agent_identity_unavailable")
-        backend = create_agent_backend_run_client(
-            base_url=dify_config.AGENT_BACKEND_BASE_URL,
-            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
-        )
-    return build_confirmed_agent_commands(
-        sessions=sessionmaker(bind=db.engine, expire_on_commit=False),
-        actor=actor,
-        operations=build_native_agent_operation_service(actor=actor),
-        backend=backend,
-    )

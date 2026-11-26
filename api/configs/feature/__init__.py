@@ -1059,22 +1059,7 @@ class WorkflowConfig(BaseSettings):
         default="ask",
     )
 
-    DIFY_BUILDER_CONFIRMED_TOOL_ENABLED: bool = Field(
-        description=(
-            "Backend-only rollout control for consented real Builder Tool tests. It never qualifies an artifact; "
-            "unqualified actions stay unsupported. Not exposed in public system features."
-        ),
-        default=False,
-    )
 
-    DIFY_BUILDER_CONFIRMED_RUN_ENABLED: bool = Field(
-        description=(
-            "Run a Builder Test Run the restricted runtime cannot admit as an ordinary draft run: model, sandbox "
-            "and read-only nodes run, side effects run only when confirmed in the test-data form and are mocked "
-            "otherwise, destructive operations are always mocked. A run with mocked steps cannot be published."
-        ),
-        default=False,
-    )
 
 
 class WorkflowNodeExecutionConfig(BaseSettings):
@@ -1562,9 +1547,6 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
-    ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK: bool = Field(default=True, description="Recover accepted draft handoffs")
-    WORKFLOW_DRAFT_COORDINATION_INTERVAL: PositiveInt = Field(default=60, description="Recovery interval in seconds")
-    WORKFLOW_DRAFT_COORDINATION_BATCH_SIZE: PositiveInt = Field(default=100, description="Maximum handoffs per sweep")
     ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
         description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
         default=True,
@@ -1578,15 +1560,15 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
-        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        description="Enable periodic recovery of conversation cleanup and detached retired Workspaces",
         default=True,
     )
     CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
-        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        description="Conversation cleanup recovery interval in minutes",
         default=5,
     )
     CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
-        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        description="Maximum IDs dispatched per cleanup sweep for each of conversations and detached Workspaces",
         default=100,
     )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
@@ -1865,8 +1847,12 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
 
 
 class EvaluationConfig(BaseSettings):
-    """Configuration for the evaluation runtime."""
+    """Deployment availability and runtime settings for Evaluation."""
 
+    ENABLE_EVALUATION: bool = Field(
+        description="Enable Evaluation on deployments and workspaces that support it.",
+        default=False,
+    )
     EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
         description="Maximum active evaluation runs per tenant.",
         default=3,

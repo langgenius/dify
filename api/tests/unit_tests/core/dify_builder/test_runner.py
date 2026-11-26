@@ -837,32 +837,6 @@ def test_confirmed_action_runs_working_handler_without_waiting_transition_or_mod
     assert [turn.action for turn in seen] == [action]
 
 
-@pytest.mark.parametrize(
-    ("state", "command"),
-    [
-        (PcState.BUILD_TEST_AND_REPAIR, "other-command"),
-        (PcState.BUILD_REVIEW, "command-1"),
-        (PcState.BUILD_AWAIT_TESTDATA, "command-1"),
-    ],
-)
-def test_confirmed_action_refuses_unreserved_command_or_non_working_state(state: PcState, command: str) -> None:
-    from core.dify_builder.models import CONFIRMED_TOOL_ACTION
-
-    env, repo = _new_env()
-    s = _session(entry_mode=EntryMode.BUILD, current_state=state)
-    repo.create_session(s, DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1"), [])
-    called: list[Turn] = []
-
-    def handler(_env: Env, turn: Turn, _s: Session, fc: DifyBuilderContext) -> StepResult:
-        called.append(turn)
-        return StepResult(next=PcState.BUILD_REVIEW, context=fc)
-
-    registry: dict[PcState, Handler] = {state: handler}
-    action = Action(kind=CONFIRMED_TOOL_ACTION, base_version=1, command_id=command)
-    with pytest.raises(ConflictError):
-        Runner(env, registry).advance(s.id, Turn(action=action, actor=_actor()))
-    assert called == []
-    assert repo.get_session(s.id)[0].version == 1
 
 
 def test_terminal_failure_clears_pending_confirmed_reference() -> None:

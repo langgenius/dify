@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import NoReturn, NotRequired, TypedDict, override
+from typing import NotRequired, TypedDict, override
 
 import pytest
 from pydantic import JsonValue
@@ -422,43 +422,6 @@ def test_invalid_annotation_preserves_completed_native_run_and_blocks_publicatio
     setup.repo.save_run(s.id, result.run)
     assert setup.repo.get_run(result.run.id).dify_run_id == "dify-run-1"
     assert not handlers_fix.publication_for_context(env, turn, s, fc).allowed
-
-
-def test_confirmed_completed_run_is_retained_without_post_effect_graph_read(
-    setup: AcceptanceSetup, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    env, s, fc, actor = setup.env, setup.session, setup.context, setup.actor
-    turn = Turn(
-        actor=actor,
-        action=Action(
-            kind="provide_testdata",
-            payload={
-                "inputs": {"orders": "valid-orders"},
-                "business_acceptance_contract": explicit_contract(s, fc),
-                "acceptance_case_id": "paid",
-            },
-        ),
-    )
-    handlers_fix.handle_await_testdata(env, turn, s, fc)
-    fc.confirmed_consent_id = "consent"
-    fc.confirmed_command_id = "command"
-
-    def unavailable(*_args: object) -> NoReturn:
-        raise RuntimeError("Graph became unavailable after the real effect")
-
-    monkeypatch.setattr(env.dify, "read_graph", unavailable)
-    result = handlers_fix.confirmed_tool_test(
-        env, turn, s, fc, review_state=PcState.FIX_AWAIT_DECISION, step_prefix="fix"
-    )
-    assert result.run is not None
-    assert result.run.verification is not None
-    assert result.run.status == "succeeded"
-    assert fc.verify_run_id == result.run.id
-    assert result.run.verification.business_acceptance["state"] == "unverified"
-    assert result.run.verification.terminal_outputs is None
-    assert setup.dify.run_draft_inputs == {"orders": "valid-orders"}
-    setup.repo.save_run(s.id, result.run)
-    assert setup.repo.get_run(result.run.id).dify_run_id == "dify-run-1"
 
 
 @pytest.mark.parametrize("owner", ["build", "edit"])

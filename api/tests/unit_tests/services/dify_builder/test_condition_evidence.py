@@ -328,7 +328,6 @@ def native_adapter(
         ) -> Workflow:
             # These repairs have no prepared bindings, so graph sync owns the commit.
             assert commit is True
-            assert coordination_id is not None
             return _workflow(graph_dict=graph)
 
         sync.side_effect = sync_graph

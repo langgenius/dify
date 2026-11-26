@@ -232,7 +232,6 @@ def queued_commands(monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderReposit
         mod.session_lock,
         lambda _sid, action, _actor, _token: queued.append(action),
         get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
-        stamp_http_fixtures_fn=port.stamp_http_fixtures,
     )
     return service, port, queued, events, released
 
@@ -295,29 +294,7 @@ def test_input_only_testdata_survives_revision_drift_through_the_worker(
     assert released == [(session.id, "queued-token")]
 
 
-@pytest.mark.parametrize(
-    ("kind", "waiting_state", "payload"),
-    [
-        ("run_verify", PcState.FIX_AWAIT_VERIFY, {}),
-        (
-            "provide_testdata",
-            PcState.FIX_AWAIT_TESTDATA,
-            {"mode": "provide", "inputs": {"query": "Test"}, "http_fixtures": []},
-        ),
-        (
-            "provide_testdata",
-            PcState.FIX_AWAIT_TESTDATA,
-            {
-                "mode": "provide",
-                "inputs": {"query": "Test"},
-                "http_fixtures": [
-                    {"node_id": "http", "status_code": 200, "content_type": "text/plain", "body": "sample"}
-                ],
-            },
-        ),
-    ],
-    ids=["workflow-action", "empty-http-fixtures", "http-fixtures"],
-)
+@pytest.mark.parametrize(("kind", "waiting_state", "payload"), [("run_verify", PcState.FIX_AWAIT_VERIFY, {})])
 def test_revision_bound_commands_reject_draft_changes_while_queued(
     repo: SqlDifyBuilderRepository,
     queued_commands: QueuedCommands,

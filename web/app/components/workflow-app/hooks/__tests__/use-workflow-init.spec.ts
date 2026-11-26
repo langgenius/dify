@@ -1,18 +1,14 @@
-import type {
-  AppDetailWithSite,
-  WorkflowResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import { act, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWorkflowHook } from '@/app/components/workflow-app/__tests__/workflow-test-env'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
-import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedAppDetail } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AppACLPermission } from '@/utils/permission'
@@ -24,11 +20,8 @@ const mockSyncWorkflowDraft = vi.fn()
 
 let appDetail: AppDetailWithSite
 
-const renderHook = <Result>(
-  callback: () => Result,
-  initialStoreState?: Partial<Shape>,
-  queryClient = createAccountProfileQueryClient({ id: 'user-1' }),
-) => {
+const renderHook = <Result>(callback: () => Result, initialStoreState?: Partial<Shape>) => {
+  const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
   seedAppDetail(queryClient, appDetail)
   return renderWorkflowHook(callback, {
     resource: {
@@ -96,7 +89,7 @@ vi.mock('@/service/workflow-queries', async (importOriginal) => {
 const mockFetchWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+  fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 const notExistError = () =>
@@ -105,6 +98,13 @@ const notExistError = () =>
     message: 'Draft workflow not exist.',
     status: 404,
   })
+
+const draftUnavailableError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
+  )
+const toastError = vi.spyOn(toast, 'error')
 
 const draftResponse = {
   id: 'draft-id',
@@ -231,6 +231,25 @@ describe('useWorkflowInit', () => {
     })
   })
 
+  it('should show the server message when the draft fails to load', async () => {
+    mockFetchWorkflowDraft.mockReset().mockRejectedValue(draftUnavailableError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should show the server message when creating the first draft fails', async () => {
+    mockSyncWorkflowDraft.mockRejectedValue(draftUnavailableError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+  })
+
   it('should keep readonly users local when the first workflow draft does not exist', async () => {
     appDetail = createAppDetailFixture({
       id: 'app-1',
@@ -261,6 +280,23 @@ describe('useWorkflowInit', () => {
       syncWorkflowDraftIsEmpty: true,
     })
     expect(result.current.data?.graph.viewport).toBeUndefined()
+  })
+
+  it('should load the draft created by another editor during initialization', async () => {
+    mockFetchWorkflowDraft.mockResolvedValueOnce(draftResponse)
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'draft_workflow_not_sync',
+        message: 'Draft already saved.',
+        status: 409,
+      }),
+    )
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.data?.hash).toBe(draftResponse.hash)
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {
@@ -389,12 +425,11 @@ describe('useWorkflowInit', () => {
 
   it('should keep node defaults when loading published metadata fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const publishedError = new Error('published workflow failed')
     mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
     mockFetchNodesDefaultConfigs.mockResolvedValue([
       { type: 'start', config: { title: 'Start Config' } },
     ])
-    mockFetchPublishedWorkflow.mockRejectedValue(publishedError)
+    mockFetchPublishedWorkflow.mockRejectedValue(new Error('published workflow failed'))
 
     const { store } = renderHook(() => useWorkflowInit(), { lastPublishedHasUserInput: true })
 
@@ -405,105 +440,6 @@ describe('useWorkflowInit', () => {
       })
     })
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(publishedError)
     consoleErrorSpy.mockRestore()
-  })
-
-  it('uses the newer published result when a canceled preload settles after publication', async () => {
-    const defaults = createDeferred<[]>()
-    const oldPublished = createDeferred<null>()
-    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
-    mockFetchNodesDefaultConfigs.mockReturnValue(defaults.promise)
-    mockFetchPublishedWorkflow.mockReturnValueOnce(oldPublished.promise).mockResolvedValueOnce({
-      created_at: 99,
-      graph: {
-        nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
-        edges: [{ source: 'start', target: 'end' }],
-      },
-    })
-    const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
-    const publishedQuery = appWorkflowQueryOptions('app-1')
-    const { store } = renderHook(() => useWorkflowInit(), undefined, queryClient)
-    await waitFor(() => expect(mockFetchPublishedWorkflow).toHaveBeenCalledOnce())
-    await act(async () => {
-      await queryClient.cancelQueries({ queryKey: publishedQuery.queryKey, exact: true })
-      await queryClient.query({ ...publishedQuery, staleTime: 0 })
-      oldPublished.resolve(null)
-      defaults.resolve([])
-    })
-    await waitFor(() => expect(store.getState().publishedAt).toBe(99_000))
-    expect(store.getState().lastPublishedHasUserInput).toBe(true)
-  })
-
-  it('preserves native publication when a stale cached null survives failed preload', async () => {
-    const defaults = createDeferred<[]>()
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
-    mockFetchNodesDefaultConfigs.mockReturnValue(defaults.promise)
-    mockFetchPublishedWorkflow.mockRejectedValue(new Error('published GET failed'))
-    const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
-    const publishedQuery = appWorkflowQueryOptions('app-1')
-    queryClient.setQueryData<WorkflowResponse | null>(publishedQuery.queryKey, null)
-    await queryClient.invalidateQueries({
-      queryKey: publishedQuery.queryKey,
-      exact: true,
-      refetchType: 'none',
-    })
-    const { store } = renderHook(() => useWorkflowInit(), undefined, queryClient)
-    await waitFor(() =>
-      expect(queryClient.getQueryState(publishedQuery.queryKey)?.status).toBe('error'),
-    )
-    act(() => {
-      store.getState().setPublishedAt(123)
-      store.getState().setLastPublishedHasUserInput(true)
-    })
-    await act(async () => defaults.resolve([]))
-    expect(store.getState().publishedAt).toBe(123_000)
-    expect(store.getState().lastPublishedHasUserInput).toBe(true)
-    consoleError.mockRestore()
-  })
-
-  it('keeps native publication while a replacement query is pending and later fails', async () => {
-    const defaults = createDeferred<[]>()
-    const oldPublished = createDeferred<null>()
-    const replacement = createDeferred<null>()
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
-    mockFetchNodesDefaultConfigs.mockReturnValue(defaults.promise)
-    mockFetchPublishedWorkflow
-      .mockReturnValueOnce(oldPublished.promise)
-      .mockReturnValueOnce(replacement.promise)
-    const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
-    const publishedQuery = appWorkflowQueryOptions('app-1')
-    queryClient.setQueryData<WorkflowResponse | null>(publishedQuery.queryKey, null)
-    await queryClient.invalidateQueries({
-      queryKey: publishedQuery.queryKey,
-      exact: true,
-      refetchType: 'none',
-    })
-    const { store } = renderHook(() => useWorkflowInit(), undefined, queryClient)
-    await waitFor(() => expect(mockFetchPublishedWorkflow).toHaveBeenCalledOnce())
-    let replacementQuery!: Promise<unknown>
-    await act(async () => {
-      await queryClient.cancelQueries({ queryKey: publishedQuery.queryKey, exact: true })
-      replacementQuery = queryClient
-        .query({ ...publishedQuery, staleTime: 0 })
-        .catch(() => undefined)
-    })
-    await waitFor(() => expect(mockFetchPublishedWorkflow).toHaveBeenCalledTimes(2))
-    act(() => {
-      store.getState().setPublishedAt(123)
-      store.getState().setLastPublishedHasUserInput(true)
-    })
-    await act(async () => defaults.resolve([]))
-    expect(store.getState().publishedAt).toBe(123_000)
-    await act(async () => {
-      replacement.reject(new Error('replacement GET failed'))
-      await replacementQuery
-      oldPublished.resolve(null)
-    })
-    expect(store.getState().publishedAt).toBe(123_000)
-    expect(store.getState().lastPublishedHasUserInput).toBe(true)
-    consoleError.mockRestore()
   })
 })

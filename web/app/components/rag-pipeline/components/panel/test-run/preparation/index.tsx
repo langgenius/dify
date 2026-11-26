@@ -1,4 +1,3 @@
-import type { usePipelineRunByCanEdit } from '../../../../hooks/use-pipeline-run'
 import type { Datasource } from '../types'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -62,13 +61,10 @@ const Preparation = () => {
     websitePages.length,
   ])
 
-  const { handleRun } = useWorkflowRun() as unknown as Pick<
-    ReturnType<typeof usePipelineRunByCanEdit>,
-    'handleRun'
-  >
+  const { handleRun } = useWorkflowRun()
 
   const handleProcess = useCallback(
-    async (data: Record<string, unknown>) => {
+    (data: Record<string, any>) => {
       if (!datasource) return
       const datasourceInfoList: Record<string, any>[] = []
       const credentialId = dataSourceStore.getState().currentCredentialId
@@ -116,13 +112,12 @@ const Preparation = () => {
         })
       }
       const { setIsPreparingDataSource } = workflowStore.getState()
-      const started = await handleRun({
+      handleRun({
         inputs: data,
         start_node_id: datasource.nodeId,
         datasource_type: datasourceType,
         datasource_info_list: datasourceInfoList,
       })
-      if (!started) return
       trackEvent('pipeline_start_action_time', { action_type: 'document_processing' })
       setIsPreparingDataSource?.(false)
     },

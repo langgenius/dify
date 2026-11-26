@@ -10,7 +10,7 @@ import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useInputFieldPanel } from '../../../hooks/use-input-field-panel'
@@ -43,7 +43,7 @@ const InputFieldPanel = () => {
   }
   const inputFieldsMap = useRef(getInputFieldsMap())
 
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const datasourceNodeDataMap = useMemo(() => {
     const datasourceNodeDataMap: Record<string, DataSourceNodeType> = {}

@@ -110,10 +110,9 @@ class _NoToolsBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
-        native_test_required: bool = False,
         knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (),
     ) -> WorkflowAgentToolLayers:
-        del tenant_id, app_id, user_id, tools, invoke_from, native_test_required, knowledge_fs_spaces
+        del tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces
         return WorkflowAgentToolLayers()
 
 

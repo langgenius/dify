@@ -579,7 +579,7 @@ def test_ready_tool_catalogue_degrades_to_empty_when_the_listing_fails(monkeypat
 def test_initial_plan_defers_actor_eligible_published_agent_metadata_to_discovery(
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, with_actor: bool
 ) -> None:
-    from services.agent import access_service
+    from services.dify_builder import agent_access as access_service
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
     from tests.builder_agent_fixtures import add_agent, make_case
 

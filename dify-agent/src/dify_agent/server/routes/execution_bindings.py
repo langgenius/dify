@@ -33,8 +33,6 @@ def create_execution_bindings_router(get_service: Callable[[], ExecutionBindingS
         request: CreateExecutionBindingRequest,
         service: Annotated[ExecutionBindingService, Depends(service_dep)],
     ) -> CreateExecutionBindingResponse:
-        if request.native_test_scope is not None:
-            raise HTTPException(status_code=409, detail={"code": "native_scope_unavailable"})
         try:
             return await service.create_binding(request)
         except ExecutionBindingServiceError as exc:

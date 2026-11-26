@@ -1350,7 +1350,7 @@ def reconcile_resource_plan(
     Empty selections need no catalogue or model call. A failed metadata read or
     unusable proposal returns no plan, so the handler retains its resource gate.
     """
-    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+    from services.dify_builder.agent_binding import AgentSnapshotChanged
 
     knowledge_ids = list(dict.fromkeys(rid for rid in resource_ids if rid.startswith("knowledge:")))
     if knowledge_ids:
@@ -1420,7 +1420,7 @@ def reconcile_resource_plan(
 def _inventory_for_selection(
     tenant_id: str, *, account_id: str | None, resource_ids: Sequence[str]
 ) -> resources.TenantResources:
-    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+    from services.dify_builder.agent_binding import AgentBindingSelection
 
     selected_ids = frozenset(
         AgentBindingSelection.from_resource_id(rid).agent_id for rid in resource_ids if rid.startswith("agent:")
@@ -1431,7 +1431,7 @@ def _inventory_for_selection(
 
 
 def _selected_agent_resources(inv: resources.TenantResources, resource_ids: Sequence[str]) -> list[ResourceRef]:
-    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection, AgentSnapshotChanged
+    from services.dify_builder.agent_binding import AgentBindingSelection, AgentSnapshotChanged
 
     selected = [rid for rid in resource_ids if rid.startswith("agent:")]
     if selected and inv.agent_source_error:
@@ -1811,7 +1811,7 @@ def build_nodes(
                 "inputs or operational failures. This phase context grants no external-call authorization."
             )
         if agent_refs:
-            from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+            from services.dify_builder.agent_binding import AgentBindingSelection
 
             selected_agents = [
                 {
@@ -1870,7 +1870,7 @@ def build_nodes(
                     graph=graph,
                     tools=tool_refs,
                 )
-                from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+                from services.dify_builder.agent_binding import AgentBindingSelection
 
                 selected_bindings = {
                     (

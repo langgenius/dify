@@ -2,7 +2,6 @@
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Literal
 
 import pytest
 from sqlalchemy.orm import Session as SqlSession
@@ -15,14 +14,8 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from models.dify_builder import DifyBuilderSession as DomainRow
 from services.dify_builder.application.runner import Env, StepResult
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
-from services.dify_builder.native_testing.public_contracts import (
-    NativePublicOutcome,
-    NativePublicStatus,
-    NativeTestPublicReceipt,
-)
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
-from services.dify_builder.test_actions import BuilderTestActions
 from tests.unit_tests.services.dify_builder.test_service import (
     ACCOUNT_ID,
     APP_ID,
@@ -204,87 +197,6 @@ def test_internal_continuation_cannot_enter_through_public_action(
         service.submit_action(s.id, _actor(), Action(kind="task_continue", base_version=1))
 
 
-@pytest.mark.parametrize(
-    ("outcome", "status", "expected", "editable"),
-    [
-        ("cancelled", "terminal", "paused", True),
-        ("unknown", "terminal", "failed", False),
-        (None, "running", "processing", False),
-    ],
-)
-def test_native_stop_settlement_is_truthful_and_unknown_never_resumes(
-    service: DifyBuilderService,
-    repo: SqlDifyBuilderRepository,
-    monkeypatch: pytest.MonkeyPatch,
-    outcome: Literal[NativePublicOutcome.CANCELLED, NativePublicOutcome.UNKNOWN] | None,
-    status: Literal[NativePublicStatus.RUNNING, NativePublicStatus.TERMINAL],
-    expected: str,
-    editable: bool,
-) -> None:
-    from uuid import uuid4
-
-    from models.dify_builder import DifyBuilderExecutionRequest
-
-    s = seed(repo)
-    _, fc = repo.get_session(s.id)
-    fc.test_input_ref = str(uuid4())
-    base = repo.compare_and_advance(s.id, 1, s.current_state, fc, [])
-    request_id = str(uuid4())
-    with repo._session_factory() as sql, sql.begin():
-        sql.add(
-            DifyBuilderExecutionRequest(
-                id=request_id,
-                tenant_id=TENANT_ID,
-                actor_id=ACCOUNT_ID,
-                app_id=APP_ID,
-                workflow_id=str(uuid4()),
-                session_id=s.id,
-                test_input_id=fc.test_input_ref,
-                context={"policy_version": "builder-native-test-v1"},
-                context_digest="a" * 64,
-                state="running",
-            )
-        )
-    receipt = NativeTestPublicReceipt(
-        request_id=request_id,
-        generation=0,
-        version=1,
-        status=status,
-        wait_reason=None,
-        native_run_id=None,
-        native_status=None,
-        pending=(),
-        outcome=outcome,
-        evidence_refs=(),
-    )
-
-    def current(**_kwargs: object) -> NativeTestPublicReceipt:
-        return receipt
-
-    def execute(**kwargs: object) -> NativeTestPublicReceipt:
-        assert kwargs["request_id"] == request_id
-        assert kwargs["idempotency_key"] == "task-stop:stop"
-        if receipt.status == "terminal":
-            with repo._session_factory() as sql, sql.begin():
-                row = sql.get(DifyBuilderExecutionRequest, request_id)
-                assert row is not None
-                row.state = "sealed"
-                row.completion_summary = {"outcome": receipt.outcome}
-        return receipt
-
-    actions = BuilderTestActions(repo._session_factory, lambda *_: pytest.fail("unexpected command factory"))
-    monkeypatch.setattr(actions, "current", current)
-    monkeypatch.setattr(actions, "cancel", execute)
-    service._test_actions = actions
-    view = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
-    assert str(view.run_status) == expected
-    assert view.canvas_read_only is not editable
-    if outcome != "cancelled":
-        service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "revision")
-        with pytest.raises(ConflictError, match="settled"):
-            service.resume_task(s.id, _actor(), base_version=view.version, client_action_id="resume")
-
-
 def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cognition(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
 ) -> None:
@@ -324,95 +236,6 @@ def test_resume_preserves_goal_inputs_checkpoint_and_passes_complete_dsl_to_cogn
         invoke_text(Model(), system="system", user="continue")
     assert all(value in str(prompts[-1].content) for value in ["new-model", "file_upload", "new-region", "new-message"])
     assert enqueued[0][1].execution_generation == 1
-
-
-def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from dataclasses import asdict
-    from uuid import uuid4
-
-    from models.dify_builder import DifyBuilderExecutionRequest
-
-    s = seed(repo)
-    _, fc = repo.get_session(s.id)
-    fc.test_input_ref = str(uuid4())
-    base = repo.compare_and_advance(s.id, 1, s.current_state, fc, [])
-    request_id = str(uuid4())
-    with repo._session_factory() as sql, sql.begin():
-        sql.add(
-            DifyBuilderExecutionRequest(
-                id=request_id,
-                tenant_id=TENANT_ID,
-                actor_id=ACCOUNT_ID,
-                app_id=APP_ID,
-                workflow_id=str(uuid4()),
-                session_id=s.id,
-                test_input_id=fc.test_input_ref,
-                context={"policy_version": "builder-native-test-v1"},
-                context_digest="a" * 64,
-                state="running",
-            )
-        )
-    current = NativeTestPublicReceipt(
-        request_id=request_id,
-        generation=0,
-        version=1,
-        status="running",
-        wait_reason=None,
-        native_run_id=None,
-        native_status=None,
-        pending=(),
-        outcome=None,
-        evidence_refs=(),
-    )
-    calls: list[str] = []
-
-    def read_current(**_kwargs: object) -> NativeTestPublicReceipt:
-        if current.status == "terminal":
-            with repo._session_factory() as sql, sql.begin():
-                row = sql.get(DifyBuilderExecutionRequest, request_id)
-                assert row is not None
-                row.state = "sealed"
-                row.completion_summary = {"outcome": current.outcome}
-        return current
-
-    def execute(**_kwargs: object) -> NativeTestPublicReceipt:
-        calls.append("cancel")
-        return current
-
-    actions = BuilderTestActions(repo._session_factory, lambda *_: pytest.fail("unexpected command factory"))
-    monkeypatch.setattr(actions, "current", read_current)
-    monkeypatch.setattr(actions, "cancel", execute)
-    service._test_actions = actions
-    service._get_app_revision_fn = lambda *_: "original-draft"
-    stopped = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
-    original_ack = asdict(stopped)
-    assert str(stopped.run_status) == "processing"
-    current = current.model_copy(update={"status": "terminal", "outcome": "cancelled"})
-    service._get_app_revision_fn = lambda *_: "edited-draft"
-    view = service.get_session_view(s.id, _actor())
-    assert str(view.run_status) == "paused"
-    assert not view.canvas_read_only
-    assert calls == ["cancel"]
-    history = service.get_conversation_page(s.id, _actor(), limit=20)
-    assert history.data == []
-
-    assert view.version > stopped.version
-    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph()), "edited-draft")
-    service.resume_task(s.id, _actor(), base_version=view.version, client_action_id="resume")
-    before, context = repo.get_session(s.id)
-    assert not context.paused
-    replayed = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
-    assert asdict(replayed) == original_ack
-    saved = repo.find_task_control(s.id, "stop")
-    assert saved is not None
-    assert saved["version"] == stopped.version
-    assert saved["view"] == original_ack
-    after, context = repo.get_session(s.id)
-    assert after.version == before.version
-    assert not context.paused
-    assert calls == ["cancel"]
 
 
 def test_resume_rejects_autosave_between_dsl_read_and_reservation(
@@ -612,7 +435,6 @@ def test_actual_wired_command_stream_reads_after_request_context_teardown(
     monkeypatch.setattr(wiring, "SqlDifyBuilderRepository", lambda _: repo)
     monkeypatch.setattr(wiring, "session_lock", lock)
     monkeypatch.setattr(wiring, "_enqueue", lambda *_: None)
-    monkeypatch.setattr(wiring, "_build_test_actions", lambda: None)
 
     def read_revision(*_args: object) -> str:
         assert current_app.app_context().app is app
@@ -667,17 +489,6 @@ def test_legacy_flag_only_pause_resumes_through_dsl_owner(
     assert enqueued[0][1].kind == "task_continue"
 
 
-def test_direct_native_admission_rejects_stopped_task_without_worker_context(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    from services.dify_builder.task_controls import lock_task_admission
-
-    s = seed(repo)
-    service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
-    with repo._session_factory() as sql, sql.begin(), pytest.raises(ConflictError, match="paused"):
-        lock_task_admission(sql, s.id)
-
-
 def test_resume_response_receipt_cannot_invalidate_running_worker_cas(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -722,7 +533,6 @@ def test_resume_response_receipt_cannot_invalidate_running_worker_cas(
         return StepResult(next=PcState.BUILD_REVIEW, context=context)
 
     monkeypatch.setattr(task, "_build_repo", lambda: repository)
-    monkeypatch.setattr(task, "_build_test_actions", lambda _: None)
     monkeypatch.setattr(task, "WorkflowServiceDifyPort", lambda: port)
     monkeypatch.setattr(task, "build_dify_builder_agent", lambda **_: StubAgent())
     monkeypatch.setattr(task, "build_registry", lambda: {PcState.BUILD_INITIAL_PLAN: cognition})

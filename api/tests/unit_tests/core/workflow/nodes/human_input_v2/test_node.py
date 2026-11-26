@@ -7,6 +7,8 @@ import pytest
 from pydantic import SecretStr, TypeAdapter
 
 from core.app.apps.execution_coordinator import AppExecutionState
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueueHumanInputFormFilledEvent,
@@ -40,6 +42,7 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
 from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
+from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine_events import (
     EngineEvent,
     NodeRunFailedEvent,
@@ -56,10 +59,7 @@ from graphon.graph import Graph
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from repositories.human_input_v2.form_repository import Form, FormSubmission
-from services.workflow_runtime.base_runner import WorkflowBasedAppRunner
-from services.workflow_runtime.entry import WorkflowEntry
-from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
-from tests.unit_tests.services.workflow_runtime.test_response_converter import (
+from tests.unit_tests.core.app.apps.common.test_workflow_response_converter import (
     _workflow_response_converter_human_input_build_converter as _build_converter,
 )
 
@@ -311,11 +311,13 @@ def test_actual_graph_queue_response_path_preserves_order_and_fields(form: Form,
 
 @pytest.mark.parametrize("token", ["initiator-token", None])
 def test_dify_projection_serializes_the_runtime_token_without_a_graph_reason(form: Form, token: str | None) -> None:
+    from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
     from core.app.entities.task_entities import HumanInputRequiredPauseReasonPayload
-    from services.workflow_runtime.response_converter import WorkflowResponseConverter
 
     prepared = PreparedForm(form, SecretStr(token) if token else None)
-    with patch("services.workflow_runtime.response_converter.Session", side_effect=AssertionError("unexpected lookup")):
+    with patch(
+        "core.app.apps.common.workflow_response_converter.Session", side_effect=AssertionError("unexpected lookup")
+    ):
         data = WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id="node-1")
     assert data.form_token == token
     assert data.form_content == form.resolved_form.legacy_form_content
@@ -439,7 +441,7 @@ def test_filled_rendering_skips_missing_and_null_inputs_and_preserves_select_tex
 
 
 def test_waiting_projection_freezes_select_options_and_deduplicates_slots(form: Form) -> None:
-    from services.workflow_runtime.response_converter import WorkflowResponseConverter
+    from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 
     option = SelectInput(output_variable_name="choice", options=("old-a", "old-b"), resolved_default_value="old-b")
     form = replace(form, resolved_form=form.resolved_form.model_copy(update={"parts": (option, option)}))

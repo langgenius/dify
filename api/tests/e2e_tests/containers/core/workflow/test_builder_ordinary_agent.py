@@ -17,8 +17,8 @@ from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.workflow import Workflow, WorkflowRun
 from services.agent.workspace_service import AgentWorkspaceService
+from services.dify_builder.agent_binding import native_node_data
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
-from services.dify_builder.native_testing.agent_binding import native_node_data
 from tests.builder_agent_fixtures import add_agent
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import NativeOwner
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import native_owner as native_owner  # noqa: PLC0414 - shared fixture
@@ -94,8 +94,6 @@ def test_builder_runs_workflow_agent_with_ordinary_debugger(
         assert result.verification.terminal_outputs == {"out": "hello agent"}
 
     assert backend.request is not None
-    assert backend.request.execution_mode == "ordinary"
-    assert backend.request.native_test_ref is None
     assert any(e.get("event") == "workflow_finished" for e in events)
     with factory() as sql:
         assert sql.scalars(select(DifyBuilderExecutionRequest)).first() is None

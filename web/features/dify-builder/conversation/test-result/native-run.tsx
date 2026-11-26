@@ -48,7 +48,7 @@ export const TestResultNativeOutputs = ({
   const { data, isPending, isError, refetch } = useQuery(
     consoleQuery.apps.byAppId.workflowRuns.byRunId.get.queryOptions({
       input: { params: { app_id: appId, run_id: runId } },
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   if (isPending) return <RunLoading />
@@ -67,7 +67,7 @@ const NativeRunTracing = ({ appId, runId }: NativeRunProps) => {
   const { data, isPending, isError, refetch } = useQuery(
     consoleQuery.apps.byAppId.workflowRuns.byRunId.nodeExecutions.get.queryOptions({
       input: { params: { app_id: appId, run_id: runId } },
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   if (isPending) return <RunLoading />

@@ -19,7 +19,7 @@ Three layers, each built on the one above:
   native config refusals and known producer semantics checked identically.
 
 Pure with respect to the Builder: no session, no DB, no engine state. It
-imports ``services.workflow_runtime.node_factory`` (the same validation ``create_node``
+imports ``core.workflow.node_factory`` (the same validation ``create_node``
 does), which is why it lives in ``services/dify_builder`` and not in the
 I/O-free ``core/dify_builder``.
 """
@@ -31,6 +31,10 @@ from typing import Any, NamedTuple
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, MutationIntent
+from core.workflow.node_factory import DifyNodeFactory, adapt_node_config_for_graph, parse_human_input_delivery_methods
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.enums import BuiltinNodeTypes
 from services.dify_builder import credentials, graph_ops, trace_diagnostics
 
 # Only for the node-type knowledge the rejoin guard's REASON needs -- which
@@ -43,7 +47,6 @@ from services.dify_builder.agent import graph_prompt
 from services.dify_builder.native_http_output_contract import native_http_condition_problems
 from services.dify_builder.node_policy import proposal_policy_rejections
 from services.workflow_generation.graph_normalizers import heal_nodes_for_preflight
-from services.workflow_runtime.node_factory import validate_node_config
 
 # graphon's ``Graph._filter_canvas_only_nodes`` drops persisted note widgets
 # (top-level ``type == "custom-note"``, empty ``data.type``) before validating
@@ -80,7 +83,7 @@ def preflight_errors(graph: Graph) -> list[str]:
     """Native config refusals and known numeric HTTP condition failures.
 
     Each message starts with ``node '<id>' (<type>):``
-    (see ``services.workflow_runtime.node_factory.validate_node_config``). Empty when the
+    (see ``core.workflow.node_factory.validate_node_config``). Empty when the
     draft would start.
 
     A validation step must never crash the Builder: a node whose validation
@@ -114,8 +117,27 @@ def _node_label(node: Mapping) -> str:
     return f"node {node_id!r} ({node_type or 'unknown type'})"
 
 
+def validate_node_config(node: Mapping[str, Any]) -> BaseNodeData:
+    """Validate the ordinary node schema and return the typed configuration.
+
+    This dry check constructs no runtime and attributes a schema failure to its node.
+    """
+    try:
+        typed = NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node))
+        data = typed["data"]
+        node_class = DifyNodeFactory._resolve_node_class(
+            node_type=data.type, node_version=str(data.version), node_data=data
+        )
+        resolved = DifyNodeFactory._validate_resolved_node_data(node_class, data)
+        if data.type == BuiltinNodeTypes.HUMAN_INPUT:
+            parse_human_input_delivery_methods(resolved)
+        return resolved
+    except ValueError as exc:
+        raise ValueError(f"{_node_label(node)}: {exc}") from exc
+
+
 def _validation_error(node: Mapping) -> Exception | None:
-    """What ``Graph.init`` would raise for ``node``, or ``None`` if it starts."""
+    """Return a node's dry-run error for the Builder's repair workflow."""
     try:
         validate_node_config(node)
     except Exception as exc:

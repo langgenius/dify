@@ -2,14 +2,12 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
-import { createTestWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
-import { WorkflowContext } from '@/app/components/workflow/context'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
-import { httpErrorFromResponse } from '@/service/http-error'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useDSLByCanEdit } from '../use-DSL'
@@ -60,8 +58,8 @@ vi.mock('@/service/base', async (importOriginal) => ({
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: 'app-1' }) }))
 
-vi.mock('../../draft/use-draft-save', () => ({
-  useWorkflowDraftSaveByCanEdit: () => ({
+vi.mock('../use-nodes-sync-draft', () => ({
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
 }))
@@ -90,7 +88,6 @@ function EventObserver({ children }: { children: ReactNode }) {
 }
 
 let queryClient: QueryClient
-let workflowStore: ReturnType<typeof createTestWorkflowStore>
 const wrapper = ({ children }: { children: ReactNode }) => {
   if (appQueryFixture.appDetail)
     queryClient.setQueryData(
@@ -100,22 +97,13 @@ const wrapper = ({ children }: { children: ReactNode }) => {
   return createElement(
     QueryClientProvider,
     { client: queryClient },
-    createElement(
-      WorkflowContext,
-      { value: workflowStore },
-      createElement(
-        EventEmitterContextProvider,
-        null,
-        createElement(EventObserver, null, children),
-      ),
-    ),
+    createElement(EventEmitterContextProvider, null, createElement(EventObserver, null, children)),
   )
 }
 
 describe('useDSLByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    workflowStore = createTestWorkflowStore()
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { staleTime: Infinity, retry: false },
@@ -131,43 +119,6 @@ describe('useDSLByCanEdit', () => {
     mockDoSyncWorkflowDraft.mockReset().mockResolvedValue(undefined)
     mockExportAppConfig.mockReset().mockResolvedValue({ data: 'yaml-content' })
     mockFetchEnvironmentVariables.mockReset().mockResolvedValue({ items: [] })
-  })
-
-  it('blocks draft export and secret checks while a conflict is unresolved', async () => {
-    workflowStore.getState().setWorkflowDraftConflict(true)
-    const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
-    await act(async () => {
-      expect(await result.current.handleExportDSL()).toBe(false)
-      await result.current.exportCheck()
-    })
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(mockFetchEnvironmentVariables).not.toHaveBeenCalled()
-    expect(mockExportAppConfig).not.toHaveBeenCalled()
-  })
-
-  it('allows exporting a saved version while the draft has a conflict', async () => {
-    workflowStore.getState().setWorkflowDraftConflict(true)
-    const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
-    await act(async () => {
-      expect(await result.current.handleExportDSL(false, 'published-version')).toBe(true)
-    })
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(mockExportAppConfig).toHaveBeenCalledWith({
-      params: { app_id: 'app-1' },
-      query: { include_secret: false, workflow_id: 'published-version' },
-    })
-  })
-
-  it('stops exporting when saving discovers a draft conflict', async () => {
-    mockDoSyncWorkflowDraft.mockImplementation(async () => {
-      workflowStore.getState().setWorkflowDraftConflict(true)
-      return null
-    })
-    const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
-    await act(async () => {
-      expect(await result.current.handleExportDSL()).toBe(false)
-    })
-    expect(mockExportAppConfig).not.toHaveBeenCalled()
   })
 
   it('exports with the latest name from the detail query', async () => {
@@ -208,6 +159,29 @@ describe('useDSLByCanEdit', () => {
     expect(mockDownloadBlob).not.toHaveBeenCalled()
     expect(toastMocks.call).toHaveBeenCalledTimes(1)
     expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+  })
+
+  it('shows the server message when the draft sync before export fails', async () => {
+    mockDoSyncWorkflowDraft.mockImplementation(async (_options, callback) => {
+      callback.onError(
+        createHttpError(
+          { status: 400, statusText: '', headers: new Headers() },
+          { message: 'Draft is invalid' },
+        ),
+      )
+      return null
+    })
+    const { result } = renderHook(() => useDSLByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      wrapper,
+    })
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+    })
+    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
+      type: 'error',
+      message: 'Draft is invalid',
+    })
   })
 
   it('allows export when draft synchronization is skipped for read-only access', async () => {

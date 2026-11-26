@@ -12,9 +12,11 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -37,17 +39,10 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.app_task_service import AppTaskService
-from services.dify_builder.application.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
-from services.dify_builder.native_testing.native_execution import dispatch_native_worker
 from services.human_input_v2.submission_service import HumanInputSubmissionService
-from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
 from services.workflow_execution_identity import build_workflow_execution_identity
-from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
-from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
-from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +90,6 @@ type User = Annotated[
 
 
 class AppExecutionParams(BaseModel):
-    native_test_required: bool = False
-    native_test_ref: NativeTestContextRef | None = None
-    builder_execution: BuilderExecutionContextValue | None = None
-
     app_id: str
     workflow_id: str
     tenant_id: str
@@ -124,7 +115,6 @@ class AppExecutionParams(BaseModel):
         call_depth: int = 0,
         root_node_id: str | None = None,
         workflow_run_id: str | None = None,
-        builder_execution: BuilderExecutionContextValue | None = None,
     ):
         user_params: _Account | _EndUser
         match user:
@@ -135,7 +125,6 @@ class AppExecutionParams(BaseModel):
             case _:
                 raise AssertionError("this statement should be unreachable.")
         return cls(
-            builder_execution=builder_execution,
             app_id=app_model.id,
             workflow_id=workflow.id,
             tenant_id=app_model.tenant_id,
@@ -231,18 +220,6 @@ class _AppRunner:
         session: Session,
     ):
         exec_params = self._exec_params
-        if exec_params.invoke_from == InvokeFrom.DEBUGGER and workflow.version == Workflow.VERSION_DRAFT:
-            if not isinstance(user, Account) or workflow.tenant_id != app.tenant_id or workflow.app_id != app.id:
-                raise ValueError("Draft execution requires the acting workspace member and app.")
-            # Request-time admission can go stale in a queue. Closed read
-            # sessions above supplied the current draft/user; no writes or
-            # native effects precede this fresh worker metadata check.
-            admit_draft_tool_setup(
-                tenant_id=app.tenant_id,
-                graph=workflow.graph_dict,
-                actor_id=user.id,
-                workflow_ref=WorkflowRef(app.tenant_id, app.id, workflow.id),
-            )
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
@@ -525,10 +502,6 @@ def workflow_based_app_execution_task(
     payload: str,
 ) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
-    if exec_params.native_test_required or exec_params.native_test_ref is not None:
-        return dispatch_native_worker(ref=exec_params.native_test_ref, generation=None).model_dump(mode="json")
-    if exec_params.builder_execution is not None:
-        raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
@@ -537,9 +510,6 @@ def workflow_based_app_execution_task(
 
 
 def _resume_app_execution(payload: dict[str, Any]) -> None:
-    """Resume an owned Workflow pause. Retired Builder dispatches cannot resume it."""
-    if "builder_agent_dispatch" in payload:
-        return
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -557,13 +527,6 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     generate_entity = resumption_context.get_generate_entity()
-    if getattr(generate_entity, "builder_agent_execution", None) is not None:
-        return
-    if generate_entity.native_test_required or generate_entity.native_test_ref is not None:
-        dispatch_native_worker(ref=generate_entity.native_test_ref, generation=None)
-        return
-    if generate_entity.builder_execution is not None:
-        raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
     graph_runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
@@ -623,15 +586,6 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             type(generate_entity),
         )
         return
-
-    admit_resumed_draft_tool_setup(
-        workflow_run_id=workflow_run_id,
-        workflow_run=workflow_run,
-        workflow=workflow,
-        app=app_model,
-        user=user,
-        generate_entity=generate_entity,
-    )
 
     # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
     task_id = workflow_run.task_id
@@ -870,5 +824,4 @@ def _resume_workflow(
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
-    """Run the Workflow or Chatflow pause owner on the execution queue."""
     _resume_app_execution(payload)

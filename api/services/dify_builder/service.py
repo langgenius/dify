@@ -44,7 +44,6 @@ from core.dify_builder.contract import (
 from core.dify_builder.contract import Action as UiAction
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import (
-    CONFIRMED_TOOL_ACTION,
     Action,
     Actor,
     ChecklistError,
@@ -63,22 +62,14 @@ from services.dify_builder import trace_diagnostics
 from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.model_resolver import validate_model_config
 from services.dify_builder.application import recovery
-from services.dify_builder.application.execution_policy import (
-    BuilderExecutionPolicyError,
-    HttpFixtureSetV1,
-    decode_http_fixture_submission,
-)
 from services.dify_builder.application.ports import Repository
 from services.dify_builder.business_acceptance import context_publication_decision
 from services.dify_builder.receipt_snapshot import apply_receipt_snapshot
 from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
 
 if TYPE_CHECKING:
-    from core.dify_builder.real_call_consent import ConsentReceipt
     from services.dify_builder.attachment_intake import BuilderAttachmentIntake
     from services.dify_builder.fix_intents import FixIntentRepository
-    from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
-    from services.dify_builder.test_actions import TestActionPort
 
 logger = logging.getLogger(__name__)
 
@@ -1003,9 +994,6 @@ class DifyBuilderService:
         get_app_revision_fn: Callable[[str, Actor], str] | None = None,
         get_app_name_fn: Callable[[str, Actor], str] | None = None,
         get_verification_identity_fn: Callable[[str, Actor], tuple[str, str]] | None = None,
-        stamp_http_fixtures_fn: Callable[..., HttpFixtureSetV1] | None = None,
-        real_call_consent: "BuilderRealCallConsentService | None" = None,
-        test_actions: "TestActionPort | None" = None,
         read_task_dsl_fn: Callable | None = None,
         stream_read_scope_fn: Callable[[], AbstractContextManager] | None = None,
         attachment_intake: "BuilderAttachmentIntake | None" = None,
@@ -1015,9 +1003,7 @@ class DifyBuilderService:
         # None: this instance cannot execute confirmed Tool tests (all existing callers).
         self._fix_intent_repo = fix_intent_repo
         self._cognition_policy_fn = cognition_policy_fn
-        self._real_call_consent = real_call_consent
         self._attachment_intake = attachment_intake
-        self._test_actions = test_actions
         if read_task_dsl_fn is None:
 
             def read_task_dsl_fn(app_id, actor):
@@ -1027,7 +1013,6 @@ class DifyBuilderService:
 
         self._read_task_dsl_fn = read_task_dsl_fn
         self._stream_read_scope_fn = stream_read_scope_fn or nullcontext
-        self._stamp_http_fixtures_fn = stamp_http_fixtures_fn
         self._repo = repo
         self._session_lock = session_lock
         self._enqueue_fn = enqueue_fn
@@ -1722,7 +1707,7 @@ class DifyBuilderService:
         if fc.paused and fc.task_control.get("settlement") in {"pending", "unknown"}:
             from services.dify_builder.task_control_service import observe_stop
 
-            observe_stop(self._repo, self._test_actions, session_id, actor)
+            observe_stop(self._repo, session_id, actor)
             s, fc = self._get_authorized_session(session_id, actor)
         return self._build_session_view(s, fc)
 
@@ -1937,7 +1922,7 @@ class DifyBuilderService:
         kind = action.kind.strip() if isinstance(action.kind, str) else ""
         if not kind:
             raise BadRequestError("action kind is required")
-        if kind in {CONFIRMED_TOOL_ACTION, "task_continue"}:
+        if kind == "task_continue":
             # Only the confirmed dispatch owner's reservation winner may enqueue it.
             raise BadRequestError(f"action {kind} is not allowed")
         action.kind = kind
@@ -2052,25 +2037,11 @@ class DifyBuilderService:
         access = _app_access_for_action(s.current_state, action.kind)
         if access != AppAccess.EDIT:
             self._authorize_app(s.app_id, actor, access)
-        fixture_revision: str | None = None
         if action.kind == "provide_testdata" and "http_fixtures" in action.payload:
-            try:
-                fixtures = decode_http_fixture_submission(action.payload["http_fixtures"])
-                if not action.base_app_revision:
-                    raise BuilderExecutionPolicyError("fixture_base_revision_required")
-                if self._stamp_http_fixtures_fn is None:
-                    raise BuilderExecutionPolicyError("fixture_admission_unavailable")
-                envelope = self._stamp_http_fixtures_fn(
-                    s.app_id, actor, base_app_revision=action.base_app_revision, fixtures=fixtures
-                )
-                fixture_revision = envelope.execution_revision
-                # Keep the public action JSON-safe through the native Celery serializer.
-                action.payload = {**action.payload, "http_fixtures": [f.model_dump(mode="json") for f in fixtures]}
-            except BuilderExecutionPolicyError as exc:
-                raise BadRequestError(str(exc)) from None
+            raise BadRequestError("The ordinary draft debugger does not accept simulated HTTP responses.")
         if action.base_version != s.version:
             raise ConflictError(f"stale base_version {action.base_version} for session {session_id}")
-        current_app_revision = fixture_revision or self._get_app_revision(s.app_id, actor)
+        current_app_revision = self._get_app_revision(s.app_id, actor)
         app_revision_conflicted = bool(
             fc.last_snapshot_hash and current_app_revision and fc.last_snapshot_hash != current_app_revision
         )
@@ -2380,78 +2351,6 @@ class DifyBuilderService:
         self._repo.release_workflow_writer(session_id, token=token)
         self._session_lock.release(session_id, token)
 
-    def execute_confirmed_tool(
-        self,
-        session_id: str,
-        actor: Actor,
-        *,
-        consent_id: str,
-        scope_digest: str,
-        at_version: int,
-        idempotency_key: str,
-    ) -> "ConsentReceipt":
-        """Confirmed dispatch coordinator: one lease, one reservation, at most one enqueue.
-
-        Acquires the session's advance lease BEFORE the consent owner's atomic
-        SQL reservation and hands that same token only to the winning enqueue
-        of the already reserved command (no ``_prepare_action``, no second
-        command or state commit). A held lease answers a matching duplicate
-        from the consent owner's replay (current receipt, no reservation or
-        enqueue) and is busy otherwise. Refusal or a non-winning replay
-        releases only this call's own token. A failed enqueue keeps the lease:
-        its acknowledgement may be lost while the worker already holds the same
-        token, and the reservation can never be enqueued again; the reconcile
-        sweeper settles a launch that never starts.
-        """
-        if self._real_call_consent is None:
-            raise BadRequestError("confirmed tool execution is unavailable")
-        consent = self._real_call_consent
-        s, _fc = self._get_authorized_session(session_id, actor, AppAccess.TEST_AND_RUN)
-        if _fc.paused:
-            raise ConflictError("task is paused")
-        token = self._acquire_workflow_writer(session_id)
-        if token is None:
-            replay = consent.replay_execution(
-                actor=actor,
-                session_id=session_id,
-                consent_id=consent_id,
-                scope_digest=scope_digest,
-                at_version=at_version,
-                idempotency_key=idempotency_key,
-            )
-            if replay is None:
-                raise BusyError(f"session {session_id} is busy")
-            return replay
-        try:
-            receipt, won = consent.reserve_execution(
-                actor=actor,
-                session_id=session_id,
-                consent_id=consent_id,
-                scope_digest=scope_digest,
-                at_version=at_version,
-                idempotency_key=idempotency_key,
-            )
-        except BaseException:
-            self._release_workflow_writer(session_id, token)
-            raise
-        if not won or receipt.command_id is None:
-            self._release_workflow_writer(session_id, token)
-            return receipt
-        action = Action(
-            kind=CONFIRMED_TOOL_ACTION,
-            payload={"consent_id": receipt.consent_id},
-            base_version=receipt.at_version,
-            command_id=receipt.command_id,
-        )
-        try:
-            self._enqueue_fn(session_id, action, actor, token)
-        except Exception:
-            logger.warning(
-                "dify_builder confirmed enqueue acknowledgement unavailable (session=%s, command=%s)",
-                s.id,
-                receipt.command_id,
-            )
-        return receipt
 
     def dispatch(self, session_id: str, action: Action, actor: Actor, *, opening: bool = False) -> str:
         """Reserve one workflow writer and enqueue once; uncertain ACKs retain ownership."""

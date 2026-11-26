@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from typing import TYPE_CHECKING, TypedDict
@@ -24,11 +23,8 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.models import Graph as BuilderGraph
 from core.dify_builder.state import PcState
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
 from models.workflow import Workflow
-from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from services.dify_builder.revision import execution_revision
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.services.dify_builder.test_advance_task import (
     ACCOUNT_ID,
@@ -45,7 +41,6 @@ from tests.unit_tests.services.dify_builder.test_advance_task import (
 from tests.unit_tests.services.dify_builder.test_advance_task import (
     wired as wired,  # noqa: PLC0414
 )
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 from tests.unit_tests.services.dify_builder.typed_fixtures import dictionaries, dictionary
 
 if TYPE_CHECKING:
@@ -59,7 +54,6 @@ if TYPE_CHECKING:
     from services.dify_builder.application.execution_policy import BuilderExecutionContext, JsonToolExecutionContext
     from services.dify_builder.application.ports import DifyPort
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
-    from services.dify_builder.json_tool_metadata import InstalledJsonParse
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort
 
     type Owned = tuple[sessionmaker[DatabaseSession], Actor, App, Workflow, str, str]
@@ -474,100 +468,3 @@ def test_recovery_commands_keep_revision_and_session_fences_while_queued(
     assert port.applied == []
     assert events[-1][1]["error"] == "conflict"
     assert released == [(session.id, "queued-token")]
-
-
-@pytest.mark.parametrize("phase", ["prepare", "revalidate"])
-@pytest.mark.parametrize("change", ["layout", "selection", "configuration", "session_version", "inputs", "fixtures"])
-def test_json_metadata_io_rechecks_execution_configuration_and_owned_state(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch, phase: str, change: str
-) -> None:
-    """JSON's post-I/O owner check must retain the same presentation exemption and ownership fences."""
-    from runtime_contracts.builder.execution import BuilderExecutionPolicyError, JsonToolExecutionContext
-    from services.dify_builder import execution_policy_service as policy_module
-    from tests.unit_tests.services.dify_builder.test_json_tool_execution_admission import GRAPH_FIXTURE
-    from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _owners
-
-    factory, actor, app, workflow, sid, tid = owned
-    _owners(monkeypatch, installations=[_installation(tenant_id=actor.tenant_id)])
-    workflow.graph = GRAPH_FIXTURE.read_text()
-    inputs = {"payload": '{"x":"value"}', "json_path": "$.x"}
-    with factory.begin() as db:
-        _row(db, Workflow, workflow.id).graph = workflow.graph
-        _row(db, DifyBuilderTestInput, tid).inputs = inputs
-    service = policy_module.BuilderExecutionPolicyService(factory)
-
-    def prepare() -> JsonToolExecutionContext:
-        result = service.prepare(
-            session_id=sid,
-            test_input_id=tid,
-            app_id=app.id,
-            actor=actor,
-            workflow=workflow,
-            submitted_inputs=inputs,
-            effective_inputs=inputs,
-        )
-        assert isinstance(result, JsonToolExecutionContext)
-        return result
-
-    context = prepare() if phase == "revalidate" else None
-    original = policy_module.resolve_installed_json_parse
-
-    def resolve_with_concurrent_change(*, tenant_id: str) -> InstalledJsonParse:
-        with factory.begin() as db:
-            if change == "session_version":
-                _row(db, DifyBuilderSession, sid).version += 1
-            elif change == "inputs":
-                _row(db, DifyBuilderTestInput, tid).inputs = {**inputs, "payload": "{}"}
-            elif change == "fixtures":
-                _row(db, DifyBuilderTestInput, tid).http_fixtures = {}
-            else:
-                current = _row(db, Workflow, workflow.id)
-                graph = dict(current.graph_dict)
-                if change == "layout":
-                    graph["nodes"][1]["position"] = {"x": 999, "y": 123}
-                    graph["viewport"] = {"x": 60, "y": 20, "zoom": 0.8}
-                elif change == "selection":
-                    for node in graph["nodes"]:
-                        node["data"]["selected"] = True
-                else:
-                    graph["nodes"][1]["data"]["tool_configurations"]["ensure_ascii"] = False
-                current.graph = json.dumps(graph)
-        return original(tenant_id=tenant_id)
-
-    monkeypatch.setattr(policy_module, "resolve_installed_json_parse", resolve_with_concurrent_change)
-
-    def revalidate() -> None:
-        assert context is not None
-        service.revalidate(
-            context=context,
-            workflow=workflow,
-            app=app,
-            actor_id=actor.account_id,
-            effective_inputs=inputs,
-            root_node_id="node1",
-            call_depth=0,
-            transport=WorkflowExecutionTransport.IN_PROCESS,
-            resume=False,
-        )
-
-    operation = prepare if phase == "prepare" else revalidate
-    if change in {"layout", "selection"}:
-        result = operation()
-        if phase == "prepare":
-            assert result is not None
-            context = result
-        # Also compare the now-reloaded canvas with the original admitted
-        # bindings, as the real native generator and node factory do later.
-        with factory() as db:
-            workflow = _row(db, Workflow, workflow.id)
-        monkeypatch.setattr(policy_module, "resolve_installed_json_parse", original)
-        revalidate()
-        assert context is not None
-        assert context.execution_revision == execution_revision(workflow)
-        with factory() as db:
-            assert _row(db, DifyBuilderExecutionRequest, context.request_id).state == "prepared"
-    else:
-        with pytest.raises(BuilderExecutionPolicyError, match="stale_execution_revision"):
-            operation()
-        with factory() as db:
-            assert db.query(DifyBuilderExecutionRequest).count() == (1 if phase == "revalidate" else 0)

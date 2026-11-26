@@ -6,18 +6,16 @@ import (
 	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
-	"github.com/langgenius/dify/dify-agent-runtime/internal/testscope"
 
 	_ "modernc.org/sqlite"
 )
 
-const latestSchemaVersion = 2
+const latestSchemaVersion = 1
 
 type schemaMigration func(*sql.Tx) error
 
 var schemaMigrations = []schemaMigration{
 	migrateSchemaV1,
-	testscope.Migrate,
 }
 
 // JobStatusName represents the lifecycle states of a shellctl job.
@@ -187,8 +185,8 @@ func (d *DB) InsertJob(row *JobRow) (bool, error) {
 	_, err := d.db.Exec(`
 		INSERT INTO jobs (job_id, script_path, output_path, mode, cwd, terminal_cols, terminal_rows,
 			status, session_name, pane_target, exit_code, reason, message,
-			created_at, started_at, ended_at, updated_at,native_scope_id,native_scope_generation)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,(SELECT scope_id FROM native_scope_identity LIMIT 1),(SELECT generation FROM native_scope_identity LIMIT 1))`,
+			created_at, started_at, ended_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		row.JobID, row.ScriptPath, row.OutputPath, string(row.Mode), row.Cwd,
 		row.TerminalCols, row.TerminalRows,
 		string(row.Status), row.SessionName, row.PaneTarget,
@@ -452,38 +450,4 @@ func searchString(s, substr string) bool {
 		}
 	}
 	return false
-}
-
-// NativeScopeStore shares the runtime SQLite owner and its migration transaction.
-func (d *DB) NativeScopeStore() *testscope.SQLStore { return testscope.NewSQLStore(d.db) }
-
-// BindNativeScope permanently binds a retained runtime job catalog to one scope.
-func (d *DB) BindNativeScope(id string, generation int64) error {
-	var existing string
-	var gen int64
-	err := d.db.QueryRow("SELECT scope_id,generation FROM native_scope_identity LIMIT 1").Scan(&existing, &gen)
-	if err == nil {
-		if existing != id || gen != generation {
-			return fmt.Errorf("native scope identity mismatch")
-		}
-		return nil
-	}
-	if err != sql.ErrNoRows {
-		return err
-	}
-	_, err = d.db.Exec("INSERT INTO native_scope_identity(scope_id,generation)VALUES(?,?)", id, generation)
-	return err
-}
-
-// EnableNativeDurability makes admission/effect identity commits survive power
-// loss before opening a submitted script's start gate. Ordinary runtimes keep
-// their existing NORMAL synchronous policy.
-func (d *DB) EnableNativeDurability() error {
-	_, err := d.db.Exec("PRAGMA synchronous=FULL")
-	return err
-}
-
-func (d *DB) InitNativeOutputBudget(id string, maximum int64) error {
-	_, err := d.db.Exec(`INSERT INTO native_scope_budgets(scope_id,budget_key,maximum)VALUES(?,'output',?) ON CONFLICT(scope_id,budget_key)DO NOTHING`, id, maximum)
-	return err
 }

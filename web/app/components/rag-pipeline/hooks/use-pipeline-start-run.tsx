@@ -43,7 +43,7 @@ const usePipelineStartRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       return
     }
 
-    if (!(await doSyncWorkflowDraft())) return
+    await doSyncWorkflowDraft()
     setIsPreparingDataSource?.(true)
     setShowDebugAndPreviewPanel(true)
   }, [

@@ -6,9 +6,11 @@ import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
-import { renderWorkflowCanvasHook } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { baseRunningData } from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  baseRunningData,
+  renderWorkflowCanvasHook,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowStartRunByCanEdit } from '../use-workflow-start-run'
@@ -17,8 +19,8 @@ import { useWorkflowStartRunByCanEdit } from '../use-workflow-start-run'
 const mockHandleRun = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
 
-vi.mock('../../draft/use-draft-save', () => ({
-  useWorkflowDraftSaveByCanEdit: () => ({
+vi.mock('../use-nodes-sync-draft', () => ({
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
 }))
@@ -100,23 +102,6 @@ describe('useWorkflowStartRunByCanEdit', () => {
     expect(mockHandleRun).not.toHaveBeenCalled()
     expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
     expect(workflowStore.getState().showInputsPanel).toBe(false)
-  })
-
-  it('should leave the run panel closed when saving discovers a conflict', async () => {
-    mockDoSyncWorkflowDraft.mockImplementationOnce(async () => {
-      workflowStore.getState().setWorkflowDraftConflict(true)
-      return null
-    })
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
-
-    await act(async () => {
-      await result.current.handleWorkflowStartRunInWorkflow()
-    })
-
-    expect(mockHandleRun).not.toHaveBeenCalled()
-    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
   })
 
   it('should open the input panel instead of running immediately when start inputs are required', async () => {

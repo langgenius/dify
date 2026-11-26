@@ -561,7 +561,7 @@ def test_batches_are_paced_without_sleeping_in_worker(monkeypatch: pytest.Monkey
 
 @pytest.mark.usefixtures(preserve_celery_apps.__name__)
 def test_single_worker_runs_ready_task_before_delayed_plugin_batch(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A solo worker serving plugin and dify_builder queues runs ready work while a plugin batch waits."""
+    """A solo worker serving plugin and mail queues runs ready work while a plugin batch waits."""
     celery = Celery("plugin-pacing-test", broker="memory://", set_as_current=False)
     celery.conf.update(
         result_backend="cache+memory://",
@@ -589,9 +589,9 @@ def test_single_worker_runs_ready_task_before_delayed_plugin_batch(monkeypatch: 
         if len(order) == 22:
             done.set()
 
-    @celery.task(name="plugin-pacing-synthetic-builder", queue="dify_builder")
+    @celery.task(name="plugin-pacing-synthetic-mail", queue="mail")
     def ready() -> None:
-        order.append("builder")
+        order.append("mail")
         if len(order) == 22:
             done.set()
 
@@ -602,7 +602,7 @@ def test_single_worker_runs_ready_task_before_delayed_plugin_batch(monkeypatch: 
     # Same two-batch shape as Dev, with a bounded ten-second delayed batch.
     monkeypatch.setattr(scheduler, "AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL", 20)
     producer = celery.tasks[scheduler.check_upgradable_plugin_task.name]
-    with start_worker(celery, pool="solo", concurrency=1, queues=("plugin", "dify_builder"), perform_ping_check=False):
+    with start_worker(celery, pool="solo", concurrency=1, queues=("plugin", "mail"), perform_ping_check=False):
         started = time.monotonic()
         producer.apply_async().get(timeout=5)
         # The producer returned without waiting for the delayed batch.
@@ -610,6 +610,6 @@ def test_single_worker_runs_ready_task_before_delayed_plugin_batch(monkeypatch: 
         ready.apply_async()
         assert done.wait(20), order
     assert len(order) == 22
-    assert set(order) == {"builder", *(item.tenant_id for item in strategies)}
-    assert order.index("builder") < 21
+    assert set(order) == {"mail", *(item.tenant_id for item in strategies)}
+    assert order.index("mail") < 21
     assert len(coordinator.queued) == 21

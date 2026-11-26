@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { getExampleValue } from './input-fields-utils'
 
 type UploadRunPopoverProps = {
@@ -44,7 +44,6 @@ const UploadRunPopover = ({
   const { t: tCommon } = useTranslation(['common'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewFields = inputFields
-  const booleanExampleValue = t(($) => $['conditions.boolean.true'])
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     onUploadFile(event.target.files?.[0])
@@ -125,7 +124,7 @@ const UploadRunPopover = ({
               </div>
             ) : (
               <div
-                className="flex h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-start hover:border-components-button-secondary-border"
+                className="flex min-h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-start hover:border-components-button-secondary-border"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDropFile}
               >
@@ -142,11 +141,11 @@ const UploadRunPopover = ({
                 </button>
                 <div className="min-w-0 flex-1 text-start">
                   <div className="system-md-regular text-text-secondary">
-                    {t(($) => $['batch.uploadDropzonePrefix'])}{' '}
-                    <span className="system-md-semibold">
-                      {t(($) => $['batch.uploadDropzoneEmphasis'])}
-                    </span>{' '}
-                    {t(($) => $['batch.uploadDropzoneSuffix'])}
+                    <Trans
+                      i18nKey={($) => $['batch.uploadDropzone']}
+                      ns="evaluation"
+                      components={{ strong: <span className="system-md-semibold" /> }}
+                    />
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-1 system-xs-regular text-text-tertiary">
                     <button
@@ -187,7 +186,7 @@ const UploadRunPopover = ({
                         {field.name}
                       </div>
                       <div className="truncate px-3 py-2 system-sm-regular whitespace-nowrap text-text-secondary">
-                        {getExampleValue(field, booleanExampleValue)}
+                        {getExampleValue(field)}
                       </div>
                     </div>
                   ))}

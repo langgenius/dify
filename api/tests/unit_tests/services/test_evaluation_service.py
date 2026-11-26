@@ -1469,10 +1469,35 @@ def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> No
                 "llm-1",
                 {"type": "llm", "context": {"enabled": True, "variable_selector": ["retrieval-1", "result"]}},
             ),
+            (
+                "llm-2",
+                {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1", "text"]}},
+            ),
         ]
     )
 
-    assert EvaluationService._extract_llm_context_node_mapping(workflow) == {"llm-1": ["retrieval-1"]}
+    assert EvaluationService._extract_llm_context_node_mapping(workflow) == {
+        "llm-1": ["retrieval-1"],
+        "llm-2": ["llm-1"],
+    }
+    assert EvaluationService._extract_llm_context_selector_mapping(workflow) == {
+        "llm-1": ["retrieval-1", "result"],
+        "llm-2": ["llm-1", "text"],
+    }
+
+
+def test_extract_llm_context_selector_mapping_skips_unusable_context_configs() -> None:
+    """Disabled and malformed context selectors never become metric evidence sources."""
+    workflow = _workflow_with_nodes(
+        [
+            ("llm-disabled", {"type": "llm", "context": {"enabled": False, "variable_selector": ["llm-1", "text"]}}),
+            ("llm-unconfigured", {"type": "llm"}),
+            ("llm-short", {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1"]}}),
+            ("llm-invalid", {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1", 42]}}),
+        ]
+    )
+
+    assert EvaluationService._extract_llm_context_selector_mapping(workflow) == {}
 
 
 def test_validate_knowledge_base_config_rejects_external_provider(sqlite_session: Session) -> None:
@@ -2432,7 +2457,7 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(
 def test_run_single_app_target_loads_pinned_workflow_version(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
     app, account = _persist_service_app(sqlite_session)
     workflow = make_workflow(workflow_id="workflow-version-7")
@@ -2481,7 +2506,7 @@ def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
     _persist_service_app(sqlite_session)
     monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)

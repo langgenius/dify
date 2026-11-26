@@ -46,6 +46,7 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     PipelineRunApi,
     PipelineUploadFileResponse,
 )
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.storage.storage_type import StorageType
 from libs.helper import dump_response
@@ -59,7 +60,6 @@ from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
 from services.rag_pipeline.entity.pipeline_service_api_entities import DatasourceNodeRunApiEntity, PipelineRunApiEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from services.workflow_runtime.pipeline_generator import PipelineGenerator
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 from tests.helpers.unit.model_factories import make_upload_file
 

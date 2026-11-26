@@ -104,7 +104,7 @@ class WorkflowTool(Tool):
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
 
-        from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
         if self.execution_driver is None:
             raise ToolInvokeError("Workflow execution driver is required")

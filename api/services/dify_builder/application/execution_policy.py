@@ -221,13 +221,13 @@ def validate_restricted_http_defaults(data: Mapping[str, Any]) -> None:
 
 def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[AdmittedNodeBinding, ...]:
     """Resolve audited class identities before class-owned data validation."""
+    from core.workflow.node_factory import resolve_workflow_node_class
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.http_request.node import HttpRequestNode
     from graphon.nodes.start.start_node import StartNode
     from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
     from services.dify_builder.revision import node_config_digest
     from services.dify_builder.template_execution import validate_template_configuration, validate_template_source
-    from services.workflow_runtime.node_factory import resolve_workflow_node_class
 
     admit_raw_execution_metadata(snapshot)
     graph = snapshot.graph

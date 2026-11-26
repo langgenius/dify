@@ -1,8 +1,33 @@
+from collections.abc import Callable
 from types import FunctionType
 
+from flask import Flask
 from flask_restx import Resource
 
+from controllers.console import bp as console_bp
 from controllers.console import evaluation as evaluation_controller
+from enums import DeploymentEdition
+
+
+def test_disabled_evaluation_routes_return_not_found(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_EVALUATION=False)
+    application = Flask(__name__)
+    application.config["RESTX_ERROR_404_HELP"] = False
+    application.register_blueprint(console_bp)
+    client = application.test_client()
+    routes = application.url_map.bind("localhost")
+    target_id = "00000000-0000-0000-0000-000000000001"
+
+    for path in (
+        f"/console/api/apps/{target_id}/evaluation/run",
+        f"/console/api/datasets/{target_id}/evaluation/run",
+        f"/console/api/apps/{target_id}/workflows/publish/evaluation",
+        f"/console/api/apps/{target_id}/workflows/convert-type?target_type=evaluation",
+    ):
+        assert routes.test(path.partition("?")[0], method="POST"), path
+        response = client.post(path)
+        assert response.status_code == 404, path
+        assert response.get_json()["code"] == "not_found", path
 
 
 def test_all_evaluation_resources_require_a_supported_edition() -> None:

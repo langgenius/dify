@@ -181,8 +181,10 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE=5
 # ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR=20
 # ANNOTATION_IMPORT_MAX_CONCURRENT=5
-# Allow Evaluation to select and score Knowledge Retrieval v2 workflow nodes.
-# Keep disabled until the Knowledge Retrieval v2 node implementation is deployed.
+
+# Evaluation
+# Set to true to enable Evaluation on supported deployments.
+# ENABLE_EVALUATION=false
 # Prevent DeepEval from loading local dotenv files or exporting telemetry from API/worker processes.
 DEEPEVAL_DISABLE_DOTENV=${DEEPEVAL_DISABLE_DOTENV-1}
 DEEPEVAL_TELEMETRY_OPT_OUT=${DEEPEVAL_TELEMETRY_OPT_OUT-1}
@@ -301,11 +303,7 @@ AGENT_BACKEND_BASE_URL=${AGENT_BACKEND_BASE_URL-http://agent_backend:5050}
 # DIFY_BUILDER_ENABLED=false
 # DIFY_BUILDER_MAX_ADVANCE_SECONDS=600
 # DIFY_BUILDER_SKILL_LEARNING_POLICY=ask
-# Set to true to allow ordinary draft Test Run after risk disclosure and applicable confirmation.
-DIFY_BUILDER_CONFIRMED_RUN_ENABLED=${DIFY_BUILDER_CONFIRMED_RUN_ENABLED-false}
-# Set to true to allow eligible real tool calls after user confirmation.
-DIFY_BUILDER_CONFIRMED_TOOL_ENABLED=${DIFY_BUILDER_CONFIRMED_TOOL_ENABLED-false}
-# Recover interrupted sessions and keep waiting Agent bindings alive.
+# Recover interrupted Builder sessions.
 # Requires Beat and a worker consuming the dify_builder queue.
 # Set to true to enable recovery.
 ENABLE_DIFY_BUILDER_RECONCILER=${ENABLE_DIFY_BUILDER_RECONCILER-false}

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal
 
-from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from graphon.model_runtime.entities.message_entities import PromptMessageTool
@@ -54,7 +53,6 @@ class AgentLLMInvokeTarget(BaseModel):
 class AgentLLMInvokeRequest(BaseModel):
     caller: AgentLLMInvokeCaller
     target: AgentLLMInvokeTarget
-    native_dispatch: AgentPhysicalDispatchPayload | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 

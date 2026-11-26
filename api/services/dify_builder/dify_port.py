@@ -23,13 +23,8 @@ the P2 plan's Global Constraints):
   final Agent node must have a confirmed or retained selection prepared before
   sync. A ``WorkflowHashNotEqualError`` (the draft
   changed since it was read) is re-mapped to the domain ``HashMismatchError``.
-- ``run_draft`` invokes ``AppGenerateService.generate`` with
-  ``invoke_from=InvokeFrom.DEBUGGER`` (runs the *draft*, not the published
-  workflow) and ``streaming=True``, so ``on_event`` fires while the run is
-  still going instead of replaying finished rows afterwards. It selects
-  ``workflow_execution_mode="in_process"`` so the native generator runs inside
-  the existing Builder task. The saved Builder session and inputs own the
-  attempt while the ordinary debugger owns its execution.
+- The saved Builder session and inputs own the test attempt. The ordinary
+  Workflow or Chatflow debugger runs the loaded draft in the Builder worker.
   Enqueuing a child task and waiting for its stream
   deadlocks a worker that consumes both queues with only one execution slot.
   If the stream ends WITHOUT a terminal frame, the
@@ -47,12 +42,11 @@ the P2 plan's Global Constraints):
 
 import json
 import logging
-import threading
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import closing
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from pydantic import JsonValue
@@ -61,9 +55,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
-from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.dify_builder.changes import describe_changed_nodes
 from core.dify_builder.contract import CanvasEvent
 from core.dify_builder.input_schema import SYSTEM_QUERY, validate_query
@@ -79,6 +74,7 @@ from core.dify_builder.models import (
     Run,
     RunVerification,
 )
+from events.app_event import app_draft_workflow_was_synced
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
@@ -88,36 +84,23 @@ from models.enums import CreatorUserRole
 from models.model import App
 from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from runtime_contracts.builder.execution import WorkerExit, WorkflowExecutionTransport, canonical_digest
+from runtime_contracts.builder.execution import canonical_digest
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
 from services.dify_builder.application.execution_policy import (
-    BuilderExecutionContext,
-    BuilderExecutionObservation,
     BuilderExecutionPolicyError,
-    BuilderExecutionRecorder,
     BuilderExecutionRefusal,
-    ConfirmedToolExecutionContext,
-    ExecutionEvidenceSummary,
-    HttpFixtureSetV1,
-    HttpResponseFixtureV1,
-    JsonToolExecutionContext,
-    TrustedExecutionCompletion,
-    scalar_inputs_digest,
 )
 from services.dify_builder.application.handlers_fix import run_finished_without_output
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.execution_policy_service import (
-    BuilderExecutionPolicyService,
-    admit_execution_workflow,
     check_execution_permission,
-    restricted_admission_snapshot,
 )
 from services.dify_builder.identity import load_app, resolve_account
 from services.dify_builder.node_policy import proposal_policy_rejections
 from services.dify_builder.output_evidence import collect_output_findings
 from services.dify_builder.preflight import new_preflight_problems
-from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, ServiceConfirmedToolGuard
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
 from services.dify_builder.run_mapping import (
@@ -131,26 +114,24 @@ from services.dify_builder.run_mapping import (
     run_id_from_stream_chunk,
     run_result_data_from_run_row,
     run_result_data_from_terminal_chunk,
-    sanitize_confirmed_node_event,
-    sanitize_confirmed_run,
-    sanitize_confirmed_stream_event,
     stream_chunk_as_mapping,
 )
 from services.errors.app import WorkflowHashNotEqualError
-from services.workflow.draft_coordination_service import WorkflowDraftCoordinationService
 from services.workflow_draft_sync_service import notify_workflow_draft_changed
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_generation import graph_normalizers
+from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 
 if TYPE_CHECKING:
-    from services.dify_builder.native_testing.agent_binding import (
+    from services.dify_builder.agent_binding import (
         AgentBindingAuthorization,
         AgentBindingSelection,
         AgentBindingService,
     )
 
 
-__all__ = ["ConfirmedLaunchRecorder", "WorkflowServiceDifyPort"]
+__all__ = ["WorkflowServiceDifyPort"]
 
 
 def _session_factory() -> sessionmaker[Session]:
@@ -181,7 +162,7 @@ def _confirmed_agent_selections(
     retained: Mapping[str, "AgentBindingSelection"] | None = None,
 ) -> dict[str, "AgentBindingSelection"]:
     from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
-    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection, has_native_roster_binding
+    from services.dify_builder.agent_binding import AgentBindingSelection, has_native_roster_binding
 
     confirmed = {}
     for resource_id in resource_ids or ():
@@ -233,8 +214,8 @@ def _retained_native_agent_selections(
     from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
     from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
     from models.agent_config_entities import WorkflowNodeJobConfig
-    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection, native_node_data
-    from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
+    from services.dify_builder.agent_binding import AgentBindingSelection, native_node_data
+    from services.dify_builder.agent_catalog import AgentCatalogService
     from services.dify_builder.revision import node_config_digest
 
     def execution_data(data):
@@ -329,7 +310,7 @@ def _prepare_native_agent_graph(
     from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
     from models.agent import WorkflowAgentNodeBinding
     from services.agent.workflow_publish_service import WorkflowAgentPublishService
-    from services.dify_builder.native_testing.agent_binding import AgentBindingService, has_native_roster_binding
+    from services.dify_builder.agent_binding import AgentBindingService, has_native_roster_binding
 
     graph = deepcopy(graph)
     nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
@@ -399,7 +380,6 @@ def _sync_graph_only(
     app_id: str,
     *,
     commit: bool = True,
-    coordination_id: str | None = None,
 ) -> Workflow:
     """Write ``graph`` back to the draft via the graph-only sync both
     ``apply_repair`` and ``restore_graph`` use (no server-side patch
@@ -419,229 +399,17 @@ def _sync_graph_only(
             graph_only=True,
             sync_agent_bindings=False,
             commit=commit,
-            coordination_id=coordination_id,
             preserve_environment_variables=True,
         )
     except WorkflowHashNotEqualError as exc:
         raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
 
 
-@dataclass
-class ConfirmedLaunchRecorder:
-    """The launch recorder of one confirmed Run, which also issues its service-owned guard.
-
-    Built only by the launch admission after ``claim_launch`` captured this
-    Run's identity. ``confirmed_guard`` is called by the native Tool runtime at
-    Graphon's actual node binding: it claims the grant through the consent
-    owner for exactly this native Run and returns ``ServiceConfirmedToolGuard``.
-    It never caches, rebuilds or deserializes a guard; a second claim refuses
-    in the consent owner. A confirmed run records no restricted observations.
-    """
-
-    base: BuilderExecutionRecorder
-    consent: BuilderRealCallConsentService
-    context: ConfirmedToolExecutionContext
-    native_run_id: str
-
-    @property
-    def healthy(self) -> bool:
-        return self.base.healthy
-
-    def record(self, observation: BuilderExecutionObservation) -> None:
-        self.base.record(observation)
-
-    def confirmed_guard(
-        self, *, node_id: str, native_run_id: str, native_node_execution_id: str
-    ) -> ServiceConfirmedToolGuard:
-        if not self.base.healthy:
-            raise BuilderExecutionPolicyError("execution_recorder_unhealthy")
-        if native_run_id != self.native_run_id:
-            raise BuilderExecutionPolicyError("execution_launch_mismatch")
-        binding = self.consent.claim_tool(
-            context=self.context,
-            node_id=node_id,
-            native_run_id=native_run_id,
-            native_node_execution_id=native_node_execution_id,
-        )
-        return ServiceConfirmedToolGuard(self.consent, binding)
 
 
-@dataclass
-class _BuilderExecutionLaunch:
-    """One invocation's admission and recorder, retained by the completion owner.
-
-    ``consent`` is set exactly for a confirmed context; the admission then
-    hands the native factory a ``ConfirmedLaunchRecorder``.
-    """
-
-    service: BuilderExecutionPolicyService
-    context: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext
-    consent: BuilderRealCallConsentService | None = None
-    recorder: BuilderExecutionRecorder | None = None
-    refusal: BuilderExecutionPolicyError | None = None
-    _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
-    _launch_thread: threading.Thread = field(default_factory=threading.current_thread, init=False)
-    _preworker_refusal: BuilderExecutionPolicyError | None = field(default=None, init=False)
-    _claim: tuple[str, str] | None = field(default=None, init=False)
-    _candidate: (
-        tuple[
-            threading.Thread,
-            str,
-            str,
-            Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED],
-        ]
-        | None
-    ) = field(default=None, init=False)
-    _invalid: bool = field(default=False, init=False)
-    _completion: TrustedExecutionCompletion | None = field(default=None, init=False)
-    finalization_closed: bool = field(default=False, init=False)
-
-    def on_worker_finished(
-        self,
-        *,
-        context: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext,
-        native_run_id: str,
-        task_id: str,
-        recorder: BuilderExecutionRecorder | None,
-        worker_thread: threading.Thread,
-        exit_kind: Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED],
-    ) -> None:
-        with self._lock:
-            try:
-                if (
-                    context != self.context
-                    or worker_thread is not threading.current_thread()
-                    or recorder is not self.recorder
-                    or (self._claim is not None and self._claim != (native_run_id, task_id))
-                    or self._preworker_refusal is not None
-                    or exit_kind not in {"returned", "policy_refused", "stopped", "failed"}
-                ):
-                    raise BuilderExecutionPolicyError("invalid_worker_completion")
-                candidate = (worker_thread, native_run_id, task_id, exit_kind)
-                if self._candidate is not None and self._candidate != candidate:
-                    raise BuilderExecutionPolicyError("conflicting_worker_completion")
-                if not self.finalization_closed:
-                    self._candidate = candidate
-            except BaseException:
-                self._invalid = True
-                raise
-
-    def finish(
-        self, *, response_completed: bool, setup_refusal: BuilderExecutionPolicyError | None = None
-    ) -> TrustedExecutionCompletion:
-        """One nonblocking snapshot after the native response's existing close/join."""
-        with self._lock:
-            if self._completion is not None:
-                return self._completion
-            self.finalization_closed = True
-            candidate = self._candidate
-            finished = candidate is not None and not self._invalid and not candidate[0].is_alive()
-            preworker = (
-                self._preworker_refusal is not None
-                and self._preworker_refusal is self.refusal
-                and not self._invalid
-                and self._claim is None
-                and self.recorder is None
-                and candidate is None
-            )
-            self._completion = TrustedExecutionCompletion(
-                context=self.context,
-                native_run_id=self._claim[0] if self._claim else None,
-                task_id=self._claim[1] if self._claim else None,
-                worker_finished=finished,
-                worker_exit=candidate[3] if candidate is not None else "not_observed",
-                recorder_healthy=self.recorder is not None and self.recorder.healthy and not self._invalid,
-                response_completed=(
-                    response_completed if setup_refusal is None else preworker and self.refusal is setup_refusal
-                ),
-                preworker_refusal=preworker,
-                refusal=BuilderExecutionRefusal(reason_code=self.refusal.reason_code) if self.refusal else None,
-            )
-            return self._completion
-
-    def on_refusal(self, error: BuilderExecutionPolicyError, *, preworker: bool = False) -> None:
-        with self._lock:
-            if preworker and (
-                threading.current_thread() is not self._launch_thread
-                or self._claim is not None
-                or self.recorder is not None
-                or self._candidate is not None
-                or self._invalid
-                or self.finalization_closed
-                or (self.refusal is not None and self.refusal is not error)
-            ):
-                self._invalid = True
-                raise BuilderExecutionPolicyError("invalid_preworker_refusal")
-            if self._preworker_refusal is not None and self._preworker_refusal is not error:
-                self._invalid = True
-            if not self.finalization_closed:
-                self.refusal = error
-                if preworker:
-                    self._preworker_refusal = error
-
-    def admit_raw(self, workflow: Workflow, app: App) -> None:
-        admit_execution_workflow(self.context, restricted_admission_snapshot(workflow, app))
-
-    def __call__(
-        self,
-        workflow: Workflow,
-        app: App,
-        entity: WorkflowAppGenerateEntity,
-        root_node_id: str,
-        resume: bool,
-    ) -> BuilderExecutionRecorder:
-        try:
-            if isinstance(self.context, ConfirmedToolExecutionContext) and self.consent is None:
-                raise BuilderExecutionPolicyError("missing_confirmed_tool_guard")
-            config = entity.app_config
-            if (
-                entity.builder_execution != self.context
-                or entity.files
-                or entity.single_iteration_run is not None
-                or entity.single_loop_run is not None
-                or entity.invoke_from != InvokeFrom.DEBUGGER
-                or (config.app_id, config.tenant_id, config.workflow_id, config.app_mode)
-                != (app.id, app.tenant_id, workflow.id, "workflow")
-            ):
-                raise BuilderExecutionPolicyError("execution_owner_mismatch")
-            self.service.revalidate(
-                context=self.context,
-                workflow=workflow,
-                app=app,
-                actor_id=entity.user_id,
-                effective_inputs=dict(entity.inputs),
-                root_node_id=root_node_id,
-                call_depth=entity.call_depth,
-                transport=WorkflowExecutionTransport.IN_PROCESS,
-                resume=resume,
-            )
-            self.service.claim_launch(
-                context=self.context,
-                native_run_id=entity.workflow_execution_id,
-                task_id=entity.task_id,
-            )
-            with self._lock:
-                if self._preworker_refusal is not None:
-                    self._invalid = True
-                self._claim = (entity.workflow_execution_id, entity.task_id)
-            recorder: BuilderExecutionRecorder = self.service.recorder(
-                context=self.context,
-                native_run_id=entity.workflow_execution_id,
-                task_id=entity.task_id,
-            )
-            if isinstance(self.context, ConfirmedToolExecutionContext):
-                assert self.consent is not None  # refused before the launch claim below
-                recorder = ConfirmedLaunchRecorder(recorder, self.consent, self.context, entity.workflow_execution_id)
-            with self._lock:
-                self.recorder = recorder
-            return recorder
-        except BuilderExecutionPolicyError as error:
-            self.on_refusal(error)
-            raise
 
 
 # Refusals meaning another delivery already owns this reserved command's launch.
-_DUPLICATE_LAUNCH_REASONS = frozenset({"execution_already_launched", "execution_already_claimed"})
 
 
 def _unsupported_run(error: BuilderExecutionPolicyError) -> Run:
@@ -651,14 +419,6 @@ def _unsupported_run(error: BuilderExecutionPolicyError) -> Run:
 class WorkflowServiceDifyPort:
     """``DifyPort`` implementation backed directly by Dify's own services."""
 
-    def stamp_http_fixtures(
-        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
-    ) -> HttpFixtureSetV1:
-        from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
-
-        return BuilderExecutionPolicyService(_session_factory()).stamp_http_fixtures(
-            app_id, actor, base_app_revision=base_app_revision, fixtures=fixtures
-        )
 
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         """Read mode from the persisted app using the same tenant guard as graphs."""
@@ -1044,7 +804,7 @@ class WorkflowServiceDifyPort:
         nodes = describe_changed_nodes(changed_nodes, before_graph, graph)
         fingerprint = graph_ops.structural_fingerprint(graph)
 
-        from services.dify_builder.native_testing.agent_binding import AgentBindingService
+        from services.dify_builder.agent_binding import AgentBindingService
 
         retained, retained_stamps = {}, {}
         if any(node.get("data", {}).get("type") == "agent" for node in graph.get("nodes", [])):
@@ -1104,7 +864,6 @@ class WorkflowServiceDifyPort:
                 authorization=authorization,
                 retained_binding_stamps=retained_stamps,
             )
-            coordination_id = str(uuid4())
             updated = _sync_graph_only(
                 app,
                 graph,
@@ -1114,25 +873,19 @@ class WorkflowServiceDifyPort:
                 session,
                 app_id,
                 commit=binding_service is None,
-                coordination_id=coordination_id,
-            )
+                )
             if binding_service is not None:
                 retirements = binding_service.sync_prepared_bindings(
                     actor=actor, workflow=updated, selections=selections
-                )
-                WorkflowDraftCoordinationService.stage(
-                    session,
-                    coordination_id=coordination_id,
-                    workflow=updated,
-                    account_id=actor.account_id,
-                    retirement_agent_ids=retirements,
-                    emit_draft_event=True,
                 )
                 session.commit()
             new_hash = execution_revision(updated)
 
         if binding_service is not None:
-            WorkflowDraftCoordinationService.kick(coordination_id)
+            WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=actor.tenant_id, agent_ids=retirements, account_id=actor.account_id
+            )
+            app_draft_workflow_was_synced.send(app, synced_draft_workflow=updated)
         notify_workflow_draft_changed(updated, previous_graph=committed_previous_graph)
 
         if on_canvas is not None and graph != committed_previous_graph:
@@ -1205,26 +958,10 @@ class WorkflowServiceDifyPort:
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
-        confirmed_consent_id: str | None = None,
-        command_id: str | None = None,
-        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
         from services.dify_builder.task_controls import check_current
 
         check_current()
-        if confirmed_consent_id is not None or command_id is not None:
-            if not confirmed_consent_id or not command_id:
-                return _unsupported_run(BuilderExecutionPolicyError("confirmed_launch_incomplete"))
-            return self._run_confirmed_draft(
-                app_id,
-                actor,
-                on_event,
-                session_id=session_id,
-                test_input_id=test_input_id,
-                on_workflow_event=on_workflow_event,
-                consent_id=confirmed_consent_id,
-                command_id=command_id,
-            )
         return self._run_draft_debugger(
             app_id,
             actor,
@@ -1437,15 +1174,16 @@ class WorkflowServiceDifyPort:
             set_login_user(account)
             try:
                 with _session_factory()() as session:
-                    response = AppGenerateService.generate(
+                    current = _load_draft_workflow_or_raise(app, session=session)
+                    if execution_revision(current) != before_revision:
+                        raise BuilderExecutionPolicyError("revision_changed")
+                    response = AppGenerateService._run_with_guardrails(
                         app_model=app,
-                        user=account,
-                        args=args,
-                        invoke_from=InvokeFrom.DEBUGGER,
-                        session=session,
                         streaming=True,
-                        workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
-                        builder_expected_revision=before_revision,
+                        action=lambda rate_limit, request_id: rate_limit.generate(
+                            self._start_draft_debugger(app=app, account=account, draft=current, args=args, session=session),
+                            request_id
+                        ),
                     )
                 if isinstance(response, Mapping):
                     final = dict(response.get("data") or {})
@@ -1472,7 +1210,11 @@ class WorkflowServiceDifyPort:
                                     paused = payload.get("event") == "workflow_paused"
                                 error_frame = error_frame or error_from_stream_chunk(payload)
             except BuilderExecutionPolicyError as error:
-                return _unsupported_run(error)
+                # No generator starts if the loaded draft drifted. Complete the
+                # reservation so it never appears as an active test.
+                run = _unsupported_run(error)
+                self._save_full_run_result(reservation.id, run)
+                return run
             except Exception:
                 # This stream can fail after dispatch. Only its owned run row
                 # can establish the outcome, and the original attempt remains reserved.
@@ -1482,7 +1224,7 @@ class WorkflowServiceDifyPort:
 
         result = self._finish_run(tenant_id, app_id, final, run_id, error_frame=error_frame)
         run, row = result
-        run = self._bind_run(result, app_id, actor, before_revision, before_graph_revision, restricted=False)
+        run = self._bind_run(result, app_id, actor, before_revision, before_graph_revision)
         stored_status = str(row.status) if row is not None else ""
         if run.status == "succeeded" and stored_status != "succeeded":
             run.status = "running"
@@ -1496,263 +1238,48 @@ class WorkflowServiceDifyPort:
             self._save_full_run_result(reservation.id, run)
         return run
 
-    def _run_confirmed_draft(
-        self,
-        app_id: str,
-        actor: Actor,
-        on_event: Callable[[NodeEvent], None],
-        *,
-        session_id: str,
-        test_input_id: str,
-        on_workflow_event: Callable[[Mapping[str, object]], None] | None,
-        consent_id: str,
-        command_id: str,
-    ) -> Run:
-        """Launch one server-reserved confirmed command through the same native generator.
 
-        Authority is reloaded from the consent owner (reserved command, sidecar,
-        lineage), never taken from this call's arguments; the saved approved
-        input is the only input. Builder preparation sessions are closed before
-        generation starts. Every Builder-side projection is sanitized; the
-        native authorized Run keeps the message content.
-        """
-        consent = BuilderRealCallConsentService(_session_factory())
-        policy = BuilderExecutionPolicyService(_session_factory())
-        try:
-            context = consent.reserved_launch(
-                actor=actor, session_id=session_id, consent_id=consent_id, command_id=command_id
-            )
-        except BuilderExecutionPolicyError as error:
-            # Not this invocation's launchable command: the grant is not touched.
-            return _unsupported_run(error)
-        try:
-            if (context.app_id, context.test_input_id) != (app_id, test_input_id):
-                raise BuilderExecutionPolicyError("execution_owner_mismatch")
-            receipt = consent.get(actor=actor, session_id=session_id, consent_id=consent_id)
-            if receipt.state != "confirmed":
-                raise BuilderExecutionPolicyError(receipt.reason_code or "consent_not_confirmed")
-            context = policy.prepare_confirmed(context)
-            with _session_factory()() as session:
-                from services.dify_builder.task_controls import lock_execution
 
-                lock_execution(session, app_id=app_id)
-                account = resolve_account(session, actor)
-                app = load_app(session, app_id, actor)
-                draft = _load_draft_workflow_or_raise(app, session=session)
-                saved = session.get(DifyBuilderTestInput, context.test_input_id)
-                if saved is None or saved.session_id != session_id:
-                    raise BuilderExecutionPolicyError("test_input_binding_mismatch")
-                inputs = dict(saved.inputs)
-                try:
-                    effective_inputs = dict(
-                        BaseAppGenerator()._prepare_user_inputs(
-                            user_inputs=inputs,
-                            variables=WorkflowVariablesConfigManager.convert(draft),
-                            tenant_id=app.tenant_id,
-                        )
-                    )
-                except ValueError:
-                    raise BuilderExecutionPolicyError("unsupported_input_value") from None
-            if (
-                scalar_inputs_digest(inputs) != context.submitted_inputs_digest
-                or scalar_inputs_digest(effective_inputs) != context.effective_inputs_digest
-            ):
-                raise BuilderExecutionPolicyError("test_input_binding_mismatch")
-        except BuilderExecutionPolicyError as error:
-            if error.reason_code not in _DUPLICATE_LAUNCH_REASONS:
-                # A refusal about this grant itself; a duplicate never settles another launch's grant.
-                self._settle_confirmed(consent, context)
-            return _unsupported_run(error)
-        launch = _BuilderExecutionLaunch(policy, context, consent=consent)
-        try:
-            set_login_user(account)
-            # A fresh session for the native generator only; no Builder read is open.
-            with _session_factory()() as session:
-                response = AppGenerateService.generate(
-                    app_model=app,
-                    user=account,
-                    args={"inputs": effective_inputs},
-                    invoke_from=InvokeFrom.DEBUGGER,
-                    session=session,
-                    streaming=True,
-                    workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
-                    builder_execution=context,
-                    builder_execution_admit=launch,
-                )
-        except BuilderExecutionPolicyError as error:
-            launch.on_refusal(error)
-            return self._finalize_launch(launch, actor, response_completed=False, setup_refusal=error)
-        except BaseException:
-            self._close_failed_launch(launch)
-            raise
-        completed, candidate_ids = self._consume_launch(launch, response, on_event, on_workflow_event, sanitize=True)
-        return self._finalize_launch(launch, actor, response_completed=completed, candidate_ids=candidate_ids)
 
-    def _consume_launch(
-        self,
-        launch: _BuilderExecutionLaunch,
-        response: Any,
-        on_event: Callable[[NodeEvent], None],
-        on_workflow_event: Callable[[Mapping[str, object]], None] | None,
-        *,
-        sanitize: bool,
-    ) -> tuple[bool, set[str]]:
-        """Consume the native stream outside any Builder session; close or seal it on every exit.
 
-        ``sanitize`` reduces forwarded frames and node events to IDs and statuses.
-        """
-        completed = False
-        primary: BaseException | None = None
-        candidate_ids: set[str] = set()
-        try:
-            if isinstance(response, Mapping):
-                candidate = str((response.get("data") or {}).get("id") or response.get("workflow_run_id") or "")
-                if candidate:
-                    candidate_ids.add(candidate)
-            else:
-                for chunk in response:
-                    payload = stream_chunk_as_mapping(chunk)
-                    if payload is None:
-                        continue
-                    if on_workflow_event is not None:
-                        on_workflow_event(sanitize_confirmed_stream_event(payload) if sanitize else payload)
-                    candidate = run_id_from_stream_chunk(payload)
-                    if candidate:
-                        candidate_ids.add(candidate)
-                    node_event = node_event_from_stream_chunk(payload)
-                    if node_event is not None:
-                        on_event(sanitize_confirmed_node_event(node_event) if sanitize else node_event)
-            completed = True
-        except BaseException as error:
-            primary = error
-            raise
-        finally:
-            try:
-                try:
-                    close = response.close if response is not None else None
-                except AttributeError:
-                    close = None
-                if callable(close):
-                    close()
-            except BaseException:
-                completed = False
-                if primary is None:
-                    self._close_failed_launch(launch)
-                    raise
-                logging.getLogger(__name__).warning("Builder response close failed after primary failure")
-            finally:
-                if primary is not None:
-                    self._close_failed_launch(launch)
-        return completed, candidate_ids
+
 
     @staticmethod
-    def _settle_confirmed(consent: BuilderRealCallConsentService, context: ConfirmedToolExecutionContext) -> None:
-        """Close the grant from its durable facts; a failure leaves it for the reconcile sweeper."""
-        try:
-            consent.settle_launch(context=context)
-        except Exception:
-            logging.getLogger(__name__).warning("Builder confirmed grant could not be settled")
+    def _start_draft_debugger(
+        app: App, account: Account, draft: Workflow, args: Mapping[str, Any], session: Session
+    ) -> Generator[str] | Mapping[str, Any]:
+        """Start the existing debugger on the loaded draft and stream its normal events.
 
-    @classmethod
-    def _settle_owned_launch(cls, launch: _BuilderExecutionLaunch, completion: TrustedExecutionCompletion) -> None:
-        """Settle only a launch this invocation claimed, or one refused for a grant-level reason.
-
-        A delivery that lost the sidecar launch claim to another one must not
-        settle the winner's grant while it may still be running.
+        The caller owns the actor, draft revision and durable attempt. The generators
+        receive the exact loaded draft and use ordinary execution and pause persistence.
         """
-        if launch.consent is None or not isinstance(launch.context, ConfirmedToolExecutionContext):
-            return
-        lost = completion.native_run_id is None and (
-            completion.refusal is None or completion.refusal.reason_code in _DUPLICATE_LAUNCH_REASONS
-        )
-        if not lost:
-            cls._settle_confirmed(launch.consent, launch.context)
-
-    @classmethod
-    def _close_failed_launch(cls, launch: _BuilderExecutionLaunch) -> None:
-        completion = launch.finish(response_completed=False)
-        try:
-            launch.service.seal(request_id=launch.context.request_id, completion=completion)
-        except Exception:
-            logging.getLogger(__name__).warning("Builder incomplete execution could not be sealed")
-        cls._settle_owned_launch(launch, completion)
-
-    def _finalize_launch(
-        self,
-        launch: _BuilderExecutionLaunch,
-        actor: Actor,
-        *,
-        response_completed: bool,
-        candidate_ids: set[str] | None = None,
-        setup_refusal: BuilderExecutionPolicyError | None = None,
-    ) -> Run:
-        completion = launch.finish(response_completed=response_completed, setup_refusal=setup_refusal)
-        if candidate_ids and candidate_ids != {completion.native_run_id}:
-            completion = completion.model_copy(update={"response_completed": False})
-        context = launch.context
-        try:
-            summary = launch.service.seal(request_id=context.request_id, completion=completion)
-        except Exception:
-            logging.getLogger(__name__).warning("Builder execution seal unavailable")
-            match context:
-                case ConfirmedToolExecutionContext():
-                    summary = ExecutionEvidenceSummary(
-                        request_id=context.request_id,
-                        policy_version=context.policy_version,
-                        mode=context.mode,
-                        sealed=False,
-                        safety_outcome="execution_evidence_unknown",
-                        sandbox_profile=context.sandbox_profile,
-                        consent_id=context.consent_id,
-                    )
-                case BuilderExecutionContext():
-                    summary = ExecutionEvidenceSummary(
-                        request_id=context.request_id,
-                        mode=context.mode,
-                        sealed=False,
-                        safety_outcome="execution_evidence_unknown",
-                        sandbox_profile=context.sandbox_profile,
-                        fixture_digest=context.fixture_digest,
-                    )
-                case JsonToolExecutionContext():
-                    summary = ExecutionEvidenceSummary(
-                        request_id=context.request_id,
-                        policy_version=context.policy_version,
-                        mode=context.mode,
-                        sealed=False,
-                        safety_outcome="execution_evidence_unknown",
-                        sandbox_profile=context.sandbox_profile,
-                    )
-        # After the seal, so completion is read from this Run's own sealed proof.
-        self._settle_owned_launch(launch, completion)
-        # SQL status/outputs are authoritative; terminal SSE is only a consistency candidate.
-        result = self._finish_run(launch.context.tenant_id, launch.context.app_id, {}, summary.native_run_id or "")
-        run, _ = result
-        if run.verification is None:
-            from core.dify_builder.models import RunVerification
-
-            run.verification = RunVerification(
-                execution_revision="",
-                executed_graph_revision="",
-                terminal_outputs=None,
-                output_findings=[],
-                executed_node_ids=[],
-                no_output_dead_branch=False,
-            )
-        run.verification.execution_evidence = summary
-        if completion.refusal is not None:
-            run.execution_refusal = completion.refusal
-            if not summary.native_run_id:
-                run.error = ""
-                if summary.safety_outcome == "unsupported_safe_execution":
-                    run.status = "failed"
-        bound = self._bind_run(
-            result, launch.context.app_id, actor, launch.context.execution_revision, launch.context.graph_revision
-        )
-        if isinstance(context, ConfirmedToolExecutionContext):
-            # Output findings were derived from native rows above; Builder keeps no content.
-            return sanitize_confirmed_run(bound)
-        return bound
+        pause = PauseStateLayerConfig(session_factory=_session_factory(), state_owner_user_id=draft.created_by)
+        if app.mode == "advanced-chat":
+            generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+            return generator.convert_to_event_stream(generator.generate(
+                app_model=app,
+                workflow=draft,
+                user=account,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                workflow_run_id=str(uuid4()),
+                streaming=True,
+                pause_state_config=pause,
+                session=session,
+            ))
+        session.commit()
+        generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+        return generator.convert_to_event_stream(generator.generate(
+            app_model=app,
+            workflow=draft,
+            execution_identity=build_workflow_execution_identity(account),
+            user=account,
+            args=args,
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=True,
+            call_depth=0,
+            pause_state_config=pause,
+        ))
 
     def graph_revision(self, graph: Graph) -> str:
         return executable_graph_revision(graph)
@@ -1764,9 +1291,6 @@ class WorkflowServiceDifyPort:
         actor: Actor,
         before_revision: str,
         before_graph_revision: str,
-        *,
-        execution_recorder: BuilderExecutionRecorder | None = None,
-        restricted: bool = True,
     ) -> Run:
         """Bind only the actual persisted run graph and equal before/after full revisions.
 
@@ -1775,9 +1299,6 @@ class WorkflowServiceDifyPort:
         is held open across stream consumption or provider I/O.
         """
         run, row = result
-        if execution_recorder is not None and not execution_recorder.healthy:
-            run.execution_refusal = BuilderExecutionRefusal(reason_code="execution_recorder_unhealthy")
-            return run
         native_graph = row.graph_dict if row is not None else None
         evidence = run.verification
         if evidence is None or not isinstance(native_graph, dict) or not isinstance(native_graph.get("nodes"), list):
@@ -1789,12 +1310,6 @@ class WorkflowServiceDifyPort:
         with _session_factory()() as session:
             app = load_app(session, app_id, actor)
             draft = _load_draft_workflow_or_raise(app, session=session)
-            if restricted:
-                try:
-                    restricted_admission_snapshot(draft, app)
-                except BuilderExecutionPolicyError as error:
-                    run.execution_refusal = BuilderExecutionRefusal(reason_code=error.reason_code)
-                    return run
             graph, after_revision = dict(draft.graph_dict), execution_revision(draft)
         if (
             before_revision
@@ -1872,11 +1387,8 @@ class WorkflowServiceDifyPort:
     def publish(
         self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
     ) -> PublishResult:
-        """Read public Tool declarations before locking the verified publication draft."""
-        with _session_factory()() as read_session:
-            app_to_prepare = load_app(read_session, app_id, actor)
+        """Publish the owned draft only while its verified revision still matches."""
         workflow_service = WorkflowService()
-        workflow_service.prepare_draft_tool_publish(app_model=app_to_prepare)
         with _session_factory()() as session:
             from services.dify_builder.task_controls import lock_execution
 
@@ -1902,12 +1414,10 @@ class WorkflowServiceDifyPort:
                 or executable_graph_revision(dict(draft.graph_dict)) != expected_graph_revision
             ):
                 raise HashMismatchError(f"workflow verification is stale: {app_id}")
-            # Reselect only this locked identity, even if duplicate draft rows exist.
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app,
                 account=account,
-                expected_draft_id=draft.id,
             )
 
             app_in_session = session.get(App, app_id)

@@ -14,7 +14,7 @@ from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 
 
 def test_projection_is_published_and_output_contract_is_honest() -> None:
-    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from services.dify_builder.agent_catalog import project_published_agent
 
     agent = Agent(
         scope=agent_models.AgentScope.ROSTER,
@@ -53,7 +53,7 @@ def test_projection_is_published_and_output_contract_is_honest() -> None:
 
 
 def test_projection_rejects_cross_owner_snapshot() -> None:
-    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from services.dify_builder.agent_catalog import project_published_agent
 
     agent = Agent(
         scope=agent_models.AgentScope.ROSTER,
@@ -71,7 +71,7 @@ def test_projection_rejects_cross_owner_snapshot() -> None:
 
 @pytest.mark.parametrize("summary", [None, "", "Published risk review"])
 def test_public_roster_description_is_an_honest_capability_fallback(summary: None | str) -> None:
-    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from services.dify_builder.agent_catalog import project_published_agent
 
     agent = Agent(
         scope=agent_models.AgentScope.ROSTER,
@@ -108,8 +108,8 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
     from core.app.app_config.entities import ModelConfig
     from models.agent_config_entities import WorkflowNodeJobConfig
     from services.dify_builder.agent import build, resources
-    from services.dify_builder.native_testing.agent_binding import native_node_data
-    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from services.dify_builder.agent_binding import native_node_data
+    from services.dify_builder.agent_catalog import project_published_agent
     from tests.builder_agent_fixtures import make_case
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -234,8 +234,8 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
 def test_catalog_source_failure_is_not_an_empty_catalog(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: sqlalchemy.orm.Session
 ) -> None:
-    from services.agent import access_service
-    from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
+    from services.dify_builder import agent_access as access_service
+    from services.dify_builder.agent_catalog import AgentCatalogService
 
     monkeypatch.setattr(access_service, "require_builder_agent_access", lambda **_kwargs: None)
     monkeypatch.setattr(
@@ -251,7 +251,7 @@ def test_catalog_source_failure_is_not_an_empty_catalog(
 
 def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import build, resources
-    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from services.dify_builder.agent_catalog import project_published_agent
 
     agent = Agent(
         scope=agent_models.AgentScope.ROSTER,
@@ -645,7 +645,7 @@ def test_agent_discovery_refuses_ambiguous_short_identity(monkeypatch: pytest.Mo
 
 def test_changed_agent_selection_cannot_silently_rebind(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import build, resources
-    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+    from services.dify_builder.agent_binding import AgentSnapshotChanged
 
     ref = resources.ResourceRef(id="agent:agent-1:snapshot-4:" + "a" * 64, label="Reviewer")
     monkeypatch.setattr(
@@ -662,8 +662,8 @@ def test_native_catalog_filters_before_pagination(
 ) -> None:
     from models.account import Tenant
     from models.agent import AgentStatus
-    from services.agent import access_service
-    from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
+    from services.dify_builder import agent_access as access_service
+    from services.dify_builder.agent_catalog import AgentCatalogService
     from tests.builder_agent_fixtures import add_agent, make_case
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -697,7 +697,7 @@ def test_native_catalog_filters_before_pagination(
 def test_missing_tool_credentials_remain_discoverable_with_setup_status(
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
+    from services.dify_builder.agent_catalog import AgentCatalogService
     from tests.builder_agent_fixtures import make_case
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -717,7 +717,7 @@ def test_catalog_public_version_matches_native_visible_history_with_hidden_revis
     from models.agent import AgentConfigRevision, AgentConfigRevisionOperation, AgentSource
     from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
     from services.dify_builder.agent import resources
-    from services.dify_builder.native_testing.agent_catalog import AgentCatalogService, project_published_agent
+    from services.dify_builder.agent_catalog import AgentCatalogService, project_published_agent
     from tests.builder_agent_fixtures import make_case
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -836,10 +836,10 @@ def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(
     from datetime import datetime
 
     from models.agent import AgentConfigRevision, AgentConfigRevisionOperation
-    from services.agent import access_service
+    from services.dify_builder import agent_access as access_service
     from services.dify_builder.agent import build, resources
-    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
-    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from services.dify_builder.agent_binding import AgentSnapshotChanged
+    from services.dify_builder.agent_catalog import project_published_agent
     from tests.builder_agent_fixtures import add_agent, make_case
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)

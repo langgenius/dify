@@ -89,11 +89,9 @@ func (t *TmuxController) CreateJobSession(
 	cols, rows int,
 	mode jobmode.Mode,
 ) error {
-	runnerArgs := []string{t.config.RunnerPath(), jobDir, jobID, cwd, string(mode)}
-	if t.config.NativeScopeConfigPath != "" {
-		runnerArgs = append(runnerArgs, t.config.NativeScopeConfigPath)
-	}
-	runnerCmd := shellJoin(runnerArgs)
+	runnerCmd := shellJoin([]string{
+		t.config.RunnerPath(), jobDir, jobID, cwd, string(mode),
+	})
 	result, err := t.runTmuxNoCheck(
 		"-f", "/dev/null",
 		"new-session", "-d",
@@ -193,11 +191,7 @@ func (t *TmuxController) CleanupSession(jobID string) {
 }
 
 func (t *TmuxController) buildPipeCommand(jobID, jobDir, readyFile string) string {
-	sanitizeArgs := append([]string{}, t.config.SanitizePtyCommand...)
-	if t.config.NativeScopeConfigPath != "" {
-		sanitizeArgs = append(sanitizeArgs, "--native-config", t.config.NativeScopeConfigPath)
-	}
-	sanitizeCmd := shellJoin(append(sanitizeArgs, "--ready-file", readyFile))
+	sanitizeCmd := shellJoin(append(t.config.SanitizePtyCommand, "--ready-file", readyFile))
 	runnerExitCmd := shellJoin(append(t.config.RunnerExitCommand,
 		"--state-dir", t.config.StateDir,
 		"--job-id", jobID,

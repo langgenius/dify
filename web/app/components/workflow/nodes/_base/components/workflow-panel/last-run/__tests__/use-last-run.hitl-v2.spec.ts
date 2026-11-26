@@ -18,13 +18,13 @@ vi.mock('@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-p
   default: () => ({}),
 }))
 
-vi.mock('../../../../../../hooks/use-schedule-draft-save', async (importOriginal) => {
+vi.mock('../../../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('../../../../../../hooks/use-schedule-draft-save')>()
+    await importOriginal<typeof import('../../../../../../hooks/use-nodes-sync-draft')>()
 
   return {
     ...actual,
-    useScheduleDraftSave: () => ({
+    useNodesSyncDraft: () => ({
       handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
     }),
   }

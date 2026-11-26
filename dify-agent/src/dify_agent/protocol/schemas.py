@@ -9,7 +9,7 @@ after native capability cleanup on success, failure and cancellation.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
@@ -26,17 +26,15 @@ from pydantic import (
 )
 from pydantic_ai.messages import AgentStreamEvent
 
-from dify_agent.protocol.native_testing import AgentApprovalWait, AgentNativeTestRef, AgentParentNodeRef, Counter
 from dify_agent.protocol.snapshot import SessionSnapshot
+
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
-RunStatus = Literal["running", "waiting", "succeeded", "failed", "cancelled"]
+RunStatus = Literal["running", "succeeded", "failed", "cancelled"]
 RunEventType = Literal[
     "run_started",
-    "run_waiting",
-    "run_resumed",
     "pydantic_ai_event",
     "run_succeeded",
     "run_failed",
@@ -56,7 +54,7 @@ class RunFailureType(StrEnum):
 
 def utc_now() -> datetime:
     """Return the timezone-aware timestamp format used by public schemas."""
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 class RunLayerSpec(BaseModel):
@@ -75,13 +73,6 @@ class RunComposition(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-# Builder native-test fields. Ordinary requests leave them out of the wire body
-# and the create-admission fingerprint, so both keep the pre-native request shape.
-NATIVE_TEST_REQUEST_FIELDS: Final[frozenset[str]] = frozenset(
-    {"execution_mode", "native_test_profile", "native_test_ref", "native_parent_node", "native_test_protocol_version"}
-)
-
-
 class CreateRunRequest(BaseModel):
     """Create a run using current Config and an optional state-only snapshot.
 
@@ -94,38 +85,11 @@ class CreateRunRequest(BaseModel):
     the original run and its current status; a different request conflicts.
     """
 
-    execution_mode: Literal["ordinary", "builder_test"] = "ordinary"
-    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
-    native_test_ref: AgentNativeTestRef | None = None
-    native_parent_node: AgentParentNodeRef | None = Field(default=None, exclude_if=lambda value: value is None)
-    native_test_protocol_version: Literal[1] | None = None
     composition: RunComposition
-    idempotency_key: str | None = Field(default=None, min_length=1, max_length=256)
+    idempotency_key: str | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: SessionSnapshot | None = None
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    @field_validator("native_test_protocol_version", mode="before")
-    @classmethod
-    def validate_native_version_type(cls, value: object) -> object:
-        if value is not None and type(value) is not int:
-            raise ValueError("native test protocol version must be an integer")
-        return value
-
-    @model_validator(mode="after")
-    def validate_native_mode(self) -> CreateRunRequest:
-        marked = self.execution_mode == "builder_test"
-        if not marked and self.native_test_profile != "isolated":
-            raise ValueError("confirmed profile requires native test mode")
-        if self.native_test_profile == "confirmed" and self.idempotency_key is None:
-            raise ValueError("confirmed profile requires create identity")
-        if marked != (self.native_test_ref is not None) or marked != (self.native_test_protocol_version is not None):
-            raise ValueError("native test mode, reference and protocol version must agree")
-        if marked != (self.native_parent_node is not None):
-            raise ValueError("native mode and parent must agree")
-        if self.native_parent_node is not None and self.native_parent_node.ref != self.native_test_ref:
-            raise ValueError("native parent reference mismatch")
-        return self
 
     @field_validator("idempotency_key")
     @classmethod
@@ -267,27 +231,6 @@ class RunStartedEvent(BaseRunEvent):
     data: EmptyRunEventData = Field(default_factory=EmptyRunEventData)
 
 
-class RunWaitingEventData(BaseModel):
-    generation: Counter
-    pending_actions: tuple[AgentApprovalWait, ...]
-    model_config = ConfigDict(extra="forbid")
-
-
-class RunWaitingEvent(BaseRunEvent):
-    type: Literal["run_waiting"] = "run_waiting"
-    data: RunWaitingEventData
-
-
-class RunResumedEventData(BaseModel):
-    generation: Counter
-    model_config = ConfigDict(extra="forbid")
-
-
-class RunResumedEvent(BaseRunEvent):
-    type: Literal["run_resumed"] = "run_resumed"
-    data: RunResumedEventData
-
-
 class PydanticAIStreamRunEvent(BaseRunEvent):
     """Pydantic AI stream event with optional Dify Agent semantic annotations."""
 
@@ -321,13 +264,7 @@ class RunCancelledEvent(BaseRunEvent):
 
 
 RunEvent: TypeAlias = Annotated[
-    RunStartedEvent
-    | RunWaitingEvent
-    | RunResumedEvent
-    | PydanticAIStreamRunEvent
-    | RunSucceededEvent
-    | RunFailedEvent
-    | RunCancelledEvent,
+    RunStartedEvent | PydanticAIStreamRunEvent | RunSucceededEvent | RunFailedEvent | RunCancelledEvent,
     Field(discriminator="type"),
 ]
 RUN_EVENT_ADAPTER: TypeAdapter[RunEvent] = TypeAdapter(RunEvent)
@@ -344,18 +281,18 @@ class RunEventsResponse(BaseModel):
 
 
 __all__ = [
-    "DIFY_AGENT_HISTORY_LAYER_ID",
-    "DIFY_AGENT_MODEL_LAYER_ID",
-    "DIFY_AGENT_OUTPUT_LAYER_ID",
-    "RUN_EVENT_ADAPTER",
-    "AgentRunUsage",
     "BaseRunEvent",
+    "AgentRunUsage",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DIFY_AGENT_HISTORY_LAYER_ID",
+    "DIFY_AGENT_MODEL_LAYER_ID",
+    "DIFY_AGENT_OUTPUT_LAYER_ID",
     "EmptyRunEventData",
     "PydanticAIStreamRunEvent",
+    "RUN_EVENT_ADAPTER",
     "RunCancelledEvent",
     "RunCancelledEventData",
     "RunComposition",
@@ -365,16 +302,12 @@ __all__ = [
     "RunFailedEvent",
     "RunFailedEventData",
     "RunFailureType",
-    "RunLayerSpec",
-    "RunResumedEvent",
-    "RunResumedEventData",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",
     "RunSucceededEvent",
     "RunSucceededEventData",
-    "RunWaitingEvent",
-    "RunWaitingEventData",
+    "RunLayerSpec",
     "SessionSnapshot",
     "utc_now",
 ]

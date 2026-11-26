@@ -38,7 +38,6 @@ from core.dify_builder.contract import (
 )
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import (
-    CONFIRMED_TOOL_ACTION,
     Action,
     Actor,
     Checkpoint,
@@ -49,7 +48,7 @@ from core.dify_builder.models import (
     Snapshot,
     Turn,
 )
-from core.dify_builder.state import PcState, is_terminal, is_waiting, is_working
+from core.dify_builder.state import PcState, is_terminal, is_waiting
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import BuilderText, copy_text
 from services.dify_builder import recovery, trace_diagnostics
@@ -130,9 +129,6 @@ class Env:
     consume_material: (
         Callable[[Session, DifyBuilderContext, Actor], tuple[Session, DifyBuilderContext, bool]] | None
     ) = None
-    # Set by the runner for a reserved confirmed Tool command: its deterministic
-    # status copy is committed without language detection or model localization.
-    suppress_model_calls: bool = False
     # Correlation metadata for the handler transition currently running.
     # The runner resets it before every independently committed step.
     session_id: str = ""
@@ -477,22 +473,9 @@ class Runner:
         if turn.action is not None:
             self._env.command_id = turn.action.command_id
         action_kind = turn.action.kind if turn.action is not None else ""
-        confirmed = action_kind == CONFIRMED_TOOL_ACTION
-        self._env.suppress_model_calls = confirmed
         self._env.begin_operation(s)
 
-        if confirmed:
-            # Only the server-reserved command may enter, and only the working
-            # state its atomic reservation already committed (no second transition).
-            assert turn.action is not None
-            if (
-                not is_working(s.current_state)
-                or not fc.confirmed_command_id
-                or not fc.confirmed_consent_id
-                or turn.action.command_id != fc.confirmed_command_id
-            ):
-                raise ConflictError(f"dify_builder: confirmed command is not reserved for session {session_id}")
-        elif self._env.detect_language is not None and cognition_admission_required(action_kind):
+        if self._env.detect_language is not None and cognition_admission_required(action_kind):
             with trace_diagnostics.scope(self._env.record_diagnostic, "detect-language"):
                 user_text = turn.action.payload.get("text") if turn.action is not None else None
                 if isinstance(user_text, str) and user_text.strip():

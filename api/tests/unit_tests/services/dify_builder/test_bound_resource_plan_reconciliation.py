@@ -197,7 +197,7 @@ def test_reconciliation_never_invents_an_available_selected_agent(monkeypatch: p
 
     monkeypatch.setattr(build.llm, "invoke_text", forbid_model)
     if source == "changed_snapshot":
-        from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+        from services.dify_builder.agent_binding import AgentSnapshotChanged
 
         with pytest.raises(AgentSnapshotChanged):
             build.reconcile_resource_plan(
@@ -341,7 +341,7 @@ def test_snapshot_drift_requires_explicit_rediscovery_and_new_snapshot_confirmat
     from core.dify_builder.contract import ResourceOption
     from core.dify_builder.errors import NotFoundError
     from core.dify_builder.models import ConversationItem
-    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+    from services.dify_builder.agent_binding import AgentSnapshotChanged
     from services.dify_builder.service import DifyBuilderService, resolve_submitted_action
     from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 

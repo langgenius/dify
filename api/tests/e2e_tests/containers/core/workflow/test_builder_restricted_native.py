@@ -13,7 +13,6 @@ from uuid import uuid4
 
 import pytest
 import yaml
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.input_schema import schema_hash, start_schema
@@ -22,18 +21,12 @@ from enums import WorkflowKind
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dify_builder import (
-    DifyBuilderExecutionRequest,
     DifyBuilderSession,
     DifyBuilderSessionCommit,
     DifyBuilderTestInput,
 )
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowRun, WorkflowType
-from runtime_contracts.builder.execution import WorkflowExecutionTransport
-from services.dify_builder.application.execution_policy import (
-    HttpResponseFixtureV1,
-)
-from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
+from models.workflow import Workflow, WorkflowType
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.serde import context_to_dict
 
@@ -144,113 +137,3 @@ def native_owner(flask_req_ctx_with_containers: None, db_session_with_containers
     _loaded_workflow2 = session.get(Workflow, published_id)
     assert _loaded_workflow2 is not None
     assert _loaded_workflow2.graph == published_graph
-
-
-@pytest.fixture
-def no_live(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    from contextlib import ExitStack
-    from unittest.mock import patch
-
-    from core.helper import ssrf_proxy
-    from core.helper.code_executor.code_executor import CodeExecutor
-    from core.model_manager import ModelManager
-    from core.plugin.impl.oauth import OAuthHandler
-    from core.tools.tool_manager import ToolManager
-    from factories import file_factory
-
-    # The spawned SQL-race owner enters this fixture with its own MonkeyPatch.
-    # Keep that explicit invocation contract while method patches own their cleanup.
-    assert isinstance(monkeypatch, pytest.MonkeyPatch)
-    spies = []
-    with ExitStack() as methods:
-        for owner, name in [
-            *((ssrf_proxy, n) for n in ("get", "post", "put", "patch", "delete", "head")),
-            (CodeExecutor, "execute_code"),
-            (ModelManager, "get_model_instance"),
-            (OAuthHandler, "refresh_credentials"),
-            (ToolManager, "get_workflow_tool_runtime"),
-            (file_factory, "build_from_mapping"),
-        ]:
-            spy = methods.enter_context(
-                patch.object(owner, name, side_effect=AssertionError(f"live capability reached: {name}"))
-            )
-            spies.append(spy)
-        yield
-        for spy in spies:
-            spy.assert_not_called()
-
-
-def configure(owner: NativeOwner, name: str, *, fixture: bool = False) -> dict[str, str]:
-    factory, actor, app, workflow, sid, tid = owner
-    graph = yaml.safe_load((FIXTURES / name).read_text())
-    inputs = {"text": "native scalar"} if name == "scalar.yml" else {"path": "sample"}
-    graph_json = json.dumps(graph)
-    with factory.begin() as session:
-        _loaded_workflow3 = session.get(Workflow, workflow.id)
-        assert _loaded_workflow3 is not None
-        _loaded_workflow3.graph = graph_json
-        _loaded_dify_builder_test_input4 = session.get(DifyBuilderTestInput, tid)
-        assert _loaded_dify_builder_test_input4 is not None
-        _loaded_dify_builder_test_input4.inputs = inputs
-    if fixture:
-        # Stamping rereads the draft in its own session, so commit the graph first.
-        with factory() as session:
-            _loaded_workflow13 = session.get(Workflow, workflow.id)
-            assert _loaded_workflow13 is not None
-            committed_revision = execution_revision(_loaded_workflow13)
-        envelope = BuilderExecutionPolicyService(factory).stamp_http_fixtures(
-            app.id,
-            actor,
-            base_app_revision=committed_revision,
-            fixtures=(
-                HttpResponseFixtureV1(
-                    node_id="http",
-                    source="user_sample",
-                    status_code=200,
-                    content_type="text/plain",
-                    body="native fixture ✓",
-                ),
-            ),
-        )
-        with factory.begin() as session:
-            _loaded_dify_builder_test_input14 = session.get(DifyBuilderTestInput, tid)
-            assert _loaded_dify_builder_test_input14 is not None
-            _loaded_dify_builder_test_input14.http_fixtures = envelope.model_dump(mode="json")
-    return inputs
-
-
-@pytest.mark.usefixtures("no_live")
-def test_ordinary_native_scalar_execution_remains_ordinary(native_owner: NativeOwner) -> None:
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from services.app_generate_service import AppGenerateService
-    from services.dify_builder.run_mapping import run_id_from_stream_chunk, stream_chunk_as_mapping
-
-    factory, actor, app, workflow, sid, tid = native_owner
-    with factory() as session:
-        account = session.get(Account, actor.account_id)
-        assert account is not None
-        native_app = session.get(App, app.id)
-        assert native_app is not None
-        response = AppGenerateService.generate(
-            native_app,
-            account,
-            {"inputs": {"text": "ordinary"}},
-            InvokeFrom.DEBUGGER,
-            session=session,
-            streaming=True,
-            workflow_execution_mode=WorkflowExecutionTransport.IN_PROCESS,
-        )
-    native_id = ""
-    try:
-        for chunk in response:
-            payload = stream_chunk_as_mapping(chunk)
-            if payload:
-                native_id = native_id or run_id_from_stream_chunk(payload)
-    finally:
-        response.close()
-    with factory() as session:
-        native = session.get(WorkflowRun, native_id)
-        assert native is not None
-        assert str(native.status) == "succeeded"
-        assert native.outputs_dict == {"out": "ordinary"}
-        assert session.scalars(select(DifyBuilderExecutionRequest)).first() is None

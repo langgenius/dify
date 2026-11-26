@@ -22,7 +22,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -32,8 +31,6 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
-	"github.com/langgenius/dify/dify-agent-runtime/internal/testscope"
-	"golang.org/x/sys/unix"
 )
 
 // startGatePollInterval is how often the parent runner checks for the
@@ -115,17 +112,7 @@ func parentMode() {
 		childArgs = append([]string{"--exec", "--landlock"}, childArgs[1:]...)
 	}
 
-	nativeConfig := ""
-	if len(os.Args) >= 6 {
-		nativeConfig = os.Args[5]
-		childArgs = nativeChildArgs(nativeConfig, scriptPath, cwd)
-		env = mergeEnv(env, map[string]string{"HOME": "/home/dify", "TMPDIR": "/tmp", "TMP": "/tmp", "TEMP": "/tmp", "PATH": "/usr/local/bin:/usr/bin:/bin", "HTTP_PROXY": "http://127.0.0.1:18080", "HTTPS_PROXY": "http://127.0.0.1:18080", "http_proxy": "http://127.0.0.1:18080", "https_proxy": "http://127.0.0.1:18080"})
-	}
 	cmd := exec.Command(self, childArgs...)
-	if nativeConfig != "" {
-		runtime.LockOSThread()
-		cmd.SysProcAttr = &syscall.SysProcAttr{Cloneflags: unix.CLONE_NEWNS | unix.CLONE_NEWPID, Pdeathsig: syscall.SIGKILL}
-	}
 	cmd.Env = env
 	cmd.Dir = cwd
 
@@ -135,26 +122,22 @@ func parentMode() {
 	go func() {
 		for sig := range sigCh {
 			if cmd.Process != nil {
-				if nativeConfig != "" {
-					_ = cmd.Process.Kill()
-				} else {
-					_ = cmd.Process.Signal(sig)
-				}
+				_ = cmd.Process.Signal(sig)
 			}
 		}
 	}()
 
-	exitCode := runCommandAndRecordExit(cmd, jobDir, mode, nativeConfig)
+	exitCode := runCommandAndRecordExit(cmd, jobDir, mode)
 	os.Exit(exitCode)
 }
 
 // runCommandAndRecordExit publishes the existing runner artifacts after the
 // child path returns. In stdio mode that return includes both stream drains;
 // PTY mode still relies on its separate pipe-drain finalizer.
-func runCommandAndRecordExit(cmd *exec.Cmd, jobDir string, mode jobmode.Mode, nativeConfig ...string) int {
+func runCommandAndRecordExit(cmd *exec.Cmd, jobDir string, mode jobmode.Mode) int {
 	var exitCode int
 	if mode == jobmode.Stdio {
-		exitCode = runStdio(cmd, jobDir, nativeConfig...)
+		exitCode = runStdio(cmd, jobDir)
 	} else {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
@@ -175,7 +158,7 @@ func runPTY(cmd *exec.Cmd) int {
 
 // runStdio captures stdout and stderr independently and does not return until
 // both streams reach EOF and their files are closed.
-func runStdio(cmd *exec.Cmd, jobDir string, nativeConfig ...string) int {
+func runStdio(cmd *exec.Cmd, jobDir string) int {
 	outputFile, err := openCaptureFile(filepath.Join(jobDir, "output.log"))
 	if err != nil {
 		return runnerError("open stdout capture", err)
@@ -186,26 +169,6 @@ func runStdio(cmd *exec.Cmd, jobDir string, nativeConfig ...string) int {
 		return runnerError("open stderr capture", err)
 	}
 
-	var stdoutDestination io.Writer = outputFile
-	var stderrDestination io.Writer = stderrFile
-	if len(nativeConfig) > 0 && nativeConfig[0] != "" {
-		writer, closeBudget, err := testscope.OpenOutputBudget(nativeConfig[0], outputFile)
-		if err != nil {
-			_ = outputFile.Close()
-			_ = stderrFile.Close()
-			return runnerError("native stdout budget", err)
-		}
-		defer closeBudget()
-		stdoutDestination = writer
-		writer, closeBudget, err = testscope.OpenOutputBudget(nativeConfig[0], stderrFile)
-		if err != nil {
-			_ = outputFile.Close()
-			_ = stderrFile.Close()
-			return runnerError("native stderr budget", err)
-		}
-		defer closeBudget()
-		stderrDestination = writer
-	}
 	stdoutReader, stdoutWriter, err := os.Pipe()
 	if err != nil {
 		_ = outputFile.Close()
@@ -249,13 +212,13 @@ func runStdio(cmd *exec.Cmd, jobDir string, nativeConfig ...string) int {
 	drains.Add(2)
 	go func() {
 		defer drains.Done()
-		_, copyErr := io.Copy(stdoutDestination, stdoutReader)
+		_, copyErr := io.Copy(outputFile, stdoutReader)
 		recordError("copy stdout", copyErr)
 		recordError("close stdout reader", stdoutReader.Close())
 	}()
 	go func() {
 		defer drains.Done()
-		_, copyErr := io.Copy(stderrDestination, stderrReader)
+		_, copyErr := io.Copy(stderrFile, stderrReader)
 		recordError("copy stderr", copyErr)
 		recordError("close stderr reader", stderrReader.Close())
 	}()
@@ -317,14 +280,8 @@ func commandExitCode(err error) int {
 // childMode applies Landlock (if --landlock flag) and exec's the user script.
 // Args: shellctl-runner --exec [--landlock] <script_path> <cwd>
 func childMode() {
-	runtime.LockOSThread()
 	args := os.Args[2:] // skip program name and "--exec"
 	applyLandlockFlag := false
-	nativeConfig := ""
-	if len(args) > 1 && args[0] == "--native-scope" {
-		nativeConfig = args[1]
-		args = args[2:]
-	}
 
 	if len(args) > 0 && args[0] == "--landlock" {
 		applyLandlockFlag = true
@@ -338,15 +295,6 @@ func childMode() {
 	scriptPath := args[0]
 	cwd := args[1]
 
-	if nativeConfig != "" {
-		data, err := os.ReadFile(nativeConfig)
-		cmdutil.HandleError(err, 125, "native scope configuration")
-		var cfg testscope.WorkerConfig
-		cmdutil.HandleError(json.Unmarshal(data, &cfg), 125, "native scope configuration")
-		scriptPath, err = testscope.PrepareJob(cfg, scriptPath)
-		cmdutil.HandleError(err, 125, "native scope isolation")
-		cwd = "/workspace"
-	}
 	// chdir
 	cmdutil.HandleError(os.Chdir(cwd), 111, "chdir %s", cwd)
 
@@ -461,8 +409,4 @@ func writeAtomic(dest, value string) {
 	if err := os.Rename(tmp, dest); err != nil {
 		fmt.Fprintf(os.Stderr, "shellctl-runner: rename %s -> %s: %v\n", tmp, dest, err)
 	}
-}
-
-func nativeChildArgs(config, script, cwd string) []string {
-	return []string{"--exec", "--native-scope", config, script, cwd}
 }

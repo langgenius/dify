@@ -58,6 +58,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.datasource.entities.datasource_entities import DatasourceParameter
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
@@ -82,7 +83,6 @@ from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
-from services.workflow_runtime.pipeline_generator import PipelineGenerator
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account as _rag_pipeline_workflow_make_account

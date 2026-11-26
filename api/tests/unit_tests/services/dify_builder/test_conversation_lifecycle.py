@@ -250,83 +250,6 @@ def test_applicable_lifecycle_without_current_control_evidence_is_unknown(
     assert service.get_session_view(session.id, _actor()).lifecycle_settlement == "unknown"
 
 
-def test_abandon_get_observes_current_settlement_without_replaying_cancel_or_old_receipt(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from copy import deepcopy
-
-    from models.dify_builder import DifyBuilderExecutionRequest
-    from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
-    from services.dify_builder.test_actions import BuilderTestActions
-
-    session = seed(repo)
-    request_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-    with repo._session_factory() as sql, sql.begin():
-        sql.add(
-            DifyBuilderExecutionRequest(
-                id=request_id,
-                tenant_id=TENANT_ID,
-                app_id=APP_ID,
-                workflow_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                actor_id=ACCOUNT_ID,
-                session_id=session.id,
-                test_input_id="inputs",
-                context={"policy_version": "builder-native-test-v1"},
-                context_digest="a" * 64,
-                state="running",
-            )
-        )
-    current = NativeTestPublicReceipt(
-        request_id=request_id,
-        generation=0,
-        version=1,
-        status="running",
-        wait_reason=None,
-        native_run_id=None,
-        native_status=None,
-        pending=(),
-        outcome=None,
-        evidence_refs=(),
-    )
-    cancellations: list[str] = []
-
-    def execute(**_kwargs: object) -> NativeTestPublicReceipt:
-        cancellations.append("cancel")
-        return current
-
-    actions = BuilderTestActions(repo._session_factory, forbidden)
-    monkeypatch.setattr(actions, "cancel", execute)
-    monkeypatch.setattr(actions, "current", lambda **_kwargs: current)
-    service._test_actions = actions
-    receipt = lifecycle().abandon(service, session.id, _actor(), base_version=1, client_action_id="abandon")
-    original = deepcopy(receipt)
-    assert receipt["settlement"] == "pending"
-    assert service.get_session_view(session.id, _actor()).lifecycle_settlement == "pending"
-    current = current.model_copy(update={"status": "terminal", "outcome": "cancelled"})
-    with repo._session_factory() as sql, sql.begin():
-        request = sql.get(DifyBuilderExecutionRequest, request_id)
-        assert request is not None
-        request.state = "sealed"
-        request.completion_summary = {"outcome": "cancelled"}
-    view = service.get_session_view(session.id, _actor())
-    assert view.lifecycle_settlement == "settled"
-    assert cancellations == ["cancel"]
-    assert lifecycle().abandon(service, session.id, _actor(), base_version=1, client_action_id="abandon") == original
-    assert repo.get_session(session.id)[1].task_control["lifecycle_receipt"]["receipt"] == original
-    current_task, context, activated = repo.activate_abandoned_continuation(
-        session.id,
-        _actor(),
-        base_version=view.version,
-        client_turn_id="fresh",
-        text="New task",
-        app_revision="revision",
-        dsl={"graph": {"nodes": []}},
-    )
-    assert activated
-    assert context.task_control["lifecycle_receipt"]["receipt"] == original
-    assert service.get_session_view(current_task.id, _actor()).lifecycle_settlement is None
-
-
 def test_clear_keeps_run_evidence_and_rejects_cross_owner_or_key_reuse(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
@@ -445,54 +368,6 @@ def test_switch_stop_does_not_pause_a_task_that_completed_before_lock(
     )
     assert stopped.current_state == PcState.BUILD_COMPLETE
     assert not context.paused
-
-
-def test_clear_revokes_retained_native_scope_without_claiming_cleanup(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    from datetime import UTC, datetime, timedelta
-
-    from models.dify_builder import DifyBuilderExecutionRequest
-    from models.dify_builder_native_tests import NativeTestScope
-
-    session = seed(repo)
-    request_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-    with repo._session_factory() as sql, sql.begin():
-        sql.add(
-            DifyBuilderExecutionRequest(
-                id=request_id,
-                tenant_id=TENANT_ID,
-                app_id=APP_ID,
-                workflow_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                actor_id=ACCOUNT_ID,
-                session_id=session.id,
-                test_input_id="retained-older-input",
-                context={"policy_version": "builder-native-test-v1"},
-                context_digest="a" * 64,
-                state="running",
-            )
-        )
-        sql.add(
-            NativeTestScope(
-                request_id=request_id,
-                tenant_id=TENANT_ID,
-                generation=0,
-                task_approved=True,
-                cancelled=False,
-                expires_at=datetime.now(UTC) + timedelta(minutes=5),
-                budget_limits={},
-                budget_spent={},
-                profile={},
-                max_calls=1,
-                max_dispatches=1,
-                max_cost_units=1,
-            )
-        )
-    receipt = lifecycle().clear(service, session.id, _actor(), base_version=1, client_action_id="clear", confirmed=True)
-    assert receipt["settlement"] == "pending"
-    with repo._session_factory() as sql:
-        assert sql.get(NativeTestScope, request_id).cancelled
-        assert sql.get(DifyBuilderExecutionRequest, request_id).state == "running"
 
 
 def test_abandoned_goal_activation_is_atomic_and_once_only(

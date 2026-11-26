@@ -10,7 +10,7 @@ type OptionsProps = {
   configurations: BaseConfiguration[]
   schema: ZodType
   CustomActions: (props: CustomActionsProps) => React.JSX.Element
-  onSubmit: (data: Record<string, unknown>) => void | Promise<void>
+  onSubmit: (data: Record<string, unknown>) => void
 }
 const Options = ({
   initialData,
@@ -34,7 +34,9 @@ const Options = ({
         return undefined
       },
     },
-    onSubmit: ({ value }) => onSubmit(value),
+    onSubmit: ({ value }) => {
+      onSubmit(value)
+    },
   })
   return (
     <form

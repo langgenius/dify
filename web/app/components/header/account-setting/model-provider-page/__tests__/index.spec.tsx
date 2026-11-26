@@ -1,5 +1,6 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelTypeEnum } from '../declarations'
+import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import {
   zDefaultModelResponse,
   zProviderWithModelsResponse,
@@ -7,6 +8,7 @@ import {
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -29,6 +31,7 @@ import {
   QuotaUnitEnum,
 } from '../declarations'
 import ModelProviderPage from '../index'
+import { SystemModelDialog } from '../system-model-selector/dialog'
 
 const providerSummaryFixture = {
   provider: 'openai',
@@ -49,23 +52,20 @@ const providerSummaryFixture = {
 
 type MockReferenceSetting = {
   permission: Record<string, never>
-  auto_upgrade?: {
-    strategy_setting: string
-    upgrade_time_of_day: number
-    upgrade_mode: string
-    exclude_plugins: string[]
-    include_plugins: string[]
-  }
+  auto_upgrade?: AutoUpdateConfig
 }
 
 const { mockSaveAutoUpgrade } = vi.hoisted(() => ({
   mockSaveAutoUpgrade: vi.fn(),
 }))
 
-const { mockDefaultModelQuery, mockPluginSettingsAccess } = vi.hoisted(() => ({
-  mockDefaultModelQuery: vi.fn(),
-  mockPluginSettingsAccess: { canSetPluginPreferences: true },
-}))
+const { mockDefaultModelQuery, mockPluginSettingsAccess, mockModelConfigAccess } = vi.hoisted(
+  () => ({
+    mockDefaultModelQuery: vi.fn(),
+    mockPluginSettingsAccess: { canSetPluginPreferences: true },
+    mockModelConfigAccess: { granted: true },
+  }),
+)
 
 const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
   mockReferenceSetting: {
@@ -186,13 +186,22 @@ const renderModelProviderPage = (
 ) => {
   const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
   const queryClient = createConsoleQueryClient()
+  // Seed the auto-upgrade query synchronously; these specs run with fake timers.
+  const autoUpgradeKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+    input: { query: { category: PluginCategoryEnum.model } },
+  })
+  if (mockReferenceSetting.auto_upgrade)
+    queryClient.setQueryData(autoUpgradeKey, {
+      category: PluginCategoryEnum.model,
+      auto_upgrade: mockReferenceSetting.auto_upgrade,
+    })
   queryClient.setQueryData(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
       input: { params: { model_type: 'llm' } },
     }),
     { data: [] },
   )
-  if (mockPluginSettingsAccess.canSetPluginPreferences) {
+  if (mockModelConfigAccess.granted) {
     for (const [type, state] of Object.entries(mockDefaultModels)) {
       if (!state.isLoading)
         queryClient.setQueryData(
@@ -245,10 +254,14 @@ const renderModelProviderPage = (
     )
   }
   return renderWithConsoleQuery(
-    <ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />,
+    <>
+      <ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />
+      <SystemModelDialog />
+    </>,
     {
       queryClient,
       systemFeatures: { enable_marketplace: enableMarketplace },
+      workspacePermissionKeys: mockModelConfigAccess.granted ? ['plugin.model_config'] : [],
     },
   )
 }
@@ -300,17 +313,6 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => ({ data: { plugins: [] }, isLoading: false }),
-  usePluginAutoUpgradeSettings: () => ({
-    data: mockReferenceSetting.auto_upgrade
-      ? {
-          category: 'model',
-          auto_upgrade: mockReferenceSetting.auto_upgrade,
-        }
-      : undefined,
-    error: mockAutoUpgradeError.value,
-    isFetching: false,
-    isLoading: !mockReferenceSetting.auto_upgrade && !mockAutoUpgradeError.value,
-  }),
   useMutationPluginAutoUpgradeSettings: () => ({
     mutate: mockSaveAutoUpgrade,
     isPending: false,
@@ -328,6 +330,11 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.defaultModel.get': mockDefaultModelQuery,
       'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [] }),
       'workspaces.current.plugin.list.latestVersions.post': () => new Promise(() => {}),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': async () => {
+        if (mockAutoUpgradeError.value) throw mockAutoUpgradeError.value
+        if (!mockReferenceSetting.auto_upgrade) return new Promise(() => {})
+        return { category: 'model', auto_upgrade: mockReferenceSetting.auto_upgrade }
+      },
     }),
   }
 })
@@ -340,6 +347,7 @@ describe('ModelProviderPage', () => {
     mockSummaryState.isLoading = false
     mockSummaryState.plugins = {}
     mockPluginSettingsAccess.canSetPluginPreferences = true
+    mockModelConfigAccess.granted = true
     mockAutoUpgradeError.value = undefined
     mockReferenceSetting.auto_upgrade = {
       strategy_setting: 'latest',
@@ -397,8 +405,8 @@ describe('ModelProviderPage', () => {
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 
-  it('should skip system model settings without plugin preference access', () => {
-    mockPluginSettingsAccess.canSetPluginPreferences = false
+  it('should skip system model settings without configure-models access', () => {
+    mockModelConfigAccess.granted = false
 
     renderModelProviderPage()
 
@@ -406,6 +414,16 @@ describe('ModelProviderPage', () => {
     expect(
       screen.queryByRole('button', { name: /modelProvider.systemModelSettings/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should skip auto-update settings without plugin preference access', () => {
+    mockPluginSettingsAccess.canSetPluginPreferences = false
+
+    renderModelProviderPage()
+
+    expect(
+      screen.getByRole('button', { name: /modelProvider.systemModelSettings/ }),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }),
     ).not.toBeInTheDocument()
@@ -443,11 +461,13 @@ describe('ModelProviderPage', () => {
     expect(mockSaveAutoUpgrade).not.toHaveBeenCalled()
   })
 
-  it('should render a failure state when backend auto-upgrade data fails', () => {
+  it('should render a failure state when backend auto-upgrade data fails', async () => {
     mockReferenceSetting.auto_upgrade = undefined
     mockAutoUpgradeError.value = new Error('auto-upgrade failed')
 
     renderModelProviderPage()
+    // Let the auto-upgrade request fail.
+    await act(() => vi.advanceTimersByTimeAsync(0))
 
     openUpdateSettings()
     expect(screen.getByText('common.api.actionFailed')).toBeInTheDocument()

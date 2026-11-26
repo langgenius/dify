@@ -12,15 +12,11 @@ import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
 import { generateNewNode } from '@/app/components/workflow/utils'
-import { difyBuilderPendingCreationAtom } from '@/features/dify-builder/creation'
-import { useDifyBuilderEnabled } from '@/features/dify-builder/use-enabled'
 import { consoleQuery } from '@/service/console'
 
 export const useWorkflowTemplate = () => {
   const isChatflow = useAtomValue(isChatflowAtom)
   const { appId } = useAtomValue(workflowAppIdentityAtom)
-  const pendingCreation = useAtomValue(difyBuilderPendingCreationAtom)
-  const isBuilderCreation = useDifyBuilderEnabled() && pendingCreation?.appId === appId
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -50,7 +46,7 @@ export const useWorkflowTemplate = () => {
           window: { enabled: false, size: 10 },
           query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
         },
-        selected: !isBuilderCreation,
+        selected: true,
         type: llmDefault.metaData.type,
         title: t(($) => $[`blocks.${llmDefault.metaData.type}`], { ns: 'workflow' }),
       },
@@ -99,7 +95,7 @@ export const useWorkflowTemplate = () => {
     const { newNode: startPlaceholderNode } = generateNewNode({
       data: {
         ...startPlaceholderDefault.defaultValue,
-        selected: !isBuilderCreation,
+        selected: true,
         type: startPlaceholderDefault.metaData.type,
         title: t(($) => $[`blocks.${startPlaceholderDefault.metaData.type}`], { ns: 'workflow' }),
         desc: '',

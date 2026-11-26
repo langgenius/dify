@@ -1,19 +1,19 @@
-import type { useWorkflowDraftSave } from '../draft/use-draft-save'
+import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { useWorkflowRun } from './use-workflow-run'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useWorkflowAppStore as useWorkflowStore } from '@/app/components/workflow-app/store/workflow'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useWorkflowDraftSaveByCanEdit } from '../draft/use-draft-save'
+import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import { useWorkflowRunByCanEdit } from './use-workflow-run'
 
 type HandleRun = ReturnType<typeof useWorkflowRun>['handleRun']
-type DoSyncWorkflowDraft = ReturnType<typeof useWorkflowDraftSave>['doSyncWorkflowDraft']
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useWorkflowStartRunBase = (
   handleRun: HandleRun,
@@ -26,7 +26,6 @@ const useWorkflowStartRunBase = (
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
-    if (workflowStore.getState().hasWorkflowDraftConflict) return
     const { workflowRunningData } = workflowStore.getState()
 
     if (workflowRunningData?.result.status === WorkflowRunningStatus.Running) return
@@ -56,7 +55,6 @@ const useWorkflowStartRunBase = (
 
     if (!startVariables.length && !fileSettings?.image?.enabled) {
       await doSyncWorkflowDraft()
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ inputs: {}, files: [] })
       setShowDebugAndPreviewPanel(true)
       setShowInputsPanel(false)
@@ -75,7 +73,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowTriggerScheduleRunInWorkflow = useCallback(
     async (nodeId?: string) => {
-      if (!nodeId || workflowStore.getState().hasWorkflowDraftConflict) return
+      if (!nodeId) return
 
       const {
         workflowRunningData,
@@ -117,7 +115,6 @@ const useWorkflowStartRunBase = (
       setListeningTriggerIsAll(false)
 
       await doSyncWorkflowDraft()
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({}, undefined, {
         mode: TriggerType.Schedule,
         scheduleNodeId: nodeId,
@@ -130,7 +127,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowTriggerWebhookRunInWorkflow = useCallback(
     async ({ nodeId }: { nodeId: string }) => {
-      if (!nodeId || workflowStore.getState().hasWorkflowDraftConflict) return
+      if (!nodeId) return
 
       const {
         workflowRunningData,
@@ -170,7 +167,6 @@ const useWorkflowStartRunBase = (
       setListeningTriggerIsAll(false)
 
       await doSyncWorkflowDraft()
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ node_id: nodeId }, undefined, {
         mode: TriggerType.Webhook,
         webhookNodeId: nodeId,
@@ -181,7 +177,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowTriggerPluginRunInWorkflow = useCallback(
     async (nodeId?: string) => {
-      if (!nodeId || workflowStore.getState().hasWorkflowDraftConflict) return
+      if (!nodeId) return
       const {
         workflowRunningData,
         showDebugAndPreviewPanel,
@@ -220,7 +216,6 @@ const useWorkflowStartRunBase = (
       setListeningTriggerIsAll(false)
 
       await doSyncWorkflowDraft()
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ node_id: nodeId }, undefined, {
         mode: TriggerType.Plugin,
         pluginNodeId: nodeId,
@@ -231,7 +226,7 @@ const useWorkflowStartRunBase = (
 
   const handleWorkflowRunAllTriggersInWorkflow = useCallback(
     async (nodeIds: string[]) => {
-      if (!nodeIds.length || workflowStore.getState().hasWorkflowDraftConflict) return
+      if (!nodeIds.length) return
       const {
         workflowRunningData,
         showDebugAndPreviewPanel,
@@ -256,7 +251,6 @@ const useWorkflowStartRunBase = (
       if (!showDebugAndPreviewPanel) setShowDebugAndPreviewPanel(true)
 
       await doSyncWorkflowDraft()
-      if (workflowStore.getState().hasWorkflowDraftConflict) return
       handleRun({ node_ids: nodeIds }, undefined, {
         mode: TriggerType.All,
         allNodeIds: nodeIds,
@@ -266,7 +260,6 @@ const useWorkflowStartRunBase = (
   )
 
   const handleWorkflowStartRunInChatflow = useCallback(async () => {
-    if (workflowStore.getState().hasWorkflowDraftConflict) return
     const {
       showDebugAndPreviewPanel,
       setShowDebugAndPreviewPanel,
@@ -304,7 +297,7 @@ const useWorkflowStartRunBase = (
 
 export const useWorkflowStartRunByCanEdit = (canEdit: boolean) => {
   const { handleRun } = useWorkflowRunByCanEdit(canEdit)
-  const { doSyncWorkflowDraft } = useWorkflowDraftSaveByCanEdit(canEdit)
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
 
   return useWorkflowStartRunBase(handleRun, doSyncWorkflowDraft)
 }

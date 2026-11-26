@@ -145,7 +145,6 @@ def case(sqlite_session_factory: sessionmaker[SqlSession], monkeypatch: pytest.M
     ) -> Workflow:
         # This graph has no prepared bindings; sync owns its transaction boundary.
         assert commit is True
-        assert coordination_id is not None
         workflow.graph = json.dumps(new_graph)
         if commit:
             sql.commit()

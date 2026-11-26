@@ -1,5 +1,4 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
 import type { Node } from '@/app/components/workflow/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
@@ -12,8 +11,8 @@ import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { CollectionType } from '@/app/components/tools/types'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
-import { renderWorkflowComponent } from '@/app/components/workflow-app/__tests__/workflow-test-env'
-import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
+import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createSocket } from '@/app/components/workflow/collaboration/core/__tests__/test-socket'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
@@ -21,6 +20,7 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { convertToTriggerWithProvider, normalizeTriggerProvider } from '@/service/trigger-queries'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import {
   createConsoleQueryWrapper,
@@ -28,6 +28,10 @@ import {
   seedAppDslVersion,
 } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
+import {
+  createTriggerEventResponseFixture,
+  createTriggerProviderResponseFixture,
+} from '@/test/console/trigger-plugins'
 import { createDeferred } from '@/test/deferred'
 import { captureDownloads } from '@/test/download'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -40,7 +44,7 @@ const api = vi.hoisted(() => ({
   exportDSL: vi.fn(),
   importDSL: vi.fn(),
   webhook: vi.fn(),
-  fetchDraft: vi.fn<typeof import('@/service/workflow').fetchWorkflowDraft>(),
+  fetchDraft: vi.fn<typeof import('@/service/workflow').fetchAppWorkflowDraft>(),
   saveDraft:
     vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
 }))
@@ -58,7 +62,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: api.fetchDraft,
+  fetchAppWorkflowDraft: api.fetchDraft,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -67,6 +71,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [],
       'apps.imports.post': api.importDSL,
       'apps.imports.byAppId.checkDependencies.get': async () => ({ leaked_dependencies: [] }),
       'apps.byAppId.export.get': api.exportDSL,
@@ -79,7 +84,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflow.comments.get': async () => ({ data: [] }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [],
       'apps.byAppId.workflows.draft.post': api.saveDraft,
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
     }),
@@ -95,7 +99,6 @@ const events = {
   users: new Set<Parameters<Manager['onOnlineUsersUpdate']>[0]>(),
   cursors: new Set<Parameters<Manager['onCursorUpdate']>[0]>(),
   ready: new Set<Parameters<Manager['onGraphReadyChange']>[0]>(),
-  applied: new Set<Parameters<Manager['onServerDraftApplied']>[0]>(),
 }
 const initialNodes = [
   createStartNode({ id: 'start', data: { title: 'Workflow entry', variables: [] } }),
@@ -120,39 +123,6 @@ beforeEach(() => {
   vi.spyOn(collaborationManager, 'disconnect').mockImplementation(() => {})
   vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
   vi.spyOn(collaborationManager, 'getIsLeader').mockReturnValue(true)
-  let acceptedGraph = draft().graph
-  vi.spyOn(collaborationManager, 'requestServerDraftSync').mockImplementation(async () => {
-    const response = await api.fetchDraft.mock.results.at(-1)!.value
-    acceptedGraph = response.graph.nodes.length
-      ? response.graph
-      : {
-          ...response.graph,
-          nodes: [
-            createNode({
-              id: 'start-placeholder',
-              data: {
-                type: BlockEnum.StartPlaceholder,
-                title: 'workflow.blocks.start-placeholder',
-                selected: true,
-              },
-            }),
-          ],
-        }
-    return {
-      revision: 'revision-1',
-      hash: response.hash,
-      updated_at: response.updated_at,
-      update: new Uint8Array(),
-    }
-  })
-  vi.spyOn(collaborationManager, 'getNodes').mockImplementation(() => acceptedGraph.nodes)
-  vi.spyOn(collaborationManager, 'getEdges').mockImplementation(() => acceptedGraph.edges)
-  vi.spyOn(collaborationManager, 'onServerDraftApplied').mockImplementation((handler) => {
-    events.applied.add(handler)
-    return () => {
-      events.applied.delete(handler)
-    }
-  })
   vi.spyOn(collaborationManager, 'canPersistLocalGraph').mockReturnValue(true)
   vi.spyOn(collaborationManager, 'refreshGraphSynchronously').mockImplementation(() => {})
   vi.spyOn(collaborationManager, 'replaceGraphFromReactFlow').mockReturnValue(true)
@@ -233,10 +203,9 @@ async function renderMain({
   permission_keys?: AppDetailWithSite['permission_keys']
   nodes?: Node[]
   initialStoreState?: Partial<Shape>
-  triggers?: TriggerWithProvider[]
+  triggers?: ReturnType<typeof createTriggerProviderResponseFixture>[]
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
-    features: { dify_builder_enabled: false },
     systemFeatures: { enable_marketplace: false },
   })
   seedAppDslVersion(queryClient)
@@ -524,7 +493,6 @@ it('saves the trusted graph on a directed request and acknowledges the persisted
         graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'start' })] }),
       }),
     }),
-    expect.anything(),
   )
   expect(collaborationManager.refreshGraphSynchronously).toHaveBeenCalled()
 })
@@ -581,7 +549,6 @@ it('saves newly applied features when a follower requests synchronization', asyn
         features: expect.objectContaining({ opening_statement: 'latest-model' }),
       }),
     }),
-    expect.anything(),
   )
 })
 
@@ -833,6 +800,70 @@ it('creates and saves the user-input entry selected in onboarding', async () => 
   expect(api.webhook).not.toHaveBeenCalled()
 })
 
+it('writes the onboarding entry through the collaborative graph', async () => {
+  const user = userEvent.setup()
+  const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  const collabSetEdges = vi.spyOn(collaborationManager, 'setEdges')
+  onTestFinished(() => {
+    collabSetNodes.mockRestore()
+    collabSetEdges.mockRestore()
+  })
+  await renderMain({ collaboration: false, nodes: [], initialStoreState: { showOnboarding: true } })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  expect(collabSetNodes).toHaveBeenCalledWith(
+    [],
+    [expect.objectContaining({ data: expect.objectContaining({ type: BlockEnum.Start }) })],
+    expect.any(String),
+  )
+  expect(collabSetEdges).toHaveBeenCalledWith([], [])
+})
+
+it('keeps onboarding open while the collaborative graph is not ready', async () => {
+  const user = userEvent.setup()
+  const canApply = vi
+    .spyOn(collaborationManager, 'canApplyLocalGraphMutation')
+    .mockReturnValue(false)
+  onTestFinished(() => canApply.mockRestore())
+  const { store } = await renderMain({
+    collaboration: false,
+    nodes: [],
+    initialStoreState: { showOnboarding: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  expect(dialog).toBeInTheDocument()
+  expect(store.getState()).toMatchObject({ showOnboarding: true, hasSelectedStartNode: false })
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it('closes onboarding without replacing a graph that a collaborator already created', async () => {
+  const user = userEvent.setup()
+  const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  onTestFinished(() => collabSetNodes.mockRestore())
+  const { store } = await renderMain({
+    collaboration: false,
+    initialStoreState: { showOnboarding: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.onboarding.title' }),
+    ).not.toBeInTheDocument(),
+  )
+  expect(collabSetNodes).not.toHaveBeenCalled()
+  expect(store.getState()).toMatchObject({ showOnboarding: false, hasSelectedStartNode: false })
+  expect(screen.getByText('Workflow entry')).toBeInTheDocument()
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
 it('generates webhook URLs only after saving the trigger chosen in onboarding', async () => {
   const user = userEvent.setup()
   const save = createDeferred<Awaited<ReturnType<typeof api.saveDraft>>>()
@@ -902,52 +933,44 @@ it('exports secrets only after confirmation through the real export dialog', asy
 
 it('creates a plugin trigger from the real provider event and saves its schema and parameters', async () => {
   const user = userEvent.setup()
-  const trigger: TriggerWithProvider = {
-    id: 'plugin-1',
+  const rawTrigger = createTriggerProviderResponseFixture({
     name: 'event-provider',
     author: 'Dify',
     label: { en_US: 'Event provider', zh_Hans: '事件提供商' },
     description: { en_US: 'Events', zh_Hans: '事件' },
     icon: '',
-    type: CollectionType.trigger,
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: false,
-    labels: [],
     plugin_id: 'plugin-1',
     plugin_unique_identifier: 'plugin-1:1.0',
-    meta: { version: '1.0' },
-    supported_creation_methods: [],
-    subscription_schema: [],
     events: [
-      {
+      createTriggerEventResponseFixture({
         name: 'created',
-        author: 'Dify',
-        label: { en_US: 'Item created', zh_Hans: '项目已创建' },
+        identity: {
+          author: 'Dify',
+          name: 'created',
+          label: { en_US: 'Item created', zh_Hans: '项目已创建' },
+        },
         description: { en_US: 'When an item is created', zh_Hans: '创建项目时' },
         parameters: [
           {
             name: 'source',
             label: { en_US: 'Source', zh_Hans: '来源' },
-            human_description: { en_US: 'Event source', zh_Hans: '事件来源' },
+            description: { en_US: 'Event source', zh_Hans: '事件来源' },
             type: 'string',
-            form: 'form',
-            llm_description: '',
             required: false,
             multiple: false,
             default: '',
           },
         ],
-        labels: [],
         output_schema: { type: 'object', properties: { item_id: { type: 'string' } } },
-      },
+      }),
     ],
-  }
+  })
+  const trigger = convertToTriggerWithProvider(normalizeTriggerProvider(rawTrigger))
   await renderMain({
     collaboration: false,
     nodes: [],
     initialStoreState: { showOnboarding: true },
-    triggers: [trigger],
+    triggers: [rawTrigger],
   })
   const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
   await user.click(
@@ -1015,70 +1038,4 @@ it('imports a DSL file and replaces the graph through the real update event', as
   expect(api.importDSL).toHaveBeenCalledExactlyOnceWith({
     body: { mode: 'yaml-content', yaml_content: yaml, app_id: 'app-1' },
   })
-})
-
-it.each([false, true])(
-  'acknowledges a draft conflict to the requester (already paused: %s)',
-  async (alreadyPaused) => {
-    const { store } = await renderMain()
-    if (alreadyPaused) store.getState().setWorkflowDraftConflict(true)
-    else
-      api.saveDraft.mockImplementationOnce(async () => {
-        store.getState().setWorkflowDraftConflict(true)
-        throw new Error('draft_workflow_not_sync')
-      })
-    const acknowledge = vi.fn()
-    act(() => events.sync.forEach((handler) => handler({ requestId: 'conflict', acknowledge })))
-    await waitFor(() =>
-      expect(acknowledge).toHaveBeenCalledWith({
-        success: false,
-        error: 'draft_workflow_not_sync',
-      }),
-    )
-    expect(api.saveDraft).toHaveBeenCalledTimes(alreadyPaused ? 0 : 1)
-  },
-)
-
-it.each([false, true])(
-  'resaves an accepted server draft only when local edits remain (dirty: %s)',
-  async (dirty) => {
-    const { store } = await renderMain()
-    if (dirty) store.getState().markWorkflowDraftDirty()
-    act(() =>
-      events.applied.forEach((handler) =>
-        handler({
-          revision: 'revision-1',
-          hash: 'builder-hash',
-          updated_at: 3,
-          update: new Uint8Array(),
-        }),
-      ),
-    )
-    await act(async () => {
-      store.getState().flushPendingSync()
-    })
-    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(dirty ? 1 : 0))
-    if (dirty)
-      expect(api.saveDraft).toHaveBeenCalledWith(
-        expect.objectContaining({ body: expect.objectContaining({ hash: 'builder-hash' }) }),
-        expect.anything(),
-      )
-    else expect(store.getState().syncWorkflowDraftHash).toBe('builder-hash')
-  },
-)
-
-it('does not apply an incoming workflow reload after the editor unmounts', async () => {
-  const pending = createDeferred<FetchWorkflowDraftResponse>()
-  const { store, unmount } = await renderMain()
-  const originalHash = store.getState().syncWorkflowDraftHash
-  api.fetchDraft.mockReturnValueOnce(pending.promise)
-  const refresh = updateWorkflow()
-  await waitFor(() => expect(api.fetchDraft).toHaveBeenCalledOnce())
-  unmount()
-  await act(async () => {
-    pending.resolve(draft({ hash: 'late-hash' }))
-    await refresh
-  })
-  expect(store.getState().syncWorkflowDraftHash).toBe(originalHash)
-  expect(collaborationManager.requestServerDraftSync).not.toHaveBeenCalled()
 })

@@ -158,7 +158,7 @@ def observe_task_stop(
         raise ConflictError("conversation has been cleared")
     if context.task_control.get("receipt", {}).get("id") != client_action_id:
         raise ConflictError("task stop was superseded")
-    _settle_stop(service._repo, service._test_actions, session_id, actor, client_action_id, deliver=deliver)
+    _settle_stop(service._repo, session_id, actor, client_action_id, deliver=deliver)
     _, context = service._repo.get_session(session_id)
     settlement = context.task_control.get("settlement", "settled")
     return LifecycleSettlement(settlement) if settlement in {"pending", "unknown"} else LifecycleSettlement.SETTLED

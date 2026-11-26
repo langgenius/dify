@@ -1,7 +1,3 @@
-"""Dedicated tests for HITL behavior exposed through the Service API.
-
-Unit tests for Service API workflow event stream endpoints."""
-
 from __future__ import annotations
 
 import json
@@ -24,8 +20,12 @@ import services.app_generate_service as ags_module
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
+from core.app.apps.advanced_chat.generate_task_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from core.app.apps.common import workflow_response_converter
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.draft_variable_saver import DraftVariableSaver, NoopDraftVariableSaver
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -60,11 +60,9 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_paused_snapshot_events
-from services.workflow_runtime import response_converter as workflow_response_converter
-from services.workflow_runtime.chatflow_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
-from services.workflow_runtime.response_converter import WorkflowResponseConverter
-from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 from tests.helpers.unit.config_override import apply_config_overrides
+
+"""Dedicated tests for HITL behavior exposed through the Service API."""
 
 
 class _DummyRateLimit:
@@ -394,7 +392,6 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
 
 class TestHitlServiceApi:
     # Service API event-stream continuation
-    # Service API event-stream continuation
     def test_workflow_events_continue_on_pause_keeps_stream_open(
         self,
         app: Flask,
@@ -548,7 +545,7 @@ class TestHitlServiceApi:
 
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
         from core.app.app_config.entities import AppAdditionalFeatures
-        from services.workflow_runtime.chatflow_pipeline import AdvancedChatAppGenerateTaskPipeline
+        from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -640,7 +637,7 @@ class TestHitlServiceApi:
         assert response.data.reasons[0]["expiration_time"] == 123
 
     def test_workflow_blocking_pipeline_pause_payload_contract(self) -> None:
-        from services.workflow_runtime.workflow_pipeline import WorkflowAppGenerateTaskPipeline
+        from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -869,6 +866,9 @@ class TestHitlServiceApi:
         assert pause_data["elapsed_time"] == workflow_run.elapsed_time
         assert pause_data["total_tokens"] == workflow_run.total_tokens
         assert pause_data["total_steps"] == workflow_run.total_steps
+
+
+"""Unit tests for Service API workflow event stream endpoints."""
 
 
 def _workflow_events_app(*, mode: AppMode = AppMode.WORKFLOW) -> App:
