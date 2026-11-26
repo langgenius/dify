@@ -1,30 +1,30 @@
 {
-  "title": "连接 Dify",
+  "title": "Connect Dify",
   "title_en": "Connect Dify",
-  "description": "填写你的 Dify 地址和个人访问令牌。凭证仅保存在本机的 WorkBuddy 中。",
+  "description": "Enter your Dify host and a personal access token. They are stored only on this computer, in WorkBuddy.",
   "description_en": "Enter your Dify host and a personal access token. They are stored only on this computer, in WorkBuddy.",
   "docUrl": "https://docs.dify.ai",
-  "docLabel": "Dify 文档",
+  "docLabel": "Dify documentation",
   "docLabel_en": "Dify documentation",
   "fields": [
     {
       "key": "DIFY_HOST",
-      "label": "Dify 地址",
+      "label": "Dify host",
       "label_en": "Dify host",
       "type": "text",
       "required": true,
       "placeholder": "dify.example.com",
-      "description": "只填域名，不要带 https://、端口或路径。服务器需要能通过 HTTPS 的默认 443 端口访问。Dify 管理员需要开启 Open API。",
+      "description": "The host name only, without https://, a port or a path. The server must be reachable over HTTPS on port 443. Your Dify admin must turn on the Open API.",
       "description_en": "The host name only, without https://, a port or a path. The server must be reachable over HTTPS on port 443. Your Dify admin must turn on the Open API."
     },
     {
       "key": "DIFY_TOKEN",
-      "label": "个人访问令牌",
+      "label": "Personal access token",
       "label_en": "Personal access token",
       "type": "password",
       "required": true,
       "placeholder": "dpat_...",
-      "description": "建议使用个人访问令牌。令牌的应用访问范围决定智能体能查找和运行哪些应用；管理插件、模型供应商或工具凭据需要令牌有工作区访问权限。工作区访问令牌只能查找和运行应用，不能管理插件、模型供应商和工具凭据，也不能填写暂停运行中的人工介入表单。",
+      "description": "A personal access token is recommended. Its app access decides which apps the agent can find and run; it needs workspace access to manage plugins, model providers or tool credentials. A workspace access token can only find and run apps: it cannot manage plugins, model providers or tool credentials, or fill in the human-input form of a paused run.",
       "description_en": "A personal access token is recommended. Its app access decides which apps the agent can find and run; it needs workspace access to manage plugins, model providers or tool credentials. A workspace access token can only find and run apps: it cannot manage plugins, model providers or tool credentials, or fill in the human-input form of a paused run."
     }
   ]
