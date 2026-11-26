@@ -24,7 +24,7 @@ from core.credit_usage import (
 )
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_configuration import ProviderConfiguration
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -123,7 +123,8 @@ def _get_provider_configuration(*, tenant_id: str, provider: str):
     return provider_configuration
 
 
-def _get_current_quota_configuration(system_configuration):
+def _get_current_quota_configuration(system_configuration: SystemConfiguration) -> QuotaConfiguration | None:
+    """Return the entry for the selected bucket, or None when it was not offered."""
     return next(
         (
             quota_configuration
@@ -166,8 +167,9 @@ def reserve_model_quota_for_configuration(
 ) -> ModelQuotaReservation:
     """Reserve quota for the supplied, tenant-bound route without reselecting credentials.
 
-    Custom routes incur no hosted charge. Billing evaluates the live balance for System
-    credit routes, even if it changed since the configuration was resolved.
+    Custom routes incur no hosted charge. A System route must offer its selected quota
+    or raise QuotaExceededError without reserving credits. Billing evaluates the live
+    balance for metered hosted credits; a missing bucket is not an unlimited quota.
     """
     tenant_id = provider_configuration.tenant_id
     provider = provider_configuration.provider.provider
@@ -185,17 +187,19 @@ def reserve_model_quota_for_configuration(
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return reservation
 
+    system_configuration = provider_configuration.system_configuration
+    quota_configuration = _get_current_quota_configuration(system_configuration)
+    if not system_configuration.enabled or quota_configuration is None:
+        raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
+
     provider_model = provider_configuration.get_provider_model(model_type=model_type, model=model)
     if provider_model and provider_model.status == ModelStatus.QUOTA_EXCEEDED:
         raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
-
-    system_configuration = provider_configuration.system_configuration
-    quota_configuration = _get_current_quota_configuration(system_configuration)
-    if quota_configuration is None or quota_configuration.quota_limit == -1:
+    if quota_configuration.quota_limit == -1:
         return reservation
 
     reservation.quota_unit = quota_configuration.quota_unit
-    quota_type = system_configuration.current_quota_type
+    quota_type = quota_configuration.quota_type
     if quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
         match quota_configuration.quota_unit:
             case QuotaUnit.CREDITS:

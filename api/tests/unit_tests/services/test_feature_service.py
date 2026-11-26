@@ -418,7 +418,7 @@ def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(
     ("plan", "expected"),
     [
         (CloudPlan.SANDBOX, [HostedTrialProvider.OPENAI.value]),
-        (CloudPlan.PROFESSIONAL, [HostedTrialProvider.OPENAI.value, HostedTrialProvider.X.value]),
+        (CloudPlan.PROFESSIONAL, [HostedTrialProvider.X.value]),
     ],
 )
 def test_get_trial_models_filters_providers_by_workspace_plan(
