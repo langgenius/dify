@@ -465,21 +465,27 @@ function removeAccessPolicyRows(
   policyId: string,
 ) {
   const lists = query.workspaces.current.rbac.workspace
-  const removeRow = (page: WorkspaceAccessMatrix): WorkspaceAccessMatrix =>
-    page.items?.some((row) => row.policy?.id === policyId)
-      ? {
-          ...page,
-          items: page.items.filter((row) => row.policy?.id !== policyId),
-          pagination: page.pagination && {
-            ...page.pagination,
-            total_count: Math.max(0, (page.pagination.total_count ?? 0) - 1),
-          },
-        }
-      : page
+  // Every page carries the list's total, and the section shows the first page's; once the rule
+  // is found on any page, the row leaves its page and every page's total drops.
+  const removeRule = (data: InfiniteData<WorkspaceAccessMatrix>) => {
+    if (!data.pages.some((page) => page.items?.some((row) => row.policy?.id === policyId)))
+      return data
+    return {
+      ...data,
+      pages: data.pages.map((page) => ({
+        ...page,
+        items: page.items?.filter((row) => row.policy?.id !== policyId),
+        pagination: page.pagination && {
+          ...page.pagination,
+          total_count: Math.max(0, (page.pagination.total_count ?? 0) - 1),
+        },
+      })),
+    }
+  }
   for (const list of [lists.apps, lists.datasets, lists.agents])
     client.setQueriesData<InfiniteData<WorkspaceAccessMatrix>>(
       { queryKey: list.accessPolicy.get.key({ type: 'infinite' }) },
-      (data) => data && { ...data, pages: data.pages.map(removeRow) },
+      (data) => data && removeRule(data),
     )
 }
 

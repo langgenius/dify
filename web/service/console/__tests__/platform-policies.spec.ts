@@ -177,6 +177,37 @@ describe('access rule delete', () => {
     for (const key of keys)
       expect(client.getQueryData<InfiniteData<unknown>>(key)?.pages).toEqual([page(['rule-2'])])
   })
+
+  it('drops the total on every page when the rule is on a later page', async () => {
+    const { client, context } = setup()
+    const key: QueryKey =
+      consoleQuery.workspaces.current.rbac.workspace.apps.accessPolicy.get.infiniteKey({
+        input: (pageParam: number) => ({ query: { language: 'en', page: pageParam } }),
+        initialPageParam: 1,
+      })
+    const page = (ids: string[], current_page: number) => ({
+      items: ids.map((id) => ({ policy: { id } })),
+      pagination: { total_count: 3, current_page, per_page: 2, total_pages: 2 },
+    })
+    client.setQueryData(key, {
+      pages: [page(['rule-1', 'rule-2'], 1), page(['rule-3'], 2)],
+      pageParams: [1, 2],
+    })
+
+    const { onSuccess } =
+      consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.delete.mutationOptions()
+    await (onSuccess as Callback)(
+      undefined,
+      { params: { policy_id: 'rule-3' } },
+      undefined,
+      context,
+    )
+
+    // The section shows the first page's total.
+    const pages = client.getQueryData<InfiniteData<ReturnType<typeof page>>>(key)?.pages
+    expect(pages?.map((item) => item.pagination.total_count)).toEqual([2, 2])
+    expect(pages?.[1]?.items).toEqual([])
+  })
 })
 
 describe('human input channel writes', () => {
