@@ -14,7 +14,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -263,6 +263,7 @@ const SettingBuiltInTool: FC<Props> = ({
                         <TabsTab value="setting">
                           {t(($) => $['setBuiltInTools.setting'], { ns: 'tools' })}
                         </TabsTab>
+                        <TabsIndicator />
                       </TabsList>
                     ) : (
                       <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
