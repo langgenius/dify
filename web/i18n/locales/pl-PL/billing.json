@@ -7,7 +7,7 @@
   "apps.fullTip1des": "Osiągnąłeś limit tworzenia aplikacji w tym planie.",
   "apps.fullTip2": "Osiągnięto limit planu",
   "apps.fullTip2des": "Zaleca się usunięcie nieaktywnych aplikacji, aby zwolnić miejsce, lub skontaktowanie się z nami.",
-  "buyPermissionDeniedTip": "Skontaktuj się z administratorem swojej firmy, aby zasubskrybować",
+  "buyPermissionDeniedTip": "Aby wykupić subskrypcję, skontaktuj się z właścicielem lub administratorem obszaru roboczego.",
   "errors.annualDiscountActive": "Po zakończeniu obecnego rabatu możesz przejść na rozliczenie roczne.",
   "errors.operationFailed": "Nie udało się zrealizować tego żądania. Spróbuj ponownie później. Jeśli problem będzie się powtarzał, skontaktuj się z pomocą techniczną.",
   "errors.requestInProgress": "Twoje poprzednie żądanie jest nadal przetwarzane. Spróbuj ponownie za chwilę.",

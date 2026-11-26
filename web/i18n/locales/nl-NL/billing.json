@@ -7,7 +7,7 @@
   "apps.fullTip1des": "You've reached the limit of build apps on this plan",
   "apps.fullTip2": "Plan limit reached",
   "apps.fullTip2des": "It is recommended to clean up inactive applications to free up usage, or contact us.",
-  "buyPermissionDeniedTip": "Please contact your enterprise administrator to subscribe",
+  "buyPermissionDeniedTip": "Neem contact op met de eigenaar of een beheerder van je werkruimte om je te abonneren.",
   "errors.annualDiscountActive": "Je kunt overstappen op jaarlijkse facturering zodra je huidige korting afloopt.",
   "errors.operationFailed": "We konden dit verzoek niet voltooien. Probeer het later opnieuw. Neem contact op met support als het probleem aanhoudt.",
   "errors.requestInProgress": "Je vorige verzoek wordt nog verwerkt. Probeer het zo meteen opnieuw.",

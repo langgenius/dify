@@ -7,7 +7,7 @@
   "apps.fullTip1des": "Hai raggiunto il limite di costruzione delle app su questo piano.",
   "apps.fullTip2": "Limite del piano raggiunto",
   "apps.fullTip2des": "Si consiglia di disinstallare le applicazioni inattive per liberare spazio, o contattarci.",
-  "buyPermissionDeniedTip": "Contatta l'amministratore della tua azienda per abbonarti",
+  "buyPermissionDeniedTip": "Contatta il proprietario o un amministratore del tuo spazio di lavoro per abbonarti.",
   "errors.annualDiscountActive": "Puoi passare alla fatturazione annuale quando termina lo sconto attuale.",
   "errors.operationFailed": "Non è stato possibile completare questa richiesta. Riprova più tardi. Se il problema persiste, contatta l'assistenza.",
   "errors.requestInProgress": "La tua richiesta precedente è ancora in elaborazione. Riprova tra un momento.",

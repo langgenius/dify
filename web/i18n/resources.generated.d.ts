@@ -1577,7 +1577,7 @@ export default interface Resources {
     'apps.fullTip1des': "You've reached the limit of build apps on this plan"
     'apps.fullTip2': 'Plan limit reached'
     'apps.fullTip2des': 'It is recommended to clean up inactive applications to free up usage, or contact us.'
-    buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe'
+    buyPermissionDeniedTip: 'Please contact your workspace owner or admin to subscribe.'
     'errors.annualDiscountActive': 'You can switch to annual billing after your current discount ends.'
     'errors.operationFailed': "We couldn't complete this request. Please try again later. If the problem persists, contact support."
     'errors.requestInProgress': 'Your previous request is still being processed. Please try again in a moment.'
