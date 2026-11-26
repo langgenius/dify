@@ -17,7 +17,9 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getImageUploadErrorMessage } from '@/app/components/base/image-uploader/utils'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import AvatarInnerRing from './assets/avatar-inner-ring.svg'
 import AvatarOuterRing from './assets/avatar-outer-ring.svg'
@@ -58,18 +60,21 @@ function ExternalContactForm({
   onBusyChange,
 }: Omit<ExternalContactDialogProps, 'open'> & { onBusyChange: (busy: boolean) => void }) {
   const { t } = useTranslation(['contacts', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const create = useMutation(
     consoleQuery.workspaces.current.humanInput.v2.contacts.external.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const update = useMutation(
     consoleQuery.workspaces.current.humanInput.v2.contacts.external.byContactId.patch.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const uploadAvatar = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.files.upload.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [uploadedAvatar, setUploadedAvatar] = useState<{ id: string; url: string }>()
@@ -110,9 +115,13 @@ function ExternalContactForm({
       { body: { file } },
       {
         onSuccess: ({ id }) => setUploadedAvatar({ id, url: URL.createObjectURL(file) }),
-        onError: () =>
+        onError: (error) =>
           setAvatarError(
-            t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+            getImageUploadErrorMessage(
+              error,
+              tCommon(($) => $['imageUploader.uploadFromComputerUploadError']),
+              tCommon,
+            ),
           ),
       },
     )
@@ -283,9 +292,10 @@ function ExternalContactForm({
             role="alert"
             className="mx-6 mt-4 rounded-lg bg-state-destructive-hover p-3 system-sm-regular text-text-destructive"
           >
-            {contact
-              ? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })
-              : t(($) => $['external.result.failed'])}
+            {getRequestErrorMessage(error) ??
+              (contact
+                ? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })
+                : t(($) => $['external.result.failed']))}
           </p>
         )}
         <div className="flex justify-end gap-2 px-6 pt-5 pb-6">

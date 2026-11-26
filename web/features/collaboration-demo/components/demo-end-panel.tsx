@@ -2,6 +2,7 @@
 
 import type { DemoEndState } from '../end-state'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +10,8 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { trackCollabUpgradePrompt } from '@/app/components/workflow/collaboration/analytics'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 
@@ -26,6 +29,8 @@ export function DemoEndPanel({ state, onReplay, onExit }: DemoEndPanelProps) {
   const [pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const pricingWasOpenRef = useRef(false)
   const primaryLink = buttonVariants({ variant: 'primary', size: 'medium' })
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const upgradeShownRef = useRef(false)
 
   useEffect(() => {
     headingRef.current?.focus()
@@ -40,6 +45,16 @@ export function DemoEndPanel({ state, onReplay, onExit }: DemoEndPanelProps) {
   }, [pricing])
 
   const { kind } = state
+
+  useEffect(() => {
+    if (kind !== 'upgrade' || upgradeShownRef.current) return
+    upgradeShownRef.current = true
+    trackCollabUpgradePrompt({
+      action: 'shown',
+      entry_point: 'tour_end',
+      workspace_id: workspaceId,
+    })
+  }, [kind, workspaceId])
   const title =
     kind === 'upgrade' || kind === 'upgradeContactAdmin'
       ? t(($) => $['end.upgrade.title'])
@@ -91,7 +106,18 @@ export function DemoEndPanel({ state, onReplay, onExit }: DemoEndPanelProps) {
           </Link>
         )}
         {kind === 'upgrade' && (
-          <Button ref={upgradeRef} variant="primary" onClick={() => setPricing('open')}>
+          <Button
+            ref={upgradeRef}
+            variant="primary"
+            onClick={() => {
+              trackCollabUpgradePrompt({
+                action: 'upgrade_clicked',
+                entry_point: 'tour_end',
+                workspace_id: workspaceId,
+              })
+              void setPricing('open')
+            }}
+          >
             {upgradeLabel}
           </Button>
         )}

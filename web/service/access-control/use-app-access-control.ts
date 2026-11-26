@@ -3,7 +3,7 @@ import type {
   WebAppAuthSearchForWhilteListCandidatesData,
 } from '@dify/contracts/enterprise/types.gen'
 import type { Subject } from '@/models/access-control'
-import { useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
@@ -17,8 +17,6 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
       input: { query: { appId } },
     }),
     enabled: !!appId && enabled,
-    staleTime: 0,
-    gcTime: 0,
     select: ({ groups, members }) => ({
       groups: (groups ?? []).flatMap((group) => {
         if (!group.id || !group.name || group.groupSize === undefined) return []
@@ -102,8 +100,6 @@ export const useSearchForWhiteListCandidates = (
           subjects: (page.subjects ?? []).flatMap(selectCandidate),
         })),
       }),
-      gcTime: 0,
-      staleTime: 0,
       enabled,
     }),
   )
@@ -122,10 +118,11 @@ export const useGetUserCanAccessApp = ({
   const webappAuthEnabled = systemFeatures.webapp_auth.enabled
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId, webappAuthEnabled, isInstalledApp],
-    queryFn: () => {
-      if (webappAuthEnabled) return getUserCanAccess(appId!, isInstalledApp)
-      else return { result: true }
-    },
+    queryFn: !webappAuthEnabled
+      ? () => ({ result: true })
+      : appId
+        ? () => getUserCanAccess(appId, isInstalledApp)
+        : skipToken,
     enabled: enabled !== undefined ? enabled : !!appId,
     staleTime: 0,
     gcTime: 0,

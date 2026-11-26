@@ -14,7 +14,7 @@ import TryApp from '../index'
 
 const api = vi.hoisted(() => ({
   detail: vi.fn<typeof consoleClient.trialApps.byAppId.get>(),
-  stream: vi.fn<(typeof import('@/service/base'))['ssePost']>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
   parameters: vi.fn<typeof consoleClient.trialApps.byAppId.parameters.get>(),
   workflow: vi.fn<typeof consoleClient.trialApps.byAppId.workflows.get>(),
 }))

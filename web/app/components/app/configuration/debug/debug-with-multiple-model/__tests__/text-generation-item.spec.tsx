@@ -25,8 +25,7 @@ import { DebugWithMultipleModelContextProvider } from '../context-provider'
 import TextGenerationItem from '../text-generation-item'
 
 const requests = vi.hoisted(() => ({
-  // oxlint-disable-next-line typescript/no-deprecated -- The existing completion owner uses SSE; retain its typed streaming transport boundary.
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
   log: vi.fn(),
   notifyError: vi.fn(),
 }))

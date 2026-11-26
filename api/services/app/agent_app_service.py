@@ -5,9 +5,12 @@ from dataclasses import replace
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
+from services.agent_config_contracts import AgentConfigSelection
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
+    AgentAppCopied,
+    AgentAppCopy,
     AgentAppDetail,
     AgentAppListPage,
     AgentAppNotFoundError,
@@ -24,8 +27,35 @@ from services.entities.app_entities import (
 from services.rbac.contracts import ResourcePermissionSnapshot
 
 
-class AgentAppReferences(Protocol):
-    def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str: ...
+class AgentAppAccessStore(Protocol):
+    """Resolve Agent App targets, configuration versions, and referencing workflows."""
+
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Select config from the admitted Agent, preparing the write draft when needed."""
+        ...
+
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Select the config of a tenant workflow node."""
+        ...
+
+    def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Return the tenant's existing runtime App ID without creating it."""
+        ...
+
+    def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Return the tenant's runtime App ID and materialize it for inline Agents if needed."""
+        ...
 
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]: ...
 
@@ -173,6 +203,12 @@ class AgentAppCollectionStore(Protocol):
         """
         ...
 
+    def copy_agent_app(
+        self, context: RequestContext, agent_id: str, overrides: AgentAppCopy, settings: AppCreationSettings
+    ) -> AgentAppCopied:
+        """Commit a private copy and detach the source/target identities."""
+        ...
+
 
 class AgentAppCollectionAccess(Protocol):
     """Resolve list visibility before starting the database work."""
@@ -194,6 +230,7 @@ class AgentAppCollectionService:
         resolve_default_model: Callable[[str], tuple[str, str] | None],
         notify_created: Callable[[RequestContext, AppRecord], None],
         detail: AgentAppDetailService,
+        inherit_webapp_access: Callable[[str, str], None],
     ) -> None:
         self._store = store
         self._access = access
@@ -201,6 +238,7 @@ class AgentAppCollectionService:
         self._resolve_default_model = resolve_default_model
         self._notify_created = notify_created
         self._detail = detail
+        self._inherit_webapp_access = inherit_webapp_access
 
     def list_apps(self, context: RequestContext, params: AppListParams) -> AgentAppListPage:
         """Return only visible Agents with permission keys, with no open session on return."""
@@ -226,18 +264,58 @@ class AgentAppCollectionService:
             raise AgentAppNotFoundError
         return self._detail.get(context, app.bound_agent_id)
 
+    def copy(self, context: RequestContext, agent_id: str, overrides: AgentAppCopy) -> AgentAppDetail:
+        """Create a private copy, initialize its access, and return the committed Agent detail."""
+        # Agent App template settings depend only on the mode.
+        settings = self._prepare_creation(
+            context.active_workspace_id, CreateAppParams(name=overrides.name or "Agent", mode="agent")
+        )
+        copied = self._store.copy_agent_app(context, agent_id, overrides, settings)
+        self._notify_created(context, copied.app)
+        self._inherit_webapp_access(copied.source_app_id, copied.app.id)
+        if copied.app.bound_agent_id is None:
+            raise AgentAppNotFoundError
+        return self._detail.get(context, copied.app.bound_agent_id)
+
 
 class AgentAppAccessService:
-    def __init__(self, *, references: AgentAppReferences) -> None:
-        self._references = references
+    def __init__(self, *, store: AgentAppAccessStore) -> None:
+        """Use the injected store to resolve tenant-scoped Agent App data."""
+        self._store = store
 
-    def resolve_existing_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
-        return self._references.resolve_existing_runtime_app_id(
-            tenant_id=context.active_workspace_id, agent_id=agent_id
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Return the selected asset version with no live ORM objects or session."""
+        return self._store.resolve_config_selection(
+            context, agent_id, version_id=version_id, build=build, for_write=for_write
         )
 
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Select the admitted workflow configuration before opening any asset store."""
+        return self._store.resolve_workflow_config_selection(
+            context, app_id, node_id=node_id, version_id=version_id, build=build, for_write=for_write
+        )
+
+    def resolve_existing_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
+        """Require an existing runtime App in the admitted workspace without writing."""
+        return self._store.resolve_existing_runtime_app_id(tenant_id=context.active_workspace_id, agent_id=agent_id)
+
+    def resolve_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
+        """Resolve the admitted workspace's runtime App, creating a missing inline backing App if needed."""
+        return self._store.resolve_runtime_app_id(tenant_id=context.active_workspace_id, agent_id=agent_id)
+
     def list_referencing_workflows(self, context: RequestContext, agent_id: str) -> list[AgentReferencingWorkflow]:
-        return self._references.list_referencing_workflows(tenant_id=context.active_workspace_id, agent_id=agent_id)
+        return self._store.list_referencing_workflows(tenant_id=context.active_workspace_id, agent_id=agent_id)
 
 
 class AgentAppFeatureConfigService:

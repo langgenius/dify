@@ -59,7 +59,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.feature_service import FeatureService
+from services.feature_service import ProviderCatalogBilling
 
 if TYPE_CHECKING:
     from core.hosting_configuration import HostingProvider, HostingQuota
@@ -564,15 +564,14 @@ def _resolve_quota_configuration(
     provider_quota: HostingQuota,
     hosting_provider: HostingProvider,
     provider_record: Provider | None,
-    credit_pool_type: ProviderQuotaType,
-    credit_pool: CreditPoolBalance,
+    credit_pool: CreditPoolBalance | None,
 ) -> QuotaConfiguration | None:
     """Return the quota entry this workspace can spend, or ``None`` when the bucket is unusable.
 
     Hosted trial and paid balances live in the billing credit pool, and the workspace plan
-    selects exactly one of those buckets. The local ``Provider`` rows are legacy mirrors that
-    carry no balance, so they must never be surfaced as a hosted quota source; only the
-    third-party free bucket still reads its own row.
+    selects exactly one bucket. A missing balance means the provider does not offer that
+    bucket. Only third-party free quota reads a local provider row; a legacy trial or paid
+    row never grants hosted access.
     """
     quota_unit = hosting_provider.quota_unit or QuotaUnit.TOKENS
     if provider_quota.quota_type == ProviderQuotaType.FREE:
@@ -598,7 +597,7 @@ def _resolve_quota_configuration(
             restrict_models=provider_quota.restrict_models,
         )
 
-    if provider_quota.quota_type != credit_pool_type:
+    if credit_pool is None or provider_quota.quota_type != credit_pool.pool_type:
         return None
 
     return QuotaConfiguration(
@@ -743,9 +742,15 @@ class ProviderManager:
         # Get All provider model settings
         provider_name_to_provider_model_settings_dict = self._get_all_provider_model_settings(tenant_id)
 
-        # Get All load balancing configs
-        provider_name_to_provider_load_balancing_model_configs_dict = self._get_all_provider_load_balancing_configs(
-            tenant_id
+        billing = ProviderCatalogBilling(tenant_id)
+        provider_name_to_provider_load_balancing_model_configs_dict = (
+            self._get_all_provider_load_balancing_configs(billing)
+            if any(
+                setting.load_balancing_enabled
+                for settings in provider_name_to_provider_model_settings_dict.values()
+                for setting in settings
+            )
+            else {}
         )
 
         # Get All provider model credentials
@@ -795,7 +800,7 @@ class ProviderManager:
             )
 
             # Convert to system configuration
-            system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
+            system_configuration = self._to_system_configuration(billing, provider_entity, provider_records)
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
@@ -1140,20 +1145,16 @@ class ProviderManager:
 
     @staticmethod
     def _get_all_provider_load_balancing_configs(
-        tenant_id: str,
+        billing: ProviderCatalogBilling,
     ) -> dict[str, list[_LoadBalancingModelConfigCacheEntry]]:
-        """
-        Get All provider load balancing configs of the workspace.
-
-        :param tenant_id: workspace id
-        :return:
-        """
+        """Return entitled load balancing configs; never persist an outage as a negative entitlement."""
+        tenant_id = billing.tenant_id
         cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
         cache_result = redis_client.get(cache_key)
         if cache_result is None:
-            model_load_balancing_enabled = FeatureService.get_features(
-                tenant_id, exclude_vector_space=True
-            ).model_load_balancing_enabled
+            model_load_balancing_enabled = billing.load_balancing_enabled
+            if model_load_balancing_enabled is None:
+                return {}
             redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
         else:
             cache_result = cache_result.decode("utf-8")
@@ -1473,21 +1474,24 @@ class ProviderManager:
         return credentials
 
     def _to_system_configuration(
-        self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
+        self, billing: ProviderCatalogBilling, provider_entity: ProviderEntity, provider_records: list[Provider]
     ) -> SystemConfiguration:
         """
         Convert to system configuration.
 
         Hosting is a Cloud capability, so every entry offered here is either the third-party
         free bucket or the billing credit pool selected by the workspace plan. The other
-        hosted bucket is never offered: this workspace holds no balance in it.
+        hosted bucket is never offered. If the provider offers no eligible bucket, return
+        a disabled configuration without credentials or a balance lookup. Otherwise, bind
+        credentials to the selected quota. If its Billing data is unavailable, disable
+        the hosted route without disturbing workspace credentials.
 
-        :param tenant_id: workspace id
+        :param billing: billing reads scoped to this workspace catalog
         :param provider_entity: provider entity
         :param provider_records: provider records
         :return:
         """
-        # Get hosting configuration
+        tenant_id = billing.tenant_id
         hosting_configuration = ext_hosting_provider.hosting_configuration
 
         provider_hosting_configuration = hosting_configuration.provider_map.get(provider_entity.provider)
@@ -1503,7 +1507,6 @@ class ProviderManager:
             return SystemConfiguration(enabled=False)
 
         from core.plugin.plugin_service import PluginService
-        from services.credit_pool_service import CreditPoolService
 
         if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
             return SystemConfiguration(enabled=False)
@@ -1517,77 +1520,68 @@ class ProviderManager:
             if provider_record.quota_type is not None:
                 quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
 
-        credit_pool_type = FeatureService.get_credit_pool_type(tenant_id)
-        if credit_pool_type is None:
-            # Hosting is a Cloud capability; a workspace without a credit pool has nothing to spend.
+        current_quota_type = provider_hosting_configuration.select_quota_type(
+            billing.pool_type,
+            has_free_quota=ProviderQuotaType.FREE in quota_type_to_provider_records_dict,
+        )
+        if current_quota_type is None:
             return SystemConfiguration(enabled=False)
 
-        credit_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=credit_pool_type)
-
+        credit_pool = None
+        if current_quota_type != ProviderQuotaType.FREE:
+            credit_pool = billing.balance
+            if credit_pool is None:
+                return SystemConfiguration(enabled=False)
         quota_configurations: list[QuotaConfiguration] = []
         for provider_quota in provider_hosting_configuration.quotas:
             quota_configuration = _resolve_quota_configuration(
                 provider_quota=provider_quota,
                 hosting_provider=provider_hosting_configuration,
                 provider_record=quota_type_to_provider_records_dict.get(provider_quota.quota_type),
-                credit_pool_type=credit_pool_type,
                 credit_pool=credit_pool,
             )
             if quota_configuration is not None:
                 quota_configurations.append(quota_configuration)
 
-        if len(quota_configurations) == 0:
-            return SystemConfiguration(enabled=False)
-
-        current_quota_type = credit_pool_type
-
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:
-            provider_record_quota_free = quota_type_to_provider_records_dict.get(current_quota_type)
+            provider_record_quota_free = quota_type_to_provider_records_dict[current_quota_type]
+            provider_credentials_cache = ProviderCredentialsCache(
+                tenant_id=tenant_id,
+                identity_id=provider_record_quota_free.id,
+                cache_type=ProviderCredentialsCacheType.PROVIDER,
+            )
 
-            if provider_record_quota_free:
-                provider_credentials_cache = ProviderCredentialsCache(
-                    tenant_id=tenant_id,
-                    identity_id=provider_record_quota_free.id,
-                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+            cached_provider_credentials = provider_credentials_cache.get()
+
+            if not cached_provider_credentials:
+                provider_credentials: dict[str, Any] = {}
+                encrypted_config = provider_record_quota_free.encrypted_config
+                if encrypted_config:
+                    provider_credentials = _credentials_adapter.validate_json(encrypted_config)
+
+                # Get provider credential secret variables
+                provider_credential_secret_variables = self._extract_secret_variables(
+                    provider_entity.provider_credential_schema.credential_form_schemas
+                    if provider_entity.provider_credential_schema
+                    else []
                 )
 
-                # Get cached provider credentials
-                # error occurs
-                cached_provider_credentials = provider_credentials_cache.get()
+                for variable in provider_credential_secret_variables:
+                    if variable in provider_credentials:
+                        decoding_context = self._get_decoding_context(tenant_id)
+                        with contextlib.suppress(ValueError):
+                            provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                provider_credentials.get(variable, ""),
+                                decoding_context,
+                            )
 
-                if not cached_provider_credentials:
-                    provider_credentials: dict[str, Any] = {}
-                    if provider_records and provider_records[0].encrypted_config:
-                        provider_credentials = _credentials_adapter.validate_json(provider_records[0].encrypted_config)
+                current_using_credentials = provider_credentials or {}
 
-                    # Get provider credential secret variables
-                    provider_credential_secret_variables = self._extract_secret_variables(
-                        provider_entity.provider_credential_schema.credential_form_schemas
-                        if provider_entity.provider_credential_schema
-                        else []
-                    )
-
-                    # Get decoding context for decrypting credentials
-                    decoding_context = self._get_decoding_context(tenant_id)
-
-                    for variable in provider_credential_secret_variables:
-                        if variable in provider_credentials:
-                            with contextlib.suppress(ValueError):
-                                provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                    provider_credentials.get(variable, ""),
-                                    decoding_context,
-                                )
-
-                    current_using_credentials = provider_credentials or {}
-
-                    # cache provider credentials
-                    provider_credentials_cache.set(credentials=current_using_credentials)
-                else:
-                    current_using_credentials = cached_provider_credentials
+                # cache provider credentials
+                provider_credentials_cache.set(credentials=current_using_credentials)
             else:
-                current_using_credentials = {}
-                quota_configurations = []
+                current_using_credentials = cached_provider_credentials
 
         return SystemConfiguration(
             enabled=True,

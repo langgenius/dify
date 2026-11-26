@@ -5,7 +5,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { dropFixtureFile } from '@/test/browser-file-drag'
 import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
 import { createGifFile } from '@/test/fixtures/image-files'
 import gifDataUrl from '@/test/fixtures/media/preview.gif?url&inline'
 import { createIconPickerEnvironment, defaultIcon } from '@/test/icon-picker'
@@ -91,12 +91,20 @@ it('keeps the image draft after an upload failure and saves the retried bytes', 
   })
   const file = await selectImage()
   await save().click()
-  await expect
-    .element(page.getByRole('alert'))
-    .toHaveTextContent('common.imageUploader.uploadFromComputerUploadError')
+  await expect.element(page.getByRole('alert')).toHaveTextContent('Upload failed')
   await expect.element(saved()).toHaveTextContent(JSON.stringify(defaultIcon))
   await save().click()
   await expectSavedImage(fileId('retried-image'), file)
+})
+
+it('falls back to the localized upload error when the server sends no message', async () => {
+  await page.viewport(640, 600)
+  fake.console.files.upload.post.mockRejectedValueOnce(networkError())
+  await selectImage()
+  await save().click()
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('common.imageUploader.uploadFromComputerUploadError')
 })
 
 it('ignores an upload that finishes after Cancel and preserves a newly opened draft', async () => {

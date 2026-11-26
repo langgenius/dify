@@ -63,7 +63,7 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
     >(),
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
   marketplace: vi.fn(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),

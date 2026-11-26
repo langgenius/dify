@@ -10,6 +10,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
@@ -21,25 +22,28 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { mutateAsync: exportPipeline, isPending: isExporting } = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (include: boolean) => {
       const { knowledgeName } = workflowStore.getState()
       if (!pipelineId) return false
 
       let syncFailed = false
+      let syncError: unknown
       await doSyncWorkflowDraft(undefined, {
-        onError: () => {
+        onError: (error) => {
           syncFailed = true
+          syncError = error
         },
       })
       if (syncFailed) {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+        toast.error(getRequestErrorMessage(syncError) ?? t(($) => $.exportFailed, { ns: 'app' }))
         return false
       }
 
-      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get(
-        { params: { pipeline_id: pipelineId }, query: { include_secret: String(include) } },
-        { context: { silent: true } },
-      )
+      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get({
+        params: { pipeline_id: pipelineId },
+        query: { include_secret: String(include) },
+      })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
       return true
@@ -51,8 +55,8 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       try {
         return await exportPipeline(include)
-      } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+      } catch (error) {
+        toast.error(getRequestErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
         return false
       }
     },
@@ -61,10 +65,9 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const exportCheck = useCallback(async () => {
     if (!pipelineId) return
     try {
-      const workflowDraft = await consoleClient.rag.pipelines.byPipelineId.workflows.draft.get(
-        { params: { pipeline_id: pipelineId } },
-        { context: { silent: true } },
-      )
+      const workflowDraft = await consoleClient.rag.pipelines.byPipelineId.workflows.draft.get({
+        params: { pipeline_id: pipelineId },
+      })
       const list = workflowDraft.environment_variables.filter((env) => env.value_type === 'secret')
       if (list.length === 0) {
         await handleExportDSL()
@@ -76,8 +79,8 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           data: list,
         },
       } satisfies ExportSecretEnvironmentEvent)
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
     }
   }, [eventEmitter, handleExportDSL, t, pipelineId])
   return {

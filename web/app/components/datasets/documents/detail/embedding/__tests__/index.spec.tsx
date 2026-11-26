@@ -156,13 +156,10 @@ describe('EmbeddingDetail', () => {
       await user.click(screen.getByRole('button', { name: /pause/i }))
 
       await waitFor(() => {
-        expect(mockPauseDocIndexing).toHaveBeenCalledWith(
-          {
-            datasetId: 'ds1',
-            documentId: 'doc1',
-          },
-          { silent: true },
-        )
+        expect(mockPauseDocIndexing).toHaveBeenCalledWith({
+          datasetId: 'ds1',
+          documentId: 'doc1',
+        })
       })
     })
 
@@ -180,13 +177,10 @@ describe('EmbeddingDetail', () => {
       await user.click(screen.getByRole('button', { name: /resume/i }))
 
       await waitFor(() => {
-        expect(mockResumeDocIndexing).toHaveBeenCalledWith(
-          {
-            datasetId: 'ds1',
-            documentId: 'doc1',
-          },
-          { silent: true },
-        )
+        expect(mockResumeDocIndexing).toHaveBeenCalledWith({
+          datasetId: 'ds1',
+          documentId: 'doc1',
+        })
       })
     })
   })

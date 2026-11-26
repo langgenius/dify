@@ -34,7 +34,7 @@ import Debug from '../index'
 
 type DebugProps = ComponentProps<typeof Debug>
 const api = vi.hoisted(() => ({
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
   upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
   suggestions:
@@ -75,16 +75,19 @@ vi.mock('@/service/debug', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'files.upload.post': api.upload,
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get': (input) =>
         api.suggestions(input),
       'apps.byAppId.messages.byMessageId.get': (input) => api.message(input),
-      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
     }),
   }
 })

@@ -370,10 +370,9 @@ function WorkflowGeneratorModal() {
     let currentGraph: WorkflowGraph | undefined
     if (isRefine && currentAppId) {
       try {
-        const draft = await consoleClient.apps.byAppId.workflows.draft.get(
-          { params: { app_id: currentAppId } },
-          { context: { silent: true } },
-        )
+        const draft = await consoleClient.apps.byAppId.workflows.draft.get({
+          params: { app_id: currentAppId },
+        })
         // Validate the generator's graph requirements without stripping editor metadata.
         if (zWorkflowGraph.safeParse(draft.graph).success) {
           const graph = draft.graph as WorkflowGraph
@@ -425,7 +424,6 @@ function WorkflowGeneratorModal() {
       onError: (msg) => {
         if (!settled) {
           generateWorkflow(body, {
-            silent: true,
             getAbortController: (c) => {
               abortRef.current = c
             },

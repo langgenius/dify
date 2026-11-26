@@ -17,6 +17,7 @@ import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
 import VoiceInput from '@/app/components/base/voice-input'
 import { toast } from '@/app/notifications'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
@@ -241,9 +242,14 @@ const ChatInputArea = ({
     },
     [t],
   )
-  const handleVoiceInputError = useCallback(() => {
-    toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
-  }, [t])
+  const handleVoiceInputError = useCallback(
+    (error?: unknown) => {
+      toast.error(
+        getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
+    },
+    [t],
+  )
   const handleHideVoiceInput = useCallback(() => {
     setShowVoiceInput(false)
   }, [])

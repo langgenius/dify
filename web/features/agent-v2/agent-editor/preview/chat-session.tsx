@@ -22,8 +22,9 @@ import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/stor
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
+import styles from './chat-layout.module.css'
 
-const chatMaxWidthClassName = 'max-w-150 min-[1920px]:max-w-200 min-[2560px]:max-w-240'
+const chatContentClassName = 'w-full max-w-150 min-[1920px]:max-w-200 min-[2560px]:max-w-240'
 
 export function AgentPreviewChatSession({
   conversationSessionKey,
@@ -178,10 +179,7 @@ export function AgentPreviewChatSession({
 
   return (
     <div
-      className={cn(
-        'relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden',
-        chatMaxWidthClassName,
-      )}
+      className={cn('relative flex h-full min-h-0 w-full flex-col overflow-hidden', styles.session)}
     >
       <div className="min-h-0 flex-1">
         <AgentPreviewChatConversation
@@ -190,6 +188,7 @@ export function AgentPreviewChatSession({
           agentId={agentId}
           answerActionPosition={answerActionPosition}
           agentSoulConfig={agentSoulConfig}
+          chatContentClassName={chatContentClassName}
           clearChatList={clearChatList}
           config={config}
           conversationId={conversationId}
@@ -215,14 +214,15 @@ export function AgentPreviewChatSession({
         data-testid={isEmptyChat ? undefined : 'agent-chat-footer'}
         className={cn(
           'z-10 shrink-0',
-          isEmptyChat ? 'absolute inset-0 flex items-center justify-center' : 'relative px-3 pb-2',
+          isEmptyChat ? 'absolute inset-0 flex items-center justify-center' : 'relative pb-2',
         )}
       >
         <div
           className={cn(
+            chatContentClassName,
             isEmptyChat
-              ? cn('flex w-full flex-col items-start text-start', chatMaxWidthClassName)
-              : 'pointer-events-none relative w-full',
+              ? 'flex flex-col items-start text-start'
+              : 'pointer-events-none relative mx-auto px-3',
           )}
         >
           {isEmptyChat && (

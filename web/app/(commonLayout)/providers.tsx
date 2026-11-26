@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { TriggerEventsLimitPrompt } from '@/app/components/billing/trigger-events-limit-modal/prompt'
 import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
+import { SystemModelDialog } from '@/app/components/header/account-setting/model-provider-page/system-model-selector/dialog'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ExternalServiceSync } from './external-service-sync'
@@ -23,6 +24,7 @@ export function ConsoleContextProviders({ children }: { children: ReactNode }) {
     <EventEmitterContextProvider>
       {children}
       <ModelCredentialDialog />
+      <SystemModelDialog />
       <TriggerEventsLimitPrompt />
     </EventEmitterContextProvider>
   )

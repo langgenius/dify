@@ -233,13 +233,7 @@ it('keeps the preview canvas fixed while the first zoom step enlarges the drawin
   expect(label.element().getBoundingClientRect().width).toBeCloseTo(initialLabel, 0)
 })
 
-// Skipped: flaky in CI. The browser sometimes logs `ResizeObserver loop completed with undelivered
-
-// notifications` while the diagram zooms, and the console-error guard fails the test. Re-enable
-
-// once that message no longer reaches the guard.
-
-it.skip('copies a complete PNG after zooming and resets the success feedback', async () => {
+it('copies a complete PNG after zooming and resets the success feedback', async () => {
   let copied: Blob | undefined
   // boundary: the system clipboard is shared by spec files running in parallel; PNG rendering stays real.
   const write = vi.spyOn(navigator.clipboard, 'write').mockImplementation(async (items) => {
