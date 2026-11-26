@@ -73,6 +73,11 @@ describe('domainOf', () => {
     expect(domainOf(['workspaces', 'current', 'members', 'byMemberId', 'delete'])).toBe(
       'workspaces.current.members',
     )
+    // A workspace id is not a resource: revoking an invitation stays with the invitations.
+    expect(
+      domainOf(['workspaces', 'byWorkspaceId', 'members', 'pendingInvitations', 'revoke', 'post']),
+    ).toBe('workspaces.byWorkspaceId.members')
+    expect(domainOf(['workspaces', 'customConfig', 'post'])).toBe('workspaces.customConfig')
   })
 })
 

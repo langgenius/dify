@@ -24,14 +24,15 @@ function procedurePathOf(mutation: AnyMutation): string[] | undefined {
 }
 
 /**
- * The domain a procedure path belongs to: its first segment, or one level deeper where a
- * namespace holds unrelated resources: `workspaces.current.<resource>` (members, plugins,
- * models, …) and `enterprise.<service>`.
+ * The domain a procedure path belongs to: its first segment, or the first resource under
+ * namespaces that hold unrelated resources: `workspaces` (`workspaces.current.<resource>`,
+ * `workspaces.byWorkspaceId.<resource>`, `workspaces.<resource>`) and `enterprise.<service>`.
  */
 export function domainOf(path: readonly string[]): string {
-  const depth =
-    path[0] === 'workspaces' && path[1] === 'current' ? 3 : path[0] === 'enterprise' ? 2 : 1
-  return path.slice(0, depth).join('.')
+  if (path[0] === 'enterprise') return path.slice(0, 2).join('.')
+  if (path[0] !== 'workspaces') return path[0] ?? ''
+  const scoped = path[1] === 'current' || /^by[A-Z]/.test(path[1] ?? '')
+  return path.slice(0, scoped ? 3 : 2).join('.')
 }
 
 /** The query-key prefix that matches every query under a dotted console path. */

@@ -73,7 +73,8 @@ restarts them without showing earlier data.
 
 Every successful console mutation refreshes the active queries of its own domain in
 the background (`mutation-invalidation.ts`). The domain is the first path segment, or
-`workspaces.current.<resource>` and `enterprise.<service>`. The refresh is never
+the first resource under `workspaces` (`workspaces.current.<resource>`,
+`workspaces.byWorkspaceId.<resource>`) and `enterprise.<service>`. The refresh is never
 awaited, starts after the mutation's callbacks, skips queries read by a request that
 started after the write succeeded (a written query is read again, since a patched list
 may not match the server), and waits while another mutation of the same

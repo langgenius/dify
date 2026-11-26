@@ -100,6 +100,8 @@ const tagBinding = {
  */
 const namedPolicies: ConsolePolicies = {
   login: { post: skip },
+  // Both reload the page once they succeed.
+  workspaces: { info: { post: skip }, switch: { post: skip } },
   logout: { post: skip },
   refreshToken: { post: skip },
   emailCodeLogin: { post: skip, validity: { post: skip } },
