@@ -37,6 +37,7 @@ import { ORPCError } from '@orpc/client'
 import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
@@ -695,89 +696,57 @@ function ContactIMChannels({
   )
 }
 
-export function ContactDetailsPanel({
+function ContactProfile({
   contact,
-  removing = false,
-  onEdit,
-  onClose,
-  onRemove,
-  id,
+  headingId,
   headingRef,
 }: {
-  id?: string
+  contact: ContactView | undefined
+  headingId: string
   headingRef?: Ref<HTMLHeadingElement>
-  contact: ContactView
-  removing?: boolean
-  onEdit: () => void
-  onClose: () => void
-  onRemove: () => void
 }) {
-  const { i18n, t } = useTranslation(['contacts'])
-  const canManage = useContactsFeatureContext().permissions.canManageContacts
-  const headingId = useId()
+  const { t } = useTranslation(['contacts'])
 
   return (
-    <section
-      id={id}
-      aria-labelledby={headingId}
-      className="relative z-20 flex h-full w-80 max-w-full shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg"
+    <div
+      aria-busy={!contact || undefined}
+      className="relative flex flex-col items-center gap-2 px-4 pt-10 pb-4 text-center"
     >
-      <div className="absolute inset-e-2 top-2 z-10 flex items-center gap-1">
-        {canManage && contact.type !== 'workspace' && (
-          <Menu>
-            <MenuTrigger
-              render={
-                <IconButton
-                  aria-label={t(($) => $['details.more'])}
-                  className="data-popup-open:bg-state-base-hover"
-                  size="lg"
-                  disabled={removing}
-                >
-                  <span aria-hidden className="i-ri-more-fill size-4" />
-                </IconButton>
-              }
-            />
-            <MenuContent className="min-w-32">
-              {contact.type === 'external' && (
-                <MenuItem className="gap-2" onClick={onEdit}>
-                  <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
-                  {t(($) => $['details.edit'])}
-                </MenuItem>
-              )}
-              <MenuItem variant="destructive" className="gap-2" onClick={onRemove}>
-                <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                {t(($) => $['details.remove'])}
-              </MenuItem>
-            </MenuContent>
-          </Menu>
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-x-1 top-1 h-25 overflow-hidden rounded-lg',
+          !contact && 'bg-background-section-burn',
         )}
-        <IconButton aria-label={t(($) => $['action.close'])} size="lg" onClick={onClose}>
-          <span aria-hidden className="i-ri-close-line size-4" />
-        </IconButton>
+      >
+        {contact && (
+          <ContactAvatar
+            avatar={contact.avatar_url}
+            className="absolute -top-19 left-1/2 size-80 -translate-x-1/2 opacity-20 blur-[80px]"
+            name={contact.name}
+            size="3xl"
+          />
+        )}
+        <span className="absolute top-5.5 left-1/2 size-31 -translate-x-1/2 rounded-full border border-divider-subtle opacity-60" />
+        <span className="absolute top-1.5 left-1/2 size-39 -translate-x-1/2 rounded-full border border-divider-subtle opacity-40" />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="relative flex flex-col items-center gap-2 px-4 pt-10 pb-4 text-center">
+      <div className="relative size-24 shrink-0 rounded-full border-2 border-components-panel-bg bg-components-panel-bg">
+        {contact ? (
+          <ContactAvatar
+            avatar={contact.avatar_url}
+            className="size-full inset-ring-[0.5px] inset-ring-divider-regular"
+            name={contact.name}
+            size="3xl"
+          />
+        ) : (
           <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-1 top-1 h-25 overflow-hidden rounded-lg"
-          >
-            <ContactAvatar
-              avatar={contact.avatar_url}
-              className="absolute -top-19 left-1/2 size-80 -translate-x-1/2 opacity-20 blur-[80px]"
-              name={contact.name}
-              size="3xl"
-            />
-            <span className="absolute top-5.5 left-1/2 size-31 -translate-x-1/2 rounded-full border border-divider-subtle opacity-60" />
-            <span className="absolute top-1.5 left-1/2 size-39 -translate-x-1/2 rounded-full border border-divider-subtle opacity-40" />
-          </div>
-          <div className="relative size-24 shrink-0 rounded-full border-2 border-components-panel-bg">
-            <ContactAvatar
-              avatar={contact.avatar_url}
-              className="size-full inset-ring-[0.5px] inset-ring-divider-regular"
-              name={contact.name}
-              size="3xl"
-            />
-          </div>
+            aria-hidden
+            className="size-full rounded-full bg-text-quaternary/40 motion-safe:animate-pulse"
+          />
+        )}
+      </div>
+      {contact ? (
+        <>
           <div className="relative flex w-full flex-col items-center gap-0.5">
             <h2
               id={headingId}
@@ -796,21 +765,130 @@ export function ContactDetailsPanel({
           <span className="relative inline-flex min-w-4 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
             {t(($) => $[`type.${contact.type}`])}
           </span>
-        </div>
-        <div aria-hidden="true" className="flex h-4 items-center">
-          <div className="h-px w-full bg-divider-subtle" />
-        </div>
-        <ContactIMChannels
-          key={contact.id}
-          contact={contact}
-          canManage={canManage}
-          removing={removing}
-        />
+        </>
+      ) : (
+        <>
+          <div
+            aria-hidden
+            className="relative flex w-full flex-col items-center gap-0.5 motion-safe:animate-pulse"
+          >
+            <SkeletonRectangle className="h-4 w-24 rounded-full opacity-35" />
+            <SkeletonRectangle className="w-36 max-w-full rounded-full opacity-30" />
+          </div>
+          <div
+            aria-hidden
+            className="relative h-4 w-16 rounded-[5px] bg-text-quaternary/30 motion-safe:animate-pulse"
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
+type ContactDetailsPanelState =
+  | { status: 'ready'; contact: ContactView }
+  | { status: 'loading' }
+  | { status: 'not-found' }
+  | { status: 'error'; onRetry: () => void }
+
+export function ContactDetailsPanel({
+  state,
+  removing = false,
+  onEdit,
+  onClose,
+  onRemove,
+  id,
+  headingRef,
+}: {
+  id?: string
+  headingRef?: Ref<HTMLHeadingElement>
+  state: ContactDetailsPanelState
+  removing?: boolean
+  onEdit: (contact: ContactView) => void
+  onClose: () => void
+  onRemove: (contact: ContactView) => void
+}) {
+  const { i18n, t } = useTranslation(['contacts'])
+  const canManage = useContactsFeatureContext().permissions.canManageContacts
+  const headingId = useId()
+  const contact = state.status === 'ready' ? state.contact : undefined
+
+  return (
+    <section
+      id={id}
+      aria-label={contact ? undefined : t(($) => $['details.title'])}
+      aria-labelledby={contact ? headingId : undefined}
+      className="relative z-20 flex h-full w-80 max-w-full shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg"
+    >
+      <div className="absolute inset-e-2 top-2 z-10 flex items-center gap-1">
+        {contact && canManage && contact.type !== 'workspace' && (
+          <Menu>
+            <MenuTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['details.more'])}
+                  className="data-popup-open:bg-state-base-hover"
+                  size="lg"
+                  disabled={removing}
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4" />
+                </IconButton>
+              }
+            />
+            <MenuContent className="min-w-32">
+              {contact.type === 'external' && (
+                <MenuItem className="gap-2" onClick={() => onEdit(contact)}>
+                  <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+                  {t(($) => $['details.edit'])}
+                </MenuItem>
+              )}
+              <MenuItem variant="destructive" className="gap-2" onClick={() => onRemove(contact)}>
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                {t(($) => $['details.remove'])}
+              </MenuItem>
+            </MenuContent>
+          </Menu>
+        )}
+        <IconButton aria-label={t(($) => $['action.close'])} size="lg" onClick={onClose}>
+          <span aria-hidden className="i-ri-close-line size-4" />
+        </IconButton>
       </div>
-      <p className="shrink-0 px-4 py-4 system-xs-regular text-text-tertiary">
-        {t(($) => $['details.joined'])}{' '}
-        {formatContactRelativeTime(contact.created_at, i18n.resolvedLanguage ?? 'en')}
-      </p>
+      {state.status === 'loading' && (
+        <p role="status" className="sr-only">
+          {t(($) => $['details.loading'])}
+        </p>
+      )}
+      {state.status === 'error' || state.status === 'not-found' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+          <p role="alert" className="my-auto text-center system-sm-regular text-text-tertiary">
+            {t(($) => $[state.status === 'error' ? 'details.error' : 'details.notFound'])}
+          </p>
+          {state.status === 'error' && (
+            <Button onClick={state.onRetry}>{t(($) => $['action.retry'])}</Button>
+          )}
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ContactProfile contact={contact} headingId={headingId} headingRef={headingRef} />
+          <div aria-hidden="true" className="flex h-4 items-center">
+            <div className="h-px w-full bg-divider-subtle" />
+          </div>
+          {contact && (
+            <ContactIMChannels
+              key={contact.id}
+              contact={contact}
+              canManage={canManage}
+              removing={removing}
+            />
+          )}
+        </div>
+      )}
+      {contact && (
+        <p className="shrink-0 px-4 py-4 system-xs-regular text-text-tertiary">
+          {t(($) => $['details.joined'])}{' '}
+          {formatContactRelativeTime(contact.created_at, i18n.resolvedLanguage ?? 'en')}
+        </p>
+      )}
     </section>
   )
 }

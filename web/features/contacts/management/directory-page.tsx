@@ -603,7 +603,7 @@ export function ContactsDirectoryPage() {
                       <col className="w-40" />
                       <col className="w-40" />
                     </colgroup>
-                    <thead className="text-start system-xs-medium-uppercase text-text-tertiary">
+                    <thead className="system-xs-medium-uppercase text-text-tertiary">
                       <tr className="h-7">
                         {context.permissions.canManageContacts && (
                           <th scope="col" className="w-8 px-2 text-center font-medium">
@@ -616,16 +616,16 @@ export function ContactsDirectoryPage() {
                             />
                           </th>
                         )}
-                        <th scope="col" className="ps-3 pe-2 font-medium">
+                        <th scope="col" className="ps-3 pe-2 text-start font-medium">
                           {t(($) => $['directory.column.name'])}
                         </th>
-                        <th scope="col" className="px-3 font-medium">
+                        <th scope="col" className="px-3 text-start font-medium">
                           {t(($) => $['directory.column.type'])}
                         </th>
-                        <th scope="col" className="px-3 font-medium">
+                        <th scope="col" className="px-3 text-start font-medium">
                           {t(($) => $['directory.column.channels'])}
                         </th>
-                        <th scope="col" className="px-3 font-medium">
+                        <th scope="col" className="px-3 text-start font-medium">
                           {t(($) => $['directory.column.joined'])}
                         </th>
                       </tr>
@@ -685,52 +685,32 @@ export function ContactsDirectoryPage() {
           </ScrollAreaScrollbar>
           <ScrollAreaCorner />
         </ScrollArea>
-        {selectedContact && (
+        {contactId && (
           <ContactDetailsPanel
-            contact={selectedContact}
+            state={
+              selectedContact
+                ? { status: 'ready', contact: selectedContact }
+                : detailsQuery.isPending
+                  ? { status: 'loading' }
+                  : detailsFailed
+                    ? { status: 'error', onRetry: () => void detailsQuery.refetch() }
+                    : { status: 'not-found' }
+            }
             id={detailsPanelId}
             headingRef={detailsHeadingRef}
             removing={removeContacts.isPending}
             onClose={closeDetails}
-            onEdit={() => {
-              setEditingContact(selectedContact)
+            onEdit={(contact) => {
+              setEditingContact(contact)
               setExternalDialogOpen(true)
             }}
-            onRemove={() => {
+            onRemove={(contact) => {
               setRemovalError(false)
-              setRemovalTargetIds([selectedContact.id])
-              setRemovalContactName(selectedContact.name)
+              setRemovalTargetIds([contact.id])
+              setRemovalContactName(contact.name)
               setRemovalOpen(true)
             }}
           />
-        )}
-        {contactId && !selectedContact && (
-          <section
-            id={detailsPanelId}
-            aria-label={t(($) => $['details.title'])}
-            className="flex h-full w-80 max-w-full shrink-0 flex-col rounded-xl border border-divider-subtle bg-components-panel-bg p-4"
-          >
-            <Button className="self-end" variant="ghost" onClick={closeDetails}>
-              {t(($) => $['action.close'])}
-            </Button>
-            {detailsQuery.isPending ? (
-              <div aria-busy="true" className="my-auto space-y-4">
-                <div className="mx-auto size-24 animate-pulse rounded-full bg-background-default-subtle" />
-                <div className="h-6 animate-pulse rounded-lg bg-background-default-subtle" />
-                <div className="h-12 animate-pulse rounded-lg bg-background-default-subtle" />
-              </div>
-            ) : (
-              <p
-                role={detailsQuery.isError ? 'alert' : undefined}
-                className="my-auto text-center system-sm-regular text-text-tertiary"
-              >
-                {t(($) => $[detailsFailed ? 'details.error' : 'details.notFound'])}
-              </p>
-            )}
-            {detailsFailed && (
-              <Button onClick={() => detailsQuery.refetch()}>{t(($) => $['action.retry'])}</Button>
-            )}
-          </section>
         )}
       </div>
       <p role="status" aria-atomic="true" className="sr-only">

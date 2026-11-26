@@ -82,7 +82,7 @@ function setup(
     <QueryClientProvider client={queryClient}>
       <ContactsManagementProvider context={context}>
         <ContactDetailsPanel
-          contact={contact}
+          state={{ status: 'ready', contact }}
           onClose={vi.fn()}
           onEdit={vi.fn()}
           onRemove={vi.fn()}
