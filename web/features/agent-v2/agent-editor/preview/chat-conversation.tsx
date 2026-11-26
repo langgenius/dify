@@ -75,6 +75,7 @@ export function AgentPreviewChatConversation({
   agentId,
   answerActionPosition,
   agentSoulConfig,
+  chatContentClassName,
   clearChatList,
   config,
   conversationId,
@@ -99,6 +100,7 @@ export function AgentPreviewChatConversation({
   agentId: string
   answerActionPosition?: AnswerActionPosition
   agentSoulConfig?: AgentSoulConfig
+  chatContentClassName: string
   clearChatList: boolean
   config: AgentPreviewChatConfig
   conversationId?: string | null
@@ -318,8 +320,16 @@ export function AgentPreviewChatConversation({
       isResponding={isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       sendButtonLoading={sendButtonLoading}
-      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 pb-22!' : 'px-3')}
-      chatFooterClassName={isEmptyChat ? 'hidden' : 'px-3 pb-0 pt-10'}
+      chatContainerClassName={isEmptyChat ? 'pt-2 pb-22!' : 'pt-6'}
+      chatContainerInnerClassName={cn(
+        'mx-auto',
+        chatContentClassName,
+        isEmptyChat ? 'px-12' : 'px-3',
+      )}
+      chatFooterClassName={
+        isEmptyChat ? 'hidden' : cn('inset-x-0 mx-auto px-3 pt-10', chatContentClassName)
+      }
+      chatFooterInnerClassName="max-w-full"
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       inputs={inputs}
