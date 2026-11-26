@@ -598,6 +598,9 @@ class WorkflowBasedAppRunner:
     ) -> None:
         """
         Project ordered engine events without reinterpreting Graphon's failure strategy or terminal cause.
+
+        Reply text is published from stream chunks; node completion publishes execution results.
+        The input events must have passed through Graphon's response stream filter.
         :param workflow_entry: workflow entry
         :param event: event
         """
@@ -745,17 +748,6 @@ class WorkflowBasedAppRunner:
                     outputs=node_run_result.outputs,
                 )
                 execution_metadata = node_run_result.metadata
-                if event.node_type == BuiltinNodeTypes.ANSWER and (iteration_id or loop_id):
-                    answer = outputs.get("answer")
-                    if isinstance(answer, str) and answer:
-                        self._publish_event(
-                            QueueTextChunkEvent(
-                                text=answer,
-                                from_variable_selector=[event.node_id, "answer"],
-                                in_iteration_id=iteration_id,
-                                in_loop_id=loop_id,
-                            )
-                        )
                 self._publish_event(
                     QueueNodeSucceededEvent(
                         node_execution_id=event.id,
