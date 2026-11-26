@@ -1,4 +1,5 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createDialogHandle, Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -6,7 +7,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiAddLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ExternalApiDialogContent } from '@/app/components/datasets/external-api/external-api-modal/dialog-content'
@@ -17,6 +18,7 @@ import { consoleQuery } from '@/service/console'
 import { fetchExternalAPI } from '@/service/datasets'
 import { getHttpErrorStatus } from '@/service/http-error'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
+import DeleteExternalApiDialog from './delete-external-api-dialog'
 
 type ExternalAPIPanelProps = {
   canManageExternalKnowledgeApi: boolean
@@ -30,8 +32,11 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   const { t } = useTranslation(['common', 'dataset'])
   const docLink = useDocLink()
   const [dialog] = useState(() => createDialogHandle<ExternalKnowledgeApiResponse>())
+  const [deleteDialog] = useState(() => createAlertDialogHandle<ExternalKnowledgeApiResponse>())
+  const createButtonRef = useRef<HTMLButtonElement>(null)
   const details = useMutation({
     networkMode: 'always',
+    meta: { errorToast: false },
     mutationFn: (apiTemplateId: string) => fetchExternalAPI({ apiTemplateId }),
   })
   const save = useSaveExternalApi()
@@ -82,6 +87,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           {canManageExternalKnowledgeApi && (
             <div className="flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3">
               <DialogTrigger
+                ref={createButtonRef}
                 handle={dialog}
                 render={
                   <Button
@@ -105,6 +111,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
                 <ExternalKnowledgeAPICard
                   key={api.id}
                   api={api}
+                  deletion={deleteDialog}
                   onEdit={() =>
                     details.mutate(api.id, {
                       onError: (error) => {
@@ -143,6 +150,12 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           />
         )}
       </Dialog>
+      <DeleteExternalApiDialog
+        handle={deleteDialog}
+        onOpen={details.reset}
+        fallbackFocus={createButtonRef}
+        canManage={canManageExternalKnowledgeApi}
+      />
     </>
   )
 }

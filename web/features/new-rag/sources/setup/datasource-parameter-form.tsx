@@ -35,7 +35,7 @@ function ParameterLabel({ label, required }: { label: string; required: boolean 
     <>
       {label}
       {required && (
-        <span aria-hidden className="ml-0.5 text-text-destructive">
+        <span aria-hidden className="ms-0.5 text-text-destructive">
           *
         </span>
       )}
@@ -321,11 +321,17 @@ export function WebsiteDatasourceParameterForm({
   disabled = false,
   parameters,
   schemas,
+  primaryFallback,
   onChange,
 }: {
   additionalPrimaryField?: ReactNode
   disabled?: boolean
   parameters: DatasourceParameters
+  /**
+   * Shown next to `additionalPrimaryField` while the schemas are unavailable. Rendering it here
+   * keeps that field mounted, and focused, when the schemas arrive.
+   */
+  primaryFallback?: ReactNode
   schemas: DatasourceParameterSchema[]
   onChange: (parameters: DatasourceParameters) => void
 }) {
@@ -343,7 +349,7 @@ export function WebsiteDatasourceParameterForm({
     onChange({ ...next, ...optionDefaults })
   }
 
-  if (!schemas.length) return null
+  if (!schemas.length && !primaryFallback) return null
 
   return (
     <div className="flex flex-col gap-3">
@@ -364,6 +370,7 @@ export function WebsiteDatasourceParameterForm({
             }}
           />
         ))}
+        {primaryFallback}
       </div>
       {optionSchemas.length > 0 && (
         <Collapsible
@@ -386,14 +393,14 @@ export function WebsiteDatasourceParameterForm({
                 {t(($) => $.crawlOptions, { ns: 'knowledgeSources' })}
               </span>
               {!optionsOpen && usingDefaultOptions && (
-                <span aria-hidden className="ml-auto shrink-0 system-xs-regular text-text-tertiary">
+                <span aria-hidden className="ms-auto shrink-0 system-xs-regular text-text-tertiary">
                   {t(($) => $.usingDefaults, { ns: 'knowledgeSources' })}
                 </span>
               )}
             </CollapsibleTrigger>
             {optionsOpen && (
               <Button
-                className="mr-2"
+                className="me-2"
                 disabled={disabled}
                 size="small"
                 variant="tertiary"

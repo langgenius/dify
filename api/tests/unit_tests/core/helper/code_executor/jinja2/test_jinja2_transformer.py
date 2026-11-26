@@ -1,4 +1,4 @@
-"""Verify that Jinja2 transform_caller scripts block unsafe template attacks via SandboxedEnvironment."""
+"""Verify rendering and sandbox enforcement in generated Jinja2 scripts."""
 
 import io
 import sys
@@ -61,12 +61,40 @@ class TestJinja2TransformCallerSandbox:
         assert "unsafe" in str(exc_info.value).lower() or "security" in str(exc_info.value).lower()
 
     def test_renders_safe_template(self) -> None:
+        """Verify that the generated scripts substitute inputs and frame the result on stdout."""
         runner, preload = Jinja2TemplateTransformer.transform_caller(
             "Hello {{ name }}, you are {{ age }} years old!",
             {"name": "Alice", "age": 30},
         )
         output = _exec_scripts(runner, preload)
-        assert "Hello Alice, you are 30 years old!" in output
+        assert output == "<<RESULT>>Hello Alice, you are 30 years old!<<RESULT>>\n"
+
+    def test_runner_script_placeholders(self) -> None:
+        """Verify that the raw runner has a template slot, an inputs slot, and two result tags."""
+        runner = Jinja2TemplateTransformer.get_runner_script()
+        assert runner.count(Jinja2TemplateTransformer._template_b64_placeholder) == 1
+        assert runner.count(Jinja2TemplateTransformer._inputs_placeholder) == 1
+        assert runner.count(Jinja2TemplateTransformer._result_tag) == 2
+
+    def test_renders_template_with_special_characters(self) -> None:
+        """Render quotes and multiline textarea inputs through the generated script (#26818)."""
+        template = """<html>
+<body>
+    <input value="{{ task.get('Task ID', '') }}"/>
+    <textarea>{{ task.get('Issues', 'No issues reported') }}</textarea>
+    <p>Status: "{{ status }}"</p>
+    <pre>'''code block'''</pre>
+</body>
+</html>"""
+        inputs = {"task": {"Task ID": "TASK-123", "Issues": "Line 1\nLine 2\nLine 3"}, "status": "completed"}
+
+        runner, preload = Jinja2TemplateTransformer.transform_caller(template, inputs)
+        output = Jinja2TemplateTransformer.transform_response(_exec_scripts(runner, preload))["result"]
+
+        assert 'value="TASK-123"' in output
+        assert "<textarea>Line 1\nLine 2\nLine 3</textarea>" in output
+        assert 'Status: "completed"' in output
+        assert "'''code block'''" in output
 
     def test_scripts_use_sandboxed_environment(self) -> None:
         runner, preload = Jinja2TemplateTransformer.transform_caller("{{ x }}", {"x": 1})

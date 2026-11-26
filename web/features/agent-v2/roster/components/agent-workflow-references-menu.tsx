@@ -55,7 +55,7 @@ export function AgentWorkflowReferencesMenu({
                     rel="noopener noreferrer"
                   />
                 }
-                className="group gap-2 py-1 pr-2.5 system-md-regular text-text-secondary"
+                className="group gap-2 py-1 pe-2.5 system-md-regular text-text-secondary"
               >
                 <span aria-hidden className="shrink-0">
                   <AppIcon

@@ -1,5 +1,4 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
 import type { Node } from '@/app/components/workflow/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
@@ -21,6 +20,7 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { convertToTriggerWithProvider, normalizeTriggerProvider } from '@/service/trigger-queries'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import {
   createConsoleQueryWrapper,
@@ -28,6 +28,10 @@ import {
   seedAppDslVersion,
 } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
+import {
+  createTriggerEventResponseFixture,
+  createTriggerProviderResponseFixture,
+} from '@/test/console/trigger-plugins'
 import { createDeferred } from '@/test/deferred'
 import { captureDownloads } from '@/test/download'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -40,7 +44,7 @@ const api = vi.hoisted(() => ({
   exportDSL: vi.fn(),
   importDSL: vi.fn(),
   webhook: vi.fn(),
-  fetchDraft: vi.fn<typeof import('@/service/workflow').fetchWorkflowDraft>(),
+  fetchDraft: vi.fn<typeof import('@/service/workflow').fetchAppWorkflowDraft>(),
   saveDraft:
     vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
 }))
@@ -58,7 +62,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: api.fetchDraft,
+  fetchAppWorkflowDraft: api.fetchDraft,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -67,6 +71,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [],
       'apps.imports.post': api.importDSL,
       'apps.imports.byAppId.checkDependencies.get': async () => ({ leaked_dependencies: [] }),
       'apps.byAppId.export.get': api.exportDSL,
@@ -76,12 +81,11 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.publish.get': async () => createWorkflowResponseFixture(),
       'enterprise.appDeploy.deploymentService.listAppEnvironments': async () => ({ data: [] }),
+      'apps.byAppId.workflow.comments.get': async () => ({ data: [] }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [],
       'apps.byAppId.workflows.draft.post': api.saveDraft,
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
-      'apps.byAppId.workflow.comments.get': async () => ({ data: [] }),
     }),
   }
 })
@@ -199,7 +203,7 @@ async function renderMain({
   permission_keys?: AppDetailWithSite['permission_keys']
   nodes?: Node[]
   initialStoreState?: Partial<Shape>
-  triggers?: TriggerWithProvider[]
+  triggers?: ReturnType<typeof createTriggerProviderResponseFixture>[]
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: false },
@@ -489,7 +493,6 @@ it('saves the trusted graph on a directed request and acknowledges the persisted
         graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'start' })] }),
       }),
     }),
-    expect.anything(),
   )
   expect(collaborationManager.refreshGraphSynchronously).toHaveBeenCalled()
 })
@@ -546,7 +549,6 @@ it('saves newly applied features when a follower requests synchronization', asyn
         features: expect.objectContaining({ opening_statement: 'latest-model' }),
       }),
     }),
-    expect.anything(),
   )
 })
 
@@ -867,52 +869,44 @@ it('exports secrets only after confirmation through the real export dialog', asy
 
 it('creates a plugin trigger from the real provider event and saves its schema and parameters', async () => {
   const user = userEvent.setup()
-  const trigger: TriggerWithProvider = {
-    id: 'plugin-1',
+  const rawTrigger = createTriggerProviderResponseFixture({
     name: 'event-provider',
     author: 'Dify',
     label: { en_US: 'Event provider', zh_Hans: '事件提供商' },
     description: { en_US: 'Events', zh_Hans: '事件' },
     icon: '',
-    type: CollectionType.trigger,
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: false,
-    labels: [],
     plugin_id: 'plugin-1',
     plugin_unique_identifier: 'plugin-1:1.0',
-    meta: { version: '1.0' },
-    supported_creation_methods: [],
-    subscription_schema: [],
     events: [
-      {
+      createTriggerEventResponseFixture({
         name: 'created',
-        author: 'Dify',
-        label: { en_US: 'Item created', zh_Hans: '项目已创建' },
+        identity: {
+          author: 'Dify',
+          name: 'created',
+          label: { en_US: 'Item created', zh_Hans: '项目已创建' },
+        },
         description: { en_US: 'When an item is created', zh_Hans: '创建项目时' },
         parameters: [
           {
             name: 'source',
             label: { en_US: 'Source', zh_Hans: '来源' },
-            human_description: { en_US: 'Event source', zh_Hans: '事件来源' },
+            description: { en_US: 'Event source', zh_Hans: '事件来源' },
             type: 'string',
-            form: 'form',
-            llm_description: '',
             required: false,
             multiple: false,
             default: '',
           },
         ],
-        labels: [],
         output_schema: { type: 'object', properties: { item_id: { type: 'string' } } },
-      },
+      }),
     ],
-  }
+  })
+  const trigger = convertToTriggerWithProvider(normalizeTriggerProvider(rawTrigger))
   await renderMain({
     collaboration: false,
     nodes: [],
     initialStoreState: { showOnboarding: true },
-    triggers: [trigger],
+    triggers: [rawTrigger],
   })
   const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
   await user.click(

@@ -59,10 +59,10 @@ function DatasourceAction({
             variant="ghost"
             size="medium"
             aria-describedby={description ? descriptionId : undefined}
-            className="w-full justify-between pr-1 pl-5.25 text-left focus-visible:ring-inset disabled:cursor-default"
+            className="w-full justify-between ps-5.25 pe-1 text-start focus-visible:ring-inset disabled:cursor-default"
             onClick={() => onSelect(provider, datasource)}
           >
-            <div className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary">
+            <div className="truncate border-s-2 border-divider-subtle py-2 ps-4 system-sm-medium text-text-secondary">
               <span>{label}</span>
             </div>
           </Button>
@@ -101,7 +101,7 @@ function DatasourceGroup({
       <div className="group/item relative flex w-full items-center rounded-lg">
         <CollapsibleTrigger
           aria-controls={panelId}
-          className="group/collapsible flex h-8 min-h-8 w-full min-w-0 touch-manipulation items-center justify-start gap-0 rounded-lg bg-transparent pr-2 pl-3 text-start system-sm-medium text-text-secondary select-none group-hover/item:bg-state-base-hover hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary"
+          className="group/collapsible flex h-8 min-h-8 w-full min-w-0 touch-manipulation items-center justify-start gap-0 rounded-lg bg-transparent ps-3 pe-2 text-start system-sm-medium text-text-secondary select-none group-hover/item:bg-state-base-hover hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary"
         >
           <div className="flex h-8 min-w-0 grow items-center">
             <BlockIcon
@@ -109,7 +109,7 @@ function DatasourceGroup({
               type={BlockEnum.DataSource}
               toolIcon={resolveDatasourceIcon(provider.declaration.identity.icon)}
             />
-            <div className="ml-2 flex w-0 grow items-center text-sm text-text-primary">
+            <div className="ms-2 flex w-0 grow items-center text-sm text-text-primary">
               <span className="max-w-62.5 truncate">
                 {renderI18nObject(provider.declaration.identity.label, language)}
               </span>
@@ -117,7 +117,7 @@ function DatasourceGroup({
           </div>
           <span
             aria-hidden
-            className="ml-2 i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary transition-transform group-data-panel-open/collapsible:rotate-90 motion-reduce:transition-none"
+            className="ms-2 i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary transition-transform group-data-panel-open/collapsible:rotate-90 motion-reduce:transition-none"
           />
         </CollapsibleTrigger>
       </div>
@@ -171,7 +171,7 @@ export function DatasourceList({
         </div>
       )}
       <div className="flex w-full min-w-0">
-        <div className="mr-1 min-w-0 grow">
+        <div className="me-1 min-w-0 grow">
           {groups.flatMap(([letter, group]) =>
             group.map((provider, index) => (
               <div

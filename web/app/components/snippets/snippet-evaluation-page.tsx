@@ -1,16 +1,18 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
+import EvaluationPlanGuard from '@/app/components/billing/evaluation-plan-guard'
 import Evaluation from '@/app/components/evaluation'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
-import { buildSnippetDetailPayload, useSnippetApiDetail } from '@/service/use-snippets'
+import { consoleQuery } from '@/service/console'
 import SnippetLayout from './components/snippet-layout'
 import { useSnippetDetailStore } from './store'
+import { buildSnippetDetailPayload } from './utils/snippet-detail-payload'
 
 type SnippetEvaluationPageProps = {
   snippetId: string
@@ -19,7 +21,12 @@ type SnippetEvaluationPageProps = {
 const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
   const { t } = useTranslation(['evaluation'])
   const router = useRouter()
-  const { data, isLoading } = useSnippetApiDetail(snippetId)
+  const { data, isLoading } = useQuery(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryOptions({
+      input: { params: { snippet_id: snippetId } },
+      enabled: !!snippetId,
+    }),
+  )
   const { reset, setNavigationState } = useSnippetDetailStore(
     useShallow((state) => ({
       reset: state.reset,
@@ -65,11 +72,14 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
   }
 
   return (
-    <SnippetAndEvaluationPlanGuard fallbackHref={`/snippets/${snippetId}/orchestrate`}>
-      <SnippetLayout snippetId={snippetId} snippet={snippet} section="evaluation">
+    <SnippetLayout snippetId={snippetId} snippet={snippet} section="evaluation">
+      <EvaluationPlanGuard
+        fallbackHref={`/snippets/${snippetId}/orchestrate`}
+        resourceType="snippets"
+      >
         <Evaluation resourceType="snippets" resourceId={snippetId} />
-      </SnippetLayout>
-    </SnippetAndEvaluationPlanGuard>
+      </EvaluationPlanGuard>
+    </SnippetLayout>
   )
 }
 

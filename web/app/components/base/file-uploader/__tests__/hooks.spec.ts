@@ -68,7 +68,6 @@ function setup({
   files?: FileEntity[]
   fileConfig?: FileUpload
   uploadUrls?: {
-    localUploadUrl?: string
     trialAppId?: string
     uploadStrategy?: FileUploadStrategy
   }
@@ -268,18 +267,12 @@ it('respects disabled uploads when the caller enables the check', () => {
 
 it('uses resource-specific local and remote upload endpoints', async () => {
   const { result } = setup({
-    uploadUrls: { localUploadUrl: '/trial-apps/trial-1/files/upload', trialAppId: 'trial-1' },
+    uploadUrls: { trialAppId: 'trial-1' },
   })
   act(() =>
     result.current.handleLocalFileUpload(new File(['data'], 'a.txt', { type: 'text/plain' })),
   )
-  await waitFor(() =>
-    expect(fileUpload).toHaveBeenCalledWith(
-      expect.any(Object),
-      false,
-      '/trial-apps/trial-1/files/upload',
-    ),
-  )
+  await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), false, 'trial-1'))
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
   await waitFor(() => expect(request).toHaveBeenCalled())
   expect(new URL(request.mock.calls[0]![0]).pathname).toBe(
@@ -300,7 +293,6 @@ it('uses the injected local strategy for initial uploads, retry and paste across
   navigation.params = { token: 'public-token' }
   const { result, rerender } = setup({
     uploadUrls: {
-      localUploadUrl: '/trial-apps/trial-1/files/upload',
       trialAppId: 'trial-1',
       uploadStrategy: { uploadLocal, uploadRemote },
     },
@@ -354,7 +346,6 @@ it('prioritizes the injected remote strategy over trial and public upload fallba
   navigation.params = { token: 'public-token' }
   const { result } = setup({
     uploadUrls: {
-      localUploadUrl: '/trial-apps/trial-1/files/upload',
       trialAppId: 'trial-1',
       uploadStrategy: { uploadLocal, uploadRemote },
     },
@@ -380,9 +371,7 @@ it('keeps public chat tokens on the normal upload transport', async () => {
   )
   await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined))
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
-  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', {
-    silent: true,
-  })
+  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf')
 })
 
 it.each(['unsupported', 'oversized', 'failed'] as const)(

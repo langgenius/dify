@@ -2281,6 +2281,10 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   limit: z.int(),
 })
 
+export const zPostAudioToTextBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Success
  */
@@ -2389,6 +2393,10 @@ export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginVerifyPayload
  * Email code verified and login successful
  */
 export const zPostEmailCodeLoginValidityResponse = zAccessTokenResultResponse
+
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
 
 /**
  * File uploaded successfully
@@ -2503,6 +2511,11 @@ export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
  * Upload token issued successfully
  */
 export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUploadTokenResponse
+
+export const zPostHumanInputFormsFilesBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
+  url: z.string().optional(),
+})
 
 /**
  * File uploaded successfully
@@ -2651,10 +2664,6 @@ export const zGetSavedMessagesQuery = z.object({
 export const zGetSavedMessagesResponse = zSavedMessageInfiniteScrollPagination
 
 export const zPostSavedMessagesBody = zSavedMessageCreatePayload
-
-export const zPostSavedMessagesQuery = z.object({
-  message_id: z.string(),
-})
 
 /**
  * Message saved successfully

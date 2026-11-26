@@ -62,37 +62,37 @@ function EnvironmentTableHeader() {
       <tr className="sticky top-0 z-10 h-7 bg-background-section-burn">
         <th
           scope="col"
-          className="rounded-l-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="rounded-s-lg ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['deployTab.col.environment'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['studio.liveVersion'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['deployTab.col.status'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['studio.lastActivity'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['studio.accessPoints'])}
         </th>
         <th
           scope="col"
-          className="rounded-r-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="rounded-e-lg ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['deployTab.col.actions'])}
         </th>

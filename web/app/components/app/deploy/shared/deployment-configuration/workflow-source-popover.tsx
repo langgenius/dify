@@ -33,7 +33,7 @@ function WorkflowPathLink({ path }: { path: WorkflowPath }) {
       href={`/app/${leafWorkflow.app_id}/workflow`}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex min-h-7 min-w-0 items-center gap-1 rounded-md py-1 pr-2 pl-1 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+      className="group flex min-h-7 min-w-0 items-center gap-1 rounded-md py-1 ps-1 pe-2 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid"
     >
       <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         {path.workflows.map((workflow, index) => (

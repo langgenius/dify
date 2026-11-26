@@ -163,6 +163,7 @@ from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
+from services.evaluation_service import EvaluationService
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -518,9 +519,12 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_repository = WorkspaceRepository(session_factory=database_client)
+    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     workspace_members, workspace_provisioning = build_workspace_membership_services(
         workspaces=workspace_repository,
         accounts=accounts,
+        invitation_tokens=invitation_tokens,
+        redis=redis,
     )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
@@ -590,7 +594,6 @@ def build_application_services(
         ),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
-    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -732,7 +735,10 @@ def build_application_services(
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=tracing_configs,
         agent_tracing_configs=AgentTracingConfigService(
-            owners=AgentAppRepository(session_factory=database_client),
+            owners=AgentAppRepository(
+                session_factory=database_client,
+                stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+            ),
             settings=apps.console,
             configs=tracing_configs,
         ),
@@ -905,7 +911,10 @@ def build_application_services(
         workspaces=workspace_services,
         triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+            logs=WorkflowAppLogQueryRepository(
+                session_factory=database_client,
+                include_evaluation=dify_config.ENABLE_EVALUATION,
+            ),
         ),
         workflow_comments=WorkflowCommentService(
             threads=workflow_comment_repository,
@@ -965,7 +974,7 @@ def init_app(app: Flask) -> None:
     app.extensions["app_moderation"] = app_moderation
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
-    bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
+    bind_account_only_loader(app, services.accounts.identity.load_account)
 
 
 def application_services() -> ApplicationServices:

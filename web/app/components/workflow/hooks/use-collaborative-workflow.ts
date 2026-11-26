@@ -199,7 +199,7 @@ export const useCollaborativeWorkflow = () => {
             pendingGraphAppId = collaborationManager.getCurrentAppId()
             pendingLocalNodes = mergePendingChanges(pendingLocalNodes, changed)
           }
-          return
+          return false
         }
 
         // Replay edits held while the session was not ready first, so the
@@ -214,6 +214,7 @@ export const useCollaborativeWorkflow = () => {
         )
       }
       reactFlowSetNodes(newNodes)
+      return true
     },
     [store, collabSetNodes, replayPendingLocalGraph],
   )
@@ -228,7 +229,7 @@ export const useCollaborativeWorkflow = () => {
             pendingGraphAppId = collaborationManager.getCurrentAppId()
             pendingLocalEdges = mergePendingChanges(pendingLocalEdges, changed)
           }
-          return
+          return false
         }
 
         replayPendingLocalGraph()
@@ -240,6 +241,7 @@ export const useCollaborativeWorkflow = () => {
       }
 
       store.getState().setEdges(newEdges)
+      return true
     },
     [store, collabSetEdges, replayPendingLocalGraph],
   )

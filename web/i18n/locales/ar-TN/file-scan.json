@@ -50,7 +50,7 @@
   "scanner.lastTested": "آخر اختبار: {{time}}",
   "scanner.loadFailed": "تعذر تحميل أدوات الفحص.",
   "scanner.neverTested": "لم تُختبر بعد",
-  "scanner.readOnly": "يمكن لمالكي مساحة العمل ومسؤوليها فقط إدارة أدوات الفحص.",
+  "scanner.readOnly": "ليس لديك إذن لإدارة أدوات الفحص.",
   "scanner.status.active": "نشطة",
   "scanner.status.error": "خطأ",
   "scanner.test": "اختبار",

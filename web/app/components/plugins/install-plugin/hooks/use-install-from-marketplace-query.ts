@@ -57,7 +57,7 @@ export const useInstallFromMarketplaceQuery = ({
       if (packageId) {
         try {
           const uniqueIdentifier = await resolveMarketplaceUniqueIdentifier(packageId)
-          const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(uniqueIdentifier))
+          const { data } = await fetchManifestFromMarketPlace(uniqueIdentifier)
           if (ignore) return
 
           const { plugin, version } = data

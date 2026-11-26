@@ -8,12 +8,16 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import {
+  MARKETPLACE_PANEL_CACHE_OPTIONS,
+  useMarketplacePlugins,
+} from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
@@ -42,7 +46,7 @@ const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
       <InfotipTrigger
         aria-label={title}
         iconVariant="warning"
-        iconSize="large"
+        size="lg"
         className="text-text-destructive"
       />
       <InfotipContent className="w-45">
@@ -113,22 +117,26 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
-  const { queryPluginsWithDebounced: fetchPlugins, plugins: marketplacePlugins = [] } =
-    useMarketplacePlugins()
+  // The marketplace list follows the last non-empty search, 500 ms after typing stops.
+  const [marketplaceQueryText, setMarketplaceQueryText] = useState<string>()
+  const { run: searchMarketplace } = useDebounceFn(setMarketplaceQueryText, { wait: 500 })
+  const { data: marketplacePluginsData } = useMarketplacePlugins(
+    marketplaceQueryText === undefined
+      ? undefined
+      : { query: marketplaceQueryText, category: PluginCategoryEnum.agent },
+    { keepPreviousResults: false, ...MARKETPLACE_PANEL_CACHE_OPTIONS },
+  )
   const notInstalledPlugins = useMemo(() => {
     const installedPluginIds = new Set((providers.data ?? []).map((provider) => provider.plugin_id))
-    return marketplacePlugins.filter((plugin) => !installedPluginIds.has(plugin.plugin_id))
-  }, [marketplacePlugins, providers.data])
+    return (marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? []).filter(
+      (plugin) => !installedPluginIds.has(plugin.plugin_id),
+    )
+  }, [marketplacePluginsData, providers.data])
 
   useEffect(() => {
     if (!marketplace) return
-    if (query) {
-      fetchPlugins({
-        query,
-        category: PluginCategoryEnum.agent,
-      })
-    }
-  }, [marketplace, fetchPlugins, query])
+    if (query) searchMarketplace(query)
+  }, [marketplace, searchMarketplace, query])
 
   const pluginRef = useRef<ListRef>(null)
 

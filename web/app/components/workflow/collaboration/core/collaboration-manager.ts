@@ -21,6 +21,7 @@ import type {
 import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
+import { v4 as uuid4 } from 'uuid'
 import { EventEmitter } from './event-emitter'
 import {
   emitWithAuthGuard,
@@ -847,10 +848,10 @@ export class CollaborationManager {
     if (this.currentAppId !== appId || !socket?.connected) return {}
 
     const sid = socket.id
-    const avatars = (await socket
-      .timeout(5000)
-      .emitWithAck('get_online_user_avatars')
-      .catch(() => ({}))) as Record<string, string>
+    const avatars = (await socket.timeout(5000).emitWithAck('get_online_user_avatars')) as Record<
+      string,
+      string
+    >
     return this.getActiveSocket() === socket && socket.id === sid ? avatars : {}
   }
 
@@ -1010,9 +1011,7 @@ export class CollaborationManager {
     if (!this.doc || !this.canPersistLocalGraph())
       return Promise.reject(new Error('Collaborative graph is not ready to save.'))
 
-    const requestId =
-      globalThis.crypto?.randomUUID?.() ??
-      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    const requestId = uuid4()
     const graphSnapshot = this.doc.export({ mode: 'snapshot' })
 
     return new Promise<WorkflowSyncResult>((resolve, reject) => {
