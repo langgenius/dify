@@ -126,21 +126,12 @@ describe('sign-in policies', () => {
 })
 
 describe('network access check run on save', () => {
-  it('writes the check into the group check query', async () => {
-    const { client, context } = setup()
-    const checkCurrentIp =
-      consoleQuery.workspaces.current.networkAccessGroups.byGroupId.checkCurrentIp.get
-    const params = { group_id: 'group-1' }
-    const check = { allowed: false, client_ip: '10.0.0.1', policy_version: 3 }
-
-    await (checkCurrentIp.mutationOptions().onSuccess as Callback)(
-      check,
-      { params },
-      undefined,
-      context,
-    )
-
-    expect(client.getQueryData(checkCurrentIp.queryKey({ input: { params } }))).toEqual(check)
+  it('leaves the result to the save attempt that asked for it', () => {
+    // A check whose popover was dismissed resolves late; only the caller knows its attempt is
+    // stale, so the shared policy must not write the result.
+    const { onSuccess } =
+      consoleQuery.workspaces.current.networkAccessGroups.byGroupId.checkCurrentIp.get.mutationOptions()
+    expect(onSuccess).toBeUndefined()
   })
 })
 

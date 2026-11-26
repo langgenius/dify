@@ -218,21 +218,6 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
               },
             },
           },
-          checkCurrentIp: {
-            get: {
-              mutationOptions: {
-                // A check run on save shows its result where the group's check is read.
-                onSuccess: (check, { params }, _result, { client }) => {
-                  client.setQueryData(
-                    consoleQuery.workspaces.current.networkAccessGroups.byGroupId.checkCurrentIp.get.queryKey(
-                      { input: { params: { group_id: params.group_id } } },
-                    ),
-                    check,
-                  )
-                },
-              },
-            },
-          },
         },
       },
       // Role writes refresh the role list; role assignment changes also refresh members.
