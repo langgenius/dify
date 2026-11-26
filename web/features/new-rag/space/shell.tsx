@@ -89,6 +89,8 @@ export function KnowledgeSpaceShell({
       input: { params: { control_space_id: knowledgeSpaceId } },
       context: { silent: true },
     }),
+    // Any failure replaces the space with its own error page, even over cached data.
+    meta: { errorToast: false },
     refetchInterval: (query) => (query.state.data?.state === 'provisioning' ? 1000 : false),
     retry: (failureCount, error) => {
       const status = getHttpErrorStatus(error)

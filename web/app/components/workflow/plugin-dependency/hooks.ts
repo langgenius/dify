@@ -11,6 +11,7 @@ export const usePluginDependencies = () => {
   const { t } = useTranslation(['common'])
   const { mutateAsync: checkWorkflowDependencies } = useMutation(
     consoleQuery.apps.imports.byAppId.checkDependencies.get.mutationOptions({
+      meta: { errorToast: false },
       context: { silent: true },
     }),
   )

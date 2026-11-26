@@ -5,8 +5,6 @@ import type { FetchDatasetsParams } from '@/models/datasets'
 import type { ConsoleClientContext } from '@/service/console'
 import { isPlainObject } from 'es-toolkit/predicate'
 import { DataSourceProvider } from '@/models/common'
-// oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
-import { post } from './base'
 import { consoleClient, consoleQuery } from './console'
 
 export function documentRenameFilter(datasetId: string, documentId: string): MutationFilters {
@@ -29,11 +27,6 @@ type CommonDocReq = {
 export type DocumentDownloadZipRequest = {
   datasetId: string
   documentIds: string[]
-}
-
-type BatchReq = {
-  datasetId: string
-  batchId: string
 }
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
@@ -82,12 +75,6 @@ export const fetchIndexingStatus = ({ datasetId, documentId }: CommonDocReq) => 
   })
 }
 
-export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq) => {
-  return consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get({
-    params: { dataset_id: datasetId, batch: batchId },
-  })
-}
-
 export const pauseDocIndexing = (
   { datasetId, documentId }: CommonDocReq,
   context?: ConsoleClientContext,
@@ -118,14 +105,9 @@ export const downloadDocumentsZip = (
   { datasetId, documentIds }: DocumentDownloadZipRequest,
   options?: { silent?: boolean },
 ): Promise<Blob> => {
-  return post<Blob>(
-    `/datasets/${datasetId}/documents/download-zip`,
-    {
-      body: {
-        document_ids: documentIds,
-      },
-    },
-    options,
+  return consoleClient.datasets.byDatasetId.documents.downloadZip.post(
+    { params: { dataset_id: datasetId }, body: { document_ids: documentIds } },
+    { context: { silent: options?.silent } },
   )
 }
 
@@ -170,8 +152,12 @@ export const retryErrorDocs = ({
   datasetId: string
   document_ids: string[]
 }) => {
-  return consoleClient.datasets.byDatasetId.retry.post({
-    params: { dataset_id: datasetId },
-    body: { document_ids },
-  })
+  return consoleClient.datasets.byDatasetId.retry.post(
+    {
+      params: { dataset_id: datasetId },
+      body: { document_ids },
+    },
+    // The retry action reports its own failure.
+    { context: { silent: true } },
+  )
 }

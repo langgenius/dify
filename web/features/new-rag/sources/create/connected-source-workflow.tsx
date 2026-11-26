@@ -25,7 +25,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   infiniteQueryOptions,
   queryOptions,
+  skipToken,
   useInfiniteQuery,
+  useMutation,
   useQueries,
   useQuery,
   useQueryClient,
@@ -653,6 +655,12 @@ function ResourceConfiguration({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
+  const { mutateAsync: updateSource } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mutationOptions(),
+  )
+  const { mutateAsync: importSourceItems } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mutationOptions(),
+  )
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
   const sessionRef = useRef<PreviewSourceSession>({ active: false, committed: false })
@@ -775,19 +783,18 @@ function ResourceConfiguration({
         previewSource?.id,
         githubTreePreview,
       ],
-      queryFn: ({ pageParam }) =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: previewSource?.id ?? '',
-          },
-          query: {
-            limit: githubTreePreview ? GITHUB_ROOT_PAGE_SIZE : RESOURCE_PAGE_SIZE,
-            ...(githubTreePreview ? { view: 'tree' as const } : {}),
-            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          },
-        }),
-      enabled: !driveTransport && Boolean(previewSource),
+      queryFn: previewSource
+        ? ({ pageParam }) =>
+            consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
+              params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+              query: {
+                limit: githubTreePreview ? GITHUB_ROOT_PAGE_SIZE : RESOURCE_PAGE_SIZE,
+                ...(githubTreePreview ? { view: 'tree' as const } : {}),
+                ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+              },
+            })
+        : skipToken,
+      enabled: !driveTransport,
       getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
       initialPageParam: null as string | null,
       retry: false,
@@ -811,23 +818,22 @@ function ResourceConfiguration({
           parentId,
           cursor,
         ],
-        queryFn: () =>
-          consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
-            params: {
-              control_space_id: knowledgeSpaceId,
-              source_id: previewSource?.id ?? '',
-            },
-            query: {
-              limit:
-                parentId.startsWith('contents:') || parentId.startsWith('dir:')
-                  ? GITHUB_DIRECTORY_PAGE_SIZE
-                  : GITHUB_CHILD_PAGE_SIZE,
-              parentId,
-              view: 'tree',
-              ...(cursor ? { cursor } : {}),
-            },
-          }),
-        enabled: githubTreePreview && Boolean(previewSource),
+        queryFn: previewSource
+          ? () =>
+              consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
+                params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+                query: {
+                  limit:
+                    parentId.startsWith('contents:') || parentId.startsWith('dir:')
+                      ? GITHUB_DIRECTORY_PAGE_SIZE
+                      : GITHUB_CHILD_PAGE_SIZE,
+                  parentId,
+                  view: 'tree',
+                  ...(cursor ? { cursor } : {}),
+                },
+              })
+          : skipToken,
+        enabled: githubTreePreview,
         retry: false,
       }),
     ),
@@ -855,21 +861,20 @@ function ResourceConfiguration({
   const filesQuery = useInfiniteQuery(
     infiniteQueryOptions({
       queryKey: ['new-rag', 'connected-source-files', knowledgeSpaceId, previewSource?.id],
-      queryFn: ({ pageParam }) =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: previewSource?.id ?? '',
-          },
-          query: {
-            maxKeys: RESOURCE_PAGE_SIZE,
-            ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
-            ...(pageParam?.continuationToken
-              ? { continuationToken: pageParam.continuationToken }
-              : {}),
-          },
-        }),
-      enabled: driveTransport && Boolean(previewSource),
+      queryFn: previewSource
+        ? ({ pageParam }) =>
+            consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
+              params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+              query: {
+                maxKeys: RESOURCE_PAGE_SIZE,
+                ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
+                ...(pageParam?.continuationToken
+                  ? { continuationToken: pageParam.continuationToken }
+                  : {}),
+              },
+            })
+        : skipToken,
+      enabled: driveTransport,
       getNextPageParam: (lastPage, _allPages, _lastPageParam, allPageParams) => {
         const candidate = lastPage.buckets.find(
           (bucket) => bucket.is_truncated && bucket.continuation_token,
@@ -1460,7 +1465,7 @@ function ResourceConfiguration({
       const currentSource = session.source
       if (!currentSource?.version) throw new Error('Source has no version')
       const finalSource = sourceFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+        await updateSource({
           body: {
             expectedVersion: currentSource.version,
             name: draft.sourceName.trim(),
@@ -1498,7 +1503,7 @@ function ResourceConfiguration({
       }
       const importWorkflow = sourceWorkflowFromApi(
         await (!driveTransport
-          ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+          ? importSourceItems({
               body: {
                 items: selectedPages.map((resource) => ({
                   lastEditedTime: resource.page.last_edited_time ?? undefined,
@@ -1517,7 +1522,7 @@ function ResourceConfiguration({
                 source_id: finalSource.id,
               },
             })
-          : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+          : importSourceItems({
               body: {
                 items: selectedFiles.map((resource) => ({
                   bucket: resource.bucket,
@@ -1873,8 +1878,13 @@ function ConnectedSourceWorkflowSession({
 }: ConnectedSourceWorkflowProps) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
+  const { mutateAsync: createConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions(),
+  )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
       context: { silent: true },
       retry: false,
@@ -1889,6 +1899,8 @@ function ConnectedSourceWorkflowSession({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       context: { silent: true },
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
@@ -2022,7 +2034,7 @@ function ConnectedSourceWorkflowSession({
       try {
         rememberConnection(
           sourceConnectionFromApi(
-            await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+            await createConnection({
               body: {
                 authKind: 'endpoint',
                 configuration: {
@@ -2057,6 +2069,7 @@ function ConnectedSourceWorkflowSession({
       }
     },
     [
+      createConnection,
       credential,
       datasourceIdentity,
       datasourceProvider,

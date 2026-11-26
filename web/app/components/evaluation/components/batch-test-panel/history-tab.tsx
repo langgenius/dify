@@ -28,11 +28,14 @@ const STATUS_ICON_CLASS_NAMES: Record<string, string> = {
   completed: 'i-ri-checkbox-circle-fill text-util-colors-green-green-600',
   partiallyFailed: 'i-ri-error-warning-fill text-text-warning-secondary',
   failed: 'i-ri-close-circle-fill text-text-destructive',
+  notCompleted: 'i-ri-alert-fill text-text-destructive',
   cancelled: 'i-ri-forbid-2-line text-text-tertiary',
 }
 
-// A finished run can still have failed rows; surface that instead of a plain success state.
+// A run the backend marks failed stopped before finishing, which differs from a finished run
+// whose rows all failed. A finished run can still have failed rows; surface that too.
 const getDisplayStatus = (record: EvaluationRunResponse) => {
+  if (record.status === 'failed') return 'notCompleted'
   if (record.status !== 'completed' || record.failed_items <= 0) return record.status
   if (record.total_items > 0 && record.failed_items >= record.total_items) return 'failed'
   return 'partiallyFailed'
@@ -79,6 +82,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     completed: t(($) => $['history.status.completed']),
     partiallyFailed: t(($) => $['history.status.partiallyFailed']),
     failed: t(($) => $['history.status.failed']),
+    notCompleted: t(($) => $['history.status.notCompleted']),
     cancelled: t(($) => $['history.status.cancelled']),
   }
   const getStatusDescription = (record: EvaluationRunResponse) => {

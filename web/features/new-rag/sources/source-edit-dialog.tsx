@@ -206,6 +206,8 @@ function ConnectedSourceEditDialogContent({
     isPending: connectionsPending,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       context: { silent: true },
       enabled: Boolean(source.connectionId),
       input: (pageParam) => ({
@@ -506,6 +508,8 @@ function WebsiteSourceEditDialogContent({
     isFetchNextPageError,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       context: { silent: true },
       enabled: initialSource.type === 'web' && Boolean(initialSource.connectionId),
       input: (pageParam) => ({
@@ -757,21 +761,14 @@ function WebsiteSourceEditDialogContent({
         <DialogBody>
           {initialSource.type === 'web' ? (
             <div>
-              {providerConfigurationReady ? (
-                <WebsiteDatasourceParameterForm
-                  additionalPrimaryField={sourceNameField}
-                  disabled={pending}
-                  parameters={displayedParameters}
-                  schemas={parameterSchemas}
-                  onChange={(parameters) => {
-                    setNextParameters(parameters)
-                    resetPreview()
-                  }}
-                />
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {sourceNameField}
-                  {providerLoading ? (
+              {/* The form also renders the loading and error states so the name field keeps its
+                  place, and its focus, when the provider declaration arrives. */}
+              <WebsiteDatasourceParameterForm
+                additionalPrimaryField={sourceNameField}
+                disabled={pending}
+                parameters={displayedParameters}
+                primaryFallback={
+                  providerConfigurationReady ? undefined : providerLoading ? (
                     <div
                       role="status"
                       aria-label={tCommon(($) => $.loading)}
@@ -786,9 +783,14 @@ function WebsiteSourceEditDialogContent({
                         ? t(($) => $.providerLoadFailed)
                         : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
                     </p>
-                  )}
-                </div>
-              )}
+                  )
+                }
+                schemas={providerConfigurationReady ? parameterSchemas : []}
+                onChange={(parameters) => {
+                  setNextParameters(parameters)
+                  resetPreview()
+                }}
+              />
             </div>
           ) : (
             <div>{sourceNameField}</div>

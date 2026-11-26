@@ -69,6 +69,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
   const runQuery = useQuery(
     api.get.queryOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const run = runQuery.data?.run
@@ -112,6 +113,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
         ? item.result.reason
         : ''
   const report = useMutation({
+    meta: { errorToast: false },
     mutationFn: async () => {
       const { run: reportRun, items: reportItems } = await loadContactImSyncReport(
         queryClient,

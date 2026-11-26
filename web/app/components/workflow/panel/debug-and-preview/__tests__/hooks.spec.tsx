@@ -21,13 +21,22 @@ type RunCallbacks = NonNullable<Parameters<HandleRun>[1]>
 const mockHandleRun = vi.hoisted(() => vi.fn<HandleRun>())
 const mockFetchInspectVars = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputForm = vi.hoisted(() => vi.fn())
-const mockSseGet = vi.hoisted(() => vi.fn())
+const mockStreamEvents = vi.hoisted(() => vi.fn())
 const mockRequest = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  sseGet: (...args: unknown[]) => mockSseGet(...args),
   request: mockRequest,
+}))
+
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: (...args: unknown[]) => mockStreamEvents(...args),
+}))
+
+// Tags each resume request with its run id; workflow-events.spec covers the request itself.
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: (workflowRunId: string) => ({ workflowRunId }),
 }))
 
 vi.mock('@/service/workflow', async (importOriginal) => ({
@@ -150,12 +159,11 @@ describe('useChat', () => {
       result.current.handleSwitchSibling('message-1', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/workflow-run-1/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
+    expect(mockStreamEvents).toHaveBeenCalledWith(
+      { workflowRunId: 'workflow-run-1' },
       expect.objectContaining({ onCompleted: expect.any(Function), onData: expect.any(Function) }),
     )
-    const resumeCallbacks = mockSseGet.mock.lastCall![2] as RunCallbacks
+    const resumeCallbacks = mockStreamEvents.mock.lastCall![1] as RunCallbacks
 
     act(() => {
       resumeCallbacks.onWorkflowStarted?.({
@@ -189,7 +197,7 @@ describe('useChat', () => {
     mockHandleRun.mockImplementation((_params, callbacks) => {
       sendCallbacks = callbacks
     })
-    mockSseGet.mockImplementation((_url: unknown, _options: unknown, callbacks: RunCallbacks) => {
+    mockStreamEvents.mockImplementation((_request: unknown, callbacks: RunCallbacks) => {
       resumeCallbacks = callbacks
     })
     mockRequest.mockImplementation(() => Promise.resolve(Response.json({ data: [] })))
@@ -262,9 +270,8 @@ describe('useChat', () => {
       result.current.handleSwitchSibling('message-1', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/workflow-run-1/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
+    expect(mockStreamEvents).toHaveBeenCalledWith(
+      { workflowRunId: 'workflow-run-1' },
       expect.objectContaining({ onCompleted: expect.any(Function), onData: expect.any(Function) }),
     )
     act(() => {
@@ -365,6 +372,7 @@ describe('useChat', () => {
         action: 'approve',
       },
       undefined,
+      { silent: true },
     )
   })
 

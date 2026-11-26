@@ -9,6 +9,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { editorAppIdAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { toastRequestError } from '@/app/query-error-toast'
 import { updateFeatures } from '@/service/workflow'
 import { useNodesReadOnly } from './hooks/use-workflow'
 import useConfig from './nodes/start/use-config'
@@ -61,10 +62,13 @@ const Features = () => {
         file_upload: currentFeatures.file,
       }
 
-      await updateFeatures({
-        appId,
-        features: transformedFeatures,
-      })
+      await updateFeatures(
+        {
+          appId,
+          features: transformedFeatures,
+        },
+        { silent: true },
+      )
 
       // Emit update event to other connected clients
       const socket = webSocketClient.getSocket(appId)
@@ -75,6 +79,7 @@ const Features = () => {
       }
     } catch (error) {
       console.error('Failed to update features:', error)
+      toastRequestError(error)
     }
 
     setShowFeaturesPanel(true)

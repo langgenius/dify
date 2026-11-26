@@ -1,4 +1,5 @@
 'use client'
+import type { DatasourceNodeRunPayload } from '@dify/contracts/api/console/rag/types.gen'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { CrawlResultItem } from '@/models/datasets'
 import type {
@@ -6,7 +7,7 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -21,9 +22,9 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { CrawlStep } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
-import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
+import { runDatasourceNode } from '../run-datasource-node'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import CrawledResult from './base/crawled-result'
 import Crawling from './base/crawling'
@@ -73,26 +74,27 @@ const WebsiteCrawl = ({
 
   const dataSourceStore = useDataSourceStore()
 
-  const preProcessingParamsOptions = {
-    input: { params: { pipeline_id: pipelineId! }, query: { node_id: nodeId } },
-    enabled: !!pipelineId && !!nodeId,
-    select: selectPipelineStepParameters,
-  }
+  const preProcessingParamsInput =
+    pipelineId && nodeId
+      ? { params: { pipeline_id: pipelineId }, query: { node_id: nodeId } }
+      : skipToken
   const workflows = consoleQuery.rag.pipelines.byPipelineId.workflows
   const { data: paramsConfig, isFetching: isFetchingParams } = useQuery(
     isInPipeline
-      ? workflows.draft.preProcessing.parameters.get.queryOptions(preProcessingParamsOptions)
-      : workflows.published.preProcessing.parameters.get.queryOptions(preProcessingParamsOptions),
+      ? workflows.draft.preProcessing.parameters.get.queryOptions({
+          input: preProcessingParamsInput,
+          select: selectPipelineStepParameters,
+        })
+      : workflows.published.preProcessing.parameters.get.queryOptions({
+          input: preProcessingParamsInput,
+          select: selectPipelineStepParameters,
+        }),
   )
 
   const isInit = step === CrawlStep.init
   const isCrawlFinished = step === CrawlStep.finished
   const isRunning = step === CrawlStep.running
   const showError = isCrawlFinished && crawlErrorMessage
-  const datasourceNodeRunURL = !isInPipeline
-    ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
-    : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
-
   const handleCheckedCrawlResultChange = useCallback(
     (checkedCrawlResult: CrawlResultItem[]) => {
       const { setWebsitePages } = dataSourceStore.getState()
@@ -115,16 +117,15 @@ const WebsiteCrawl = ({
       const { setStep, setCrawlResult, currentCredentialId } = dataSourceStore.getState()
 
       setStep(CrawlStep.running)
-      ssePost(
-        datasourceNodeRunURL,
+      runDatasourceNode(
+        { pipelineId, nodeId, isInPipeline },
+        // The crawl run also asks for a streaming response, which the payload type does not declare.
         {
-          body: {
-            inputs: value,
-            datasource_type: DatasourceType.websiteCrawl,
-            credential_id: currentCredentialId,
-            response_mode: 'streaming',
-          },
-        },
+          inputs: value,
+          datasource_type: DatasourceType.websiteCrawl,
+          credential_id: currentCredentialId,
+          response_mode: 'streaming',
+        } as DatasourceNodeRunPayload,
         {
           onDataSourceNodeProcessing: (data: DataSourceNodeProcessingResponse) => {
             setTotalNum(data.total ?? 0)
@@ -150,7 +151,15 @@ const WebsiteCrawl = ({
         },
       )
     },
-    [dataSourceStore, datasourceNodeRunURL, handleCheckedCrawlResultChange, supportBatchUpload, t],
+    [
+      dataSourceStore,
+      pipelineId,
+      nodeId,
+      isInPipeline,
+      handleCheckedCrawlResultChange,
+      supportBatchUpload,
+      t,
+    ],
   )
 
   const handleSubmit = useCallback(

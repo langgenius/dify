@@ -843,6 +843,7 @@ overrides:
   vitest@*: 5.1.0
 
 patchedDependencies:
+  '@orpc/tanstack-query@1.16.2': e6cf43130bfc20a4f989341a62e950db74ba29deec171729c1dfaa100f6a4e90
   vite-plugin-storybook-nextjs@10.6.7: 2832dd9f83ec165b629e9d8a37be49ffd0aa57a2a2220196c3d4ea3bf7ba76ca
 
 importers:
@@ -1337,7 +1338,7 @@ importers:
         version: 1.16.2
       '@orpc/tanstack-query':
         specifier: 'catalog:'
-        version: 1.16.2(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)
+        version: 1.16.2(patch_hash=e6cf43130bfc20a4f989341a62e950db74ba29deec171729c1dfaa100f6a4e90)(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)
       es-module-lexer:
         specifier: 'catalog:'
         version: 3.0.4
@@ -1551,7 +1552,7 @@ importers:
         version: 1.16.2
       '@orpc/tanstack-query':
         specifier: 'catalog:'
-        version: 1.16.2(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)
+        version: 1.16.2(patch_hash=e6cf43130bfc20a4f989341a62e950db74ba29deec171729c1dfaa100f6a4e90)(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)
       '@pierre/highlights':
         specifier: 'catalog:'
         version: 0.5.1
@@ -10857,7 +10858,7 @@ snapshots:
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@orpc/tanstack-query@1.16.2(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)':
+  '@orpc/tanstack-query@1.16.2(patch_hash=e6cf43130bfc20a4f989341a62e950db74ba29deec171729c1dfaa100f6a4e90)(@orpc/client@1.16.2)(@tanstack/query-core@5.107.1)':
     dependencies:
       '@orpc/client': 1.16.2
       '@orpc/shared': 1.16.2

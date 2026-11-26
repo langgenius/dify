@@ -2,7 +2,10 @@ import type { DemoEndState } from '../../end-state'
 import type { TestNavigation } from '@/test/next-navigation'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { render } from 'vitest-browser-react'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createTestNavigation } from '@/test/next-navigation'
+import { createTestQueryClient } from '@/test/query-client'
 import { DemoEndPanel } from '../demo-end-panel'
 
 const api = { urlUpdate: vi.fn() }
@@ -11,13 +14,17 @@ let navigation: TestNavigation
 async function renderPanel(state: DemoEndState) {
   const onReplay = vi.fn()
   const onExit = vi.fn()
+  const queryClient = createTestQueryClient()
+  seedCurrentWorkspaceQuery(queryClient)
   navigation = createTestNavigation({ url: '/collaboration-demo' })
   const { NavigationProvider } = navigation
   const panel = (current: DemoEndState) => (
     <NavigationProvider>
-      <NuqsTestingAdapter onUrlUpdate={api.urlUpdate}>
-        <DemoEndPanel state={current} onReplay={onReplay} onExit={onExit} />
-      </NuqsTestingAdapter>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsTestingAdapter onUrlUpdate={api.urlUpdate}>
+          <DemoEndPanel state={current} onReplay={onReplay} onExit={onExit} />
+        </NuqsTestingAdapter>
+      </QueryClientTestProvider>
     </NavigationProvider>
   )
   const screen = await render(panel(state))

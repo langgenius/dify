@@ -223,7 +223,7 @@ export function SkillFileTree({
   const referenceCountLabel = t(($) => $['skillManagement.detail.referencedBy'], {
     count: referenceCount,
   })
-  const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
+  const activeUploadRef = useRef<AbortController | undefined>(undefined)
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
   const closeSidebarFloatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -316,11 +316,13 @@ export function SkillFileTree({
   const fileMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const fileCheckMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.check.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const tree = toFileTree(files)
@@ -530,15 +532,15 @@ export function SkillFileTree({
 
       try {
         patchUploadItem(item.id, { progress: 0, status: 'uploading' })
-        const xhr = new XMLHttpRequest()
-        activeUploadXhrRef.current = xhr
+        const uploadController = new AbortController()
+        activeUploadRef.current = uploadController
         const uploadedFile = await uploadSkillFile(file, {
           onProgress: (progress) => {
             patchUploadItem(item.id, { progress: Math.min(progress, 99) })
           },
-          xhr,
+          signal: uploadController.signal,
         })
-        activeUploadXhrRef.current = undefined
+        activeUploadRef.current = undefined
         patchUploadItem(item.id, { progress: 100, status: 'saving' })
 
         const path = item.path
@@ -565,7 +567,7 @@ export function SkillFileTree({
         successCount += 1
         patchUploadItem(item.id, { progress: 100, status: 'uploaded' })
       } catch (error) {
-        activeUploadXhrRef.current = undefined
+        activeUploadRef.current = undefined
         failedCount += 1
 
         const errorCode = getSkillErrorCode(error)
@@ -620,7 +622,7 @@ export function SkillFileTree({
 
   const handleCancelUpload = () => {
     cancelUploadRef.current = true
-    activeUploadXhrRef.current?.abort()
+    activeUploadRef.current?.abort()
   }
 
   const handleRetryUpload = () => {

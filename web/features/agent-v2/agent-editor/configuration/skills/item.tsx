@@ -7,9 +7,9 @@ import { Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQueryClient } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toastRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { MissingReferenceWarning } from '../common/missing-reference-warning'
@@ -43,12 +43,13 @@ export function AgentSkillItem({
     if (apiContext.trialAppId) {
       const result = await queryClient.query({
         ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+          context: { silent: true },
+          meta: { errorToast: false },
           input: {
             params: { app_id: apiContext.trialAppId, name: skill.name },
             query: { version_id: apiContext.versionId },
           },
         }),
-        staleTime: 0,
       })
       downloadUrl({ url: result.url, fileName: skill.name })
       return
@@ -57,6 +58,8 @@ export function AgentSkillItem({
     if (apiContext.workflow) {
       const result = await queryClient.query({
         ...consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+          context: { silent: true },
+          meta: { errorToast: false },
           input: {
             params: {
               app_id: apiContext.workflow.appId,
@@ -69,7 +72,6 @@ export function AgentSkillItem({
             },
           },
         }),
-        staleTime: 0,
       })
       downloadUrl({ url: result.url, fileName: skill.name })
       return
@@ -77,6 +79,8 @@ export function AgentSkillItem({
 
     const result = await queryClient.query({
       ...consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
+        context: { silent: true },
+        meta: { errorToast: false },
         input: {
           params: {
             agent_id: apiContext.agentId,
@@ -88,12 +92,11 @@ export function AgentSkillItem({
           },
         },
       }),
-      staleTime: 0,
     })
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.isMissing, skill.name])
   const handleDownload = useCallback(() => {
-    void downloadSkill().catch(noop)
+    void downloadSkill().catch((error: unknown) => toastRequestError(error))
   }, [downloadSkill])
   const onDownloadSkill = canDownload ? handleDownload : undefined
   const hasActions = (!skill.isMissing && !!onDownloadSkill) || canRemove

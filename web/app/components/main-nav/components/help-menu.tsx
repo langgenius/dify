@@ -100,10 +100,10 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
   })
   const { data: versionData } = useQuery(
     consoleQuery.version.get.queryOptions({
-      input: profileMeta.currentVersion
-        ? { query: { current_version: profileMeta.currentVersion } }
-        : skipToken,
-      enabled: !systemFeatures.branding.enabled,
+      input:
+        !systemFeatures.branding.enabled && profileMeta.currentVersion
+          ? { query: { current_version: profileMeta.currentVersion } }
+          : skipToken,
     }),
   )
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)

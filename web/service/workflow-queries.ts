@@ -42,21 +42,17 @@ export function workflowRunHistoryQueryOptions(resource: EditorResource) {
       return resource.mode === 'advanced-chat'
         ? consoleQuery.apps.byAppId.advancedChat.workflowRuns.get.queryOptions({
             input: { params: { app_id: resource.appId } },
-            staleTime: 0,
           })
         : consoleQuery.apps.byAppId.workflowRuns.get.queryOptions({
             input: { params: { app_id: resource.appId } },
-            staleTime: 0,
           })
     case 'knowledge-pipeline':
       return consoleQuery.rag.pipelines.byPipelineId.workflowRuns.get.queryOptions({
         input: { params: { pipeline_id: resource.pipelineId } },
-        staleTime: 0,
       })
     case 'snippet':
       return consoleQuery.snippets.bySnippetId.workflowRuns.get.queryOptions({
         input: { params: { snippet_id: resource.snippetId } },
-        staleTime: 0,
       })
   }
 }
@@ -207,6 +203,8 @@ export function sysVarValuesQueryOptions(resource: EditorResource | undefined) {
 
 export function restoreWorkflowMutationOptions(resource: EditorResource) {
   return mutationOptions({
+    // Callers show their own restore failure message.
+    meta: { errorToast: false },
     mutationFn: (versionId: string) => {
       switch (resource.kind) {
         case 'app':

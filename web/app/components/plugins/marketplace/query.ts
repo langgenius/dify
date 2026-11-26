@@ -4,9 +4,22 @@ import { marketplaceQuery } from '@/service/marketplace'
 import { getMarketplacePluginsInfiniteQueryOptions } from './query-options'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
 
+/** Cache lifetimes for panels that keep the catalog longer than the app default. */
+type MarketplaceCacheOptions = {
+  staleTime?: number
+  gcTime?: number
+}
+
+/** The catalog cache the settings and picker panels use: fresh for 5 minutes, kept for 10. */
+export const MARKETPLACE_PANEL_CACHE_OPTIONS = {
+  staleTime: 1000 * 60 * 5,
+  gcTime: 1000 * 60 * 10,
+} satisfies MarketplaceCacheOptions
+
 export function useMarketplaceCollectionsAndPlugins(
   collectionsParams: MarketPlaceInputs['collections']['query'],
   enabled = true,
+  cacheOptions?: MarketplaceCacheOptions,
 ) {
   return useQuery({
     queryKey: marketplaceQuery.collections.queryKey({ input: { query: collectionsParams } }),
@@ -16,9 +29,25 @@ export function useMarketplaceCollectionsAndPlugins(
     // isFetching true for ~7s of backoff, which the catalog renders as a
     // spinner indistinguishable from a hang.
     retry: false,
+    ...cacheOptions,
   })
 }
 
-export function useMarketplacePlugins(queryParams: PluginsSearchParams | undefined) {
-  return useInfiniteQuery(getMarketplacePluginsInfiniteQueryOptions(queryParams))
+type MarketplacePluginsOptions = MarketplaceCacheOptions & {
+  enabled?: boolean
+  /** Shows the previous search while the next one loads (default). Off, each search starts empty. */
+  keepPreviousResults?: boolean
+}
+
+export function useMarketplacePlugins(
+  queryParams: PluginsSearchParams | undefined,
+  { enabled = true, keepPreviousResults = true, ...cacheOptions }: MarketplacePluginsOptions = {},
+) {
+  const queryOptions = getMarketplacePluginsInfiniteQueryOptions(queryParams)
+  return useInfiniteQuery({
+    ...queryOptions,
+    enabled: enabled && queryOptions.enabled,
+    placeholderData: keepPreviousResults ? queryOptions.placeholderData : undefined,
+    ...cacheOptions,
+  })
 }

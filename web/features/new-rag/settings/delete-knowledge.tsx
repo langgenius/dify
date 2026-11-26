@@ -7,7 +7,7 @@ import {
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,13 +22,13 @@ export function DeleteKnowledgeAction() {
   const { t } = useTranslation(['knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
   const router = useRouter()
-  const queryClient = useQueryClient()
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const hasPendingSave = useAtomValue(knowledgeSettingsHasPendingSaveAtom)
   const deleteActionsRef = useRef<AlertDialogActions>(null)
   const mutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -44,9 +44,6 @@ export function DeleteKnowledgeAction() {
       {
         onSuccess: () => {
           deleteActionsRef.current?.close()
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-          })
           router.replace(newKnowledgeListPath)
         },
       },

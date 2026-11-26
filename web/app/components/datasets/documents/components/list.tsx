@@ -306,7 +306,6 @@ const DocumentList = ({
           <DialogContent>
             {payload && (
               <RenameDocumentForm
-                key={payload.id}
                 activeDocumentIdRef={activeDocumentIdRef}
                 datasetId={datasetId}
                 document={payload}

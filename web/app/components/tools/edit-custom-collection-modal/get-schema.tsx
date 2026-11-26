@@ -8,6 +8,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { importSchemaFromURL } from '@/service/tools'
 import examples from './examples'
 
@@ -28,9 +29,11 @@ const GetSchema: FC<Props> = ({ onChange }) => {
     }
     setIsParsing(true)
     try {
-      const { schema } = await importSchemaFromURL(importUrl)
+      const { schema } = await importSchemaFromURL(importUrl, { silent: true })
       setImportUrl('')
       onChange(schema)
+    } catch (error) {
+      toastRequestError(error)
     } finally {
       setIsParsing(false)
       setShowImportFromUrl(false)

@@ -108,6 +108,7 @@ export function useAgentConfigureSync({
       context: {
         silent: true,
       },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: saveComposerDraftOnPageClose } = useMutation(
@@ -116,6 +117,7 @@ export function useAgentConfigureSync({
         keepalive: true,
         silent: true,
       },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: publishAgent } = useMutation(
@@ -123,6 +125,7 @@ export function useAgentConfigureSync({
       context: {
         silent: true,
       },
+      meta: { errorToast: false },
     }),
   )
 
@@ -198,28 +201,12 @@ export function useAgentConfigureSync({
       if (publish) {
         if (!publishEnabledRef.current || !getCurrentPermissions().canReleaseAndVersion)
           return false
-        const result = await publishAgent({
+        return publishAgent({
           params: {
             agent_id: agentId,
           },
           body: {},
         })
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-        ])
-        return result
       }
 
       return true
@@ -266,6 +253,7 @@ export function useAgentConfigureSync({
   const { isPending: isPublishing, mutateAsync: runPublishTransaction } = useMutation(
     mutationOptions({
       mutationKey: ['agent-configure', agentId, 'publish'],
+      meta: { errorToast: false },
       mutationFn: async ({
         configSnapshot,
         draftBaseline,

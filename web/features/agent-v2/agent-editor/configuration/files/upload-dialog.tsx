@@ -323,6 +323,7 @@ export function AgentFileUploadDialog({
   onUploaded: (files: AgentFileNode[]) => void
 }) {
   const uploadFiles = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (pendingFiles: PendingAgentFile[]): Promise<AgentFilesUploadResult> => {
       const uploads = await Promise.allSettled(
         pendingFiles.map(({ file }) =>

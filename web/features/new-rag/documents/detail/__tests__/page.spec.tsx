@@ -37,12 +37,6 @@ const knowledgeSpacePermissionState = vi.hoisted(() => ({
 
 const multimodalAssetGet = vi.hoisted(() => vi.fn())
 
-// Protected images are fetched as blobs through the base request helper.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: multimodalAssetGet,
-}))
-
 vi.mock('../../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -296,6 +290,7 @@ const task = (overrides: Partial<DocumentProcessingTask>): DocumentProcessingTas
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const forever = () => new Promise<never>(() => {})
@@ -376,25 +371,28 @@ vi.mock('@/service/console', async (importOriginal) => {
             return state.data ?? notFound()
           })
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: retryTaskRequest,
+    // Protected images are fetched as blobs through the multimodal asset route.
+    [`${space}.documents.byDocumentId.multimodal.byItemId.asset.get`]: multimodalAssetGet,
+    [`${space}.documents.byDocumentId.patch`]: patchDocumentMetadata,
+    [`${space}.metadata.get`]: () =>
+      metadataFieldsQuery.isPending
+        ? forever()
+        : track(async () => {
+            if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
+            if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
+            return {
+              data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
+              next_cursor: null,
+            }
+          }),
+    [`${space}.metadata.post`]: createMetadataField,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: retryTaskRequest,
-      [`${space}.documents.byDocumentId.patch`]: patchDocumentMetadata,
-      [`${space}.metadata.get`]: () =>
-        metadataFieldsQuery.isPending
-          ? forever()
-          : track(async () => {
-              if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
-              if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
-              return {
-                data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
-                next_cursor: null,
-              }
-            }),
-      [`${space}.metadata.post`]: createMetadataField,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: (input: never) =>
         cancelMutation.mutateAsync(input),
       [`${space}.backgroundTasks.get`]: (input: {
@@ -772,7 +770,7 @@ describe('DocumentDetailPage', () => {
     multimodalQuery.error = null
     multimodalQuery.isPending = false
     multimodalAssetGet.mockImplementation(
-      async () => new Response(new Blob(['image-bytes'], { type: 'image/png' })),
+      async () => new Blob(['image-bytes'], { type: 'image/png' }),
     )
     taskSnapshotQuery.data = undefined
     taskSnapshotQuery.error = null
@@ -1191,8 +1189,8 @@ describe('DocumentDetailPage', () => {
   it('loads protected document images next to the chunk selected by canonical offsets', async () => {
     // Each protected variant resolves to its own bytes, so its object URL follows the content.
     multimodalAssetGet.mockImplementation(
-      async (path: string) =>
-        new Response(new Blob([path.includes('thumbnail') ? 'thumbnail' : 'asset'])),
+      async (input: { query?: { variant?: string } }) =>
+        new Blob([input.query?.variant === 'thumbnail' ? 'thumbnail' : 'asset']),
     )
     vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) =>
       (blob as Blob).size === 'thumbnail'.length ? 'blob:thumbnail' : 'blob:asset',
@@ -1221,14 +1219,16 @@ describe('DocumentDetailPage', () => {
       id: 'manifest-1',
       items: [
         {
-          asset_url: '/console/api/knowledge-fs/image-1',
+          asset_url:
+            '/console/api/knowledge-fs/spaces/space-1/documents/asset-1/multimodal/image-1/asset',
           caption: 'Screenshot of the source configuration',
           id: 'image-1',
           modality: 'image',
           parse_element_id: 'parse-image-1',
           section_path: ['Images'],
           start_offset: 20,
-          thumbnail_url: '/console/api/knowledge-fs/image-1?variant=thumbnail',
+          thumbnail_url:
+            '/console/api/knowledge-fs/spaces/space-1/documents/asset-1/multimodal/image-1/asset?variant=thumbnail',
         },
       ],
       manifest_version: 'document-multimodal-manifest-v1',
@@ -1241,11 +1241,11 @@ describe('DocumentDetailPage', () => {
       name: 'Screenshot of the source configuration',
     })
     expect(image).toHaveAttribute('src', 'blob:asset')
+    const assetParams = { control_space_id: 'space-1', document_id: 'asset-1', item_id: 'image-1' }
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       1,
-      '/knowledge-fs/image-1',
-      { signal: expect.any(AbortSignal) },
-      { needAllResponseContent: true, silent: true },
+      { params: assetParams },
+      { signal: expect.any(AbortSignal), context: expect.objectContaining({ silent: true }) },
     )
     fireEvent.error(image)
     await waitFor(() =>
@@ -1255,9 +1255,8 @@ describe('DocumentDetailPage', () => {
     )
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       2,
-      '/knowledge-fs/image-1?variant=thumbnail',
-      { signal: expect.any(AbortSignal) },
-      { needAllResponseContent: true, silent: true },
+      { params: assetParams, query: { variant: 'thumbnail' } },
+      { signal: expect.any(AbortSignal), context: expect.objectContaining({ silent: true }) },
     )
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
     expect(
@@ -1304,7 +1303,8 @@ describe('DocumentDetailPage', () => {
       id: 'manifest-1',
       items: [
         {
-          asset_url: '/console/api/knowledge-fs/spreadsheet-image-1',
+          asset_url:
+            '/console/api/knowledge-fs/spaces/space-1/documents/asset-1/multimodal/spreadsheet-image-1/asset',
           caption: 'Screenshot for the copy button issue',
           id: 'spreadsheet-image-1',
           modality: 'image',
@@ -1528,7 +1528,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { category: 'security' } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
     await waitFor(() => expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'))
     await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
@@ -1598,7 +1598,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { priority: 42 } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
   })
 
@@ -1676,7 +1676,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { category: 'product' } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
   })
 
@@ -1722,14 +1722,14 @@ describe('DocumentDetailPage', () => {
         body: { name: 'priority', type: 'number' },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
     expect(patchDocumentMetadata).toHaveBeenCalledWith(
       {
         body: { expectedRowVersion: 2, patch: { priority: 0 } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
     expect(patchDocumentMetadata).toHaveBeenCalledOnce()
     expect(listLogicalDocuments).not.toHaveBeenCalled()
@@ -2751,8 +2751,33 @@ describe('DocumentDetailPage', () => {
       'knowledgeErrors.taskFailure.vectorSpaceQuotaUnavailable',
     )
     expect(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeEnabled()
-    expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything(), { context: { silent: true } })
+    expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything(), {
+      context: expect.objectContaining({ silent: true }),
+    })
     expect(permissionState.refresh).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the document and the drawer documents after a drawer task action', async () => {
+    const user = userEvent.setup()
+    const failedTask = task({ state: 'failed' })
+    taskSnapshotQuery.data = failedTask
+    documentQuery.data = logicalDocument({ latestTask: failedTask })
+    tasksQuery.data = { pages: [{ items: [failedTask] }] }
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const drawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await waitFor(() => expect(listLogicalDocuments).toHaveBeenCalled())
+    const documentReads = server.reads.get('document') ?? 0
+    const drawerDocumentReads = listLogicalDocuments.mock.calls.length
+
+    await user.click(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+    await waitFor(() => expect(retryTaskRequest).toHaveBeenCalledOnce())
+    await waitFor(() => expect(server.reads.get('document')).toBeGreaterThan(documentReads))
+    await waitFor(() =>
+      expect(listLogicalDocuments.mock.calls.length).toBeGreaterThan(drawerDocumentReads),
+    )
   })
 
   it('prompts for model setup before re-indexing a document', async () => {
@@ -3170,7 +3195,7 @@ describe('DocumentDetailPage', () => {
             body: { expectedRowVersion: 2, patch: { category: 'security' } },
             params: { control_space_id: 'space-1', document_id: 'document-1' },
           },
-          { context: { silent: true } },
+          { context: expect.objectContaining({ silent: true }) },
         ),
       )
     })

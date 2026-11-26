@@ -10,13 +10,13 @@ import type { SkillDraftMutationCoordinator } from '../mutations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
@@ -193,6 +193,7 @@ export function SkillFileEditor({
   const { isPending: isSavingDraft, mutateAsync: saveDraftFile } = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const filePath = file?.path
@@ -315,6 +316,7 @@ export function SkillFileEditor({
     enabled: canPreviewBinaryFile,
   })
   const downloadMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: () => {
       if (!filePath) throw new Error('file path is required')
       return fetchSkillFileBlob({
@@ -989,6 +991,8 @@ export function SkillFileEditor({
 
     const references = await queryClient.query({
       ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+        context: { silent: true },
+        meta: { errorToast: false },
         input: {
           params: {
             skill_id: skillId,
@@ -1023,7 +1027,7 @@ export function SkillFileEditor({
   ])
 
   const handlePublishAction = useCallback(() => {
-    void handlePublish().catch(noop)
+    void handlePublish().catch((error: unknown) => toastRequestError(error))
   }, [handlePublish])
 
   useEffect(() => {

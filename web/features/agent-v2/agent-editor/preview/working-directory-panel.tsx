@@ -282,6 +282,8 @@ function AgentWorkingDirectoryContent({
           context: {
             silent: true,
           },
+          // `no_active_binding` renders as an empty directory, not a failure.
+          meta: { errorToast: false },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.queryOptions(
           {
@@ -299,6 +301,7 @@ function AgentWorkingDirectoryContent({
             context: {
               silent: true,
             },
+            meta: { errorToast: false },
           },
         )
   const handleDirectoryPathChange = (path: AgentWorkingDirectoryPath) => {
@@ -485,7 +488,7 @@ function AgentWorkingDirectoryContent({
           downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
         } catch {
-          // The generated client reports the mutation failure through its shared error handler.
+          // The request failure is already reported.
         } finally {
           setDownloadActionLoadingTarget(null)
         }
@@ -508,7 +511,7 @@ function AgentWorkingDirectoryContent({
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
       } catch {
-        // The generated client reports the mutation failure through its shared error handler.
+        // The request failure is already reported.
       } finally {
         setDownloadActionLoadingTarget(null)
       }

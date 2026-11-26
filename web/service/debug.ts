@@ -1,11 +1,21 @@
 import type { AdvancedPromptTemplateResponse } from '@dify/contracts/api/console/app/types.gen'
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppMode,
+  PostAppsByAppIdCompletionMessagesData,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { PostInstructionGenerateData } from '@dify/contracts/api/console/instruction-generate/types.gen'
 import type { PostRuleGenerateData } from '@dify/contracts/api/console/rule-generate/types.gen'
-import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnMessageReplace,
+  StreamSender,
+} from './event-stream'
+import type { ConsoleClientContext } from '@/service/console'
 import type { Model, ModelModeType } from '@/types/app'
-import { ssePost } from './base'
 import { consoleClient } from './console'
+import { streamEvents } from './event-stream'
 
 export type GenRes = {
   modified: string
@@ -48,6 +58,19 @@ export const stopChatMessageResponding = async (appId: string, taskId: string) =
   })
 }
 
+/** Streams a debug completion for a Console app. */
+export const appCompletionMessagesSender =
+  (appId: string): StreamSender =>
+  (body, options) =>
+    consoleClient.apps.byAppId.completionMessages.post(
+      {
+        params: { app_id: appId },
+        // The debugger builds the body from the editable model config.
+        body: body as PostAppsByAppIdCompletionMessagesData['body'],
+      },
+      options,
+    )
+
 export const sendCompletionMessage = async (
   appId: string,
   body: Record<string, unknown>,
@@ -59,16 +82,8 @@ export const sendCompletionMessage = async (
     onNotifyError?: IOnError
   },
 ) => {
-  return ssePost(
-    `apps/${appId}/completion-messages`,
-    {
-      body: {
-        ...body,
-        response_mode: 'streaming',
-      },
-    },
-    handlers,
-  )
+  const send = appCompletionMessagesSender(appId)
+  return streamEvents((options) => send({ ...body, response_mode: 'streaming' }, options), handlers)
 }
 
 const createAbortSignal = (getAbortController?: (abortController: AbortController) => void) => {
@@ -113,13 +128,19 @@ type InstructionGenerateRequest = Omit<
   flow_id?: string
 }
 
-export const generateBasicAppFirstTimeRule = (body: RuleGenerateRequest) => {
-  return consoleClient.ruleGenerate.post({ body: body as PostRuleGenerateData['body'] })
+export const generateBasicAppFirstTimeRule = (
+  body: RuleGenerateRequest,
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.ruleGenerate.post(
+    { body: body as PostRuleGenerateData['body'] },
+    { context },
+  )
 }
 
-export const generateRule = (body: InstructionGenerateRequest) => {
+export const generateRule = (body: InstructionGenerateRequest, context?: ConsoleClientContext) => {
   return consoleClient.instructionGenerate
-    .post({ body: body as PostInstructionGenerateData['body'] })
+    .post({ body: body as PostInstructionGenerateData['body'] }, { context })
     .then(toGenRes)
 }
 
@@ -165,14 +186,18 @@ export const fetchPromptTemplate = ({
     .then(toPromptTemplates)
 }
 
-export const fetchTextGenerationMessage = ({
-  appId,
-  messageId,
-}: {
-  appId: string
-  messageId: string
-}) => {
-  return consoleClient.apps.byAppId.messages.byMessageId.get({
-    params: { app_id: appId, message_id: messageId },
-  })
+export const fetchTextGenerationMessage = (
+  {
+    appId,
+    messageId,
+  }: {
+    appId: string
+    messageId: string
+  },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.apps.byAppId.messages.byMessageId.get(
+    { params: { app_id: appId, message_id: messageId } },
+    { context },
+  )
 }

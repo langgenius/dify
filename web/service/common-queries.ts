@@ -1,19 +1,8 @@
-import type { CommonResponse } from '@/models/common'
-import { queryOptions } from '@tanstack/react-query'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import { clearPageLeaveGuards, confirmPageLeave } from '@/utils/page-leave-guard'
 import { basePath } from '@/utils/var'
-// oxlint-disable-next-line no-restricted-imports -- The forgot-password token check has no matching contract; see forgotPasswordTokenValidityQueryOptions.
-import { post } from './base'
 import { consoleQuery } from './console'
-
-const NAME_SPACE = 'common'
-
-const commonQueryKeys = {
-  forgotPasswordValidity: (token?: string | null) =>
-    [NAME_SPACE, 'forgot-password-validity', token] as const,
-}
 
 export function logoutMutationOptions({ redirectTo = '/signin' }: { redirectTo?: string } = {}) {
   return consoleQuery.logout.post.mutationOptions({
@@ -40,20 +29,5 @@ export function logoutMutationOptions({ redirectTo = '/signin' }: { redirectTo?:
       clearPageLeaveGuards()
       window.location.replace(`${basePath}${redirectTo}`)
     },
-  })
-}
-
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string; token: string }
-// Not migrated to the console contract: the endpoint requires `email` and `code`, which the
-// token-only reset link flow does not have, so this request cannot succeed as written.
-export function forgotPasswordTokenValidityQueryOptions(token?: string | null) {
-  return queryOptions<ForgotPasswordValidity>({
-    queryKey: commonQueryKeys.forgotPasswordValidity(token),
-    // oxlint-disable-next-line typescript/no-deprecated -- No contract fits the token-only request; see the note above.
-    queryFn: () => post<ForgotPasswordValidity>('/forgot-password/validity', { body: { token } }),
-    enabled: !!token,
-    staleTime: 0,
-    gcTime: 0,
-    retry: false,
   })
 }

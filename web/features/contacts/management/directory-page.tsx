@@ -291,7 +291,9 @@ export function ContactsDirectoryPage() {
     platform: counts[1]?.data,
     external: counts[2]?.data,
   }
-  const removeContacts = useMutation(api.remove.post.mutationOptions({ context: { silent: true } }))
+  const removeContacts = useMutation(
+    api.remove.post.mutationOptions({ context: { silent: true }, meta: { errorToast: false } }),
+  )
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(
     (filter) => filter !== 'platform' || context.imCentrallyManaged,

@@ -651,6 +651,7 @@ export function updateTriggerSubscriptionBuilderMutationOptions(context?: Consol
 
 export function verifyAndUpdateTriggerSubscriptionBuilderMutationOptions() {
   return mutationOptions({
+    meta: { errorToast: false },
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
@@ -674,6 +675,7 @@ export function verifyAndUpdateTriggerSubscriptionBuilderMutationOptions() {
 
 export function verifyTriggerSubscriptionMutationOptions() {
   return mutationOptions({
+    meta: { errorToast: false },
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post.mutationKey(),
     mutationFn: (payload: {
@@ -819,6 +821,7 @@ export function deleteTriggerOAuthMutationOptions(context?: ConsoleClientContext
 
 export function initiateTriggerOAuthMutationOptions() {
   return mutationOptions({
+    meta: { errorToast: false },
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get.mutationKey(),
     mutationFn: async (provider: string) => {
@@ -879,7 +882,6 @@ export function triggerPluginDynamicOptionsQueryOptions(
         select: normalizeDynamicOptionsResponse,
         enabled: isEnabled,
         retry: 0,
-        staleTime: 0,
       },
     )
   }
@@ -899,6 +901,5 @@ export function triggerPluginDynamicOptionsQueryOptions(
     select: normalizeDynamicOptionsResponse,
     enabled: isEnabled,
     retry: 0,
-    staleTime: 0,
   })
 }

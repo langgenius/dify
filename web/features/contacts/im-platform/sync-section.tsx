@@ -32,7 +32,9 @@ export function ContactImDirectorySyncSection({
           : false,
     }),
   )
-  const startSync = useMutation(api.post.mutationOptions({ context: { silent: true } }))
+  const startSync = useMutation(
+    api.post.mutationOptions({ context: { silent: true }, meta: { errorToast: false } }),
+  )
   const queryClient = useQueryClient()
   const previousRunRef = useRef<{ id: string; active: boolean } | null>(null)
   const run = runQuery.data?.run

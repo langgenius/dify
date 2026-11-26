@@ -27,11 +27,11 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 vi.mock('@/service/base', () => ({
   request: mocks.request,
-  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('../../plan', () => ({
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
+  PlanLoading: () => null,
 }))
 
 const renderBilling = () => {

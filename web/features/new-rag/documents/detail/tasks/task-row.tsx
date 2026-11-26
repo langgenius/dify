@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-task-failure'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
@@ -24,7 +24,6 @@ import {
   taskGraphIsIncomplete,
   taskIsActive,
 } from '../../model'
-import { backgroundTaskFromApi } from '../../models'
 import { taskLifecycle, taskProgress, taskTime } from '../../tasks/drawer-model'
 import { DocumentGraphStatus } from '../../tasks/graph-status'
 import { documentDetailKnowledgeSpaceIdAtom } from '../state/inputs'
@@ -70,35 +69,14 @@ export function DocumentTaskRow({
     lifecycle: string
     messageKey?: KnowledgeFsTaskFailureMessageKey
   }>()
-  const cancelTask = useMutation({
-    mutationFn: async () =>
-      backgroundTaskFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post(
-          {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              task_id: task.id,
-              task_kind: task.taskKind,
-            },
-          },
-        ),
-      ),
-  })
-  const retryTask = useMutation({
-    mutationFn: async () =>
-      backgroundTaskFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
-          {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              task_id: task.id,
-              task_kind: task.taskKind,
-            },
-          },
-          { context: { silent: true } },
-        ),
-      ),
-  })
+  const cancelTask = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),
+  )
+  const retryTask = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
+      { context: { silent: true }, meta: { errorToast: false } },
+    ),
+  )
   const pending = Boolean(cancelTask.isPending || retryTask.isPending)
 
   useLayoutEffect(
@@ -178,8 +156,15 @@ export function DocumentTaskRow({
     const actionFocusTarget = document.activeElement
     setActionFailure(undefined)
     try {
-      if (action === 'cancel') await cancelTask.mutateAsync()
-      else await retryTask.mutateAsync()
+      const input = {
+        params: {
+          control_space_id: knowledgeSpaceId,
+          task_id: task.id,
+          task_kind: task.taskKind,
+        },
+      }
+      if (action === 'cancel') await cancelTask.mutateAsync(input)
+      else await retryTask.mutateAsync(input)
       if (currentLifecycleRef.current !== actionLifecycle) return
       if (document.activeElement === actionFocusTarget) focusDrawerCloseButton()
     } catch (error) {
