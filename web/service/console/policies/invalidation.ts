@@ -1,7 +1,75 @@
 import type { ConsolePolicies } from './types'
+import { mergePolicies } from './merge'
 
 // No cached data changes, or the owner reconciles the cache itself.
 const skip = { mutationOptions: { meta: { invalidate: false } } } as const
+
+/**
+ * Reads sent as POST: previews, estimates, validations and tests, downloads, searches and
+ * option lookups. They change nothing a query reads, and some run from a mount effect, so a
+ * refresh after each one could loop. `__tests__/mutation-coverage.spec.ts` fails for a write
+ * whose name looks read-only and is neither listed here nor listed there as a real write.
+ */
+export const READ_ONLY_POSTS = [
+  'enterprise.releaseService.precheckRelease',
+  'enterprise.releaseService.computeDeploymentOptions',
+  'byEvaluateTargetType.byEvaluateTargetId.datasetTemplate.download.post',
+  'byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post',
+  'account.changeEmail.checkEmailUnique.post',
+  'account.changeEmail.validity.post',
+  'agent.byAgentId.composer.validate.post',
+  'agent.byAgentId.sandbox.files.download.post',
+  'agent.byAgentId.audioToText.post',
+  'agent.byAgentId.textToAudio.post',
+  'apps.byAppId.audioToText.post',
+  'apps.byAppId.textToAudio.post',
+  'apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.preview.post',
+  'apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post',
+  'apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.download.post',
+  'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.deliveryTest.post',
+  'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post',
+  'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post',
+  'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.validate.post',
+  'datasets.indexingEstimate.post',
+  'datasets.notionIndexingEstimate.post',
+  'datasets.byDatasetId.documents.downloadZip.post',
+  'datasets.byDatasetId.evaluation.template.download.post',
+  'fileScan.providers.byProviderId.test.post',
+  'installedApps.byInstalledAppId.audioToText.post',
+  'installedApps.byInstalledAppId.textToAudio.post',
+  'knowledgeFs.queryStream.post',
+  'knowledgeFs.sourceProviderPreview.post',
+  'knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post',
+  'knowledgeFs.spaces.byControlSpaceId.queryStreamCapability.post',
+  'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.crawlPreview.post',
+  'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.test.post',
+  'knowledgeFs.tasks.byTaskId.streamCapability.post',
+  'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post',
+  'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.validate.post',
+  'trialApps.byAppId.audioToText.post',
+  'trialApps.byAppId.textToAudio.post',
+  'workspaces.current.humanInput.v2.channels.email.test.post',
+  'workspaces.current.humanInput.v2.channels.email.byChannelId.test.post',
+  'workspaces.current.humanInput.v2.channels.im.test.post',
+  'workspaces.current.humanInput.v2.channels.im.byChannelId.test.post',
+  'workspaces.current.members.ownerTransferCheck.post',
+  'workspaces.current.modelProviders.byProvider.credentials.validate.post',
+  'workspaces.current.modelProviders.byProvider.models.credentials.validate.post',
+  'workspaces.current.modelProviders.byProvider.models.loadBalancingConfigs.credentialsValidate.post',
+  'workspaces.current.modelProviders.byProvider.models.loadBalancingConfigs.byConfigId.credentialsValidate.post',
+  'workspaces.current.plugin.list.installations.ids.post',
+  'workspaces.current.plugin.list.latestVersions.post',
+  'workspaces.current.plugin.parameters.dynamicOptionsWithCredentials.post',
+  'workspaces.current.skills.bySkillId.files.check.post',
+  'workspaces.current.toolProvider.api.schema.post',
+  'workspaces.current.toolProvider.api.test.pre.post',
+] as const
+
+// Builds `{ a: { b: skip } }` from 'a.b'.
+const skipAt = (path: string): ConsolePolicies =>
+  path
+    .split('.')
+    .reduceRight<unknown>((node, segment) => ({ [segment]: node }), skip) as ConsolePolicies
 
 const tagBinding = {
   mutationOptions: {
@@ -30,7 +98,7 @@ const tagBinding = {
  *
  * A procedure whose policy lives in a domain file declares its `meta` there instead.
  */
-export const invalidationPolicies: ConsolePolicies = {
+const namedPolicies: ConsolePolicies = {
   login: { post: skip },
   logout: { post: skip },
   refreshToken: { post: skip },
@@ -79,3 +147,8 @@ export const invalidationPolicies: ConsolePolicies = {
     },
   },
 }
+
+export const invalidationPolicies: ConsolePolicies = mergePolicies<ConsolePolicies>(
+  namedPolicies,
+  ...READ_ONLY_POSTS.map(skipAt),
+)

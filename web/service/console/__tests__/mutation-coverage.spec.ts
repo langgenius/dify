@@ -2,6 +2,7 @@ import { consoleRouterContract } from '@dify/contracts/console'
 import { describe, expect, it } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { domainOf } from '../mutation-invalidation'
+import { READ_ONLY_POSTS } from '../policies/invalidation'
 import { createConsolePolicies } from '../query-policies'
 
 type Procedure = { path: string[]; method: string }
@@ -47,6 +48,24 @@ const startsWith = (path: string[], prefix: string) => {
 const hasReadUnder = (prefixes: string[]) =>
   reads.some((read) => prefixes.some((prefix) => startsWith(read.path, prefix)))
 
+// Names that usually mean a lookup sent as POST.
+const READ_ONLY_NAME =
+  /preview|estimate|validat|validity|check|test|download|search|query|capabilit|audioToText|textToAudio|schema|options|nodeInfo|compute|ids\.post|latestVersions/i
+
+// Writes whose names look like lookups, with what they change.
+const WRITES_NAMED_LIKE_READS = new Set<string>([
+  // Retrieval tests are recorded in the dataset's query history.
+  'datasets.byDatasetId.hitTesting.post',
+  'datasets.byDatasetId.externalHitTesting.post',
+  // Preview jobs, research tasks and archive downloads are created and listed as tasks.
+  'knowledgeFs.sourceProviderPreview.jobs.post',
+  'knowledgeFs.sourceProviderPreview.jobs.byJobId.delete',
+  'knowledgeFs.spaces.byControlSpaceId.researchTasks.post',
+  'knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post',
+  'knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete',
+  'workflowRunArchives.downloads.post',
+])
+
 describe('console mutation coverage', () => {
   it('finds the contract procedures', () => {
     expect(writes.length).toBeGreaterThan(100)
@@ -65,6 +84,25 @@ describe('console mutation coverage', () => {
 
     // Add a policy, an `alsoInvalidate` domain, or `invalidate: false` in `policies/invalidation.ts`.
     expect(uncovered).toEqual([])
+  })
+
+  it('opts out every write whose name reads as a lookup, unless it is listed as a real write', () => {
+    const readOnly = new Set<string>(READ_ONLY_POSTS)
+    const unclassified = writes
+      .map(({ path }) => path.join('.'))
+      .filter(
+        (path) =>
+          READ_ONLY_NAME.test(path) &&
+          !readOnly.has(path) &&
+          !WRITES_NAMED_LIKE_READS.has(path) &&
+          // Opted out for another reason, such as sign-in steps and autosaves.
+          mutationPolicyOf(path.split('.'))?.meta?.invalidate !== false,
+      )
+
+    // A read sent as POST goes in READ_ONLY_POSTS (`policies/invalidation.ts`); a real write here.
+    expect(unclassified).toEqual([])
+    for (const path of readOnly)
+      expect(mutationPolicyOf(path.split('.'))?.meta?.invalidate, path).toBe(false)
   })
 
   it('declares alsoInvalidate only with paths that have reads', () => {

@@ -418,4 +418,35 @@ describe('mutation invalidation fallback', () => {
 
     expect(appsList).toHaveBeenCalledTimes(2)
   })
+
+  it('does not refresh after a read sent as POST, so a preview that reloads on refresh cannot loop', async () => {
+    const client = createClient()
+    const pipelineKey = consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+      input: { params: { pipeline_id: 'pipeline-1' } },
+    })
+    const pipeline = vi.fn(async () => pipeline.mock.calls.length)
+    const preview = vi.fn(async () => ({ content: 'page' }))
+    const runPreview = () =>
+      new MutationObserver(
+        client,
+        consoleQuery.rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post.mutationOptions(
+          { mutationFn: preview as never },
+        ),
+      )
+        .mutate({ params: { pipeline_id: 'pipeline-1', node_id: 'node-1' }, body: {} } as never)
+        .catch(() => undefined)
+    // Like a preview panel remounted whenever the pipeline it belongs to reloads.
+    const observer = new QueryObserver(client, { queryKey: pipelineKey, queryFn: pipeline })
+    cleanups.push(
+      observer.subscribe((result) => {
+        if (result.isSuccess && !result.isFetching && preview.mock.calls.length < 5)
+          void runPreview()
+      }),
+    )
+    await vi.waitFor(() => expect(preview).toHaveBeenCalledTimes(1))
+    for (let step = 0; step < 5; step++) await settle()
+
+    expect(preview).toHaveBeenCalledTimes(1)
+    expect(pipeline).toHaveBeenCalledTimes(1)
+  })
 })
