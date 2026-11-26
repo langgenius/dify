@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -412,6 +413,51 @@ class TestModelProviderModelCredentialSwitchApi:
         assert result["result"] == "success"
 
 
+class TestModelConfigurationPermission:
+    @pytest.mark.parametrize(
+        ("method", "payload", "call"),
+        [
+            ("POST", {"model_settings": []}, lambda: DefaultModelApi().post()),
+            (
+                "POST",
+                {"model": "custom-model", "model_type": "llm"},
+                lambda: ModelProviderModelApi().post(provider="custom-provider"),
+            ),
+            (
+                "DELETE",
+                {"model": "custom-model", "model_type": "llm"},
+                lambda: ModelProviderModelApi().delete(provider="custom-provider"),
+            ),
+        ],
+    )
+    def test_writes_check_configure_models_permission(
+        self, app: Flask, method: str, payload: dict[str, object], call: Callable[[], object]
+    ) -> None:
+        account = make_account(role=TenantAccountRole.OWNER)
+        identity = AccountWithTenant(account, "workspace")
+        with (
+            app.test_request_context("/", method=method, json=payload),
+            config_overrides_context(LOGIN_DISABLED=True, RBAC_ENABLED=True),
+            patch("controllers.console.wraps._is_setup_completed", return_value=True),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=identity),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=identity),
+            patch("controllers.common.rbac.checks.RBACService.CheckAccess.check", return_value=False) as access,
+            patch("controllers.console.workspace.models.ModelProviderService") as service,
+        ):
+            g._login_user = account
+            with pytest.raises(Forbidden):
+                call()
+
+        service.assert_not_called()
+        access.assert_called_once_with(
+            "workspace",
+            account.id,
+            scene=RBACPermission.PLUGIN_MODEL_CONFIG,
+            resource_type=None,
+            resource_id=None,
+        )
+
+
 class TestModelEnableDisableApis:
     @pytest.mark.parametrize(
         ("resource", "operation"),
@@ -468,7 +514,7 @@ class TestModelEnableDisableApis:
             access.assert_called_once_with(
                 "workspace",
                 account.id,
-                scene=RBACPermission.PLUGIN_PREFERENCES,
+                scene=RBACPermission.PLUGIN_MODEL_CONFIG,
                 resource_type=None,
                 resource_id=None,
             )
