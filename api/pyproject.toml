@@ -79,7 +79,7 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 [tool.uv.sources]
 dify-agent = { path = "../dify-agent", editable = true }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "e44a2861b854" }
-graphon = { url = "https://github.com/langgenius/graphon/archive/cef47af8c60b9dbd5ad49ea90dd899517c140e0f.tar.gz" }
+graphon = { git = "https://github.com/langgenius/graphon", tag = "v0.8.0-fix.1" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }
