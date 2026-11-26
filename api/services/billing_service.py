@@ -19,6 +19,7 @@ from enums import CloudPlan, DeploymentEdition
 from enums.model_billing import TokenerPlanKind
 from extensions.ext_redis import redis_client
 from services.billing_client import billing
+from services.billing_client.transport import Upstream
 from services.billing_portal_service import BillingPortalLink
 from services.compliance_download_service import ComplianceDownloadLink
 from services.entities.tokener_metering import (
@@ -678,6 +679,35 @@ class BillingService:
     def get_subscription(
         cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""
     ) -> BillingPortalLink:
+        """Create a payment link for the authorized workspace and billing plan.
+
+        The agent-dev managed monthly Pro path uses the persisted billing
+        source. It never creates an unmarked legacy Checkout if Go Billing
+        or the billing profile is unavailable. All other paths are unchanged.
+        """
+        if (
+            plan == "professional"
+            and interval == "month"
+            and dify_config.get_agent_dev_tokener_signup_billing_mode() == TokenerSignupBillingCandidate.SHARED_STAGING
+        ):
+            from core.model_billing_profile import ModelBillingProfileResolutionError, ModelBillingProfileService
+
+            if not tenant_id:
+                raise BillingUpstreamUnavailableError("Managed Pro Checkout requires a workspace")
+            try:
+                profile = ModelBillingProfileService.resolve(tenant_id)
+            except ModelBillingProfileResolutionError:
+                raise BillingUpstreamUnavailableError("Unable to resolve the workspace billing source") from None
+            if profile.uses_tokener:
+                link = billing.subscription_get_subscription_payment_link(
+                    plan=plan,
+                    interval=interval,
+                    prefilled_email=prefilled_email,
+                    tenant_id=tenant_id,
+                    upstream=Upstream.TOKENER_CHECKOUT,
+                )
+                return {"url": link.url}
+
         params = {"plan": plan, "interval": interval, "prefilled_email": prefilled_email, "tenant_id": tenant_id}
         return cls._send_billing_portal_request("/subscription/payment-link", params=params)
 

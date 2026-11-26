@@ -51,7 +51,7 @@ GENERATOR = "api/dev/generate_billing_client.py"
 logger = logging.getLogger("generate_billing_client")
 
 type Service = Literal["billing", "saas"]
-type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "SAAS", "NETWORK_ACCESS"]
+type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "SAAS", "NETWORK_ACCESS", "TOKENER_CHECKOUT"]
 type JsonObject = dict[str, Any]
 
 SERVICES: tuple[Service, ...] = ("billing", "saas")
@@ -72,6 +72,7 @@ class AllowedOperation:
     method: str
     path: str
     upstream: UpstreamName
+    alternate_upstream: UpstreamName | None = None
 
 
 # Endpoints dify API calls today. Add an entry here, then rerun this script, to call a new one.
@@ -80,7 +81,7 @@ ALLOWED_OPERATIONS: dict[Service, tuple[AllowedOperation, ...]] = {
         AllowedOperation("GET", "/v1/subscription/info", "BILLING"),
         AllowedOperation("GET", "/v1/subscription/vector-space", "BILLING"),
         AllowedOperation("GET", "/v1/subscription/knowledge-rate-limit", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/payment-link", "BILLING"),
+        AllowedOperation("GET", "/v1/subscription/payment-link", "BILLING", "TOKENER_CHECKOUT"),
         AllowedOperation("POST", "/v1/subscription/plan/batch", "BILLING"),
         AllowedOperation("GET", "/v1/subscription/cleanup/whitelist", "BILLING"),
         AllowedOperation("GET", "/v1/model-provider/payment-link", "BILLING"),
@@ -450,6 +451,11 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
     if "requestBody" in operation:
         arguments.append(f"body: {_json_schema_ref(operation['requestBody'].get('content'), context)}")
         body = "body"
+    upstream_argument = f"Upstream.{allowed.upstream}"
+    if allowed.alternate_upstream is not None:
+        alternate = f"Upstream.{allowed.alternate_upstream}"
+        arguments.append(f"upstream: Literal[{upstream_argument}, {alternate}] = {upstream_argument}")
+        upstream_argument = "upstream"
     if len({argument.partition(":")[0] for argument in arguments}) != len(arguments):
         raise GenerationError(f"{context}: argument names collide")
 
@@ -461,7 +467,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
         signature,
         docstring,
         "    return request(",
-        f"        Upstream.{allowed.upstream},",
+        f"        {upstream_argument},",
         f"        {json.dumps(allowed.method)},",
         f"        {json.dumps(template)},",
         f"        response_model={response},",

@@ -38,6 +38,7 @@ from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from configs import dify_config
+from configs.feature import TokenerSignupBillingCandidate
 from core.helper.http_client_pooling import get_pooled_http_client
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -96,6 +97,7 @@ class Upstream(StrEnum):
     BILLING_QUOTA = "billing_quota"
     SAAS = "saas"
     NETWORK_ACCESS = "network_access"
+    TOKENER_CHECKOUT = "tokener_checkout"
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,13 @@ class BillingModel(BaseModel):
 
 
 def _base_url(upstream: Upstream) -> str:
+    if upstream == Upstream.TOKENER_CHECKOUT:
+        # Only the trusted agent-dev shared Billing origin may receive a
+        # managed Checkout or the Billing secret. No fallback to the gateway.
+        origin = dify_config.get_agent_dev_staging_tokener_billing_url()
+        if origin != TokenerSignupBillingCandidate.SHARED_STAGING:
+            raise BillingUpstreamUnavailableError("Managed Tokener Checkout is not configured")
+        return f"{origin}/v1"
     billing_url = dify_config.BILLING_API_URL
     if upstream == Upstream.BILLING_QUOTA:
         return dify_config.BILLING_QUOTA_API_URL or billing_url
@@ -128,12 +137,21 @@ def _base_url(upstream: Upstream) -> str:
     retry=retry_if_exception_type(httpx.RequestError),
     reraise=True,
 )
-def _send(method: HTTPMethod, url: str, *, params: Mapping[str, QueryValue], json: object | None) -> httpx.Response:
+def _send(
+    method: HTTPMethod,
+    url: str,
+    *,
+    params: Mapping[str, QueryValue],
+    json: object | None,
+    follow_redirects: bool = True,
+) -> httpx.Response:
     headers = {
         "Content-Type": "application/json",
         "Billing-Api-Secret-Key": dify_config.BILLING_API_SECRET_KEY,
     }
-    return _http_client.request(method, url, params=params, json=json, headers=headers, follow_redirects=True)
+    return _http_client.request(
+        method, url, params=params, json=json, headers=headers, follow_redirects=follow_redirects
+    )
 
 
 def request[ResponseT: BillingModel](
@@ -148,10 +166,16 @@ def request[ResponseT: BillingModel](
     body: BillingModel | None,
 ) -> ResponseT:
     resolved_path = path.format_map({name: quote(value, safe="") for name, value in path_params.items()})
+    tokener_checkout = upstream == Upstream.TOKENER_CHECKOUT
+    if tokener_checkout and (method != "GET" or path != "/subscription/payment-link"):
+        raise errors.unavailable("Unsupported managed Tokener Checkout operation")
     url = f"{_base_url(upstream)}{resolved_path}"
     request_json = body.model_dump(mode="json") if body is not None else None
     try:
-        response = _send(method, url, params=params, json=request_json)
+        if tokener_checkout:
+            response = _send(method, url, params=params, json=request_json, follow_redirects=False)
+        else:
+            response = _send(method, url, params=params, json=request_json)
     except httpx.RequestError as error:
         raise errors.unavailable(f"{method} {path} failed") from error
 
