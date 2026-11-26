@@ -13,7 +13,7 @@ const Item: FC<ItemProps> = ({ titleWidth, releaseNotesWidth, isFirst, isLast })
   return (
     <div className="relative flex gap-x-1 p-2">
       {!isLast && (
-        <div className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />
+        <div className="absolute inset-s-4 top-6 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />
       )}
       <div className="flex h-5 w-4.5 shrink-0 items-center justify-center">
         <div className="size-2 rounded-lg border-2 border-text-quaternary" />

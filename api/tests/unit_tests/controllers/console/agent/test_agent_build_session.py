@@ -414,7 +414,7 @@ def test_build_routes_require_an_editing_role_when_rbac_is_off(
         membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == harness.account_id))
         assert membership is not None
         membership.role = TenantAccountRole.NORMAL
-    payload = build_save_payload if method == "PUT" else {}
+    payload: dict[str, object] = build_save_payload if method == "PUT" else {}
     assert build_state.request(harness, method, endpoint, payload=payload).status_code == HTTPStatus.FORBIDDEN
 
 

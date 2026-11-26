@@ -3,7 +3,7 @@ import uuid
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from io import BytesIO
-from typing import Protocol, cast
+from typing import Protocol, cast, runtime_checkable
 
 import pytest
 from flask import Flask
@@ -11,9 +11,10 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, HTTPException, NotFound
 
 from constants.oauth_bearer import TokenType
+from controllers.common.errors import PaidPlanRequiredError
 from controllers.openapi import app_workflow
 from controllers.openapi._errors import (
     DraftNotFound,
@@ -55,6 +56,7 @@ from models.account import Account, Tenant
 from models.enums import AppStatus
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowType
+from services.errors.evaluation import EvaluationDisabledError, EvaluationPlanRequiredError
 from services.workflow.graph_diff import draft_token
 from services.workflow_service import WorkflowService
 
@@ -64,6 +66,7 @@ ACCOUNT_ID = "00000000-0000-4000-8000-000000000003"
 VERSION_ID = "00000000-0000-4000-8000-000000000004"
 
 
+@runtime_checkable
 class _EndpointView(Protocol):
     """Structural stand-in for a `view` carrying the attributes `@endpoint` attaches."""
 
@@ -552,3 +555,31 @@ def test_publish_refusal_is_a_bad_request(
     stored_app = sqlite_session.get(App, APP_ID)
     assert stored_app is not None
     assert stored_app.workflow_id is None
+
+
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [(EvaluationPlanRequiredError, PaidPlanRequiredError), (EvaluationDisabledError, NotFound)],
+)
+def test_publish_evaluator_maps_evaluation_denial(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    service_error: type[Exception],
+    http_error: type[HTTPException],
+) -> None:
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+
+    def publish_workflow(**_kwargs: object) -> Workflow:
+        raise service_error()
+
+    monkeypatch.setattr(service, "publish_workflow", publish_workflow)
+    ctx = _app_context(sqlite_session)
+    api = AppPublishApi()
+
+    endpoint_view: object = type(api).post
+    assert isinstance(endpoint_view, _EndpointView)
+    with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
+        with pytest.raises(http_error):
+            endpoint_view.__handler__(api, ctx, "app-1", body=PublishPayload())

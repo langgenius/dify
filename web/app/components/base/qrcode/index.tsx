@@ -64,7 +64,7 @@ const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props)
           ) : null}
           <button
             type="button"
-            className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="cursor-pointer border-none bg-transparent p-0 text-start text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={downloadQR}
           >
             {downloadText}

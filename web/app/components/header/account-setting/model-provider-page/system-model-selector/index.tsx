@@ -29,11 +29,10 @@ import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
-import { hasPermission } from '@/utils/permission'
+import { canConfigureModelsAtom } from '../atoms'
 import { ModelTypeEnum } from '../declarations'
-import { useInvalidateDefaultModel, useUpdateModelList } from '../hooks'
+import { useUpdateModelList } from '../hooks'
 import { ModelSelector } from '../model-selector'
 
 type SystemModelSelectorProps = {
@@ -84,7 +83,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation(['common', 'modelProvider'])
   const updateModelList = useUpdateModelList()
-  const invalidateDefaultModel = useInvalidateDefaultModel()
   const [activeDialog, setActiveDialog] = useQueryState('dialog', systemModelDialogQueryParser)
   const [manuallyOpen, setManuallyOpen] = useState(false)
   const open = manuallyOpen || activeDialog === 'system-models'
@@ -96,7 +94,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 
         setManuallyOpen(false)
         if (activeDialog === 'system-models') void setActiveDialog(null)
-        systemModelTypes.forEach((type) => invalidateDefaultModel(type))
       },
     }),
   )
@@ -204,8 +201,7 @@ function SystemModelSession({
   const { t } = useTranslation(['common', 'modelProvider'])
   const modelLabelId = useId()
   const modelTriggersRef = useRef<Partial<Record<ModelTypeEnum, HTMLButtonElement | null>>>({})
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  const canManageSystemDefaultModel = useAtomValue(canConfigureModelsAtom)
   const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
     useQuery(
       consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({

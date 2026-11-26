@@ -3,7 +3,6 @@ import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
@@ -16,9 +15,7 @@ export function createConfigurationModalTestWrapper(options: ConsoleQueryTestOpt
       <ConsoleProvider>
         <UrlState>
           <EventEmitterContextProvider>
-            <FeaturesContext value={featuresStore}>
-              <ModalContextProvider>{children}</ModalContextProvider>
-            </FeaturesContext>
+            <FeaturesContext value={featuresStore}>{children}</FeaturesContext>
           </EventEmitterContextProvider>
         </UrlState>
       </ConsoleProvider>

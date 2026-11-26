@@ -186,35 +186,23 @@ function DocumentMetadataCardContent() {
     },
   })
 
-  const saveMutation = useMutation({
-    mutationFn: async ({
-      patch,
-      rowVersion,
-    }: {
-      patch: Record<string, unknown>
-      rowVersion: number
-    }) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-        {
-          body: { expectedRowVersion: rowVersion, patch },
-          params: {
-            control_space_id: controlSpaceId,
-            document_id: document.id,
-          },
-        },
-        { context: { silent: true } },
-      ),
-    onError: (error) => {
-      toast.error(
-        getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
-      )
-    },
-    onSuccess: async () => {
-      await invalidateMetadataQueries()
-      cancelEditing()
-      toast.success(tCommon(($) => $['api.actionSuccess']))
-    },
-  })
+  // The call site awaits a wider refresh (including the metadata catalog) before leaving edit
+  // mode, so it owns onSuccess instead of the shared document patch policy.
+  const saveMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch.mutationOptions({
+      context: { silent: true },
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+        )
+      },
+      onSuccess: async () => {
+        await invalidateMetadataQueries()
+        cancelEditing()
+        toast.success(tCommon(($) => $['api.actionSuccess']))
+      },
+    }),
+  )
 
   const startEditing = () => {
     if (canEdit) beginEditing({ document, fields })
@@ -251,7 +239,10 @@ function DocumentMetadataCardContent() {
       cancelEditing()
       return
     }
-    saveMutation.mutate({ patch, rowVersion: editBaseline.rowVersion })
+    saveMutation.mutate({
+      body: { expectedRowVersion: editBaseline.rowVersion, patch },
+      params: { control_space_id: controlSpaceId, document_id: document.id },
+    })
   }
 
   const creating = createFieldMutation.isPending
@@ -268,7 +259,7 @@ function DocumentMetadataCardContent() {
         </p>
         <Button className="mt-2" disabled={!canEdit} onClick={startEditing} variant="primary">
           {t(($) => $['metadata.documentMetadata.startLabeling'], { ns: 'dataset' })}
-          <span aria-hidden className="ml-1 i-ri-arrow-right-line size-4" />
+          <span aria-hidden className="ms-1 i-ri-arrow-right-line size-4" />
         </Button>
       </section>
     )
@@ -330,7 +321,7 @@ function DocumentMetadataCardContent() {
         </h2>
         {!editing && canEdit && (
           <Button onClick={startEditing} size="small" variant="ghost">
-            <span aria-hidden className="mr-1 i-ri-edit-line size-3.5" />
+            <span aria-hidden className="me-1 i-ri-edit-line size-3.5" />
             {tCommon(($) => $['operation.edit'])}
           </Button>
         )}

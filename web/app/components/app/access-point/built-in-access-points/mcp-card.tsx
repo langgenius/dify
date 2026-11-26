@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { MutationFilters } from '@tanstack/react-query'
 import type { PublishedWorkflow } from '../shared/utils'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import {
@@ -14,7 +15,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isPlainObject } from 'es-toolkit/predicate'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
@@ -47,7 +49,7 @@ export function MCPAccessPointCard({
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
   const [showServerModal, setShowServerModal] = useState(false)
-  const [showRegenerate, setShowRegenerate] = useState(false)
+  const [regenerationAppId, setRegenerationAppId] = useState<string | null>(null)
   const basicConfig = appInfo.model_config
   const basicAppInputForm = basicConfig?.user_input_form
   const queryClient = useQueryClient()
@@ -74,8 +76,27 @@ export function MCPAccessPointCard({
       },
     }),
   )
-  const { mutateAsync: refreshServerCode, isPending: regenerating } = useMutation(
-    consoleQuery.apps.byAppId.server.refresh.post.mutationOptions(),
+  const rotateServerCode = consoleQuery.apps.byAppId.server.refresh.post
+  const rotationFilter: MutationFilters = {
+    mutationKey: rotateServerCode.mutationKey(),
+    exact: true,
+    predicate: ({ state: { variables } }) =>
+      isPlainObject(variables) && variables.params?.app_id === appInfo.id,
+  }
+  const regenerating = useIsMutating(rotationFilter) > 0
+  const { mutate: refreshServerCode } = useMutation(
+    rotateServerCode.mutationOptions({
+      context: { silent: true },
+      onSuccess: (_server, { params }) => {
+        setRegenerationAppId((current) => (current === params.app_id ? null : current))
+      },
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
+      },
+    }),
   )
 
   const serverPublished = Boolean(detail?.id)
@@ -137,11 +158,9 @@ export function MCPAccessPointCard({
     })
   }
 
-  const handleRegenerate = async () => {
-    if (!canManageAccessPoint || !detail?.id) return
-    await refreshServerCode({ params: { app_id: appInfo.id } })
-    invalidateServerDetail()
-    setShowRegenerate(false)
+  const handleRegenerate = () => {
+    if (!canManageAccessPoint || !detail?.id || queryClient.isMutating(rotationFilter)) return
+    refreshServerCode({ params: { app_id: appInfo.id } })
   }
 
   const status = loading
@@ -185,7 +204,7 @@ export function MCPAccessPointCard({
           label={t(($) => $['mcp.server.url'], { ns: 'tools' })}
           value={serverUrl}
           enabled={activated}
-          copyDisabled={!serverPublished}
+          copyDisabled={!serverPublished || regenerating}
           loading={loading}
           unavailable={unavailable}
           unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
@@ -197,7 +216,7 @@ export function MCPAccessPointCard({
           })}
           regenerateDisabled={!canManageAccessPoint || !serverPublished}
           regenerating={regenerating}
-          onRegenerate={() => setShowRegenerate(true)}
+          onRegenerate={() => setRegenerationAppId(appInfo.id)}
         />
       </AccessPointCard>
 
@@ -215,7 +234,10 @@ export function MCPAccessPointCard({
         />
       )}
 
-      <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
+      <AlertDialog
+        open={regenerationAppId === appInfo.id}
+        onOpenChange={(open) => !open && setRegenerationAppId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -227,9 +249,9 @@ export function MCPAccessPointCard({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
+              {t(($) => $[regenerating ? 'operation.close' : 'operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => void handleRegenerate()}>
+            <AlertDialogConfirmButton loading={regenerating} onClick={handleRegenerate}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

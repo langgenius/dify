@@ -35,13 +35,13 @@ export function AccessControlFreePaywall({ onTurnOn }: AccessControlFreePaywallP
           </Button>
           <span
             aria-hidden
-            className="pointer-events-none absolute top-1.75 right-1.75 inline-flex h-[18px] items-center overflow-hidden rounded-[5px] border-[0.5px] border-components-premium-badge-blue-stroke-stop-0 px-1 py-[3px] shadow-xs"
+            className="pointer-events-none absolute inset-e-1.75 top-1.75 inline-flex h-[18px] items-center overflow-hidden rounded-[5px] border-[0.5px] border-components-premium-badge-blue-stroke-stop-0 px-1 py-[3px] shadow-xs"
             style={{
               backgroundImage:
                 'linear-gradient(101.6deg, var(--color-components-premium-badge-blue-stroke-stop-0) 0%, var(--color-components-premium-badge-blue-text-stop-0) 105.58%), linear-gradient(90deg, #a0bdff, #a0bdff)',
             }}
           >
-            <span className="i-custom-public-common-sparkles-soft-accent flex h-3.5 w-3.5 items-center py-px pl-0.75" />
+            <span className="i-custom-public-common-sparkles-soft-accent flex h-3.5 w-3.5 items-center py-px ps-0.75" />
             <span className="system-2xs-medium text-text-accent-light-mode-only">{pro}</span>
             <span className="absolute top-0 right-1/2 i-custom-public-common-highlight h-4.5 w-12 translate-x-[20%] opacity-50" />
           </span>

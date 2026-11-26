@@ -57,7 +57,7 @@ function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) 
               className="h-7 system-sm-medium text-text-secondary"
               title={option.label}
             >
-              <div className="mr-1 grow truncate px-1">{option.label}</div>
+              <div className="me-1 grow truncate px-1">{option.label}</div>
               <MenuRadioItemIndicator />
             </MenuRadioItem>
           ))}

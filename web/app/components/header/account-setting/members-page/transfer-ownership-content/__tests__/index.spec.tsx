@@ -6,7 +6,7 @@ import { vi } from 'vite-plus/test'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import TransferOwnershipContent from '../index'
+import { TransferOwnershipContent } from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
@@ -23,14 +23,22 @@ vi.mock('@/context/workspace-state', async () => {
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const responses = {
+    'workspaces.current.members.byMemberId.ownerTransfer.post': vi.fn(),
+    'workspaces.current.members.ownerTransferCheck.post': vi.fn(),
+    'workspaces.current.members.sendOwnerTransferConfirmEmail.post': vi.fn(),
+  }
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, responses)
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.members.byMemberId.ownerTransfer.post': vi.fn(),
-      'workspaces.current.members.ownerTransferCheck.post': vi.fn(),
-      'workspaces.current.members.sendOwnerTransferConfirmEmail.post': vi.fn(),
-    }),
+    consoleClient,
+    consoleQuery: createConsoleQuery(consoleClient),
   }
+})
+
+const silentRequest = expect.objectContaining({
+  context: expect.objectContaining({ silent: true }),
 })
 vi.mock('@/app/notifications', () => ({
   default: {
@@ -165,12 +173,12 @@ describe('TransferOwnershipContent', () => {
     await goToTransferStep(user)
     expect(
       consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
-    ).toHaveBeenCalledWith({ body: {} })
+    ).toHaveBeenCalledWith({ body: {} }, expect.anything())
     expect(consoleClient.workspaces.current.members.ownerTransferCheck.post).toHaveBeenCalledWith(
       {
         body: { code: '123456', token: 'step-token' },
       },
-      { context: { silent: true } },
+      silentRequest,
     )
     expect(await screen.findByText(/members\.transferModal\.transferLabel/i)).toBeInTheDocument()
     await selectNewOwnerAndSubmit(user)
@@ -183,7 +191,7 @@ describe('TransferOwnershipContent', () => {
           params: { member_id: 'new-owner-id' },
           body: { token: 'final-token' },
         },
-        { context: { silent: true } },
+        silentRequest,
       )
       expect(window.location.reload).toHaveBeenCalled()
     })
@@ -305,6 +313,29 @@ describe('TransferOwnershipContent', () => {
         }),
       )
     })
+  })
+
+  it('still reloads when the dialog closes before the transfer resolves', async () => {
+    const user = userEvent.setup()
+    mockEmailVerification()
+    let resolveTransfer!: (value: { result: 'success' }) => void
+    vi.mocked(
+      consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
+    ).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveTransfer = resolve
+        }),
+    )
+    renderModal()
+    await goToTransferStep(user)
+    await selectNewOwnerAndSubmit(user)
+
+    await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    resolveTransfer({ result: 'success' })
+    await waitFor(() => expect(window.location.reload).toHaveBeenCalled())
   })
 
   it('starts a new verification session after closing and reopening', async () => {

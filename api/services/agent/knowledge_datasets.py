@@ -4,8 +4,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from libs.uuid_utils import filter_uuid_strings
 from models.agent_config_entities import AgentSoulConfig
-from models.agent_knowledge import list_agent_soul_knowledge_dataset_ids, valid_knowledge_dataset_ids
 
 
 def get_tenant_knowledge_dataset_rows(*, session: Session, tenant_id: str, dataset_ids: list[str]) -> dict[str, Any]:
@@ -17,7 +17,7 @@ def get_tenant_knowledge_dataset_rows(*, session: Session, tenant_id: str, datas
     """
     from services.knowledge.dataset_service import DatasetService
 
-    valid_ids = valid_knowledge_dataset_ids(dataset_ids)
+    valid_ids = filter_uuid_strings(dataset_ids)
     if not valid_ids:
         return {}
 
@@ -32,7 +32,7 @@ def list_missing_tenant_knowledge_dataset_ids(
     if agent_soul is None:
         return []
 
-    dataset_ids = list_agent_soul_knowledge_dataset_ids(agent_soul)
+    dataset_ids = agent_soul.knowledge.dataset_ids()
     if not dataset_ids:
         return []
 

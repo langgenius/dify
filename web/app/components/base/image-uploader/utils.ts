@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { ORPCError } from '@orpc/client'
-import { upload } from '@/service/base'
+import { uploadPublicFile } from '@/app/components/base/file-uploader/public-upload'
+import { consoleClient } from '@/service/console'
 
 /**
  * Get appropriate error message for image upload errors
@@ -30,31 +31,27 @@ type ImageUploadParams = {
   onSuccessCallback: (res: { id: string }) => void
   onErrorCallback: (error?: unknown) => void
 }
-type ImageUpload = (v: ImageUploadParams, isPublic?: boolean, url?: string) => void
+type ImageUpload = (v: ImageUploadParams, isPublic?: boolean) => void
 export const imageUpload: ImageUpload = (
   { file, onProgressCallback, onSuccessCallback, onErrorCallback },
   isPublic,
-  url,
 ) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  const onProgress = (e: ProgressEvent) => {
-    if (e.lengthComputable) {
-      const percent = Math.floor((e.loaded / e.total) * 100)
-      onProgressCallback(percent)
-    }
+  const onUploadProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+    onProgressCallback(Math.floor((loaded / total) * 100))
   }
 
-  upload(
-    {
-      xhr: new XMLHttpRequest(),
-      data: formData,
-      onprogress: onProgress,
-    },
-    isPublic,
-    url,
-  )
-    .then((res: { id: string }) => {
+  let uploading: Promise<{ id: string }>
+  if (isPublic) {
+    uploading = uploadPublicFile(file, onUploadProgress)
+  } else {
+    uploading = consoleClient.files.upload.post(
+      { body: { file } },
+      { context: { silent: true, onUploadProgress } },
+    )
+  }
+
+  uploading
+    .then((res) => {
       onSuccessCallback(res)
     })
     .catch((error) => {

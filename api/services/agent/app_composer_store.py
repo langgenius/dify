@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Literal, Protocol
 
 from models.agent_config_entities import AgentSoulConfig
-from services.app.agent_build_session_store import AgentDraftSummary
+from services.agent.build_session_store import AgentDraftSummary
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 
@@ -129,9 +130,16 @@ class AgentPublicationSource:
     soul: dict[str, object]
 
 
+class AgentPublicationKind(StrEnum):
+    """Distinguish first-time API access enablement from an existing publication update."""
+
+    FIRST = "first"
+    UPDATE = "update"
+
+
 @dataclass(frozen=True, slots=True)
 class AgentPublication:
-    publication_kind: Literal["first", "update"]
+    publication_kind: AgentPublicationKind
     active_config_snapshot_id: str
     active_config_snapshot: AgentComposerSnapshot
     draft: AgentDraftSummary

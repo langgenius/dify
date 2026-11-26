@@ -1,8 +1,7 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { ReactNode } from 'react'
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import Zendesk from '../index'
+import { Zendesk } from '../index'
 
 // Shared state for mocks
 let mockDeploymentEdition: DeploymentEdition = 'CLOUD'
@@ -14,15 +13,6 @@ const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
   scriptProps: vi.fn(),
 }))
-
-// happy-dom cannot render async server components; unwrap memo only to invoke the server boundary.
-vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>()
-  return {
-    ...actual,
-    memo: vi.fn((fn) => fn),
-  }
-})
 
 vi.mock('@/config', () => ({
   get ZENDESK_WIDGET_KEY() {
@@ -70,24 +60,18 @@ describe('Zendesk', () => {
     })
   })
 
-  // Helper to call the async component
-  const renderZendesk = async () => {
-    const Component = Zendesk as unknown as () => Promise<ReactNode>
-    return await Component()
-  }
-
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'should render nothing when deployment edition is %s',
     async (deploymentEdition) => {
       mockDeploymentEdition = deploymentEdition
-      const result = await renderZendesk()
+      const result = await Zendesk()
       expect(result).toBeNull()
     },
   )
 
   it('should render nothing when ZENDESK_WIDGET_KEY is missing', async () => {
     mockZendeskWidgetKey = undefined
-    const result = await renderZendesk()
+    const result = await Zendesk()
     expect(result).toBeNull()
     expect(mocks.headers).not.toHaveBeenCalled()
     expect(mocks.getOptionalSystemFeatures).not.toHaveBeenCalled()
@@ -96,7 +80,7 @@ describe('Zendesk', () => {
   it('should render nothing when System Features is unavailable', async () => {
     mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
 
-    const result = await renderZendesk()
+    const result = await Zendesk()
 
     expect(result).toBeNull()
   })
@@ -110,7 +94,7 @@ describe('Zendesk', () => {
     async ({ production, header, expectedNonce }) => {
       mockIsProd = production
       mockNonce = header
-      render(await renderZendesk())
+      render(await Zendesk())
       expect(mocks.scriptProps).toHaveBeenCalledWith({
         nonce: expectedNonce,
         widgetKey: 'test-key',

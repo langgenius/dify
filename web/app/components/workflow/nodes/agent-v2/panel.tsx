@@ -21,21 +21,21 @@ import {
   extractAgentOutputNames,
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
-import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { editorResourceAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
+import { AgentRosterConfigurationPanel } from '@/features/agent-v2/agent-editor/roster-panel'
+import { WorkflowInlineAgentEditor } from '@/features/agent-v2/agent-editor/workflow-panel'
 import { consoleQuery } from '@/service/console'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import {
-  WorkflowInlineAgentConfigureWorkspace,
-  WorkflowRosterAgentOrchestratePanelContent,
-} from './components/agent-orchestrate-panel-content'
 import { AgentOutputRoutes } from './components/agent-output-routes'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { OutputEditCard } from './components/agent-output-variables/edit-card'
 import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
 import { AgentRosterField } from './components/agent-roster-field'
+import { AgentSessionContinuityField } from './components/agent-session-continuity-field'
 import { AgentTaskField } from './components/agent-task-field'
+import { WorkflowAgentMetadataFilter } from './components/knowledge-metadata-filter'
 import { SaveInlineAgentToRosterDialog } from './components/save-inline-agent-to-roster-dialog'
 import {
   useAgentRosterDetail,
@@ -139,6 +139,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const openInlineAgentPanelNodeId = useStore((state) => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const resource = useAtomValue(editorResourceAtom)
+  const isChatflow = useAtomValue(isChatflowAtom)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
@@ -679,7 +680,8 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           panelBody={
             isAgentPanelOpen && displayedAgent ? (
               isInlineAgentReady || isInlineAgentPending ? (
-                <WorkflowInlineAgentConfigureWorkspace
+                <WorkflowInlineAgentEditor
+                  metadataFilter={WorkflowAgentMetadataFilter}
                   agentId={inlineAgentId ?? undefined}
                   resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
@@ -691,7 +693,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
                   open={isAgentPanelOpen}
                 />
               ) : (
-                <WorkflowRosterAgentOrchestratePanelContent
+                <AgentRosterConfigurationPanel
                   agentId={rosterAgentId}
                   nodeId={id}
                   open={isAgentPanelOpen}
@@ -729,6 +731,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onEditOutput={handleEditTaskOutput}
             onOutputsChange={handleDeclaredOutputsChange}
           />
+          {isChatflow && <AgentSessionContinuityField id={id} data={inputs} />}
           <AgentOutputRoutes id={id} data={inputs} />
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}

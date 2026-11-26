@@ -3,42 +3,43 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { installFakeApi } from '@/test/fake-api'
 import { ContactsManagementProvider } from '../composition'
 import { ContactsDirectoryPage } from '../directory-page'
 import { alice, bob, managerContext } from './fixtures/data'
 
-const api = vi.hoisted(() => ({
-  list: vi.fn(),
-  details: vi.fn(),
-  remove: vi.fn(),
-  channels: vi.fn(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.humanInput.v2.contacts.get': api.list,
-      'workspaces.current.humanInput.v2.contacts.byContactId.get': api.details,
-      'workspaces.current.humanInput.v2.contacts.remove.post': api.remove,
-      'workspaces.current.humanInput.v2.channels.get': api.channels,
-    }),
-  }
-})
 async function setup(contacts: HumanInputContact[] = [alice, bob], canManage = true) {
-  api.list.mockImplementation(
-    async ({ query }: { query?: { limit: number; group?: string } } = {}) => {
-      const data = contacts.filter((contact) => !query?.group || contact.type === query.group)
-      const limit = query?.limit ?? 20
-      return { data: data.slice(0, limit), limit, total: data.length, page: 1 }
-    },
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            humanInput: {
+              v2: {
+                contacts: {
+                  get: (input) => {
+                    const query = input?.query
+                    const data = contacts.filter(
+                      (contact) => !query?.group || contact.type === query.group,
+                    )
+                    const limit = query?.limit ?? 20
+                    return { data: data.slice(0, limit), limit, total: data.length, page: 1 }
+                  },
+                  byContactId: {
+                    get: ({ params }) => ({
+                      contact: contacts.find((contact) => contact.id === params.contact_id)!,
+                      im_binding_details: [],
+                    }),
+                  },
+                },
+                channels: { get: () => ({ channels: [] }) },
+              },
+            },
+          },
+        },
+      },
+    }),
   )
-  api.details.mockImplementation(async ({ params }: { params: { contact_id: string } }) => ({
-    contact: contacts.find((contact) => contact.id === params.contact_id),
-    im_binding_details: [],
-  }))
-  api.channels.mockResolvedValue({ channels: [] })
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const screen = await render(
     <QueryClientProvider client={queryClient}>

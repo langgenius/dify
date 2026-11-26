@@ -3,6 +3,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from pytest_mock import MockerFixture
@@ -4469,8 +4470,11 @@ class TestWorkflowAgentDraftBindingSync:
         assert binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
         assert binding.agent_id == "agent-1"
         assert binding.current_snapshot_id == "snapshot-2"
+        generation = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).session_generation
+        assert str(UUID(generation)) == generation
         assert binding.node_job_config_dict == WorkflowNodeJobConfig(
             workflow_prompt="Summarize the upstream result.",
+            session_generation=generation,
             declared_outputs=[
                 DeclaredOutputConfig(
                     name="summary",
@@ -4594,8 +4598,11 @@ class TestWorkflowAgentDraftBindingSync:
         assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
         assert binding.agent_id == "inline-agent-1"
         assert binding.current_snapshot_id == "inline-snapshot-1"
+        generation = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).session_generation
+        assert str(UUID(generation)) == generation
         assert binding.node_job_config_dict == WorkflowNodeJobConfig(
             workflow_prompt="Use the current node context.",
+            session_generation=generation,
         ).model_dump(mode="json")
 
     def test_keeps_pending_inline_binding_in_draft_graph_without_db_binding(self, sqlite_session: Session):

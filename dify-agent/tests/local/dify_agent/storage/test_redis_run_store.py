@@ -26,7 +26,7 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import RunFinalizationResult, RunStreamSealedError
-from dify_agent.storage.redis_keys import run_idempotency_key, run_record_key
+from dify_agent.storage.redis_keys import run_cancel_intent_key, run_idempotency_key, run_record_key
 from dify_agent.storage.redis_run_store import (
     DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
     DEFAULT_RUN_RETENTION_SECONDS,
@@ -517,11 +517,12 @@ def test_append_event_maps_eval_script_arguments_and_result() -> None:
     assert event_id == "7-0"
     eval_commands = [command for command in redis.commands if command[0] == "eval"]
     assert len(eval_commands) == 1
-    script, numkeys, record_key, events_key, payload, maxlen, ttl = eval_commands[0][1:]
-    assert numkeys == 2
-    assert (record_key, events_key) == (
+    script, numkeys, record_key, events_key, cancel_key, payload, maxlen, ttl = eval_commands[0][1:]
+    assert numkeys == 3
+    assert (record_key, events_key, cancel_key) == (
         "test:runs:run-1:record",
         "test:runs:run-1:events",
+        "test:runs:run-1:cancel-intent",
     )
     assert '"id"' not in payload
     assert '"type":"run_started"' in payload
@@ -546,6 +547,26 @@ def test_append_event_persists_while_running_and_refreshes_ttls() -> None:
         record_ttl = await client.ttl(f"test:runs:{record.run_id}:record")
         assert 0 < events_ttl <= 60
         assert 0 < record_ttl <= 60
+        assert not await client.exists(run_cancel_intent_key("test", record.run_id))
+
+    asyncio.run(scenario())
+
+
+def test_append_event_refreshes_pending_cancellation_retention() -> None:
+    async def scenario() -> None:
+        async with AsyncFakeRedis() as client:
+            store = RedisRunStore(client, prefix="test", run_retention_seconds=60)
+            record = await store.create_run()
+            await store.request_cancellation(record.run_id, CancelRunRequest(reason="user"))
+            key = run_cancel_intent_key("test", record.run_id)
+            assert await client.expire(key, 10)
+
+            await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+            assert 10 < await client.ttl(key) <= 60
+            intent = await store.get_cancellation_intent(record.run_id)
+            assert intent is not None
+            assert intent.reason == "user"
 
     asyncio.run(scenario())
 

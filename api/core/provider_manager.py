@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from configs import dify_config
@@ -36,9 +35,8 @@ from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderC
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
-from enums import CloudPlan, DeploymentEdition
+from enums import DeploymentEdition
 from extensions import ext_hosting_provider
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -64,7 +62,9 @@ from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
+    from core.hosting_configuration import HostingProvider, HostingQuota
     from graphon.model_runtime.protocols.runtime import ModelRuntime
+    from services.credit_pool_service import CreditPoolBalance
 
 logger = logging.getLogger(__name__)
 
@@ -559,6 +559,57 @@ _PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE = _ProviderConfigurationCacheSourc
 )
 
 
+def _resolve_quota_configuration(
+    *,
+    provider_quota: HostingQuota,
+    hosting_provider: HostingProvider,
+    provider_record: Provider | None,
+    credit_pool: CreditPoolBalance | None,
+) -> QuotaConfiguration | None:
+    """Return the quota entry this workspace can spend, or ``None`` when the bucket is unusable.
+
+    Hosted trial and paid balances live in the billing credit pool, and the workspace plan
+    selects exactly one bucket. A missing balance means the provider does not offer that
+    bucket. Only third-party free quota reads a local provider row; a legacy trial or paid
+    row never grants hosted access.
+    """
+    quota_unit = hosting_provider.quota_unit or QuotaUnit.TOKENS
+    if provider_quota.quota_type == ProviderQuotaType.FREE:
+        if provider_record is None:
+            return QuotaConfiguration(
+                quota_type=provider_quota.quota_type,
+                quota_unit=quota_unit,
+                quota_used=0,
+                quota_limit=0,
+                is_valid=False,
+                restrict_models=provider_quota.restrict_models,
+            )
+        if provider_record.quota_used is None:
+            raise ValueError("quota_used is None")
+        if provider_record.quota_limit is None:
+            raise ValueError("quota_limit is None")
+        return QuotaConfiguration(
+            quota_type=provider_quota.quota_type,
+            quota_unit=quota_unit,
+            quota_used=provider_record.quota_used,
+            quota_limit=provider_record.quota_limit,
+            is_valid=provider_record.quota_limit > provider_record.quota_used or provider_record.quota_limit == -1,
+            restrict_models=provider_quota.restrict_models,
+        )
+
+    if credit_pool is None or provider_quota.quota_type != credit_pool.pool_type:
+        return None
+
+    return QuotaConfiguration(
+        quota_type=provider_quota.quota_type,
+        quota_unit=quota_unit,
+        quota_used=credit_pool.quota_used,
+        quota_limit=credit_pool.quota_limit,
+        is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
+        restrict_models=provider_quota.restrict_models,
+    )
+
+
 class ProviderManager:
     """
     ProviderManager manages tenant-scoped model provider configuration.
@@ -621,8 +672,8 @@ class ProviderManager:
           (1. Whether to enable (support) hosting type, if enabled, the following information exists
           (2. List of hosting type provider configurations
               (including quota type, quota limit, current remaining quota, etc.)
-          (3. The current hosting type in use (whether there is a quota or not)
-              paid quotas > provider free quotas > hosting trial quotas
+          (3. The hosting type currently in use (whether there is a quota or not)
+              the workspace plan selects the credit pool bucket
           (4. Unified credentials for hosting providers
         3. Custom configuration information, including:
           (1. Whether to enable (support) custom type, if enabled, the following information exists
@@ -653,11 +704,6 @@ class ProviderManager:
 
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
-
-        # Initialize trial provider records if not exist
-        provider_name_to_provider_records_dict = self._init_trial_provider_records(
-            tenant_id, provider_name_to_provider_records_dict
-        )
 
         # append providers with langgenius/openai/openai
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
@@ -861,16 +907,18 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
-
-        if not default_model:
-            return None
+        with session_factory.create_session() as session:
+            default_model = session.scalar(stmt)
+            if not default_model:
+                return None
+            provider_name = default_model.provider_name
+            model_name = default_model.model_name
 
         model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
+        provider_schema = model_provider_factory.get_provider_schema(provider=provider_name)
 
         return DefaultModelEntity(
-            model=default_model.model_name,
+            model=model_name,
             model_type=model_type,
             provider=DefaultModelProviderEntity(
                 provider=provider_schema.provider,
@@ -916,24 +964,23 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
+        with session_factory.create_session() as session, session.begin():
+            default_model = session.scalar(stmt)
 
-        # create or update TenantDefaultModel record
-        if default_model:
-            # update default model
-            default_model.provider_name = provider
-            default_model.model_name = model
-            db.session.commit()
-        else:
-            # create default model
-            default_model = TenantDefaultModel(
-                tenant_id=tenant_id,
-                model_type=model_type,
-                provider_name=provider,
-                model_name=model,
-            )
-            db.session.add(default_model)
-            db.session.commit()
+            # create or update TenantDefaultModel record
+            if default_model:
+                # update default model
+                default_model.provider_name = provider
+                default_model.model_name = model
+            else:
+                # create default model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type,
+                    provider_name=provider,
+                    model_name=model,
+                )
+                session.add(default_model)
 
         return default_model
 
@@ -1173,77 +1220,6 @@ class ProviderManager:
             CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)
             for credential in available_credentials
         ]
-
-    @staticmethod
-    def _init_trial_provider_records(
-        tenant_id: str, provider_name_to_provider_records_dict: dict[str, list[Provider]]
-    ) -> dict[str, list[Provider]]:
-        """
-        Initialize trial provider records if not exists.
-
-        :param tenant_id: workspace id
-        :param provider_name_to_provider_records_dict: provider name to provider records dict
-        :return:
-        """
-        # Get hosting configuration
-        hosting_configuration = ext_hosting_provider.hosting_configuration
-
-        for provider_name, configuration in hosting_configuration.provider_map.items():
-            if not configuration.enabled:
-                continue
-
-            provider_records = provider_name_to_provider_records_dict.get(provider_name)
-            if not provider_records:
-                provider_records = []
-
-            provider_quota_to_provider_record_dict = {}
-            for provider_record in provider_records:
-                if provider_record.provider_type != ProviderType.SYSTEM:
-                    continue
-
-                if provider_record.quota_type is not None:
-                    provider_quota_to_provider_record_dict[provider_record.quota_type] = provider_record
-
-            for quota in configuration.quotas:
-                if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
-                    # Init trial provider records if not exists
-                    if quota.quota_type not in provider_quota_to_provider_record_dict:
-                        try:
-                            # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
-                            new_provider_record = Provider(
-                                tenant_id=tenant_id,
-                                # TODO: Use provider name with prefix after the data migration.
-                                provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM,
-                                quota_type=quota.quota_type,  # type: ignore[arg-type]
-                                quota_limit=0,  # type: ignore
-                                quota_used=0,
-                                is_valid=True,
-                            )
-                            db.session.add(new_provider_record)
-                            db.session.commit()
-                            provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
-                        except IntegrityError:
-                            db.session.rollback()
-                            stmt = select(Provider).where(
-                                Provider.tenant_id == tenant_id,
-                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == quota.quota_type,
-                            )
-                            existed_provider_record = db.session.scalar(stmt)
-                            if not existed_provider_record:
-                                continue
-
-                            if not existed_provider_record.is_valid:
-                                existed_provider_record.is_valid = True
-                                db.session.commit()
-
-                            # Load the credential after the commit above, which expires loaded attributes.
-                            db.session.refresh(existed_provider_record, ["credential"])
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
-
-        return provider_name_to_provider_records_dict
 
     def _to_custom_configuration(
         self,
@@ -1501,6 +1477,12 @@ class ProviderManager:
         """
         Convert to system configuration.
 
+        Hosting is a Cloud capability, so every entry offered here is either the third-party
+        free bucket or the billing credit pool selected by the workspace plan. The other
+        hosted bucket is never offered. If the provider offers no eligible bucket, return
+        a disabled configuration without credentials or a balance lookup. Otherwise, bind
+        credentials to the selected quota. Billing failures propagate.
+
         :param tenant_id: workspace id
         :param provider_entity: provider entity
         :param provider_records: provider records
@@ -1522,6 +1504,7 @@ class ProviderManager:
             return SystemConfiguration(enabled=False)
 
         from core.plugin.plugin_service import PluginService
+        from services.credit_pool_service import CreditPoolService
 
         if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
             return SystemConfiguration(enabled=False)
@@ -1534,122 +1517,69 @@ class ProviderManager:
 
             if provider_record.quota_type is not None:
                 quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
-        quota_configurations = []
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            from services.credit_pool_service import CreditPoolService
-
-            credit_pool_type = (
-                ProviderQuotaType.TRIAL
-                if FeatureService.get_workspace_plan(tenant_id) == CloudPlan.SANDBOX
-                else ProviderQuotaType.PAID
-            )
-            with session_factory.create_session() as session:
-                credit_pool = CreditPoolService.get_pool(
-                    tenant_id=tenant_id,
-                    pool_type=credit_pool_type,
-                    session=session,
-                )
-        else:
-            credit_pool_type = None
-            credit_pool = None
-
-        for provider_quota in provider_hosting_configuration.quotas:
-            if provider_quota.quota_type not in quota_type_to_provider_records_dict:
-                if provider_quota.quota_type == ProviderQuotaType.FREE:
-                    quota_configuration = QuotaConfiguration(
-                        quota_type=provider_quota.quota_type,
-                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                        quota_used=0,
-                        quota_limit=0,
-                        is_valid=False,
-                        restrict_models=provider_quota.restrict_models,
-                    )
-                else:
-                    continue
-            else:
-                provider_record = quota_type_to_provider_records_dict[provider_quota.quota_type]
-
-                if provider_record.quota_used is None:
-                    raise ValueError("quota_used is None")
-                if provider_record.quota_limit is None:
-                    raise ValueError("quota_limit is None")
-                match provider_quota.quota_type:
-                    case quota_type if quota_type == credit_pool_type and credit_pool is not None:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=credit_pool.quota_used,
-                            quota_limit=credit_pool.quota_limit,
-                            is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-                    case _:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=provider_record.quota_used,
-                            quota_limit=provider_record.quota_limit,
-                            is_valid=provider_record.quota_limit > provider_record.quota_used
-                            or provider_record.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-            quota_configurations.append(quota_configuration)
-
-        if len(quota_configurations) == 0:
+        current_quota_type = provider_hosting_configuration.select_quota_type(
+            FeatureService.get_credit_pool_type(tenant_id),
+            has_free_quota=ProviderQuotaType.FREE in quota_type_to_provider_records_dict,
+        )
+        if current_quota_type is None:
             return SystemConfiguration(enabled=False)
 
-        current_quota_type = credit_pool_type or self._choice_current_using_quota_type(quota_configurations)
+        credit_pool = (
+            None
+            if current_quota_type == ProviderQuotaType.FREE
+            else CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=current_quota_type)
+        )
+        quota_configurations: list[QuotaConfiguration] = []
+        for provider_quota in provider_hosting_configuration.quotas:
+            quota_configuration = _resolve_quota_configuration(
+                provider_quota=provider_quota,
+                hosting_provider=provider_hosting_configuration,
+                provider_record=quota_type_to_provider_records_dict.get(provider_quota.quota_type),
+                credit_pool=credit_pool,
+            )
+            if quota_configuration is not None:
+                quota_configurations.append(quota_configuration)
 
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:
-            provider_record_quota_free = quota_type_to_provider_records_dict.get(current_quota_type)
+            provider_record_quota_free = quota_type_to_provider_records_dict[current_quota_type]
+            provider_credentials_cache = ProviderCredentialsCache(
+                tenant_id=tenant_id,
+                identity_id=provider_record_quota_free.id,
+                cache_type=ProviderCredentialsCacheType.PROVIDER,
+            )
 
-            if provider_record_quota_free:
-                provider_credentials_cache = ProviderCredentialsCache(
-                    tenant_id=tenant_id,
-                    identity_id=provider_record_quota_free.id,
-                    cache_type=ProviderCredentialsCacheType.PROVIDER,
+            cached_provider_credentials = provider_credentials_cache.get()
+
+            if not cached_provider_credentials:
+                provider_credentials: dict[str, Any] = {}
+                encrypted_config = provider_record_quota_free.encrypted_config
+                if encrypted_config:
+                    provider_credentials = _credentials_adapter.validate_json(encrypted_config)
+
+                # Get provider credential secret variables
+                provider_credential_secret_variables = self._extract_secret_variables(
+                    provider_entity.provider_credential_schema.credential_form_schemas
+                    if provider_entity.provider_credential_schema
+                    else []
                 )
 
-                # Get cached provider credentials
-                # error occurs
-                cached_provider_credentials = provider_credentials_cache.get()
+                for variable in provider_credential_secret_variables:
+                    if variable in provider_credentials:
+                        decoding_context = self._get_decoding_context(tenant_id)
+                        with contextlib.suppress(ValueError):
+                            provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                provider_credentials.get(variable, ""),
+                                decoding_context,
+                            )
 
-                if not cached_provider_credentials:
-                    provider_credentials: dict[str, Any] = {}
-                    if provider_records and provider_records[0].encrypted_config:
-                        provider_credentials = _credentials_adapter.validate_json(provider_records[0].encrypted_config)
+                current_using_credentials = provider_credentials or {}
 
-                    # Get provider credential secret variables
-                    provider_credential_secret_variables = self._extract_secret_variables(
-                        provider_entity.provider_credential_schema.credential_form_schemas
-                        if provider_entity.provider_credential_schema
-                        else []
-                    )
-
-                    # Get decoding context for decrypting credentials
-                    decoding_context = self._get_decoding_context(tenant_id)
-
-                    for variable in provider_credential_secret_variables:
-                        if variable in provider_credentials:
-                            with contextlib.suppress(ValueError):
-                                provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                    provider_credentials.get(variable, ""),
-                                    decoding_context,
-                                )
-
-                    current_using_credentials = provider_credentials or {}
-
-                    # cache provider credentials
-                    provider_credentials_cache.set(credentials=current_using_credentials)
-                else:
-                    current_using_credentials = cached_provider_credentials
+                # cache provider credentials
+                provider_credentials_cache.set(credentials=current_using_credentials)
             else:
-                current_using_credentials = {}
-                quota_configurations = []
+                current_using_credentials = cached_provider_credentials
 
         return SystemConfiguration(
             enabled=True,
@@ -1657,33 +1587,6 @@ class ProviderManager:
             quota_configurations=quota_configurations,
             credentials=current_using_credentials,
         )
-
-    @staticmethod
-    def _choice_current_using_quota_type(quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
-        """
-        Choice current using quota type.
-        paid quotas > provider free quotas > hosting trial quotas
-        If there is still quota for the corresponding quota type according to the sorting,
-
-        :param quota_configurations:
-        :return:
-        """
-        # convert to dict
-        quota_type_to_quota_configuration_dict = {
-            quota_configuration.quota_type: quota_configuration for quota_configuration in quota_configurations
-        }
-
-        last_quota_configuration = None
-        for quota_type in [ProviderQuotaType.PAID, ProviderQuotaType.FREE, ProviderQuotaType.TRIAL]:
-            if quota_type in quota_type_to_quota_configuration_dict:
-                last_quota_configuration = quota_type_to_quota_configuration_dict[quota_type]
-                if last_quota_configuration.is_valid:
-                    return quota_type
-
-        if last_quota_configuration:
-            return last_quota_configuration.quota_type
-
-        raise ValueError("No quota type available")
 
     @staticmethod
     def _extract_secret_variables(credential_form_schemas: list[CredentialFormSchema]) -> list[str]:

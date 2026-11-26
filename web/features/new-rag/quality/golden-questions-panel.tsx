@@ -123,7 +123,6 @@ function GoldenQuestionEditorDialog({
   const { t } = useTranslation(['dataset', 'knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
-  const queryClient = useQueryClient()
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
   const createMutation = useMutation(
@@ -161,9 +160,6 @@ function GoldenQuestionEditorDialog({
         })
         toast.success(t(($) => $['qualityPage.createdToast'], { ns: 'knowledgeQuality' }))
       }
-      await queryClient.invalidateQueries({
-        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
-      })
       close()
     } catch (error) {
       setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
@@ -285,8 +281,9 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       )
       const failedIds = new Set([...ids].filter((id) => !deletedIds.has(id)))
       setSelected((current) => new Set([...current].filter((id) => !deletedIds.has(id))))
-      await invalidate().catch(() => undefined)
       if (failedIds.size > 0) {
+        // A rejected delete may still have reached the server.
+        await invalidate().catch(() => undefined)
         setDeleteIds(failedIds)
         toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
         return false

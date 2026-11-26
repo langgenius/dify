@@ -18,7 +18,7 @@ const meta = {
     canvasClassName: '',
     gradientClassName: '',
     children: (
-      <div className="relative z-10 flex flex-col gap-3 text-left text-white">
+      <div className="relative z-10 flex flex-col gap-3 text-start text-white">
         <span className="text-xs tracking-[0.16em] text-white/70 uppercase">Grid Mask Demo</span>
         <span className="text-2xl/tight font-semibold">
           Beautiful backgrounds for feature highlights

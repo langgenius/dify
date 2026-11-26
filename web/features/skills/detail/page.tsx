@@ -1,7 +1,7 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SkillFileMutationCoordinator } from './shared'
+import type { SkillDraftMutationCoordinator } from './mutations'
 import {
   AlertDialog,
   AlertDialogConfirmButton,
@@ -11,27 +11,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useSkillPermissions } from '../permissions'
-import { SkillBuilderPanel } from './builder-panel'
-import { FileEditor } from './file-editor'
-import { FileTree } from './file-tree'
-import {
-  deriveSkillDetailFromDraftFiles,
-  findFileByPath,
-  getFirstTextFile,
-  isDirectory,
-  setSkillDetailCache,
-  showSkillErrorToast,
-} from './shared'
-import { DetailSkeleton } from './shell'
-import { VersionPanel } from './version-panel'
+import { SkillBuilderPanel } from './builder/panel'
+import { setSkillDetailCache } from './cache'
+import { deriveSkillDetailFromDraftFiles } from './draft'
+import { SkillFileEditor } from './files/editor'
+import { isDirectory } from './files/file-format'
+import { SkillFileTree } from './files/tree'
+import { findFileByPath, getFirstTextFile } from './files/tree-model'
+import { SkillDetailSkeleton } from './skeleton'
+import { SkillVersionPanel } from './versions/panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
   const { t } = useTranslation(['skill'])
@@ -54,7 +51,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     publishedAt: number
     versionNumber: number
   } | null>(null)
-  const fileMutationCoordinator = useMemo<SkillFileMutationCoordinator>(
+  const draftMutationCoordinator = useMemo<SkillDraftMutationCoordinator>(
     () => ({
       latestDetail: undefined,
       queue: Promise.resolve(),
@@ -89,14 +86,10 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const activeVersionId = selectedVersionId === undefined ? defaultVersionId : selectedVersionId
   const versionDetailQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.get.queryOptions({
-      input: {
-        params: {
-          skill_id: skillId,
-          version_id: activeVersionId ?? '',
-        },
-      },
+      input: activeVersionId
+        ? { params: { skill_id: skillId, version_id: activeVersionId } }
+        : skipToken,
     }),
-    enabled: !!activeVersionId,
   })
   const publishMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
@@ -117,10 +110,10 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   }, [baseDetail, publishedOverride])
   if (
     detail &&
-    (!fileMutationCoordinator.latestDetail ||
-      detail.updated_at > fileMutationCoordinator.latestDetail.updated_at)
+    (!draftMutationCoordinator.latestDetail ||
+      detail.updated_at > draftMutationCoordinator.latestDetail.updated_at)
   )
-    fileMutationCoordinator.latestDetail = detail
+    draftMutationCoordinator.latestDetail = detail
   const draftFiles = detail?.files ?? []
   const readonlyFiles = versionDetailQuery.data?.files ?? []
   const activeFiles = activeVersionId ? readonlyFiles : draftFiles
@@ -239,28 +232,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           }
           await queryClient.invalidateQueries({ queryKey: detailQueryKey })
           await queryClient.refetchQueries({ queryKey: detailQueryKey, type: 'active' })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({
-              type: 'query',
-              input: {
-                params: {
-                  skill_id: skillId,
-                },
-              },
-            }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
-          })
         },
         onError: (error) => {
-          showSkillErrorToast(
-            error,
-            t(($) => $['skillManagement.detail.publishFailed']),
-          )
+          toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.detail.publishFailed']))
         },
       },
     )
@@ -289,7 +263,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     setPreviewFilePath(undefined)
   }
 
-  if (detailQuery.isPending) return <DetailSkeleton />
+  if (detailQuery.isPending) return <SkillDetailSkeleton />
 
   if (detailQuery.isError || !detail) {
     return (
@@ -313,12 +287,12 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   return (
     <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
       <div className="flex min-h-0 min-w-0 flex-1">
-        <FileTree
+        <SkillFileTree
           canDelete={canDelete}
           canEdit={canEdit}
           collapsed={sidebarCollapsed}
           detail={detail}
-          fileMutationCoordinator={fileMutationCoordinator}
+          draftMutationCoordinator={draftMutationCoordinator}
           files={activeFiles}
           onCollapsedChange={setSidebarCollapsed}
           onSelect={handleOpenFile}
@@ -326,12 +300,12 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           selectedPath={activeSelectedPath}
           skillId={skillId}
         />
-        <FileEditor
+        <SkillFileEditor
           canPublish={canPublish}
           key={`${activeVersionId ?? 'draft'}:${activeSelectedPath ?? 'empty'}`}
           detail={detail}
           file={selectedFile}
-          fileMutationCoordinator={fileMutationCoordinator}
+          draftMutationCoordinator={draftMutationCoordinator}
           hasLocalUnpublishedChanges={hasLocalUnpublishedChanges}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
@@ -398,7 +372,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           />
         )}
         {rightPanelMode === 'versions' && (
-          <VersionPanel
+          <SkillVersionPanel
             skillId={skillId}
             versions={versions}
             selectedVersionId={activeVersionId}

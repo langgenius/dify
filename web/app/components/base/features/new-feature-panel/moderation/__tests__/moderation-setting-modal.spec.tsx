@@ -1,7 +1,9 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
 import type { CodeBasedExtensionItemResponse } from '@dify/contracts/api/console/code-based-extension/types.gen'
 import type { TFunction } from 'i18next'
+import type { ComponentProps } from 'react'
 import type { ModerationConfig } from '@/models/debug'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { buildConfigurationDatasetConfigs } from '@/app/components/app/configuration/hooks/configuration-lifecycle/dataset'
@@ -18,7 +20,25 @@ import { createAppModelConfigFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ModelModeType } from '@/types/app'
-import ModerationSettingModal from '../moderation-setting-modal'
+import FormContent from '../moderation-setting-modal'
+
+function ModerationSettingModal({
+  onCancel,
+  ...props
+}: ComponentProps<typeof FormContent> & { onCancel: () => void }) {
+  return (
+    <Dialog
+      defaultOpen
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent>
+        <FormContent {...props} />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const mockNotify = vi.fn()
 vi.mock('@/app/notifications', () => ({

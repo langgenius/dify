@@ -28,7 +28,7 @@ type RoleBadgesProps = {
   className?: string
 }
 
-const RoleBadges = ({ roleNames, max = 2, className }: RoleBadgesProps) => {
+export const RoleBadges = memo(({ roleNames, max = 2, className }: RoleBadgesProps) => {
   const visible = roleNames.slice(0, max)
   const overflow = roleNames.slice(max)
 
@@ -44,6 +44,4 @@ const RoleBadges = ({ roleNames, max = 2, className }: RoleBadgesProps) => {
       )}
     </span>
   )
-}
-
-export default memo(RoleBadges)
+})

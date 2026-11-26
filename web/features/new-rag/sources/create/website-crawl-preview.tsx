@@ -14,10 +14,11 @@ import { Fieldset } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { createRequestId } from '../../request-id'
 import { newKnowledgeDetailPath } from '../../routes'
@@ -431,6 +432,9 @@ export function WebsiteCrawlPreview({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
   const router = useRouter()
+  const { mutateAsync: createSource } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.post.mutationOptions(),
+  )
   const primaryActionLabelId = useId()
   const stopButtonLabelId = useId()
   const parameterSchemas = useMemo(
@@ -702,7 +706,7 @@ export function WebsiteCrawlPreview({
       draft.creationAttempted = true
       try {
         draft.source = sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.post({
+          await createSource({
             body: {
               connectionId: connection.id,
               metadata: {
@@ -745,7 +749,14 @@ export function WebsiteCrawlPreview({
       }
       return draft
     },
-    [connection.id, connection.providerId, knowledgeSpaceId, providerName, updateWorkflowUncertain],
+    [
+      connection.id,
+      connection.providerId,
+      createSource,
+      knowledgeSpaceId,
+      providerName,
+      updateWorkflowUncertain,
+    ],
   )
 
   const startPreview = useCallback(
@@ -1185,7 +1196,7 @@ export function WebsiteCrawlPreview({
               <Field name="sourceName" className="gap-1.5">
                 <FieldLabel>
                   {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
-                  <span className="ml-0.5 text-text-destructive">*</span>
+                  <span className="ms-0.5 text-text-destructive">*</span>
                 </FieldLabel>
                 <Input
                   ref={sourceNameInputRef}
@@ -1246,7 +1257,7 @@ export function WebsiteCrawlPreview({
                 type="button"
                 variant="ghost-accent"
                 size="small"
-                className="ml-auto shrink-0"
+                className="ms-auto shrink-0"
                 loading={stopping}
                 aria-labelledby={stopButtonLabelId}
                 onClick={() => void stop()}

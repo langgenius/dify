@@ -32,7 +32,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           aria-label={triggerLabel}
           className={cn(
             'flex cursor-pointer items-center justify-between rounded-md px-2 hover:bg-state-base-hover',
-            value.length > 0 && 'pr-7',
+            value.length > 0 && 'pe-7',
           )}
         >
           <AppTypeSelectTrigger values={value} />
@@ -41,7 +41,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           <button
             type="button"
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-            className="group absolute top-1/2 right-2 size-4 -translate-y-1/2"
+            className="group absolute inset-e-2 top-1/2 size-4 -translate-y-1/2"
             onClick={() => onChange([])}
           >
             <RiCloseCircleFill className="size-3.5 text-text-quaternary group-hover:text-text-tertiary" />
@@ -200,7 +200,7 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
     <li>
       <button
         type="button"
-        className="flex w-full items-center space-x-2 rounded-lg py-1 pr-1 pl-2 text-left hover:bg-state-base-hover"
+        className="flex w-full items-center space-x-2 rounded-lg py-1 ps-2 pe-1 text-start hover:bg-state-base-hover"
         aria-pressed={checked}
         onClick={onClick}
       >
@@ -216,7 +216,7 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
           {checked && <span className="i-ri-check-line size-3" />}
         </span>
         <AppTypeIcon type={type} />
-        <div className="grow p-1 pl-0">
+        <div className="grow p-1 ps-0">
           <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
         </div>
       </button>

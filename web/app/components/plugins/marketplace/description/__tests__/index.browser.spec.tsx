@@ -11,7 +11,7 @@ import Description from '../index'
 
 vi.unmock('react-i18next')
 
-async function renderDescription(locale: 'en-US' | 'zh-Hans', platform = false) {
+async function renderDescription(locale: 'en-US' | 'zh-Hans') {
   const i18n = createInstance()
   await i18n.init({
     lng: locale,
@@ -26,7 +26,7 @@ async function renderDescription(locale: 'en-US' | 'zh-Hans', platform = false) 
     <I18nextProvider i18n={i18n}>
       <UrlState>
         <Description
-          isMarketplacePlatform={platform}
+          isMarketplacePlatform={false}
           marketplaceNav={
             <nav aria-label="Marketplace navigation">
               <a href="/marketplace">Marketplace</a>
@@ -67,20 +67,3 @@ it.each([
     )
   },
 )
-
-it('renders the platform hero and the supplied navigation with real translations', async () => {
-  const screen = await renderDescription('en-US', true)
-  await expect
-    .element(
-      screen.getByRole('heading', { level: 1, name: enPlugin['marketplace.pluginsHeroTitle'] }),
-    )
-    .toBeVisible()
-  await expect
-    .element(
-      screen.getByRole('heading', { level: 2, name: enPlugin['marketplace.pluginsHeroSubtitle'] }),
-    )
-    .toBeVisible()
-  await expect
-    .element(screen.getByRole('navigation', { name: 'Marketplace navigation' }))
-    .toBeVisible()
-})

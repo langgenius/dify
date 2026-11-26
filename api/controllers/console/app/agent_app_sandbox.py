@@ -39,8 +39,7 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.agent.errors import AgentNotFoundError
-from services.app.agent_app_contracts import (
-    AgentAppNotFoundError,
+from services.agent.sandbox_contracts import (
     AgentSandboxBindingNotFoundError,
     AgentSandboxCaller,
     AgentSandboxDownloadUnavailableError,
@@ -48,6 +47,7 @@ from services.app.agent_app_contracts import (
     WorkflowSandboxAppNotFoundError,
     WorkflowSandboxCaller,
 )
+from services.app.agent_app_contracts import AgentAppNotFoundError
 
 _BINDING_PATH_DESCRIPTION = (
     "Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; "

@@ -54,7 +54,7 @@ const EmptyElement: FC<{ appDetail: AppDetailWithSite }> = ({ appDetail }) => {
       <div className="box-border h-fit w-140 rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
           {t(($) => $['table.empty.element.title'], { ns: 'appLog' })}
-          <ThreeDotsIcon className="relative -top-3 -left-1.5 inline text-text-secondary" />
+          <ThreeDotsIcon className="relative -inset-s-1.5 -top-3 inline text-text-secondary" />
         </span>
         <div className="mt-2 system-sm-regular text-text-tertiary">
           <Trans

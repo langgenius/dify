@@ -99,6 +99,7 @@ const server = vi.hoisted(() => ({ inflight: 0, reads: new Map<string, number>()
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const forever = () => new Promise<never>(() => {})
@@ -147,20 +148,21 @@ vi.mock('@/service/console', async (importOriginal) => {
           : current
       })
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
+    [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
+    [`${space}.goldenQuestions.post`]: (input: never) => apiMock.createGolden(input),
+    [`${space}.quality.badCases.post`]: apiMock.createBadCase,
+    [`${space}.queries.admission.post`]: apiMock.queryAdmission,
+    [`${space}.researchTasks.byTaskId.delete`]: apiMock.cancelResearch,
+    [`${space}.researchTasks.plan.post`]: apiMock.planResearch,
+    [`${space}.researchTasks.post`]: apiMock.createResearch,
+    [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
-      [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
-      [`${space}.goldenQuestions.post`]: apiMock.createGolden,
-      [`${space}.quality.badCases.post`]: apiMock.createBadCase,
-      [`${space}.queries.admission.post`]: apiMock.queryAdmission,
-      [`${space}.researchTasks.byTaskId.delete`]: apiMock.cancelResearch,
-      [`${space}.researchTasks.plan.post`]: apiMock.planResearch,
-      [`${space}.researchTasks.post`]: apiMock.createResearch,
-      [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'files.upload.post': apiMock.uploadFile,
       [`${space}.goldenQuestions.evidenceMatches.post`]: apiMock.matchEvidence,
       [`${space}.researchTasks.byTaskId.get`]: (input: { params: { task_id: string } }) => {
@@ -395,7 +397,7 @@ describe('RetrievalTestPage', () => {
           body: { mode: 'research', query: 'Compare the refund policies' },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.objectContaining({ silent: true }) },
       ),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
@@ -408,7 +410,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
   })
 
@@ -767,7 +769,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
   })
 
@@ -803,7 +805,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.objectContaining({ silent: true }) },
       ),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
@@ -817,7 +819,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
   })
 
@@ -2084,7 +2086,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.objectContaining({ silent: true }) },
       ),
     )
     await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
@@ -2255,7 +2257,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.objectContaining({ silent: true }) },
       ),
     )
   })
@@ -2340,7 +2342,7 @@ describe('RetrievalTestPage', () => {
           body: { reason: 'low-score', tags: ['retrieval-test'], trace_id: 'trace-image' },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.objectContaining({ silent: true }) },
       ),
     )
   })
@@ -2558,7 +2560,7 @@ describe('RetrievalTestPage', () => {
           document_asset_version: 1,
         },
       },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
   })
 

@@ -19,6 +19,7 @@ import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
@@ -117,7 +118,7 @@ const DetailHeader = ({
     isFromMarketplace,
   } = useDetailHeaderState(detail)
 
-  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete, deleting } =
+  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete, deleting, githubDialog } =
     usePluginOperations({
       detail,
       modalStates,
@@ -188,6 +189,7 @@ const DetailHeader = ({
         isReadmeView && 'border-b-0 bg-transparent p-0',
       )}
     >
+      <GitHubInstallDialog handle={githubDialog} onUpdated={handleUpdatedFromMarketplace} />
       <div className="flex">
         {/* Plugin Icon */}
         <div
