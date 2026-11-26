@@ -10,6 +10,7 @@ from redis import Redis
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from graphon.nodes import BuiltinNodeTypes
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -95,18 +96,6 @@ def plugin_catalog(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, o
 
 def _fail_creation(**_kwargs: object) -> NoReturn:
     raise RuntimeError("boom")
-
-
-class _RecordingCreation:
-    """Stand-in for _create_or_update_snippet that records the call it received."""
-
-    def __init__(self, snippet: CustomizedSnippet):
-        self.snippet = snippet
-        self.calls: list[dict[str, object]] = []
-
-    def __call__(self, **kwargs: object) -> CustomizedSnippet:
-        self.calls.append(kwargs)
-        return self.snippet
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
@@ -446,7 +435,13 @@ def test_import_snippet_passes_dependencies_to_create_or_update(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     snippet = _snippet()
-    create_or_update = _RecordingCreation(snippet)
+    received_dependencies: list[list[PluginDependency] | None] = []
+
+    def create_or_update(*, dependencies: list[PluginDependency] | None, **_kwargs: object) -> CustomizedSnippet:
+        """Record the parsed dependencies passed to creation and return the fixture snippet."""
+        received_dependencies.append(dependencies)
+        return snippet
+
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
     yaml_content = """
 version: 0.1.0
@@ -471,9 +466,14 @@ workflow:
 
     assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
     assert result.snippet_id == "snippet-1"
-    dependencies = create_or_update.calls[0]["dependencies"]
-    assert isinstance(dependencies, list)
-    assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
+    assert received_dependencies == [
+        [
+            PluginDependency(
+                type=PluginDependencyType.Marketplace,
+                value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="langgenius/openai:0.0.1"),
+            )
+        ]
+    ]
 
 
 def test_import_snippet_rolls_back_when_create_or_update_raises(
