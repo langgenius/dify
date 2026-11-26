@@ -1,6 +1,6 @@
 import type { PointerEvent, ReactNode } from 'react'
 import { createLocalStorageState } from 'foxact/create-local-storage-state'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import ResizeHandle from '@/app/components/base/resize-handle'
 
 const MIN_WIDTH = 320
@@ -9,7 +9,15 @@ const DEFAULT_WIDTH = 400
 const RESERVED_CANVAS_WIDTH = 240
 const [usePanelWidth] = createLocalStorageState<number>('dify-builder-panel-width', DEFAULT_WIDTH)
 
-export function ResizableBuilderPanel({ label, children }: { label: string; children: ReactNode }) {
+export function ResizableBuilderPanel({
+  label,
+  children,
+  minimumEditorWidth,
+}: {
+  label: string
+  children: ReactNode
+  minimumEditorWidth?: number
+}) {
   const panelId = useId()
   const panelRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ pointerId: number; x: number; width: number } | null>(null)
@@ -34,7 +42,7 @@ export function ResizableBuilderPanel({ label, children }: { label: string; chil
       : Math.min(
           MAX_WIDTH,
           availableWidth,
-          Math.max(MIN_WIDTH, availableWidth - RESERVED_CANVAS_WIDTH),
+          Math.max(MIN_WIDTH, availableWidth - (minimumEditorWidth ?? RESERVED_CANVAS_WIDTH)),
         )
   const min = Math.min(MIN_WIDTH, max)
   const clamp = (value: number) => Math.min(max, Math.max(min, value))
@@ -43,6 +51,12 @@ export function ResizableBuilderPanel({ label, children }: { label: string; chil
       ? preferredWidth
       : DEFAULT_WIDTH
   const width = clamp(dragWidth ?? savedWidth)
+
+  useLayoutEffect(() => {
+    const viewport = panelRef.current?.parentElement
+    if (minimumEditorWidth !== undefined && viewport && viewport.scrollWidth > viewport.clientWidth)
+      viewport.scrollLeft = viewport.scrollWidth - viewport.clientWidth
+  }, [availableWidth, minimumEditorWidth, width])
 
   const startResize = (event: PointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary || event.button !== 0) return
@@ -67,7 +81,7 @@ export function ResizableBuilderPanel({ label, children }: { label: string; chil
       ref={panelRef}
       id={panelId}
       aria-label={label}
-      className="relative z-10 flex h-full max-w-full shrink-0 bg-background-body py-1 pe-1"
+      className="relative isolate flex h-full max-w-full shrink-0 overflow-hidden bg-background-body py-1 ps-3 pe-1"
       style={{ width }}
     >
       <ResizeHandle
@@ -78,7 +92,7 @@ export function ResizableBuilderPanel({ label, children }: { label: string; chil
         label={label}
         controls={panelId}
         onResize={setPreferredWidth}
-        className="absolute inset-y-0 inset-s-0 z-20 flex w-3 -translate-x-1/2 cursor-col-resize touch-none items-center justify-center select-none"
+        className="absolute inset-y-0 inset-s-0 z-20 flex w-3 cursor-col-resize touch-none items-center justify-center select-none"
         onPointerDown={startResize}
         onPointerMove={(event) => {
           const next = getDragWidth(event)
@@ -97,7 +111,9 @@ export function ResizableBuilderPanel({ label, children }: { label: string; chil
           className="h-8 w-0.5 rounded-full bg-state-base-handle group-hover/resize:bg-state-accent-solid"
         />
       </ResizeHandle>
-      {children}
+      <div className="flex min-w-0 grow motion-safe:transition-transform motion-safe:duration-150 motion-safe:starting:translate-x-full">
+        {children}
+      </div>
     </aside>
   )
 }
