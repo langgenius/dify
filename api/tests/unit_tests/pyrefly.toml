@@ -30,7 +30,6 @@ project-excludes = [
   "controllers/service_api/dataset/test_document.py",
   "controllers/service_api/test_wraps.py",
   "controllers/service_api/test___init__.py",
-  "controllers/trigger/test_webhook.py",
   "core/agent/output_parser/test_cot_output_parser.py",
   "core/agent/test_cot_agent_runner.py",
   "core/agent/test_cot_completion_agent_runner.py",
@@ -114,11 +113,11 @@ project-excludes = [
   "core/workflow/test_workflow_entry.py",
   "dev/test_generate_knowledge_fs_contract.py",
   "enterprise/telemetry/test_enterprise_trace.py",
-  "events/test___init__.py",
   "extensions/logstore/repositories/test_logstore_api_workflow_node_execution_repository.py",
   "../e2e_tests/contracts/libs/_human_input/test_form_service.py",
   "../e2e_tests/contracts/libs/_human_input/test_models.py",
   "libs/broadcast_channel/redis/test_pubsub_channel.py",
+  "services/agent/test_config_service.py",
   "services/agent/test_roster_service.py",
   "../helpers/unit/services/controller_api.py",
   "services/data_migration/test_import_service.py",
@@ -127,7 +126,6 @@ project-excludes = [
   "services/rag_pipeline/test_rag_pipeline_transform_service.py",
   "services/retention/workflow_run/test_clear_free_plan_expired_workflow_run_logs.py",
   "services/retention/workflow_run/test_restore_archived_workflow_run.py",
-  "services/test_agent_config_service.py",
   "services/test_billing_service.py",
   "services/test_clear_free_plan_tenant_expired_logs.py",
   "services/knowledge/test_dataset_service.py",
@@ -143,7 +141,6 @@ project-excludes = [
   "tasks/app_generate/test_workflow_execute_task.py",
   "services/agent/test_dsl_service.py",
   "core/workflow/test_node_runtime.py",
-  "controllers/console/datasets/test_hit_testing_base.py",
 ]
 
 [errors]

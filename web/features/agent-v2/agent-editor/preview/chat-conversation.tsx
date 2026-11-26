@@ -25,19 +25,17 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
+import styles from './chat-layout.module.css'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
 const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
-  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post(
-    {
-      params: {
-        agent_id: agentId,
-        task_id: taskId,
-      },
+  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post({
+    params: {
+      agent_id: agentId,
+      task_id: taskId,
     },
-    { context: { silent: true } },
-  )
+  })
 }
 
 const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {
@@ -78,6 +76,7 @@ export function AgentPreviewChatConversation({
   agentId,
   answerActionPosition,
   agentSoulConfig,
+  chatContentClassName,
   clearChatList,
   config,
   conversationId,
@@ -102,6 +101,7 @@ export function AgentPreviewChatConversation({
   agentId: string
   answerActionPosition?: AnswerActionPosition
   agentSoulConfig?: AgentSoulConfig
+  chatContentClassName: string
   clearChatList: boolean
   config: AgentPreviewChatConfig
   conversationId?: string | null
@@ -321,8 +321,16 @@ export function AgentPreviewChatConversation({
       isResponding={isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       sendButtonLoading={sendButtonLoading}
-      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 pb-22!' : 'px-3')}
-      chatFooterClassName={isEmptyChat ? 'hidden' : 'px-3 pb-0 pt-10'}
+      chatContainerClassName={isEmptyChat ? 'pt-2 pb-22!' : 'scrollbar-gutter-both pt-6'}
+      chatContainerInnerClassName={cn(
+        'mx-auto',
+        chatContentClassName,
+        isEmptyChat ? 'px-12' : cn('px-3', styles.transcript),
+      )}
+      chatFooterClassName={
+        isEmptyChat ? 'hidden' : cn('inset-x-0 mx-auto px-3 pt-10', chatContentClassName)
+      }
+      chatFooterInnerClassName="max-w-full"
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       inputs={inputs}

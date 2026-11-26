@@ -31,8 +31,11 @@ func Handler(svc *Service, config *Config) http.Handler {
 
 	{ // Snapshot handlers
 		snap := newSnapshotHandlers(config)
+		snap.service = svc
 		mux.HandleFunc("POST /v1/snapshot/save", auth(snap.handleSnapshotSave()))
 		mux.HandleFunc("POST /v1/snapshot/restore", auth(snap.handleSnapshotRestore()))
+		mux.HandleFunc("POST /v1/state/save", stateTransferAuth(config.AuthToken, snap.handleStateSave()))
+		mux.HandleFunc("POST /v1/state/restore", stateTransferAuth(config.AuthToken, snap.handleStateRestore()))
 	}
 
 	return requestLoggingMiddleware(recoveryMiddleware(mux))
@@ -283,6 +286,15 @@ func authMiddleware(token string) func(http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 		}
 	}
+}
+
+func stateTransferAuth(token string, next http.HandlerFunc) http.HandlerFunc {
+	if token == "" {
+		return func(w http.ResponseWriter, _ *http.Request) {
+			writeError(w, 401, "unauthorized", "State transfer requires a configured bearer token")
+		}
+	}
+	return authMiddleware(token)(next)
 }
 
 // Response helpers

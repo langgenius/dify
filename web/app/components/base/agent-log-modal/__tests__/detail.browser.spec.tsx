@@ -163,3 +163,30 @@ it('summarizes empty and repeated trace data from the service response', async (
   await expect.element(screen.getByText('tool1, tool2')).toBeVisible()
   await expect.element(screen.getByText('2', { exact: true })).toBeVisible()
 })
+
+it('keeps showing the current record when an earlier request resolves late', async () => {
+  let resolveFirst!: (value: AgentLogResponse) => void
+  fake.console.apps.byAppId.agent.logs.get.mockReturnValueOnce(
+    new Promise<AgentLogResponse>((resolve) => {
+      resolveFirst = resolve
+    }),
+  )
+  const { rerender, screen } = await renderDetail()
+  const current = createResponse()
+  current.meta.executor = 'Current executor'
+  fake.console.apps.byAppId.agent.logs.get.mockResolvedValueOnce(current)
+  await rerender(
+    <AgentLogDetail
+      appId={appId}
+      conversationID="conv-id"
+      messageID="next-message"
+      log={{ ...log, id: 'next-message' }}
+    />,
+  )
+  await expect.element(screen.getByText('Current executor')).toBeVisible()
+  const stale = createResponse()
+  stale.meta.executor = 'Stale executor'
+  resolveFirst(stale)
+  await expect.element(screen.getByText('Stale executor')).not.toBeInTheDocument()
+  await expect.element(screen.getByText('Current executor')).toBeVisible()
+})

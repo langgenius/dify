@@ -12,7 +12,7 @@ import { toast } from '@/app/notifications'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
 import {
@@ -263,7 +263,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           const failureKey = await knowledgeFsRequestFailureMessageKey(error)
           const reason = failureKey
             ? tError(($) => $[failureKey])
-            : t(($) => $.documentUploadFailed)
+            : (getRequestErrorMessage(error) ?? t(($) => $.documentUploadFailed))
           toast.error(
             completed
               ? t(($) => $.documentUploadIncomplete, {
@@ -303,7 +303,11 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       } catch (error) {
         if (error instanceof DocumentStagingCanceledError) return
         const failureKey = await knowledgeFsRequestFailureMessageKey(error)
-        toast.error(failureKey ? tError(($) => $[failureKey]) : t(($) => $.documentUploadFailed))
+        toast.error(
+          failureKey
+            ? tError(($) => $[failureKey])
+            : (getRequestErrorMessage(error) ?? t(($) => $.documentUploadFailed)),
+        )
         throw error
       }
     },

@@ -12,14 +12,8 @@ export const changeWebAppPasswordWithToken = (body: {
   password_confirm: string
 }) => webAppClient.forgotPassword.resets.post({ body })
 
-export const uploadPublicRemoteFileInfo = (url: string, options?: { silent?: boolean }) => {
-  return webAppClient.remoteFiles.upload.post({ body: { url } }, { context: options }) as Promise<{
-    id: string
-    name: string
-    size: number
-    mime_type: string
-    url: string
-  }>
+export const uploadPublicRemoteFileInfo = (url: string) => {
+  return webAppClient.remoteFiles.upload.post({ body: { url } })
 }
 
 export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>
@@ -54,5 +48,5 @@ export async function webAppLoginStatus(shareCode: string, userId?: string) {
 export async function webAppLogout(address: WebAppAddress | null) {
   clearWebAppAccessToken()
   clearWebAppPassport(address)
-  await webAppClient.logout.post()
+  await webAppClient.logout.post(undefined)
 }

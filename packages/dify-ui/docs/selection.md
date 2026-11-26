@@ -7,12 +7,14 @@ domain value type through its public API.
 
 - [`RadioGroup`] selects one persistent field value from a visible set of options. Every `Radio` or
   `RadioItem` belongs to a group; do not render a standalone radio.
-- `SegmentedControl` selects one mode, filter, or view. It follows radio-group semantics: an active
+- `SegmentedControl` selects one mode or filter for content that stays in place. It follows radio-group semantics: an active
   item cannot be toggled off, `Tab` enters on the selected item, and arrow keys move and select.
   The primitive owns the track, focus ring and selection motion. Preserve the existing density,
   dimensions and documented surface treatments when adopting it.
   Use `RadioGroup` with `RadioItem` for a custom single-choice surface such as separate filter pills.
-- `Tabs` selects a panel and provides `tablist` and `tabpanel` semantics.
+- `Tabs` selects which related panel is shown and provides `tablist` and `tabpanel` semantics.
+  Choose it whenever the choice swaps the content it controls, whatever the control looks like.
+  `TabsIndicator` inside `TabsList` owns the active underline and its motion; tabs do not draw one.
 - [`Autocomplete`] accepts free-form text with optional suggestions.
 - [`Combobox`] selects and remembers one or more values from a searchable collection.
 - [`Select`] chooses from a closed, scannable list without text entry.

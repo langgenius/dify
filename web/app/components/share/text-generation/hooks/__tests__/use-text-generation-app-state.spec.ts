@@ -1,4 +1,5 @@
 import { act, waitFor } from '@testing-library/react'
+import { createHttpError } from '@/service/http-error'
 import { AppSourceType } from '@/service/share'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useTextGenerationAppState } from '../use-text-generation-app-state'
@@ -299,6 +300,55 @@ describe('useTextGenerationAppState', () => {
       type: 'success',
       message: 'common.api.remove',
     })
+  })
+
+  const savedListUnavailable = () =>
+    createHttpError(
+      { status: 500, statusText: '', headers: new Headers() },
+      { message: 'Saved messages unavailable' },
+    )
+
+  it('should report a failed saved message load on initialize', async () => {
+    fetchSavedMessageMock.mockRejectedValue(savedListUnavailable())
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: false,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(notifyMock).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Saved messages unavailable',
+      })
+    })
+    expect(result.current.savedMessages).toEqual([])
+  })
+
+  it('should keep the saved list and report a failed reload after saving', async () => {
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: false,
+      }),
+    )
+    await waitFor(() => {
+      expect(result.current.savedMessages).toEqual([{ id: 'saved-1' }])
+    })
+    fetchSavedMessageMock.mockRejectedValue(savedListUnavailable())
+
+    await act(async () => {
+      await result.current.handleSaveMessage('message-1')
+    })
+
+    expect(notifyMock).toHaveBeenCalledWith({ type: 'success', message: 'common.api.saved' })
+    expect(notifyMock).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Saved messages unavailable',
+    })
+    expect(notifyMock.mock.calls.filter(([n]) => n.type === 'error')).toHaveLength(1)
+    expect(result.current.savedMessages).toEqual([{ id: 'saved-1' }])
   })
 
   it('should skip saved message fetching for workflows and disable favicon for installed apps', async () => {

@@ -53,7 +53,8 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useParams: () => ({ appId: 'app-123' }),
   usePathname: () => '/app/app-123/workflow',
 }))
-vi.mock('@/service/log', () => ({
+vi.mock('@/service/log', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/log')>()),
   fetchRunDetail: api.run,
   fetchTracingList: api.tracing,
 }))
@@ -289,7 +290,7 @@ it('reopens a closed message log on its default detail tab', async () => {
     'aria-selected',
     'true',
   )
-  expect(api.run).toHaveBeenCalledWith('/apps/app-123/workflow-runs/run-1', { silent: true })
+  expect(api.run).toHaveBeenCalledWith({ kind: 'app', appId: 'app-123' }, 'run-1')
   expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
     'href',
     'https://cloud.langfuse.com/trace/run-1',

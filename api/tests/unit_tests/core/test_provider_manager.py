@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -20,8 +22,18 @@ from core.entities.provider_entities import (
     ProviderQuotaType,
     SystemConfiguration,
 )
+from core.errors.error import ProviderTokenNotInitError
+from core.helper import model_provider_cache
+from core.helper.encrypter import encrypt_token
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
-from core.hosting_configuration import FreeHostingQuota, HostingProvider, PaidHostingQuota, TrialHostingQuota
+from core.hosting_configuration import (
+    FreeHostingQuota,
+    HostingConfiguration,
+    HostingProvider,
+    PaidHostingQuota,
+    TrialHostingQuota,
+)
+from core.model_manager import ModelManager
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -33,16 +45,24 @@ from core.provider_manager import (
     _ProviderModelSettingCacheEntry,
 )
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_redis import RedisClientWrapper
+from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
+    CredentialFormSchema,
     FieldModelSchema,
+    FormType,
     ModelCredentialSchema,
     ProviderCredentialSchema,
     ProviderEntity,
 )
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from libs.key_providers import generate_key_pair
+from models.account import Tenant
+from models.engine import db
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import (
     LoadBalancingModelConfig,
@@ -56,9 +76,12 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.credit_pool_service import CreditPoolBalance
-from services.entities.feature_entities import FeatureModel
+from services.billing_client import billing
+from services.credit_pool_service import FEATURE_KEY_CREDIT_POOL, CreditPoolBalance
+from services.feature_service import ProviderCatalogBilling
+from tests.helpers.billing_builders import subscription_info
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -315,7 +338,7 @@ def test_to_system_configuration_rejects_non_marketplace_provider(
             {provider_entity.provider: _build_hosting_provider()},
         ),
     ):
-        configuration = manager._to_system_configuration("tenant-id", provider_entity, [])
+        configuration = manager._to_system_configuration(ProviderCatalogBilling("tenant-id"), provider_entity, [])
 
     assert configuration.enabled is False
     assert configuration.credentials is None
@@ -335,7 +358,7 @@ def test_to_system_configuration_rejects_unverified_marketplace_provider() -> No
             return_value=False,
         ) as is_plugin_verified,
     ):
-        configuration = manager._to_system_configuration("tenant-id", provider_entity, [])
+        configuration = manager._to_system_configuration(ProviderCatalogBilling("tenant-id"), provider_entity, [])
 
     assert configuration.enabled is False
     assert configuration.credentials is None
@@ -351,7 +374,7 @@ def test_to_system_configuration_never_returns_hosting_credentials_for_package_w
         {provider_entity.provider: _build_hosting_provider()},
     ):
         configuration = manager._to_system_configuration(
-            "tenant-id",
+            ProviderCatalogBilling("tenant-id"),
             provider_entity,
             [_build_trial_provider_record()],
         )
@@ -387,7 +410,7 @@ def test_to_system_configuration_offers_only_the_plan_credit_pool(
             {provider_entity.provider: _build_dual_pool_hosting_provider()},
         ),
         patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
-        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=plan),
+        patch.object(billing, "subscription_get_subscription_info", return_value=subscription_info(plan)),
         patch(
             "services.credit_pool_service.CreditPoolService.get_pool",
             return_value=CreditPoolBalance(
@@ -398,7 +421,9 @@ def test_to_system_configuration_offers_only_the_plan_credit_pool(
             ),
         ) as get_pool,
     ):
-        configuration = manager._to_system_configuration("tenant-id", provider_entity, [legacy_record])
+        configuration = manager._to_system_configuration(
+            ProviderCatalogBilling("tenant-id"), provider_entity, [legacy_record]
+        )
 
     assert configuration.enabled is True
     assert configuration.current_quota_type == pool_type
@@ -409,12 +434,206 @@ def test_to_system_configuration_offers_only_the_plan_credit_pool(
     get_pool.assert_called_once_with(tenant_id="tenant-id", pool_type=pool_type)
 
 
-def test_to_system_configuration_rejects_paid_only_hosting_for_sandbox() -> None:
-    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
-    manager = _build_provider_manager()
-    hosting = HostingProvider(enabled=True, credentials={"api_key": "system-secret"}, quotas=[PaidHostingQuota()])
+@pytest.mark.parametrize(
+    ("plan", "workspace_key"), [(CloudPlan.SANDBOX, None), (CloudPlan.SANDBOX, "workspace-key"), (CloudPlan.TEAM, None)]
+)
+def test_paid_only_hosting_requires_a_paid_workspace(
+    sqlite_session: Session, plan: CloudPlan, workspace_key: str | None
+) -> None:
+    """Only a paid workspace gets hosted credentials; a sandbox must supply its own key."""
+    provider = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
     legacy_record = _build_trial_provider_record()
     legacy_record.quota_type = ModelProviderQuotaType.PAID
+    sqlite_session.add_all(
+        [
+            legacy_record,
+            TenantPreferredModelProvider(
+                tenant_id="tenant-id", provider_name="openai", preferred_provider_type=ProviderType.SYSTEM
+            ),
+        ]
+    )
+    if workspace_key is not None:
+        credential = ProviderCredential(
+            tenant_id="tenant-id", provider_name="openai", credential_name="workspace", encrypted_config=workspace_key
+        )
+        sqlite_session.add(credential)
+        sqlite_session.add(
+            Provider(tenant_id="tenant-id", provider_name="openai", credential_id=credential.id, is_valid=True)
+        )
+    sqlite_session.commit()
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
+
+    with (
+        config_overrides_context(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            HOSTED_OPENAI_TRIAL_ENABLED=False,
+            HOSTED_OPENAI_PAID_ENABLED=True,
+            HOSTED_OPENAI_PAID_MODELS="gpt-4o",
+            HOSTED_OPENAI_API_KEY="hosted-key",
+        ),
+        patch.dict(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider.provider: HostingConfiguration().init_openai()},
+        ),
+        patch("core.plugin.plugin_service.PluginService.fetch_plugin_model_providers", return_value=[provider]),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch("services.billing_service.BillingService.get_info", return_value=subscription_info(plan)),
+        patch(
+            "services.billing_service.BillingService.quota_get_balance",
+            return_value=billing.QuotaGetBalanceReply(available=100, reserved=0, quota=100, usage=0, exhausted_at=0),
+        ) as get_balance,
+    ):
+        configuration = manager.get_configurations("tenant-id").get(provider.provider)
+        assert configuration is not None
+        if plan == CloudPlan.SANDBOX:
+            assert configuration.system_configuration == SystemConfiguration(enabled=False)
+            get_balance.assert_not_called()
+            expected_key = workspace_key
+        else:
+            assert configuration.system_configuration.current_quota_type == ProviderQuotaType.PAID
+            get_balance.assert_called_once_with(
+                tenant_id="tenant-id", feature_key=FEATURE_KEY_CREDIT_POOL, bucket="paid"
+            )
+            expected_key = "hosted-key"
+
+        models = ModelManager(manager)
+        if expected_key is None:
+            with pytest.raises(ProviderTokenNotInitError):
+                models.get_model_instance("tenant-id", provider.provider, ModelType.LLM, "gpt-4o")
+        else:
+            instance = models.get_model_instance("tenant-id", provider.provider, ModelType.LLM, "gpt-4o")
+            assert instance.credentials["openai_api_key"] == expected_key
+
+
+@pytest.mark.parametrize("failed_read", ["subscription", "balance"])
+def test_billing_outage_preserves_custom_credentials_and_disables_hosting(
+    sqlite_session: Session, failed_read: str
+) -> None:
+    """One failed catalog lookup must not hide a workspace key or enable an unmetered fallback."""
+    tenant_id = "tenant-id"
+    provider = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    other = provider.model_copy(
+        update={
+            "provider": "langgenius/anthropic/anthropic",
+            "plugin_unique_identifier": "langgenius/anthropic:1.0.0@checksum",
+            "label": I18nObject(en_US="Anthropic"),
+        }
+    )
+    credential = ProviderCredential(
+        tenant_id=tenant_id, provider_name="openai", credential_name="workspace", encrypted_config="workspace-key"
+    )
+    sqlite_session.add_all(
+        [
+            credential,
+            Provider(tenant_id=tenant_id, provider_name="openai", credential_id=credential.id, is_valid=True),
+            TenantPreferredModelProvider(
+                tenant_id=tenant_id, provider_name="openai", preferred_provider_type=ProviderType.SYSTEM
+            ),
+            ProviderModelSetting(
+                tenant_id=tenant_id,
+                provider_name="openai",
+                model_name="gpt-4o",
+                model_type=ModelType.LLM,
+                load_balancing_enabled=True,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id=tenant_id))
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch.dict(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {p.provider: _build_dual_pool_hosting_provider() for p in (provider, other)},
+        ),
+        patch("core.plugin.plugin_service.PluginService.fetch_plugin_model_providers", return_value=[provider, other]),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch.object(
+            billing,
+            "subscription_get_subscription_info",
+            return_value=subscription_info("team"),
+            side_effect=billing.BillingSubscriptionUpstreamUnavailableError()
+            if failed_read == "subscription"
+            else None,
+        ) as subscription,
+        patch.object(
+            billing, "quota_get_balance", side_effect=billing.BillingQuotaUpstreamUnavailableError()
+        ) as balance,
+        patch.object(billing, "quota_get_quota_info", side_effect=AssertionError("unrelated quota lookup")),
+    ):
+        configurations = manager.get_configurations(tenant_id)
+        configured = configurations.get(provider.provider)
+        assert configured is not None
+        assert configured.preferred_provider_type == ProviderType.SYSTEM
+        assert configured.using_provider_type == ProviderType.CUSTOM
+        assert configured.system_configuration == SystemConfiguration(enabled=False)
+        models = ModelManager(manager)
+        assert models.get_model_instance(tenant_id, provider.provider, ModelType.LLM, "gpt-4o").credentials == {
+            "openai_api_key": "workspace-key"
+        }
+        with pytest.raises(ProviderTokenNotInitError):
+            models.get_model_instance(tenant_id, other.provider, ModelType.LLM, "claude")
+
+    subscription.assert_called_once_with(tenant_id=tenant_id, exclude_vector_space=True)
+    if failed_read == "balance":
+        balance.assert_called_once_with(tenant_id=tenant_id, feature_key=FEATURE_KEY_CREDIT_POOL, bucket="paid")
+    else:
+        balance.assert_not_called()
+
+
+@pytest.fixture
+def encrypted_free_quota_key(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sqlite_session: Session) -> str:
+    """Encrypt a test credential with the local tenant key provider."""
+    monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
+    monkeypatch.setattr(db, "session", sqlite_session)
+    tenant = Tenant(name="Sandbox", encrypt_public_key=generate_key_pair("tenant-id"))
+    tenant.id = "tenant-id"
+    sqlite_session.add(tenant)
+    sqlite_session.commit()
+    return encrypt_token(tenant.id, "free-key")
+
+
+def test_to_system_configuration_falls_back_to_free_quota_instead_of_unmetered_hosting(
+    monkeypatch: pytest.MonkeyPatch,
+    encrypted_free_quota_key: str,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    """Only the third-party row supplies credentials and quota, both before and after caching."""
+    redis, commands = redis_transport
+    commands.side_effect = RedisCommandEmulator()
+    monkeypatch.setattr(model_provider_cache, "redis_client", redis)
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    provider_entity.provider_credential_schema = ProviderCredentialSchema(
+        credential_form_schemas=[
+            CredentialFormSchema(variable="api_key", label=I18nObject(en_US="API key"), type=FormType.SECRET_INPUT),
+            CredentialFormSchema(
+                variable="optional_token", label=I18nObject(en_US="Token"), type=FormType.SECRET_INPUT, required=False
+            ),
+        ]
+    )
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
+    hosting = HostingProvider(
+        enabled=True,
+        credentials={"api_key": "system-secret"},
+        quotas=[PaidHostingQuota(), FreeHostingQuota()],
+    )
+    free_credential = ProviderCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        credential_name="free",
+        encrypted_config=json.dumps({"api_key": encrypted_free_quota_key}),
+    )
+    free_record = Provider(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        provider_type=ProviderType.SYSTEM,
+        quota_type=ModelProviderQuotaType.FREE,
+        quota_limit=10,
+        quota_used=2,
+        is_valid=True,
+        credential_id=free_credential.id,
+    )
+    free_record.credential = free_credential
 
     with (
         config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
@@ -423,23 +642,78 @@ def test_to_system_configuration_rejects_paid_only_hosting_for_sandbox() -> None
             {provider_entity.provider: hosting},
         ),
         patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
-        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+        patch.object(billing, "subscription_get_subscription_info", return_value=subscription_info(CloudPlan.SANDBOX)),
+        patch("services.credit_pool_service.CreditPoolService.get_pool") as get_pool,
+    ):
+        records = [_build_trial_provider_record(), free_record]
+        configuration = manager._to_system_configuration(ProviderCatalogBilling("tenant-id"), provider_entity, records)
+        cache = model_provider_cache.ProviderCredentialsCache(
+            "tenant-id", free_record.id, ProviderCredentialsCacheType.PROVIDER
+        )
+        assert cache.get() == {"api_key": "free-key"}
+        assert (
+            manager._to_system_configuration(ProviderCatalogBilling("tenant-id"), provider_entity, records)
+            == configuration
+        )
+
+    get_pool.assert_not_called()
+    assert configuration.enabled is True
+    assert configuration.credentials == {"api_key": "free-key"}
+    assert configuration.current_quota_type == ProviderQuotaType.FREE
+    assert [
+        (quota.quota_type, quota.quota_used, quota.quota_limit, quota.is_valid)
+        for quota in configuration.quota_configurations
+    ] == [(ProviderQuotaType.FREE, 2, 10, True)]
+
+
+def test_to_system_configuration_keeps_an_exhausted_plan_bucket_over_free_quota() -> None:
+    """Selecting a hosted bucket is a plan decision, not a balance-based fallback."""
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    hosting = HostingProvider(
+        enabled=True,
+        credentials={"api_key": "system-secret"},
+        quotas=[PaidHostingQuota(), FreeHostingQuota()],
+    )
+    free_record = Provider(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        provider_type=ProviderType.SYSTEM,
+        quota_type=ModelProviderQuotaType.FREE,
+        quota_limit=10,
+        quota_used=2,
+        is_valid=True,
+    )
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: hosting},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch.object(billing, "subscription_get_subscription_info", return_value=subscription_info(CloudPlan.TEAM)),
         patch(
             "services.credit_pool_service.CreditPoolService.get_pool",
-            return_value=CreditPoolBalance("tenant-id", "trial", 100, 0),
+            return_value=CreditPoolBalance("tenant-id", "paid", 5000, 5000),
         ),
     ):
-        configuration = manager._to_system_configuration("tenant-id", provider_entity, [legacy_record])
+        configuration = manager._to_system_configuration(
+            ProviderCatalogBilling("tenant-id"), provider_entity, [free_record]
+        )
 
-    assert not configuration.enabled
-    assert configuration.credentials is None
-    assert not configuration.quota_configurations
+    assert configuration.enabled is True
+    assert configuration.current_quota_type == ProviderQuotaType.PAID
+    assert [(quota.quota_type, quota.is_valid) for quota in configuration.quota_configurations] == [
+        (ProviderQuotaType.PAID, False),
+        (ProviderQuotaType.FREE, True),
+    ]
 
 
 @pytest.mark.parametrize(
     ("has_record", "quota_used", "quota_limit", "expected", "error"),
     [
-        (False, None, None, (0, 0, False), None),
+        (False, None, None, None, None),
         (True, 2, 10, (2, 10, True), None),
         (True, 10, 10, (10, 10, False), None),
         (True, 10, -1, (10, -1, True), None),
@@ -454,6 +728,7 @@ def test_to_system_configuration_reads_free_quota_from_provider_record(
     expected: tuple[int, int, bool] | None,
     error: str | None,
 ) -> None:
+    """Free hosting requires a row; its quota comes from that row rather than AI credits."""
     provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
     manager = _build_provider_manager()
     hosting = HostingProvider(enabled=True, quotas=[FreeHostingQuota()])
@@ -479,18 +754,18 @@ def test_to_system_configuration_reads_free_quota_from_provider_record(
             {provider_entity.provider: hosting},
         ),
         patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
-        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
-        patch(
-            "services.credit_pool_service.CreditPoolService.get_pool",
-            return_value=CreditPoolBalance("tenant-id", "trial", 100, 40),
-        ),
+        patch.object(billing, "subscription_get_subscription_info", return_value=subscription_info(CloudPlan.SANDBOX)),
     ):
         if error is not None:
             with pytest.raises(ValueError, match=error):
-                manager._to_system_configuration("tenant-id", provider_entity, records)
+                manager._to_system_configuration(ProviderCatalogBilling("tenant-id"), provider_entity, records)
             return
-        configuration = manager._to_system_configuration("tenant-id", provider_entity, records)
+        configuration = manager._to_system_configuration(ProviderCatalogBilling("tenant-id"), provider_entity, records)
 
+    if not has_record:
+        assert configuration.enabled is False
+        assert configuration.quota_configurations == []
+        return
     [quota] = configuration.quota_configurations
     assert quota.quota_type == ProviderQuotaType.FREE
     assert (quota.quota_used, quota.quota_limit, quota.is_valid) == expected
@@ -510,7 +785,7 @@ def test_to_system_configuration_preserves_marketplace_behavior() -> None:
             "core.plugin.plugin_service.PluginService.is_plugin_verified",
             return_value=True,
         ) as is_plugin_verified,
-        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+        patch.object(billing, "subscription_get_subscription_info", return_value=subscription_info(CloudPlan.SANDBOX)),
         patch(
             "services.credit_pool_service.CreditPoolService.get_pool",
             return_value=CreditPoolBalance(
@@ -522,7 +797,7 @@ def test_to_system_configuration_preserves_marketplace_behavior() -> None:
         ),
     ):
         configuration = manager._to_system_configuration(
-            "tenant-id",
+            ProviderCatalogBilling("tenant-id"),
             provider_entity,
             [_build_trial_provider_record()],
         )
@@ -546,7 +821,7 @@ def test_to_system_configuration_disables_hosting_without_a_credit_pool() -> Non
         patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
     ):
         configuration = manager._to_system_configuration(
-            "tenant-id",
+            ProviderCatalogBilling("tenant-id"),
             provider_entity,
             [_build_trial_provider_record()],
         )
@@ -555,35 +830,38 @@ def test_to_system_configuration_disables_hosting_without_a_credit_pool() -> Non
     assert configuration.quota_configurations == []
 
 
-def test_package_provider_keeps_custom_configuration() -> None:
-    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Package)
-    manager = _build_provider_manager()
-    custom_configuration = CustomConfiguration(
-        provider=CustomProviderConfiguration(credentials={"api_key": "user-secret"})
+def test_package_provider_keeps_custom_configuration_without_billing(sqlite_session: Session) -> None:
+    """A custom-only provider with no load balancing must never wait for Billing."""
+    tenant_id = "tenant-id"
+    provider = _build_plugin_provider_declaration(PluginInstallationSource.Package)
+    credential = ProviderCredential(
+        tenant_id=tenant_id, provider_name="openai", credential_name="workspace", encrypted_config="user-secret"
     )
-
+    sqlite_session.add_all(
+        [
+            credential,
+            Provider(tenant_id=tenant_id, provider_name="openai", credential_id=credential.id, is_valid=True),
+        ]
+    )
+    sqlite_session.commit()
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id=tenant_id))
     with (
-        patch.object(manager, "_get_all_providers", return_value={provider_entity.provider: []}),
-        patch.object(manager, "_get_all_provider_models", return_value={}),
-        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
-        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
-        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
-        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
-        patch.object(manager, "_get_all_provider_credentials", return_value={}),
-        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
-        patch.object(manager, "_to_model_settings", return_value=[]),
-        patch.object(manager._model_runtime, "fetch_model_providers", return_value=[provider_entity]),
-        patch(
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch.dict(
             "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
-            {provider_entity.provider: _build_hosting_provider()},
+            {provider.provider: _build_hosting_provider()},
+        ),
+        patch("core.plugin.plugin_service.PluginService.fetch_plugin_model_providers", return_value=[provider]),
+        patch.object(
+            billing, "subscription_get_subscription_info", side_effect=AssertionError("unexpected Billing read")
         ),
     ):
-        configuration = manager.get_configurations("tenant-id").get(provider_entity.provider)
+        configuration = manager.get_configurations(tenant_id).get(provider.provider)
 
     assert configuration is not None
-    assert configuration.system_configuration.enabled is False
+    assert not configuration.system_configuration.enabled
     assert configuration.custom_configuration.provider is not None
-    assert configuration.custom_configuration.provider.credentials == {"api_key": "user-secret"}
+    assert configuration.custom_configuration.provider.credentials == {"openai_api_key": "user-secret"}
 
 
 def test__to_model_settings_only_one_lb(mock_provider_entity: ProviderEntity, sqlite_session: Session) -> None:
@@ -1656,14 +1934,14 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
     try:
         with (
             patch("core.provider_manager.redis_client.get", return_value=b"False"),
-            patch("core.provider_manager.FeatureService.get_features") as mock_get_features,
+            patch.object(billing, "subscription_get_subscription_info") as subscription,
         ):
-            result = ProviderManager._get_all_provider_load_balancing_configs("tenant-id")
+            result = ProviderManager._get_all_provider_load_balancing_configs(ProviderCatalogBilling("tenant-id"))
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
     assert result == {}
-    mock_get_features.assert_not_called()
+    subscription.assert_not_called()
     assert statements == []
 
 
@@ -1709,12 +1987,19 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     with (
         patch("core.provider_manager.redis_client.get", return_value=None),
         patch("core.provider_manager.redis_client.setex") as mock_setex,
-        patch(
-            "core.provider_manager.FeatureService.get_features",
-            return_value=FeatureModel(model_load_balancing_enabled=True),
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch.object(
+            billing,
+            "subscription_get_subscription_info",
+            side_effect=[
+                billing.BillingSubscriptionUpstreamUnavailableError(),
+                subscription_info(model_load_balancing_enabled=True),
+            ],
         ),
     ):
-        result = ProviderManager._get_all_provider_load_balancing_configs("tenant-id")
+        assert ProviderManager._get_all_provider_load_balancing_configs(ProviderCatalogBilling("tenant-id")) == {}
+        mock_setex.assert_not_called()
+        result = ProviderManager._get_all_provider_load_balancing_configs(ProviderCatalogBilling("tenant-id"))
 
     mock_setex.assert_any_call("tenant:tenant-id:model_load_balancing_enabled", 120, "True")
     assert [record.provider_name for record in result["openai"]] == ["openai"]

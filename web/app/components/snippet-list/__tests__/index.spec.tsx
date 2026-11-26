@@ -438,12 +438,10 @@ it('opens real tag management from filters and cards and refreshes after a bindi
   await user.click(await screen.findByRole('option', { name: 'Sales' }))
   await user.keyboard('{Escape}')
   expect(await screen.findByRole('combobox', { name: 'Sales: Tagged snippet' })).toBeInTheDocument()
-  expect(mockBindTags).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
-    },
-    { context: { silent: true } },
-  )
+  expect(mockBindTags).toHaveBeenCalledOnce()
+  expect(mockBindTags.mock.calls[0]![0]).toEqual({
+    body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
+  })
   await user.click(screen.getByRole('combobox', { name: 'Sales: Tagged snippet' }))
   expect(await screen.findByRole('option', { name: 'Sales' })).toHaveAttribute(
     'aria-selected',

@@ -34,8 +34,8 @@ export async function renderLayer({
         style={{ position: 'relative', width: 1100, height: 700 }}
       >
         <CommentManager />
-        <WorkflowCommentLayer />
         <WorkflowCanvas nodes={[]} />
+        <WorkflowCommentLayer />
       </div>
     </DirectionProvider>,
     {

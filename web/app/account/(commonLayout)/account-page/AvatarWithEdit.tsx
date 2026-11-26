@@ -35,7 +35,9 @@ type AvatarWithEditProps = {
 const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
   const { t } = useTranslation(['app', 'common'])
   const { mutateAsync: updateProfile } = useMutation(
-    consoleQuery.account.profile.patch.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.profile.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   const [inputImageInfo, setInputImageInfo] = useState<ImageIconInputValue | null>(null)

@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "ບໍ່ສາມາດລຶບຜູ້ຕິດຕໍ່ໄດ້. ກະລຸນາລອງໃໝ່.",
   "directory.removalSingleTitle": "ລຶບ {{name}} ຫຼືບໍ່?",
   "directory.resultCount": "ຜົນລັບ: {{count}}",
-  "imPlatform.action.configure": "ຕັ້ງຄ່າ",
   "imPlatform.action.configureChannel": "ຕັ້ງຄ່າ {{provider}}",
   "imPlatform.action.connect": "ເຊື່ອມຕໍ່",
   "imPlatform.action.copied": "ຄັດລອກແລ້ວ",

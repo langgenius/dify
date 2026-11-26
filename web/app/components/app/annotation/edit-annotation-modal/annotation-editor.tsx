@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getRequestErrorMessage } from '@/service/http-error'
 import EditItem, { EditItemType } from './edit-item'
 
 export type AnnotationEditorProps = {
@@ -7,7 +8,7 @@ export type AnnotationEditorProps = {
   answer: string
   onlyEditResponse?: boolean
   isPending: boolean
-  isError: boolean
+  error: unknown
   onSave: (body: { question: string; answer: string }, onSuccess: () => void) => void
 }
 
@@ -16,7 +17,7 @@ export function AnnotationEditor({
   answer,
   onlyEditResponse,
   isPending,
-  isError,
+  error,
   onSave,
 }: AnnotationEditorProps) {
   const { t } = useTranslation(['common'])
@@ -50,9 +51,9 @@ export function AnnotationEditor({
           })
         }}
       />
-      {isError && (
+      {error != null && (
         <p role="alert" className="system-sm-regular text-text-destructive">
-          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          {getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
         </p>
       )}
     </div>
