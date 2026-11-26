@@ -97,6 +97,7 @@
   "history.status.cancelled": "ยกเลิกแล้ว",
   "history.status.completed": "เสร็จสิ้น",
   "history.status.failed": "ล้มเหลว",
+  "history.status.notCompleted": "ไม่สามารถทำงานให้เสร็จสมบูรณ์ได้",
   "history.status.partiallyFailed": "เสร็จสิ้นแต่มีบางรายการล้มเหลว",
   "history.status.pending": "รอดำเนินการ",
   "history.status.running": "กำลังทำงาน",
@@ -167,5 +168,7 @@
   "results.status.passed": "ผ่าน",
   "results.title": "รายละเอียดการทดสอบ",
   "title": "การประเมิน",
-  "unavailableUntilPublished": "เผยแพร่ก่อนเพื่อตั้งค่าการประเมิน"
+  "unavailableUntilPublished": "เผยแพร่ก่อนเพื่อตั้งค่าการประเมิน",
+  "upgradePreview.description": "อัปเกรดเป็นแผน Professional หรือ Team เพื่อกำหนดค่าเมตริกและเรียกใช้การทดสอบแบบกลุ่มกับข้อมูลของคุณเอง",
+  "upgradePreview.title": "คุณกำลังดูตัวอย่างการประเมินด้วยข้อมูลตัวอย่าง"
 }

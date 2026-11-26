@@ -248,6 +248,7 @@ vi.mock('@/utils/download', () => ({ downloadBlob: downloadBlobMock }))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const { documentDisplayStatus } = await import('../model')
@@ -386,73 +387,74 @@ vi.mock('@/service/console', async (importOriginal) => {
       revision: 1,
     }
   }
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: async (input: never) =>
+      taskApiResponse(await cancelMutation.mutateAsync(input)),
+    [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: async (input: never) =>
+      taskApiResponse(await retryMutation.mutateAsync(input)),
+    // Exact task lookups: one task is looked up by its identity, a batch with one request.
+    [`${space}.backgroundTasks.get`]: async (
+      input: { query?: { task_ids?: string } },
+      options?: unknown,
+    ) => {
+      const tasks = tasksQuery.data?.pages.flatMap((page) => page.items) ?? []
+      const ids = input.query?.task_ids?.split(',') ?? []
+      const snapshots = []
+      if (ids.length > 1) {
+        const batch = await getTaskSnapshot(input, options)
+        snapshots.push(...(Array.isArray(batch) ? batch : batch ? [batch] : []))
+      }
+      for (const id of ids.length > 1 ? [] : ids) {
+        const listed = tasks.find((task) => task.id === id)
+        const snapshot = await getTaskSnapshot(
+          listed
+            ? {
+                params: {
+                  documentId: listed.documentId,
+                  id: listed.knowledgeSpaceId,
+                  taskId: listed.id,
+                },
+              }
+            : input,
+          options,
+        )
+        snapshots.push(...(Array.isArray(snapshot) ? snapshot : snapshot ? [snapshot] : []))
+      }
+      return { data: snapshots.map(taskApiResponse), next_cursor: null }
+    },
+    [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
+    [`${space}.documents.post`]: (input: never) => uploadMutation.mutateAsync(input),
+    [`${space}.logicalDocuments.bulk.delete`]: bulkRemoveDocumentsMutation,
+    [`${space}.logicalDocuments.byDocumentId.delete`]: removeDocumentMutation,
+    [`${space}.logicalDocuments.byDocumentId.download.get`]: downloadDocumentMutation,
+    [`${space}.logicalDocuments.byDocumentId.patch`]: updateLogicalDocumentMutation,
+    [`${space}.logicalDocuments.downloadZip.post`]: downloadDocumentsMutation,
+    [`${space}.logicalDocuments.get`]: listLogicalDocuments,
+    [`${space}.logicalDocuments.patch`]: bulkUpdateLogicalDocumentsMutation,
+    [`${space}.metadata.byFieldId.delete`]: deleteMetadataField,
+    [`${space}.metadata.byFieldId.patch`]: renameMetadataField,
+    [`${space}.metadata.get`]: () =>
+      metadataFieldsQuery.isPending
+        ? forever()
+        : track(async () => {
+            if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
+            server.served.set('metadata-fields', {
+              data: metadataFieldsQuery.data,
+              error: metadataFieldsQuery.error,
+            })
+            if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
+            return {
+              data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
+              next_cursor: null,
+            }
+          }),
+    [`${space}.metadata.post`]: createMetadataField,
+    [`${space}.sources.bySourceId.patch`]: updateSourceMutation,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: async (input: never) =>
-        taskApiResponse(await cancelMutation.mutateAsync(input)),
-      [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: async (input: never) =>
-        taskApiResponse(await retryMutation.mutateAsync(input)),
-      // Exact task lookups: one task is looked up by its identity, a batch with one request.
-      [`${space}.backgroundTasks.get`]: async (
-        input: { query?: { task_ids?: string } },
-        options?: unknown,
-      ) => {
-        const tasks = tasksQuery.data?.pages.flatMap((page) => page.items) ?? []
-        const ids = input.query?.task_ids?.split(',') ?? []
-        const snapshots = []
-        if (ids.length > 1) {
-          const batch = await getTaskSnapshot(input, options)
-          snapshots.push(...(Array.isArray(batch) ? batch : batch ? [batch] : []))
-        }
-        for (const id of ids.length > 1 ? [] : ids) {
-          const listed = tasks.find((task) => task.id === id)
-          const snapshot = await getTaskSnapshot(
-            listed
-              ? {
-                  params: {
-                    documentId: listed.documentId,
-                    id: listed.knowledgeSpaceId,
-                    taskId: listed.id,
-                  },
-                }
-              : input,
-            options,
-          )
-          snapshots.push(...(Array.isArray(snapshot) ? snapshot : snapshot ? [snapshot] : []))
-        }
-        return { data: snapshots.map(taskApiResponse), next_cursor: null }
-      },
-      [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
-      [`${space}.documents.post`]: (input: never) => uploadMutation.mutateAsync(input),
-      [`${space}.logicalDocuments.bulk.delete`]: bulkRemoveDocumentsMutation,
-      [`${space}.logicalDocuments.byDocumentId.delete`]: removeDocumentMutation,
-      [`${space}.logicalDocuments.byDocumentId.download.get`]: downloadDocumentMutation,
-      [`${space}.logicalDocuments.byDocumentId.patch`]: updateLogicalDocumentMutation,
-      [`${space}.logicalDocuments.downloadZip.post`]: downloadDocumentsMutation,
-      [`${space}.logicalDocuments.get`]: listLogicalDocuments,
-      [`${space}.logicalDocuments.patch`]: bulkUpdateLogicalDocumentsMutation,
-      [`${space}.metadata.byFieldId.delete`]: deleteMetadataField,
-      [`${space}.metadata.byFieldId.patch`]: renameMetadataField,
-      [`${space}.metadata.get`]: () =>
-        metadataFieldsQuery.isPending
-          ? forever()
-          : track(async () => {
-              if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
-              server.served.set('metadata-fields', {
-                data: metadataFieldsQuery.data,
-                error: metadataFieldsQuery.error,
-              })
-              if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
-              return {
-                data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
-                next_cursor: null,
-              }
-            }),
-      [`${space}.metadata.post`]: createMetadataField,
-      [`${space}.sources.bySourceId.patch`]: updateSourceMutation,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
       'features.get': () =>
         track(() => ({ billing: { subscription: { plan: uploadPlanMock.plan } } })),
@@ -1277,12 +1279,9 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeDocuments.downloadDocuments' }))
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'report' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
@@ -1321,12 +1320,9 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'failed-report' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'failed-report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'failed-report.pdf' })
   })
 
@@ -1414,7 +1410,7 @@ describe('DocumentsPage', () => {
     expect(createMetadataField).toHaveBeenCalledOnce()
     expect(createMetadataField).toHaveBeenCalledWith(
       { body: { name: 'category', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(listLogicalDocuments).not.toHaveBeenCalled()
     expect(renameDocumentMutation).not.toHaveBeenCalled()
@@ -1543,7 +1539,7 @@ describe('DocumentsPage', () => {
     expect(nameInput).not.toHaveAttribute('aria-invalid')
     expect(createMetadataField).toHaveBeenCalledWith(
       { body: { name: 'priority_1', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -1580,7 +1576,7 @@ describe('DocumentsPage', () => {
         body: { expectedRowVersion: 0, name: 'topic' },
         params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
@@ -1635,7 +1631,7 @@ describe('DocumentsPage', () => {
         params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
         query: { expectedRowVersion: 0 },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
@@ -2071,7 +2067,7 @@ describe('DocumentsPage', () => {
         body: { enabled: false, expectedRowVersion: 1 },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     await waitFor(() =>
       expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
@@ -2093,7 +2089,7 @@ describe('DocumentsPage', () => {
         body: { enabled: true, expectedRowVersion: 1 },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2119,7 +2115,7 @@ describe('DocumentsPage', () => {
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
@@ -4595,7 +4591,7 @@ describe('DocumentsPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -4641,7 +4637,7 @@ describe('DocumentsPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -4718,13 +4714,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['one', 'two'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['one', 'two'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'space-1-documents.zip',
@@ -4760,13 +4753,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['download-only'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['download-only'] },
+      params: { control_space_id: 'space-1' },
+    })
   })
 
   it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
@@ -4809,13 +4799,10 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['failed'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['failed'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'failed-documents.zip',
@@ -4913,7 +4900,7 @@ describe('DocumentsPage', () => {
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(

@@ -97,6 +97,7 @@
   "history.status.cancelled": "Ləğv edildi",
   "history.status.completed": "Tamamlandı",
   "history.status.failed": "Uğursuz",
+  "history.status.notCompleted": "Tapşırıq tamamlana bilmədi",
   "history.status.partiallyFailed": "Xətalarla tamamlandı",
   "history.status.pending": "Gözləmədə",
   "history.status.running": "İcra olunur",
@@ -167,5 +168,7 @@
   "results.status.passed": "Keçdi",
   "results.title": "Test təfərrüatları",
   "title": "Qiymətləndirmə",
-  "unavailableUntilPublished": "Qiymətləndirməni qurmaq üçün əvvəlcə dərc edin."
+  "unavailableUntilPublished": "Qiymətləndirməni qurmaq üçün əvvəlcə dərc edin.",
+  "upgradePreview.description": "Metrikləri konfiqurasiya etmək və öz məlumatlarınızla toplu testlər işə salmaq üçün Professional və ya Team planına yüksəldin.",
+  "upgradePreview.title": "Qiymətləndirməni nümunə məlumatlarla önizləyirsiniz"
 }

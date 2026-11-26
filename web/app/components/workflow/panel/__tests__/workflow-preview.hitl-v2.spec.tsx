@@ -117,7 +117,6 @@ describe('WorkflowPreview HITL submission versions', () => {
             form_version: version,
           },
           version,
-          { silent: true },
         ),
       )
     },

@@ -107,7 +107,7 @@ it('cancels an upload, accepts the same file again, then applies and restores th
   expect(upload).toHaveBeenCalledTimes(2)
   expect(upload).toHaveBeenLastCalledWith(
     { body: { file: expect.any(File) } },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   const uploadedFile = upload.mock.lastCall?.[0].body.file
   expect(uploadedFile).toBeInstanceOf(File)

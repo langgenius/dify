@@ -114,7 +114,11 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from services.errors.billing import BillingError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
 from services.feature_service import FeatureService
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
@@ -810,8 +814,8 @@ class WorkflowService:
         """Publish an existing draft, preserving the active kind unless one is requested.
 
         The caller supplies the app, account and session. A successful call adds
-        a version with the resolved kind; Cloud evaluator publication requires a
-        paid plan. Entitlement failures add no published version.
+        a version with the resolved kind. Evaluator publication requires Evaluation
+        to be enabled and a paid plan on Cloud.
 
         Preconditions: the caller has admitted the App and account. Postconditions:
         the refreshed draft is locked until the caller commits or rolls back, so
@@ -828,7 +832,7 @@ class WorkflowService:
             requested_kind=workflow_kind,
         )
         if workflow_kind == WorkflowKind.EVALUATION:
-            self._require_evaluation_paid_plan(app_model.tenant_id)
+            self._require_evaluation_workflow_access(app_model.tenant_id)
 
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,
@@ -939,13 +943,15 @@ class WorkflowService:
         )
 
     @staticmethod
-    def _require_evaluation_paid_plan(tenant_id: str) -> None:
-        """Allow a trusted tenant's Evaluation operation only with Cloud paid billing.
+    def _require_evaluation_workflow_access(tenant_id: str) -> None:
+        """Check deployment availability and Cloud billing for a trusted tenant.
 
-        Non-Cloud editions make no billing call. Cloud Sandbox raises a plan
-        error and billing failures raise an unavailable error. Neither changes
-        workflow state; controllers translate these failures to HTTP responses.
+        A disabled deployment raises an error before billing. When enabled,
+        Cloud Sandbox raises a plan error and billing failures raise an unavailable
+        error. The check performs no workflow writes.
         """
+        if not dify_config.ENABLE_EVALUATION:
+            raise EvaluationDisabledError()
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return
         try:
@@ -1009,13 +1015,13 @@ class WorkflowService:
         """Convert a published version between standard and evaluation kinds.
 
         The caller supplies a valid target kind, app, account and session. Both
-        conversion directions require Cloud paid billing; denied requests leave
-        the published workflow unchanged. Publication receivers receive the same
-        session; receiver failures propagate without committing the conversion.
+        conversion directions require Evaluation to be enabled and a paid plan on
+        Cloud. Denied requests leave the published workflow unchanged. Publication
+        receivers use the same session, so their failures do not commit a conversion.
         """
         if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
             raise ValueError("target_kind must be either 'standard' or 'evaluation'")
-        self._require_evaluation_paid_plan(app_model.tenant_id)
+        self._require_evaluation_workflow_access(app_model.tenant_id)
         if not app_model.workflow_id:
             raise WorkflowNotFoundError("Published workflow not found")
 

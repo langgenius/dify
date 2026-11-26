@@ -551,6 +551,16 @@ def notify_app_created(context: RequestContext, app: AppRecord) -> None:
     )
 
 
+def inherit_agent_webapp_access(source_app_id: str, target_app_id: str) -> None:
+    """Apply the source App's Enterprise access mode to the committed copy."""
+    if SystemFeatureService.is_webapp_auth_enabled():
+        try:
+            access_mode = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app_id).access_mode
+        except Exception:
+            access_mode = "public"
+        EnterpriseService.WebAppAuth.update_app_access_mode(target_app_id, access_mode)
+
+
 def notify_app_deleted(context: RequestContext, deleted: AppDeletion) -> None:
     """Publish cleanup for an already committed deletion."""
     AppService.notify_deleted_app(deleted, account_id=context.account_id)

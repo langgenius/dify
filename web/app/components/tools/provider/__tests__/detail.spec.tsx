@@ -6,6 +6,9 @@ import {
 } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -56,6 +59,9 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.toolProvider.api.delete.post': api.customRemove,
       'workspaces.current.toolProvider.workflow.delete.post': api.workflowRemove,
+      // The action settings drawer reads the same lists through queries.
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
+      'workspaces.current.toolProvider.api.tools.get': api.customTools,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
@@ -148,8 +154,15 @@ const renderDetail = (collection: Collection, permissions = ['tool.manage']) => 
       workspacePermissionKeys: permissions,
     },
   )
-  return { onRefreshData }
+  return { onRefreshData, queryClient }
 }
+
+const customActionsKey = consoleQuery.workspaces.current.toolProvider.api.tools.get.queryKey({
+  input: { query: { provider: 'Search API' } },
+})
+const workflowActionsKey = consoleQuery.workspaces.current.toolProvider.workflow.tools.get.queryKey(
+  { input: { query: { workflow_tool_id: 'workflow-id' } } },
+)
 
 beforeEach(() => {
   api.builtinTools.mockReset().mockResolvedValue([tool])
@@ -178,6 +191,17 @@ it('shows builtin actions when their request completes without offering unnecess
   expect(
     screen.queryByRole('button', { name: /tools.auth.(authorized|unauthorized)/ }),
   ).not.toBeInTheDocument()
+})
+
+it('reports a failed action list request and stops loading', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  api.builtinTools.mockRejectedValue(
+    createHttpError(new Response(null, { status: 500 }), { message: 'Tool list unavailable' }),
+  )
+  renderDetail(builtin)
+  await waitFor(() => expect(toastError).toHaveBeenCalledWith('Tool list unavailable'))
+  expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument()
+  toastError.mockRestore()
 })
 
 it('lets a read-only user inspect custom tools without fetching editable credentials', async () => {
@@ -237,6 +261,18 @@ it('persists custom tool labels when the refreshed parent still has the old labe
   ).toBeInTheDocument()
 })
 
+it('refreshes the cached custom tool actions after its schema is saved', async () => {
+  const user = userEvent.setup()
+  const { queryClient } = renderDetail(custom)
+  queryClient.setQueryData(customActionsKey, [])
+  await user.click(await screen.findByRole('button', { name: 'tools.createTool.editAction' }))
+  const editor = await screen.findByRole('dialog', { name: 'tools.createTool.editTitle' })
+  expect(queryClient.getQueryState(customActionsKey)?.isInvalidated).toBe(false)
+  await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(api.customUpdate).toHaveBeenCalledOnce())
+  await waitFor(() => expect(queryClient.getQueryState(customActionsKey)?.isInvalidated).toBe(true))
+})
+
 it.each([
   { collection: custom, title: 'tools.createTool.editTitle', name: 'Search API' },
   { collection: workflow, title: 'navigation.common.workflowAsTool', name: 'Workflow Tool' },
@@ -263,7 +299,8 @@ it.each([
 
 it('updates a workflow tool only after confirmation and reloads the saved configuration', async () => {
   const user = userEvent.setup()
-  const { onRefreshData } = renderDetail(workflow)
+  const { onRefreshData, queryClient } = renderDetail(workflow)
+  queryClient.setQueryData(workflowActionsKey, [])
   await user.click(await screen.findByRole('button', { name: 'tools.createTool.editAction' }))
   const editor = await screen.findByRole('dialog', { name: 'navigation.common.workflowAsTool' })
   expect(
@@ -280,17 +317,14 @@ it('updates a workflow tool only after confirmation and reloads the saved config
   api.workflowDetail.mockResolvedValue({ ...workflowDetail, label: 'Renamed Workflow' })
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() =>
-    expect(api.workflowUpdate).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({
-          workflow_tool_id: 'workflow-id',
-          name: 'search_workflow',
-          label: 'Renamed Workflow',
-          parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
-        }),
-      },
-      { context: undefined },
-    ),
+    expect(api.workflowUpdate).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        workflow_tool_id: 'workflow-id',
+        name: 'search_workflow',
+        label: 'Renamed Workflow',
+        parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
+      }),
+    }),
   )
   await waitFor(() =>
     expect(
@@ -298,6 +332,7 @@ it('updates a workflow tool only after confirmation and reloads the saved config
     ).not.toBeInTheDocument(),
   )
   expect(onRefreshData).toHaveBeenCalledOnce()
+  expect(queryClient.getQueryState(workflowActionsKey)?.isInvalidated).toBe(true)
   await user.click(await screen.findByRole('button', { name: 'tools.createTool.editAction' }))
   const reopened = await screen.findByRole('dialog', { name: 'navigation.common.workflowAsTool' })
   expect(within(reopened).getByRole('textbox', { name: /^tools.createTool.name\b/ })).toHaveValue(
@@ -375,4 +410,19 @@ it('opens an action with read-only parameter details and returns to its provider
     expect(screen.queryByRole('dialog', { name: 'Search' })).not.toBeInTheDocument(),
   )
   expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+})
+
+it('keeps the custom tool editor closed when its provider fails to load', async () => {
+  api.customDetail.mockRejectedValueOnce(
+    createHttpError({ status: 503, statusText: '', headers: new Headers() }, { message: 'Down' }),
+  )
+  const toastError = vi.spyOn(toast, 'error')
+  renderDetail(custom)
+
+  await waitFor(() => expect(toastError).toHaveBeenCalledWith('Down'))
+  // An editor opened without the loaded provider would save an empty collection over it.
+  expect(
+    screen.queryByRole('button', { name: 'tools.createTool.editAction' }),
+  ).not.toBeInTheDocument()
+  toastError.mockRestore()
 })

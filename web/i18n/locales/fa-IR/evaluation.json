@@ -97,6 +97,7 @@
   "history.status.cancelled": "لغوشده",
   "history.status.completed": "تکمیل‌شده",
   "history.status.failed": "ناموفق",
+  "history.status.notCompleted": "تکمیل وظیفه ممکن نشد",
   "history.status.partiallyFailed": "با خطا تکمیل شد",
   "history.status.pending": "در انتظار",
   "history.status.running": "در حال اجرا",
@@ -167,5 +168,7 @@
   "results.status.passed": "قبول",
   "results.title": "جزئیات آزمون",
   "title": "ارزیابی",
-  "unavailableUntilPublished": "برای راه‌اندازی ارزیابی، ابتدا منتشر کنید."
+  "unavailableUntilPublished": "برای راه‌اندازی ارزیابی، ابتدا منتشر کنید.",
+  "upgradePreview.description": "برای پیکربندی معیارها و اجرای آزمون‌های دسته‌ای روی داده‌های خودتان، به طرح Professional یا Team ارتقا دهید.",
+  "upgradePreview.title": "در حال پیش‌نمایش ارزیابی با داده‌های نمونه هستید"
 }

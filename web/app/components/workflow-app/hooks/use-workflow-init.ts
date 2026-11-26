@@ -158,20 +158,17 @@ export const useWorkflowInit = () => {
           }
 
           try {
-            const res = await consoleClient.apps.byAppId.workflows.draft.post(
-              {
-                params: { app_id: appDetail.id },
-                body: {
-                  graph: initialGraph,
-                  force: true,
-                  features: {
-                    retriever_resource: { enabled: true },
-                  },
-                  conversation_variables: [],
+            const res = await consoleClient.apps.byAppId.workflows.draft.post({
+              params: { app_id: appDetail.id },
+              body: {
+                graph: initialGraph,
+                force: true,
+                features: {
+                  retriever_resource: { enabled: true },
                 },
+                conversation_variables: [],
               },
-              { context: { silent: true } },
-            )
+            })
             workflowStore.getState().setDraftUpdatedAt(res.updated_at)
             setSyncWorkflowDraftHash(res.hash, initialGraph)
           } catch (saveError) {
@@ -201,7 +198,6 @@ export const useWorkflowInit = () => {
       queryClient.query(
         consoleQuery.apps.byAppId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          staleTime: 0,
         }),
       ),
       queryClient.query(appWorkflowQueryOptions(appDetail.id)),

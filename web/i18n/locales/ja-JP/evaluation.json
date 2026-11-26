@@ -97,6 +97,7 @@
   "history.status.cancelled": "キャンセル済み",
   "history.status.completed": "完了",
   "history.status.failed": "失敗",
+  "history.status.notCompleted": "タスクを完了できませんでした",
   "history.status.partiallyFailed": "一部失敗",
   "history.status.pending": "待機中",
   "history.status.running": "実行中",
@@ -167,5 +168,7 @@
   "results.status.passed": "合格",
   "results.title": "テスト詳細",
   "title": "評価",
-  "unavailableUntilPublished": "評価を設定するには、先に公開してください。"
+  "unavailableUntilPublished": "評価を設定するには、先に公開してください。",
+  "upgradePreview.description": "Professional または Team プランにアップグレードすると、指標を設定し、独自のデータでバッチテストを実行できます。",
+  "upgradePreview.title": "サンプルデータで評価をプレビューしています"
 }

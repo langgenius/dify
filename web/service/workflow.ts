@@ -3,12 +3,7 @@ import type {
   WorkflowFeaturesConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type {
-  BlockEnum,
-  ConversationVariable,
-  EnvironmentVariable,
-} from '@/app/components/workflow/types'
-import type { ConsoleClientContext } from '@/service/console'
+import type { ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
 import { zConsoleHumanInputV2SubmitPayload } from '@dify/contracts/api/console/form/zod.gen'
 import { consoleClient } from '@/service/console'
@@ -19,17 +14,15 @@ export type EnvironmentVariablePatch = {
 }
 
 export const fetchAppWorkflowDraft = (appId: string) => {
-  return consoleClient.apps.byAppId.workflows.draft.get(
-    { params: { app_id: appId } },
-    { context: { silent: true } },
-  ) as Promise<FetchWorkflowDraftResponse>
+  return consoleClient.apps.byAppId.workflows.draft.get({
+    params: { app_id: appId },
+  }) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const fetchPipelineWorkflowDraft = (pipelineId: string) => {
-  return consoleClient.rag.pipelines.byPipelineId.workflows.draft.get(
-    { params: { pipeline_id: pipelineId } },
-    { context: { silent: true } },
-  ) as Promise<FetchWorkflowDraftResponse>
+  return consoleClient.rag.pipelines.byPipelineId.workflows.draft.get({
+    params: { pipeline_id: pipelineId },
+  }) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const singleNodeRun = (
@@ -54,22 +47,6 @@ export const singleNodeRun = (
         body,
       })
   }
-}
-
-export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}) => {
-  return consoleClient.apps.byAppId.workflows.defaultWorkflowBlockConfigs.byBlockType.get({
-    params: { app_id: appId, block_type: blockType },
-    query: { q: JSON.stringify(query) },
-  })
-}
-
-export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnum, query = {}) => {
-  return consoleClient.rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.byBlockType.get(
-    {
-      params: { pipeline_id: pipelineId, block_type: blockType },
-      query: { q: JSON.stringify(query) },
-    },
-  )
 }
 
 const fetchAllInspectVarsOnePage = (resource: EditorResource, page: number) => {
@@ -133,27 +110,21 @@ export const fetchNodeInspectVars = async (resource: EditorResource, nodeId: str
   }
 }
 
-export const updateEnvironmentVariables = (
-  {
-    appId,
-    environmentVariables,
-    deletedEnvironmentVariableIds,
-  }: {
-    appId: string
-  } & EnvironmentVariablePatch,
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post(
-    {
-      params: { app_id: appId },
-      body: {
-        environment_variables: environmentVariables,
-        patch: true,
-        deleted_environment_variable_ids: deletedEnvironmentVariableIds,
-      },
+export const updateEnvironmentVariables = ({
+  appId,
+  environmentVariables,
+  deletedEnvironmentVariableIds,
+}: {
+  appId: string
+} & EnvironmentVariablePatch) => {
+  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
+    params: { app_id: appId },
+    body: {
+      environment_variables: environmentVariables,
+      patch: true,
+      deleted_environment_variable_ids: deletedEnvironmentVariableIds,
     },
-    { context },
-  )
+  })
 }
 
 export const updateConversationVariables = ({
@@ -189,22 +160,15 @@ export const submitHumanInputForm = (
     action: string
   },
   formVersion?: HumanInputFormData['form_version'],
-  context?: ConsoleClientContext,
 ) => {
   if (formVersion === '2') {
-    return consoleClient.form.humanInput.v2.byFormToken.post(
-      {
-        params: { form_token: token },
-        body: zConsoleHumanInputV2SubmitPayload.parse(data),
-      },
-      { context },
-    )
-  }
-  return consoleClient.form.humanInput.byFormToken.post(
-    {
+    return consoleClient.form.humanInput.v2.byFormToken.post({
       params: { form_token: token },
-      body: data,
-    },
-    { context },
-  )
+      body: zConsoleHumanInputV2SubmitPayload.parse(data),
+    })
+  }
+  return consoleClient.form.humanInput.byFormToken.post({
+    params: { form_token: token },
+    body: data,
+  })
 }

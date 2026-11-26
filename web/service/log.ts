@@ -19,62 +19,50 @@ export const getRunOwnerId = (owner: WorkflowRunOwner): string => {
   }
 }
 
-type FetchOptions = { silent?: boolean }
-
-const getRunDetail = (owner: WorkflowRunOwner, runId: string, { silent }: FetchOptions) => {
-  const options = { context: { silent } }
+const getRunDetail = (owner: WorkflowRunOwner, runId: string) => {
   switch (owner.kind) {
     case 'app':
-      return consoleClient.apps.byAppId.workflowRuns.byRunId.get(
-        { params: { app_id: owner.appId, run_id: runId } },
-        options,
-      )
+      return consoleClient.apps.byAppId.workflowRuns.byRunId.get({
+        params: { app_id: owner.appId, run_id: runId },
+      })
     case 'knowledge-pipeline':
-      return consoleClient.rag.pipelines.byPipelineId.workflowRuns.byRunId.get(
-        { params: { pipeline_id: owner.pipelineId, run_id: runId } },
-        options,
-      )
+      return consoleClient.rag.pipelines.byPipelineId.workflowRuns.byRunId.get({
+        params: { pipeline_id: owner.pipelineId, run_id: runId },
+      })
     case 'snippet':
-      return consoleClient.snippets.bySnippetId.workflowRuns.byRunId.get(
-        { params: { snippet_id: owner.snippetId, run_id: runId } },
-        options,
-      )
+      return consoleClient.snippets.bySnippetId.workflowRuns.byRunId.get({
+        params: { snippet_id: owner.snippetId, run_id: runId },
+      })
   }
 }
 
-const getNodeExecutions = (owner: WorkflowRunOwner, runId: string, { silent }: FetchOptions) => {
-  const options = { context: { silent } }
+const getNodeExecutions = (owner: WorkflowRunOwner, runId: string) => {
   switch (owner.kind) {
     case 'app':
-      return consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.get(
-        { params: { app_id: owner.appId, run_id: runId } },
-        options,
-      )
+      return consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.get({
+        params: { app_id: owner.appId, run_id: runId },
+      })
     case 'knowledge-pipeline':
-      return consoleClient.rag.pipelines.byPipelineId.workflowRuns.byRunId.nodeExecutions.get(
-        { params: { pipeline_id: owner.pipelineId, run_id: runId } },
-        options,
-      )
+      return consoleClient.rag.pipelines.byPipelineId.workflowRuns.byRunId.nodeExecutions.get({
+        params: { pipeline_id: owner.pipelineId, run_id: runId },
+      })
     case 'snippet':
-      return consoleClient.snippets.bySnippetId.workflowRuns.byRunId.nodeExecutions.get(
-        { params: { snippet_id: owner.snippetId, run_id: runId } },
-        options,
-      )
+      return consoleClient.snippets.bySnippetId.workflowRuns.byRunId.nodeExecutions.get({
+        params: { snippet_id: owner.snippetId, run_id: runId },
+      })
   }
 }
 
 export const fetchRunDetail = (
   owner: WorkflowRunOwner,
   runId: string,
-  options: FetchOptions = {},
 ): Promise<WorkflowRunDetailResponse> =>
   // The generated response schemas leave out fields the run panel reads, so keep the hand-written type.
-  getRunDetail(owner, runId, options) as Promise<unknown> as Promise<WorkflowRunDetailResponse>
+  getRunDetail(owner, runId) as Promise<unknown> as Promise<WorkflowRunDetailResponse>
 
 export const fetchTracingList = (
   owner: WorkflowRunOwner,
   runId: string,
-  options: FetchOptions = {},
 ): Promise<NodeTracingListResponse> =>
   // The generated response schemas leave out fields the run panel reads, so keep the hand-written type.
-  getNodeExecutions(owner, runId, options) as Promise<unknown> as Promise<NodeTracingListResponse>
+  getNodeExecutions(owner, runId) as Promise<unknown> as Promise<NodeTracingListResponse>

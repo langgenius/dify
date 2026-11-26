@@ -1,6 +1,6 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent } from 'react'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +19,6 @@ const useWebAppBrand = () => {
       select: (data) => data.can_replace_logo,
     }),
   )
-  const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
@@ -43,9 +42,6 @@ const useWebAppBrand = () => {
   const persistWorkspaceBrand = async (body: WorkspaceCustomConfigPayload) => {
     if (isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand) return
     await updateCustomConfigMutation.mutateAsync({ body })
-    await queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.customConfig.get.key(),
-    })
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (uploadDisabled || uploading) return
@@ -62,7 +58,6 @@ const useWebAppBrand = () => {
         { body: { file } },
         {
           context: {
-            silent: true,
             onUploadProgress: ({ loaded, total }) => {
               setUploadProgress(Math.floor((loaded / total) * 100))
             },

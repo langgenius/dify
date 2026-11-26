@@ -97,6 +97,7 @@
   "history.status.cancelled": "Dibatalkan",
   "history.status.completed": "Selesai",
   "history.status.failed": "Gagal",
+  "history.status.notCompleted": "Tugas tidak dapat diselesaikan",
   "history.status.partiallyFailed": "Selesai dengan kegagalan",
   "history.status.pending": "Menunggu",
   "history.status.running": "Berjalan",
@@ -167,5 +168,7 @@
   "results.status.passed": "Lulus",
   "results.title": "Detail Pengujian",
   "title": "Evaluasi",
-  "unavailableUntilPublished": "Terbitkan terlebih dahulu untuk menyiapkan evaluasi."
+  "unavailableUntilPublished": "Terbitkan terlebih dahulu untuk menyiapkan evaluasi.",
+  "upgradePreview.description": "Tingkatkan ke paket Professional atau Team untuk mengonfigurasi metrik dan menjalankan pengujian batch pada data Anda sendiri.",
+  "upgradePreview.title": "Anda sedang melihat pratinjau Evaluasi dengan data contoh"
 }

@@ -37,7 +37,7 @@ import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
+import { pluginTaskListInput, upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
 import { pluginTaskListQueryOptions } from '@/service/plugin-install-queries'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
@@ -611,50 +611,60 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
-  const invalidateAllBuiltInTools = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
-    })
-  return (category?: PluginCategoryEnum) => {
-    if (category) {
-      const invalidateCategoryPluginList = queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
-          type: 'infinite',
-          input: { params: { category } },
+  return useCallback(
+    (category?: PluginCategoryEnum) => {
+      // Plugin installs and updates can change a provider's actions and their parameter schemas.
+      const invalidateAllBuiltInTools = () =>
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey:
+              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.tools.get.key(),
+          }),
+        ])
+      if (category) {
+        const invalidateCategoryPluginList = queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+            type: 'infinite',
+            input: { params: { category } },
+          }),
+        })
+        const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
+            type: 'query',
+            input: { query: { category } },
+          }),
+        })
+
+        if (category === PluginCategoryEnum.tool)
+          return Promise.all([
+            invalidateCategoryPluginList,
+            invalidateCategoryInstalledIds,
+            invalidateAllBuiltInTools(),
+          ]).then(() => undefined)
+
+        return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
+          () => undefined,
+        )
+      }
+
+      return Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
         }),
-      })
-      const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
-          type: 'query',
-          input: { query: { category } },
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
         }),
-      })
-
-      if (category === PluginCategoryEnum.tool)
-        return Promise.all([
-          invalidateCategoryPluginList,
-          invalidateCategoryInstalledIds,
-          invalidateAllBuiltInTools(),
-        ]).then(() => undefined)
-
-      return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
-        () => undefined,
-      )
-    }
-
-    return Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
-      }),
-      invalidateAllBuiltInTools(),
-    ]).then(() => undefined)
-  }
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
+        }),
+        invalidateAllBuiltInTools(),
+      ]).then(() => undefined)
+    },
+    [queryClient],
+  )
 }
 
 export const useInstallOrUpdate = ({
@@ -1047,7 +1057,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
   const query = useQuery(pluginTaskListQueryOptions({ enabled: canManagement }))
-  const { data, isFetched, isRefetching, refetch } = query
+  const { data, isFetched, isRefetching } = query
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
@@ -1071,25 +1081,31 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
       )
   }, [category, data, isRefetching, refreshPluginList])
 
-  const handleRefetch = useCallback(() => {
-    refetch()
-  }, [refetch])
+  const invalidatePluginTasks = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
+          input: pluginTaskListInput,
+        }),
+      }),
+    [queryClient],
+  )
 
   const handleInstallTaskStart = useCallback(
     (response: PluginInstallTaskStartResponse) => {
       if (response.all_installed) return
 
       upsertStartedPluginTask(consoleQuery, queryClient, response)
-      refetch()
+      void invalidatePluginTasks()
     },
-    [queryClient, refetch],
+    [invalidatePluginTasks, queryClient],
   )
 
   return {
     data,
     pluginTasks: data?.tasks || [],
     isFetched,
-    handleRefetch,
+    invalidatePluginTasks,
     handleInstallTaskStart,
   }
 }

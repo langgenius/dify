@@ -269,7 +269,9 @@ export function WorkspaceCard() {
     enabled: open,
   })
   const switchWorkspaceMutation = useMutation(
-    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workspaces.switch.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces

@@ -135,6 +135,15 @@ def test_reserve_credits_releases_billing_reservation() -> None:
     )
 
 
+def test_billing_outage_does_not_permit_an_unreserved_hosted_call() -> None:
+    """Only catalog reads may degrade; a live charge still requires a successful reservation."""
+    with (
+        patch.object(billing, "quota_reserve", side_effect=billing.BillingQuotaUpstreamUnavailableError()),
+        pytest.raises(billing.BillingQuotaUpstreamUnavailableError),
+    ):
+        CreditPoolService.reserve_credits("tenant-1", 1, "paid", request_id="request-1")
+
+
 def test_reserve_credits_raises_when_billing_has_no_reservation() -> None:
     with patch("services.billing_service.BillingService.quota_reserve") as quota_reserve:
         quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="", available=1, reserved=0)
