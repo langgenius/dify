@@ -2,9 +2,11 @@ import type { ConsumerConnectionProviderResponse } from '@dify/contracts/api/web
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { createDeferred } from '@/test/deferred'
+import { route, setupFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import ConnectionsPage from '../connections-page'
 
+// boundary: fixes the language used to build provider help links.
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en_US' }))
 
 const provider: ConsumerConnectionProviderResponse = {
@@ -15,6 +17,16 @@ const provider: ConsumerConnectionProviderResponse = {
   icon_dark: null,
   connections_count: 1,
 }
+const fake = setupFakeApi({
+  routes: [
+    route('GET', 'public', '/me/connections', () => ({
+      data: [],
+      has_more: false,
+      next_cursor: null,
+    })),
+  ],
+})
+const listProviders = () => fake.route('GET', 'public', '/me/connections')
 const clients: ReturnType<typeof createTestQueryClient>[] = []
 
 async function showConnections() {
@@ -34,7 +46,7 @@ afterEach(() => {
 
 it('shows the shared loading indicator until the provider cards arrive', async () => {
   const response = createDeferred<Response>()
-  vi.spyOn(globalThis, 'fetch').mockReturnValue(response.promise)
+  listProviders().mockReturnValue(response.promise)
   const screen = await showConnections()
   const loading = screen.getByRole('progressbar', { name: 'common.loading' })
   await expect.element(loading).toBeVisible()
@@ -47,7 +59,7 @@ it('shows the shared loading indicator until the provider cards arrive', async (
 
 it('removes loading after a list error without displaying the old error block, Retry or a false empty state', async () => {
   const response = createDeferred<Response>()
-  vi.spyOn(globalThis, 'fetch').mockReturnValue(response.promise)
+  listProviders().mockReturnValue(response.promise)
   const screen = await showConnections()
   const loading = screen.getByRole('progressbar', { name: 'common.loading' })
   await expect.element(loading).toBeVisible()
@@ -73,9 +85,6 @@ it('removes loading after a list error without displaying the old error block, R
 })
 
 it('preserves the empty state after a successful empty provider list', async () => {
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-    Response.json({ data: [], has_more: false, next_cursor: null }),
-  )
   const screen = await showConnections()
   await expect
     .element(screen.getByRole('heading', { name: 'app.endUser.noProviderConnections' }))

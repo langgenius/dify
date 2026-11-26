@@ -90,6 +90,7 @@ it('removes the missing-plugin lock when the catalog gains the tool and accepts 
           name: 'search',
           plugin_id: 'plugin-search',
           plugin_unique_identifier: 'plugin-search@1.0.0',
+          is_team_authorization: true,
         }),
       ],
     }),

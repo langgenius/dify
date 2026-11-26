@@ -37,10 +37,6 @@ const preflight = vi.hoisted(() =>
   >(),
 )
 const credentialInfo = vi.hoisted(() => vi.fn())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: credentialInfo,
-}))
 const getPauseDetails = vi.hoisted(() =>
   vi.fn<
     typeof import('@/service/console').consoleClient.workflow.byWorkflowRunId.pauseDetails.get
@@ -55,6 +51,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get':
         getChildExecutions,
       'apps.byAppId.workflows.draft.testCredentials.preflight.post': preflight,
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': credentialInfo,
       'workflow.byWorkflowRunId.pauseDetails.get': getPauseDetails,
     }),
   }
@@ -365,7 +362,9 @@ it.each(['invalid', 'request-error', 'save-error'] as const)(
     await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
     const setup = screen.getByRole('region', { name: 'share.connections.configure.title' })
     if (failure === 'invalid')
-      expect(await within(setup).findByRole('status')).toHaveTextContent('plugin.auth.unavailable')
+      expect(await within(setup).findByRole('status')).toHaveTextContent(
+        'share.connections.apiKeys.warning',
+      )
     else
       expect(await within(setup).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
     expect(screen.getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()

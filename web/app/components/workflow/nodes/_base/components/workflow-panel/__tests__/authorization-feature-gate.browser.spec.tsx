@@ -17,57 +17,54 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ToolAuthorization from '../tool-authorization'
 
-const requests = vi.hoisted(() => ({
-  features: vi.fn<() => Promise<GetFeaturesResponse>>(),
-}))
-
-// boundary: credential lookup uses the legacy network service; the selector and workflow owner stay real.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: async (url: string) => {
-    if (url.startsWith('/workspaces/current/tool-provider/builtin/provider-a/credential/info')) {
-      return {
-        credentials: [
-          {
-            id: 'workspace-key',
-            name: 'Workspace connection',
-            provider: 'provider-a',
-            credential_type: 'api-key',
-            is_default: true,
+const features = vi.fn<() => Promise<GetFeaturesResponse>>()
+setupFakeApi({
+  console: {
+    features: { get: () => features() },
+    workspaces: {
+      current: {
+        toolProvider: {
+          builtin: {
+            byProvider: {
+              credential: {
+                info: {
+                  get: () => ({
+                    credentials: [
+                      {
+                        id: 'workspace-key',
+                        name: 'Workspace connection',
+                        provider: 'provider-a',
+                        credential_type: 'api-key',
+                        is_default: true,
+                      },
+                      {
+                        id: 'replacement-key',
+                        name: 'Replacement connection',
+                        provider: 'provider-a',
+                        credential_type: 'api-key',
+                      },
+                      {
+                        id: 'saved-test-key',
+                        name: 'Test connection',
+                        provider: 'provider-a',
+                        credential_type: 'api-key',
+                      },
+                    ],
+                    supported_credential_types: ['api-key'],
+                  }),
+                },
+                schema: { byCredentialType: { get: () => [] } },
+              },
+            },
           },
-          {
-            id: 'replacement-key',
-            name: 'Replacement connection',
-            provider: 'provider-a',
-            credential_type: 'api-key',
-            is_default: false,
-          },
-        ],
-        supported_credential_types: ['api-key'],
-        allow_custom_token: true,
-        is_oauth_custom_client_enabled: false,
-      }
-    }
-    throw new Error(`Unexpected credential request: ${url}`)
+        },
+      },
+    },
   },
-}))
-
-// boundary: provider schema retrieval is external data and is not the feature-gate contract.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': () => requests.features(),
-      'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
-        () => [],
-    }),
-  }
 })
 
 function authorizationData(data: Partial<ToolNodeType>): ToolAuthorizationData {
@@ -85,7 +82,6 @@ async function setup(
   saved: Partial<ToolNodeType> = {},
   featureRequest?: Promise<GetFeaturesResponse>,
 ) {
-  onTestFinished(guardUnexpectedFetch())
   const { queryClient, wrapper: ConsoleProviders } = createConsoleQueryWrapper({
     features: { end_user_auth_enabled: enabled },
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
@@ -102,8 +98,9 @@ async function setup(
     consoleQuery.features.get.queryKey(),
   )
   if (!featureResponse) throw new Error('Expected the initial feature response fixture')
+  features.mockResolvedValue(featureResponse)
   if (featureRequest) {
-    requests.features.mockReturnValue(featureRequest)
+    features.mockReturnValue(featureRequest)
     queryClient.removeQueries({ queryKey: consoleQuery.features.get.queryKey(), exact: true })
   }
   let graph: ReactFlowInstance<ToolNodeType> | undefined

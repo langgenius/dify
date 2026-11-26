@@ -8,7 +8,8 @@ vi.mock('../webapp-address', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../webapp-address')>()),
   resolveWebAppAddress: mocks.address,
 }))
-vi.mock('../webapp-auth', () => ({
+vi.mock('../webapp-auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../webapp-auth')>()),
   getWebAppAccessToken: () => '',
   getWebAppPassport: () => 'test-passport',
   getOrCreateWebAppSessionId: vi.fn(),

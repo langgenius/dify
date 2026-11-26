@@ -1,13 +1,13 @@
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { MainNavFooter } from '../index'
 
 vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   basePath: '/dify',
 }))
-vi.mock('@/service/use-common', () => ({ useLogout: () => ({ mutate: vi.fn() }) }))
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
 }))
@@ -19,6 +19,7 @@ it.each([
 ])(
   'opens Visited apps outside the account menu using the runtime prefix %s',
   async (webappUrl, expectedHref) => {
+    onTestFinished(guardUnexpectedFetch())
     const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
       accountProfile: { name: 'Current User', email: 'current@example.com' },
       features: { education: { enabled: false } },

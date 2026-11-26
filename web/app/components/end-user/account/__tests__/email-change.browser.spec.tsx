@@ -2,10 +2,12 @@ import type { WebAccountProfileResponse } from '@dify/contracts/api/web/types.ge
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { installFakeApi, route } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import Account from '../index'
 
 const notifications = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
+// boundary: records application notifications without depending on the toast portal.
 vi.mock('@/app/notifications', () => ({ toast: notifications }))
 
 const currentEmail = 'joel@example.com'
@@ -53,21 +55,47 @@ function mockEmailApi() {
     return Response.json(account)
   })
   const getProfile = vi.fn(() => Response.json(account))
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const request = new Request(input, init)
-    const path = new URL(request.url).pathname
-    const body = request.method === 'POST' ? await request.clone().json() : undefined
-    requests.push({ request, body })
-    if (path.endsWith('/system-features')) {
-      return Response.json({ ...createSystemFeaturesFixture(), enable_change_email: true })
+  const track =
+    (handler: Parameters<typeof route>[3]): Parameters<typeof route>[3] =>
+    (context) => {
+      requests.push({ request: context.request, body: context.body })
+      return handler(context)
     }
-    if (path.endsWith('/account/profile') && request.method === 'GET') return getProfile()
-    if (path.endsWith('/account/change-email') && request.method === 'POST') return send(body)
-    if (path.endsWith('/account/change-email/validity')) return verify(body)
-    if (path.endsWith('/account/change-email/check-email-unique')) return unique()
-    if (path.endsWith('/account/change-email/reset')) return reset(body)
-    throw new Error(`Unexpected request: ${request.method} ${path}`)
-  })
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route(
+          'GET',
+          'public',
+          '/system-features',
+          track(() => ({
+            ...createSystemFeaturesFixture(),
+            enable_change_email: true,
+          })),
+        ),
+        route('GET', 'public', '/account/profile', track(getProfile)),
+        route(
+          'POST',
+          'public',
+          '/account/change-email',
+          track(({ body }) => send(body as { phase: string })),
+        ),
+        route(
+          'POST',
+          'public',
+          '/account/change-email/validity',
+          track(({ body }) => verify(body as { email: string })),
+        ),
+        route('POST', 'public', '/account/change-email/check-email-unique', track(unique)),
+        route(
+          'POST',
+          'public',
+          '/account/change-email/reset',
+          track(({ body }) => reset(body as { new_email: string })),
+        ),
+      ],
+    }),
+  )
   return { send, verify, unique, reset, getProfile, requests }
 }
 

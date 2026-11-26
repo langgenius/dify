@@ -4,9 +4,11 @@ import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createNode, createStartNode } from '../../__tests__/fixtures'
 import {
   createStoresFromOptions,
@@ -15,27 +17,42 @@ import {
 import { BlockEnum } from '../../types'
 import WorkflowPreview from '../workflow-preview'
 
-const { preflight, credentialInfo, unexpectedFetch } = vi.hoisted(() => ({
-  preflight: vi.fn<() => Promise<TestCredentialPreflightResponse>>(),
-  credentialInfo: vi.fn(),
-  unexpectedFetch: vi.fn<typeof fetch>(() => new Promise(() => {})),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.byAppId.workflows.draft.testCredentials.preflight.post': preflight,
-    }),
-  }
+const preflight = vi.fn<() => Promise<TestCredentialPreflightResponse>>()
+setupFakeApi({
+  console: {
+    apps: {
+      byAppId: {
+        workflows: { draft: { testCredentials: { preflight: { post: () => preflight() } } } },
+      },
+    },
+    workspaces: {
+      current: {
+        toolProvider: {
+          builtin: {
+            byProvider: {
+              credential: {
+                info: {
+                  get: () => ({
+                    credentials: [
+                      {
+                        id: 'key-1',
+                        name: 'Workspace key',
+                        provider: 'provider',
+                        credential_type: 'api-key',
+                        is_default: true,
+                      },
+                    ],
+                    supported_credential_types: ['api-key'],
+                  }),
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 })
-
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: credentialInfo,
-}))
 
 const createConnectionTool = (id: string, data: Record<string, unknown> = {}) =>
   createNode({
@@ -92,7 +109,12 @@ async function setup(nodes: Node[]) {
       doSyncWorkflowDraft: vi.fn(async () => ({ hash: 'saved', updatedAt: 1 })),
     },
   })
-  const Wrapper = createWorkflowWrapper(stores, undefined, queryClient)
+  const Wrapper = createWorkflowWrapper(stores, undefined, queryClient, {
+    kind: 'app',
+    appId: TEST_APP_ID,
+    collaborationEnabled: false,
+    mode: 'workflow',
+  })
   const screen = await render(
     <Wrapper>
       <ReactFlowProvider>
@@ -108,28 +130,7 @@ async function setup(nodes: Node[]) {
   return { screen, handleRun }
 }
 
-beforeEach(() => {
-  vi.stubGlobal('fetch', unexpectedFetch)
-  preflight.mockReset()
-  credentialInfo.mockReset().mockResolvedValue({
-    credentials: [
-      {
-        id: 'key-1',
-        name: 'Workspace key',
-        provider: 'provider',
-        credential_type: 'api-key',
-        is_default: true,
-      },
-    ],
-    supported_credential_types: ['api-key'],
-    allow_custom_token: true,
-  })
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
-})
+beforeEach(() => preflight.mockReset())
 
 it('enables Run only after every independent test connection is selected and validated', async () => {
   preflight
@@ -190,7 +191,7 @@ it('enables Run only after every independent test connection is selected and val
 
 it('keeps Run disabled after a connection check fails until retry succeeds', async () => {
   preflight
-    .mockRejectedValueOnce(new Error('preflight unavailable'))
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'preflight unavailable' }))
     .mockResolvedValue(connected(['tool-1']))
   const { screen, handleRun } = await setup([
     createConnectionTool('tool-1', { test_credential_id: 'key-1' }),

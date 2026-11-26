@@ -5,20 +5,15 @@ import { render } from 'vitest-browser-react'
 import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import WorkspaceConnectionSelector from '../workspace-connection-selector'
 
 const mocks = vi.hoisted(() => ({
-  consoleCall: vi.fn(),
   openOAuthPopup: vi.fn(),
 }))
 
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (...args: unknown[]) => mocks.consoleCall(...args),
-  },
-}))
-
+// boundary: replaces the external OAuth window while keeping credential selection real.
 vi.mock('@/hooks/use-oauth', () => ({ openOAuthPopup: mocks.openOAuthPopup }))
 
 const pluginPayload = { category: AuthCategory.tool, provider: 'test-provider' }
@@ -45,6 +40,63 @@ let serverCredentials: Credential[]
 let creationIncludesId: boolean
 let refreshRequest: ReturnType<typeof createDeferred<void>> | undefined
 const refreshStarted = vi.fn()
+
+const fake = setupFakeApi({
+  console: {
+    oauth: {
+      plugin: {
+        byProvider: {
+          tool: {
+            authorizationUrl: {
+              get: () => ({ authorization_url: 'https://example.com/oauth/authorize' }),
+            },
+          },
+        },
+      },
+    },
+    workspaces: {
+      current: {
+        toolProvider: {
+          builtin: {
+            byProvider: {
+              oauth: {
+                clientSchema: {
+                  get: () => ({
+                    schema: [],
+                    is_system_oauth_params_exists: true,
+                    is_oauth_custom_client_enabled: false,
+                    client_params: {},
+                    redirect_uri: 'https://example.com/oauth/callback',
+                  }),
+                },
+              },
+              credential: {
+                schema: {
+                  byCredentialType: {
+                    get: () => [
+                      {
+                        name: 'api_key',
+                        label: { en_US: 'API Key' },
+                        type: 'secret-input',
+                        required: true,
+                      },
+                    ],
+                  },
+                },
+              },
+              add: {
+                post: () => {
+                  serverCredentials = [...serverCredentials, createdApi]
+                  return { result: 'success', id: creationIncludesId ? createdApi.id : '' }
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+})
 
 async function showSelector(onSelect: (id: string) => void) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
@@ -95,27 +147,6 @@ beforeEach(() => {
   refreshRequest = undefined
   refreshStarted.mockClear()
   mocks.openOAuthPopup.mockReset()
-  mocks.consoleCall.mockImplementation(async (path: string[]) => {
-    if (path.slice(-3).join('.') === 'oauth.clientSchema.get')
-      return {
-        schema: [],
-        is_system_oauth_params_exists: true,
-        is_oauth_custom_client_enabled: false,
-        client_params: {},
-        redirect_uri: 'https://example.com/oauth/callback',
-      }
-    if (path.slice(-3).join('.') === 'schema.byCredentialType.get')
-      return [
-        { name: 'api_key', label: { en_US: 'API Key' }, type: 'secret-input', required: true },
-      ]
-    if (path.slice(-2).join('.') === 'add.post') {
-      serverCredentials = [...serverCredentials, createdApi]
-      return creationIncludesId ? { result: 'success', id: createdApi.id } : { result: 'success' }
-    }
-    if (path.slice(-2).join('.') === 'authorizationUrl.get')
-      return { authorization_url: 'https://example.com/oauth/authorize' }
-    throw new Error(`Unexpected Console operation: ${path.join('.')}`)
-  })
 })
 
 it.each([true, false])(
@@ -218,6 +249,6 @@ it('does not repeat a successful API key creation when refreshing its list fails
   expect(onSelect).not.toHaveBeenCalled()
   await expect.element(screen.getByRole('button', { name: /Existing connection/ })).toBeVisible()
   expect(
-    mocks.consoleCall.mock.calls.filter(([path]) => path.slice(-2).join('.') === 'add.post'),
-  ).toHaveLength(1)
+    fake.console.workspaces.current.toolProvider.builtin.byProvider.add.post,
+  ).toHaveBeenCalledOnce()
 })

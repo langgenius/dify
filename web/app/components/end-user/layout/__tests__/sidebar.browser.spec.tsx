@@ -8,12 +8,12 @@ import { render } from 'vitest-browser-react'
 import { startWebAppAccountSession } from '@/service/webapp-auth'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import Sidebar from '../sidebar'
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/my-apps',
-}))
+// boundary: keeps navigation tests independent of global toast presentation.
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const buildAppLabel = 'app.endUser.buildYourOwnApp'
@@ -39,9 +39,12 @@ const clients: ReturnType<typeof createTestQueryClient>[] = []
 function renderSidebar() {
   const queryClient = createTestQueryClient()
   clients.push(queryClient)
+  const { NavigationProvider } = createTestNavigation({ url: '/my-apps' })
   return render(
     <QueryClientProvider client={queryClient}>
-      <Sidebar />
+      <NavigationProvider>
+        <Sidebar />
+      </NavigationProvider>
     </QueryClientProvider>,
   )
 }
@@ -53,13 +56,14 @@ function mockRequests({
   account?: () => Response | Promise<Response>
   systemFeatures?: () => Response | Promise<Response>
 } = {}) {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const request = new Request(input, init)
-    const path = new URL(request.url).pathname
-    if (path.endsWith('/account/profile')) return account()
-    if (path.endsWith('/system-features')) return systemFeatures()
-    throw new Error(`Unexpected request: ${request.method} ${path}`)
+  const fake = installFakeApi({
+    routes: [
+      route('GET', 'public', '/account/profile', account),
+      route('GET', 'public', '/system-features', systemFeatures),
+    ],
   })
+  onTestFinished(fake)
+  return fake.route('GET', 'public', '/account/profile')
 }
 
 afterEach(() => {
@@ -72,7 +76,7 @@ describe('sidebar workspace entry', () => {
     { hasTenant: true, destination: 'https://console.example.com/dify/' },
     { hasTenant: false, destination: 'https://console.example.com/dify/create-workspace' },
   ])('routes to $destination based on workspace membership', async ({ hasTenant, destination }) => {
-    const fetch = mockRequests({
+    const account = mockRequests({
       account: () => Response.json({ ...profile, has_tenant: hasTenant }),
     })
     const screen = await renderSidebar()
@@ -88,11 +92,7 @@ describe('sidebar workspace entry', () => {
       .toHaveAttribute('aria-current', 'page')
     await expect.element(screen.getByText(profile.name)).toBeVisible()
 
-    const profileCall = fetch.mock.calls.find(([input, init]) =>
-      new URL(new Request(input, init).url).pathname.endsWith('/account/profile'),
-    )
-    expect(profileCall).toBeDefined()
-    const request = new Request(...profileCall!)
+    const { request } = account.mock.calls[0]![0]
     expect(request.credentials).toBe('include')
     expect(request.headers.has('x-app-code')).toBe(false)
     expect(request.headers.has('x-app-passport')).toBe(false)

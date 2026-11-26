@@ -5,6 +5,7 @@ import { apiError, pendingResponse, route, setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import SignInPage from '../sign-in-page'
 
+// boundary: keeps the logout integration independent of analytics side effects.
 vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: vi.fn() }))
 
 const logout = vi.fn()

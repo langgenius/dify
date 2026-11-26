@@ -3,26 +3,31 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { setupFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import { TestConnectionSetup } from '..'
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.tools.builtin.get': () => [],
-      'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
-        () => [],
-    }),
-  }
+setupFakeApi({
+  console: {
+    workspaces: {
+      current: {
+        tools: { builtin: { get: () => [] } },
+        toolProvider: {
+          builtin: {
+            byProvider: { credential: { schema: { byCredentialType: { get: () => [] } } } },
+          },
+        },
+      },
+    },
+  },
 })
 
+// boundary: provides the host editor's read-only state to the standalone panel.
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),
 }))
 
+// boundary: isolates the panel's credential-permission state from workspace bootstrap.
 vi.mock('@/hooks/use-credential-permissions', () => ({
   useCredentialPermissions: () => ({
     canUseCredential: true,
@@ -31,6 +36,7 @@ vi.mock('@/hooks/use-credential-permissions', () => ({
   }),
 }))
 
+// boundary: provides the authorization dialog actions from the panel host.
 vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
   usePluginAuth: () => ({
     isAuthorized: true,

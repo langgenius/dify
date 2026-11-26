@@ -6,11 +6,18 @@ import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import { InstalledConnectionSetup } from '..'
 import { InstalledAppConnectionsProvider } from '../provider'
 import { useInstalledAppConnections } from '../use-installed-app-connections'
+
+const revisionOne = '00000000-0000-4000-8000-000000000011'
+const workspaceKey = '00000000-0000-4000-8000-000000000021'
+const invisibleKey = '00000000-0000-4000-8000-000000000023'
+const conversationA = '00000000-0000-4000-8000-000000000031'
 
 const mocks = vi.hoisted(() => ({
   parameters: vi.fn(),
@@ -25,34 +32,51 @@ const mocks = vi.hoisted(() => ({
   oauthEnabled: false,
 }))
 
-// boundary: replace generated API responses while keeping connection state and controls real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'installedApps.byInstalledAppId.parameters.get': mocks.parameters,
-      'installedApps.byInstalledAppId.connections.configuration.get': mocks.configuration,
-      'installedApps.byInstalledAppId.connections.configuration.put': mocks.save,
-      'installedApps.byInstalledAppId.connections.get': mocks.list,
-      'installedApps.byInstalledAppId.connections.preflight.post': mocks.preflight,
-      'workspaces.current.tools.builtin.get': () => [],
-      'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
-        () =>
-          mocks.creationEnabled
-            ? [
-                {
-                  name: 'api_key',
-                  label: { en_US: 'API Key' },
-                  type: 'secret-input',
-                  required: true,
+setupFakeApi({
+  console: {
+    installedApps: {
+      byInstalledAppId: {
+        parameters: { get: (input) => mocks.parameters(input) },
+        connections: {
+          get: (input) => mocks.list(input),
+          configuration: {
+            get: (input) => mocks.configuration(input),
+            put: (input) => mocks.save(input),
+          },
+          preflight: { post: (input) => mocks.preflight(input) },
+        },
+      },
+    },
+    workspaces: {
+      current: {
+        tools: { builtin: { get: () => [] } },
+        toolProvider: {
+          builtin: {
+            byProvider: {
+              credential: {
+                schema: {
+                  byCredentialType: {
+                    get: () =>
+                      mocks.creationEnabled
+                        ? [
+                            {
+                              name: 'api_key',
+                              label: { en_US: 'API Key' },
+                              type: 'secret-input',
+                              required: true,
+                            },
+                          ]
+                        : [],
+                  },
                 },
-              ]
-            : [],
-      'workspaces.current.toolProvider.builtin.byProvider.add.post': mocks.create,
-    }),
-  }
+              },
+              add: { post: (input) => mocks.create(input) },
+            },
+          },
+        },
+      },
+    },
+  },
 })
 
 // boundary: workspace credential permissions are outside the installed-app connection workflow.
@@ -75,14 +99,14 @@ vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
     invalidPluginCredentialInfo: vi.fn(),
     credentials: [
       {
-        id: 'workspace-key',
+        id: workspaceKey,
         provider: 'langgenius/github/github',
         name: 'Workspace key',
         credential_type: mocks.oauthEnabled ? 'oauth2' : 'api-key',
         is_default: false,
       },
       {
-        id: 'invisible-key',
+        id: invisibleKey,
         provider: 'langgenius/github/github',
         name: 'Not permitted by installed app',
         credential_type: 'api-key',
@@ -106,7 +130,7 @@ const requirement = {
   allowed_credential_types: ['api-key' as const],
 }
 const credential = {
-  id: 'workspace-key',
+  id: workspaceKey,
   provider: requirement.provider,
   name: 'Workspace key',
   credential_type: 'api-key' as const,
@@ -120,7 +144,7 @@ const credential = {
 const parameters: InstalledAppParametersResponse = {
   annotation_reply: {},
   connection_requirements: [requirement],
-  connection_revision: 'published-revision',
+  connection_revision: revisionOne,
   requires_end_user_connections: true,
   file_upload: {},
   more_like_this: {},
@@ -156,7 +180,7 @@ function App({ conversationId }: { conversationId?: string }) {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <InstalledAppConnectionsProvider
-          installedAppId="installed-app"
+          installedAppId={TEST_APP_ID}
           conversationId={conversationId}
         >
           <InstalledConnectionSetup onStart={mocks.start} />
@@ -170,11 +194,12 @@ function App({ conversationId }: { conversationId?: string }) {
 beforeEach(() => {
   mocks.creationEnabled = false
   mocks.oauthEnabled = false
-  mocks.create.mockReset().mockResolvedValue({ result: 'success' })
+  mocks.create.mockReset().mockResolvedValue({ result: 'success', id: credential.id })
   mocks.parameters.mockReset().mockResolvedValue(parameters)
-  mocks.configuration
-    .mockReset()
-    .mockResolvedValue({ connections: { 'tool-node': null }, reauthorization_required: false })
+  mocks.configuration.mockReset().mockResolvedValue({
+    connections: { 'tool-node': null },
+    reauthorization_required: false,
+  })
   mocks.list
     .mockReset()
     .mockResolvedValue({ data: [credential], has_more: false, next_cursor: null })
@@ -241,7 +266,7 @@ it('saves a workspace selection for the current conversation and waits for fresh
     ready: boolean
     connections: { node_id: string; connection_id: string; status: 'connected'; check: null }[]
   }>()
-  const screen = await render(<App conversationId="conversation-a" />)
+  const screen = await render(<App conversationId={conversationA} />)
   const start = screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' })
   await expect.element(start).toBeDisabled()
   const picker = screen.getByRole('button', { name: /share.connections.setup.selectConnection/ })
@@ -254,11 +279,11 @@ it('saves a workspace selection for the current conversation and waits for fresh
   await screen.getByRole('button', { name: /Workspace key/ }).click()
   await expect.poll(() => mocks.save.mock.calls.length).toBe(1)
   expect(mocks.save).toHaveBeenCalledWith({
-    params: { installed_app_id: 'installed-app' },
+    params: { installed_app_id: TEST_APP_ID },
     body: {
-      connection_revision: 'published-revision',
-      connections: { 'tool-node': 'workspace-key' },
-      conversation_id: 'conversation-a',
+      connection_revision: revisionOne,
+      connections: { 'tool-node': workspaceKey },
+      conversation_id: conversationA,
     },
   })
   await expect.element(start).toBeDisabled()
@@ -266,18 +291,18 @@ it('saves a workspace selection for the current conversation and waits for fresh
   await expect.element(screen.getByText('common.loading', { exact: true })).not.toBeInTheDocument()
   expect(mocks.start).not.toHaveBeenCalled()
   check.resolve({
-    connection_revision: 'published-revision',
+    connection_revision: revisionOne,
     ready: true,
     connections: [
-      { node_id: 'tool-node', connection_id: 'workspace-key', status: 'connected', check: null },
+      { node_id: 'tool-node', connection_id: workspaceKey, status: 'connected', check: null },
     ],
   })
   await expect.element(start).toBeEnabled()
   await screen.getByRole('button', { name: 'Run' }).click()
   expect(mocks.run).toHaveBeenCalledWith({
-    connection_revision: 'published-revision',
-    connections: { 'tool-node': 'workspace-key' },
-    conversation_id: 'conversation-a',
+    connection_revision: revisionOne,
+    connections: { 'tool-node': workspaceKey },
+    conversation_id: conversationA,
   })
 })
 
@@ -287,7 +312,7 @@ it('keeps running disabled when a saved workspace credential fails preflight', a
     reauthorization_required: false,
   })
   mocks.preflight.mockResolvedValue({
-    connection_revision: 'published-revision',
+    connection_revision: revisionOne,
     ready: false,
     connections: [
       { node_id: 'tool-node', connection_id: credential.id, status: 'invalid', check: null },
@@ -309,7 +334,7 @@ it('warns when the selected connection cannot be checked instead of treating its
     reauthorization_required: false,
   })
   mocks.preflight.mockResolvedValue({
-    connection_revision: 'published-revision',
+    connection_revision: revisionOne,
     ready: false,
     connections: [
       { node_id: 'tool-node', connection_id: credential.id, status: null, check: null },
@@ -337,7 +362,7 @@ it('explains when a saved OAuth account has expired and lets the user choose ano
   })
   mocks.list.mockResolvedValue({ data: [oauthCredential], has_more: false, next_cursor: null })
   mocks.preflight.mockResolvedValue({
-    connection_revision: 'published-revision',
+    connection_revision: revisionOne,
     ready: false,
     connections: [
       {
@@ -397,23 +422,31 @@ it('confirms the current workspace selection before entering an app that needs r
     reauthorization_required: boolean
   }>()
   mocks.save.mockReturnValueOnce(save.promise)
-  const screen = await render(<App conversationId="conversation-a" />)
+  const screen = await render(<App conversationId={conversationA} />)
   const start = screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' })
   await expect.element(start).toBeEnabled()
   await expect.element(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
   await start.click()
-  await expect.element(start).toBeDisabled()
-  expect(mocks.start).not.toHaveBeenCalled()
-  expect(mocks.save).toHaveBeenCalledWith({
-    params: { installed_app_id: 'installed-app' },
-    body: {
-      connection_revision: 'published-revision',
-      connections: { 'tool-node': credential.id },
-      conversation_id: 'conversation-a',
-    },
-  })
-
-  save.resolve({ connections: { 'tool-node': credential }, reauthorization_required: false })
+  try {
+    await expect.element(start).toBeDisabled()
+    await expect
+      .poll(() => mocks.save.mock.lastCall?.[0])
+      .toEqual({
+        params: { installed_app_id: TEST_APP_ID },
+        body: {
+          connection_revision: revisionOne,
+          connections: { 'tool-node': credential.id },
+          conversation_id: conversationA,
+        },
+      })
+    expect(mocks.start).not.toHaveBeenCalled()
+  } finally {
+    mocks.configuration.mockResolvedValue({
+      connections: { 'tool-node': credential },
+      reauthorization_required: false,
+    })
+    save.resolve({ connections: { 'tool-node': credential }, reauthorization_required: false })
+  }
 
   await expect.poll(() => mocks.start.mock.calls.length).toBe(1)
   await expect.element(screen.getByRole('button', { name: 'Run' })).toBeEnabled()

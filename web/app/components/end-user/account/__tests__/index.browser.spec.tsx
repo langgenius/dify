@@ -6,6 +6,7 @@ import { installFakeApi, route } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import Account from '../index'
 
+// boundary: keeps account editing independent of global toast presentation.
 vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const initialProfile: WebAccountProfileResponse = {

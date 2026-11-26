@@ -2,9 +2,10 @@ import { afterEach, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
 import { webAppClient } from '@/service/webapp'
 import { setWebAppPassport } from '@/service/webapp-auth'
+import { installFakeApi, route } from '@/test/fake-api'
 
+// boundary: records transport error feedback without mounting the toast portal.
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
-vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
 
 const originalURL = window.location.href
 
@@ -33,20 +34,18 @@ it.each(['default', 'environment'] as const)(
       ready: false,
       connections: [],
     }
-    const sent: Request[] = []
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      sent.push(new Request(input, init))
-      return Response.json(response)
-    })
-
-    await expect(webAppClient.connections.preflight.post({ body })).resolves.toEqual(response)
-
-    expect(sent).toHaveLength(1)
-    const request = sent[0]!
     const path =
       kind === 'environment'
         ? '/environment/test-app/connections/preflight'
         : '/connections/preflight'
+    const fake = installFakeApi({ routes: [route('POST', 'public', path, () => response)] })
+    onTestFinished(fake)
+
+    await expect(webAppClient.connections.preflight.post({ body })).resolves.toEqual(response)
+
+    const sent = fake.route('POST', 'public', path)
+    expect(sent).toHaveBeenCalledOnce()
+    const { request } = sent.mock.calls[0]![0]
     expect(request.url).toBe(new URL(`${PUBLIC_API_PREFIX}${path}`, window.location.origin).href)
     expect(request.method).toBe('POST')
     expect(request.credentials).toBe('include')

@@ -30,11 +30,6 @@ const EmitterProbe = () => {
 const mockRequest = vi.hoisted(() => vi.fn())
 const mockCredentials = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: mockCredentials,
-}))
-
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
 }))
@@ -222,6 +217,8 @@ const readiness = (ready: boolean, status = 'connected') => ({
 const mockPreflight = (response: () => unknown) => {
   mockRequest.mockImplementation(async (path: string[]) => {
     if (path.includes('preflight')) return response()
+    if (path.join('.') === 'workspaces.current.toolProvider.builtin.byProvider.credential.info.get')
+      return mockCredentials()
     if (path.includes('clientSchema'))
       return {
         schema: [],
@@ -722,7 +719,7 @@ describe('ChatWrapper', () => {
     expect(within(rows[0]!).queryByRole('status')).not.toBeInTheDocument()
 
     const firstPicker = await within(rows[0]!).findByRole('button', {
-      name: /plugin.auth.appUser.testConnection/,
+      name: /share.connections.setup.selectConnection/,
     })
     await waitFor(() => expect(firstPicker).toBeEnabled())
     await user.click(firstPicker)
@@ -889,6 +886,9 @@ describe('ChatWrapper', () => {
     setupConnections({ panel: true })
     await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
     const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
-    expect(await within(dialog).findByRole('button', { name: /Personal OAuth/ })).toBeDisabled()
+    expect(await within(dialog).findByRole('button', { name: /Personal OAuth/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 })

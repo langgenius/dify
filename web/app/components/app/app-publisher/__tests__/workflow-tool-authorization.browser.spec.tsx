@@ -8,6 +8,7 @@ import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { AppPublisher } from '../index'
 
+// boundary: uses the real translation hooks with the publishing test's locale resources.
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-i18next')>()
   const { createReactI18nextMock } = await import('@/test/i18n-mock')

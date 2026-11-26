@@ -1,6 +1,6 @@
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { act } from '@testing-library/react'
-import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { lastRunQueryKey } from '@/service/workflow-queries'
@@ -92,7 +92,7 @@ describe('useLastRun', () => {
       const otherLastRunKey = lastRunQueryKey(resource, 'other-node')
       queryClient.setQueryData(lastRunKey, { id: 'run-1' })
       queryClient.setQueryData(otherLastRunKey, { id: 'run-2' })
-      const { result, store } = renderWorkflowHook(
+      const { result, store } = renderWorkflowCanvasHook(
         () =>
           useLastRun({
             id: 'human-input-node',
@@ -147,7 +147,7 @@ describe('useLastRun', () => {
           resolveRefresh = resolve
         }),
     )
-    const { result, store } = renderWorkflowHook(
+    const { result, store } = renderWorkflowCanvasHook(
       () =>
         useLastRun({
           id: 'human-input-node',
@@ -186,7 +186,7 @@ describe('useLastRun', () => {
 
   it('keeps the V2 form open when refreshing persisted results fails', async () => {
     mockFetchInspectVars.mockRejectedValueOnce(new Error('Variables unavailable'))
-    const { result, store } = renderWorkflowHook(
+    const { result, store } = renderWorkflowCanvasHook(
       () =>
         useLastRun({
           id: 'human-input-node',

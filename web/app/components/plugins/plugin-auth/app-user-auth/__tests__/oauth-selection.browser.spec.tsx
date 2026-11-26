@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { setupFakeApi } from '@/test/fake-api'
 import AppUserAuth from '..'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import { createAppUserAuthDraft } from '../draft'
@@ -19,16 +19,11 @@ type OAuthClientSchema = Awaited<
 >
 
 const mocks = vi.hoisted(() => ({
-  consoleCall: vi.fn(),
   openOAuthPopup: vi.fn<typeof openOAuthPopup>(),
   refresh: vi.fn(),
   draftChanged: vi.fn<(draft: AppUserAuthDraft) => void>(),
 }))
 
-// boundary: generated Console calls stop at their network transport; settings and query owners stay real.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: { call: (...args: unknown[]) => mocks.consoleCall(...args) },
-}))
 // boundary: the external OAuth popup completes independently of this component's page.
 vi.mock('@/hooks/use-oauth', () => ({ openOAuthPopup: mocks.openOAuthPopup }))
 
@@ -43,6 +38,45 @@ const createdOAuth: Credential = {
 let serverClient: OAuthClientSchema
 let serverCredentials: Credential[]
 let refreshRequest: ReturnType<typeof createDeferred<void>> | undefined
+
+setupFakeApi({
+  console: {
+    oauth: {
+      plugin: {
+        byProvider: {
+          tool: {
+            authorizationUrl: {
+              get: () => ({ authorization_url: 'https://example.com/authorize' }),
+            },
+          },
+        },
+      },
+    },
+    workspaces: {
+      current: {
+        toolProvider: {
+          builtin: {
+            byProvider: {
+              oauth: {
+                clientSchema: { get: () => serverClient },
+                customClient: {
+                  post: ({ body }) => {
+                    serverClient = {
+                      ...serverClient,
+                      is_oauth_custom_client_enabled: body.enable_oauth_custom_client ?? false,
+                      client_params: { ...body.client_params, client_secret: '[__HIDDEN__]' },
+                    }
+                    return { result: 'success' }
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+})
 
 async function showAppUserAuth() {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
@@ -106,7 +140,6 @@ async function startAuthorization(screen: Awaited<ReturnType<typeof showAppUserA
 }
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   serverClient = {
     schema: [
       {
@@ -134,20 +167,6 @@ beforeEach(() => {
   mocks.openOAuthPopup.mockReset()
   mocks.refresh.mockClear()
   mocks.draftChanged.mockClear()
-  mocks.consoleCall.mockImplementation(async (path: string[], input) => {
-    if (path.slice(-3).join('.') === 'oauth.clientSchema.get') return serverClient
-    if (path.slice(-3).join('.') === 'oauth.customClient.post') {
-      serverClient = {
-        ...serverClient,
-        is_oauth_custom_client_enabled: input.body.enable_oauth_custom_client,
-        client_params: { ...input.body.client_params, client_secret: '[__HIDDEN__]' },
-      }
-      return { result: 'success' }
-    }
-    if (path.slice(-2).join('.') === 'authorizationUrl.get')
-      return { authorization_url: 'https://example.com/authorize' }
-    throw new Error(`Unexpected Console operation: ${path.join('.')}`)
-  })
 })
 
 it('selects the completed OAuth account after refreshing and preserves edits made while its popup is open', async () => {

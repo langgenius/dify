@@ -3,6 +3,7 @@ import type { TestRunOptions } from '../test-run-menu'
 import { createContext, use } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import {
   createStoresFromOptions,
   createWorkflowWrapper,
@@ -12,13 +13,12 @@ import { WorkflowRunningStatus } from '../../types'
 import RunMode from '../run-mode'
 import { TriggerType } from '../test-run-menu'
 
-const { discovery, start, schedule, runAll, stop, unexpectedFetch } = vi.hoisted(() => ({
+const { discovery, start, schedule, runAll, stop } = vi.hoisted(() => ({
   discovery: vi.fn(),
   start: vi.fn(),
   schedule: vi.fn(),
   runAll: vi.fn(),
   stop: vi.fn(),
-  unexpectedFetch: vi.fn<typeof fetch>(() => new Promise(() => {})),
 }))
 
 const ValidationContext = createContext({
@@ -27,12 +27,15 @@ const ValidationContext = createContext({
 })
 
 // Graph validation and trigger discovery own separate suites; the menu and keyboard integration stay real.
+// boundary: injects graph validation results while leaving the run menu and keyboard handling real.
 vi.mock('../../hooks/use-checklist', () => ({
   useWorkflowRunValidation: () => use(ValidationContext),
 }))
+// boundary: injects trigger discovery results without starting discovery from the run menu.
 vi.mock('../../hooks/use-dynamic-test-run-options', () => ({
   useDynamicTestRunOptions: discovery,
 }))
+// boundary: keeps run mode selection independent of analytics.
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 
 const userInput = {
@@ -74,12 +77,7 @@ async function setup(initialStoreState: WorkflowProviderOptions['initialStoreSta
 
 beforeEach(() => {
   discovery.mockReturnValue({ userInput, triggers: [] } satisfies TestRunOptions)
-  vi.stubGlobal('fetch', unexpectedFetch)
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+  onTestFinished(guardUnexpectedFetch())
 })
 
 it('blocks downstream validation errors by button and shortcut, then runs once they are resolved', async () => {

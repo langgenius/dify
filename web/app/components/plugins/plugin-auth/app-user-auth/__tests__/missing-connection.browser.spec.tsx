@@ -4,26 +4,26 @@ import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { setupFakeApi } from '@/test/fake-api'
 import AppUserAuth from '..'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import { createAppUserAuthDraft } from '../draft'
 
-// boundary: credential schema retrieval is external data; the settings and picker remain real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
-        () => [],
-    }),
-  }
+setupFakeApi({
+  console: {
+    workspaces: {
+      current: {
+        toolProvider: {
+          builtin: {
+            byProvider: { credential: { schema: { byCredentialType: { get: () => [] } } } },
+          },
+        },
+      },
+    },
+  },
 })
 
 it('explains a removed test connection and lets the user replace it with an available connection', async () => {
-  onTestFinished(guardUnexpectedFetch())
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['credential.use'],
   })

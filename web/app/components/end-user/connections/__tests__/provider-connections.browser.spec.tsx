@@ -6,22 +6,21 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test'
 import { render } from 'vitest-browser-react'
 import { createDeferred } from '@/test/deferred'
+import { route, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import ProviderConnectionsPage from '../provider-connections-page'
 
 const mocks = vi.hoisted(() => ({
-  replace: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
   list: vi.fn<() => Response | Promise<Response>>(),
   providers: vi.fn<() => Response | Promise<Response>>(),
   remove: vi.fn<() => Response | Promise<Response>>(),
 }))
-vi.mock('@/next/navigation', () => {
-  const router = { replace: mocks.replace }
-  return { useRouter: () => router }
-})
+// boundary: fixes the language used to build provider help links.
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en_US' }))
+// boundary: records operation feedback independently of the global toast portal.
 vi.mock('@/app/notifications', () => ({
   toast: { info: mocks.info, success: mocks.success, error: vi.fn() },
 }))
@@ -46,6 +45,21 @@ const connection: ConsumerConnectionResponse = {
 }
 const clients: ReturnType<typeof createTestQueryClient>[] = []
 let hasConnections: boolean
+let navigation: ReturnType<typeof createTestNavigation>
+
+setupFakeApi({
+  routes: [
+    route('GET', 'public', '/me/connections', () => mocks.providers()),
+    route('GET', 'public', '/me/connections/providers/:provider/connections', ({ params }) => {
+      expect(params.provider).toBe(providerId)
+      return mocks.list()
+    }),
+    route('DELETE', 'public', '/me/connections/:key', ({ params }) => {
+      expect(params.key).toBe(connection.key)
+      return mocks.remove()
+    }),
+  ],
+})
 
 function connectionPage(data: ConsumerConnectionResponse[]) {
   return Response.json({ data, has_more: false, next_cursor: null })
@@ -68,16 +82,7 @@ beforeEach(() => {
     return new Response(null, { status: 204 })
   })
   window.history.replaceState({}, '', `/connections/${encodeURIComponent(providerId)}`)
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const request = new Request(input, init)
-    const path = new URL(request.url).pathname
-    if (request.method === 'DELETE' && path === `/api/me/connections/${connection.key}`)
-      return mocks.remove()
-    if (path === '/api/me/connections') return mocks.providers()
-    if (decodeURIComponent(path) === `/api/me/connections/providers/${providerId}/connections`)
-      return mocks.list()
-    throw new Error(`Unexpected request: ${request.method} ${path}`)
-  })
+  navigation = createTestNavigation({ url: window.location.pathname })
 })
 
 afterEach(() => {
@@ -89,9 +94,12 @@ afterEach(() => {
 function showProvider() {
   const client = createTestQueryClient()
   clients.push(client)
+  const { NavigationProvider } = navigation
   return render(
     <QueryClientProvider client={client}>
-      <ProviderConnectionsPage providerId={providerId} />
+      <NavigationProvider>
+        <ProviderConnectionsPage providerId={providerId} />
+      </NavigationProvider>
     </QueryClientProvider>,
   )
 }
@@ -109,12 +117,12 @@ it('waits for invalidated queries before reporting a successful final disconnect
 
   await expect.element(screen.getByRole('progressbar', { name: 'common.loading' })).toBeVisible()
   await expect.poll(() => mocks.providers.mock.calls.length).toBe(2)
-  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
   expect(mocks.success).not.toHaveBeenCalled()
   expect(mocks.info).not.toHaveBeenCalled()
 
   refresh.resolve(Response.json({ data: [], has_more: false, next_cursor: null }))
-  await expect.poll(() => mocks.replace.mock.calls).toEqual([['/connections']])
+  await expect.poll(() => navigation.router.replace.mock.calls).toEqual([['/connections']])
   expect(mocks.success).toHaveBeenCalledExactlyOnceWith('common.api.actionSuccess')
   expect(mocks.info).not.toHaveBeenCalled()
   await expect
@@ -126,7 +134,7 @@ it('redirects a direct visit to an empty provider without showing its ID as a he
   hasConnections = false
   const screen = await showProvider()
 
-  await expect.poll(() => mocks.replace.mock.calls).toEqual([['/connections']])
+  await expect.poll(() => navigation.router.replace.mock.calls).toEqual([['/connections']])
   expect(mocks.info).toHaveBeenCalledExactlyOnceWith('app.endUser.noProviderConnections')
   expect(mocks.success).not.toHaveBeenCalled()
   await expect
@@ -148,7 +156,7 @@ it('keeps the connection after a failed disconnection without success feedback o
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   expect(mocks.success).not.toHaveBeenCalled()
   expect(mocks.info).not.toHaveBeenCalled()
-  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
 
   await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
@@ -162,12 +170,12 @@ it('does not treat a pending connection list as an empty provider', async () => 
 
   await expect.element(screen.getByRole('progressbar', { name: 'common.loading' })).toBeVisible()
   await expect.poll(() => mocks.list.mock.calls.length).toBe(1)
-  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
   expect(mocks.info).not.toHaveBeenCalled()
 
   response.resolve(connectionPage([connection]))
   await expect.element(screen.getByRole('row', { name: /Personal API Key/ })).toBeVisible()
-  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
 })
 
 it('keeps a failed list on the page for retry instead of redirecting it as empty', async () => {
@@ -180,9 +188,9 @@ it('keeps a failed list on the page for retry instead of redirecting it as empty
   const screen = await showProvider()
 
   await expect.element(screen.getByRole('alert')).toHaveTextContent('Try again later.')
-  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
   expect(mocks.info).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'common.operation.retry' }).click()
   await expect.element(screen.getByRole('row', { name: /Personal API Key/ })).toBeVisible()
-  expect(mocks.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
 })

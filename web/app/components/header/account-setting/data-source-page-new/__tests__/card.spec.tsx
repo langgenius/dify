@@ -301,7 +301,7 @@ describe('Datasource Card', () => {
     const user = userEvent.setup()
     const { expectInvalidated } = renderCard({ ...item, credentials_list: [] })
     await user.click(screen.getByRole('button', { name: 'common.dataSource.configure Test Label' }))
-    await user.click(await screen.findByRole('button', { name: 'plugin.auth.addApi' }))
+    await user.click(await screen.findByRole('button', { name: 'plugin.auth.common.addApiKey' }))
     const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
     const inputs = within(dialog).getAllByRole('textbox')
     await user.type(inputs[0]!, 'New key')
@@ -322,10 +322,12 @@ describe('Datasource Card', () => {
     const user = userEvent.setup()
     renderCard(item, ['credential.use'])
     await user.click(screen.getByRole('button', { name: 'common.dataSource.configure Test Label' }))
-    const add = await screen.findByRole('button', { name: 'plugin.auth.addApi' })
+    const add = await screen.findByRole('button', { name: 'plugin.auth.common.addApiKey' })
     expect(add).toBeDisabled()
     await user.click(add)
-    expect(screen.queryByRole('dialog', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'plugin.auth.common.addApiKey' }),
+    ).not.toBeInTheDocument()
     expect(mockRequest).not.toHaveBeenCalled()
   })
 })

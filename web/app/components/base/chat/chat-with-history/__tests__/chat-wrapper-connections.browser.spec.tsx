@@ -4,25 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { createTestNavigation } from '@/test/next-navigation'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWrapper from '../chat-wrapper'
 import { ChatWithHistoryContext } from '../context'
 import { createChatConnections, withChatConnections } from './connection-fixture'
-
-const { ssePost, unexpectedFetch } = vi.hoisted(() => ({
-  ssePost: vi.fn(),
-  unexpectedFetch: vi.fn<typeof fetch>(() => Promise.reject(new Error('Unexpected request'))),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
-  usePathname: () => '/chat/test-token',
-  useSearchParams: () => new URLSearchParams(),
-  useParams: () => ({ token: 'test-token' }),
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost,
-}))
 
 const createHistoryContext = (): ChatWithHistoryContextValue => ({
   appData: {
@@ -71,16 +57,12 @@ const createHistoryContext = (): ChatWithHistoryContextValue => ({
   appId: 'test-app',
 })
 
-beforeEach(() => {
-  vi.stubGlobal('fetch', unexpectedFetch)
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
-})
-
 it('opens connection configuration from the disabled composer and restores normal input after connections become ready', async () => {
+  onTestFinished(guardUnexpectedFetch())
+  const { NavigationProvider } = createTestNavigation({
+    url: '/chat/test-token',
+    params: { token: 'test-token' },
+  })
   // Chromium proves pointer hit testing over the native disabled textarea and
   // dialog keyboard activation / focus restoration through the real portal.
   const ready = createChatConnections()
@@ -104,7 +86,9 @@ it('opens connection configuration from the disabled composer and restores norma
           // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector exposes its own Provider contract.
           <ChatWithHistoryContext.Provider value={context}>
             <div className="h-150 w-200">
-              <ChatWrapper />
+              <NavigationProvider>
+                <ChatWrapper />
+              </NavigationProvider>
             </div>
           </ChatWithHistoryContext.Provider>
         ),
@@ -130,7 +114,6 @@ it('opens connection configuration from the disabled composer and restores norma
   })
   const dialog = page.getByRole('dialog', { name: 'share.connections.configure.title' })
   await expect.element(dialog).toBeVisible()
-  expect(ssePost).not.toHaveBeenCalled()
 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
@@ -148,5 +131,4 @@ it('opens connection configuration from the disabled composer and restores norma
   await input.fill('Find repository examples')
   await expect.element(input).toHaveValue('Find repository examples')
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(ssePost).not.toHaveBeenCalled()
 })

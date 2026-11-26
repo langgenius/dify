@@ -9,6 +9,8 @@ import { page as browserPage, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import PublishedApps from '..'
 
 const service = vi.hoisted(() => ({
@@ -20,31 +22,27 @@ const service = vi.hoisted(() => ({
   urlUpdate: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/published-apps',
-  useSearchParams: () => new URLSearchParams(),
-  useParams: () => ({}),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const installedId = (input: { params: { installed_app_id: string } }) =>
-    input.params.installed_app_id
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'installedApps.get': (input) => service.list(input),
-      'installedApps.byInstalledAppId.get': (input) => service.detail(installedId(input)),
-      'installedApps.byInstalledAppId.patch': (input) => service.pin(input),
-      'installedApps.byInstalledAppId.parameters.get': (input) =>
-        service.parameters(installedId(input)),
-      'installedApps.byInstalledAppId.meta.get': (input) => service.metadata(installedId(input)),
-    }),
-  }
+setupFakeApi({
+  console: {
+    installedApps: {
+      get: (input) => service.list(input),
+      byInstalledAppId: {
+        get: ({ params }) => service.detail(params.installed_app_id),
+        patch: (input) => service.pin(input),
+        parameters: { get: ({ params }) => service.parameters(params.installed_app_id) },
+        meta: { get: ({ params }) => service.metadata(params.installed_app_id) },
+      },
+    },
+  },
 })
 
+const appIds = {
+  first: '019a0000-0000-7000-8000-000000000001',
+  second: '019a0000-0000-7000-8000-000000000002',
+  workflow: '019a0000-0000-7000-8000-000000000003',
+}
 // Chat engine behavior is covered separately; this retains the installed runtime's real metadata wiring.
+// boundary: isolates the app catalog from the embedded chat runtime.
 vi.mock('@/app/components/base/chat/chat-with-history', async () => {
   const { useWebAppStore } = await import('@/context/web-app-context')
   return {
@@ -60,24 +58,24 @@ vi.mock('@/app/components/base/chat/chat-with-history', async () => {
 })
 
 function createApp(
-  id: string,
+  label: keyof typeof appIds,
   isPinned = false,
   mode: InstalledAppResponse['app']['mode'] = 'chat',
 ): InstalledAppResponse {
   return {
-    id,
+    id: appIds[label],
     app_owner_tenant_id: 'tenant-1',
     editable: true,
     last_used_at: null,
     is_pinned: isPinned,
     app: {
-      id: `app-${id}`,
+      id: `app-${label}`,
       mode,
       icon_type: 'emoji',
       icon: '🤖',
       icon_background: '#fff',
       icon_url: null,
-      name: `Assistant ${id}`,
+      name: `Assistant ${label}`,
       description: 'Published assistant',
       use_icon_as_answer_icon: false,
     },
@@ -117,10 +115,13 @@ async function renderPublished(searchParams = '') {
     workspacePermissionKeys: ['app_library.access'],
     systemFeatures: { webapp_auth: { enabled: false } },
   })
+  const { NavigationProvider } = createTestNavigation({ url: `/published-apps?${searchParams}` })
   return render(
     <Wrapper>
       <NuqsTestingAdapter searchParams={searchParams} hasMemory onUrlUpdate={service.urlUpdate}>
-        <PublishedApps />
+        <NavigationProvider>
+          <PublishedApps />
+        </NavigationProvider>
       </NuqsTestingAdapter>
     </Wrapper>,
   )
@@ -129,7 +130,11 @@ async function renderPublished(searchParams = '') {
 beforeEach(() => {
   apps = [createApp('first'), createApp('second')]
   service.list.mockReset().mockImplementation(async () => page())
-  service.detail.mockReset().mockImplementation(async (id) => createApp(id))
+  service.detail.mockReset().mockImplementation(async (id) => {
+    const app = apps.find((entry) => entry.id === id)
+    if (!app) throw apiError({ status: 404, message: 'Installed app missing' })
+    return app
+  })
   service.parameters.mockReset().mockResolvedValue(parameters)
   service.metadata.mockReset().mockResolvedValue({ tool_icons: {} })
   service.pin.mockReset().mockImplementation(async ({ params, body }) => {
@@ -175,9 +180,9 @@ it.each([
   await expect
     .element(dialog.getByRole('heading', { level: 2, name: 'Assistant second' }))
     .toBeVisible()
-  expect(service.detail).toHaveBeenCalledExactlyOnceWith('second')
-  expect(service.parameters).toHaveBeenCalledExactlyOnceWith('second')
-  expect(service.metadata).toHaveBeenCalledExactlyOnceWith('second')
+  expect(service.detail).toHaveBeenCalledExactlyOnceWith(appIds.second)
+  expect(service.parameters).toHaveBeenCalledExactlyOnceWith(appIds.second)
+  expect(service.metadata).toHaveBeenCalledExactlyOnceWith(appIds.second)
 
   const bounds = dialog.element().getBoundingClientRect()
   expect(bounds.width).toBeGreaterThan(width * 0.9)
@@ -205,7 +210,7 @@ it('maps starring to the installed-app pin API and removes unstarred apps from t
     .element(screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ }))
     .not.toBeInTheDocument()
   expect(service.pin).toHaveBeenCalledExactlyOnceWith({
-    params: { installed_app_id: 'second' },
+    params: { installed_app_id: appIds.second },
     body: { is_pinned: true },
   })
 
@@ -226,7 +231,7 @@ it('maps starring to the installed-app pin API and removes unstarred apps from t
     .element(screen.getByRole('status'))
     .toHaveTextContent('navigation.mainNav.webApps.noResults')
   expect(service.pin).toHaveBeenLastCalledWith({
-    params: { installed_app_id: 'second' },
+    params: { installed_app_id: appIds.second },
     body: { is_pinned: false },
   })
 })
@@ -258,17 +263,20 @@ it('shows an empty state without opening a runtime when no apps are installed', 
 })
 
 it('hides list errors without showing a false empty state and remains usable through filtering', async () => {
-  const failedList = createDeferred<InstalledAppListResponse>()
+  const failedList = createDeferred()
   service.list.mockImplementation(
-    ({ query }: { query: NonNullable<GetInstalledAppsData['query']> }) =>
-      query.mode === 'agent-chat'
-        ? failedList.promise
-        : Promise.resolve(page([createApp('workflow', false, 'workflow')])),
+    async ({ query }: { query: NonNullable<GetInstalledAppsData['query']> }) => {
+      if (query.mode === 'agent-chat') {
+        await failedList.promise
+        throw apiError({ status: 503, message: 'Published apps unavailable' })
+      }
+      return page([createApp('workflow', false, 'workflow')])
+    },
   )
   const screen = await renderPublished('category=agent-chat')
   const loading = screen.getByRole('list', { name: 'common.loading' })
   await expect.element(loading).toBeVisible()
-  failedList.reject(new Error('Published apps unavailable'))
+  failedList.resolve()
   await expect.element(loading).not.toBeInTheDocument()
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
   await expect.element(screen.getByText('Published apps unavailable')).not.toBeInTheDocument()
