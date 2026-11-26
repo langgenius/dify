@@ -9,6 +9,7 @@ spec export fail or succeed in the same way.
 import hashlib
 import json
 from collections.abc import Mapping
+from copy import deepcopy
 from http import HTTPStatus
 from typing import Protocol, TypeGuard, cast, runtime_checkable
 
@@ -22,6 +23,33 @@ from flask_restx.utils import not_none
 BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY = "dify-binary-response-media-types"
 _BINARY_RESPONSE_MEDIA_TYPES_EXTENSION = f"x-{BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY}"
 _HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+_LITERAL_FIELDS = {"const", "default", "example", "examples"}
+_NAMED_MAP_FIELDS = {
+    "$defs",
+    "callbacks",
+    "content",
+    "definitions",
+    "dependencies",
+    "dependentSchemas",
+    "encoding",
+    "headers",
+    "links",
+    "parameters",
+    "pathItems",
+    "paths",
+    "patternProperties",
+    "properties",
+    "requestBodies",
+    "responses",
+    "schemas",
+    "securitySchemes",
+    "webhooks",
+}
+
+
+def _is_literal_field(key: str) -> bool:
+    """Identify opaque data fields in an OpenAPI or schema object, not a name-to-object map."""
+    return key in _LITERAL_FIELDS or key.startswith("x-")
 
 
 def _normalize_media_type(media_type: str) -> str:
@@ -112,14 +140,29 @@ def _deduplicate_operation_ids(payload: dict[str, object]) -> None:
 
 
 def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> object:
-    """Sort order-insensitive OpenAPI arrays so every public representation is stable."""
+    """Copy an OpenAPI value while sorting its order-insensitive arrays.
+
+    ``parent_key`` identifies a document/schema field, never a user-defined
+    name. Examples, defaults, constants and extensions remain opaque data;
+    names in maps such as ``properties`` do not change traversal semantics.
+    """
 
     if isinstance(value, dict):
-        return {key: sort_openapi_arrays(item, parent_key=key) for key, item in value.items()}
+        named_map = parent_key in _NAMED_MAP_FIELDS
+        return {
+            key: deepcopy(item)
+            if not named_map and _is_literal_field(key)
+            else sort_openapi_arrays(item, parent_key=None if named_map else key)
+            for key, item in value.items()
+        }
     if not isinstance(value, list):
         return value
 
-    sorted_items = [sort_openapi_arrays(item, parent_key=parent_key) for item in value]
+    if parent_key == "enum":
+        string_items = [item for item in value if isinstance(item, str)]
+        return sorted(string_items) if len(string_items) == len(value) else deepcopy(value)
+
+    sorted_items = [sort_openapi_arrays(item) for item in value]
     if parent_key == "parameters":
         return sorted(
             sorted_items,
@@ -129,7 +172,7 @@ def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> obje
                 json.dumps(item, sort_keys=True, default=str),
             ),
         )
-    if parent_key in {"enum", "required", "schemes", "tags"}:
+    if parent_key in {"required", "schemes", "tags"}:
         string_items = [item for item in sorted_items if isinstance(item, str)]
         if len(string_items) == len(sorted_items):
             return sorted(string_items)
