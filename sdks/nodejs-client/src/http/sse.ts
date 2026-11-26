@@ -16,7 +16,7 @@ const toBufferChunk = (chunk: unknown): Buffer => {
 
 const readLines = async function* (stream: Readable): AsyncIterable<string> {
   const decoder = new StringDecoder('utf8')
-  let buffered = ''
+  const fragments: string[] = []
   let skipLeadingLf = false
   for await (const chunk of stream) {
     let decoded = decoder.write(toBufferChunk(chunk))
@@ -26,27 +26,24 @@ const readLines = async function* (stream: Readable): AsyncIterable<string> {
       }
       skipLeadingLf = false
     }
-    buffered += decoded
-    let index = buffered.search(/[\r\n]/)
-    while (index >= 0) {
-      const line = buffered.slice(0, index)
-      const carriageReturn = buffered[index] === '\r'
-      buffered = buffered.slice(index + 1)
-      if (carriageReturn) {
-        if (buffered.startsWith('\n')) {
-          buffered = buffered.slice(1)
-        } else if (buffered.length === 0) {
-          // A CRLF pair may be split between transport chunks.
-          skipLeadingLf = true
-        }
-      }
-      yield line
-      index = buffered.search(/[\r\n]/)
+    // Scan each incoming fragment once, and only join a line after its delimiter
+    // arrives. Rescanning an accumulated long line for every chunk is quadratic.
+    let offset = 0
+    for (const ending of decoded.matchAll(/\r\n|[\r\n]/g)) {
+      fragments.push(decoded.slice(offset, ending.index))
+      offset = ending.index + ending[0].length
+      skipLeadingLf = ending[0] === '\r' && offset === decoded.length
+      yield fragments.join('')
+      fragments.length = 0
+    }
+    if (offset < decoded.length) {
+      fragments.push(decoded.slice(offset))
     }
   }
-  buffered += decoder.end()
-  if (buffered) {
-    yield buffered
+  fragments.push(decoder.end())
+  const lastLine = fragments.join('')
+  if (lastLine) {
+    yield lastLine
   }
 }
 
