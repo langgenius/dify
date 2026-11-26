@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "Сначала установите поставщик модели.",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "Поставщик модели не настроен",
+  "modelProvider.enableAllModels": "Включить все",
   "modelProvider.encrypted.back": " технологии.",
   "modelProvider.encrypted.front": "Ваш API-ключ будет зашифрован и сохранен с использованием",
   "modelProvider.featureSupported": "{{feature}} поддерживается",

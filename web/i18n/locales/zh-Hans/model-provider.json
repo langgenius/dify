@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "请安装模型供应商。",
   "modelProvider.emptyProviderTipWithMarketplace": "请先安装模型供应商。你可以从 <marketplace>Marketplace</marketplace> 安装模型。",
   "modelProvider.emptyProviderTitle": "尚未安装模型供应商",
+  "modelProvider.enableAllModels": "全部启用",
   "modelProvider.encrypted.back": "技术进行加密和存储。",
   "modelProvider.encrypted.front": "您的密钥将使用",
   "modelProvider.featureSupported": "支持 {{feature}} 功能",

@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "Instale primero un proveedor de modelos.",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "Proveedor de modelos no configurado",
+  "modelProvider.enableAllModels": "Activar todos",
   "modelProvider.encrypted.back": " tecnología.",
   "modelProvider.encrypted.front": "Tu CLAVE API será encriptada y almacenada usando",
   "modelProvider.featureSupported": "{{feature}} soportado",

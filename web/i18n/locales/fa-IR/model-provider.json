@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "لطفا ابتدا یک ارائه دهنده مدل نصب کنید.",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "ارائه دهنده مدل راه اندازی نشده است",
+  "modelProvider.enableAllModels": "فعال‌سازی همه",
   "modelProvider.encrypted.back": " رمزگذاری و ذخیره خواهد شد.",
   "modelProvider.encrypted.front": "کلید API شما با استفاده از فناوری",
   "modelProvider.featureSupported": "{{feature}} پشتیبانی می‌شود",

@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "Əvvəlcə model provayderi quraşdır.",
   "modelProvider.emptyProviderTipWithMarketplace": "Əvvəlcə model provayderi quraşdır. Modelləri <marketplace>mağazadan</marketplace> quraşdıra bilərsən.",
   "modelProvider.emptyProviderTitle": "Model provayderi qurulmayıb",
+  "modelProvider.enableAllModels": "Hamısını aktivləşdir",
   "modelProvider.encrypted.back": " texnologiyası ilə şifrələnəcək və saxlanılacaq.",
   "modelProvider.encrypted.front": "API açarınız",
   "modelProvider.featureSupported": "{{feature}} dəstəklənir",

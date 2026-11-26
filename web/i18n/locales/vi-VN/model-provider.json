@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "Vui lòng cài đặt nhà cung cấp mô hình trước.",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "Nhà cung cấp mô hình chưa được thiết lập",
+  "modelProvider.enableAllModels": "Bật tất cả",
   "modelProvider.encrypted.back": " công nghệ.",
   "modelProvider.encrypted.front": "Khóa API CỦA BẠN sẽ được mã hóa và lưu trữ bằng",
   "modelProvider.featureSupported": "{{feature}} được hỗ trợ",

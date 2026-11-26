@@ -65,6 +65,7 @@
   "modelProvider.emptyProviderTip": "Najprej namestite ponudnika modelov.",
   "modelProvider.emptyProviderTipWithMarketplace": "Please install a model provider first. You can install models from the <marketplace>Marketplace</marketplace>.",
   "modelProvider.emptyProviderTitle": "Ponudnik modelov ni nastavljen",
+  "modelProvider.enableAllModels": "Omogoči vse",
   "modelProvider.encrypted.back": " tehnologije.",
   "modelProvider.encrypted.front": "Vaš API ključ bo šifriran in shranjen z uporabo",
   "modelProvider.featureSupported": "{{feature}} podprto",
