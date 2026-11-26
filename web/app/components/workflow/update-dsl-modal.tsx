@@ -66,7 +66,7 @@ function UpdateDSLModal({
     async (app_id: string) => {
       if (collaborationManager.usesLoroDraft(app_id)) return
       const draft = await fetchAppWorkflowDraft(app_id)
-      if (draft.loro_draft_epoch || collaborationManager.usesLoroDraft(app_id)) return
+      if (collaborationManager.usesLoroDraft(app_id)) return
       const { graph, features, hash, conversation_variables, environment_variables } = draft
 
       const { nodes, edges, viewport } = graph

@@ -695,6 +695,10 @@ it('uses only the active peer history when offline and blocks canvas history whi
   vi.spyOn(collaborationManager, 'isDraftHistoryReady').mockImplementation(
     (_appId, draft) => draft.epoch === 'loaded',
   )
+  vi.spyOn(collaborationManager, 'getDraftHistory').mockReturnValue({
+    undo: ['NodeChange'],
+    redo: ['NodeChange'],
+  })
   const undo = vi.spyOn(collaborationManager, 'undo').mockReturnValue(true)
   const redo = vi.spyOn(collaborationManager, 'redo').mockReturnValue(true)
   act(() => {

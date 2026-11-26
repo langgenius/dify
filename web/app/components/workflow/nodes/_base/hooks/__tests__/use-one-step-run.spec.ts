@@ -2,6 +2,7 @@ import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human
 import { ORPCError } from '@orpc/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
+import { useReactFlow } from 'reactflow'
 import {
   createEdge,
   createNode,
@@ -61,8 +62,9 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
   ]
   const edges = [createEdge({ source: 'start', target: 'if-else-node' })]
   return renderHook(
-    () =>
-      useOneStepRun({
+    () => {
+      const flow = useReactFlow()
+      const config = useOneStepRun({
         id: 'if-else-node',
         resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
 
@@ -74,7 +76,9 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
         defaultRunInputData: {},
         isRunAfterSingleRun: false,
         isPaused: false,
-      }),
+      })
+      return { ...config, flow }
+    },
     {
       resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
       nodes,
@@ -96,6 +100,18 @@ describe('useOneStepRun single-run input vars', () => {
     window.history.replaceState(null, '', originalUrl)
     vi.restoreAllMocks()
     await act(async () => toast.dismiss())
+  })
+
+  it('opens single-step execution without overwriting a newer canvas title', async () => {
+    const { result } = renderUseOneStepRun()
+    await waitFor(() =>
+      expect(result.current.flow.getNode('if-else-node')?.data.title).toBe('Test node'),
+    )
+    act(() => result.current.showSingleRun())
+    expect(result.current.flow.getNode('if-else-node')?.data).toMatchObject({
+      title: 'Test node',
+      _isSingleRun: true,
+    })
   })
 
   it('uses value_type when the variable cannot be resolved from output vars', () => {

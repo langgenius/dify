@@ -541,53 +541,24 @@ const EnvPanel = () => {
     [mergeLatestUntouchedEnvList, pendingSaveEnvIdsRef, saveOperationQueueRef],
   )
 
-  const syncDraftWithResult = useCallback(
-    async (environmentVariablePatch?: EnvironmentVariablePatch) => {
-      let succeeded = false
-      try {
-        await doSyncWorkflowDraft(
-          false,
-          {
-            onSuccess: () => {
-              succeeded = true
-            },
-            onError: () => {
-              succeeded = false
-            },
-          },
-          environmentVariablePatch ? { environmentVariablePatch } : undefined,
-        )
-      } catch {
-        succeeded = false
-      }
-      return succeeded
-    },
-    [doSyncWorkflowDraft],
-  )
-
-  const persistQueuedEnvList = useCallback(
-    async (nextEnvList: EnvironmentVariable[], patch: EnvironmentVariablePatch) => {
-      const result = await syncEnvList(nextEnvList, patch)
-      if (result.persisted) return { ...result, usedDraftFallback: false }
-
-      const fallbackPersisted = await syncDraftWithResult(patch)
-      if (fallbackPersisted) await emitVarsAndFeaturesUpdate()
-      return {
-        persisted: fallbackPersisted,
-        error: result.error,
-        usedDraftFallback: true,
-      }
-    },
-    [emitVarsAndFeaturesUpdate, syncDraftWithResult, syncEnvList],
-  )
-
   const persistEnvListWithGraphChanges = useCallback(
     async (patch: EnvironmentVariablePatch): Promise<EnvironmentVariablePersistenceResult> => {
-      const persisted = await syncDraftWithResult(patch)
+      let persisted = false
+      await doSyncWorkflowDraft(
+        false,
+        {
+          onSuccess: () => {
+            persisted = true
+          },
+        },
+        {
+          environmentVariablePatch: patch,
+        },
+      )
       if (persisted) await emitVarsAndFeaturesUpdate()
       return { persisted }
     },
-    [emitVarsAndFeaturesUpdate, syncDraftWithResult],
+    [doSyncWorkflowDraft, emitVarsAndFeaturesUpdate],
   )
 
   const handleEdit = (env: EnvironmentVariable) => {
@@ -612,7 +583,7 @@ const EnvPanel = () => {
         const rollbackAffectedNodes = updateAffectedNodes(committedEnv, [])
         const { persisted, error } = rollbackAffectedNodes
           ? await persistEnvListWithGraphChanges(patch)
-          : await persistQueuedEnvList(nextEnvList, patch)
+          : await syncEnvList(nextEnvList, patch)
         if (!persisted) {
           const recovered = await reconcileAmbiguousPersistenceFailure(patch)
           if (!recovered) {
@@ -637,7 +608,7 @@ const EnvPanel = () => {
       commitPersistedEnvList,
       emitVarsAndFeaturesUpdate,
       persistEnvListWithGraphChanges,
-      persistQueuedEnvList,
+      syncEnvList,
       removeEnvSecret,
       reconcileAmbiguousPersistenceFailure,
       t,
@@ -672,7 +643,7 @@ const EnvPanel = () => {
             environmentVariables: [env],
             deletedEnvironmentVariableIds: [],
           }
-          const { persisted, error } = await persistQueuedEnvList(nextEnvList, patch)
+          const { persisted, error } = await syncEnvList(nextEnvList, patch)
           if (!persisted) {
             const recovered = await reconcileAmbiguousPersistenceFailure(patch)
             if (!recovered)
@@ -741,7 +712,7 @@ const EnvPanel = () => {
         }
         const { persisted, error } = hasGraphChanges
           ? await persistEnvListWithGraphChanges(patch)
-          : await persistQueuedEnvList(nextCommittedEnvList, patch)
+          : await syncEnvList(nextCommittedEnvList, patch)
         if (!persisted) {
           const recovered = await reconcileAmbiguousPersistenceFailure(patch)
           if (!recovered) {
@@ -772,7 +743,7 @@ const EnvPanel = () => {
       emitVarsAndFeaturesUpdate,
       mergeLatestUntouchedEnvList,
       persistEnvListWithGraphChanges,
-      persistQueuedEnvList,
+      syncEnvList,
       removeEnvSecret,
       prepareAffectedLLMNodeReconciliation,
       reconcileAmbiguousPersistenceFailure,

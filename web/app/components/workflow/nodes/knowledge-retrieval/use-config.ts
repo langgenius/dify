@@ -1,4 +1,3 @@
-import type { ValueSelector } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -95,12 +94,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   useEffect(() => {
     const currentInputs = inputRef.current
-    let nextQueryVariableSelector: ValueSelector = currentInputs.query_variable_selector
-    if (isChatflow && currentInputs.query_variable_selector.length === 0 && startNodeId)
-      nextQueryVariableSelector = [startNodeId, 'sys.query']
+    if (!isChatflow || !startNodeId || currentInputs.query_variable_selector.length) return
 
     const nextInputs = produce(currentInputs, (draft) => {
-      draft.query_variable_selector = nextQueryVariableSelector
+      draft.query_variable_selector = [startNodeId, 'sys.query']
     })
     runDraftInitialization(() => setInputs(nextInputs))
   }, [inputRef, isChatflow, setInputs, startNodeId])

@@ -950,25 +950,6 @@ describe('EnvPanel container', () => {
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
-  it('rolls back a shared model when both persistence paths fail', async () => {
-    const user = userEvent.setup()
-    const env = oldModelEnv()
-    mockUpdateEnvironmentVariables.mockRejectedValueOnce(new Error('environment API failed'))
-    mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
-      callback?.onError?.()
-    })
-    const { store } = renderPanel({
-      initialStoreState: { environmentVariables: [env], envSecrets: {} },
-    })
-
-    await changeExistingModel(user, env.name)
-
-    await waitFor(() => {
-      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-      expect(store.getState().environmentVariables).toEqual([env])
-    })
-  })
-
   it('preserves a newer remote value when a local model save fails', async () => {
     const user = userEvent.setup()
     const env = oldModelEnv()
@@ -976,9 +957,6 @@ describe('EnvPanel container', () => {
       value: { provider: 'remote-provider', name: 'remote-model', mode: 'chat' },
     })
     mockUpdateEnvironmentVariables.mockRejectedValueOnce(new Error('environment API failed'))
-    mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
-      callback?.onError?.()
-    })
     mockFetchWorkflowDraft.mockResolvedValueOnce({ environment_variables: [remoteEnv] })
     const { store } = renderPanel({
       initialStoreState: { environmentVariables: [env], envSecrets: {} },
@@ -990,27 +968,6 @@ describe('EnvPanel container', () => {
       expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([remoteEnv])
     })
-  })
-
-  it('accepts a model save that committed before its response failed', async () => {
-    const user = userEvent.setup()
-    const env = oldModelEnv()
-    const savedEnv = oldModelEnv({
-      value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
-    })
-    mockUpdateEnvironmentVariables.mockRejectedValueOnce(new Error('response lost'))
-    mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
-      callback?.onError?.()
-    })
-    mockFetchWorkflowDraft.mockResolvedValueOnce({ environment_variables: [savedEnv] })
-    const { store } = renderPanel({
-      initialStoreState: { environmentVariables: [env], envSecrets: {} },
-    })
-
-    await changeExistingModel(user, env.name)
-
-    await waitFor(() => expect(store.getState().environmentVariables).toEqual([savedEnv]))
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('rolls back model reconciliation when atomic draft sync fails', async () => {
@@ -1290,99 +1247,6 @@ describe('EnvPanel container', () => {
     await act(async () => resolvePersistence())
 
     await waitFor(() => expect(store.getState().environmentVariables).toEqual([remoteEnv]))
-  })
-
-  it('carries a draft-fallback alias save into the next queued alias update', async () => {
-    const user = userEvent.setup()
-    const firstEnv = createEnv({
-      id: 'env-a',
-      name: 'first_value',
-      value_type: 'string',
-      value: 'first',
-      description: '',
-    })
-    const secondEnv = createEnv({
-      id: 'env-b',
-      name: 'second_value',
-      value_type: 'string',
-      value: 'second',
-      description: '',
-    })
-    let finishDraftFallback!: () => void
-    mockUpdateEnvironmentVariables.mockRejectedValueOnce(new Error('app-only endpoint'))
-    mockDoSyncWorkflowDraft.mockImplementationOnce(
-      (_notRefresh, callback) =>
-        new Promise((resolve) => {
-          finishDraftFallback = () => {
-            callback?.onSuccess?.()
-            resolve()
-          }
-        }),
-    )
-    const { store } = renderPanel({
-      initialStoreState: { environmentVariables: [firstEnv, secondEnv], envSecrets: {} },
-    })
-
-    await openEditVariable(user, firstEnv.name)
-    await setTextField('workflow.env.modal.value', 'first-updated', user)
-    await saveForm(user)
-    await waitFor(() => expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1))
-    await openEditVariable(user, secondEnv.name)
-    await setTextField('workflow.env.modal.value', 'second-updated', user)
-    await saveForm(user)
-    expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
-
-    await act(async () => finishDraftFallback())
-
-    await waitFor(() => expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(2))
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalledWith(false, expect.any(Object), {
-      environmentVariablePatch: {
-        environmentVariables: [
-          expect.objectContaining({ id: firstEnv.id, value: 'first-updated' }),
-        ],
-        deletedEnvironmentVariableIds: [],
-      },
-    })
-    expect(mockUpdateEnvironmentVariables.mock.calls[1]?.[0]).toEqual({
-      appId: 'app-1',
-      environmentVariables: [
-        expect.objectContaining({ id: secondEnv.id, value: 'second-updated' }),
-      ],
-      deletedEnvironmentVariableIds: [],
-    })
-    await waitFor(() =>
-      expect(store.getState().environmentVariables).toEqual([
-        expect.objectContaining({ id: firstEnv.id, value: 'first-updated' }),
-        expect.objectContaining({ id: secondEnv.id, value: 'second-updated' }),
-      ]),
-    )
-  })
-
-  it('persists a new masked secret after an existing secret changes through draft fallback', async () => {
-    const user = userEvent.setup()
-    const env = createEnv()
-    mockUpdateEnvironmentVariables.mockRejectedValueOnce(new Error('app-only endpoint'))
-    const { store } = renderPanel({
-      initialStoreState: {
-        environmentVariables: [env],
-        envSecrets: { [env.id]: '[__HIDDEN__]' },
-      },
-    })
-    let valueDuringDraftFallback: EnvironmentVariable['value'] | undefined
-    mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
-      valueDuringDraftFallback = store.getState().environmentVariables[0]?.value
-      callback?.onSuccess?.()
-    })
-
-    await openEditVariable(user, env.name)
-    await setTextField('workflow.env.modal.value', 'updated-secret-99', user)
-    await saveForm(user)
-
-    await waitFor(() =>
-      expect(store.getState().environmentVariables[0]?.value).toBe('[__HIDDEN__]'),
-    )
-    expect(valueDuringDraftFallback).toBe('updated-secret-99')
-    expect(store.getState().envSecrets).toEqual({ [env.id]: 'update************99' })
   })
 
   it('requires confirmation before deleting affected secret variables', async () => {

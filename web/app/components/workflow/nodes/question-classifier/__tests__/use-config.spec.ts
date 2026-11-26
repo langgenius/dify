@@ -12,12 +12,27 @@ import { seedToolProviders } from '@/test/console/tool-providers'
 import useConfig from '../use-config'
 
 // Model capabilities are external catalog data; node updates and vision reconciliation stay real.
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({}),
-  useTextGenerationCurrentProviderAndModelAndModelList: ({ model }: { model: string }) => ({
-    currentModel: { features: model === 'vision-model' ? [ModelFeatureEnum.vision] : [] },
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+    >()),
+    useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({}),
+    useTextGenerationCurrentProviderAndModelAndModelList: ({ model }: { model: string }) => ({
+      currentModel: { features: model === 'vision-model' ? [ModelFeatureEnum.vision] : [] },
+      textGenerationModelList: [
+        {
+          provider: 'openai',
+          models: [
+            { model: 'vision-model', features: [ModelFeatureEnum.vision] },
+            { model: 'text-model', features: [] },
+          ],
+        },
+      ],
+    }),
   }),
-}))
+)
 
 const createPayload = (
   overrides: Partial<QuestionClassifierNodeType> = {},

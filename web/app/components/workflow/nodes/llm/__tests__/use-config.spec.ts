@@ -12,15 +12,30 @@ import { BlockEnum, EditionType, PromptRole } from '../../../types'
 import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig from '../use-config'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    currentProvider: { provider: 'openai' },
-    currentModel: { model: 'text-model', model_properties: { mode: 'chat' } },
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+    >()),
+    useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
+      currentProvider: { provider: 'openai' },
+      currentModel: { model: 'text-model', model_properties: { mode: 'chat' } },
+    }),
+    useTextGenerationCurrentProviderAndModelAndModelList: ({ model }: { model: string }) => ({
+      currentModel: { features: model === 'vision-model' ? [ModelFeatureEnum.vision] : [] },
+      textGenerationModelList: [
+        {
+          provider: 'openai',
+          models: [
+            { model: 'vision-model', features: [ModelFeatureEnum.vision] },
+            { model: 'text-model', features: [] },
+          ],
+        },
+      ],
+    }),
   }),
-  useTextGenerationCurrentProviderAndModelAndModelList: ({ model }: { model: string }) => ({
-    currentModel: { features: model === 'vision-model' ? [ModelFeatureEnum.vision] : [] },
-  }),
-}))
+)
 
 const prompt = { role: PromptRole.user, text: 'Default prompt', edition_type: EditionType.basic }
 const defaults = {
@@ -74,15 +89,15 @@ const setup = (payload = createPayload(), environmentVariables: EnvironmentVaria
   })
 }
 
-it('keeps model and completion edits after real vision reconciliation', async () => {
+it('disables vision in the same write as a change to a text model', () => {
   const { result } = setup()
-  act(() =>
+  act(() => {
     result.current.config.handleModelChanged(
       { provider: 'openai', modelId: 'text-model', mode: 'chat' },
       { temperature: 0.3 },
-    ),
-  )
-  await waitFor(() => expect(result.current.config.inputs.vision.enabled).toBe(false))
+    )
+    expect(result.current.flow.getNode('node')?.data.vision).toEqual({ enabled: false })
+  })
   act(() => result.current.config.handleCompletionParamsChange({ top_p: 0.5 }))
   expect(result.current.flow.getNode('node')?.data).toEqual(
     expect.objectContaining({

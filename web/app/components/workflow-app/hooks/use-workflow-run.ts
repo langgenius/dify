@@ -14,11 +14,13 @@ import { v4 as uuidV4 } from 'uuid'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   editorResourceAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
@@ -119,7 +121,7 @@ const getWorkflowTracingCount = (workflowData: unknown) => {
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
-const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
+const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft, canEdit: boolean) => {
   const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
@@ -186,12 +188,13 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         features,
         environmentVariables,
       })
-      doSyncWorkflowDraft()
+      if (canEdit) doSyncWorkflowDraft()
     }
-  }, [reactflow, workflowStore, store, featuresStore, doSyncWorkflowDraft])
+  }, [reactflow, workflowStore, store, featuresStore, canEdit, doSyncWorkflowDraft])
 
   const handleLoadBackupDraft = useCallback(() => {
-    const { backupDraft, setBackupDraft, setEnvironmentVariables } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, setEnvironmentVariables, loroDraft } =
+      workflowStore.getState()
 
     if (backupDraft) {
       const { nodes, edges, viewport, features, environmentVariables } = backupDraft
@@ -203,8 +206,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       setEnvironmentVariables(environmentVariables)
       featuresStore!.setState({ features })
       setBackupDraft(undefined)
+      if (loroDraft && collaborationManager.isDraftHistoryReady(appId, loroDraft))
+        collaborationManager.refreshGraphSynchronously()
     }
-  }, [handleUpdateWorkflowCanvas, workflowStore, featuresStore])
+  }, [appId, handleUpdateWorkflowCanvas, workflowStore, featuresStore])
 
   const handleRun = useCallback(
     async (
@@ -222,8 +227,13 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         })
       })
       setNodes(newNodes)
-      const saved = await doSyncWorkflowDraft()
-      if (!saved && resource.kind === 'app' && resource.collaborationEnabled) {
+      const requiresLoroSave =
+        canEdit &&
+        resource.kind === 'app' &&
+        resource.collaborationEnabled &&
+        !!workflowStore.getState().loroDraft
+      const saved = canEdit ? await doSyncWorkflowDraft() : null
+      if (!saved && requiresLoroSave) {
         toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
         return
       }
@@ -461,6 +471,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       store,
       resource,
       doSyncWorkflowDraft,
+      canEdit,
       t,
       workflowStore,
       pathname,
@@ -583,11 +594,12 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 export const useWorkflowRunByCanEdit = (canEdit: boolean) => {
   const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
 
-  return useWorkflowRunBase(doSyncWorkflowDraft)
+  return useWorkflowRunBase(doSyncWorkflowDraft, canEdit)
 }
 
 export const useWorkflowRun = () => {
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  return useWorkflowRunBase(doSyncWorkflowDraft)
+  return useWorkflowRunBase(doSyncWorkflowDraft, canEdit)
 }

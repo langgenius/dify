@@ -361,19 +361,6 @@ it('clears a join error after a successful reconnect after an initial outage', a
   expect(screen.queryByText('workflow.collaboration.joinUnavailable')).not.toBeInTheDocument()
 })
 
-it('shows synchronization status until the collaborative graph is ready', async () => {
-  await renderMain()
-  expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
-  await act(async () => {
-    events.ready.forEach((handler) => handler(false))
-  })
-  expect(screen.getByText('workflow.common.syncingData')).toBeVisible()
-  await act(async () => {
-    events.ready.forEach((handler) => handler(true))
-  })
-  expect(screen.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
-})
-
 // These are incoming collaboration-service events, not callbacks captured from UI components.
 function updateVars(syncWorkflowDraft = false) {
   return Promise.all(
@@ -409,6 +396,12 @@ it('does not connect collaboration for a view-only app', async () => {
   await renderMain({ permission_keys: [AppACLPermission.ViewLayout] })
   expect(collaborationManager.connect).not.toHaveBeenCalled()
   expect(screen.getByRole('button', { name: 'workflow.env.envPanelTitle' })).toBeDisabled()
+})
+
+it('allows editing from the HTTP draft when the server supplies no epoch', async () => {
+  await renderMain({ initialStoreState: { loroDraft: undefined } })
+  expect(collaborationManager.connect).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument()
 })
 
 it('applies remote features and variables, retains omitted slices, and normalizes secret masks', async () => {
@@ -798,29 +791,6 @@ it('switches to the replacement draft’s history and ignores an older pending r
   expect(store.getState()).toMatchObject({
     loroDraft: identity,
     syncWorkflowDraftHash: 'replacement-hash',
-    hasPendingLoroDraftChanges: false,
-  })
-})
-
-it('uses the confirmed graph and revision for an empty draft after local undo', async () => {
-  const confirmed = vi.spyOn(collaborationManager, 'onLoroDraftConfirmed')
-  const pending = vi.spyOn(collaborationManager, 'onLoroDraftPendingChange')
-  const { store } = await renderMain({
-    initialStoreState: { loroDraft: { accountId: 'editor', epoch: 'shared' } },
-  })
-  const hydrate = vi.mocked(collaborationManager.connect).mock.lastCall?.[1]?.hydrateGraph
-  expect(hydrate?.({ nodes: [], edges: [] }).nodes.map((node) => node.data.type)).toEqual([
-    BlockEnum.StartPlaceholder,
-  ])
-  act(() => {
-    pending.mock.lastCall![0](true)
-    confirmed.mock.lastCall![0]({ hash: 'saved-after-undo', updatedAt: 123, isEmpty: true })
-    pending.mock.lastCall![0](false)
-  })
-  expect(store.getState()).toMatchObject({
-    draftUpdatedAt: 123_000,
-    syncWorkflowDraftHash: 'saved-after-undo',
-    syncWorkflowDraftIsEmpty: true,
     hasPendingLoroDraftChanges: false,
   })
 })

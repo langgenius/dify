@@ -706,94 +706,26 @@ export const useNodesInteractions = () => {
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
   const performNodeDelete = useCallback(
-    (nodeId: string) => {
-      if (getNodesReadOnly()) return
+    (nodeId: string): boolean => {
+      const current = collaborativeWorkflow.getState()
+      const currentNode = current.nodes.find((node) => node.id === nodeId)
+      if (
+        !currentNode ||
+        nodesMetaDataMap?.[getNodeCatalogType(currentNode.data)]?.metaData.isUndeletable
+      )
+        return false
+
+      if (
+        currentNode.data.type === BlockEnum.Iteration ||
+        currentNode.data.type === BlockEnum.Loop
+      ) {
+        const children = current.nodes.filter((node) => node.parentId === nodeId)
+        children.forEach((child) => performNodeDelete(child.id))
+      }
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNodeIndex = nodes.findIndex((node) => node.id === nodeId)
-      const currentNode = nodes[currentNodeIndex]
-
-      if (!currentNode) return
-
-      if (nodesMetaDataMap?.[getNodeCatalogType(currentNode.data)]?.metaData.isUndeletable) {
-        return
-      }
-
       deleteNodeInspectorVars(nodeId)
-      if (currentNode.data.type === BlockEnum.Iteration) {
-        const iterationChildren = nodes.filter((node) => node.parentId === currentNode.id)
-
-        if (iterationChildren.length) {
-          if (currentNode.data._isBundled) {
-            iterationChildren.forEach((child) => {
-              performNodeDelete(child.id)
-            })
-            return performNodeDelete(nodeId)
-          } else {
-            if (iterationChildren.length === 1) {
-              performNodeDelete(iterationChildren[0]!.id)
-              performNodeDelete(nodeId)
-
-              return
-            }
-            const { setShowConfirm, showConfirm } = workflowStore.getState()
-
-            if (!showConfirm) {
-              setShowConfirm({
-                title: t(($) => $['nodes.iteration.deleteTitle'], { ns: 'workflow' }),
-                desc: t(($) => $['nodes.iteration.deleteDesc'], { ns: 'workflow' }),
-                onConfirm: () => {
-                  iterationChildren.forEach((child) => {
-                    performNodeDelete(child.id)
-                  })
-                  performNodeDelete(nodeId)
-                  handleSyncWorkflowDraft()
-                  setShowConfirm(undefined)
-                },
-              })
-              return
-            }
-          }
-        }
-      }
-
-      if (currentNode.data.type === BlockEnum.Loop) {
-        const loopChildren = nodes.filter((node) => node.parentId === currentNode.id)
-
-        if (loopChildren.length) {
-          if (currentNode.data._isBundled) {
-            loopChildren.forEach((child) => {
-              performNodeDelete(child.id)
-            })
-            return performNodeDelete(nodeId)
-          } else {
-            if (loopChildren.length === 1) {
-              performNodeDelete(loopChildren[0]!.id)
-              performNodeDelete(nodeId)
-
-              return
-            }
-            const { setShowConfirm, showConfirm } = workflowStore.getState()
-
-            if (!showConfirm) {
-              setShowConfirm({
-                title: t(($) => $['nodes.loop.deleteTitle'], { ns: 'workflow' }),
-                desc: t(($) => $['nodes.loop.deleteDesc'], { ns: 'workflow' }),
-                onConfirm: () => {
-                  loopChildren.forEach((child) => {
-                    performNodeDelete(child.id)
-                  })
-                  performNodeDelete(nodeId)
-                  handleSyncWorkflowDraft()
-                  setShowConfirm(undefined)
-                },
-              })
-              return
-            }
-          }
-        }
-      }
-
       if (currentNode.data.type === BlockEnum.DataSource) {
         const { id } = currentNode
         const { ragPipelineVariables, setRagPipelineVariables } = workflowStore.getState()
@@ -834,25 +766,19 @@ export const useNodesInteractions = () => {
         )
       })
       setEdges(newEdges)
-      handleSyncWorkflowDraft()
 
-      if (currentNode.type === CUSTOM_NOTE_NODE) {
-        saveStateToHistory(WorkflowHistoryEvent.NoteDelete, {
-          nodeId: currentNode.id,
-        })
-      } else {
-        saveStateToHistory(WorkflowHistoryEvent.NodeDelete, {
-          nodeId: currentNode.id,
-        })
-      }
+      saveStateToHistory(
+        currentNode.type === CUSTOM_NOTE_NODE
+          ? WorkflowHistoryEvent.NoteDelete
+          : WorkflowHistoryEvent.NodeDelete,
+        { nodeId },
+      )
+      return true
     },
     [
-      getNodesReadOnly,
       collaborativeWorkflow,
-      handleSyncWorkflowDraft,
       saveStateToHistory,
       workflowStore,
-      t,
       nodesMetaDataMap,
       deleteNodeInspectorVars,
     ],
@@ -860,18 +786,65 @@ export const useNodesInteractions = () => {
 
   const deleteNodes = useCallback(
     (ids: string[]) => {
-      const remove = () =>
-        collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodeDelete, () => {
-          for (const id of ids) performNodeDelete(id)
-        })
-      if (historyAppId)
-        collaborationManager.guardClear(
-          () => collaborationManager.deletionWillClear(new Set(ids)),
-          remove,
+      if (getNodesReadOnly()) return
+
+      const targets = new Set(ids)
+      const willClear = () => collaborationManager.deletionWillClear(targets)
+      const remove = () => {
+        if (getNodesReadOnly()) return
+        const deleted = collaborationManager.runDraftHistoryAction(
+          WorkflowHistoryEvent.NodeDelete,
+          () => ids.map(performNodeDelete).some(Boolean),
         )
-      else remove()
+        if (deleted) handleSyncWorkflowDraft()
+      }
+      const confirmClear = () => {
+        if (historyAppId) collaborationManager.guardClear(willClear, remove)
+        else remove()
+      }
+      if (historyAppId && willClear()) {
+        confirmClear()
+        return
+      }
+
+      const { nodes } = collaborativeWorkflow.getState()
+      const container = nodes.find(
+        (node) =>
+          targets.has(node.id) &&
+          !node.data._isBundled &&
+          (node.data.type === BlockEnum.Iteration || node.data.type === BlockEnum.Loop) &&
+          nodes.filter((child) => child.parentId === node.id).length > 1,
+      )
+      if (!container) {
+        confirmClear()
+        return
+      }
+
+      const { setShowConfirm, showConfirm } = workflowStore.getState()
+      if (showConfirm) return
+      const isIteration = container.data.type === BlockEnum.Iteration
+      setShowConfirm({
+        title: t(($) => $[isIteration ? 'nodes.iteration.deleteTitle' : 'nodes.loop.deleteTitle'], {
+          ns: 'workflow',
+        }),
+        desc: t(($) => $[isIteration ? 'nodes.iteration.deleteDesc' : 'nodes.loop.deleteDesc'], {
+          ns: 'workflow',
+        }),
+        onConfirm: () => {
+          setShowConfirm(undefined)
+          confirmClear()
+        },
+      })
     },
-    [historyAppId, performNodeDelete],
+    [
+      collaborativeWorkflow,
+      getNodesReadOnly,
+      handleSyncWorkflowDraft,
+      historyAppId,
+      performNodeDelete,
+      t,
+      workflowStore,
+    ],
   )
 
   const handleNodeDelete = useCallback((id: string) => deleteNodes([id]), [deleteNodes])
@@ -1585,11 +1558,13 @@ export const useNodesInteractions = () => {
           }
         })
       })
-      setNodes(newNodes)
       const remainingEdges = edges.filter(
         (edge) => !connectedEdges.some((connectedEdge) => connectedEdge.id === edge.id),
       )
-      setEdges([...remainingEdges, ...reconnectedEdges])
+      collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodeChange, () => {
+        setNodes(newNodes)
+        setEdges([...remainingEdges, ...reconnectedEdges])
+      })
       if (nodeType === BlockEnum.TriggerWebhook) {
         handleSyncWorkflowDraft(true, true, {
           onSuccess: () => autoGenerateWebhookUrl(newCurrentNode.id),
@@ -1600,9 +1575,30 @@ export const useNodesInteractions = () => {
       ) {
         createInlineAgentBindingForNode(newCurrentNode.id, {
           onError: () => {
-            const { setNodes, setEdges } = collaborativeWorkflow.getState()
-            setNodes(nodes)
-            setEdges(edges)
+            const latest = collaborativeWorkflow.getState()
+            const failed = latest.nodes.find((node) => node.id === newCurrentNode.id)
+            if (
+              !failed ||
+              !isAgentV2NodeData(failed.data) ||
+              !needsInlineAgentBindingCreation(failed.data)
+            )
+              return
+
+            const restoredNodes = latest.nodes.map((node) =>
+              node.id === failed.id ? { ...currentNode, position: failed.position } : node,
+            )
+            const restoredNodeIds = new Set(restoredNodes.map((node) => node.id))
+            const keptEdges = latest.edges.filter(
+              (edge) => edge.source !== failed.id && edge.target !== failed.id,
+            )
+            const restoredEdges = connectedEdges.filter(
+              (edge) => restoredNodeIds.has(edge.source) && restoredNodeIds.has(edge.target),
+            )
+            collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodeChange, () => {
+              latest.setNodes(restoredNodes)
+              latest.setEdges([...keptEdges, ...restoredEdges])
+            })
+            handleSyncWorkflowDraft()
           },
         })
       } else {

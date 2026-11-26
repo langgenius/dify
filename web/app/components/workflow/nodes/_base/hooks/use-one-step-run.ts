@@ -63,8 +63,7 @@ import { streamEvents } from '@/service/event-stream'
 import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
 import { lastRunQueryKey } from '@/service/workflow-queries'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
-import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
-import { useWorkflow } from '../../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
 
 // Iteration and loop runs report their progress as an event stream.
@@ -236,6 +235,7 @@ const useOneStepRun = <T>({
   const availableNodes = getBeforeNodesInSameBranch(id)
   const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
   const workflowStore = useWorkflowStore()
+  const { getNodesReadOnly } = useNodesReadOnly()
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
   const { data: buildInTools } = useQuery(
@@ -429,15 +429,21 @@ const useOneStepRun = <T>({
     ],
   )
 
-  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } =
-    useNodeDataUpdate()
+  const setRunNodeData = useCallback(
+    (fields: Pick<CommonNodeType, '_isSingleRun' | '_singleRunningStatus'>) => {
+      const { getNodes, setNodes } = store.getState()
+      setNodes(
+        produce(getNodes(), (draft) => {
+          const node = draft.find((node) => node.id === id)
+          if (node) Object.assign(node.data, fields)
+        }),
+      )
+    },
+    [id, store],
+  )
   const setNodeRunning = () => {
-    handleNodeDataUpdate({
-      id,
-      data: {
-        ...data,
-        _singleRunningStatus: NodeRunningStatus.Running,
-      },
+    setRunNodeData({
+      _singleRunningStatus: NodeRunningStatus.Running,
     })
   }
 
@@ -532,25 +538,17 @@ const useOneStepRun = <T>({
         throw new Error(message)
       }
 
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Succeeded,
-        },
+      setRunNodeData({
+        _isSingleRun: false,
+        _singleRunningStatus: NodeRunningStatus.Succeeded,
       })
 
       return response as NodeTracing
     } catch (error) {
       console.error('handleRun: schedule trigger single run error', error)
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Failed,
-        },
+      setRunNodeData({
+        _isSingleRun: false,
+        _singleRunningStatus: NodeRunningStatus.Failed,
       })
       toast.error(
         error instanceof Error
@@ -559,7 +557,7 @@ const useOneStepRun = <T>({
       )
       throw error
     }
-  }, [resource, id, handleNodeDataUpdate, data, t])
+  }, [resource, id, setRunNodeData, t])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     if (resource.kind !== 'app') return null
@@ -618,13 +616,9 @@ const useOneStepRun = <T>({
           throw new Error(message)
         }
 
-        handleNodeDataUpdate({
-          id,
-          data: {
-            ...data,
-            _isSingleRun: false,
-            _singleRunningStatus: NodeRunningStatus.Listening,
-          },
+        setRunNodeData({
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Listening,
         })
 
         cancelWebhookSingleRun()
@@ -651,7 +645,7 @@ const useOneStepRun = <T>({
     }
 
     return null
-  }, [resource, id, data, handleNodeDataUpdate, cancelWebhookSingleRun, t])
+  }, [resource, id, setRunNodeData, cancelWebhookSingleRun, t])
 
   const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
     if (resource.kind !== 'app') return null
@@ -727,13 +721,9 @@ const useOneStepRun = <T>({
         throw new Error(message)
       }
 
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Listening,
-        },
+      setRunNodeData({
+        _isSingleRun: false,
+        _singleRunningStatus: NodeRunningStatus.Listening,
       })
 
       cancelPluginSingleRun()
@@ -741,18 +731,14 @@ const useOneStepRun = <T>({
     }
 
     return null
-  }, [resource, id, data, handleNodeDataUpdate, cancelPluginSingleRun])
+  }, [resource, id, setRunNodeData, cancelPluginSingleRun])
 
   const checkValidWrap = () => {
     if (!checkValid) return { isValid: true, errorMessage: '' }
     const res = checkValid(data, t, moreDataForCheckValid)
     if (!res.isValid) {
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-        },
+      setRunNodeData({
+        _isSingleRun: false,
       })
       if (res.errorMessage) toast.error(res.errorMessage)
     }
@@ -780,28 +766,25 @@ const useOneStepRun = <T>({
   }, [isShowSingleRun, setShowSingleRunPanel])
 
   const hideSingleRun = () => {
-    handleNodeDataUpdate({
-      id,
-      data: {
-        ...data,
-        _isSingleRun: false,
-      },
+    setRunNodeData({
+      _isSingleRun: false,
     })
   }
   const showSingleRun = () => {
-    handleNodeDataUpdate({
-      id,
-      data: {
-        ...data,
-        _isSingleRun: true,
-      },
+    setRunNodeData({
+      _isSingleRun: true,
     })
   }
   const isCompleted =
     runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
-    if (resource.kind === 'app' && resource.collaborationEnabled) {
+    if (
+      resource.kind === 'app' &&
+      resource.collaborationEnabled &&
+      workflowStore.getState().loroDraft &&
+      !getNodesReadOnly()
+    ) {
       try {
         await collaborationManager.syncLoroDraft(resource.appId)
       } catch {
@@ -818,15 +801,9 @@ const useOneStepRun = <T>({
     if (isTriggerNode) startTriggerListening()
     else stopTriggerListening()
 
-    handleNodeDataUpdate({
-      id,
-      data: {
-        ...data,
-        _isSingleRun: false,
-        _singleRunningStatus: isTriggerNode
-          ? NodeRunningStatus.Listening
-          : NodeRunningStatus.Running,
-      },
+    setRunNodeData({
+      _isSingleRun: false,
+      _singleRunningStatus: isTriggerNode ? NodeRunningStatus.Listening : NodeRunningStatus.Running,
     })
     let res: any
     let hasError = false
@@ -838,13 +815,9 @@ const useOneStepRun = <T>({
           res = await runWebhookSingleRun()
           if (!res) {
             if (webhookSingleRunActiveRef.current) {
-              handleNodeDataUpdate({
-                id,
-                data: {
-                  ...data,
-                  _isSingleRun: false,
-                  _singleRunningStatus: NodeRunningStatus.Stopped,
-                },
+              setRunNodeData({
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.Stopped,
               })
             }
             return false
@@ -853,13 +826,9 @@ const useOneStepRun = <T>({
           res = await runPluginSingleRun()
           if (!res) {
             if (pluginSingleRunActiveRef.current) {
-              handleNodeDataUpdate({
-                id,
-                data: {
-                  ...data,
-                  _isSingleRun: false,
-                  _singleRunningStatus: NodeRunningStatus.Stopped,
-                },
+              setRunNodeData({
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.Stopped,
               })
             }
             return false
@@ -883,13 +852,9 @@ const useOneStepRun = <T>({
           onWorkflowStarted: noop,
           onWorkflowFinished: (params) => {
             if (isPausedRef.current) return
-            handleNodeDataUpdate({
-              id,
-              data: {
-                ...data,
-                _isSingleRun: false,
-                _singleRunningStatus: NodeRunningStatus.Succeeded,
-              },
+            setRunNodeData({
+              _isSingleRun: false,
+              _singleRunningStatus: NodeRunningStatus.Succeeded,
             })
             const { data: iterationData } = params
             _runResult.created_by = iterationData.created_by.name
@@ -963,13 +928,9 @@ const useOneStepRun = <T>({
           },
           onError: () => {
             if (isPausedRef.current) return
-            handleNodeDataUpdate({
-              id,
-              data: {
-                ...data,
-                _isSingleRun: false,
-                _singleRunningStatus: NodeRunningStatus.Failed,
-              },
+            setRunNodeData({
+              _isSingleRun: false,
+              _singleRunningStatus: NodeRunningStatus.Failed,
             })
           },
         })
@@ -981,13 +942,9 @@ const useOneStepRun = <T>({
           onWorkflowStarted: noop,
           onWorkflowFinished: (params) => {
             if (isPausedRef.current) return
-            handleNodeDataUpdate({
-              id,
-              data: {
-                ...data,
-                _isSingleRun: false,
-                _singleRunningStatus: NodeRunningStatus.Succeeded,
-              },
+            setRunNodeData({
+              _isSingleRun: false,
+              _singleRunningStatus: NodeRunningStatus.Succeeded,
             })
             const { data: loopData } = params
             _runResult.created_by = loopData.created_by.name
@@ -1059,13 +1016,9 @@ const useOneStepRun = <T>({
           },
           onError: () => {
             if (isPausedRef.current) return
-            handleNodeDataUpdate({
-              id,
-              data: {
-                ...data,
-                _isSingleRun: false,
-                _singleRunningStatus: NodeRunningStatus.Failed,
-              },
+            setRunNodeData({
+              _isSingleRun: false,
+              _singleRunningStatus: NodeRunningStatus.Failed,
             })
             trackEvent('workflow_run_failed', {
               workflow_id: flowId,
@@ -1083,13 +1036,9 @@ const useOneStepRun = <T>({
       invalidLastRun()
       if (!isIteration && !isLoop) {
         if (isPausedRef.current) return
-        handleNodeDataUpdate({
-          id,
-          data: {
-            ...data,
-            _isSingleRun: false,
-            _singleRunningStatus: NodeRunningStatus.Failed,
-          },
+        setRunNodeData({
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Failed,
         })
         return false
       }
@@ -1110,13 +1059,9 @@ const useOneStepRun = <T>({
 
     if (!isIteration && !isLoop && !hasError) {
       if (isPausedRef.current) return
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Succeeded,
-        },
+      setRunNodeData({
+        _isSingleRun: false,
+        _singleRunningStatus: NodeRunningStatus.Succeeded,
       })
     }
   }
@@ -1134,12 +1079,9 @@ const useOneStepRun = <T>({
 
     cancelWebhookSingleRun()
     cancelPluginSingleRun()
-    handleNodeDataUpdate({
-      id,
-      data: {
-        _isSingleRun: false,
-        _singleRunningStatus: NodeRunningStatus.Stopped,
-      },
+    setRunNodeData({
+      _isSingleRun: false,
+      _singleRunningStatus: NodeRunningStatus.Stopped,
     })
     stopTriggerListening()
     updateNodeInspectRunningState(id, false)
@@ -1169,7 +1111,7 @@ const useOneStepRun = <T>({
     runningStatus,
     cancelWebhookSingleRun,
     cancelPluginSingleRun,
-    handleNodeDataUpdate,
+    setRunNodeData,
     id,
     stopTriggerListening,
     updateNodeInspectRunningState,

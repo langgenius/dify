@@ -1967,7 +1967,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 20
+      "count": 19
     }
   },
   "web/app/components/workflow/nodes/_base/hooks/use-output-var-list.ts": {

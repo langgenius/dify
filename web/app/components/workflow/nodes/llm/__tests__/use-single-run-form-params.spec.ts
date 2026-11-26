@@ -74,7 +74,7 @@ describe('llm/use-single-run-form-params', () => {
       isVisionModel: false,
       handleVisionResolutionEnabledChange: vi.fn(),
       handleVisionResolutionChange: vi.fn(),
-      handleModelChanged: vi.fn(),
+      getVisionAfterModelChange: vi.fn(),
     })
     mockUseAvailableVarList.mockReturnValue({
       availableVars: [],

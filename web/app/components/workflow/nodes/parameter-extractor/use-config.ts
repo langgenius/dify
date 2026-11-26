@@ -35,6 +35,9 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
   const inputRef = useRef(inputs)
+  useEffect(() => {
+    inputRef.current = inputs
+  }, [inputs])
 
   const setInputs = useCallback(
     (newInputs: ParameterExtractorNodeType) => {
@@ -125,11 +128,11 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    handleModelChanged: handleVisionConfigAfterModelChanged,
+    getVisionAfterModelChange,
   } = useConfigVision(model, {
     payload: inputs.vision,
     onChange: (newPayload) => {
-      const newInputs = produce(inputs, (draft) => {
+      const newInputs = produce(inputRef.current, (draft) => {
         draft.vision = newPayload
       })
       setInputs(newInputs)
@@ -149,7 +152,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     [isChatModel],
   )
 
-  const setModelInputs = useModelChangeWithVision(setInputs, handleVisionConfigAfterModelChanged)
+  const setModelInputs = useModelChangeWithVision(setInputs, getVisionAfterModelChange)
   const { currentProvider, currentModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )

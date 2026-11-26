@@ -73,7 +73,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    handleModelChanged: handleVisionConfigAfterModelChanged,
+    getVisionAfterModelChange,
   } = useConfigVision(model, {
     payload: inputs.vision,
     onChange: (newPayload) => {
@@ -83,7 +83,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       setInputs(newInputs)
     },
   })
-  const setModelInputs = useModelChangeWithVision(setInputs, handleVisionConfigAfterModelChanged)
+  const setModelInputs = useModelChangeWithVision(setInputs, getVisionAfterModelChange)
 
   const applyModelIdentity = useCallback(
     (

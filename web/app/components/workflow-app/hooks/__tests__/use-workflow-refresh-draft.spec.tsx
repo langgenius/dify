@@ -222,27 +222,21 @@ describe('useWorkflowRefreshDraft', () => {
     })
   })
 
-  it('keeps the syncing guard active until the newest overlapping refresh completes', async () => {
+  it('ignores an earlier overlapping refresh while the newest one is pending', async () => {
     const first = createDeferred<FetchWorkflowDraftResponse>()
     const second = createDeferred<FetchWorkflowDraftResponse>()
     fetchDraft.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
-    let firstIsCurrent = true
     const { flow, refresh, store } = setup()
     let firstRequest!: Promise<boolean>
     let secondRequest!: Promise<boolean>
     act(() => {
-      firstRequest = refresh.current!.handleRefreshWorkflowDraft(false, {
-        shouldApply: () => firstIsCurrent,
-      })
-      secondRequest = refresh.current!.handleRefreshWorkflowDraft(false, {
-        shouldApply: () => true,
-      })
+      firstRequest = refresh.current!.handleRefreshWorkflowDraft()
+      secondRequest = refresh.current!.handleRefreshWorkflowDraft()
     })
-    firstIsCurrent = false
 
     await act(async () => {
       first.resolve(draftResponse)
-      await firstRequest
+      expect(await firstRequest).toBe(false)
     })
     expect(store.getState().isSyncingWorkflowDraft).toBe(true)
     await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)

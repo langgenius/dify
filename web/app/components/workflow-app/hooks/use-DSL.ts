@@ -10,6 +10,8 @@ import {
   editorCollaborationEnabledAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
+import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
@@ -20,6 +22,8 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft, canEdit: boolean) => {
   const collaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const workflowStore = useWorkflowStore()
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(canEdit)
   const { t } = useTranslation(['app'])
   const queryClient = useQueryClient()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -35,14 +39,15 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft, canEdit: boolean) 
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
       if (!appDetail) return false
 
-      if (!workflowId) {
+      if (!workflowId && !getNodesReadOnly()) {
+        const requiresLoroSave = collaborationEnabled && !!workflowStore.getState().loroDraft
         let syncFailed = false
         const saved = await doSyncWorkflowDraft(undefined, {
           onError: () => {
             syncFailed = true
           },
         })
-        if (syncFailed || (!saved && collaborationEnabled && canEdit)) {
+        if (syncFailed || (!saved && requiresLoroSave)) {
           toast.error(t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }

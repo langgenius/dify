@@ -69,12 +69,12 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    handleModelChanged: handleVisionConfigAfterModelChanged,
+    getVisionAfterModelChange,
   } = useConfigVision(model, {
     payload: inputs.vision,
     onChange: handleVisionChange,
   })
-  const setModelInputs = useModelChangeWithVision(setInputs, handleVisionConfigAfterModelChanged)
+  const setModelInputs = useModelChangeWithVision(setInputs, getVisionAfterModelChange)
 
   const handleModelChanged = useCallback(
     (model: { provider: string; modelId: string; mode?: string }, source?: ModelChangeSource) => {

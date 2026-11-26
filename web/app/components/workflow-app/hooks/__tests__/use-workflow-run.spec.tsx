@@ -40,7 +40,7 @@ import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
-import { useWorkflowRun } from '../use-workflow-run'
+import { useWorkflowRunByCanEdit } from '../use-workflow-run'
 
 const api = vi.hoisted(() => ({
   sync: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
@@ -154,7 +154,7 @@ const paused: WorkflowPausedResponse = {
 
 const nodeTypes = { [CUSTOM_NODE]: CustomNode }
 
-async function setup() {
+async function setup({ canEdit = true, collaborationEnabled = false } = {}) {
   const node = createNode({
     id: 'node-1',
     width: 240,
@@ -186,6 +186,7 @@ async function setup() {
   const store = createTestWorkflowStore({
     isWorkflowDataLoaded: true,
     environmentVariables: [environment],
+    loroDraft: collaborationEnabled ? { accountId: 'editor', epoch: 'shared' } : undefined,
   })
   const features = createFeaturesStore()
   const canvasUpdate = vi.fn<(message: EventEmitterValue) => void>()
@@ -193,7 +194,7 @@ async function setup() {
     return (
       <ConsoleProvider>
         <EditorResourceScope
-          resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+          resource={{ kind: 'app', collaborationEnabled, appId: 'app-1', mode: 'workflow' }}
         >
           {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider API. */}
           <WorkflowContext.Provider value={store}>
@@ -220,7 +221,7 @@ async function setup() {
         const flow = useReactFlow()
         const { eventEmitter } = useEventEmitterContextContext()
         eventEmitter?.useSubscription(canvasUpdate)
-        return { run: useWorkflowRun(), flow }
+        return { run: useWorkflowRunByCanEdit(canEdit), flow }
       },
       { wrapper: Providers },
     ),
@@ -257,6 +258,15 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
   act(() => toast.dismiss())
+})
+
+it('runs the saved collaborative draft with test permission alone', async () => {
+  const { result } = await setup({ canEdit: false, collaborationEnabled: true })
+
+  await act(async () => result.current.run.handleRun({ inputs: {} }))
+
+  expect(api.sync).not.toHaveBeenCalled()
+  expect(api.streamEvents).toHaveBeenCalledOnce()
 })
 
 it('saves the graph before running and applies streamed results to the real workflow state', async () => {

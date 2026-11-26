@@ -93,7 +93,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const { conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
       workflowStore.getState()
 
-    if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+    if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
     const features = featuresStore!.getState().features
     const producedNodes = produce(nodes, (draft) => {
@@ -153,14 +153,14 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
-    if (isCollaborationEnabled) return
+    if (isCollaborationEnabled && workflowStore.getState().loroDraft) return
 
     const postParams = getPostParams()
 
     // Page-close saves cannot wait for the user's consent to clear the canvas.
     if (postParams && !isEmptyGraph(postParams.params.graph))
       postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, workflowStore])
 
   const confirmEmptyDraft = useCallback(() => {
     const { showConfirm, setShowConfirm } = workflowStore.getState()
@@ -277,7 +277,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ],
   )
 
-  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
+  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync)
   const doSyncWorkflowDraft = useCallback(
     async (
       notRefreshWhenSyncError?: boolean,
@@ -291,7 +291,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
-      if (isCollaborationEnabled && appId) {
+      if (isCollaborationEnabled && workflowStore.getState().loroDraft) {
         try {
           if (options?.environmentVariablePatch)
             await updateEnvironmentVariables(

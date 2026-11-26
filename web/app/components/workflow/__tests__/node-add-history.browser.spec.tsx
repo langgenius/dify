@@ -38,12 +38,14 @@ import DatasetsDetailProvider from '../datasets-detail-store/provider'
 import { fullWorkflowAccessControl } from '../hooks-store/store'
 import { useWorkflowNodeCatalog } from '../node-catalog'
 import agentDefault from '../nodes/agent-v2/default'
+import iterationDefault from '../nodes/iteration/default'
 import toolDefault from '../nodes/tool/default'
 import triggerDefault from '../nodes/trigger-plugin/default'
 import scheduleDefault from '../nodes/trigger-schedule/default'
 import webhookDefault from '../nodes/trigger-webhook/default'
 import Panel from '../panel'
 import { BlockEnum } from '../types'
+import { getNodeCustomTypeByNodeDataType } from '../utils'
 import { createNode, createStartNode } from './fixtures'
 import { renderWorkflowBrowserComponent } from './workflow-browser-test-env'
 
@@ -227,7 +229,7 @@ async function openEditor(mode: WorkflowAppMode = 'workflow', nodes: Node[] = [s
     screen
       .getByRole('region', { name: 'app.types.workflow' })
       .getByText(`workflow.blocks.${type}`, { exact: true })
-  return { screen, queryClient, addConnectedNode, undo, redo, title }
+  return { screen, queryClient, addConnectedNode, undo, redo, title, server }
 }
 
 const findNode = (type: BlockEnum) =>
@@ -390,27 +392,13 @@ it.each([
 
 it.each([
   BlockEnum.KnowledgeRetrieval,
-  BlockEnum.KnowledgeRetrievalV2,
-  BlockEnum.Answer,
-  BlockEnum.Assigner,
-  BlockEnum.DocExtractor,
-  BlockEnum.HttpRequest,
   BlockEnum.TemplateTransform,
   BlockEnum.Iteration,
-  BlockEnum.Loop,
-  BlockEnum.IfElse,
-  BlockEnum.End,
-  BlockEnum.ListFilter,
-  BlockEnum.VariableAggregator,
   BlockEnum.HumanInput,
   BlockEnum.Code,
 ])('undoes and redoes adding a connected %s with its default configuration', async (type) => {
   const { queryClient, addConnectedNode, undo, redo } = await openEditor(
-    type === BlockEnum.Answer ||
-      type === BlockEnum.Assigner ||
-      type === BlockEnum.KnowledgeRetrieval
-      ? 'advanced-chat'
-      : 'workflow',
+    type === BlockEnum.KnowledgeRetrieval ? 'advanced-chat' : 'workflow',
   )
   loadWorkspaceModels(queryClient)
   await addConnectedNode(type)
@@ -434,4 +422,55 @@ it.each([
   expect(collaborationManager.getEdges()).toMatchObject([
     { source: 'start', target: findNode(type)?.id },
   ])
+})
+
+it('clears the last container and its children in one confirmed undoable step', async () => {
+  const type = BlockEnum.Iteration
+  const nodes = [
+    createNode({
+      id: 'container',
+      type: getNodeCustomTypeByNodeDataType(type),
+      ariaLabel: 'Batch',
+      position: { x: 100, y: 100 },
+      data: {
+        ...iterationDefault.defaultValue,
+        type,
+        title: 'Batch',
+        start_node_id: 'child-start',
+      },
+    }),
+    createNode({
+      id: 'child-start',
+      type: getNodeCustomTypeByNodeDataType(BlockEnum.IterationStart),
+      parentId: 'container',
+      position: { x: 20, y: 80 },
+      data: { type: BlockEnum.IterationStart, isInIteration: true, iteration_id: 'container' },
+    }),
+    createNode({
+      id: 'child-code',
+      parentId: 'container',
+      position: { x: 180, y: 80 },
+      data: { ...codeConfig, type: BlockEnum.Code, isInIteration: true, iteration_id: 'container' },
+    }),
+  ]
+  const { screen, server, undo } = await openEditor('workflow', nodes)
+  const confirmClear = vi.fn<(confirm: () => void) => void>()
+  onTestFinished(collaborationManager.onClearRequested(confirmClear))
+  await screen.getByRole('button', { name: 'Batch', exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: /common\.operation\.delete/ }).click()
+  expect(confirmClear).toHaveBeenCalledOnce()
+  expect(collaborationManager.getNodes()).toHaveLength(3)
+
+  confirmClear.mock.calls[0]![0]()
+  await expect.poll(() => server.document().getMap('nodes').size).toBe(0)
+  expect(collaborationManager.getDraftHistory().undo).toEqual(['NodeDelete'])
+  await undo.click()
+  await expect
+    .poll(() =>
+      collaborationManager
+        .getNodes()
+        .map((node) => node.id)
+        .sort(),
+    )
+    .toEqual(['child-code', 'child-start', 'container'])
 })

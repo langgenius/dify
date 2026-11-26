@@ -232,18 +232,17 @@ export const Workflow: FC<WorkflowProps> = memo(
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
           const { getNodes, edges: canvasEdges } = store.getState()
-          const loroDraft = workflowStore.getState().loroDraft
-          if (!isEqual(loroDraft ? getNodes() : nodes, importedNodes)) {
+          if (!isEqual(getNodes(), importedNodes)) {
             setNodes(importedNodes)
             store.getState().setNodes(importedNodes)
           }
-          if (!isEqual(loroDraft ? canvasEdges : edges, importedEdges)) {
+          if (!isEqual(canvasEdges, importedEdges)) {
             setEdges(importedEdges)
             store.getState().setEdges(importedEdges)
           }
         },
       )
-    }, [edges, nodes, setEdges, setNodes, store, workflowStore])
+    }, [setEdges, setNodes, store])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {

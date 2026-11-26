@@ -3,18 +3,21 @@ import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  getCurrentProviderAndModel,
+  useTextGenerationCurrentProviderAndModelAndModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { Resolution } from '@/types/app'
 
-type Payload = {
+export type VisionConfig = {
   enabled: boolean
   configs?: VisionSetting
 }
 
 type Params = {
-  payload: Payload
-  onChange: (payload: Payload) => void
+  payload: VisionConfig
+  onChange: (payload: VisionConfig) => void
 }
 const useConfigVision = (
   model: ModelConfig,
@@ -25,18 +28,15 @@ const useConfigVision = (
     onChange,
   }: Params,
 ) => {
-  const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
-    provider: model.provider,
-    model: model.name,
-  })
+  const { currentModel: currModel, textGenerationModelList } =
+    useTextGenerationCurrentProviderAndModelAndModelList({
+      provider: model.provider,
+      model: model.name,
+    })
 
   const isChatflow = useAtomValue(isChatflowAtom)
 
-  const getIsVisionModel = useCallback(() => {
-    return !!currModel?.features?.includes(ModelFeatureEnum.vision)
-  }, [currModel])
-
-  const isVisionModel = getIsVisionModel()
+  const isVisionModel = !!currModel?.features?.includes(ModelFeatureEnum.vision)
 
   const handleVisionResolutionEnabledChange = useCallback(
     (enabled: boolean) => {
@@ -66,28 +66,27 @@ const useConfigVision = (
     [onChange, payload],
   )
 
-  const handleModelChanged = useCallback(() => {
-    const isVisionModel = getIsVisionModel()
-    if (!isVisionModel) {
-      handleVisionResolutionEnabledChange(false)
-      return
-    }
-    if (payload.enabled) {
-      onChange({
-        enabled: true,
-        configs: {
-          detail: Resolution.high,
-          variable_selector: [],
-        },
+  const getVisionAfterModelChange = useCallback(
+    (nextModel: ModelConfig, vision: VisionConfig = { enabled: false }): VisionConfig => {
+      const { currentModel } = getCurrentProviderAndModel(textGenerationModelList, {
+        provider: nextModel.provider,
+        model: nextModel.name,
       })
-    }
-  }, [getIsVisionModel, handleVisionResolutionEnabledChange, onChange, payload.enabled])
+      if (!currentModel?.features?.includes(ModelFeatureEnum.vision)) return { enabled: false }
+      if (!vision.enabled) return vision
+      return {
+        enabled: true,
+        configs: { detail: Resolution.high, variable_selector: [] },
+      }
+    },
+    [textGenerationModelList],
+  )
 
   return {
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    handleModelChanged,
+    getVisionAfterModelChange,
   }
 }
 

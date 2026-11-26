@@ -243,25 +243,12 @@ it('cancels the queued debounce and saves exactly once on unmount', async () => 
   }
 })
 
-it('does not save before data loads or merely because collaboration props change', async () => {
-  const { store, rerender, subject, saveDraft, saveOnClose, unmount } = renderSubject()
-  rerender(subject({ isCollaborationEnabled: true }))
-  expect(saveDraft).not.toHaveBeenCalled()
-  expect(saveOnClose).not.toHaveBeenCalled()
+it('does not save before data loads', async () => {
+  const { store, saveDraft, saveOnClose, unmount } = renderSubject()
   await act(async () => unmount())
   expect(store.getState().isWorkflowDataLoaded).toBe(false)
   expect(saveDraft).not.toHaveBeenCalled()
   expect(saveOnClose).not.toHaveBeenCalled()
-})
-
-it('stops the ordinary exit save when the loaded canvas switches to collaboration', async () => {
-  const { rerender, subject, saveDraft, unmount } = renderSubject({
-    initialStoreState: { isWorkflowDataLoaded: true },
-  })
-  rerender(subject({ isCollaborationEnabled: true }))
-  expect(saveDraft).not.toHaveBeenCalled()
-  await act(async () => unmount())
-  expect(saveDraft).not.toHaveBeenCalled()
 })
 
 it('leaves collaborative changes in the durable provider on unmount', async () => {
@@ -308,7 +295,7 @@ it('executes the host action after confirmation', async () => {
   expect(onConfirm).toHaveBeenCalledTimes(1)
 })
 
-it('applies imported collaboration graphs and announces remote history actions', () => {
+it('applies the latest collaboration graph to the canvas', () => {
   renderSubject()
   act(() => {
     for (const handler of [...events.graph])
@@ -321,27 +308,9 @@ it('applies imported collaboration graphs and announces remote history actions',
         ],
         edges: [],
       })
-    for (const handler of events.history) handler({ action: 'undo' })
   })
   expect(screen.getByText('Remote graph')).toBeInTheDocument()
   expect(screen.queryByText('Transform documents')).not.toBeInTheDocument()
-  expect(toast.info).toHaveBeenCalledExactlyOnceWith('workflow.collaboration.historyAction.generic')
-})
-
-it('announces who is restoring the remote workflow version', () => {
-  renderSubject()
-  act(() => {
-    for (const handler of events.restore)
-      handler({
-        versionId: 'version-1',
-        versionName: 'Version One',
-        initiatorUserId: 'peer',
-        initiatorName: 'Alice',
-      })
-  })
-  expect(toast.info).toHaveBeenCalledWith(
-    'workflowHistory.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
-  )
 })
 
 function comment(id: string, name: string, resolved = false): WorkflowCommentDetail {
