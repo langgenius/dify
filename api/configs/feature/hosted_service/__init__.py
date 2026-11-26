@@ -360,16 +360,16 @@ class HostedZhipuAIConfig(BaseSettings):
 
 
 class HostedModerationConfig(BaseSettings):
-    """Automatic moderation enablement and a fallback plugin pinned by SRE."""
+    """Automatic OpenAI moderation and verdict retention for Cloud model calls."""
 
     HOSTED_MODERATION_ENABLED: bool = Field(
         description="Enable automatic platform moderation for Cloud AI-credit LLMs; ignored in other editions",
         default=False,
     )
 
-    HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
-        description="Fallback plugin unique identifier when a trusted tenant OpenAI plugin is unavailable",
-        default="",
+    HOSTED_MODERATION_CACHE_TTL: NonNegativeInt = Field(
+        description="TTL in seconds for batch moderation verdicts; 0 disables caching",
+        default=600,
     )
 
 

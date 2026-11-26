@@ -7,7 +7,7 @@ only the app pipeline may apply that replacement. Backend failures propagate:
 unavailable moderation must never imply approval.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Protocol
 
@@ -64,10 +64,9 @@ class ModerationVerdict:
 class ModerationGateway(Protocol):
     """Evaluate content in the supplied tenant scope through an explicit credential boundary.
 
-    Tenant-backed adapters use only that tenant's extension/model credentials.
-    Platform-funded adapters use platform credentials and never reserve or deduct
-    user credits. All adapters propagate lookup, transport, and malformed-verdict
-    failures. No persistence transaction spans external I/O.
+    App adapters use only the scoped tenant's extension or model credentials.
+    Lookup, transport, and malformed-verdict failures propagate. No persistence
+    transaction spans external I/O.
     """
 
     def check(
@@ -78,6 +77,28 @@ class ModerationGateway(Protocol):
         request: ModerationRequest,
         phase: ModerationPhase,
     ) -> ModerationVerdict: ...
+
+
+class ModerationSegmentChecker(Protocol):
+    """Approve all independent text segments in an admitted scope, or raise without changing them."""
+
+    def check_segments(
+        self,
+        context: AppRequestContext,
+        *,
+        rule: ModerationRule,
+        segments: Iterable[str],
+        phase: ModerationPhase,
+    ) -> None: ...
+
+
+def moderation_phase_config(rule: ModerationRule, phase: ModerationPhase) -> Mapping[str, Any]:
+    """Return a phase configuration only if its enablement is an explicit boolean."""
+    key = f"{phase}s_config"
+    config = rule.config.get(key)
+    if not isinstance(config, Mapping) or not isinstance(config.get("enabled"), bool):
+        raise ValueError(f"{key}.enabled must be a bool")
+    return config
 
 
 class ModerationError(Exception):
@@ -121,6 +142,18 @@ class ModerationService:
         if verdict.flagged:
             raise ModerationRejectedError(phase, verdict.message)
 
+    def check_segments(
+        self,
+        context: AppRequestContext,
+        *,
+        rule: ModerationRule,
+        segments: Iterable[str],
+        phase: ModerationPhase,
+    ) -> None:
+        """Check independent segments in order, stopping at the first rejection or failure."""
+        for text in segments:
+            self.check(context, rule=rule, text=text, phase=phase)
+
     def evaluate(
         self,
         context: AppRequestContext,
@@ -139,10 +172,7 @@ class ModerationService:
         """
         if not context.tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
-        phase_config = rule.config.get(f"{phase}s_config")
-        if not isinstance(phase_config, Mapping) or not isinstance(phase_config.get("enabled"), bool):
-            raise ValueError(f"{phase}s_config.enabled must be a bool")
-        if not phase_config["enabled"]:
+        if not moderation_phase_config(rule, phase)["enabled"]:
             return ModerationVerdict(flagged=False, message="")
         backend_request = request
         if phase == "input" and request.inputs is not None:
