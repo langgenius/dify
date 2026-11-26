@@ -22,6 +22,7 @@ import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/stor
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
+import styles from './chat-layout.module.css'
 
 const chatContentClassName = 'w-full max-w-150 min-[1920px]:max-w-200 min-[2560px]:max-w-240'
 
@@ -177,7 +178,9 @@ export function AgentPreviewChatSession({
   )
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
+    <div
+      className={cn('relative flex h-full min-h-0 w-full flex-col overflow-hidden', styles.session)}
+    >
       <div className="min-h-0 flex-1">
         <AgentPreviewChatConversation
           key={conversationSessionKey}

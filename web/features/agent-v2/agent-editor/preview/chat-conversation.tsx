@@ -25,6 +25,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
+import styles from './chat-layout.module.css'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
@@ -320,11 +321,11 @@ export function AgentPreviewChatConversation({
       isResponding={isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       sendButtonLoading={sendButtonLoading}
-      chatContainerClassName={isEmptyChat ? 'pt-2 pb-22!' : 'pt-6'}
+      chatContainerClassName={isEmptyChat ? 'pt-2 pb-22!' : 'scrollbar-gutter-both pt-6'}
       chatContainerInnerClassName={cn(
         'mx-auto',
         chatContentClassName,
-        isEmptyChat ? 'px-12' : 'px-3',
+        isEmptyChat ? 'px-12' : cn('px-3', styles.transcript),
       )}
       chatFooterClassName={
         isEmptyChat ? 'hidden' : cn('inset-x-0 mx-auto px-3 pt-10', chatContentClassName)
