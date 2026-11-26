@@ -81,4 +81,27 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     expect(screen.getByText('Second app')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
+
+  it('returns focus to the actions trigger after a menu-opened dialog is dismissed', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: currentApp.id } } }),
+      currentApp,
+    )
+    renderWithConsoleQuery(<AppDetailSection />, {
+      queryClient,
+      systemFeatures: { rbac_enabled: false, enable_app_deploy: false },
+      features: {},
+    })
+
+    const trigger = screen.getByRole('button', { name: /moreActionsFor/ })
+    await user.click(trigger)
+    await user.click(await screen.findByRole('menuitem', { name: 'app.editApp' }))
+    expect(await screen.findByRole('textbox', { name: 'app.newApp.name' })).toHaveFocus()
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(trigger).toHaveFocus()
+  })
 })

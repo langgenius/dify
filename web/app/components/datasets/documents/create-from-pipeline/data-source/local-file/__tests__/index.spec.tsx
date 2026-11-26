@@ -10,17 +10,19 @@ import { createDataSourceStore } from '../../store'
 import { DataSourceContext } from '../../store/provider'
 import LocalFile from '../index'
 
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
+const upload = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
+)
 const supportedFormats = vi.hoisted(() => vi.fn(async () => ({ allowed_extensions: ['pdf'] })))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload,
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': upload,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'files.supportType.get': supportedFormats,
     }),

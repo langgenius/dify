@@ -10,7 +10,7 @@ import { RiCloseLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { isEqual } from 'es-toolkit/predicate'
 import { useQueryState } from 'nuqs'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
 import {
@@ -86,9 +86,11 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
     currentDataset.partial_member_list || [],
   )
-  const [memberList, setMemberList] = useState<AccountWithRoleResponse[]>([])
-  const { data: membersData } = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  const { data: memberList = [] } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: {},
+      select: (data): AccountWithRoleResponse[] => data.accounts ?? [],
+    }),
   )
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique ?? undefined)
@@ -183,7 +185,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }
         })
       }
-      await updateDatasetSetting(requestParams, { silent: true })
+      await updateDatasetSetting(requestParams)
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,
@@ -198,11 +200,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    if (!membersData?.accounts) setMemberList([])
-    else setMemberList(membersData.accounts)
-  }, [membersData])
 
   const showMultiModalTip = useMemo(() => {
     return checkShowMultiModalTip({

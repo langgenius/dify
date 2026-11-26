@@ -696,7 +696,6 @@ describe('ProviderConfigModal', () => {
         for (const input of screen.getAllByRole('textbox')) expect(input).toBeEnabled()
         expect(host).toHaveValue('https://draft.langfuse.com')
         expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
-        expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
         expect(callbacks.onSaved).not.toHaveBeenCalled()
         expect(request).toHaveBeenCalledOnce()
 

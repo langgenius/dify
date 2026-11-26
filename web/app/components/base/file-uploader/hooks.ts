@@ -62,13 +62,15 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
-  const { localUploadUrl, trialAppId, uploadStrategy } = useFileUploadContext()
+  const { trialAppId, uploadStrategy } = useFileUploadContext()
   const { mutateAsync: uploadConsoleRemoteFile } = useMutation(
-    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.remoteFiles.upload.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: uploadTrialRemoteFile } = useMutation(
     consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
@@ -209,11 +211,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         if (uploadStrategy) {
           uploadStrategy.uploadLocal(uploadParams)
         } else {
-          fileUpload(uploadParams, !!params.token, localUploadUrl)
+          fileUpload(uploadParams, !!params.token, trialAppId)
         }
       }
     },
-    [fileStore, t, handleUpdateFile, uploadStrategy, params.token, localUploadUrl],
+    [fileStore, t, handleUpdateFile, uploadStrategy, params.token, trialAppId],
   )
 
   const startProgressTimer = useCallback(
@@ -255,7 +257,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       if (uploadStrategy) remoteUpload = uploadStrategy.uploadRemote(url)
       else if (trialAppId)
         remoteUpload = uploadTrialRemoteFile({ params: { app_id: trialAppId }, body: { url } })
-      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url, { silent: true })
+      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url)
       else remoteUpload = uploadConsoleRemoteFile({ body: { url } })
 
       remoteUpload
@@ -406,7 +408,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           if (uploadStrategy) {
             uploadStrategy.uploadLocal(uploadParams)
           } else {
-            fileUpload(uploadParams, !!params.token, localUploadUrl)
+            fileUpload(uploadParams, !!params.token, trialAppId)
           }
         },
         false,
@@ -429,7 +431,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       handleUpdateFile,
       uploadStrategy,
       params.token,
-      localUploadUrl,
+      trialAppId,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,

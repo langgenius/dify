@@ -57,11 +57,10 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useMutation(
-    updateTriggerSubscriptionMutationOptions({
-      silent: true,
-    }),
-  )
+  const { mutate: updateSubscription, isPending: isUpdating } = useMutation({
+    ...updateTriggerSubscriptionMutationOptions(),
+    meta: { errorToast: false },
+  })
 
   const parametersSchema = useMemo<ParametersSchema[]>(
     () => detail?.declaration?.trigger?.subscription_constructor?.parameters || [],

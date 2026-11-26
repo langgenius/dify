@@ -94,3 +94,23 @@ class AgentAppDetail:
     should_mask_agent_mode: bool = False
     debug_conversation_id: str | None = None
     debug_conversation_message_count: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class AgentAppCopy:
+    """Optional identity and icon overrides for a new private Agent App."""
+
+    name: str | None
+    description: str | None
+    role: str | None
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AgentAppCopied:
+    """The committed App plus the ID of the App whose access mode it inherits."""
+
+    app: AppRecord
+    source_app_id: str

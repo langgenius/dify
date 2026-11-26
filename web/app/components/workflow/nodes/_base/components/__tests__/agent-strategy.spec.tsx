@@ -9,10 +9,13 @@ import { createProvider, createStrategy } from '../../../agent/__tests__/strateg
 import { AgentStrategy } from '../agent-strategy'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }))
-vi.mock('@/service/base', () => ({
-  request,
-  postMarketplace: async () => ({ data: { plugins: [] } }),
-}))
+vi.mock('@/service/base', () => ({ request }))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: async () => ({ data: { plugins: [], total: 0 } }),
+  })
+})
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/hooks',
   async (importOriginal) => ({
@@ -25,8 +28,9 @@ vi.mock(
 vi.mock('@/app/components/workflow/hooks/use-workflow-variables', () => ({
   useWorkflowVariableType: () => vi.fn(),
 }))
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplacePlugins: () => ({ queryPluginsWithDebounced: vi.fn(), plugins: [] }),
+vi.mock('@/app/components/plugins/marketplace/query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/plugins/marketplace/query')>()),
+  useMarketplacePlugins: () => ({ data: undefined }),
 }))
 const strategy = {
   agent_strategy_provider_name: 'langgenius/agent/provider',

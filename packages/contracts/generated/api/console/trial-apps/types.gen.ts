@@ -1798,7 +1798,9 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse =
   GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses]
 
 export type PostTrialAppsByAppIdAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }

@@ -4,9 +4,7 @@ import type { KnowledgeFsUpgradeJobResponse } from '@dify/contracts/api/console/
 import type { ReactNode, RefObject } from 'react'
 import type { KnowledgeUpgrade } from './knowledge-upgrade-context-value'
 import type { DatasetCardItem } from '@/app/components/datasets/list/dataset-card/types'
-import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import { consoleQuery } from '@/service/console'
 import { KnowledgeUpgradeContext } from './knowledge-upgrade-context-value'
 import { KnowledgeUpgradeDialog } from './knowledge-upgrade-dialog'
 
@@ -22,7 +20,6 @@ export function KnowledgeUpgradeProvider({
   children: ReactNode
   onUpgradeStarted: () => void
 }) {
-  const queryClient = useQueryClient()
   const [candidate, setCandidate] = useState<UpgradeCandidate>()
   const [upgrades, setUpgrades] = useState<KnowledgeUpgrade[]>([])
   const dismissUpgrade = useCallback((jobId: string) => {
@@ -42,10 +39,6 @@ export function KnowledgeUpgradeProvider({
       { canRetry: false, dataset, job },
       ...current.filter((entry) => entry.dataset.id !== dataset.id),
     ])
-    void queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-    })
     setCandidate(undefined)
     onUpgradeStarted()
   }

@@ -32,7 +32,11 @@ const { fetchRunDetail, fetchTracingList } = vi.hoisted(() => ({
   fetchRunDetail: vi.fn(),
   fetchTracingList: vi.fn(),
 }))
-vi.mock('@/service/log', () => ({ fetchRunDetail, fetchTracingList }))
+vi.mock('@/service/log', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/log')>()),
+  fetchRunDetail,
+  fetchTracingList,
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -44,9 +48,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 beforeEach(() => {
-  fetchRunDetail.mockImplementation(async (url: string) => createLogRun(url.split('/').at(-1)!))
-  fetchTracingList.mockImplementation(async ({ url }: { url: string }) => ({
-    data: [createNodeTracing({ title: `Execution for ${url.split('/').at(-2)}` })],
+  fetchRunDetail.mockImplementation(async (_owner: unknown, runId: string) => createLogRun(runId))
+  fetchTracingList.mockImplementation(async (_owner: unknown, runId: string) => ({
+    data: [createNodeTracing({ title: `Execution for ${runId}` })],
   }))
 })
 
@@ -282,9 +286,7 @@ describe('WorkflowAppLogList', () => {
         const dialog = await screen.findByRole('dialog')
         await user.click(within(dialog).getByRole('tab', { name: 'runLog.tracing' }))
         expect(await within(dialog).findByText('Execution for run-1')).toBeInTheDocument()
-        expect(fetchRunDetail).toHaveBeenCalledWith('/apps/test-app-id/workflow-runs/run-1', {
-          silent: true,
-        })
+        expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'test-app-id' }, 'run-1')
         rerender(
           <WorkflowAppLogList
             logs={createMockLogsResponse(logs.data.map((log) => ({ ...log, read_at: 300 })))}

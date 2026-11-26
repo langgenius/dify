@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     CustomizedMetricOutputField,
@@ -40,6 +41,7 @@ from core.evaluation.exceptions import (
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from core.model_context import get_credit_usage_metadata
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -322,10 +324,12 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     assert len(cancellation_checks) == 4
 
 
+@pytest.mark.parametrize("target_type", [EvaluationTargetType.APPS, EvaluationTargetType.SNIPPETS])
 def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, target_type: EvaluationTargetType
 ) -> None:
     def evaluate(items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
+        assert get_evaluation_credit_usage_metadata() == {"app_type": "workflow", "created_by": "evaluation"}
         return [
             EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="answer_relevancy", value=0.9)])
             for _item in items
@@ -345,7 +349,7 @@ def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
     run_data = EvaluationRunData(
         evaluation_run_id="run-1",
         tenant_id="tenant-1",
-        target_type="apps",
+        target_type=target_type.value,
         target_id="app-1",
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -377,10 +381,13 @@ def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
 def test_workflow_metric_failures_remain_row_local_when_customized_evaluator_fails(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    customized_inherited_metadata: list[bool] = []
+
     def fail_metric(_items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
         raise RuntimeError("judge unavailable")
 
     def fail_customized(**_kwargs: object) -> list[EvaluationItemResult]:
+        customized_inherited_metadata.append(get_credit_usage_metadata() is not None)
         raise RuntimeError("evaluator unavailable")
 
     persisted: list[list[EvaluationItemResult]] = []
@@ -421,6 +428,7 @@ def test_workflow_metric_failures_remain_row_local_when_customized_evaluator_fai
     assert "judge unavailable" not in results[0].error
     assert "evaluator unavailable" not in results[0].error
     assert safe_evaluation_error_text(results[0].error) == results[0].error
+    assert customized_inherited_metadata == [False]
     assert persisted == [results]
 
 
@@ -438,7 +446,10 @@ def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
         lambda _session, _lease, results, *_args: persisted.append(results),
     )
 
+    scoring_metadata: list[dict[str, object]] = []
+
     def fail_scoring(*_args: object, **_kwargs: object) -> list[EvaluationItemResult]:
+        scoring_metadata.append(get_evaluation_credit_usage_metadata())
         raise RuntimeError("provider unavailable")
 
     monkeypatch.setattr("tasks.evaluation_task.RetrievalEvaluationRunner.evaluate_metrics", fail_scoring)
@@ -467,6 +478,7 @@ def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
 
     _assert_public_error(results[0].error, EvaluationErrorCode.METRIC_FAILED)
     assert results[1].error == "Evaluation failed. Please retry or contact support."
+    assert scoring_metadata == [{"app_type": "unknown", "created_by": "evaluation"}]
     assert progress == [0.85]
     assert persisted == [results]
 
@@ -2138,11 +2150,12 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(
 ) -> None:
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
     agent_item = AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done")
-    evaluation_instance = CapturingEvaluationInstance(
-        agent_result_factory=lambda _items: [
-            EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="task_completion", value=0.9)])
-        ]
-    )
+
+    def evaluate_agent(_items: list[AgentEvaluationItem]) -> list[EvaluationItemResult]:
+        assert get_evaluation_credit_usage_metadata() == {"app_type": "agent_v2", "created_by": "evaluation"}
+        return [EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="task_completion", value=0.9)])]
+
+    evaluation_instance = CapturingEvaluationInstance(agent_result_factory=evaluate_agent)
     persisted_results: list[list[EvaluationItemResult]] = []
 
     def persist_results(
