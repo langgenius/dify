@@ -365,6 +365,7 @@ class MCPTool(Tool):
                 sse_read_timeout=self.sse_read_timeout,
                 provider_entity=provider_entity,
                 forward_identity_active=forward_identity_active,
+                header_context=self.runtime.request_header_context,
             ) as mcp_client:
                 return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
         except MCPConnectionError as e:
