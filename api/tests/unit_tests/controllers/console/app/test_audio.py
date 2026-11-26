@@ -8,11 +8,12 @@ from unittest.mock import patch
 from uuid import UUID
 
 import pytest
-from flask import Flask, Response
+from flask import Flask
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import InternalServerError
+from werkzeug.test import TestResponse
 
 from controllers.console.app import audio as audio_module
 from controllers.console.app.audio import (
@@ -137,19 +138,19 @@ class TestAgentAudioReadonlyCases:
     @staticmethod
     def request_audio(
         request: pytest.FixtureRequest, harness: Harness, audio_runtime: AudioRuntimeObservations
-    ) -> tuple[Callable[[], Response], AudioRuntimeObservations]:
+    ) -> tuple[Callable[[], TestResponse], AudioRuntimeObservations]:
         """Exercise the mounted voice and TTS endpoints with the provider test transport."""
         path = f"/console/api/agent/{AGENT_ID}/text-to-audio"
         if request.param == "voices":
             audio_runtime.voices = [{"name": "Echo", "value": "echo"}]
 
-            def invoke() -> Response:
+            def invoke() -> TestResponse:
                 return harness.client.get(f"{path}/voices?language=en-US", headers=harness.headers)
 
         else:
             audio_runtime.tts_result = b"ID3audio"
 
-            def invoke() -> Response:
+            def invoke() -> TestResponse:
                 return harness.client.post(path, headers=harness.headers, json={"text": "Preview", "voice": "echo"})
 
         return invoke, audio_runtime
@@ -159,7 +160,7 @@ class TestAgentAudioReadonlyCases:
     def test_audio_uses_existing_runtime_state_without_writes(
         sqlite_session: Session,
         harness: Harness,
-        request_audio: tuple[Callable[[], Response], AudioRuntimeObservations],
+        request_audio: tuple[Callable[[], TestResponse], AudioRuntimeObservations],
         persistence_events: list[str],
         scope: AgentScope,
     ) -> None:
@@ -187,7 +188,7 @@ class TestAgentAudioReadonlyCases:
     def test_audio_does_not_materialize_a_missing_workflow_backing_app(
         sqlite_session: Session,
         harness: Harness,
-        request_audio: tuple[Callable[[], Response], AudioRuntimeObservations],
+        request_audio: tuple[Callable[[], TestResponse], AudioRuntimeObservations],
         persistence_events: list[str],
     ) -> None:
         agent = _agent(harness)
@@ -216,7 +217,7 @@ class TestAgentAudioReadonlyCases:
     def test_audio_scopes_both_agent_and_runtime_app_to_the_current_tenant(
         sqlite_session: Session,
         harness: Harness,
-        request_audio: tuple[Callable[[], Response], AudioRuntimeObservations],
+        request_audio: tuple[Callable[[], TestResponse], AudioRuntimeObservations],
         persistence_events: list[str],
         foreign_owner: str,
     ) -> None:
@@ -256,7 +257,7 @@ class TestAgentAudioReadonlyCases:
     def test_provider_failures_preserve_error_contract_and_readonly_state(
         sqlite_session: Session,
         harness: Harness,
-        request_audio: tuple[Callable[[], Response], AudioRuntimeObservations],
+        request_audio: tuple[Callable[[], TestResponse], AudioRuntimeObservations],
         persistence_events: list[str],
         provider_error: Exception,
         expected_status: HTTPStatus,

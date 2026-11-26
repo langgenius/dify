@@ -59,7 +59,7 @@ from models import Account
 from models.account import TenantAccountRole
 from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
-from services.agent.console_runtime import AgentConsoleConversationMissingError
+from services.agent.console_runtime import AgentConsoleConversationMissingError, AgentConsolePreviewDisabledError
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError
@@ -570,6 +570,8 @@ def _chat_generation_errors() -> Generator[None]:
         yield
     except AgentConsoleConversationMissingError as exc:
         raise AgentChatConversationNotFoundError from exc
+    except AgentConsolePreviewDisabledError as exc:
+        raise AgentPreviewUnavailableError from exc
     except services.errors.conversation.ConversationNotExistsError as caught_error:
         raise NotFound("Conversation Not Exists.") from caught_error
     except services.errors.conversation.ConversationCompletedError as caught_error:

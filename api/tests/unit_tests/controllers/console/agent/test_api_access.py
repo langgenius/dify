@@ -1438,13 +1438,31 @@ def test_workflow_config_validates_request_before_resolving_missing_app(harness:
 def test_agent_chat_checks_conversation_ownership_before_invoking_generation(harness: Harness) -> None:
     """Send an unowned conversation through real admission and runtime selection."""
     agent_id, _ = harness.create_agent()
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
+        response = harness.client.post(
+            f"/console/api/agent/{agent_id}/chat-messages",
+            headers=harness.headers,
+            json={"inputs": {}, "query": "Hello", "conversation_id": str(uuid4())},
+        )
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["message"].startswith("Conversation Not Exists.")
+
+
+def test_agent_chat_rejects_preview_without_preparing_a_conversation(harness: Harness) -> None:
+    """Community preview attempts return the public policy error before creating a conversation."""
+    agent_id, _ = harness.create_agent()
     response = harness.client.post(
         f"/console/api/agent/{agent_id}/chat-messages",
         headers=harness.headers,
-        json={"inputs": {}, "query": "Hello", "conversation_id": str(uuid4())},
+        json={"inputs": {}, "query": "Hello"},
     )
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.get_json()["message"].startswith("Conversation Not Exists.")
+    assert response.status_code == HTTPStatus.FORBIDDEN, response.get_json()
+    assert response.get_json()["code"] == "agent_preview_unavailable"
+    with harness.sessions() as session:
+        conversation = session.scalar(
+            select(AgentDebugConversation.id).where(AgentDebugConversation.agent_id == agent_id)
+        )
+        assert conversation is None
 
 
 def test_agent_asr_uses_account_owned_build_configuration(harness: Harness) -> None:

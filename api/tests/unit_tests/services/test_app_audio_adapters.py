@@ -3,7 +3,7 @@ import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
-from typing import cast, override
+from typing import override
 from uuid import uuid4
 
 import pytest
@@ -11,13 +11,13 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from extensions.application_services.agent import build_agent_app_repository
 from models import App, AppMode, AppModelConfig, Message
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot, AgentScope, AgentSource
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AccountTrialAppRecord
 from models.workflow import Workflow, WorkflowType
-from repositories.app.agent_app_repository import AgentAppRepository
 from services import audio_provider_gateway
 from services.agent_config_contracts import AgentConfigVersionMissingError
 from services.app_audio_adapters import AppAudioRuntime
@@ -43,7 +43,9 @@ class _Harness:
     def assert_database_closed(self) -> None:
         assert self.closed_sessions
         assert all(not session.in_transaction() and not session.identity_map for session in self.closed_sessions)
-        assert cast(QueuePool, self.engine.pool).checkedout() == 0
+        pool = self.engine.pool
+        assert isinstance(pool, QueuePool)
+        assert pool.checkedout() == 0
 
     def tts(
         self, *, text: str | None = " Text input ", voice: str | None = None, message_id: str | None = None
@@ -103,11 +105,11 @@ def harness(
             super().close()
             closed_sessions.append(self)
 
-    factory = cast(
-        sessionmaker[Session], sessionmaker(bind=sqlite_engine, class_=TrackedSession, expire_on_commit=True)
-    )
+    factory = sessionmaker[Session](bind=sqlite_engine, class_=TrackedSession, expire_on_commit=True)
     state = _Harness(
-        runtime=AppAudioRuntime(session_factory=factory, agent_audio=AgentAppRepository(session_factory=factory)),
+        runtime=AppAudioRuntime(
+            session_factory=factory, agent_audio=build_agent_app_repository(database_client=factory)
+        ),
         app=AudioAppRef(app_id=app.id, tenant_id=app.tenant_id, app_mode=app.mode),
         config_id=config.id,
         message_id=message.id,

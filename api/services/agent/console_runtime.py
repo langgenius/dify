@@ -1,6 +1,6 @@
 """Adapt Console Agent chat to the existing generation engine."""
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -19,12 +19,17 @@ class AgentConsoleConversationMissingError(Exception):
     """The supplied conversation does not identify the account's selected debug session."""
 
 
+class AgentConsolePreviewDisabledError(Exception):
+    """The deployment does not allow Agent preview runs."""
+
+
 class AgentConsoleRuntime:
     """Own the ORM compatibility boundary for Console Agent chat generation."""
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
-        """Use the supplied session factory for debug conversation selection and generation."""
+    def __init__(self, *, session_factory: sessionmaker[Session], preview_enabled: Callable[[], bool]) -> None:
+        """Use the supplied sessions and deployment policy to prepare debug runs."""
         self._sessions = session_factory
+        self._preview_enabled = preview_enabled
 
     def generate_chat(
         self,
@@ -35,13 +40,15 @@ class AgentConsoleRuntime:
         draft_type: AgentConfigDraftType,
         conversation_id: str | None,
     ) -> Mapping[str, Any] | Iterable[str]:
-        """Resolve the account's debug conversation and start generation before returning its stream."""
+        """Check preview eligibility before selecting the account's debug conversation and generating."""
         tenant_id = context.active_workspace_id
         account_id = context.account_id
         with self._sessions(expire_on_commit=False) as session:
             app = resolve_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
             if app is None:
                 raise AgentAppNotFoundError
+            if draft_type == AgentConfigDraftType.DRAFT and not self._preview_enabled():
+                raise AgentConsolePreviewDisabledError
             roster = AgentRosterService(session)
             if draft_type == AgentConfigDraftType.DEBUG_BUILD:
                 resolved = roster.get_or_create_build_conversation(

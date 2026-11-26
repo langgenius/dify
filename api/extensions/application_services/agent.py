@@ -122,7 +122,9 @@ def build_agent_app_services(
             inherit_webapp_access=inherit_agent_webapp_access,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
-        runtime=AgentConsoleRuntime(session_factory=database_client),
+        runtime=AgentConsoleRuntime(
+            session_factory=database_client, preview_enabled=FeatureService.is_agent_preview_enabled
+        ),
         config_assets=AgentConfigService(session_factory=database_client),
         composer=AgentAppComposer(
             store=apps,
