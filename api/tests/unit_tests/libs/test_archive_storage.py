@@ -272,6 +272,70 @@ def test_put_object_raises_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
         storage.put_object("key", b"data")
 
 
+@pytest.mark.parametrize("encryption", ["aws:kms", "aws:kms:dsse"])
+def test_put_object_accepts_opaque_encrypted_etag(monkeypatch: pytest.MonkeyPatch, encryption: str) -> None:
+    from botocore.stub import Stubber
+
+    _configure_storage(monkeypatch)
+    client = storage_module.boto3.client(
+        "s3", region_name="us-east-1", aws_access_key_id="test", aws_secret_access_key="test"
+    )
+    monkeypatch.setattr(storage_module.boto3, "client", lambda *_args, **_kwargs: client)
+    data = b'{"workflow_run_id":"run-1"}\n'
+    with Stubber(client) as stubber:
+        stubber.add_response("head_bucket", {})
+        stubber.add_response(
+            "put_object",
+            {"ETag": '"opaque-encrypted-etag"', "ServerSideEncryption": encryption},
+            {
+                "Bucket": BUCKET_NAME,
+                "Key": "runs.jsonl",
+                "Body": data,
+                "ContentMD5": base64.b64encode(hashlib.md5(data).digest()).decode(),
+            },
+        )
+        storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+        assert storage.put_object("runs.jsonl", data) == hashlib.md5(data).hexdigest()
+        stubber.assert_no_pending_responses()
+
+
+def test_put_object_still_rejects_mismatched_sse_s3_etag(monkeypatch: pytest.MonkeyPatch) -> None:
+    from botocore.stub import Stubber
+
+    _configure_storage(monkeypatch)
+    client = storage_module.boto3.client(
+        "s3", region_name="us-east-1", aws_access_key_id="test", aws_secret_access_key="test"
+    )
+    monkeypatch.setattr(storage_module.boto3, "client", lambda *_args, **_kwargs: client)
+    with Stubber(client) as stubber:
+        stubber.add_response("head_bucket", {})
+        stubber.add_response("put_object", {"ETag": '"wrong-checksum"', "ServerSideEncryption": "AES256"})
+        storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+        with pytest.raises(ArchiveStorageError, match="ETag mismatch"):
+            storage.put_object("runs.jsonl", b"data")
+        stubber.assert_no_pending_responses()
+
+
+def test_put_object_preserves_server_checksum_rejection(monkeypatch: pytest.MonkeyPatch) -> None:
+    from botocore.stub import Stubber
+
+    _configure_storage(monkeypatch)
+    client = storage_module.boto3.client(
+        "s3", region_name="us-east-1", aws_access_key_id="test", aws_secret_access_key="test"
+    )
+    monkeypatch.setattr(storage_module.boto3, "client", lambda *_args, **_kwargs: client)
+    with Stubber(client) as stubber:
+        stubber.add_response("head_bucket", {})
+        stubber.add_client_error("put_object", "BadDigest", "The Content-MD5 did not match", http_status_code=400)
+        storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+        with pytest.raises(ArchiveStorageError, match="BadDigest"):
+            storage.put_object("runs.jsonl", b"data")
+        stubber.assert_no_pending_responses()
+
+
 @pytest.mark.parametrize("payload", [b"", b"payload"])
 def test_get_object_returns_bytes(monkeypatch: pytest.MonkeyPatch, payload: bytes) -> None:
     _configure_storage(monkeypatch)

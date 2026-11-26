@@ -101,6 +101,10 @@ class ArchiveStorage:
         """
         Upload an object to the archive storage.
 
+        The initialized client uploads the supplied bytes with Content-MD5 for
+        server-side integrity validation. Successful uploads return the local
+        checksum, including when KMS encryption makes the response ETag opaque.
+
         Args:
             key: Object key (path) within the bucket
             data: Binary data to upload
@@ -123,7 +127,10 @@ class ArchiveStorage:
             if not etag:
                 raise ArchiveStorageError(f"Missing ETag for '{key}'")
             normalized_etag = etag.strip('"')
-            if normalized_etag != checksum:
+            # SSE-KMS and DSSE-KMS ETags are not MD5 digests of the plaintext.
+            # Content-MD5 still makes S3 reject a damaged upload with BadDigest.
+            etag_is_md5 = response.get("ServerSideEncryption") not in {"aws:kms", "aws:kms:dsse"}
+            if etag_is_md5 and normalized_etag != checksum:
                 raise ArchiveStorageError(f"ETag mismatch for '{key}': expected={checksum}, actual={normalized_etag}")
             logger.debug("Uploaded object: %s (size=%d, checksum=%s)", key, len(data), checksum)
             return checksum
