@@ -54,8 +54,11 @@ it('reanchors a pinned explanation to a hovered feature in the same or another p
   const runs = page.getByRole('button', { name: '500 app runs / month' })
   const title = page.getByRole('heading', { name: 'Dify Cloud' })
   for (const [label, explanation] of [
-    ['200 AI credits total', billing['pricing.credits.basic']],
-    [billing['pricing.advancedModels'], billing['pricing.credits.advanced']],
+    ['200 AI credits total (basic models)', billing['pricing.credits.basic']],
+    [
+      '5,000 AI credits/month (basic and selected advanced models)',
+      billing['pricing.credits.advanced'],
+    ],
   ] as const) {
     const next = page.getByRole('button', { name: label }).first()
     await runs.click()
@@ -127,4 +130,87 @@ it('keeps a tapped explanation readable until an outside tap', async () => {
   await expect.element(page.getByText(billing['pricing.runs.tooltip'])).toBeVisible()
   await tap(page.getByRole('heading', { name: 'Dify Cloud' }))
   await expect.element(page.getByText(billing['pricing.runs.tooltip'])).not.toBeInTheDocument()
+})
+
+it('lists every published entitlement per plan and explains only the marked ones', async () => {
+  await openPricing()
+  const lists = await page.getByRole('list').all()
+  const plans = lists.filter((list) => list.element().closest('[role="dialog"]'))
+  const rendered = plans.map((list) =>
+    [...list.element().querySelectorAll('li')].map(
+      (item) => `${item.textContent?.trim()}${item.querySelector('button') ? ' ⓘ' : ''}`,
+    ),
+  )
+  expect(rendered).toEqual([
+    [
+      '500 app runs / month ⓘ',
+      '200 AI credits total (basic models) ⓘ',
+      '1 team member',
+      'Up to 5 apps',
+      'Up to 30 days of app logs ⓘ',
+      '50 knowledge documents',
+      '50 MB knowledge base vector storage ⓘ',
+      '10 knowledge requests / minute',
+      'Standard document processing ⓘ',
+      '1,000 trigger events total ⓘ',
+      'Standard workflow execution queue',
+      'Community & documentation support',
+    ],
+    [
+      'No monthly app run limit',
+      '5,000 AI credits/month (basic and selected advanced models) ⓘ',
+      '3 team members',
+      'Real-time canvas collaboration ⓘ',
+      'Up to 50 apps',
+      'App version control',
+      'Custom Web App branding ⓘ',
+      'Unlimited app log retention ⓘ',
+      '500 knowledge documents',
+      '5 GB knowledge base vector storage ⓘ',
+      '100 knowledge requests / minute',
+      'Priority document processing ⓘ',
+      '20,000 trigger events / month ⓘ',
+      'Faster workflow execution queue',
+      'LLM API key load balancing ⓘ',
+      'Ticket support',
+      'SOC 2 Type I report access ⓘ',
+    ],
+    [
+      'No monthly app run limit',
+      '10,000 AI credits/month (basic and selected advanced models) ⓘ',
+      '50 team members',
+      'Real-time canvas collaboration ⓘ',
+      'Up to 200 apps',
+      'App version control',
+      'Custom Web App branding ⓘ',
+      'Unlimited app log retention ⓘ',
+      '5,000 knowledge documents',
+      '20 GB knowledge base vector storage ⓘ',
+      '1,000 knowledge requests / minute',
+      'Top-priority document processing ⓘ',
+      'Unlimited trigger events ⓘ',
+      'Priority workflow execution queue',
+      'LLM API key load balancing ⓘ',
+      'Priority ticket support',
+      'SOC 2 reports & ISO 27001 certificate access ⓘ',
+    ],
+  ])
+})
+
+it('explains knowledge base vector storage on every plan', async () => {
+  await openPricing()
+  for (const label of [
+    '50 MB knowledge base vector storage',
+    '5 GB knowledge base vector storage',
+    '20 GB knowledge base vector storage',
+  ]) {
+    const storage = page.getByRole('button', { name: label, exact: true })
+    storage.element().focus()
+    await userEvent.keyboard('{Enter}')
+    const popup = page.getByRole('dialog', { name: label, exact: true })
+    await expect.element(popup).toHaveTextContent(billing['pricing.storage.tooltip'])
+    await userEvent.keyboard('{Escape}')
+    await expect.element(popup).not.toBeInTheDocument()
+    await expect.element(storage).toHaveFocus()
+  }
 })

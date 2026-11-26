@@ -86,12 +86,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
   const { t } = useTranslation(['billing'])
   const info = ALL_PLANS[plan]
   const paid = plan !== 'sandbox'
-  const modelScope = paid
-    ? t(($) => $['pricing.credits.advanced'])
-    : t(($) => $['pricing.credits.basic'])
-  const logNote = paid
-    ? t(($) => $['pricing.logs.paidNote'])
-    : t(($) => $['pricing.logs.sandboxNote'])
+  const [, amount = info.vectorSpace, unit = ''] = info.vectorSpace.match(/^(\d+)(MB|GB)$/) ?? []
   const features = [
     {
       id: 'runs',
@@ -102,15 +97,14 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
     },
     {
       id: 'credits',
-      label: paid
+      label: info.messageRequest.perMonth
         ? t(($) => $['pricing.credits.monthly'], { count: info.messageRequest.count })
         : t(($) => $['pricing.credits.total'], { count: info.messageRequest.count }),
-      description: modelScope,
+      description: paid
+        ? t(($) => $['pricing.credits.advanced'])
+        : t(($) => $['pricing.credits.basic']),
     },
-    ...(paid
-      ? [{ id: 'models', label: t(($) => $['pricing.advancedModels']), description: modelScope }]
-      : []),
-    { id: 'members', label: t(($) => $['plansCommon.teamMember'], { count: info.teamMembers }) },
+    { id: 'members', label: t(($) => $['pricing.members'], { count: info.teamMembers }) },
     ...(paid
       ? [
           {
@@ -136,49 +130,36 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
       label: paid
         ? t(($) => $['pricing.logs.unlimited'])
         : t(($) => $['pricing.logs.limited'], { count: 30 }),
-      description: logNote,
+      description: paid
+        ? t(($) => $['pricing.logs.paidNote'])
+        : t(($) => $['pricing.logs.sandboxNote']),
     },
-    {
-      id: 'documents',
-      label: t(($) => $['plansCommon.documents'], { count: info.documents }),
-    },
+    { id: 'documents', label: t(($) => $['pricing.documents'], { count: info.documents }) },
     {
       id: 'storage',
-      label: t(($) => $['plansCommon.vectorSpace'], {
-        size: info.vectorSpace.replace(/(MB|GB)$/, ' $1'),
-      }),
+      label: t(($) => $['pricing.storage.label'], { amount, unit }),
+      description: t(($) => $['pricing.storage.tooltip']),
     },
     {
       id: 'requests',
-      label: t(($) => $['plansCommon.documentsRequestQuota'], {
-        count: info.documentsRequestQuota,
-      }),
+      label: t(($) => $['pricing.requests'], { count: info.documentsRequestQuota }),
     },
     {
       id: 'processing',
-      label:
-        t(($) => $[`plansCommon.priority.${info.documentProcessingPriority}`]) +
-        t(($) => $['plansCommon.documentProcessingPriority']),
+      label: t(($) => $[`pricing.processing.${plan}`]),
       description: t(($) => $[`pricing.processing.${plan}Tooltip`]),
     },
     {
       id: 'triggers',
       label:
         info.triggerEvents === 'unlimited'
-          ? t(($) => $['plansCommon.triggerEvents.unlimited'])
-          : plan === 'professional'
-            ? t(($) => $['plansCommon.triggerEvents.professional'], {
-                count: info.triggerEvents.count,
-              })
-            : t(($) => $['pricing.triggers.total'], {
-                count: info.triggerEvents.count,
-              }),
+          ? t(($) => $['pricing.triggers.unlimited'])
+          : info.triggerEvents.perMonth
+            ? t(($) => $['pricing.triggers.monthly'], { count: info.triggerEvents.count })
+            : t(($) => $['pricing.triggers.total'], { count: info.triggerEvents.count }),
       description: t(($) => $[`pricing.triggers.${plan}Tooltip`]),
     },
-    {
-      id: 'execution',
-      label: t(($) => $[`plansCommon.workflowExecution.${info.workflowExecution}`]),
-    },
+    { id: 'execution', label: t(($) => $[`pricing.execution.${plan}`]) },
     ...(paid
       ? [
           {
