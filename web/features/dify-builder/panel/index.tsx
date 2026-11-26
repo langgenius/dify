@@ -47,7 +47,9 @@ import { DifyBuilderPanelHeader } from './header'
 import { ResizableBuilderPanel } from './resizable-panel'
 
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
-const DifyBuilderPanelContent = () => {
+type DifyBuilderPanelProps = { minimumEditorWidth?: number }
+
+const DifyBuilderPanelContent = ({ minimumEditorWidth }: DifyBuilderPanelProps) => {
   const locale = useDifyBuilderLocale()
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
@@ -116,7 +118,10 @@ const DifyBuilderPanelContent = () => {
   }
 
   return (
-    <ResizableBuilderPanel label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}>
+    <ResizableBuilderPanel
+      label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}
+      minimumEditorWidth={minimumEditorWidth}
+    >
       <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
         <DifyBuilderPanelBackground />
 
@@ -223,10 +228,10 @@ const DifyBuilderPanelContent = () => {
   )
 }
 
-const DifyBuilderPanel = () => (
+const DifyBuilderPanel = (props: DifyBuilderPanelProps) => (
   <DifyBuilderAttachmentScope>
     <DifyBuilderLocaleProvider>
-      <DifyBuilderPanelContent />
+      <DifyBuilderPanelContent {...props} />
     </DifyBuilderLocaleProvider>
   </DifyBuilderAttachmentScope>
 )

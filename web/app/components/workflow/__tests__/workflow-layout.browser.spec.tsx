@@ -1,6 +1,8 @@
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { WorkflowEditorLayout } from '@/app/components/workflow-app/components/workflow-editor-layout'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { ResizableBuilderPanel } from '@/features/dify-builder/panel/resizable-panel'
 import { TEST_APP_ID } from '@/test/console/ids'
 import { setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
@@ -22,24 +24,49 @@ setupFakeApi({
   },
 })
 
-async function renderEditor() {
+function BuilderDock({ minimumEditorWidth }: { minimumEditorWidth?: number }) {
+  return (
+    <ResizableBuilderPanel label="App Builder" minimumEditorWidth={minimumEditorWidth}>
+      Builder
+    </ResizableBuilderPanel>
+  )
+}
+
+async function renderEditor({ docked = false } = {}) {
   const { NavigationProvider } = createTestNavigation({ url: `/app/${TEST_APP_ID}/workflow` })
-  await page.viewport(1400, 760)
+  await page.viewport(docked ? 1240 : 1400, 760)
+  const editor = (
+    <Workflow
+      nodes={[]}
+      edges={[]}
+      viewport={{ x: 0, y: 0, zoom: 1 }}
+      sidePanel={
+        <Panel
+          components={{
+            right: docked ? (
+              <aside aria-label="Debug panel" className="relative h-full w-110">
+                <button type="button" className="absolute inset-e-2 top-2">
+                  Debug inputs
+                </button>
+              </aside>
+            ) : (
+              <aside style={{ width: 'clamp(520px, 45vw, 540px)' }} />
+            ),
+          }}
+        />
+      }
+    />
+  )
   return renderWorkflowBrowserComponent(
     <NavigationProvider>
       <NuqsTestingAdapter>
         <EventEmitterContextProvider>
           <div style={{ width: '100vw', height: '100vh' }}>
-            <Workflow
-              nodes={[]}
-              edges={[]}
-              viewport={{ x: 0, y: 0, zoom: 1 }}
-              sidePanel={
-                <Panel
-                  components={{ right: <aside style={{ width: 'clamp(520px, 45vw, 540px)' }} /> }}
-                />
-              }
-            />
+            {docked ? (
+              <WorkflowEditorLayout builderPanel={BuilderDock}>{editor}</WorkflowEditorLayout>
+            ) : (
+              editor
+            )}
           </div>
         </EventEmitterContextProvider>
       </NuqsTestingAdapter>
@@ -62,6 +89,40 @@ async function renderEditor() {
     },
   )
 }
+
+it('keeps the debug controls next to the Builder dock as it widens and the window narrows', async () => {
+  window.localStorage.removeItem('dify-builder-panel-width')
+  const screen = await renderEditor({ docked: true })
+  const debug = screen.getByRole('complementary', { name: 'Debug panel' })
+  const inputs = debug.getByRole('button', { name: 'Debug inputs' })
+  const builder = screen.getByRole('complementary', { name: 'App Builder' })
+  const handle = builder.getByRole('separator', { name: 'App Builder' })
+  await expect.element(handle).toHaveAttribute('aria-valuenow', '400')
+
+  const bothPanelsFit = () => {
+    const debugBounds = debug.element().getBoundingClientRect()
+    const builderBounds = builder.element().getBoundingClientRect()
+    return (
+      debugBounds.left >= 0 &&
+      debugBounds.right <= builderBounds.left &&
+      builderBounds.right <= document.documentElement.clientWidth
+    )
+  }
+  await expect.poll(bothPanelsFit).toBe(true)
+  handle.element().focus()
+  await userEvent.keyboard('{Shift>}{ArrowLeft}{/Shift}')
+  await expect.element(handle).toHaveAttribute('aria-valuenow', '432')
+  await expect.poll(bothPanelsFit).toBe(true)
+  await inputs.click()
+  await expect.element(inputs).toHaveFocus()
+
+  await page.viewport(920, 760)
+  await expect.element(handle).toHaveAttribute('aria-valuenow', '320')
+  await expect.poll(bothPanelsFit).toBe(true)
+  await inputs.click()
+  await expect.element(inputs).toHaveFocus()
+  window.localStorage.removeItem('dify-builder-panel-width')
+})
 
 it('places comments in bottom-bar padding and keeps a mode button clickable over the draft', async () => {
   const screen = await renderEditor()
