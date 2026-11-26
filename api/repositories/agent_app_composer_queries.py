@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from libs.helper import to_timestamp
-from models.agent import Agent, AgentConfigDraftType, AgentConfigSnapshot, AgentScope
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigDraftType, AgentConfigSnapshot, AgentScope
 from repositories.agent_drafts import find_agent_snapshot
 from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
 from services.agent.app_composer_store import (
@@ -13,6 +13,7 @@ from services.agent.app_composer_store import (
     AgentComposerSnapshot,
     AgentComposerSnapshotMissingError,
     AgentComposerState,
+    AgentPublicationSource,
 )
 from services.entities.agent_entities import ComposerSaveStrategy
 
@@ -98,3 +99,28 @@ def read_composer_state(session: Session, *, agent: Agent, published_only: bool 
         hidden_app_backed=identity.hidden_app_backed,
         chat_endpoint=f"/console/api/agent/{agent.id}/chat-messages",
     )
+
+
+def publication_source(session: Session, *, agent: Agent, for_update: bool) -> AgentPublicationSource:
+    """Capture the shared draft, active snapshot and Home identity used for publication."""
+    if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
+        raise AgentComposerAgentMissingError
+    app_id = agent.backing_app_id or agent.app_id
+    draft = find_agent_draft(
+        session,
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        for_update=for_update,
+    )
+    if draft is not None:
+        return AgentPublicationSource(
+            app_id, draft.id, agent.active_config_snapshot_id, draft.home_snapshot_id, draft.config_snapshot_dict
+        )
+    version = find_agent_snapshot(
+        session=session, tenant_id=agent.tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
+    )
+    if version is None:
+        raise AgentComposerSnapshotMissingError
+    return AgentPublicationSource(app_id, None, version.id, version.home_snapshot_id, version.config_snapshot_dict)
