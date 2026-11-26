@@ -28,7 +28,13 @@ import {
   zDatasourceProviderEntity,
   zEndpointProviderDeclarationResponse,
 } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  hashKey,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
@@ -877,27 +883,64 @@ const areAutoUpgradeSettingsEqual = (
 //   return isAdmin
 // }
 
-type OptimisticWrite = { queryKey: QueryKey; previous: unknown }
+// Overlapping saves of one setting: the value before the first of them, and whether any
+// succeeded. A new batch starts when a save begins with no other save of it pending.
+type SaveBatch = { previous: unknown; succeeded: boolean }
+const saveBatches = new WeakMap<QueryClient, Map<string, SaveBatch>>()
+
+function saveBatchOf(queryClient: QueryClient, mutationKey: QueryKey) {
+  let batches = saveBatches.get(queryClient)
+  if (!batches) saveBatches.set(queryClient, (batches = new Map()))
+  return { batches, id: hashKey(mutationKey) }
+}
+
+// The setting a save started for; the caller may have moved to another one since.
+type SaveTarget = { mutationKey: QueryKey; queryKey: QueryKey }
 
 async function writeOptimistically(
   queryClient: QueryClient,
-  queryKey: QueryKey,
+  target: SaveTarget,
   value: unknown,
-): Promise<OptimisticWrite> {
+): Promise<SaveTarget> {
+  const { mutationKey, queryKey } = target
   await queryClient.cancelQueries({ queryKey })
-  const previous = queryClient.getQueryData(queryKey)
+  const { batches, id } = saveBatchOf(queryClient, mutationKey)
+  if (queryClient.isMutating({ mutationKey }) === 1)
+    batches.set(id, { previous: queryClient.getQueryData(queryKey), succeeded: false })
   queryClient.setQueryData(queryKey, value)
-  return { queryKey, previous }
+  return target
 }
 
-// Only the last pending save of a setting settles it (see README "Optimistic updates"); after
-// a success the invalidation fallback refreshes the plugin settings.
-function rollBackIfLast(queryClient: QueryClient, mutationKey: QueryKey, write?: OptimisticWrite) {
-  if (!write || queryClient.isMutating({ mutationKey }) !== 1) return
-  if (write.previous === undefined) queryClient.removeQueries({ queryKey: write.queryKey })
-  else queryClient.setQueryData(write.queryKey, write.previous)
-  // An earlier overlapping save may have failed too, so the snapshot can be its value.
-  void invalidateQueryKeys(queryClient, [write.queryKey])
+function markSaved(queryClient: QueryClient, target?: SaveTarget) {
+  if (!target) return
+  const { batches, id } = saveBatchOf(queryClient, target.mutationKey)
+  const batch = batches.get(id)
+  if (batch) batch.succeeded = true
+}
+
+/**
+ * Settles a failed save once no save of the setting is pending (see README "Optimistic
+ * updates"); after a success the invalidation fallback refreshes the plugin settings.
+ *
+ * A save stays pending until its callbacks finish, so two saves failing together would each
+ * see the other: the check runs after the callbacks, and whichever finishes last reconciles.
+ * When none of the overlapping saves succeeded, the value before them comes back; the setting
+ * is then read again either way.
+ */
+function rollBackWhenSettled(queryClient: QueryClient, target?: SaveTarget) {
+  if (!target) return
+  const { mutationKey, queryKey } = target
+  setTimeout(() => {
+    if (queryClient.isMutating({ mutationKey }) > 0) return
+    const { batches, id } = saveBatchOf(queryClient, mutationKey)
+    const batch = batches.get(id)
+    batches.delete(id)
+    if (batch && !batch.succeeded) {
+      if (batch.previous === undefined) queryClient.removeQueries({ queryKey })
+      else queryClient.setQueryData(queryKey, batch.previous)
+    }
+    void invalidateQueryKeys(queryClient, [queryKey])
+  })
 }
 
 const permissionChangeKey = () =>
@@ -921,9 +964,14 @@ export const useMutationPluginPermissionSettings = ({
       return consoleClient.workspaces.current.plugin.permission.change.post({ body: payload })
     },
     onMutate: (payload) =>
-      writeOptimistically(queryClient, pluginPermissionSettingsQueryKey(), payload),
-    onError: (_error, _payload, write) => rollBackIfLast(queryClient, permissionChangeKey(), write),
-    onSuccess: () => {
+      writeOptimistically(
+        queryClient,
+        { mutationKey: permissionChangeKey(), queryKey: pluginPermissionSettingsQueryKey() },
+        payload,
+      ),
+    onError: (_error, _payload, target) => rollBackWhenSettled(queryClient, target),
+    onSuccess: (_data, _payload, target) => {
+      markSaved(queryClient, target)
       onSuccess?.()
     },
   })
@@ -949,14 +997,17 @@ export const useMutationPluginAutoUpgradeSettings = ({
       })
     },
     onMutate: (payload) =>
-      writeOptimistically(queryClient, pluginAutoUpgradeSettingsQueryKey(category), {
-        category,
-        auto_upgrade: payload,
-      }),
-    // Rolls back the category this save started for; the caller may have moved to another one.
-    onError: (_error, _payload, write) =>
-      rollBackIfLast(queryClient, autoUpgradeChangeKey(category), write),
-    onSuccess: () => {
+      writeOptimistically(
+        queryClient,
+        {
+          mutationKey: autoUpgradeChangeKey(category),
+          queryKey: pluginAutoUpgradeSettingsQueryKey(category),
+        },
+        { category, auto_upgrade: payload },
+      ),
+    onError: (_error, _payload, target) => rollBackWhenSettled(queryClient, target),
+    onSuccess: (_data, _payload, target) => {
+      markSaved(queryClient, target)
       onSuccess?.()
     },
   })

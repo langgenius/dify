@@ -733,6 +733,36 @@ describe('overlapping plugin setting saves', () => {
     expect(queryClient.getQueryData(permissionKey)).toEqual(noOne)
   })
 
+  it('restores the value before both saves when two overlapping saves fail together', async () => {
+    const queryClient = createQueryClient()
+    const first = createDeferred<unknown>()
+    const second = createDeferred<unknown>()
+    mockPost.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    queryClient.setQueryData(permissionKey, admins)
+    const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    const firstSave = result.current
+      .mutateAsync({ ...admins, install_permission: PermissionType.everyone })
+      .catch(() => undefined)
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1))
+    const secondSave = result.current
+      .mutateAsync({ ...admins, install_permission: PermissionType.noOne })
+      .catch(() => undefined)
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2))
+
+    // Both fail in one batch: each sees the other still pending while its callbacks run.
+    await act(async () => {
+      first.reject(new Error('permission update failed'))
+      second.reject(new Error('permission update failed'))
+      await Promise.all([firstSave, secondSave])
+    })
+
+    await waitFor(() => expect(queryClient.getQueryData(permissionKey)).toEqual(admins))
+    expect(queryClient.getQueryState(permissionKey)?.isInvalidated).toBe(true)
+  })
+
   it('keeps the later auto-upgrade setting when the earlier save fails', async () => {
     const queryClient = createQueryClient()
     const first = createDeferred<unknown>()
