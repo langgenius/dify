@@ -121,7 +121,10 @@ class _StreamsSubscription(Subscription):
         """The `_listen` method handles the message retrieval loop. It requires a dedicated thread
         and is not intended for direct invocation.
 
-        The thread is started by `_start_if_needed`.
+        The thread is started by `_start_if_needed`. Live subscriptions resolve
+        their initial stream tip once, then retain that cursor across empty
+        reads. Prepared subscriptions keep the cursor captured by their caller.
+        The subscription is closed and waiting receivers are released on exit.
         """
 
         # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
@@ -129,6 +132,9 @@ class _StreamsSubscription(Subscription):
 
         last_id = self._start_id
         try:
+            if last_id in ("$", b"$"):
+                entries = self._client.xrevrange(self._key, count=1)
+                last_id = entries[0][0] if entries else "0-0"
             while True:
                 with self._lock:
                     if self._closed:

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import abc
+import socket
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, cast, override
+from typing import cast, override
 
 import pytest
+from redis import Connection, Redis
+from redis.backoff import NoBackoff
+from redis.retry import Retry
 
 from libs.broadcast_channel import channel as broadcast_channel
 from libs.broadcast_channel.exc import SubscriptionClosedError
@@ -17,6 +21,87 @@ from libs.broadcast_channel.redis.streams_channel import (
     _StreamsSubscription,
 )
 from libs.broadcast_channel.signals import SIG_CLOSE
+
+
+@pytest.mark.parametrize("existing_tail", [False, True])
+def test_live_subscription_retains_its_cursor_after_an_empty_read(
+    monkeypatch: pytest.MonkeyPatch, existing_tail: bool
+) -> None:
+    """An idle live subscription keeps a concrete cursor and receives a later event."""
+    client_socket, server_socket = socket.socketpair()
+    client_socket.settimeout(2)
+    server_socket.settimeout(2)
+
+    def connect(_connection: Connection) -> socket.socket:
+        """Use a controlled socket for Redis's actual command and response processing."""
+        return client_socket
+
+    monkeypatch.setattr(Connection, "_connect", connect)
+    client = Redis(retry=Retry(NoBackoff(), 0))
+    subscription = _StreamsSubscription(client, "stream:idle")
+    assert subscription._listener is None
+    assert client.connection_pool._created_connections == 0
+    received: list[bytes | None] = []
+    errors: list[Exception] = []
+    finished = threading.Event()
+
+    def receive() -> None:
+        """Run the public receive path while the test controls its network responses."""
+        try:
+            received.append(subscription.receive(timeout=2))
+        except Exception as error:
+            errors.append(error)
+        finally:
+            finished.set()
+
+    receiver = threading.Thread(target=receive, daemon=True)
+    receiver.start()
+    cursors: list[bytes] = []
+    try:
+        with server_socket.makefile("rb") as commands:
+            while len(cursors) < 2:
+                header = commands.readline()
+                assert header.startswith(b"*"), header
+                command: list[bytes] = []
+                for _ in range(int(header[1:])):
+                    length = commands.readline()
+                    assert length.startswith(b"$")
+                    command.append(commands.read(int(length[1:])))
+                    assert commands.read(2) == b"\r\n"
+                if command[0] == b"CLIENT":
+                    server_socket.sendall(b"+OK\r\n")
+                elif command[0] == b"XREVRANGE":
+                    server_socket.sendall(
+                        b"*1\r\n*2\r\n$3\r\n5-0\r\n*2\r\n$4\r\ndata\r\n$3\r\nold\r\n" if existing_tail else b"*0\r\n"
+                    )
+                else:
+                    assert command[0] == b"XREAD"
+                    cursors.append(command[-1])
+                    if len(cursors) == 1:
+                        server_socket.sendall(b"*-1\r\n")
+
+            # A new event arrives after the empty response but before the next
+            # read. Reusing '$' would resolve to that event and skip it.
+            expected_cursor = b"5-0" if existing_tail else b"0-0"
+            assert cursors == [expected_cursor, expected_cursor]
+            server_socket.sendall(
+                b"*1\r\n*2\r\n$11\r\nstream:idle\r\n*1\r\n*2\r\n$3\r\n6-0\r\n*2\r\n$4\r\ndata\r\n$3\r\nnew\r\n"
+            )
+            assert finished.wait(2)
+            assert not errors
+            assert received == [b"new"]
+    finally:
+        with subscription._lock:
+            subscription._closed = True
+            listener = subscription._listener
+        server_socket.sendall(b"*-1\r\n")
+        if listener is not None:
+            listener.join(timeout=2)
+        subscription.close()
+        client.close()
+        client_socket.close()
+        server_socket.close()
+        receiver.join(timeout=2)
 
 
 def _channel(redis_client: FakeStreamsRedis, retention_seconds: int = 600) -> StreamsBroadcastChannel:
@@ -283,22 +368,6 @@ class TestStreamsSubscription:
                 received.append(msg)
 
         assert received == [b"after-subscribe-1", b"after-subscribe-2"]
-
-    def test_subscribe_starts_xread_at_latest_id_without_resolving_boundary(self) -> None:
-        start_ids: list[Any] = []
-
-        class OneReadRedis:
-            def xread(
-                self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
-            ) -> list[tuple[str, list[tuple[str, dict[object, object]]]]]:
-                start_ids.extend(streams.values())
-                subscription._closed = True
-                return []
-
-        subscription = _subscription(OneReadRedis(), "stream:latest-boundary")
-        subscription._listen()
-
-        assert start_ids == ["$"]
 
     def test_prepare_subscription_fixes_boundary_without_starting_listener(
         self,
