@@ -58,7 +58,6 @@
   "export.cancel": "निर्यात रद्द करें",
   "export.cancelFailed": "निर्यात रद्द नहीं हो सका। फिर से कोशिश करें।",
   "export.canceled": "निर्यात रद्द कर दिया गया।",
-  "export.emailNotify": "डाउनलोड लिंक मुझे ईमेल करें",
   "export.emailNotifyWhenFinished": "निर्यात पूरा होने पर डाउनलोड लिंक मुझे ईमेल करें",
   "export.emailQueued": "ईमेल सूचना का अनुरोध किया गया।",
   "export.emailUpdateFailed": "ईमेल सूचना अपडेट नहीं हो सकी। फिर से कोशिश करें।",

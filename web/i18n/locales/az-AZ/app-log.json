@@ -58,7 +58,6 @@
   "export.cancel": "İxracı ləğv et",
   "export.cancelFailed": "İxracı ləğv etmək mümkün olmadı. Yenidən cəhd edin.",
   "export.canceled": "İxrac ləğv edildi.",
-  "export.emailNotify": "Endirmə linkini e-poçtuma göndər",
   "export.emailNotifyWhenFinished": "İxrac tamamlananda endirmə linkini e-poçtuma göndər",
   "export.emailQueued": "E-poçt bildirişi tələb olundu.",
   "export.emailUpdateFailed": "E-poçt bildirişini yeniləmək mümkün olmadı. Yenidən cəhd edin.",

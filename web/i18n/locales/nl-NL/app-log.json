@@ -58,7 +58,6 @@
   "export.cancel": "Export annuleren",
   "export.cancelFailed": "De export kon niet worden geannuleerd. Probeer het opnieuw.",
   "export.canceled": "Export geannuleerd.",
-  "export.emailNotify": "Stuur me de downloadlink per e-mail",
   "export.emailNotifyWhenFinished": "Stuur me de downloadlink per e-mail zodra de export klaar is",
   "export.emailQueued": "E-mailmelding aangevraagd.",
   "export.emailUpdateFailed": "De e-mailmelding kon niet worden bijgewerkt. Probeer het opnieuw.",

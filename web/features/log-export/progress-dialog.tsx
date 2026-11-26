@@ -53,6 +53,7 @@ export function LogExportProgressDialog({
   const failed = !statusError && task?.status === 'failed'
   const canceled = !statusError && task?.status === 'canceled'
   const active = !statusError && !ready && !failed && !canceled
+  const emailQueued = emailNotification?.state === 'queued'
   const progress = task?.progress
   const written = progress?.rows_written ?? 0
   const estimate = task?.estimated_rows
@@ -150,7 +151,7 @@ export function LogExportProgressDialog({
               {t(($) => $['export.cancelFailed'], { ns: 'appLog' })}
             </p>
           )}
-          {(active || ready) && emailNotification && (
+          {emailNotification && (active || (ready && emailQueued)) && (
             <div className="space-y-1 system-sm-regular text-text-secondary">
               {active && (
                 <label className="flex items-center gap-2">
@@ -165,22 +166,10 @@ export function LogExportProgressDialog({
                   </span>
                 </label>
               )}
-              {ready && emailNotification.state !== 'queued' && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="small"
-                  loading={emailNotification.pending}
-                  disabled={emailNotification.pending}
-                  onClick={() => emailNotification.onChange(true)}
-                >
-                  {t(($) => $['export.emailNotify'], { ns: 'appLog' })}
-                </Button>
-              )}
-              {emailNotification.state === 'queued' && (
+              {emailQueued && (
                 <p role="status">{t(($) => $['export.emailQueued'], { ns: 'appLog' })}</p>
               )}
-              {emailNotification.updateFailed && (
+              {active && emailNotification.updateFailed && (
                 <p role="alert" className="text-text-destructive">
                   {t(($) => $['export.emailUpdateFailed'], { ns: 'appLog' })}
                 </p>

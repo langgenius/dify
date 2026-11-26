@@ -58,7 +58,6 @@
   "export.cancel": "取消匯出",
   "export.cancelFailed": "無法取消匯出，請再試一次。",
   "export.canceled": "匯出已取消。",
-  "export.emailNotify": "將下載連結寄到我的信箱",
   "export.emailNotifyWhenFinished": "匯出完成後將下載連結寄到我的信箱",
   "export.emailQueued": "已要求傳送電子郵件通知。",
   "export.emailUpdateFailed": "無法更新電子郵件通知，請再試一次。",

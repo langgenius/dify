@@ -58,7 +58,6 @@
   "export.cancel": "Anuluj eksport",
   "export.cancelFailed": "Nie udało się anulować eksportu. Spróbuj ponownie.",
   "export.canceled": "Eksport anulowany.",
-  "export.emailNotify": "Wyślij mi link do pobrania e-mailem",
   "export.emailNotifyWhenFinished": "Wyślij mi link do pobrania e-mailem po zakończeniu eksportu",
   "export.emailQueued": "Zlecono wysłanie powiadomienia e-mailem.",
   "export.emailUpdateFailed": "Nie udało się zaktualizować powiadomienia e-mail. Spróbuj ponownie.",

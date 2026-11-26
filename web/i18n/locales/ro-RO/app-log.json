@@ -58,7 +58,6 @@
   "export.cancel": "Anulează exportul",
   "export.cancelFailed": "Exportul nu a putut fi anulat. Încearcă din nou.",
   "export.canceled": "Export anulat.",
-  "export.emailNotify": "Trimite-mi linkul de descărcare prin e-mail",
   "export.emailNotifyWhenFinished": "Trimite-mi linkul de descărcare prin e-mail când exportul este gata",
   "export.emailQueued": "Notificarea prin e-mail a fost solicitată.",
   "export.emailUpdateFailed": "Notificarea prin e-mail nu a putut fi actualizată. Încearcă din nou.",

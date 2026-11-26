@@ -58,7 +58,6 @@
   "export.cancel": "ยกเลิกการส่งออก",
   "export.cancelFailed": "ไม่สามารถยกเลิกการส่งออกได้ โปรดลองอีกครั้ง",
   "export.canceled": "ยกเลิกการส่งออกแล้ว",
-  "export.emailNotify": "ส่งลิงก์ดาวน์โหลดให้ฉันทางอีเมล",
   "export.emailNotifyWhenFinished": "ส่งลิงก์ดาวน์โหลดให้ฉันทางอีเมลเมื่อส่งออกเสร็จ",
   "export.emailQueued": "ขอให้ส่งการแจ้งเตือนทางอีเมลแล้ว",
   "export.emailUpdateFailed": "อัปเดตการแจ้งเตือนทางอีเมลไม่ได้ โปรดลองใหม่",

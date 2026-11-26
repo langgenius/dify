@@ -58,7 +58,6 @@
   "export.cancel": "لغو خروجی",
   "export.cancelFailed": "لغو خروجی ممکن نشد. دوباره تلاش کنید.",
   "export.canceled": "خروجی لغو شد.",
-  "export.emailNotify": "پیوند دانلود را برایم ایمیل کن",
   "export.emailNotifyWhenFinished": "پس از پایان خروجی گرفتن، پیوند دانلود را برایم ایمیل کن",
   "export.emailQueued": "اعلان ایمیلی درخواست شد.",
   "export.emailUpdateFailed": "به‌روزرسانی اعلان ایمیلی ممکن نبود. دوباره امتحان کنید.",

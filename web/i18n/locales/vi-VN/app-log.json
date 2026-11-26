@@ -58,7 +58,6 @@
   "export.cancel": "Hủy xuất dữ liệu",
   "export.cancelFailed": "Không thể hủy xuất dữ liệu. Vui lòng thử lại.",
   "export.canceled": "Đã hủy xuất dữ liệu.",
-  "export.emailNotify": "Gửi liên kết tải xuống cho tôi qua email",
   "export.emailNotifyWhenFinished": "Gửi liên kết tải xuống cho tôi qua email khi xuất xong",
   "export.emailQueued": "Đã yêu cầu thông báo qua email.",
   "export.emailUpdateFailed": "Không thể cập nhật thông báo qua email. Hãy thử lại.",

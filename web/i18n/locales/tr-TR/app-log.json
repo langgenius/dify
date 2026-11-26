@@ -58,7 +58,6 @@
   "export.cancel": "Dışa aktarmayı iptal et",
   "export.cancelFailed": "Dışa aktarma iptal edilemedi. Tekrar deneyin.",
   "export.canceled": "Dışa aktarma iptal edildi.",
-  "export.emailNotify": "İndirme bağlantısını bana e-postayla gönder",
   "export.emailNotifyWhenFinished": "Dışa aktarma tamamlandığında indirme bağlantısını bana e-postayla gönder",
   "export.emailQueued": "E-posta bildirimi istendi.",
   "export.emailUpdateFailed": "E-posta bildirimi güncellenemedi. Tekrar deneyin.",

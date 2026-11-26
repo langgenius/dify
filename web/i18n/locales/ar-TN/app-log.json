@@ -58,7 +58,6 @@
   "export.cancel": "إلغاء التصدير",
   "export.cancelFailed": "تعذّر إلغاء التصدير. حاول مجددًا.",
   "export.canceled": "تم إلغاء التصدير.",
-  "export.emailNotify": "أرسل رابط التنزيل إلى بريدي الإلكتروني",
   "export.emailNotifyWhenFinished": "أرسل رابط التنزيل إلى بريدي الإلكتروني عند اكتمال التصدير",
   "export.emailQueued": "تم طلب الإشعار عبر البريد الإلكتروني.",
   "export.emailUpdateFailed": "تعذّر تحديث الإشعار عبر البريد الإلكتروني. حاول مرة أخرى.",

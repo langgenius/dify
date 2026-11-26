@@ -58,7 +58,6 @@
   "export.cancel": "取消导出",
   "export.cancelFailed": "无法取消导出，请重试。",
   "export.canceled": "导出已取消。",
-  "export.emailNotify": "将下载链接发送到我的邮箱",
   "export.emailNotifyWhenFinished": "导出完成后将下载链接发送到我的邮箱",
   "export.emailQueued": "已请求发送邮件通知。",
   "export.emailUpdateFailed": "更新邮件通知失败，请重试。",

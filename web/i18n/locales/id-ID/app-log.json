@@ -58,7 +58,6 @@
   "export.cancel": "Batalkan ekspor",
   "export.cancelFailed": "Ekspor tidak dapat dibatalkan. Coba lagi.",
   "export.canceled": "Ekspor dibatalkan.",
-  "export.emailNotify": "Kirim tautan unduhan melalui email",
   "export.emailNotifyWhenFinished": "Kirim tautan unduhan melalui email saat ekspor selesai",
   "export.emailQueued": "Notifikasi email telah diminta.",
   "export.emailUpdateFailed": "Notifikasi email tidak dapat diperbarui. Coba lagi.",

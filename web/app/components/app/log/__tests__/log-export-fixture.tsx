@@ -63,7 +63,10 @@ export async function openExport(
     isEmailSetup?: boolean
     omitEmailNotificationOnStatus?: boolean
     timezone?: string
-    getTaskStatus?: () => Pick<ConversationLogExportStatusResponse, 'status' | 'progress'>
+    getTaskStatus?: () => Pick<
+      ConversationLogExportStatusResponse,
+      'status' | 'progress' | 'email_notification'
+    >
     cancelTask?: () => 'canceled' | 'processing' | Promise<'canceled' | 'processing'>
     updateEmailNotification?: (enabled: boolean) => {
       state: NonNullable<ConversationLogExportStatusResponse['email_notification']>

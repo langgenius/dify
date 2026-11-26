@@ -58,7 +58,6 @@
   "export.cancel": "Prekliči izvoz",
   "export.cancelFailed": "Izvoza ni bilo mogoče preklicati. Poskusite znova.",
   "export.canceled": "Izvoz je bil preklican.",
-  "export.emailNotify": "Pošlji mi povezavo za prenos po e-pošti",
   "export.emailNotifyWhenFinished": "Pošlji mi povezavo za prenos po e-pošti, ko je izvoz končan",
   "export.emailQueued": "Zahteva za obvestilo po e-pošti je oddana.",
   "export.emailUpdateFailed": "Obvestila po e-pošti ni bilo mogoče posodobiti. Poskusite znova.",

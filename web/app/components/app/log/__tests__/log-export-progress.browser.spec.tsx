@@ -12,7 +12,6 @@ vi.mock('react-i18next', async (importOriginal) => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: copy } = await import('@/i18n/locales/en-US/app-log.json')
   const mock = createReactI18nextMock({
-    'export.emailNotify': copy['export.emailNotify'],
     'export.emailNotifyWhenFinished': copy['export.emailNotifyWhenFinished'],
     'export.previewConversationCount': copy['export.previewConversationCount_other'],
     'export.previewRowCount': copy['export.previewRowCount_other'],
@@ -39,10 +38,7 @@ const progressClose = progressDialog.getByRole('button', { name: 'common.operati
 const progressDownload = progressDialog.getByRole('button', { name: 'common.operation.download' })
 const cancelExport = progressDialog.getByRole('button', { name: 'appLog.export.cancel' })
 const canceledToast = page.getByRole('dialog', { name: 'appLog.export.canceled' })
-const emailButton = progressDialog.getByRole('button', {
-  name: 'Email me the download link',
-  exact: true,
-})
+const emailButton = progressDialog.getByRole('button', { name: /email/i })
 const emailWhenFinishedCheckbox = progressDialog.getByRole('checkbox', {
   name: 'Email me the download link when finished',
   exact: true,
@@ -177,17 +173,18 @@ it('opens task progress after creating an export and resumes polling it when reo
   ])
 })
 
-it('lets the user cancel a waiting email and request it after the CSV is ready', async () => {
+it('lets the user opt in or out before completion and shows when a requested email is queued', async () => {
   let status: ConversationLogExportStatusResponse['status'] = 'processing'
   const initialStatus = createDeferred()
   onTestFinished(() => initialStatus.resolve())
   const { trigger, dialog, emailRequests } = await openExport(false, 'chat', {
     isEmailSetup: true,
-    getTaskStatus: () => ({ status }),
-    waitForStatus: () => initialStatus.promise,
-    updateEmailNotification: (enabled) => ({
-      state: enabled ? (status === 'ready' ? 'queued' : 'waiting') : 'off',
+    getTaskStatus: () => ({
+      status,
+      ...(status === 'ready' ? { email_notification: 'queued' } : {}),
     }),
+    waitForStatus: () => initialStatus.promise,
+    updateEmailNotification: (enabled) => ({ state: enabled ? 'waiting' : 'off' }),
   })
   await trigger.click()
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
@@ -200,11 +197,12 @@ it('lets the user cancel a waiting email and request it after the CSV is ready',
   await expect.element(emailWhenFinishedCheckbox).toBeEnabled()
   await emailWhenFinishedCheckbox.click()
   await expect.element(emailWhenFinishedCheckbox).not.toBeChecked()
+  await emailWhenFinishedCheckbox.click()
+  await expect.element(emailWhenFinishedCheckbox).toBeChecked()
 
   status = 'ready'
   await expect.element(progressDownload).toBeEnabled()
   await expect.element(emailWhenFinishedCheckbox).not.toBeInTheDocument()
-  await emailButton.click()
   await expect.element(progressDialog.getByText('appLog.export.emailQueued')).toBeVisible()
   await expect.element(emailButton).not.toBeInTheDocument()
   expect(emailRequests).toEqual([
@@ -214,27 +212,28 @@ it('lets the user cancel a waiting email and request it after the CSV is ready',
   ])
 })
 
-it('lets the user retry queueing a ready export email after a failed response', async () => {
+it('lets the user retry opting in to email before the export completes', async () => {
   let attempted = false
   const { trigger, dialog, emailRequests } = await openExport(false, 'chat', {
     isEmailSetup: true,
+    getTaskStatus: () => ({ status: 'processing' }),
     updateEmailNotification: () => {
-      const state = attempted ? 'queued' : 'waiting'
+      const state = attempted ? 'waiting' : 'off'
+      const failed = !attempted
       attempted = true
-      return { state, failed: true }
+      return { state, failed }
     },
   })
   await trigger.click()
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
-  await expect.element(progressDownload).toBeEnabled()
-  await emailButton.click()
+  await emailWhenFinishedCheckbox.click()
   const emailError = progressDialog.getByText('appLog.export.emailUpdateFailed')
   await expect.element(emailError).toBeVisible()
-  await expect.element(emailButton).toBeEnabled()
+  await expect.element(emailWhenFinishedCheckbox).toBeEnabled()
+  await expect.element(emailWhenFinishedCheckbox).not.toBeChecked()
 
-  await emailButton.click()
-  await expect.element(progressDialog.getByText('appLog.export.emailQueued')).toBeVisible()
-  await expect.element(emailButton).not.toBeInTheDocument()
+  await emailWhenFinishedCheckbox.click()
+  await expect.element(emailWhenFinishedCheckbox).toBeChecked()
   await expect.element(emailError).not.toBeInTheDocument()
   expect(emailRequests).toEqual([
     { taskId, enabled: true },
@@ -246,11 +245,22 @@ it('hides email when the status response omits the per-export preference', async
   const { trigger, dialog } = await openExport(false, 'chat', {
     isEmailSetup: true,
     omitEmailNotificationOnStatus: true,
+    getTaskStatus: () => ({ status: 'processing' }),
   })
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+  await expect.element(progressDialog.getByText('appLog.export.progressPreparing')).toBeVisible()
+  await expect.element(emailWhenFinishedCheckbox).not.toBeInTheDocument()
+})
+
+it('offers the CSV download without an email action after an export completes', async () => {
+  const { trigger, dialog, emailRequests } = await openExport(false, 'chat', { isEmailSetup: true })
   await trigger.click()
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
   await expect.element(progressDownload).toBeEnabled()
   await expect.element(emailButton).not.toBeInTheDocument()
+  await expect.element(emailWhenFinishedCheckbox).not.toBeInTheDocument()
+  expect(emailRequests).toEqual([])
 })
 
 it('allows an export after preview fails and shows indeterminate progress with the rows written', async () => {

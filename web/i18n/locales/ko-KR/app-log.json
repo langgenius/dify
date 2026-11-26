@@ -58,7 +58,6 @@
   "export.cancel": "내보내기 취소",
   "export.cancelFailed": "내보내기를 취소하지 못했습니다. 다시 시도해 주세요.",
   "export.canceled": "내보내기가 취소되었습니다.",
-  "export.emailNotify": "다운로드 링크를 이메일로 받기",
   "export.emailNotifyWhenFinished": "내보내기가 완료되면 다운로드 링크를 이메일로 받기",
   "export.emailQueued": "이메일 알림을 요청했습니다.",
   "export.emailUpdateFailed": "이메일 알림을 업데이트하지 못했습니다. 다시 시도하세요.",

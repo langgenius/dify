@@ -58,7 +58,6 @@
   "export.cancel": "Export abbrechen",
   "export.cancelFailed": "Der Export konnte nicht abgebrochen werden. Bitte erneut versuchen.",
   "export.canceled": "Export abgebrochen.",
-  "export.emailNotify": "Downloadlink per E-Mail erhalten",
   "export.emailNotifyWhenFinished": "Downloadlink nach Abschluss des Exports per E-Mail erhalten",
   "export.emailQueued": "E-Mail-Benachrichtigung angefordert.",
   "export.emailUpdateFailed": "Die E-Mail-Benachrichtigung konnte nicht aktualisiert werden. Versuche es erneut.",

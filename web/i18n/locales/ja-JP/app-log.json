@@ -58,7 +58,6 @@
   "export.cancel": "エクスポートをキャンセル",
   "export.cancelFailed": "エクスポートをキャンセルできませんでした。もう一度お試しください。",
   "export.canceled": "エクスポートをキャンセルしました。",
-  "export.emailNotify": "ダウンロードリンクをメールで受け取る",
   "export.emailNotifyWhenFinished": "エクスポート完了後、ダウンロードリンクをメールで受け取る",
   "export.emailQueued": "メール通知をリクエストしました。",
   "export.emailUpdateFailed": "メール通知を更新できませんでした。もう一度お試しください。",

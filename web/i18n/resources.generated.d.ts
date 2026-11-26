@@ -1419,7 +1419,6 @@ export default interface Resources {
     'export.cancel': 'Cancel export'
     'export.cancelFailed': 'Couldn’t cancel the export. Try again.'
     'export.canceled': 'Export canceled.'
-    'export.emailNotify': 'Email me the download link'
     'export.emailNotifyWhenFinished': 'Email me the download link when finished'
     'export.emailQueued': 'Email notification requested.'
     'export.emailUpdateFailed': 'Couldn’t update the email notification. Try again.'
