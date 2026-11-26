@@ -57,6 +57,11 @@ export function ConversationLogExportDialog({
         ...logExportRequest,
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
+    cancelExport: (taskId) =>
+      consoleClient.apps.byAppId.conversationLogExports.byTaskId.cancel.post(
+        { params: { ...params, task_id: taskId } },
+        logExportRequest,
+      ),
     updateEmailNotification: (taskId, enabled) =>
       consoleClient.apps.byAppId.conversationLogExports.byTaskId.put(
         { params: { ...params, task_id: taskId }, body: { enabled } },

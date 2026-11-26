@@ -54,6 +54,11 @@ export function WorkflowLogExportDialog({
         ...logExportRequest,
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
+    cancelExport: (taskId) =>
+      consoleClient.apps.byAppId.workflowLogExports.byTaskId.cancel.post(
+        { params: { ...params, task_id: taskId } },
+        logExportRequest,
+      ),
     updateEmailNotification: (taskId, enabled) =>
       consoleClient.apps.byAppId.workflowLogExports.byTaskId.put(
         { params: { ...params, task_id: taskId }, body: { enabled } },

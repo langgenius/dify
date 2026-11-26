@@ -18,7 +18,6 @@ vi.mock('react-i18next', async (importOriginal) => {
   function createMock(category: 'one' | 'other') {
     return createReactI18nextMock({
       'export.expiresAt': copy['export.expiresAt'],
-      'export.limitReached': copy['export.limitReached'],
       'export.previewRowCount': copy[`export.previewRowCount_${category}`],
       'export.previewConversationCount': copy[`export.previewConversationCount_${category}`],
       'export.previewChatflowDescription': copy['export.previewChatflowDescription'],
@@ -228,22 +227,6 @@ it.each(['response-lost', 'active-export'] as const)(
     expect(requests).toHaveLength(1)
   },
 )
-
-it('shows the workspace limit error even when a previous export is ready', async () => {
-  const { trigger, dialog, lastExport } = await openExport(true, 'chat', {
-    createFailure: 'workspace-limit',
-  })
-  await trigger.click()
-  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
-
-  await expect
-    .element(dialog.getByRole('alert'))
-    .toHaveTextContent(appLogCopy['export.limitReached'])
-  await expect
-    .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
-    .toBeEnabled()
-  await expect.element(lastExport.getByText(/^Expires /)).not.toBeInTheDocument()
-})
 
 it('shows the last export filters in its own row after the user leaves and returns', async () => {
   const { screen, trigger, dialog, lastExport, renderLogs, requests } = await openExport()

@@ -1,5 +1,8 @@
 import type { ConversationLogExportStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { page } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { createDeferred } from '@/test/deferred'
 import { conversation, observeDownloads, openExport, taskId } from './log-export-fixture'
 
@@ -34,6 +37,8 @@ const progressDialog = page.getByRole('dialog', { name: 'appLog.export.progressT
 const progressBar = progressDialog.getByRole('progressbar', { name: 'appLog.export.progressTitle' })
 const progressClose = progressDialog.getByRole('button', { name: 'common.operation.close' }).last()
 const progressDownload = progressDialog.getByRole('button', { name: 'common.operation.download' })
+const cancelExport = progressDialog.getByRole('button', { name: 'appLog.export.cancel' })
+const canceledToast = page.getByRole('dialog', { name: 'appLog.export.canceled' })
 const emailButton = progressDialog.getByRole('button', {
   name: 'Email me the download link',
   exact: true,
@@ -41,6 +46,85 @@ const emailButton = progressDialog.getByRole('button', {
 const emailWhenFinishedCheckbox = progressDialog.getByRole('checkbox', {
   name: 'Email me the download link when finished',
   exact: true,
+})
+
+async function renderNotifications() {
+  onTestFinished(() => toast.dismiss())
+  await render(<AppToaster timeout={0} />)
+}
+
+it('can reopen and cancel a queued export, then submit another one', async () => {
+  await renderNotifications()
+  const { trigger, dialog, lastExport, cancelRequests, statusTaskIds } = await openExport(
+    false,
+    'chat',
+    { getTaskStatus: () => ({ status: 'pending' }) },
+  )
+  const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
+
+  await trigger.click()
+  await submit.click()
+  await expect.element(progressDialog.getByText('appLog.export.progressQueued')).toBeVisible()
+  await progressClose.click()
+
+  await trigger.click()
+  await expect
+    .element(lastExport.getByRole('status'))
+    .toHaveTextContent('appLog.export.progressQueued')
+  await lastExport.getByRole('button', { name: 'appLog.export.viewProgress' }).click()
+  await cancelExport.click()
+  await expect.element(progressDialog).not.toBeInTheDocument()
+  await expect.element(canceledToast).toBeVisible()
+  await expect.element(canceledToast).toHaveAttribute('data-type', 'success')
+  await expect.element(trigger).toHaveFocus()
+  expect(cancelRequests).toEqual([taskId])
+
+  await trigger.click()
+  await expect.element(lastExport.getByRole('status')).toHaveTextContent('appLog.export.canceled')
+  await submit.click()
+  await expect.element(progressDialog.getByText('appLog.export.progressQueued')).toBeVisible()
+  await expect.poll(() => statusTaskIds.some((id) => id !== taskId)).toBe(true)
+})
+
+it('reports successful cancellation after the user closes the progress dialog', async () => {
+  await renderNotifications()
+  const cancelResponse = createDeferred<'canceled'>()
+  onTestFinished(() => cancelResponse.resolve('canceled'))
+  const { trigger, dialog, cancelRequests } = await openExport(false, 'chat', {
+    getTaskStatus: () => ({ status: 'pending' }),
+    cancelTask: () => cancelResponse.promise,
+  })
+
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+  await cancelExport.click()
+  await expect.poll(() => cancelRequests).toEqual([taskId])
+  await progressClose.click()
+  await expect.element(progressDialog).not.toBeInTheDocument()
+  await expect.element(canceledToast).not.toBeInTheDocument()
+
+  cancelResponse.resolve('canceled')
+  await expect.element(canceledToast).toBeVisible()
+})
+
+it('shows the running export when the worker starts before cancellation', async () => {
+  await renderNotifications()
+  let status: ConversationLogExportStatusResponse['status'] = 'pending'
+  const { trigger, dialog, cancelRequests } = await openExport(false, 'chat', {
+    getTaskStatus: () => ({ status }),
+    cancelTask: () => {
+      status = 'processing'
+      return status
+    },
+  })
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+  await cancelExport.click()
+  await expect.element(progressDialog.getByText('appLog.export.progressPreparing')).toBeVisible()
+  await expect.element(cancelExport).not.toBeInTheDocument()
+  await expect.element(progressDialog.getByRole('alert')).not.toBeInTheDocument()
+  await expect.element(canceledToast).not.toBeInTheDocument()
+  expect(cancelRequests).toEqual([taskId])
 })
 
 it('opens task progress after creating an export and resumes polling it when reopened', async () => {

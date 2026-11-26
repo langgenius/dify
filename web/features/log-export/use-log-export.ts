@@ -1,6 +1,5 @@
 import type { ConversationLogExportStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultError, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query'
-import { ORPCError } from '@orpc/client'
 import {
   keepPreviousData,
   useMutation,
@@ -9,10 +8,16 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 export type LogExportPhase = 'checking' | 'exporting' | 'retry-status' | 'selecting'
-export type LogExportCreateErrorKind = 'limit-reached' | 'failed' | null
+export type LogExportCancellation = {
+  pending: boolean
+  failed: boolean
+  onCancel: () => void
+}
 export type LogExportEmailNotification = {
   state: NonNullable<ConversationLogExportStatusResponse['email_notification']>
   pending: boolean
@@ -37,6 +42,7 @@ export function useLogExport<
   previewOptions,
   createOptions,
   statusOptions,
+  cancelExport,
   updateEmailNotification,
 }: {
   enabled: boolean
@@ -46,8 +52,10 @@ export function useLogExport<
   statusOptions: (
     taskId: string | undefined,
   ) => UseQueryOptions<ConversationLogExportStatusResponse>
+  cancelExport: (taskId: string) => Promise<ConversationLogExportStatusResponse>
   updateEmailNotification: (taskId: string, enabled: boolean) => Promise<unknown>
 }) {
+  const { t } = useTranslation(['appLog'])
   const queryClient = useQueryClient()
   const { data: isEmailSetup } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -72,6 +80,25 @@ export function useLogExport<
         (state.data?.status === 'ready' && state.data.email_notification === 'waiting'))
         ? 1500
         : false,
+  })
+  const cancelMutation = useMutation({
+    mutationFn: cancelExport,
+    onSuccess: (_task, taskId) => {
+      if (progressTask?.task_id === taskId)
+        setDialog((current) => (current === 'progress' ? null : current))
+      toast.success(t(($) => $['export.canceled'], { ns: 'appLog' }))
+    },
+    onSettled: async (canceledTask, _error, taskId) => {
+      const taskQuery = { queryKey: statusOptions(taskId).queryKey, exact: true }
+      if (canceledTask) {
+        await queryClient.cancelQueries(taskQuery)
+        queryClient.setQueryData(taskQuery.queryKey, canceledTask)
+      }
+      await Promise.all([
+        canceledTask ? undefined : queryClient.invalidateQueries(taskQuery),
+        queryClient.invalidateQueries({ queryKey: latestOptions.queryKey, exact: true }),
+      ])
+    },
   })
   const emailMutation = useMutation({
     mutationFn: ({ taskId, enabled }: { taskId: string; enabled: boolean }) =>
@@ -122,13 +149,6 @@ export function useLogExport<
   useEffect(() => {
     if (error && recoveredTask) reset()
   }, [error, recoveredTask, reset])
-  let createErrorKind: LogExportCreateErrorKind = null
-  if (error && !recoveredTask) {
-    createErrorKind =
-      error instanceof ORPCError && error.code === 'log_export_limit_reached'
-        ? 'limit-reached'
-        : 'failed'
-  }
 
   const phase: LogExportPhase =
     isPending || taskInProgress
@@ -146,6 +166,7 @@ export function useLogExport<
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
   })
+  const cancelForTask = cancelMutation.variables === progressTask?.task_id
   return {
     latest: latestData,
     preview: preview.isError ? undefined : preview.data,
@@ -162,7 +183,7 @@ export function useLogExport<
       },
       phase,
       submitting: isPending,
-      createErrorKind,
+      createFailed: error != null && !recoveredTask,
       pendingPreview:
         preview.isPending || preview.isPlaceholderData || preview.fetchStatus !== 'idle',
       onRetryStatus: () => {
@@ -174,6 +195,14 @@ export function useLogExport<
       taskId: progressTask.task_id,
       task: progress.data,
       statusError: progress.isError,
+      cancellation:
+        !progress.isError && progress.data?.status === 'pending'
+          ? ({
+              pending: cancelForTask && cancelMutation.isPending,
+              failed: cancelForTask && cancelMutation.isError,
+              onCancel: () => cancelMutation.mutate(progressTask.task_id),
+            } satisfies LogExportCancellation)
+          : undefined,
       emailNotification:
         isEmailSetup && (emailStatusLoading || emailState != null)
           ? ({

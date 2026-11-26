@@ -1,6 +1,7 @@
+import type { ConversationLogExportStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
 import type { CloudSandboxPlanState } from './cloud-sandbox-retention'
-import type { LogExportCreateErrorKind, LogExportPhase } from './use-log-export'
+import type { LogExportPhase } from './use-log-export'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -70,7 +71,7 @@ export function LogExportSelect<T extends string>({
 }
 
 type LastLogExportProps = {
-  status: 'pending' | 'processing' | 'ready' | 'failed'
+  status: ConversationLogExportStatusResponse['status']
   fileUrl: string
   expiresAt?: string | null
   start?: string | null
@@ -140,7 +141,12 @@ function LastLogExport({
             })}
           </p>
         )}
-        {(status === 'pending' || status === 'processing') && (
+        {status === 'pending' && (
+          <p role="status" className="system-sm-regular text-text-secondary">
+            {t(($) => $['export.progressQueued'], { ns: 'appLog' })}
+          </p>
+        )}
+        {status === 'processing' && (
           <p role="status" className="system-sm-regular text-text-secondary">
             {t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })}
           </p>
@@ -148,6 +154,11 @@ function LastLogExport({
         {status === 'failed' && (
           <p role="alert" className="system-sm-regular text-text-destructive">
             {t(($) => $['export.failed'], { ns: 'appLog' })}
+          </p>
+        )}
+        {status === 'canceled' && (
+          <p role="status" className="system-sm-regular text-text-secondary">
+            {t(($) => $['export.canceled'], { ns: 'appLog' })}
           </p>
         )}
       </div>
@@ -185,7 +196,7 @@ type LogExportDialogProps = {
   onOpenChange: (open: boolean) => void
   phase: LogExportPhase
   submitting: boolean
-  createErrorKind: LogExportCreateErrorKind
+  createFailed: boolean
   pendingPreview: boolean
   counts?: { rows: number; logs?: number; conversations?: number }
   previewDescription: string
@@ -204,7 +215,7 @@ export function LogExportDialog({
   onOpenChange,
   phase,
   submitting,
-  createErrorKind,
+  createFailed,
   pendingPreview,
   counts,
   previewDescription,
@@ -253,9 +264,7 @@ export function LogExportDialog({
 
   let error
   if (retryStatus) error = t(($) => $['export.statusFailed'], { ns: 'appLog' })
-  else if (createErrorKind === 'limit-reached')
-    error = t(($) => $['export.limitReached'], { ns: 'appLog' })
-  else if (createErrorKind === 'failed') error = t(($) => $['export.failed'], { ns: 'appLog' })
+  else if (createFailed) error = t(($) => $['export.failed'], { ns: 'appLog' })
   else if (noMatches && phase === 'selecting')
     error = t(($) => $['export.noMatches'], { ns: 'appLog' })
 

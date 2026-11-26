@@ -57,6 +57,11 @@ export function AgentLogExportDialog({
         ...logExportRequest,
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
+    cancelExport: (taskId) =>
+      consoleClient.agent.byAgentId.logExports.byTaskId.cancel.post(
+        { params: { ...params, task_id: taskId } },
+        logExportRequest,
+      ),
     updateEmailNotification: (taskId, enabled) =>
       consoleClient.agent.byAgentId.logExports.byTaskId.put(
         { params: { ...params, task_id: taskId }, body: { enabled } },

@@ -1,6 +1,6 @@
 import type { ConversationLogExportStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
-import type { LogExportEmailNotification } from './use-log-export'
+import type { LogExportCancellation, LogExportEmailNotification } from './use-log-export'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
@@ -25,6 +25,7 @@ export function LogExportProgressDialog({
   taskId,
   task,
   statusError,
+  cancellation,
   emailNotification,
   fileUrl,
   finalFocus,
@@ -36,6 +37,7 @@ export function LogExportProgressDialog({
   taskId: string
   task?: ConversationLogExportStatusResponse
   statusError: boolean
+  cancellation?: LogExportCancellation
   emailNotification?: LogExportEmailNotification
   fileUrl: string
   finalFocus: ComponentProps<typeof DialogContent>['finalFocus']
@@ -49,7 +51,8 @@ export function LogExportProgressDialog({
   const ready = !statusError && task?.status === 'ready'
   useObserveLogExportProgress(open ? taskId : null, ready && task.task_id === taskId)
   const failed = !statusError && task?.status === 'failed'
-  const active = !statusError && !ready && !failed
+  const canceled = !statusError && task?.status === 'canceled'
+  const active = !statusError && !ready && !failed && !canceled
   const progress = task?.progress
   const written = progress?.rows_written ?? 0
   const estimate = task?.estimated_rows
@@ -75,6 +78,7 @@ export function LogExportProgressDialog({
   let status: string = t(($) => $['export.progressPreparing'], { ns: 'appLog' })
   if (statusError) status = t(($) => $['export.statusFailed'], { ns: 'appLog' })
   else if (failed) status = t(($) => $['export.failed'], { ns: 'appLog' })
+  else if (canceled) status = t(($) => $['export.canceled'], { ns: 'appLog' })
   else if (ready) status = t(($) => $['export.progressReady'], { ns: 'appLog' })
   else if (task?.status === 'pending')
     status = t(($) => $['export.progressQueued'], { ns: 'appLog' })
@@ -141,6 +145,11 @@ export function LogExportProgressDialog({
               <p>{t(($) => $['export.progressDownloadLater'], { ns: 'appLog' })}</p>
             </div>
           )}
+          {cancellation?.failed && (
+            <p role="alert" className="system-sm-regular text-text-destructive">
+              {t(($) => $['export.cancelFailed'], { ns: 'appLog' })}
+            </p>
+          )}
           {(active || ready) && emailNotification && (
             <div className="space-y-1 system-sm-regular text-text-secondary">
               {active && (
@@ -180,6 +189,16 @@ export function LogExportProgressDialog({
           )}
         </DialogBody>
         <DialogFooter>
+          {cancellation && (
+            <Button
+              type="button"
+              variant="secondary"
+              loading={cancellation.pending}
+              onClick={cancellation.onCancel}
+            >
+              {t(($) => $['export.cancel'], { ns: 'appLog' })}
+            </Button>
+          )}
           <DialogClose
             render={
               <Button type="button" variant={ready || statusError ? 'secondary' : 'primary'} />

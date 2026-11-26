@@ -58,12 +58,13 @@ export async function openExport(
     waitForStatus?: () => Promise<void>
     previewRows?: number
     previewFailure?: boolean
-    createFailure?: 'response-lost' | 'active-export' | 'workspace-limit'
+    createFailure?: 'response-lost' | 'active-export'
     existingTaskExpiresAt?: string
     isEmailSetup?: boolean
     omitEmailNotificationOnStatus?: boolean
     timezone?: string
     getTaskStatus?: () => Pick<ConversationLogExportStatusResponse, 'status' | 'progress'>
+    cancelTask?: () => 'canceled' | 'processing' | Promise<'canceled' | 'processing'>
     updateEmailNotification?: (enabled: boolean) => {
       state: NonNullable<ConversationLogExportStatusResponse['email_notification']>
       failed?: boolean
@@ -75,6 +76,7 @@ export async function openExport(
   const previews: URLSearchParams[] = []
   const requests: ConversationLogExportCreatePayload[] = []
   const emailRequests: { taskId: string; enabled: boolean }[] = []
+  const cancelRequests: string[] = []
   const statusTaskIds: string[] = []
   let task: ConversationLogExportLatestTaskResponse | null = hasExistingTask
     ? {
@@ -142,7 +144,6 @@ export async function openExport(
         expect(request.method).toBe('POST')
         const filters: ConversationLogExportCreatePayload = await request.json()
         requests.push(filters)
-        if (responses?.createFailure === 'workspace-limit') return limitReached()
         task = {
           task_id: requests.length === 1 ? taskId : crypto.randomUUID(),
           status: 'pending',
@@ -173,14 +174,31 @@ export async function openExport(
       case 'conversation-log-exports/latest':
         await responses?.waitForLatest?.()
         if (!task) return Response.json({ task: null })
-        task = {
-          ...task,
-          ...(responses?.getTaskStatus?.() ?? {
-            status: task.status !== 'ready' && ++statusReads === 1 ? 'processing' : 'ready',
-          }),
-        }
+        if (task.status !== 'canceled')
+          task = {
+            ...task,
+            ...(responses?.getTaskStatus?.() ?? {
+              status: task.status !== 'ready' && ++statusReads === 1 ? 'processing' : 'ready',
+            }),
+          }
         return Response.json({ task })
       default:
+        if (task && route === `conversation-log-exports/${task.task_id}/cancel`) {
+          expect(request.method).toBe('POST')
+          cancelRequests.push(task.task_id)
+          const status = await responses?.cancelTask?.()
+          task = { ...task, status: status ?? 'canceled' }
+          if (task.status === 'canceled')
+            return Response.json({ task_id: task.task_id, status: task.status })
+          return Response.json(
+            {
+              code: 'log_export_task_not_cancelable',
+              message: 'The export has started.',
+              status: 409,
+            },
+            { status: 409 },
+          )
+        }
         if (task && route === `conversation-log-exports/${task.task_id}`) {
           if (request.method === 'PUT' && responses?.updateEmailNotification) {
             const { enabled } = (await request.json()) as { enabled: boolean }
@@ -196,7 +214,8 @@ export async function openExport(
           }
           statusTaskIds.push(task.task_id)
           await responses?.waitForStatus?.()
-          task = { ...task, ...(responses?.getTaskStatus?.() ?? { status: 'ready' }) }
+          if (task.status !== 'canceled')
+            task = { ...task, ...(responses?.getTaskStatus?.() ?? { status: 'ready' }) }
           return Response.json({
             task_id: task.task_id,
             status: task.status,
@@ -251,6 +270,7 @@ export async function openExport(
     previews,
     requests,
     emailRequests,
+    cancelRequests,
     statusTaskIds,
     renderLogs,
   }
