@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} grupa · {{files}} dokumentów",
   "tidy.groupsMeta_other": "Grupy: {{count}} · dokumenty: {{files}}",
   "tidy.identical": "Identyczne",
+  "tidy.incomplete": "Ta lista jest zbyt długa, aby wczytać ją w całości, dlatego w grupach poniżej może brakować dokumentów lub wyników. Dopóki lista nie będzie krótsza, akcje „Zachowaj jeden · Wyłącz pozostałe” oraz wyłączanie dokumentu dla całej grupy są niedostępne: wybierz powyżej jeden typ albo obsłuż wyniki pojedynczo.",
   "tidy.keepAll": "Zachowaj wszystkie (odrzuć)",
   "tidy.keepBoth": "Zachowaj oba",
   "tidy.keepNewestMerge": "Zachowaj najnowszy · Wyłącz pozostałe",

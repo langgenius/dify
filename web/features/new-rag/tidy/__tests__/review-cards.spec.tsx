@@ -41,7 +41,7 @@ const card = (title: string, publishedAt: string): KnowledgeFsTidyDocumentCardRe
 describe('DuplicateGroupCard', () => {
   it('falls back to the newest copy when the chosen one leaves the group on refresh', async () => {
     const onConfirm = vi.fn<(confirmation: PlanConfirmation) => void>()
-    const props = { busy: false, canManage: true, spaceId: 'space', onConfirm }
+    const props = { busy: false, canManage: true, complete: true, spaceId: 'space', onConfirm }
     const older = card('Handbook', '2026-01-01T00:00:00Z')
     const newest = card('Handbook v3', '2026-08-01T00:00:00Z')
     const [three] = groupDuplicates([copy('d1', 'c', 'd'), copy('d2', 'd', 'e')])
@@ -82,5 +82,31 @@ describe('DuplicateGroupCard', () => {
         step.documentId,
       ]),
     ).toEqual([['d1', 'disable_document', 'c']])
+  })
+  it('offers no keep-one merge and names no newest copy for a group that may lack copies', () => {
+    const onRun = vi.fn()
+    const [group] = groupDuplicates([copy('d1', 'c', 'd')])
+    render(
+      <DuplicateGroupCard
+        busy={false}
+        canManage
+        complete={false}
+        spaceId="space"
+        group={group!}
+        cards={{
+          c: card('Handbook', '2026-01-01T00:00:00Z'),
+          d: card('Handbook v3', '2026-08-01T00:00:00Z'),
+        }}
+        onConfirm={vi.fn()}
+        onRewrite={vi.fn()}
+        onRun={onRun}
+      />,
+    )
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Merge/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.tidy.latest')).not.toBeInTheDocument()
+    expect(screen.queryByText(/knowledgeSpace\.tidy\.newestIs/)).not.toBeInTheDocument()
+    // Dismissing touches only the findings shown and disables nothing, so it stays.
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.tidy.keepAll' })).toBeEnabled()
   })
 })

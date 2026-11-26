@@ -1,11 +1,13 @@
 import { ORPCError } from '@orpc/client'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
+import { CARDS_PER_PAGE } from '../findings-list'
 import { TidyPage } from '../page'
+import { OPEN_FINDING_PAGE_CAP } from '../use-tidy'
 
 const service = vi.hoisted(() => ({
   settings: vi.fn(),
@@ -48,6 +50,40 @@ function renderPage(edit = true) {
     </NuqsTestingAdapter>,
   )
 }
+function renderAt(searchParams: string) {
+  return renderWithConsoleQuery(
+    <NuqsTestingAdapter hasMemory searchParams={searchParams}>
+      <KnowledgeSpaceTestProvider
+        space={createKnowledgeSpaceFixture({
+          permission_keys: ['knowledge_space_read', 'knowledge_space_edit'],
+        })}
+      >
+        <TidyPage />
+      </KnowledgeSpaceTestProvider>
+    </NuqsTestingAdapter>,
+  )
+}
+const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 7, text: 'Welcome' }
+const copyOf = (id: string, left: string, right: string) => ({
+  id,
+  kind: 'duplicate',
+  left: { ...evidence, documentId: left, title: 'Handbook' },
+  right: { ...evidence, documentId: right, title: 'Handbook' },
+  reason: 'identical_content_hash',
+  similarity: 1,
+  status: 'open',
+  revision: 1,
+  actionId: null,
+  createdAt: '2026-11-09',
+  stale: false,
+})
+const documentCard = (title: string, publishedAt: string) => ({
+  title,
+  mimeType: 'text/html',
+  sizeBytes: 2048,
+  publishedAt,
+  enabled: true,
+})
 describe('Tidy', () => {
   beforeEach(() => {
     service.settings.mockResolvedValue({
@@ -195,7 +231,7 @@ describe('Tidy', () => {
       ),
     )
   })
-  it('lists exact copies and overlapping documents together, most overlap first, and pages both', async () => {
+  it('lists handled copies and overlapping documents together, most overlap first, and pages both by cursor', async () => {
     const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
     const finding = (id: string, kind: string, similarity: number, right: string) => ({
       id,
@@ -204,7 +240,7 @@ describe('Tidy', () => {
       right: { ...evidence, documentId: right, title: `Guide ${right}`, text: `${id} ${right}` },
       reason: kind === 'duplicate' ? 'identical_content_hash' : 'textual_overlap',
       similarity,
-      status: 'open',
+      status: 'reviewed',
       revision: 1,
       actionId: null,
       createdAt: '2026-11-04',
@@ -225,7 +261,7 @@ describe('Tidy', () => {
     )
     const user = userEvent.setup()
     renderWithConsoleQuery(
-      <NuqsTestingAdapter hasMemory searchParams="?tidyKind=overlap">
+      <NuqsTestingAdapter hasMemory searchParams="?tidyKind=overlap&tidyStatus=reviewed">
         <KnowledgeSpaceTestProvider space={createKnowledgeSpaceFixture()}>
           <TidyPage />
         </KnowledgeSpaceTestProvider>
@@ -249,6 +285,197 @@ describe('Tidy', () => {
     expect(await screen.findByRole('article', { name: /Guide e/ })).toBeVisible()
     expect(screen.getAllByRole('article')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'common.pagination.next' })).not.toBeInTheDocument()
+  })
+  it('lists open overlapping documents of every API page together, most overlap first', async () => {
+    const pair = (id: string, similarity: number, right: string) => ({
+      ...copyOf(id, 'a', right),
+      kind: 'similar',
+      right: { ...evidence, documentId: right, title: `Guide ${right}` },
+      reason: 'textual_overlap',
+      similarity,
+    })
+    service.findings.mockImplementation(async ({ query }) =>
+      query.kind === 'duplicate'
+        ? { items: [copyOf('copy', 'a', 'b')], nextCursor: null }
+        : query.cursor
+          ? { items: [pair('closest', 0.9, 'e')], nextCursor: null }
+          : { items: [pair('loose', 0.6, 'c'), pair('close', 0.8, 'd')], nextCursor: 'more' },
+    )
+    renderAt('?tidyKind=overlap')
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(4))
+    expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual([
+      expect.stringContaining('copiesTitle'),
+      expect.stringContaining('Guide e'),
+      expect.stringContaining('Guide d'),
+      expect.stringContaining('Guide c'),
+    ])
+    expect(screen.queryByRole('button', { name: 'common.pagination.next' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+  it('groups copies whose findings span API pages and merges them in one request', async () => {
+    service.findings.mockImplementation(async ({ query }) =>
+      query.cursor
+        ? {
+            items: [copyOf('d2', 'd', 'e'), copyOf('d3', 'c', 'e')],
+            nextCursor: null,
+            documents: { e: documentCard('Handbook v4', '2026-10-01T00:00:00Z') },
+          }
+        : {
+            items: [copyOf('d1', 'c', 'd')],
+            nextCursor: 'second',
+            documents: {
+              c: documentCard('Handbook', '2026-01-01T00:00:00Z'),
+              d: documentCard('Handbook v3', '2026-08-01T00:00:00Z'),
+            },
+          },
+    )
+    service.act.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+    // The first page alone would show two copies and call "Handbook v3" the newest.
+    expect(await screen.findByRole('radio', { name: 'Handbook v4' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+    expect(service.findings.mock.calls.map(([input]) => input.query)).toEqual([
+      { status: 'open' },
+      { status: 'open', cursor: 'second' },
+    ])
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tidy.keepNewestMerge' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Handbook v4')
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(1))
+    expect(service.act.mock.calls.map(([input]) => [input.params.finding_id, input.body])).toEqual([
+      [
+        'd2',
+        {
+          action: 'disable_document',
+          expectedRevision: 1,
+          documentId: 'd',
+          also: [
+            { findingId: 'd3', action: 'disable_document', expectedRevision: 1, documentId: 'c' },
+            { findingId: 'd1', action: 'review', expectedRevision: 1 },
+          ],
+        },
+      ],
+    ])
+  })
+  it('stops loading at the page cap, says the list is incomplete and withholds whole-group actions', async () => {
+    const conflict = {
+      ...copyOf('amount', 'x', 'y'),
+      kind: 'conflict',
+      left: { ...evidence, documentId: 'x', title: 'Policy X' },
+      right: { ...evidence, documentId: 'y', title: 'Policy Y' },
+      reason: 'amount',
+      similarity: null,
+    }
+    service.findings.mockImplementation(async ({ query }) => {
+      const at = Number(query.cursor ?? 0)
+      return {
+        items: [copyOf(`d${at}`, 'a', `b${at}`), ...(at === 0 ? [conflict] : [])],
+        nextCursor: String(at + 1),
+      }
+    })
+    service.act.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+    expect(await screen.findByRole('note')).toHaveTextContent('knowledgeSpace.tidy.incomplete')
+    expect(service.findings).toHaveBeenCalledTimes(OPEN_FINDING_PAGE_CAP)
+    // The groups are still shown, built from what was loaded.
+    const copies = screen.getByRole('article', {
+      name: new RegExp(`copiesTitle.*"count":${OPEN_FINDING_PAGE_CAP + 1}`),
+    })
+    expect(within(copies).queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(within(copies).queryByRole('button', { name: /Merge/ })).not.toBeInTheDocument()
+    const pair = screen.getByRole('article', { name: /pairConflictTitle.*Policy X.*Policy Y/ })
+    expect(within(pair).queryByRole('button', { name: /tidy\.disableOne/ })).not.toBeInTheDocument()
+    // What settles one finding stays available.
+    await user.click(within(pair).getByRole('button', { name: 'knowledgeSpace.tidy.notConflict' }))
+    await waitFor(() =>
+      expect(service.act).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({ finding_id: 'amount' }),
+          body: { expectedRevision: 1, action: 'dismiss' },
+        }),
+      ),
+    )
+    // The findings after the cap are reached by cursor.
+    service.findings.mockResolvedValue({ items: [copyOf('last', 'a', 'z')], nextCursor: null })
+    await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    await waitFor(() =>
+      expect(service.findings).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: { status: 'open', cursor: String(OPEN_FINDING_PAGE_CAP) },
+        }),
+      ),
+    )
+    expect(await screen.findByRole('article', { name: /copiesTitle.*"count":2/ })).toBeVisible()
+    // A list that does not start at the beginning cannot know its groups either.
+    expect(screen.getByRole('note')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /Merge/ })).not.toBeInTheDocument()
+  })
+  it('still merges copies when only the overlap list beside them is too long to load', async () => {
+    service.findings.mockImplementation(async ({ query }) => {
+      if (query.kind === 'duplicate') return { items: [copyOf('copy', 'c', 'd')], nextCursor: null }
+      const at = Number(query.cursor ?? 0)
+      return {
+        items: [{ ...copyOf(`s${at}`, 'a', `b${at}`), kind: 'similar', similarity: 0.5 }],
+        nextCursor: String(at + 1),
+      }
+    })
+    renderAt('?tidyKind=overlap')
+    expect(await screen.findByRole('note')).toHaveTextContent('knowledgeSpace.tidy.incomplete')
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSpace.tidy.keepNewestMerge' }),
+    ).toBeEnabled()
+  })
+  it('pages the loaded review cards in the browser without asking the API again', async () => {
+    service.findings.mockResolvedValue({
+      items: Array.from({ length: CARDS_PER_PAGE + 1 }, (_, index) => ({
+        ...copyOf(`s${index}`, 'a', `b${index}`),
+        kind: 'similar',
+        similarity: 0.9 - index / 100,
+      })),
+      nextCursor: null,
+    })
+    const user = userEvent.setup()
+    renderAt('')
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(CARDS_PER_PAGE))
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1))
+    expect(screen.queryByRole('button', { name: 'common.pagination.next' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.back' }))
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(CARDS_PER_PAGE))
+    expect(service.findings).toHaveBeenCalledTimes(1)
+  })
+  it('polls a list of several API pages with one request while its first page is unchanged', async () => {
+    const pages = (first: string) =>
+      service.findings.mockImplementation(async ({ query }) =>
+        query.cursor
+          ? { items: [copyOf('d2', 'd', 'e')], nextCursor: null }
+          : { items: [copyOf(first, 'c', 'd')], nextCursor: 'second' },
+      )
+    pages('d1')
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      renderPage()
+      expect(await screen.findAllByRole('radio')).toHaveLength(3)
+      expect(service.findings).toHaveBeenCalledTimes(2)
+      await act(() => vi.advanceTimersByTimeAsync(15_000))
+      expect(service.findings).toHaveBeenCalledTimes(3)
+      expect(service.findings).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: { status: 'open' } }),
+      )
+      // A first page that changed says the list did: every page is read again.
+      pages('d0')
+      await act(() => vi.advanceTimersByTimeAsync(15_000))
+      expect(service.findings).toHaveBeenCalledTimes(5)
+    } finally {
+      vi.useRealTimers()
+    }
   })
   it('allows readers to compare evidence without management controls', async () => {
     renderPage(false)

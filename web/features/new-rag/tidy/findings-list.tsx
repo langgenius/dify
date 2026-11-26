@@ -5,7 +5,8 @@ import type {
   KnowledgeFsTidySummaryResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Ref } from 'react'
-import type { FindingStatus, FindingTab } from './kinds'
+import type { FindingKind, FindingSection, FindingStatus, FindingTab } from './kinds'
+import type { DuplicateGroup, PairGroup } from './review'
 import type { CardProps } from './review-cards'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -42,33 +43,86 @@ function countOf(
     .reduce((total, row) => total + row.count, 0)
 }
 
-/** One page of findings arranged the way they are reviewed. */
-function arrange(items: readonly Finding[]) {
+/** Review cards shown at a time: the loaded findings are paged here, not by the API. */
+export const CARDS_PER_PAGE = 20
+
+type Entry = { key: string; section: FindingSection } & (
+  | { card: 'pairs'; group: PairGroup; complete: boolean }
+  | { card: 'copies'; group: DuplicateGroup; complete: boolean }
+  | { card: 'finding'; finding: Finding; related: readonly Finding[] }
+)
+
+/**
+ * The loaded findings of a tab as review cards, in reading order. `partial` says whether open
+ * findings of a kind are missing from `items`; a group that may lack findings is still shown,
+ * but marked so that no action speaks for the whole group.
+ */
+function arrange(
+  items: readonly Finding[],
+  tab: FindingTab,
+  partial: (kind: FindingKind) => boolean,
+) {
+  const pairsComplete = !partial('conflict') && !partial('similar')
   const conflictPairs = groupPairs(
     items.filter((finding) => finding.status === 'open' && finding.kind !== 'duplicate'),
   ).filter((group) => group.conflicts.length > 0)
   const duplicates = items.filter((finding) => finding.kind === 'duplicate')
+  // Identical copies awaiting review read best as one group with a keep-one choice.
+  const copyGroups = duplicates.every((finding) => finding.status === 'open')
+    ? groupDuplicates(duplicates)
+    : null
+  const alone = (section: FindingSection, finding: Finding): Entry => ({
+    card: 'finding',
+    key: finding.id,
+    section,
+    finding,
+    // The open conflicts between the same two documents as an overlap finding.
+    related: pairsComplete
+      ? (conflictPairs.find((group) => group.similar?.id === finding.id)?.conflicts ?? [])
+      : [],
+  })
+  const conflict: Entry[] = tabShows(tab, 'conflict')
+    ? [
+        ...conflictPairs.map((group): Entry => ({
+          card: 'pairs',
+          key: group.key,
+          section: 'conflict',
+          group,
+          complete: pairsComplete,
+        })),
+        ...items
+          .filter((finding) => finding.kind === 'conflict' && finding.status !== 'open')
+          .map((finding) => alone('conflict', finding)),
+      ]
+    : []
+  const copies: Entry[] = copyGroups
+    ? copyGroups.map((group) => ({
+        card: 'copies',
+        key: group.key,
+        section: 'overlap',
+        group,
+        complete: !partial('duplicate'),
+      }))
+    : duplicates.map((finding) => alone('overlap', finding))
+  const overlap: Entry[] = tabShows(tab, 'duplicate')
+    ? [
+        ...copies,
+        // The closer two documents are, the more likely one of them can go: most overlap first.
+        ...items
+          .filter((finding) => finding.kind === 'similar')
+          .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0))
+          .map((finding) => alone('overlap', finding)),
+      ]
+    : []
   return {
-    conflictPairs,
-    handledConflicts: items.filter(
-      (finding) => finding.kind === 'conflict' && finding.status !== 'open',
-    ),
-    duplicates,
-    // Identical copies awaiting review read best as one group with a keep-one choice.
-    copyGroups: duplicates.every((finding) => finding.status === 'open')
-      ? groupDuplicates(duplicates)
-      : null,
-    // The closer two documents are, the more likely one of them can go: most overlap first.
-    similar: items
-      .filter((finding) => finding.kind === 'similar')
-      .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0)),
-    /** The open conflicts between the same two documents as an overlap finding. */
-    conflictsBeside: (finding: Finding) =>
-      conflictPairs.find((group) => group.similar?.id === finding.id)?.conflicts ?? [],
+    entries: [...conflict, ...overlap],
+    conflictCount: conflict.length,
+    copyGroups: copyGroups ?? [],
+    pairCount: overlap.length - (copyGroups?.length ?? 0),
   }
 }
 
-/** The review queue: its type tabs and status filter, the findings of one page, and paging. */
+/** The review queue: its type tabs and status filter, one page of review cards, and paging. */
 export function FindingsList({
   activeTabRef,
   summary,
@@ -81,6 +135,10 @@ export function FindingsList({
   const { t } = useTranslation(['knowledgeSpace'])
   const { t: common } = useTranslation(['common'])
   const queue = useTidyFindings(card.spaceId)
+  const arranged = arrange(queue.items, queue.tab, queue.partial)
+  // Cards leave as they are reviewed, so the page in the URL may lie past the last one.
+  const pageCount = Math.max(1, Math.ceil(arranged.entries.length / CARDS_PER_PAGE))
+  const page = Math.min(Math.max(queue.page, 1), pageCount)
   return (
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -147,53 +205,78 @@ export function FindingsList({
           {t(($) => $['tidy.empty'])}
         </p>
       )}
-      <FindingSections tab={queue.tab} items={queue.items} card={{ ...card, cards: queue.cards }} />
+      {queue.loaded && queue.partial() && (
+        <p
+          role="note"
+          className="mb-5 rounded-xl bg-state-warning-hover px-4 py-3 body-sm-regular text-text-warning"
+        >
+          {t(($) => $['tidy.incomplete'])}
+        </p>
+      )}
+      <FindingSections
+        {...arranged}
+        entries={arranged.entries.slice((page - 1) * CARDS_PER_PAGE, page * CARDS_PER_PAGE)}
+        card={{ ...card, cards: queue.cards }}
+      />
       <div className="my-5 flex gap-2">
-        {queue.paged && (
-          <Button onClick={queue.firstPage}>{common(($) => $['operation.back'])}</Button>
+        {(page > 1 || queue.paged) && (
+          <Button onClick={() => (page > 1 ? queue.showPage(page - 1) : queue.firstPage())}>
+            {common(($) => $['operation.back'])}
+          </Button>
         )}
-        {queue.hasNext && (
-          <Button onClick={queue.nextPage}>{common(($) => $['pagination.next'])}</Button>
+        {(page < pageCount || queue.hasNext) && (
+          <Button onClick={() => (page < pageCount ? queue.showPage(page + 1) : queue.nextPage())}>
+            {common(($) => $['pagination.next'])}
+          </Button>
         )}
       </div>
     </>
   )
 }
 
+/** The cards of one page under their section headings; the counts are of the whole list. */
 function FindingSections({
   card,
-  items,
-  tab,
-}: {
-  card: CardProps
-  items: readonly Finding[]
-  tab: FindingTab
-}) {
+  conflictCount,
+  copyGroups,
+  entries,
+  pairCount,
+}: ReturnType<typeof arrange> & { card: CardProps }) {
   const { t } = useTranslation(['knowledgeSpace'])
-  const { conflictPairs, handledConflicts, duplicates, copyGroups, similar, conflictsBeside } =
-    arrange(items)
-  const conflictCount = conflictPairs.length + handledConflicts.length
-  const pairCount = (copyGroups ? 0 : duplicates.length) + similar.length
+  const cardsOf = (section: FindingSection) =>
+    entries
+      .filter((entry) => entry.section === section)
+      .map((entry) =>
+        entry.card === 'pairs' ? (
+          <PairGroupCard key={entry.key} group={entry.group} complete={entry.complete} {...card} />
+        ) : entry.card === 'copies' ? (
+          <DuplicateGroupCard
+            key={entry.key}
+            group={entry.group}
+            complete={entry.complete}
+            {...card}
+          />
+        ) : (
+          <PairCard key={entry.key} finding={entry.finding} related={entry.related} {...card} />
+        ),
+      )
+  const conflicts = cardsOf('conflict')
+  const overlaps = cardsOf('overlap')
   return (
     <div aria-label={t(($) => $['tidy.results'])} className="flex flex-col gap-6">
-      {tabShows(tab, 'conflict') && conflictCount > 0 && (
+      {conflicts.length > 0 && (
         <KindSection
           section="conflict"
           meta={t(($) => $['tidy.pairsMeta'], { count: conflictCount })}
         >
-          {conflictPairs.map((group) => (
-            <PairGroupCard key={group.key} group={group} {...card} />
-          ))}
-          {handledConflicts.map((finding) => (
-            <PairCard key={finding.id} finding={finding} {...card} />
-          ))}
+          {conflicts}
         </KindSection>
       )}
-      {tabShows(tab, 'duplicate') && duplicates.length + similar.length > 0 && (
+      {overlaps.length > 0 && (
         <KindSection
           section="overlap"
           meta={[
-            ...(copyGroups
+            ...(copyGroups.length > 0
               ? [
                   t(($) => $['tidy.groupsMeta'], {
                     count: copyGroups.length,
@@ -204,21 +287,7 @@ function FindingSections({
             ...(pairCount > 0 ? [t(($) => $['tidy.pairsMeta'], { count: pairCount })] : []),
           ].join(' · ')}
         >
-          {copyGroups
-            ? copyGroups.map((group) => (
-                <DuplicateGroupCard key={group.key} group={group} {...card} />
-              ))
-            : duplicates.map((finding) => (
-                <PairCard key={finding.id} finding={finding} {...card} />
-              ))}
-          {similar.map((finding) => (
-            <PairCard
-              key={finding.id}
-              finding={finding}
-              related={conflictsBeside(finding)}
-              {...card}
-            />
-          ))}
+          {overlaps}
         </KindSection>
       )}
     </div>

@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} grup · {{files}} belge",
   "tidy.groupsMeta_other": "{{count}} grup · {{files}} belge",
   "tidy.identical": "Birebir aynı",
+  "tidy.incomplete": "Bu liste tamamı yüklenemeyecek kadar uzun, bu nedenle aşağıdaki gruplarda belgeler veya sonuçlar eksik olabilir. Liste kısalana kadar “Birini tut · Diğerlerini devre dışı bırak” işlemleri ve bir belgeyi tüm grup için devre dışı bırakma kullanılamaz: yukarıdan tek bir tür seçin veya sonuçları tek tek ele alın.",
   "tidy.keepAll": "Hepsini tut (yok say)",
   "tidy.keepBoth": "İkisini de tut",
   "tidy.keepNewestMerge": "En yeniyi tut · Diğerlerini devre dışı bırak",

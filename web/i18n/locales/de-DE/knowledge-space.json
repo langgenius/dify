@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} Gruppe · {{files}} Dokumente",
   "tidy.groupsMeta_other": "{{count}} Gruppen · {{files}} Dokumente",
   "tidy.identical": "Identisch",
+  "tidy.incomplete": "Diese Liste ist zu lang, um vollständig geladen zu werden. In einer Gruppe unten können daher Dokumente oder Ergebnisse fehlen. „Eines behalten · Rest deaktivieren“ und das Deaktivieren eines Dokuments für eine ganze Gruppe sind erst verfügbar, wenn die Liste kürzer ist: Wählen Sie oben einen einzelnen Typ oder bearbeiten Sie die Ergebnisse einzeln.",
   "tidy.keepAll": "Alle behalten (ignorieren)",
   "tidy.keepBoth": "Beide behalten",
   "tidy.keepNewestMerge": "Neuestes behalten · Rest deaktivieren",

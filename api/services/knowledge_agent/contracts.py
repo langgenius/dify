@@ -87,6 +87,8 @@ class KnowledgeAgentRedis(Protocol):
 
     def expire(self, name: str, time: int, /) -> Any: ...
 
+    def ttl(self, name: str, /) -> int: ...
+
 
 ClientMetadataFetcher = Callable[[str], tuple[int, bytes]]
 Clock = Callable[[], datetime]

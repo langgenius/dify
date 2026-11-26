@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} グループ · {{files}} 件の文書",
   "tidy.groupsMeta_other": "{{count}} グループ · {{files}} 件の文書",
   "tidy.identical": "完全に同一",
+  "tidy.incomplete": "結果が多すぎて一度にすべてを読み込めないため、下のグループでは文書や結果が欠けている可能性があります。リストが短くなるまで、「1 件を残す · 他を無効化」とグループ全体での文書の無効化は利用できません。上で種類を 1 つだけ選ぶか、結果を 1 件ずつ処理してください。",
   "tidy.keepAll": "すべて残す（無視）",
   "tidy.keepBoth": "両方残す",
   "tidy.keepNewestMerge": "最新を残す · 他を無効化",

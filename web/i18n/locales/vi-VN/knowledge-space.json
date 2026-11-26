@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} nhóm · {{files}} tài liệu",
   "tidy.groupsMeta_other": "{{count}} nhóm · {{files}} tài liệu",
   "tidy.identical": "Giống hệt",
+  "tidy.incomplete": "Danh sách này quá dài nên không thể tải đầy đủ, vì vậy nhóm bên dưới có thể thiếu tài liệu hoặc kết quả. Cho đến khi danh sách ngắn hơn, thao tác “Giữ một bản · Vô hiệu hóa phần còn lại” và vô hiệu hóa tài liệu cho cả nhóm sẽ không khả dụng: hãy chọn một loại duy nhất ở trên hoặc xử lý từng kết quả một.",
   "tidy.keepAll": "Giữ tất cả (bỏ qua)",
   "tidy.keepBoth": "Giữ cả hai",
   "tidy.keepNewestMerge": "Giữ bản mới nhất · Vô hiệu hóa phần còn lại",

@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} group · {{files}} documents",
   "tidy.groupsMeta_other": "{{count}} groups · {{files}} documents",
   "tidy.identical": "Identical",
+  "tidy.incomplete": "This list is too long to load in full, so a group below may be missing documents or results. Keep-one merges and disabling a document for a whole group are unavailable until it is shorter: choose a single type above, or handle the results one by one.",
   "tidy.keepAll": "Keep all (dismiss)",
   "tidy.keepBoth": "Keep both",
   "tidy.keepNewestMerge": "Keep newest · Disable the rest",

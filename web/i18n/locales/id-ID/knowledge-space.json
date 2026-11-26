@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} grup · {{files}} dokumen",
   "tidy.groupsMeta_other": "{{count}} grup · {{files}} dokumen",
   "tidy.identical": "Identik",
+  "tidy.incomplete": "Daftar ini terlalu panjang untuk dimuat seluruhnya, sehingga grup di bawah mungkin kekurangan dokumen atau hasil. Tindakan “Pertahankan satu · Nonaktifkan sisanya” dan menonaktifkan dokumen untuk seluruh grup tidak tersedia sampai daftar lebih pendek: pilih satu jenis saja di atas, atau tangani hasil satu per satu.",
   "tidy.keepAll": "Pertahankan semua (abaikan)",
   "tidy.keepBoth": "Pertahankan keduanya",
   "tidy.keepNewestMerge": "Pertahankan terbaru · Nonaktifkan sisanya",

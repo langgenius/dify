@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} gruppo · {{files}} documenti",
   "tidy.groupsMeta_other": "{{count}} gruppi · {{files}} documenti",
   "tidy.identical": "Identico",
+  "tidy.incomplete": "Questo elenco è troppo lungo per essere caricato per intero, quindi in un gruppo qui sotto potrebbero mancare documenti o risultati. Le azioni “Mantieni uno · Disattiva gli altri” e la disattivazione di un documento per un intero gruppo non sono disponibili finché l’elenco non è più corto: scegli un solo tipo qui sopra oppure gestisci i risultati uno alla volta.",
   "tidy.keepAll": "Mantieni tutti (ignora)",
   "tidy.keepBoth": "Mantieni entrambi",
   "tidy.keepNewestMerge": "Mantieni il più recente · Disattiva gli altri",

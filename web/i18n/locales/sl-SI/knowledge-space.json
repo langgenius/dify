@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "Skupin: {{count}} · dokumentov: {{files}}",
   "tidy.groupsMeta_other": "Skupin: {{count}} · dokumentov: {{files}}",
   "tidy.identical": "Enako",
+  "tidy.incomplete": "Ta seznam je predolg, da bi se naložil v celoti, zato lahko v kateri od spodnjih skupin manjkajo dokumenti ali rezultati. Dokler seznam ni krajši, dejanji »Ohrani enega · Onemogoči ostale« in onemogočanje dokumenta za celotno skupino nista na voljo: zgoraj izberite eno samo vrsto ali rezultate obravnavajte enega za drugim.",
   "tidy.keepAll": "Ohrani vse (prezri)",
   "tidy.keepBoth": "Ohrani oba",
   "tidy.keepNewestMerge": "Ohrani najnovejšega · Onemogoči ostale",

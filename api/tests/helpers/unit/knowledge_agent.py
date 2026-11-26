@@ -34,7 +34,12 @@ CALLBACK = "http://127.0.0.1:33418/callback"
 
 
 class FakeRedis:
-    """The commands the service uses, over a dict; remembers the expiry each key was given."""
+    """The commands the service uses, over a dict; remembers the expiry each key was given.
+
+    Expiry bookkeeping follows Redis: a key that is deleted loses its expiry, ``INCR`` on a
+    missing key creates it without one, and ``EXPIRE`` only applies to keys that exist. Time does
+    not pass on its own; a test moves it by editing ``expiries`` or calling ``lapse``.
+    """
 
     def __init__(self) -> None:
         self.values: dict[str, str | int] = {}
@@ -56,15 +61,33 @@ class FakeRedis:
 
     def delete(self, *names: str | bytes) -> int:
         keys = [name.decode() if isinstance(name, bytes) else name for name in names]
-        return sum(1 for key in keys if self.values.pop(key, None) is not None)
+        removed = 0
+        for key in keys:
+            self.expiries.pop(key, None)
+            if self.values.pop(key, None) is not None:
+                removed += 1
+        return removed
 
     def incr(self, name: str) -> int:
         value = int(self.values.get(name, 0)) + 1
         self.values[name] = value
         return value
 
-    def expire(self, name: str, time: int) -> None:
+    def expire(self, name: str, time: int) -> bool:
+        if name not in self.values:
+            return False
         self.expiries[name] = time
+        return True
+
+    def ttl(self, name: str) -> int:
+        """Seconds left; -2 for a missing key and -1 for a key without an expiry, as in Redis."""
+        if name not in self.values:
+            return -2
+        return self.expiries.get(name, -1)
+
+    def lapse(self, name: str) -> None:
+        """The key's expiry has passed: Redis drops the key."""
+        self.delete(name)
 
 
 class FakeSpaces:

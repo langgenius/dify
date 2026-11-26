@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} grup · {{files}} documente",
   "tidy.groupsMeta_other": "{{count}} grupuri · {{files}} documente",
   "tidy.identical": "Identic",
+  "tidy.incomplete": "Această listă este prea lungă pentru a fi încărcată integral, așa că dintr-un grup de mai jos pot lipsi documente sau rezultate. Acțiunile „Păstrează unul · Dezactivează restul” și dezactivarea unui document pentru un grup întreg nu sunt disponibile până când lista nu devine mai scurtă: alege un singur tip mai sus sau tratează rezultatele unul câte unul.",
   "tidy.keepAll": "Păstrează tot (ignoră)",
   "tidy.keepBoth": "Păstrează-le pe ambele",
   "tidy.keepNewestMerge": "Păstrează cel mai recent · Dezactivează restul",

@@ -118,7 +118,7 @@ class KnowledgeAgentAccessService:
     # -- OAuth clients and the authorization server ---------------------------------------------
 
     def register_client(self, body: dict[str, Any], *, ip_address: str | None) -> dict[str, Any]:
-        """Dynamic client registration (RFC 7591), rate limited per caller address."""
+        """Dynamic client registration (RFC 7591), rate limited per caller address and deployment-wide."""
         return self._clients.register(body, ip_address=ip_address)
 
     def describe_authorization(

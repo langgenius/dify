@@ -1,4 +1,12 @@
-"""The OAuth client registry: dynamic registration (RFC 7591) and client ID metadata documents."""
+"""The OAuth client registry: dynamic registration (RFC 7591) and client ID metadata documents.
+
+Registration is unauthenticated, so it is bounded twice per fixed one-hour window: per caller
+address (``DCR_PER_IP_PER_HOUR``) and, because that address can be shared behind a proxy that
+does not forward it or rotated by an attacker, for the whole deployment
+(``DCR_GLOBAL_PER_HOUR``). Idle registrations are purged on every successful registration, so
+the ceiling also bounds how many unused clients can exist: at most ``DCR_GLOBAL_PER_HOUR`` per
+hour of the ``_DCR_IDLE_RETENTION`` window.
+"""
 
 from __future__ import annotations
 
@@ -35,9 +43,14 @@ _CLIENT_METADATA_TTL = timedelta(hours=24)
 _CLIENT_METADATA_MAX_BYTES = 64 * 1024
 _DCR_IDLE_RETENTION = timedelta(days=30)
 DCR_PER_IP_PER_HOUR = 20
+# Deployment-wide ceiling: 20 times the per-address limit. A client registers once per install,
+# so 400 an hour is far above organic use, yet it caps what rotating or spoofed addresses create.
+DCR_GLOBAL_PER_HOUR = 20 * DCR_PER_IP_PER_HOUR
 DCR_RATE_WINDOW_SECONDS = 3600
 _MAX_REDIRECT_URIS = 10
 _DCR_RATE_KEY = "knowledge_agent:dcr:{ip}"
+# Not an address, so no caller's per-address key can collide with it.
+_DCR_GLOBAL_RATE_KEY = "knowledge_agent:dcr-global"
 
 
 class KnowledgeAgentClientRegistry:
@@ -57,13 +70,26 @@ class KnowledgeAgentClientRegistry:
         self._now = clock
 
     def register(self, body: dict[str, Any], *, ip_address: str | None) -> dict[str, Any]:
-        """RFC 7591 registration of a public client (secret-based methods are replaced, §3.2.1)."""
-        rate_key = _DCR_RATE_KEY.format(ip=ip_address or "unknown")
-        count = self._redis.incr(rate_key)
-        if count == 1:
-            self._redis.expire(rate_key, DCR_RATE_WINDOW_SECONDS)
+        """RFC 7591 registration of a public client (secret-based methods are replaced, §3.2.1).
+
+        Every attempt, valid or not, counts against the caller address; attempts the address
+        limit lets through count against the deployment-wide ceiling. Both refusals are 429 and
+        carry the seconds until the window reopens: ``slow_down`` for the address,
+        ``temporarily_unavailable`` for the deployment.
+        """
+        count, retry_after = self._count_attempt(_DCR_RATE_KEY.format(ip=ip_address or "unknown"))
         if count > DCR_PER_IP_PER_HOUR:
-            raise KnowledgeAgentOAuthError("slow_down", "Too many client registrations; try again later", 429)
+            raise KnowledgeAgentOAuthError(
+                "slow_down", "Too many client registrations; try again later", 429, retry_after=retry_after
+            )
+        count, retry_after = self._count_attempt(_DCR_GLOBAL_RATE_KEY)
+        if count > DCR_GLOBAL_PER_HOUR:
+            raise KnowledgeAgentOAuthError(
+                "temporarily_unavailable",
+                "Client registration is temporarily unavailable; try again later",
+                429,
+                retry_after=retry_after,
+            )
         raw_uris = body.get("redirect_uris")
         uris = [validate_redirect_uri(uri) for uri in raw_uris] if isinstance(raw_uris, list) else []
         if not uris or len(uris) > _MAX_REDIRECT_URIS or any(uri is None for uri in uris):
@@ -110,6 +136,21 @@ class KnowledgeAgentClientRegistry:
             "response_types": ["code"],
             "token_endpoint_auth_method": "none",
         }
+
+    def _count_attempt(self, key: str) -> tuple[int, int]:
+        """Count one attempt in the key's fixed window; returns the count and the seconds left.
+
+        ``SET NX EX`` creates the counter together with its expiry, so a crash between commands
+        cannot leave a counter that blocks its key forever. A counter still found without an
+        expiry (it lapsed between the two commands, or predates this scheme) is given one.
+        """
+        self._redis.set(key, "0", ex=DCR_RATE_WINDOW_SECONDS, nx=True)
+        count = self._redis.incr(key)
+        remaining = self._redis.ttl(key)
+        if remaining < 0:
+            self._redis.expire(key, DCR_RATE_WINDOW_SECONDS)
+            remaining = DCR_RATE_WINDOW_SECONDS
+        return count, max(remaining, 1)
 
     def resolve(self, raw_client_id: object) -> KnowledgeAgentClient:
         """The client an authorization request names, as a detached row.

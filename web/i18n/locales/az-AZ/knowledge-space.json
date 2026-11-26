@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} qrup · {{files}} sənəd",
   "tidy.groupsMeta_other": "{{count}} qrup · {{files}} sənəd",
   "tidy.identical": "Eyni",
+  "tidy.incomplete": "Bu siyahı tam yüklənmək üçün çox uzundur, ona görə aşağıdakı qruplarda sənədlər və ya nəticələr çatışmaya bilər. Siyahı qısalana qədər “Birini saxla · Qalanlarını deaktiv et” əməliyyatları və sənədin bütün qrup üzrə deaktiv edilməsi əlçatan deyil: yuxarıda yalnız bir növ seçin və ya nəticələri bir-bir emal edin.",
   "tidy.keepAll": "Hamısını saxla (nəzərə alma)",
   "tidy.keepBoth": "Hər ikisini saxla",
   "tidy.keepNewestMerge": "Ən yenisini saxla · Qalanlarını deaktiv et",

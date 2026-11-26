@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterable, Iterator
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import pytest
 from flask import Flask, Response
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.test import EnvironBuilder
 
 import controllers.mcp.knowledge_agent as module
 from controllers import well_known
@@ -17,8 +20,12 @@ from services.knowledge_agent.access_service import (
     KnowledgeAgentPrincipal,
     KnowledgeAgentUrls,
 )
+from services.knowledge_agent.clients import DCR_GLOBAL_PER_HOUR, DCR_RATE_WINDOW_SECONDS
 from services.knowledge_agent.oauth import KnowledgeAgentOAuthError
 from tests.helpers.unit.knowledge_agent import World, authorize, code_form, knowledge_agent_world, register
+
+if TYPE_CHECKING:
+    from _typeshed.wsgi import StartResponse, WSGIEnvironment
 
 PRINCIPAL = KnowledgeAgentPrincipal(
     account_id="acct",
@@ -329,3 +336,60 @@ def test_registration_answers_201_and_reports_bad_metadata_and_the_rate_limit(ap
     assert limited is not None
     assert limited.status_code == 429
     assert json.loads(limited.get_data())["error"] == "slow_down"
+    assert limited.headers["Retry-After"] == str(DCR_RATE_WINDOW_SECONDS)
+    assert limited.headers["Cache-Control"] == "no-store"
+    assert "Retry-After" not in bad.headers
+
+
+def test_registration_reports_the_deployment_wide_ceiling_with_retry_after(
+    app: Flask, world: tuple[World, DocumentFacade]
+) -> None:
+    built, _ = world
+    built.redis.set("knowledge_agent:dcr-global", str(DCR_GLOBAL_PER_HOUR), ex=1500, nx=True)
+    with app.test_request_context(
+        "/mcp/knowledge/oauth/register",
+        method="POST",
+        json={"redirect_uris": ["http://localhost/callback"]},
+        environ_base={"REMOTE_ADDR": "10.1.1.1"},
+    ):
+        refused = module.KnowledgeAgentRegisterApi().post()
+    assert refused.status_code == 429
+    assert refused.headers["Retry-After"] == "1500"
+    assert json.loads(refused.get_data()) == {
+        "error": "temporarily_unavailable",
+        "error_description": "Client registration is temporarily unavailable; try again later",
+    }
+
+
+def test_registration_is_limited_by_the_address_the_shared_helper_reports(
+    app: Flask, world: tuple[World, DocumentFacade]
+) -> None:
+    """``extract_remote_ip`` is the WSGI address: forwarded only when the proxy middleware is on."""
+    built, _ = world
+
+    def environ() -> WSGIEnvironment:
+        return EnvironBuilder(
+            "/mcp/knowledge/oauth/register",
+            method="POST",
+            json={"redirect_uris": ["http://localhost/callback"]},
+            headers=[("X-Forwarded-For", "203.0.113.9")],
+            environ_base={"REMOTE_ADDR": "172.18.0.5"},
+        ).get_environ()
+
+    def register_app(environ: WSGIEnvironment, _start_response: StartResponse) -> Iterable[bytes]:
+        with app.request_context(environ):
+            assert module.KnowledgeAgentRegisterApi().post().status_code == 201
+        return []
+
+    def _ignore_start(*_args: object) -> Callable[[bytes], object]:
+        return lambda _data: None
+
+    # Default deployment: the header is not trusted, the key is the proxy's socket address.
+    register_app(environ(), _ignore_start)
+    assert built.redis.values["knowledge_agent:dcr:172.18.0.5"] == 1
+    assert "knowledge_agent:dcr:203.0.113.9" not in built.redis.values
+
+    # RESPECT_XFORWARD_HEADERS_ENABLED installs exactly this middleware (extensions/ext_proxy_fix.py).
+    ProxyFix(register_app, x_for=1, x_port=1)(environ(), _ignore_start)
+    assert built.redis.values["knowledge_agent:dcr:203.0.113.9"] == 1
+    assert built.redis.values["knowledge_agent:dcr:172.18.0.5"] == 1

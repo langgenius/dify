@@ -19,7 +19,11 @@ from services.knowledge_agent.access_service import (
     KnowledgeAgentPrincipal,
 )
 from services.knowledge_agent.authorization import CODE_REPLAY_MEMORY_SECONDS
-from services.knowledge_agent.clients import DCR_PER_IP_PER_HOUR, DCR_RATE_WINDOW_SECONDS
+from services.knowledge_agent.clients import (
+    DCR_GLOBAL_PER_HOUR,
+    DCR_PER_IP_PER_HOUR,
+    DCR_RATE_WINDOW_SECONDS,
+)
 from services.knowledge_agent.oauth import KnowledgeAgentOAuthError
 from tests.helpers.unit.knowledge_agent import (
     URLS,
@@ -117,6 +121,91 @@ def test_refused_registrations_still_count_against_the_limit(world: World) -> No
     with pytest.raises(KnowledgeAgentOAuthError) as refused:
         world.service.register_client({"redirect_uris": ["http://127.0.0.1/callback"]}, ip_address="10.0.0.7")
     assert refused.value.error == "slow_down"
+
+
+class CountingKeysRedis(InterleavingRedis):
+    """Fails the test the moment a rate counter exists without an expiry after a command."""
+
+    @override
+    def incr(self, name: str) -> int:
+        value = super().incr(name)
+        assert self.ttl(name) > 0, f"{name} was counted without an expiry"
+        return value
+
+
+def test_a_rate_counter_never_exists_without_an_expiry(sqlite_session_factory: sessionmaker[Session]) -> None:
+    redis = CountingKeysRedis()
+    body = {"redirect_uris": ["http://127.0.0.1/callback"]}
+    with knowledge_agent_world(sqlite_session_factory, redis) as world:
+        # The limit is reached within the very first window, and refusals keep counting.
+        for _ in range(DCR_PER_IP_PER_HOUR):
+            world.service.register_client(body, ip_address="10.0.0.7")
+        for _ in range(3):
+            with pytest.raises(KnowledgeAgentOAuthError) as refused:
+                world.service.register_client(body, ip_address="10.0.0.7")
+            assert refused.value.retry_after == DCR_RATE_WINDOW_SECONDS
+        assert redis.ttl("knowledge_agent:dcr:10.0.0.7") == DCR_RATE_WINDOW_SECONDS
+        assert redis.ttl("knowledge_agent:dcr-global") == DCR_RATE_WINDOW_SECONDS
+        # Refused attempts did not reach the deployment-wide counter.
+        assert redis.values["knowledge_agent:dcr-global"] == DCR_PER_IP_PER_HOUR
+        # Once the window lapses the address registers again, in a new window.
+        redis.lapse("knowledge_agent:dcr:10.0.0.7")
+        world.service.register_client(body, ip_address="10.0.0.7")
+        assert redis.values["knowledge_agent:dcr:10.0.0.7"] == 1
+        assert redis.ttl("knowledge_agent:dcr:10.0.0.7") == DCR_RATE_WINDOW_SECONDS
+
+
+def test_a_counter_left_without_an_expiry_is_given_one_and_reports_the_time_left(world: World) -> None:
+    body = {"redirect_uris": ["http://127.0.0.1/callback"]}
+    # What the former INCR-then-EXPIRE pair left behind when it was interrupted: blocked forever.
+    world.redis.values["knowledge_agent:dcr:10.0.0.7"] = DCR_PER_IP_PER_HOUR
+    assert world.redis.ttl("knowledge_agent:dcr:10.0.0.7") == -1
+    with pytest.raises(KnowledgeAgentOAuthError) as refused:
+        world.service.register_client(body, ip_address="10.0.0.7")
+    assert refused.value.retry_after == DCR_RATE_WINDOW_SECONDS
+    assert world.redis.ttl("knowledge_agent:dcr:10.0.0.7") == DCR_RATE_WINDOW_SECONDS
+    # Later refusals report what is left of the window rather than a full hour.
+    world.redis.expiries["knowledge_agent:dcr:10.0.0.7"] = 90
+    with pytest.raises(KnowledgeAgentOAuthError) as refused:
+        world.service.register_client(body, ip_address="10.0.0.7")
+    assert refused.value.retry_after == 90
+    assert world.redis.ttl("knowledge_agent:dcr:10.0.0.7") == 90
+
+
+def test_registration_stops_deployment_wide_at_the_hourly_ceiling_whatever_the_address(world: World) -> None:
+    assert DCR_GLOBAL_PER_HOUR == 20 * DCR_PER_IP_PER_HOUR
+    body = {"redirect_uris": ["http://127.0.0.1/callback"]}
+    # Every address stays far below its own limit.
+    for index in range(DCR_GLOBAL_PER_HOUR):
+        world.service.register_client(body, ip_address=f"10.{index // 250}.{index % 250}.1")
+    world.redis.expiries["knowledge_agent:dcr-global"] = 1200  # twenty minutes of the window remain
+    with pytest.raises(KnowledgeAgentOAuthError) as refused:
+        world.service.register_client(body, ip_address="192.0.2.1")
+    assert refused.value.error == "temporarily_unavailable"
+    assert refused.value.status == 429
+    assert refused.value.retry_after == 1200
+    assert "try again later" in refused.value.description
+    # The ceiling lifts with its window; per-address counters are untouched by it.
+    world.redis.lapse("knowledge_agent:dcr-global")
+    world.service.register_client(body, ip_address="192.0.2.1")
+    assert world.redis.values["knowledge_agent:dcr-global"] == 1
+
+
+def test_the_fake_redis_keeps_nx_and_expiry_semantics() -> None:
+    redis = FakeRedis()
+    assert redis.ttl("k") == -2
+    assert redis.expire("k", 5) is False
+    assert redis.expiries == {}
+    assert redis.set("k", "0", ex=60, nx=True) is True
+    assert redis.set("k", "9", ex=600, nx=True) is None
+    assert (redis.get("k"), redis.ttl("k")) == ("0", 60)
+    assert redis.incr("k") == 1
+    assert redis.ttl("k") == 60
+    assert redis.delete("k") == 1
+    assert redis.incr("k") == 1
+    assert redis.ttl("k") == -1
+    assert redis.expire("k", 5) is True
+    assert redis.ttl("k") == 5
 
 
 # -- Authorization code replay -----------------------------------------------------------------

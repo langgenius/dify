@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}}개 그룹 · 문서 {{files}}개",
   "tidy.groupsMeta_other": "{{count}}개 그룹 · 문서 {{files}}개",
   "tidy.identical": "완전히 동일",
+  "tidy.incomplete": "목록이 너무 길어 전체를 불러올 수 없으므로 아래 그룹에 문서나 결과가 누락되어 있을 수 있습니다. 목록이 짧아질 때까지 “하나 유지 · 나머지 비활성화”와 그룹 전체에 대한 문서 비활성화는 사용할 수 없습니다. 위에서 유형을 하나만 선택하거나 결과를 하나씩 처리하세요.",
   "tidy.keepAll": "모두 유지(무시)",
   "tidy.keepBoth": "둘 다 유지",
   "tidy.keepNewestMerge": "최신 유지 · 나머지 비활성화",

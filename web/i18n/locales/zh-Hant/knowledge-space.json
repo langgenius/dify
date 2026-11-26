@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} 組 · {{files}} 份文件",
   "tidy.groupsMeta_other": "{{count}} 組 · {{files}} 份文件",
   "tidy.identical": "完全相同",
+  "tidy.incomplete": "結果太多，無法一次全部載入，下方的分組可能缺少文件或結果。在清單變短之前，暫不提供「保留一份並停用其餘」和依整組停用文件的操作：請在上方只選擇一種類型，或逐筆處理結果。",
   "tidy.keepAll": "全部保留（忽略）",
   "tidy.keepBoth": "兩份都保留",
   "tidy.keepNewestMerge": "保留最新 · 停用其餘",

@@ -42,7 +42,9 @@ def _json(body: Any, status: int = 200, headers: dict[str, str] | None = None) -
 
 
 def _oauth_error(exc: KnowledgeAgentOAuthError) -> Response:
-    return _json({"error": exc.error, "error_description": exc.description}, exc.status)
+    """The RFC 6749 error body; rate-limit refusals also say when to retry (``Retry-After``)."""
+    headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None
+    return _json({"error": exc.error, "error_description": exc.description}, exc.status, headers)
 
 
 def _urls():

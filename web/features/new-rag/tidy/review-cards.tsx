@@ -349,11 +349,19 @@ export function DuplicateGroupCard({
   busy,
   canManage,
   cards,
+  complete,
   group,
   onConfirm,
   onRun,
   spaceId,
-}: CardProps & { group: DuplicateGroup }) {
+}: CardProps & {
+  /**
+   * Whether the group was built from every open duplicate finding. If not, copies may be missing
+   * from it, so neither a newest copy nor a keep-one merge is offered.
+   */
+  complete: boolean
+  group: DuplicateGroup
+}) {
   const { t, i18n } = useTranslation(['knowledgeSpace'])
   const newest = newestDocument(group.documentIds, cards)
   const [chosen, setChosen] = useState(newest)
@@ -367,6 +375,7 @@ export function DuplicateGroupCard({
   const titleOf = (id: string) => cards[id]?.title ?? evidenceOf(id).title
   const stale = group.findings.some((finding) => finding.stale)
   const editable = canManage && !stale
+  const mergeable = editable && complete
   const dismissAll = () => onRun(group.findings.map((finding) => ({ finding, action: 'dismiss' })))
   return (
     <FindingShell
@@ -383,33 +392,37 @@ export function DuplicateGroupCard({
           <p className="body-sm-regular text-text-secondary">
             {t(($) => $['tidy.copiesExplain'], { count: group.documentIds.length })}
           </p>
-          <Checklist
-            items={[
-              t(($) => $['tidy.newestIs'], {
-                title: titleOf(newest),
-                time: relativeTime(cards[newest]?.publishedAt, i18n.language),
-              }),
-            ]}
-          />
+          {complete && (
+            <Checklist
+              items={[
+                t(($) => $['tidy.newestIs'], {
+                  title: titleOf(newest),
+                  time: relativeTime(cards[newest]?.publishedAt, i18n.language),
+                }),
+              ]}
+            />
+          )}
           {editable && (
             <div className="mt-auto flex flex-col gap-2 pt-1">
-              <Button
-                variant="primary"
-                className="w-full"
-                disabled={busy}
-                onClick={() =>
-                  onConfirm({
-                    title: t(($) => $['tidy.mergeTitle'], { title: titleOf(keep) }),
-                    description: t(($) => $['tidy.mergeDescription']),
-                    plan: mergePlan(group, keep),
-                  })
-                }
-              >
-                <span aria-hidden className="i-ri-check-line size-4" />
-                {keep === newest
-                  ? t(($) => $['tidy.keepNewestMerge'])
-                  : t(($) => $['tidy.keepSelectedMerge'])}
-              </Button>
+              {mergeable && (
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  disabled={busy}
+                  onClick={() =>
+                    onConfirm({
+                      title: t(($) => $['tidy.mergeTitle'], { title: titleOf(keep) }),
+                      description: t(($) => $['tidy.mergeDescription']),
+                      plan: mergePlan(group, keep),
+                    })
+                  }
+                >
+                  <span aria-hidden className="i-ri-check-line size-4" />
+                  {keep === newest
+                    ? t(($) => $['tidy.keepNewestMerge'])
+                    : t(($) => $['tidy.keepSelectedMerge'])}
+                </Button>
+              )}
               <Button className="w-full" disabled={busy} onClick={dismissAll}>
                 {t(($) => $['tidy.keepAll'])}
               </Button>
@@ -419,8 +432,8 @@ export function DuplicateGroupCard({
       }
     >
       <div
-        role={editable ? 'radiogroup' : undefined}
-        aria-label={editable ? t(($) => $['tidy.chooseKeep']) : undefined}
+        role={mergeable ? 'radiogroup' : undefined}
+        aria-label={mergeable ? t(($) => $['tidy.chooseKeep']) : undefined}
         className="flex flex-wrap gap-3"
       >
         {group.documentIds.map((id) => (
@@ -429,12 +442,14 @@ export function DuplicateGroupCard({
             card={cards[id]}
             evidence={evidenceOf(id)}
             spaceId={spaceId}
-            latest={id === newest}
+            latest={complete && id === newest}
             title={titleOf(id)}
-            selected={editable && id === keep}
-            onSelect={editable ? () => setChosen(id) : undefined}
+            selected={mergeable && id === keep}
+            onSelect={mergeable ? () => setChosen(id) : undefined}
             note={
-              editable && id === keep ? t(($) => $['tidy.keepThis']) : t(($) => $['tidy.exactCopy'])
+              mergeable && id === keep
+                ? t(($) => $['tidy.keepThis'])
+                : t(($) => $['tidy.exactCopy'])
             }
           />
         ))}
@@ -454,7 +469,10 @@ export function PairCard({
   spaceId,
 }: CardProps & {
   finding: Finding
-  /** Open conflicts between the same two documents: disabling one settles them too. */
+  /**
+   * Open conflicts between the same two documents: disabling one settles them too. Pass them
+   * only when they are known to be all of the pair's open conflicts in the list.
+   */
   related?: readonly Finding[]
 }) {
   const { t, i18n } = useTranslation(['knowledgeSpace'])
@@ -658,12 +676,20 @@ export function PairGroupCard({
   busy,
   canManage,
   cards,
+  complete,
   group,
   onConfirm,
   onRewrite,
   onRun,
   spaceId,
-}: CardProps & { group: PairGroup }) {
+}: CardProps & {
+  /**
+   * Whether the group was built from every open finding of its kinds. If not, the pair may have
+   * findings the group lacks, so disabling a document on the group's behalf is not offered.
+   */
+  complete: boolean
+  group: PairGroup
+}) {
   const { t, i18n } = useTranslation(['knowledgeSpace'])
   const first = group.findings[0] as Finding
   const titleOf = (id: string) => cards[id]?.title ?? evidenceOf(first, id).title
@@ -722,7 +748,7 @@ export function PairGroupCard({
               ...(group.similar ? [t(($) => $['tidy.pairAlsoSimilar'], { percent })] : []),
             ]}
           />
-          {editable && (
+          {editable && complete && (
             <div className="mt-auto flex flex-col gap-2 border-t border-divider-subtle pt-3">
               <p className="system-xs-medium text-text-tertiary">
                 {t(($) => $['tidy.wholeOutdated'])}

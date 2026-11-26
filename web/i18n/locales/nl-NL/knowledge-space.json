@@ -242,6 +242,7 @@
   "tidy.groupsMeta_one": "{{count}} groep · {{files}} documenten",
   "tidy.groupsMeta_other": "{{count}} groepen · {{files}} documenten",
   "tidy.identical": "Identiek",
+  "tidy.incomplete": "Deze lijst is te lang om volledig te laden, waardoor in een groep hieronder documenten of resultaten kunnen ontbreken. ‘Eén houden · Rest uitschakelen’ en het uitschakelen van een document voor een hele groep zijn niet beschikbaar totdat de lijst korter is: kies hierboven één type of handel de resultaten één voor één af.",
   "tidy.keepAll": "Alles houden (negeren)",
   "tidy.keepBoth": "Beide houden",
   "tidy.keepNewestMerge": "Nieuwste houden · Rest uitschakelen",

@@ -2,11 +2,15 @@
  * Server state behind the Tidy page: one hook per surface, so each part of the page asks for
  * what it shows. The actions reject on failure; the surface that started one reports it.
  */
-import type { FindingStatus, FindingTab } from './kinds'
+import type {
+  KnowledgeFsTidyFindingListResponse,
+  KnowledgeFsTidySummaryResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { FindingKind, FindingStatus, FindingTab } from './kinds'
 import type { PlannedAction, RewriteRequest } from './review'
 import type { Cards } from './review-cards'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
+import { queryOptions, useMutation, useQueries, useQuery } from '@tanstack/react-query'
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
@@ -26,6 +30,89 @@ const POLLED = { meta: { errorToast: false }, refetchInterval: 15000 } as const
 const SILENT = { meta: { errorToast: false } } as const
 /** Cursor value of a list whose last page was already shown. */
 const END = 'end'
+/**
+ * How many API pages of open findings one list loads at once, so that copies and document pairs
+ * are grouped over all of them. The API decides how many findings a page holds, so this bounds
+ * the requests rather than the findings. A longer list is shown in parts, and no part may speak
+ * for a whole group.
+ */
+export const OPEN_FINDING_PAGE_CAP = 20
+
+type FindingPages = {
+  pages: KnowledgeFsTidyFindingListResponse[]
+  /** What the summary counted for this list when it was loaded; undefined before a summary. */
+  total: number | undefined
+}
+
+function countOf(
+  summary: KnowledgeFsTidySummaryResponse | undefined,
+  status: FindingStatus,
+  kind: FindingKind | undefined,
+) {
+  return summary?.findings
+    .filter((row) => row.status === status && (!kind || row.kind === kind))
+    .reduce((total, row) => total + row.count, 0)
+}
+
+/**
+ * One list of findings from `cursor` on. Only open findings are grouped, so only they are loaded
+ * past the first page: up to `OPEN_FINDING_PAGE_CAP` pages, following `nextCursor`.
+ *
+ * The list is polled, and re-reading every page each time would multiply the requests. A poll
+ * reads the first page only and keeps the pages behind it while nothing says they changed: the
+ * first page is the same and so is the count in the (separately polled) summary. A change deeper
+ * in the list that leaves both as they were is therefore seen only on the next full load. After
+ * an action of the reviewer's own the list is invalidated and every page is read again.
+ */
+function findingPagesOptions(
+  spaceId: string,
+  status: FindingStatus,
+  kind: FindingKind | undefined,
+  cursor: string | null,
+) {
+  const params = { control_space_id: spaceId }
+  const limit = status === 'open' ? OPEN_FINDING_PAGE_CAP : 1
+  const page = (at: string | null) =>
+    api.findings.get.queryOptions({
+      input: {
+        params,
+        query: { status, ...(kind ? { kind } : {}), ...(at ? { cursor: at } : {}) },
+      },
+    })
+  return queryOptions({
+    // Under the key of the findings endpoint, so whatever invalidates its queries reloads this.
+    queryKey: [...api.findings.get.key(), 'pages', { params, status, kind, cursor, limit }],
+    // The pages are parts of this one cached list, so they are requested without a cache entry
+    // each: an invalidated list must not be answered from a page request started before it.
+    queryFn: async (context): Promise<FindingPages> => {
+      const { client, queryKey, signal } = context
+      const first = await page(cursor).queryFn(context)
+      const total = countOf(
+        client.getQueryData(api.summary.get.queryKey({ input: { params } })),
+        status,
+        kind,
+      )
+      const known = client.getQueryData<FindingPages>(queryKey)
+      if (
+        known &&
+        // A list loaded before the summary arrived has no count to compare yet; it takes this one.
+        (known.total === undefined || known.total === total) &&
+        !client.getQueryState(queryKey)?.isInvalidated &&
+        JSON.stringify(known.pages[0]) === JSON.stringify(first)
+      )
+        return { pages: known.pages, total }
+      const pages = [first]
+      for (let next = first.nextCursor; next && pages.length < limit;) {
+        signal.throwIfAborted()
+        const further = await page(next).queryFn(context)
+        pages.push(further)
+        next = further.nextCursor
+      }
+      return { pages, total }
+    },
+    ...POLLED,
+  })
+}
 
 /** The opt-in settings, scan progress, and the two actions that change how scanning runs. */
 export function useTidySettings(spaceId: string) {
@@ -73,10 +160,13 @@ export function useTidyScans(spaceId: string) {
 
 /**
  * The review queue for the tab and status in the URL. The API filters one finding kind per
- * request, so a tab of two kinds pages two lists side by side, each with its own cursor.
+ * request, so a tab of two kinds reads two lists side by side, each with its own cursor.
+ *
+ * Open findings are loaded whole (see `findingPagesOptions`) and their cards are paged in the
+ * browser (`tidyPage`). The cursors only move for handled findings, which come one API page at a
+ * time, and for an open list longer than the cap.
  */
 export function useTidyFindings(spaceId: string) {
-  const params = { control_space_id: spaceId }
   const [status, setStatus] = useQueryState(
     'tidyStatus',
     parseAsStringLiteral(FILTERABLE_STATUSES).withDefault(DEFAULT_FINDING_STATUS),
@@ -87,35 +177,30 @@ export function useTidyFindings(spaceId: string) {
   )
   const [cursor, setCursor] = useQueryState('tidyCursor', parseAsString)
   const [secondCursor, setSecondCursor] = useQueryState('tidySimilarCursor', parseAsString)
+  const [page, setPage] = useQueryState('tidyPage', parseAsInteger.withDefault(1))
   const [kind, secondKind] = kindsOfTab(tab)
-  const firstActive = cursor !== END
-  const secondActive = secondKind !== undefined && secondCursor !== END
-  const first = useQuery(
-    api.findings.get.queryOptions({
-      input: {
-        params,
-        query: { status, ...(kind ? { kind } : {}), ...(cursor ? { cursor } : {}) },
-      },
-      ...POLLED,
-      enabled: firstActive,
-    }),
-  )
-  const second = useQuery(
-    api.findings.get.queryOptions({
-      input: secondKind
-        ? {
-            params,
-            query: { status, kind: secondKind, ...(secondCursor ? { cursor: secondCursor } : {}) },
-          }
-        : skipToken,
-      ...POLLED,
-      enabled: secondActive,
-    }),
-  )
-  const lists = [...(firstActive ? [first] : []), ...(secondActive ? [second] : [])]
+  const feeds = [
+    { kind, cursor, setCursor },
+    ...(secondKind ? [{ kind: secondKind, cursor: secondCursor, setCursor: setSecondCursor }] : []),
+  ]
+  const active = feeds.filter((feed) => feed.cursor !== END)
+  const lists = useQueries({
+    queries: active.map((feed) => findingPagesOptions(spaceId, status, feed.kind, feed.cursor)),
+  })
+  const nextCursors = lists.map((list) => list.data?.pages.at(-1)?.nextCursor ?? null)
+  const pages = lists.flatMap((list) => list.data?.pages ?? [])
+  // A feed is partial when it does not start at the beginning or does not reach the end.
+  const partialKinds =
+    status === 'open'
+      ? [
+          ...feeds.filter((feed) => feed.cursor).map((feed) => feed.kind),
+          ...active.filter((_, index) => nextCursors[index]).map((feed) => feed.kind),
+        ]
+      : []
   const firstPage = () => {
     void setCursor(null)
     void setSecondCursor(null)
+    void setPage(null)
   }
   return {
     tab,
@@ -131,14 +216,28 @@ export function useTidyFindings(spaceId: string) {
     loading: lists.some((list) => list.isPending),
     failed: lists.some((list) => list.isError),
     loaded: lists.every((list) => list.data),
-    items: lists.flatMap((list) => list.data?.items ?? []),
-    cards: lists.reduce<Cards>((all, list) => ({ ...all, ...list.data?.documents }), {}),
+    // A list that changes while its pages are read can return a finding on two of them.
+    items: [
+      ...new Map(pages.flatMap((list) => list.items).map((item) => [item.id, item])).values(),
+    ],
+    cards: pages.reduce<Cards>((all, list) => ({ ...all, ...list.documents }), {}),
+    /**
+     * Whether some open findings of `ofKind` are not among `items`, because their list is longer
+     * than the cap. Groups of that kind may then lack findings, and so documents. A feed without
+     * a kind lists every kind.
+     */
+    partial: (ofKind?: FindingKind) =>
+      partialKinds.some((listed) => !listed || !ofKind || listed === ofKind),
+    /** The page of cards within `items`, from 1. */
+    page,
+    showPage: (next: number) => void setPage(next),
     paged: Boolean(cursor || secondCursor),
-    hasNext: lists.some((list) => list.data?.nextCursor),
+    hasNext: nextCursors.some(Boolean),
     firstPage,
+    /** Moves every list on to the findings after the ones loaded. */
     nextPage: () => {
-      if (firstActive) void setCursor(first.data?.nextCursor ?? END)
-      if (secondActive) void setSecondCursor(second.data?.nextCursor ?? END)
+      active.forEach((feed, index) => void feed.setCursor(nextCursors[index] ?? END))
+      void setPage(null)
     },
   }
 }
