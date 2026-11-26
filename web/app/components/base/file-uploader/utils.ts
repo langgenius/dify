@@ -58,7 +58,7 @@ export const fileUpload: FileUpload = (
   const onUploadProgress = ({ loaded, total }: { loaded: number; total: number }) => {
     onProgressCallback(Math.floor((loaded / total) * 100))
   }
-  const context = { silent: true, onUploadProgress }
+  const context = { onUploadProgress }
 
   let uploading: Promise<unknown>
   if (isPublic) {

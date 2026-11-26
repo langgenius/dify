@@ -148,7 +148,7 @@ export function List({
   const removalFocus = useRef<HTMLElement | null>(null)
   const update = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: onEdited,
     }),
   )

@@ -68,7 +68,7 @@ function TriggerAccessPointItem({
   const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },

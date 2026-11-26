@@ -63,7 +63,7 @@ export function MCPAccessPointCard({
     queryClient.invalidateQueries({ queryKey: serverDetailQueryOptions.queryKey })
   const updateServerMutation = useMutation(
     consoleQuery.apps.byAppId.server.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `app-mcp-toggle:${appInfo.id}`,
       },
@@ -86,7 +86,7 @@ export function MCPAccessPointCard({
   const regenerating = useIsMutating(rotationFilter) > 0
   const { mutate: refreshServerCode } = useMutation(
     rotateServerCode.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (_server, { params }) => {
         setRegenerationAppId((current) => (current === params.app_id ? null : current))
       },

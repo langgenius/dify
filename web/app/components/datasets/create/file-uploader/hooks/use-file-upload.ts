@@ -156,7 +156,6 @@ export const useFileUpload = ({
           { body: { file: fileItem.file, source: 'datasets' } },
           {
             context: {
-              silent: true,
               onUploadProgress: ({ loaded, total }) => {
                 const percent = Math.floor((loaded / total) * 100)
                 onFileUpdate(fileItem, percent, fileListRef.current)

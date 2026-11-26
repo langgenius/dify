@@ -26,6 +26,7 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -587,8 +588,9 @@ export const useChat = (
       void (async () => {
         try {
           await stopChat(taskIdRef.current)
-        } catch {
-          // The request layer owns error feedback; stopping locally must still finish.
+        } catch (error) {
+          // Stopping locally must still finish; only the server stop failure is reported.
+          toastRequestError(error)
         }
       })()
     }
@@ -730,7 +732,8 @@ export const useChat = (
                     (suggestedQuestionsAbortControllerRef.current = newAbortController),
                 )
                 setSuggestedQuestions(data)
-              } catch {
+              } catch (error) {
+                toastRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -1302,8 +1305,9 @@ export const useChat = (
                     else newAbortController.abort()
                   },
                 )
-              } catch {
+              } catch (error) {
                 // Keep the streamed answer and its settlement when history cannot be refreshed.
+                if (isCurrentRequest()) toastRequestError(error)
                 return
               }
               if (!isCurrentRequest()) return
@@ -1389,8 +1393,11 @@ export const useChat = (
                   },
                 )
                 if (isCurrentRequest()) setSuggestedQuestions(data)
-              } catch {
-                if (isCurrentRequest()) setSuggestedQuestions([])
+              } catch (error) {
+                if (isCurrentRequest()) {
+                  toastRequestError(error)
+                  setSuggestedQuestions([])
+                }
               }
             }
           } finally {

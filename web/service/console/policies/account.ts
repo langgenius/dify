@@ -73,7 +73,7 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
       get: {
         queryOptions: {
           // Passive probe: every callsite degrades to "not a student", so no toast.
-          context: { silent: true },
+          meta: { errorToast: false },
           retry: false,
         },
       },

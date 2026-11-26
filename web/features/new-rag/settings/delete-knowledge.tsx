@@ -27,7 +27,7 @@ export function DeleteKnowledgeAction() {
   const deleteActionsRef = useRef<AlertDialogActions>(null)
   const mutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

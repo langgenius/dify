@@ -197,6 +197,7 @@ const ServerPreviewTrigger = ({
     },
   ]
   const preview = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ inputs }: { inputs: Record<string, unknown>; session: number }) => {
       if (resource.kind !== 'app') throw new Error('Missing application')
       await syncHumanInputDraft(doSyncWorkflowDraft)
@@ -204,13 +205,10 @@ const ServerPreviewTrigger = ({
         resource.mode === 'workflow'
           ? consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form
           : consoleClient.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form
-      const response = await api.preview.post(
-        {
-          params: { app_id: resource.appId, node_id: nodeId },
-          body: { inputs },
-        },
-        { context: { silent: true } },
-      )
+      const response = await api.preview.post({
+        params: { app_id: resource.appId, node_id: nodeId },
+        body: { inputs },
+      })
       return {
         content: response.form_content,
         formInputs: (response.inputs ?? []).map((input) =>

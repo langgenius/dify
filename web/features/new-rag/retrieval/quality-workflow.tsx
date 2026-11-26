@@ -51,7 +51,7 @@ export function RetrievalQualityWorkflow() {
   const queryClient = useQueryClient()
   const { mutateAsync: createBadCase } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: createGoldenQuestion } = useMutation(

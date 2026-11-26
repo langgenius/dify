@@ -68,7 +68,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const router = useRouter()
@@ -108,7 +108,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useMutation(
     consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const checkProcess = async (jobID: string) => {
@@ -135,7 +135,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const { mutateAsync: segmentBatchImport } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const runBatch = async (csv: FileItem) => {

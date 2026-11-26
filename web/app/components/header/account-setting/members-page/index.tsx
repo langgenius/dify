@@ -130,7 +130,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   )
   const removal = useMutation(
     consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
@@ -162,7 +162,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
   const revocation = useMutation(
     consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const isInvitationGone = (error: typeof revocation.error) =>
@@ -179,7 +179,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
 
   const roleUpdate = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

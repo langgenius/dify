@@ -16,12 +16,12 @@ const Billing: FC = () => {
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   usePrefetchQuery(
-    consoleQuery.features.vectorSpace.get.queryOptions({ context: { silent: true } }),
+    consoleQuery.features.vectorSpace.get.queryOptions({ meta: { errorToast: false } }),
   )
   const billingQuery = useQuery(
     consoleQuery.billing.invoices.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const billingUrl = billingQuery.data?.url

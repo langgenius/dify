@@ -77,7 +77,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     isPending,
     mutate: educationAdd,
   } = useMutation(
-    consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.education.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -90,7 +92,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(
-    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workspaces.switch.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   const appliedEducationCase = (() => {
@@ -127,9 +131,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await openAsyncWindow(
         async () => {
-          const res = await consoleClient.billing.invoices.get(undefined, {
-            context: { silent: true },
-          })
+          const res = await consoleClient.billing.invoices.get()
           if (res.url) return res.url
 
           throw new Error('Failed to open billing page')

@@ -99,9 +99,12 @@ function CreateFromDSLModal({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const importMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (source: ImportSource) => {
       if (
         source.type === CreateFromDSLModalTab.FROM_FILE &&
@@ -125,7 +128,7 @@ function CreateFromDSLModal({
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()

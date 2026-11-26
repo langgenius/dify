@@ -791,6 +791,39 @@ describe('QualityPage', () => {
     )
   })
 
+  it('reports a failed saved-evidence lookup and keeps the edit dialog open', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: 'Must cite both permission rules.',
+          created_at: '2026-07-28T00:00:00Z',
+          expected_evidence_ids: ['node-1'],
+          id: 'golden-1',
+          question: 'Who can change permissions?',
+          tags: [],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.matchEvidence.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Evidence lookup failed' }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Who can change permissions?')
+    await user.click(
+      screen.getByRole('button', { name: /knowledgeQuality\.qualityPage\.questionActions/ }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
+    )
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Evidence lookup failed'))
+    expect(screen.getByRole('dialog')).toBeVisible()
+  })
+
   it('resolves the protected trace reference before navigating', async () => {
     const user = userEvent.setup()
     navigationMock.tab = 'bad-cases'
@@ -809,12 +842,9 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.getTraceReference).toHaveBeenCalledWith(
-        {
-          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
-        },
-        { context: expect.objectContaining({ silent: true }) },
-      ),
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
   })
@@ -1043,7 +1073,7 @@ describe('QualityPage', () => {
           },
           params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
         },
-        { context: expect.objectContaining({ silent: true }) },
+        { context: expect.any(Object) },
       ),
     )
     await waitFor(() =>
@@ -1144,12 +1174,11 @@ describe('QualityPage', () => {
     await user.click(promote)
     await screen.findByText('dismiss failed')
     expect(toast.error).not.toHaveBeenCalled()
-    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith(
-      { params: { bad_case_id: 'bad-1', control_space_id: 'space-1' } },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith({
+      params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+    })
     expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything(), {
-      context: expect.objectContaining({ silent: true }),
+      context: expect.any(Object),
     })
     await user.click(promote)
 

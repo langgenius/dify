@@ -52,7 +52,7 @@ export function SkillTagsEditor({
   const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())

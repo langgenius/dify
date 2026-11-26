@@ -98,7 +98,7 @@ describe('file-uploader utils', () => {
 
       expect(consoleUpload).toHaveBeenCalledExactlyOnceWith(
         { body: { file: mockFile } },
-        { context: { silent: true, onUploadProgress: expect.any(Function) } },
+        { context: { onUploadProgress: expect.any(Function) } },
       )
       expect(publicUpload).not.toHaveBeenCalled()
       await vi.waitFor(() => {
@@ -116,7 +116,7 @@ describe('file-uploader utils', () => {
 
       expect(trialUpload).toHaveBeenCalledExactlyOnceWith(
         { params: { app_id: 'trial-1' }, body: { file: mockFile } },
-        { context: { silent: true, onUploadProgress: expect.any(Function) } },
+        { context: { onUploadProgress: expect.any(Function) } },
       )
       expect(consoleUpload).not.toHaveBeenCalled()
       await vi.waitFor(() =>
@@ -136,7 +136,7 @@ describe('file-uploader utils', () => {
       )
       expect(publicUpload).toHaveBeenCalledExactlyOnceWith(
         { body: { file: mockFile } },
-        { context: { silent: true, onUploadProgress: expect.any(Function) } },
+        { context: { onUploadProgress: expect.any(Function) } },
       )
       expect(consoleUpload).not.toHaveBeenCalled()
       publicUpload.mock.calls[0]![1]!.context!.onUploadProgress!({ loaded: 1, total: 4 })

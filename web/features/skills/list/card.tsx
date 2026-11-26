@@ -55,7 +55,7 @@ function DeleteSkillDialog({
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const referencesQuery = useQuery({
@@ -214,10 +214,11 @@ export function SkillCard({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const exportMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
