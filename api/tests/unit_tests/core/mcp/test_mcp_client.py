@@ -116,6 +116,56 @@ class TestMCPClient:
             "Authorization": "Bearer {{request.headers.X-Custom-Auth}}",
         }
 
+    def test_init_with_forwarded_header_context(self):
+        """Forwarded header context resolves placeholders without a request context."""
+        client = MCPClient(
+            server_url="http://test.example.com",
+            headers={
+                "Authorization": "Bearer {{request.headers.X-Custom-Auth}}",
+                "X-Request-User": "{{request.headers.X-User-Id}}",
+            },
+            header_context={"X-Custom-Auth": "forwarded-token", "X-User-Id": "user123"},
+        )
+
+        assert client.headers == {
+            "Authorization": "Bearer forwarded-token",
+            "X-Request-User": "user123",
+        }
+
+    def test_init_with_forwarded_header_context_case_insensitive(self):
+        """Forwarded header names match placeholders case-insensitively."""
+        client = MCPClient(
+            server_url="http://test.example.com",
+            headers={"X-Request-User": "{{request.headers.x-user-id}}"},
+            header_context={"X-User-Id": "user123"},
+        )
+
+        assert client.headers == {"X-Request-User": "user123"}
+
+    def test_init_with_forwarded_header_context_missing_header(self):
+        """Missing forwarded headers resolve to an empty string."""
+        client = MCPClient(
+            server_url="http://test.example.com",
+            headers={"Authorization": "Bearer {{request.headers.X-Custom-Auth}}"},
+            header_context={"X-Other": "value"},
+        )
+
+        assert client.headers == {"Authorization": "Bearer "}
+
+    def test_init_forwarded_header_context_takes_precedence_over_request(self):
+        """An explicit header context wins over the live Flask request."""
+        from flask import Flask
+
+        app = Flask("test")
+        with app.test_request_context(headers={"X-Custom-Auth": "inner-request-token"}):
+            client = MCPClient(
+                server_url="http://test.example.com",
+                headers={"Authorization": "Bearer {{request.headers.X-Custom-Auth}}"},
+                header_context={"X-Custom-Auth": "forwarded-token"},
+            )
+
+            assert client.headers == {"Authorization": "Bearer forwarded-token"}
+
     @patch("core.mcp.mcp_client.streamablehttp_client")
     @patch("core.mcp.mcp_client.ClientSession")
     def test_initialize_with_mcp_url(self, mock_client_session, mock_streamable_client):
