@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "或從 Learn Dify 開始",
   "stepByStepTour.guides.studio.empty.template.description": "瀏覽 Dify 的範本，挑一個符合你想建構內容的範本。這是無需從零開始的絕佳起步方式。",
   "stepByStepTour.guides.studio.empty.template.title": "從範本建立",
+  "stepByStepTour.guides.studio.empty.workflow.description": "從執行一次後結束的工作流程開始。",
+  "stepByStepTour.guides.studio.empty.workflow.title": "建立工作流程",
   "stepByStepTour.guides.studio.noCreate.empty.description": "你可以查看這個工作空間裡的應用，但這裡還沒有應用。若要建立或編輯應用，請切換到有權限的工作空間，或聯絡 Workspace Owner / Admin 開通權限。",
   "stepByStepTour.guides.studio.noCreate.empty.title": "暫時沒有可查看的應用",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "你可以瀏覽並開啟這個工作空間裡的應用，但建立或編輯應用需要權限。請切換到有權限的工作空間，或聯絡 Workspace Owner / Admin。",

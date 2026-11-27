@@ -2,7 +2,6 @@
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListUrlQuery } from './query-params'
-import type { BuilderCreationMode } from '@/features/dify-builder/creation/pending-prompt'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { CreateAppMenu } from '@/app/components/app/create-app-menu'
@@ -16,7 +15,7 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { BuilderCreationMenuItems } from '@/features/dify-builder/creation/menu-items'
+import { CreateAppEntry } from '@/features/app-creation/entry'
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
@@ -36,12 +35,12 @@ type AppListHeaderProps = {
   keywords: string
   creatorIDs: string[]
   sortBy: AppListSortBy
+  isBuilderEnabled: boolean
   onCategoryChange: (category: AppListCategory) => void
   onTagIDsChange: (tagIDs: string[]) => void
   onKeywordsChange: (keywords: string) => void
   onCreatorIDsChange: (creatorIDs: string[]) => void
   onSortByChange: (sortBy: AppListSortBy) => void
-  onCreateBuilderApp?: (mode: BuilderCreationMode) => void
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
@@ -56,12 +55,12 @@ export function AppListHeader({
   keywords,
   creatorIDs,
   sortBy,
+  isBuilderEnabled,
   onCategoryChange,
   onTagIDsChange,
   onKeywordsChange,
   onCreatorIDsChange,
   onSortByChange,
-  onCreateBuilderApp,
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -80,6 +79,15 @@ export function AppListHeader({
   const activeStudioGuide = activeStudioGuides[activeStepByStepTourGuideIndex ?? 0]
   const shouldOpenStepByStepTourCreateMenu =
     activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
+  const createMenuProps = {
+    onCreateTemplate,
+    onImportDSL,
+    stepByStepTourControlledOpen: activeStudioGuide
+      ? shouldOpenStepByStepTourCreateMenu
+      : undefined,
+    stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate,
+    stepByStepTourHighlightPart: STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+  }
 
   return (
     <StudioListHeader
@@ -119,21 +127,12 @@ export function AppListHeader({
             <span aria-hidden className="i-ri-braces-line size-4 shrink-0" />
             {t(($) => $['studio.viewSnippets'], { ns: 'app' })}
           </StudioListLink>
-          {showCreateButton && (
-            <CreateAppMenu
-              leadingItems={
-                onCreateBuilderApp && <BuilderCreationMenuItems onChoose={onCreateBuilderApp} />
-              }
-              onCreateBlank={onCreateBlank}
-              onCreateTemplate={onCreateTemplate}
-              onImportDSL={onImportDSL}
-              stepByStepTourControlledOpen={
-                activeStudioGuide ? shouldOpenStepByStepTourCreateMenu : undefined
-              }
-              stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate}
-              stepByStepTourHighlightPart={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu}
-            />
-          )}
+          {showCreateButton &&
+            (isBuilderEnabled ? (
+              <CreateAppEntry {...createMenuProps} />
+            ) : (
+              <CreateAppMenu {...createMenuProps} onCreateBlank={onCreateBlank} />
+            ))}
         </div>
       </div>
     </StudioListHeader>

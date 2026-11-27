@@ -1,29 +1,22 @@
 'use client'
 
-import type { AppListUrlQuery } from './query-params'
-import type { BuilderCreationMode } from '@/features/dify-builder/creation/pending-prompt'
-import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
+import type { AppType } from './app-type'
 import dynamic from 'next/dynamic'
 
-type AppListCategory = AppListUrlQuery['category']
-
-const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
+const BlankAppDialog = dynamic(() => import('@/features/app-creation/blank-dialog'), {
   ssr: false,
 })
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
   ssr: false,
 })
-const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
+const CreateFromDSLModal = dynamic(() => import('@/features/app-creation/dsl-dialog'), {
+  ssr: false,
+})
+const CreateAppTemplateDialog = dynamic(() => import('@/features/app-creation/template-dialog'), {
   ssr: false,
 })
 
-const BuilderCreationPromptDialog = dynamic(
-  () => import('@/features/dify-builder/creation/prompt-dialog'),
-  { ssr: false },
-)
-
 export type AppListCreationDialog =
-  | { type: 'builder'; mode: BuilderCreationMode }
   | { type: 'blank' }
   | { type: 'template' }
   | { type: 'dsl'; droppedFile?: File }
@@ -33,39 +26,49 @@ export function AppListCreationModals({
   canCreateApp,
   defaultMode,
   dialog,
+  isBuilderEnabled,
   onClose,
   onOpenBlank,
   onOpenTemplate,
 }: {
   canCreateApp: boolean
-  /** Preselected app type for blank creation; `all` leaves the picker on its default. */
-  defaultMode: AppListCategory
+  defaultMode: AppType
   dialog: AppListCreationDialog
+  isBuilderEnabled: boolean
   onClose: () => void
   onOpenBlank: () => void
   onOpenTemplate: () => void
 }) {
   if (!canCreateApp) return null
-  const defaultAppModeResult = zPostAppsBody.shape.mode.safeParse(defaultMode)
 
   return (
     <>
-      {dialog?.type === 'builder' && (
-        <BuilderCreationPromptDialog mode={dialog.mode} onClose={onClose} />
-      )}
+      {dialog?.type === 'blank' &&
+        (isBuilderEnabled ? (
+          <BlankAppDialog
+            key={defaultMode}
+            defaultMode={defaultMode}
+            onClose={onClose}
+            onCreateTemplate={onOpenTemplate}
+          />
+        ) : (
+          <CreateAppModal
+            show
+            defaultAppMode={defaultMode}
+            onClose={onClose}
+            onCreateFromTemplate={onOpenTemplate}
+          />
+        ))}
       {dialog?.type === 'dsl' && (
         <CreateFromDSLModal show onClose={onClose} droppedFile={dialog.droppedFile} />
       )}
-      {dialog?.type === 'blank' && (
-        <CreateAppModal
+      {dialog?.type === 'template' && (
+        <CreateAppTemplateDialog
+          legacyLayout={!isBuilderEnabled}
           show
           onClose={onClose}
-          onCreateFromTemplate={onOpenTemplate}
-          defaultAppMode={defaultAppModeResult.success ? defaultAppModeResult.data : undefined}
+          onCreateFromBlank={isBuilderEnabled ? undefined : onOpenBlank}
         />
-      )}
-      {dialog?.type === 'template' && (
-        <CreateAppTemplateDialog show onClose={onClose} onCreateFromBlank={onOpenBlank} />
       )}
     </>
   )
