@@ -206,7 +206,7 @@ class AppGenerateService:
                 ) from caught_error
 
         # app level rate limiter
-        max_active_request = cls._get_max_active_requests(app_model)
+        max_active_request = cls.get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
         try:
@@ -488,9 +488,8 @@ class AppGenerateService:
             raise TriggerWorkflowServiceModeUnavailableError()
 
     @staticmethod
-    def _get_max_active_requests(app: App) -> int:
-        """
-        Get the maximum number of active requests allowed for an app.
+    def get_max_active_requests(app: App) -> int:
+        """Get the maximum number of active requests allowed for an app.
 
         Returns the smaller value between app's custom limit and global config limit.
         A value of 0 means infinite (no limit).
@@ -500,6 +499,10 @@ class AppGenerateService:
 
         Returns:
             The maximum number of active requests allowed
+
+        Precondition: ``app`` has its invocation limits loaded.
+        Postcondition: returns the strictest positive App/global limit, or zero
+        when both limits are unlimited; no state is changed.
         """
         app_limit = app.max_active_requests or dify_config.APP_DEFAULT_ACTIVE_REQUESTS
         config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
@@ -507,6 +510,15 @@ class AppGenerateService:
         # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
         limits = [limit for limit in [app_limit, config_limit] if limit > 0]
         return min(limits) if limits else 0
+
+    @staticmethod
+    def _get_max_active_requests(app: App) -> int:
+        """Preserve the private compatibility entry point for existing callers.
+
+        Precondition: ``app`` satisfies :meth:`get_max_active_requests`.
+        Postcondition: returns the same limit as the public helper without side effects.
+        """
+        return AppGenerateService.get_max_active_requests(app)
 
     @classmethod
     def generate_single_iteration(

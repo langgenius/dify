@@ -75,6 +75,7 @@
   "entry.checkFailed": "无法检查已发布版本，请重试。",
   "entry.duplicateNodeNames": "已发布版本中存在同名节点（{{names}}）。你可以继续评测；建议修改节点名称并发布新版本，方便区分结果。",
   "entry.duplicateNodeNamesTitle": "节点名称重复",
+  "entry.triggerUnsupported": "无法评测由触发器启动的工作流。请发布以「用户输入」节点开始的工作流。",
   "history.actions.cancel": "取消任务",
   "history.actions.downloadFailed": "评测文件下载失败。",
   "history.actions.downloadResultFile": "下载结果文件",

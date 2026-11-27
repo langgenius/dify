@@ -533,7 +533,7 @@ class Workflow(TypeBase):
             yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
 
     def has_trigger_node(self) -> bool:
-        """Whether the graph has a trigger entry, which rules out Web App, Service API, OpenAPI, and MCP runs."""
+        """Whether the graph has a trigger entry, excluding manual invocations and evaluation."""
         return any(
             isinstance(node_type := node_data.get("type"), str) and is_trigger_node_type(node_type)
             for _, node_data in self.walk_nodes()
