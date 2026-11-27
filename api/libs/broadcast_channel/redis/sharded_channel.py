@@ -84,9 +84,6 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
 
     @override
     def _get_message(self) -> dict[str, Any] | None:
-        return self._get_sharded_message(timeout=1)
-
-    def _get_sharded_message(self, timeout: float) -> dict[str, Any] | None:
         assert self._pubsub is not None
         # NOTE(QuantumGhost): this is an issue in
         # upstream code. If Sharded PubSub is used with Cluster, the
@@ -105,24 +102,13 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
                 node = self._client.get_node_from_key(self._topic)
                 return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
                     ignore_subscribe_messages=False,
-                    timeout=timeout,
+                    timeout=1,
                     target_node=node,
                 )
             case Redis():
-                return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
-                    ignore_subscribe_messages=False,
-                    timeout=timeout,
-                )
+                return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=1)  # type: ignore[attr-defined]
             case _:
                 raise AssertionError("client should be either Redis or RedisCluster.")
-
-    @override
-    def _get_subscription_message(self, timeout: float) -> dict[str, Any] | None:
-        return self._get_sharded_message(timeout)
-
-    @override
-    def _get_subscription_ack_type(self) -> str:
-        return "ssubscribe"
 
     @override
     def _get_message_type(self) -> str:

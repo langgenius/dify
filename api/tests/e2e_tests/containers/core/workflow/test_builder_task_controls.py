@@ -207,7 +207,6 @@ def task_world(task_postgres_engine: Engine, task_flask_app: Flask, monkeypatch:
     # their real production methods; no mutation or authorization is replaced.
     monkeypatch.setattr(dify_port, "_session_factory", lambda: factory)
     monkeypatch.setattr(dify_port, "WorkflowService", lambda: WorkflowService(session_maker=factory))
-    monkeypatch.setattr(dify_port, "notify_workflow_draft_changed", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(dify_port.app_draft_workflow_was_synced, "send", lambda *_args, **_kwargs: None)
     account = Account(name="Task fence owner", email=f"{uuid4()}@example.invalid")
     tenant_id = str(uuid4())

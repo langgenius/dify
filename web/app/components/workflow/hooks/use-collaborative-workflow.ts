@@ -46,16 +46,11 @@ export const useCollaborativeWorkflow = () => {
         if (!collaborationManager.canApplyLocalGraphMutation()) return false
 
         const oldNodes = getNodes()
-        const sanitizedNodes = new Map<Node, Node>()
-        const sanitizeNode = (node: Node) => {
-          let sanitized = sanitizedNodes.get(node)
-          if (!sanitized) {
-            sanitized = sanitizeNodeForBroadcast(node)
-            sanitizedNodes.set(node, sanitized)
-          }
-          return sanitized
-        }
-        collabSetNodes(oldNodes.map(sanitizeNode), newNodes.map(sanitizeNode), source)
+        collabSetNodes(
+          oldNodes.map(sanitizeNodeForBroadcast),
+          newNodes.map(sanitizeNodeForBroadcast),
+          source,
+        )
       }
       reactFlowSetNodes(newNodes)
       return true

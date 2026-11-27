@@ -151,7 +151,6 @@ def case(sqlite_session_factory: sessionmaker[SqlSession], monkeypatch: pytest.M
         return workflow
 
     monkeypatch.setattr(dify_port, "_sync_graph_only", sync)
-    monkeypatch.setattr(dify_port, "notify_workflow_draft_changed", lambda *_args, **_kwargs: None)
     return BusinessPortCase(owner, session, context, run, repo, sqlite_session_factory, revision)
 
 

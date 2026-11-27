@@ -1,4 +1,4 @@
-import { BuildGridTexture } from '@/app/components/base/build-grid-texture'
+import { AgentBuildGridTexture } from '../agent-editor/build-grid-texture'
 
 export function AgentTemplateGridBackground() {
   return (
@@ -6,7 +6,7 @@ export function AgentTemplateGridBackground() {
       aria-hidden
       className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
     >
-      <BuildGridTexture className="absolute inset-e-0 bottom-0 origin-center scale-y-[-1]" />
+      <AgentBuildGridTexture className="absolute inset-e-0 bottom-0 origin-center scale-y-[-1]" />
     </div>
   )
 }

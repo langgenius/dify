@@ -46,7 +46,6 @@ it('passes authorized upload references in create/message bodies without binding
     app_id: 'app-1',
     scenario: 'build',
     goal_text: '',
-    derive_app_name: false,
     attachments,
   })
   await createEditSession('app-1', 'Use the attached rules', undefined, signal, attachments)

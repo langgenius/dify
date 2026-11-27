@@ -89,8 +89,6 @@ class DifyBuilderAgent(Protocol):
 
     # Short human title for a prompt-created app. Returns the raw proposal; the
     # service layer normalizes and stores it.
-    def propose_app_name(self, goal_text: str, requirements: dict[str, Any]) -> str: ...
-
     def propose_plan_v1(
         self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
     ) -> WorkflowPlan | BuildClarification | None: ...

@@ -313,7 +313,6 @@ def native_adapter(
         patch("services.dify_builder.dify_port.set_login_user"),
         patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as repositories,
         patch("services.dify_builder.dify_port.WorkflowService") as workflow_service,
-        patch("services.dify_builder.dify_port.notify_workflow_draft_changed"),
         patch("services.dify_builder.dify_port._sync_graph_only") as sync,
     ):
         repositories.create_api_workflow_run_repository.return_value.get_workflow_run_by_id.return_value = run

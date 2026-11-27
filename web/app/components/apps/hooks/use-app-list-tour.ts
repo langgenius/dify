@@ -16,7 +16,6 @@ type UseAppListTourOptions = {
   hasAnyApp: boolean
   hasResolvedFirstPage: boolean
   hasStarredApps: boolean
-  isBuilderEnabled: boolean
   showFirstEmptyState: boolean
   showNoCreateEmptyState: boolean
 }
@@ -26,7 +25,6 @@ export function useAppListTour({
   hasAnyApp,
   hasResolvedFirstPage,
   hasStarredApps,
-  isBuilderEnabled,
   showFirstEmptyState,
   showNoCreateEmptyState,
 }: UseAppListTourOptions) {
@@ -36,9 +34,7 @@ export function useAppListTour({
   const resolveGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
   const derivedGuideGroup = canCreateApp
     ? showFirstEmptyState
-      ? isBuilderEnabled
-        ? 'studioEmpty'
-        : 'studioEmptyLegacy'
+      ? 'studioEmpty'
       : hasAnyApp
         ? 'studioWithApps'
         : undefined

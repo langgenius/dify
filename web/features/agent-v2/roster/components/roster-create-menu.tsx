@@ -2,10 +2,10 @@
 
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
+import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import { CreateAppMenu } from '@/app/components/app/create-app-menu'
+import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
 import { useCanCreateAgents, useCanImportAgents } from '@/features/agent-v2/permissions'
-import CreateFromDSLModal from '@/features/app-creation/dsl-dialog'
-import CreateAppTemplateDialog from '@/features/app-creation/template-dialog'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { CreateAgentDialog } from './create-agent-dialog'
 

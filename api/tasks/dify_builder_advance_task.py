@@ -35,7 +35,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
-from services.dify_builder import app_naming, progress_bus, progress_snapshot, session_lock
+from services.dify_builder import progress_bus, progress_snapshot, session_lock
 from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.localize import LanguageDetector
 from services.dify_builder.agent_factory import build_dify_builder_agent
@@ -326,27 +326,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
 
         language_detector = LanguageDetector(agent.model_or_none, prior_language=_fc.reply_language)
 
-        def rename_app(proposed: str) -> str:
-            assert actor is not None
-            assert loaded_session is not None
-            return app_naming.rename_app_from_proposal(
-                app_id=loaded_session.app_id,
-                tenant_id=actor.tenant_id,
-                account_id=actor.account_id,
-                proposed=proposed,
-            )
-
-        from services.dify_builder.wiring import build_app_metadata, build_attachment_intake
-
-        def describe_app(description: str) -> str:
-            assert actor is not None
-            assert loaded_session is not None
-            return build_app_metadata().describe_empty_app(
-                app_id=loaded_session.app_id,
-                tenant_id=actor.tenant_id,
-                account_id=actor.account_id,
-                description=description,
-            )
+        from services.dify_builder.wiring import build_attachment_intake
 
         env = Env(
             dify=dify,
@@ -362,8 +342,6 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             # Native controls/history must not gain an optional inference just
             # because an old session has no persisted reply language.
             detect_language=language_detector.detect_language if cognition_admission_required(action.kind) else None,
-            rename_app=rename_app,
-            describe_app=describe_app,
             consume_material=build_attachment_intake(repo).consume,
             command_id=action.command_id,
         )

@@ -189,7 +189,7 @@ def test_conversation_get_rejects_competing_cursors(
         (
             {"scenario": "build", "app_id": "a1", "goal_text": "Build it"},
             "prepare_build_session",
-            {"app_id": "a1", "goal_text": "Build it", "model_config": None, "derive_app_name": False},
+            {"app_id": "a1", "goal_text": "Build it", "model_config": None},
         ),
         (
             {"scenario": "edit", "app_id": "a1", "goal_text": "Tighten risk"},

@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
-from core.dify_builder.naming import resolve_creation_name
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import filter_uuid_strings
@@ -191,22 +190,14 @@ class AgentAppRepository:
         initial_soul = build_initial_agent_soul(tenant_id, default_model)
         with self._session_factory.begin() as session:
             account = console_app_actor(session, context)
-            name = resolve_creation_name(
-                name=params.name,
-                prompt=params.prompt,
-                timezone=account.timezone,
-                language=account.interface_language,
-            )
-            app = ConsoleAppRepository.insert_app_record(
-                tenant_id, params, account, settings, name=name, session=session
-            )
+            app = ConsoleAppRepository.insert_app_record(tenant_id, params, account, settings, session=session)
             try:
                 create_backing_agent_for_app(
                     session,
                     tenant_id=tenant_id,
                     account_id=context.account_id,
                     app_id=app.id,
-                    name=name,
+                    name=params.name,
                     description=params.description or "",
                     role=params.agent_role,
                     icon_type=AgentIconType(params.icon_type) if params.icon_type else None,

@@ -37,7 +37,7 @@ from models.workflow import Workflow
 from services.workflow_execution_identity import build_workflow_execution_identity
 
 if TYPE_CHECKING:
-    from runtime_contracts.workflow_driver import WorkflowRunDriver
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()

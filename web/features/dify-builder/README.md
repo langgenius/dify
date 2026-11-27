@@ -13,7 +13,6 @@ workflow canvas.
 | Add Builder repair actions to the workflow checklist                  | [`editor/checklist.tsx`]                                       |
 | Highlight the nodes currently edited by Builder                       | [`editor/node-decoration.tsx`]                                 |
 | Record manual viewport navigation during a Builder task               | [`editor/use-viewport-interaction.ts`]                         |
-| Pass an opening prompt across navigation                              | [`creation.ts`], [`editor/creation-start.tsx`]                 |
 | Panel layout, scrolling, clear/abandon confirmation                   | [`panel/index.tsx`]                                            |
 | Input, attachment upload, send/stop/resume controls                   | [`composer/index.tsx`]                                         |
 | Accept or clear the attachment draft                                  | [`composer/use-attachment-draft.ts`]                           |
@@ -249,9 +248,7 @@ distinct feedback. Expanding run details loads native node tracing on demand.
 [`composer/use-attachment-draft.ts`]: composer/use-attachment-draft.ts
 [`conversation/`]: conversation/
 [`conversation/test-result/`]: conversation/test-result/
-[`creation.ts`]: creation.ts
 [`editor/checklist.tsx`]: editor/checklist.tsx
-[`editor/creation-start.tsx`]: editor/creation-start.tsx
 [`editor/index.tsx`]: editor/index.tsx
 [`editor/node-decoration.tsx`]: editor/node-decoration.tsx
 [`editor/panel-toggle.tsx`]: editor/panel-toggle.tsx

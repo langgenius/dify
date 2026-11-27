@@ -92,7 +92,6 @@ export type DifyBuilderSessionController = {
     appId: string,
     goalText: string,
     modelConfig?: SessionModel,
-    deriveAppName?: boolean,
     attachments?: DifyBuilderAttachmentPayload[],
   ) => Promise<boolean>
   startEdit: (

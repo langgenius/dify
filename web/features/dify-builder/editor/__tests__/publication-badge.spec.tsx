@@ -48,7 +48,6 @@ vi.mock('../use-canvas-refresh', () => ({
     finishCommand: vi.fn(),
   }),
 }))
-vi.mock('../creation-start', () => ({ DifyBuilderCreationStart: () => null }))
 vi.mock('../../session/persistence', () => ({ DifyBuilderSessionPersistence: () => null }))
 
 const publishedWorkflow: WorkflowResponse = {

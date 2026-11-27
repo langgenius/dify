@@ -116,7 +116,6 @@ from services.dify_builder.run_mapping import (
     stream_chunk_as_mapping,
 )
 from services.errors.app import WorkflowHashNotEqualError
-from services.workflow_draft_sync_service import notify_workflow_draft_changed
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_generation import graph_normalizers
 from services.workflow_run_agg import WorkflowRunAgg
@@ -887,7 +886,6 @@ class WorkflowServiceDifyPort:
                 tenant_id=actor.tenant_id, agent_ids=retirements, account_id=actor.account_id
             )
             app_draft_workflow_was_synced.send(app, synced_draft_workflow=updated)
-        notify_workflow_draft_changed(updated, previous_graph=committed_previous_graph)
 
         if on_canvas is not None and graph != committed_previous_graph:
             on_canvas({"event": str(CanvasEvent.GRAPH_CHANGED), "cause": "apply"})
@@ -946,7 +944,6 @@ class WorkflowServiceDifyPort:
             ):
                 raise BuilderExecutionPolicyError("native_restore_unavailable")
             updated = _sync_graph_only(app, graph, workflow, workflow.unique_hash, account, session, app_id)
-            notify_workflow_draft_changed(updated)
             return execution_revision(updated)
 
     def run_draft(

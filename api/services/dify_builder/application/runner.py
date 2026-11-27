@@ -122,8 +122,6 @@ class Env:
     # None -> no-op. MUST NOT raise: the engine does not guard this call, so the
     # service-layer implementation swallows its own errors -- a failed rename
     # leaves the derived name in place and never blocks the build.
-    rename_app: Callable[[str], str] | None = None
-    describe_app: Callable[[str], str] | None = None
     # Current queue prefix is consumed only between handlers, never during a
     # model or draft mutation. None preserves existing text-only adapters.
     consume_material: (

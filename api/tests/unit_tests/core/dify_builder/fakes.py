@@ -796,10 +796,7 @@ class StubAgent(DifyBuilderAgent):
         return {}
 
     @override
-    def propose_app_name(self, goal_text: str, requirements: dict[str, object]) -> str:
-        return ""
 
-    @override
     def propose_plan_v1(
         self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
     ) -> WorkflowPlan | None:
@@ -1172,7 +1169,6 @@ class ContextOverrides(TypedDict, total=False, closed=True):
     built_node_ids: list[str]
     form_fields: list[Graph]
     app_name: str
-    app_name_auto: bool
     edit_rules: dict[str, object]
     edit_target_node_ids: list[str]
     last_edit_rejection: str

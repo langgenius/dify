@@ -2,7 +2,6 @@
 
 import type { AppPartial, UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
-import type { ReactNode } from 'react'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -61,8 +60,6 @@ type AppMetadataFormProps = {
   nameInputRef: React.RefObject<HTMLInputElement | null>
   isPending: boolean
   error?: string
-  title?: string
-  children?: ReactNode
   onSubmit: (body: UpdateAppPayload) => void
 }
 
@@ -73,8 +70,6 @@ export function AppMetadataForm({
   isPending,
   onSubmit,
   error,
-  title,
-  children,
 }: AppMetadataFormProps) {
   const { t } = useTranslation(['app', 'common', 'explore'])
   const formRef = useRef<HTMLFormElement>(null)
@@ -151,12 +146,11 @@ export function AppMetadataForm({
     >
       <DialogHeader>
         <DialogTitle>
-          {title ??
-            (isEdit
-              ? t(($) => $.editAppTitle, { ns: 'app' })
-              : operation === 'duplicate'
-                ? t(($) => $.duplicateTitle, { ns: 'app' })
-                : t(($) => $['appCustomize.title'], { ns: 'explore', name: source.name }))}
+          {isEdit
+            ? t(($) => $.editAppTitle, { ns: 'app' })
+            : operation === 'duplicate'
+              ? t(($) => $.duplicateTitle, { ns: 'app' })
+              : t(($) => $['appCustomize.title'], { ns: 'explore', name: source.name })}
         </DialogTitle>
         <DialogHeaderCloseButton
           disabled={isPending}
@@ -164,7 +158,6 @@ export function AppMetadataForm({
         />
       </DialogHeader>
       <DialogBody className="flex flex-col gap-4">
-        {children}
         <Fieldset className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1">
           <FieldsetLegend className="col-span-2 mb-0">
             {t(($) => $['newApp.captionName'], { ns: 'app' })}
