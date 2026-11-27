@@ -128,8 +128,9 @@ export type AgentNotPublishedError = ErrorResponse & {
   status: 409
 }
 
-export type ApiKeyList = {
+export type ApiKeyListWithLimitResponse = {
   data: Array<ApiKeyItem>
+  max_keys: number
 }
 
 export type ApiKeyItem = {
@@ -2952,7 +2953,7 @@ export type GetAgentByAgentIdApiKeysError =
   GetAgentByAgentIdApiKeysErrors[keyof GetAgentByAgentIdApiKeysErrors]
 
 export type GetAgentByAgentIdApiKeysResponses = {
-  200: ApiKeyList
+  200: ApiKeyListWithLimitResponse
 }
 
 export type GetAgentByAgentIdApiKeysResponse =

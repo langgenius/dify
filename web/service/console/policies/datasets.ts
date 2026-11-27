@@ -411,6 +411,9 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
     apiKeys: {
       post: {
         mutationOptions: {
+          // Refresh capacity when a create is rejected by the server.
+          onError: (_error, _variables, _onMutateResult, context) =>
+            invalidateQueryKeys(context.client, [consoleQuery.datasets.apiKeys.get.key()]),
           // Writes the new key into its list, so the one-time secret shows at once.
           onSuccess: (created, _variables, _onMutateResult, context) =>
             addCreatedKeyToLists(context.client, consoleQuery.datasets.apiKeys.get.key(), created),

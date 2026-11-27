@@ -310,3 +310,59 @@ describe('agent mutation policies', () => {
     ).toEqual({ enabled: true })
   })
 })
+
+describe('API key capacity policies', () => {
+  it.each(['app', 'dataset', 'agent'] as const)(
+    'preserves %s capacity on creation and refreshes it after rejection',
+    async (kind) => {
+      const { client, consoleQuery, success, invalidateQueries } = await setup()
+      const appInput = { params: { resource_id: 'app-1' } }
+      const agentInput = { params: { agent_id: 'agent-1' } }
+      const entries = {
+        app: {
+          key: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({ input: appInput }),
+          options: consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions(),
+          variables: appInput,
+        },
+        dataset: {
+          key: consoleQuery.datasets.apiKeys.get.queryKey(),
+          options: consoleQuery.datasets.apiKeys.post.mutationOptions(),
+          variables: { body: {} },
+        },
+        agent: {
+          key: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({ input: agentInput }),
+          options: consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions(),
+          variables: agentInput,
+        },
+      }
+      const { key, options, variables } = entries[kind]
+      const created = {
+        id: 'key-1',
+        token: 'secret',
+        type: kind,
+        dataset_ids: [],
+        knowledge_space_ids: [],
+      }
+      client.setQueryData(key, { data: [], max_keys: 3 })
+      await success(options, created, variables)
+      expect(client.getQueryData(key)).toEqual({ data: [created], max_keys: 3 })
+
+      invalidateQueries.mockClear()
+      const context: MutationFunctionContext = { client, meta: undefined }
+      await (options.onError as MutationCallback)(
+        new Error('Limit exceeded'),
+        variables,
+        undefined,
+        context,
+      )
+      expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: kind === 'dataset' ? consoleQuery.datasets.apiKeys.get.key() : key,
+      })
+      if (kind === 'agent')
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input: agentInput }),
+        })
+    },
+  )
+})

@@ -126,7 +126,7 @@ function render(ui: ReactElement) {
     consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
       input: { params: { resource_id: 'app-1' } },
     }),
-    { data: [] },
+    { data: [], max_keys: 10 },
   )
   if (publishedWorkflow)
     queryClient.setQueryData(appWorkflowQueryOptions('app-1').queryKey, publishedWorkflow)

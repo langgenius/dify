@@ -106,6 +106,16 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       apiKeys: {
         post: {
           mutationOptions: {
+            // Agent keys use their App's capacity; refresh it after a rejected create.
+            onError: (_error, variables, _result, context) => {
+              const input = { params: { agent_id: variables.params.agent_id } }
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
+              ])
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.agent.byAgentId.apiKeys.get.queryKey({ input }),
+              ])
+            },
             // Writes the new key into its list, so the one-time secret shows at once; API
             // access refreshes in the background.
             onSuccess: (created, variables, _result, context) => {
