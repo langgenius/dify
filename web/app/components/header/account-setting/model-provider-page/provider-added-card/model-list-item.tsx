@@ -3,7 +3,7 @@ import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId } from 'react'
@@ -13,7 +13,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { canConfigureModelsAtom } from '../atoms'
 import { ModelStatusEnum } from '../declarations'
-import { useUpdateModelList } from '../hooks'
 import { ConfigModel } from '../model-auth'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
@@ -50,22 +49,12 @@ const ModelListItem = ({
   )
   const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
   const canConfigureModels = useAtomValue(canConfigureModelsAtom)
-  const queryClient = useQueryClient()
-  const updateModelList = useUpdateModelList()
   const { mutateAsync: enableModel } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.enable.patch.mutationOptions(),
   )
   const { mutateAsync: disableModel } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.disable.patch.mutationOptions(),
   )
-  const modelProviderModelListQueryKey =
-    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
-      input: {
-        params: {
-          provider: provider.provider,
-        },
-      },
-    })
 
   const toggleModelEnablingStatus = useCallback(
     async (enabled: boolean) => {
@@ -74,26 +63,9 @@ const ModelListItem = ({
         params: { provider: provider.provider },
         body: { model: model.model, model_type: model.model_type },
       })
-
-      queryClient.invalidateQueries({
-        queryKey: modelProviderModelListQueryKey,
-        exact: true,
-        refetchType: 'none',
-      })
-      updateModelList(model.model_type)
       onChange?.(provider.provider)
     },
-    [
-      disableModel,
-      enableModel,
-      model.model,
-      model.model_type,
-      modelProviderModelListQueryKey,
-      onChange,
-      provider.provider,
-      queryClient,
-      updateModelList,
-    ],
+    [disableModel, enableModel, model.model, model.model_type, onChange, provider.provider],
   )
 
   const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, {

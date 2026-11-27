@@ -7,7 +7,7 @@ import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
 import { DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toAgentThoughtItem } from '@/app/components/base/chat/agent-thought'
 import Chat from '@/app/components/base/chat/chat'
@@ -32,7 +32,6 @@ export function AgentLogDetailPanel({
   const { t } = useTranslation(['agentV2', 'appLog', 'common'])
   const { t: tAgentV2 } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
-  const queryClient = useQueryClient()
   const feedbackMutation = useMutation(
     consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions({
       meta: { errorToast: false },
@@ -78,14 +77,6 @@ export function AgentLogDetailPanel({
           content: feedback.content,
         },
       })
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.logs.get.key(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
-        }),
-      ])
     } catch (error) {
       toast.error(
         getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),

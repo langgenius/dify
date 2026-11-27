@@ -567,3 +567,97 @@ describe('mutation invalidation fallback', () => {
     await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('server'))
   })
 })
+
+describe('mutation invalidation with console policies', () => {
+  it('refreshes roster agents and evaluation workflow pickers after a workflow publish', async () => {
+    const client = createClient()
+    const agents = await mountQuery(client, consoleQuery.agent.get.queryKey({ input: {} }))
+    const evaluationWorkflows = await mountQuery(
+      client,
+      consoleQuery.workspaces.current.availableEvaluationWorkflows.get.queryKey({ input: {} }),
+    )
+    const datasets = await mountQuery(client, datasetsListKey())
+
+    const observer = new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({
+        mutationFn: async () => ({ result: 'success', created_at: 1 }) as never,
+      }),
+    )
+    await observer.mutate({ params: { app_id: 'app-1' }, body: {} } as never)
+    await settle()
+
+    expect(agents).toHaveBeenCalledTimes(2)
+    expect(evaluationWorkflows).toHaveBeenCalledTimes(2)
+    expect(datasets).toHaveBeenCalledTimes(1)
+  })
+
+  it('reads a skill search again after a rename the policy patched into it', async () => {
+    const client = createClient()
+    const skill = { id: 'skill-1', display_name: 'Before', updated_at: 1 }
+    const detailKey = consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
+      input: { params: { skill_id: 'skill-1' } },
+    })
+    // A search the renamed skill may stop matching: only the server knows its rows.
+    const searchKey = consoleQuery.workspaces.current.skills.get.queryKey({
+      input: { query: { keyword: 'Before' } },
+    })
+    client.setQueryData(detailKey, skill as never)
+    const search = vi.fn(async () => ({ data: search.mock.calls.length === 1 ? [skill] : [] }))
+    const observer = new QueryObserver(client, { queryKey: searchKey, queryFn: search as never })
+    cleanups.push(observer.subscribe(() => undefined))
+    await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+    tick()
+
+    await new MutationObserver(
+      client,
+      consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
+        mutationFn: async () => ({ ...skill, display_name: 'Renamed' }) as never,
+      }),
+    ).mutate({ params: { skill_id: 'skill-1' }, body: { display_name: 'Renamed' } } as never)
+
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual({ data: [] }))
+    expect(search).toHaveBeenCalledTimes(2)
+  })
+
+  it('refetches an environment deployment read the version rename cancelled', async () => {
+    const client = createClient()
+    const firstLoad = createDeferred<unknown>()
+    const detail = vi
+      .fn()
+      .mockReturnValueOnce(firstLoad.promise)
+      .mockResolvedValue({ environment_deployment: { id: 'env-1' } })
+    const observer = new QueryObserver(client, {
+      queryKey:
+        consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey({
+          input: { params: { app_id: 'app-1', environment_id: 'env-1' } },
+        }),
+      queryFn: detail as never,
+    })
+    cleanups.push(observer.subscribe(() => undefined))
+    tick()
+
+    // The editor closes right after Save; nothing else would restart the cancelled read.
+    await new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({
+        mutationFn: async () => ({ id: 'workflow-1', marked_name: 'Renamed' }) as never,
+      }),
+    ).mutate({
+      params: { app_id: 'app-1', workflow_id: 'workflow-1' },
+      body: { marked_name: 'Renamed' },
+    } as never)
+
+    await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+    expect(detail).toHaveBeenCalledTimes(2)
+  })
+
+  it('declares the snippet detail a snippet publish writes into', () => {
+    // The publish cancels reads of the snippet detail before writing it; the fallback refetches
+    // the ones it cancelled.
+    expect(
+      consoleQuery.snippets.bySnippetId.workflows.publish.post.mutationOptions().meta
+        ?.alsoInvalidate,
+    ).toContain('workspaces.current.customizedSnippets')
+  })
+})

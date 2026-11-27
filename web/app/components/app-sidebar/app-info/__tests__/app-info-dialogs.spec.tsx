@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
@@ -287,12 +288,24 @@ it('validates the edit form and submits current values after choosing an icon', 
 
 mockEmojiData()
 
+const appListKeys = () => [
+  consoleQuery.apps.get.key({ type: 'query' }),
+  consoleQuery.apps.starred.get.key({ type: 'query' }),
+  consoleQuery.apps.recent.get.key({ type: 'query' }),
+]
+
+// Like the app's client: the policy waits for the edited lists, the fallback refreshes the rest.
+function createInvalidatingClient() {
+  const queryClient = createConsoleQueryClient({ invalidation: createMutationInvalidation() })
+  for (const queryKey of appListKeys()) queryClient.setQueryData(queryKey, { data: [] })
+  return queryClient
+}
+
 it.each(['duplicate', 'delete'] as const)(
   'preserves shared cache invalidation after a successful %s',
   async (operation) => {
     const user = userEvent.setup()
-    const queryClient = createConsoleQueryClient()
-    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+    const queryClient = createInvalidatingClient()
     const refetchFeatures = vi.fn(() => Response.json(createFeaturesFixture()))
     // Copy invalidates the mounted quota query. Finish its refetch here so a cold
     // features contract cannot consume the next test's one-shot mutation response.
@@ -332,16 +345,13 @@ it.each(['duplicate', 'delete'] as const)(
         operation === 'delete' ? '/apps' : `/app/${app.id}/workflow`,
       ),
     )
+    // The quota and the app lists refresh; a copy's mounted quota refetches.
     if (operation === 'duplicate')
       await waitFor(() => expect(refetchFeatures).toHaveBeenCalledOnce())
-    for (const queryKey of [
-      consoleQuery.apps.get.key(),
-      consoleQuery.apps.starred.get.key(),
-      consoleQuery.apps.recent.get.key(),
-      consoleQuery.features.get.key(),
-    ]) {
-      expect(invalidate).toHaveBeenCalledWith({ queryKey })
-    }
+    await waitFor(() => {
+      for (const queryKey of [...appListKeys(), consoleQuery.features.get.queryKey()])
+        expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
+    })
   },
 )
 
@@ -367,12 +377,11 @@ it.each([0, 12, null])(
 
 it('keeps the shared edit cache policy when closing after a successful save', async () => {
   const user = userEvent.setup()
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createInvalidatingClient()
   const detailKey = consoleQuery.apps.byAppId.get.queryKey({
     input: { params: { app_id: app.id } },
   })
   queryClient.setQueryData(detailKey, app)
-  const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
   const updated = { ...app, name: 'Saved name' }
   service.request.mockResolvedValueOnce(Response.json(updated))
   renderWithConsoleQuery(<OperationsEntry operation="edit" />, {
@@ -389,17 +398,8 @@ it('keeps the shared edit cache policy when closing after a successful save', as
       expect.objectContaining({ type: 'app_meta_update' }),
     ),
   )
-  for (const queryKey of [
-    consoleQuery.apps.get.key(),
-    consoleQuery.apps.starred.get.key(),
-    consoleQuery.apps.recent.get.key(),
-  ]) {
-    expect(
-      invalidate.mock.calls.filter(
-        ([options]) => JSON.stringify(options?.queryKey) === JSON.stringify(queryKey),
-      ),
-    ).toHaveLength(1)
-  }
+  for (const queryKey of appListKeys())
+    expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
 })
 
 it('closes the switch dialog and opens the converted app after a successful switch', async () => {

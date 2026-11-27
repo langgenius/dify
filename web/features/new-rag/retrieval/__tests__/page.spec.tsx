@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { toast } from '@/app/notifications'
 import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
@@ -258,6 +259,18 @@ async function refetchQueries() {
   })
 }
 
+// Like the app, refresh a mutation's domain after it succeeds. Mirror the app's cache-level
+// error toasts for specs that count the failure's messages.
+function createPageQueryClient(errorToasts: boolean) {
+  const invalidation = createMutationInvalidation()
+  return createConsoleQueryClient({
+    invalidation,
+    ...(errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
+}
+
 async function renderPage({
   errorToasts = false,
   searchParams = '',
@@ -271,10 +284,7 @@ async function renderPage({
         <RetrievalTestPage knowledgeSpaceId="space-1" />
       </KnowledgeSpaceTestProvider>
     </QueryWrapper>,
-    // Mirror the app's cache-level error toasts for specs that count the failure's messages.
-    errorToasts
-      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
-      : undefined,
+    { queryClient: createPageQueryClient(errorToasts) },
   )
   currentQueryClient = view.queryClient
   await settle()

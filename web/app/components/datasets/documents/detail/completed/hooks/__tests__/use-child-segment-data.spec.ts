@@ -7,6 +7,7 @@ import type { DocumentContextValue } from '@/app/components/datasets/documents/d
 import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import { act, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { useChildSegmentData } from '../use-child-segment-data'
@@ -123,7 +124,6 @@ const defaultOptions = {
   currChunkId: 'segment-1',
   isFullDocMode: true,
   onCloseChildSegmentDetail: vi.fn(),
-  refreshChunkListDataWithDetailChanged: vi.fn(),
   updateSegmentInCache: vi.fn(),
 }
 
@@ -144,7 +144,8 @@ const renderChildren = (
   overrides: Partial<Parameters<typeof useChildSegmentData>[0]> = {},
   seed = true,
 ) => {
-  const queryClient = createConsoleQueryClient()
+  // Like the app, refresh a mutation's domain after it succeeds.
+  const queryClient = createConsoleQueryClient({ invalidation: createMutationInvalidation() })
   const children = [
     createMockChildChunk(),
     createMockChildChunk({ id: 'child-2', content: 'Other content' }),
@@ -350,12 +351,11 @@ describe('useChildSegmentData', () => {
     })
   })
 
-  it('adds a new child to its parent and refreshes the owning detail', () => {
+  it('adds a new child to its parent', () => {
     const { result, queryClient } = renderChildren()
     act(() => result.current.onSaveNewChildChunk(createMockChildChunk({ id: 'new-child' })))
     expect(
       queryClient.getQueryData(parentKey)?.data[0]?.child_chunks?.map((child) => child.id),
     ).toEqual(['child-1', 'child-2', 'new-child'])
-    expect(defaultOptions.refreshChunkListDataWithDetailChanged).toHaveBeenCalledOnce()
   })
 })

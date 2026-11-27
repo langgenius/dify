@@ -20,8 +20,13 @@ import { toast } from '@/app/notifications'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
-import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedAppDslVersion,
+} from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
@@ -163,6 +168,8 @@ function renderPipeline({
   permissions?: NonNullable<ReturnType<typeof createDatasetFixture>['permission_keys']>
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
+    // Like the app's client: a publish refreshes the dataset lists in the background.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     systemFeatures: {
       deployment_edition: 'CLOUD',
       enable_marketplace: false,

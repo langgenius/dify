@@ -21,7 +21,6 @@ type UseChildSegmentDataOptions = {
   currChunkId: string
   isFullDocMode: boolean
   onCloseChildSegmentDetail: () => void
-  refreshChunkListDataWithDetailChanged: () => void
   updateSegmentInCache: (
     segmentId: string,
     updater: (seg: SegmentResponse) => SegmentResponse,
@@ -55,7 +54,6 @@ export const useChildSegmentData = (
     currChunkId,
     isFullDocMode,
     onCloseChildSegmentDetail,
-    refreshChunkListDataWithDetailChanged,
     updateSegmentInCache,
   } = options
   const { t } = useTranslation(['common', 'datasetDocuments'])
@@ -149,14 +147,13 @@ export const useChildSegmentData = (
         {
           onSuccess: () => {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+            // The full-document child list refreshes with the invalidation fallback.
             if (parentMode === 'paragraph') {
               // Update parent segment's child_chunks in cache
               updateSegmentInCache(segmentIdParam, (seg) => ({
                 ...seg,
                 child_chunks: seg.child_chunks?.filter((chunk) => chunk.id !== childChunkId),
               }))
-            } else {
-              resetChildList()
             }
           },
           onError: (error) => {
@@ -168,15 +165,7 @@ export const useChildSegmentData = (
         },
       )
     },
-    [
-      datasetId,
-      documentId,
-      parentMode,
-      deleteChildSegment,
-      updateSegmentInCache,
-      resetChildList,
-      t,
-    ],
+    [datasetId, documentId, parentMode, deleteChildSegment, updateSegmentInCache, t],
   )
   const handleUpdateChildChunk = useCallback(
     async (segmentIdParam: string, childChunkId: string, content: string) => {
@@ -216,7 +205,6 @@ export const useChildSegmentData = (
                     : childSeg,
                 ),
               }))
-              refreshChunkListDataWithDetailChanged()
             } else {
               updateChildSegmentInCache(childChunkId, (chunk) => ({
                 ...chunk,
@@ -242,30 +230,21 @@ export const useChildSegmentData = (
       onCloseChildSegmentDetail,
       updateSegmentInCache,
       updateChildSegmentInCache,
-      refreshChunkListDataWithDetailChanged,
       t,
     ],
   )
+  // The segment lists, including the full-document child list, refresh with the invalidation
+  // fallback.
   const onSaveNewChildChunk = useCallback(
     (newChildChunk?: ChildChunkResponse) => {
-      if (parentMode === 'paragraph') {
-        // Update parent segment's child_chunks in cache
-        updateSegmentInCache(currChunkId, (seg) => ({
-          ...seg,
-          child_chunks: [...(seg.child_chunks || []), newChildChunk!],
-        }))
-        refreshChunkListDataWithDetailChanged()
-      } else {
-        resetChildList()
-      }
+      if (parentMode !== 'paragraph') return
+      // Update parent segment's child_chunks in cache
+      updateSegmentInCache(currChunkId, (seg) => ({
+        ...seg,
+        child_chunks: [...(seg.child_chunks || []), newChildChunk!],
+      }))
     },
-    [
-      parentMode,
-      currChunkId,
-      updateSegmentInCache,
-      refreshChunkListDataWithDetailChanged,
-      resetChildList,
-    ],
+    [parentMode, currChunkId, updateSegmentInCache],
   )
   const viewNewlyAddedChildChunk = useCallback(() => {
     const totalPages = childChunkListData?.total_pages || 0

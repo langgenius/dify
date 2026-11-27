@@ -2,8 +2,13 @@ import type { consoleClient } from '@/service/console'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { List } from '../../list'
 import EditAnnotationDialog from '../index'
@@ -66,6 +71,8 @@ async function setup(source: 'chat' | 'list', onlyEditResponse = false) {
         onBatchDelete={vi.fn()}
       />
     ),
+    // Like the app's client: an annotation write refreshes the app's annotation reads and quota.
+    { queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }) },
   )
   const user = userEvent.setup()
   const trigger = screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' })

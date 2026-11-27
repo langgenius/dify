@@ -10,7 +10,7 @@ export function installedAppPolicies(consoleQuery: ConsoleQuery): ConsolePolicie
         configuration: {
           put: {
             mutationOptions: {
-              onSuccess: (result, { params, body }, _onMutateResult, context) => {
+              onSuccess: async (result, { params, body }, _onMutateResult, { client }) => {
                 const query =
                   consoleQuery.installedApps.byInstalledAppId.connections.configuration.get
                 const queryKey = installedAppConnectionConfigurationKey(
@@ -18,7 +18,9 @@ export function installedAppPolicies(consoleQuery: ConsoleQuery): ConsolePolicie
                   { params, query: { conversation_id: body.conversation_id ?? undefined } },
                   body.connection_revision,
                 )
-                context.client.setQueryData(queryKey, result)
+                const filters = { queryKey, exact: true }
+                if (client.isFetching(filters)) await client.cancelQueries(filters)
+                client.setQueryData(queryKey, result)
               },
             },
           },

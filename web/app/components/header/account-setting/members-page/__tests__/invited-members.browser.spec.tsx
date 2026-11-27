@@ -6,8 +6,9 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { TEST_WORKSPACE_ID } from '@/test/console/ids'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { MembersPage } from '../index'
@@ -21,6 +22,8 @@ const setup = (
 ) => {
   let invitations: PendingWorkspaceInvitationResponse[] = []
   const { queryClient } = createConsoleQueryWrapper({
+    // Like the app's client: a write refreshes its domain in the background.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     currentWorkspace: { role: 'owner' },
     systemFeatures: {
       deployment_edition: 'CLOUD',

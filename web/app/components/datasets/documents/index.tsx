@@ -138,26 +138,32 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     [queryClient, datasetId],
   )
 
-  const handleUpdate = useCallback(() => {
-    invalidDocumentList()
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
-    })
-    setTimeout(() => {
-      const params = { dataset_id: datasetId }
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
-          input: { params },
-        }),
-      })
-      queryClient.invalidateQueries({
-        queryKey:
-          consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
-            { input: { params } },
-          ),
-      })
-    }, 5000)
-  }, [queryClient, datasetId, invalidDocumentList])
+  const handleUpdate = useCallback(
+    (operationName?: string) => {
+      // Syncs run through read endpoints, which the invalidation fallback skips.
+      if (operationName === 'sync') {
+        invalidDocumentList()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+        })
+      }
+      setTimeout(() => {
+        const params = { dataset_id: datasetId }
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+            input: { params },
+          }),
+        })
+        queryClient.invalidateQueries({
+          queryKey:
+            consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+              { input: { params } },
+            ),
+        })
+      }, 5000)
+    },
+    [queryClient, datasetId, invalidDocumentList],
+  )
 
   // Metadata editing hook
   const {

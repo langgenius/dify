@@ -2,7 +2,7 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { ConsoleClient } from './index'
 import type { ConsolePolicies } from './policies/types'
 import { createPolicyQueryUtils } from './mutation-policies'
-import { accountPolicies } from './policies/account'
+import { accountPolicies, authPolicies } from './policies/account'
 import { agentPolicies } from './policies/agents'
 import { apiBasedExtensionPolicies } from './policies/api-based-extensions'
 import { appPolicies } from './policies/apps'
@@ -30,6 +30,7 @@ export function createConsolePolicies(query: RouterUtils<ConsoleClient>) {
     {
       workflowRunArchives: workflowRunArchivePolicies(query),
       ...dataSourceAuthPolicies(query),
+      ...authPolicies(query),
       rag: ragPipelinePolicies(query),
       workspaces: workspacePolicies(query),
       account: accountPolicies(query),

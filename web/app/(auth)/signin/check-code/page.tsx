@@ -92,11 +92,7 @@ export default function CheckCode() {
           queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          if (!isEndUserSignIn(searchParams)) {
-            const profileQueryOptions = userProfileQueryOptions()
-            await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
-            await queryClient.query(profileQueryOptions)
-          }
+          if (!isEndUserSignIn(searchParams)) await queryClient.query(userProfileQueryOptions())
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       }

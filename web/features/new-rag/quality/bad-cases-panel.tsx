@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeFsBadCaseResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { GoldenQuestionDraft } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,6 +24,15 @@ import {
   visibleQualityTags,
 } from './quality-model'
 import { QualityRowMenuTrigger } from './quality-row-menu-trigger'
+
+// A rejected update may still have dismissed the case; the caller confirmed it did.
+const refreshBadCases = (queryClient: QueryClient, knowledgeSpaceId: string) =>
+  queryClient.invalidateQueries({
+    queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+      type: 'infinite',
+    }),
+  })
 
 function BadCaseReason({
   question,
@@ -134,6 +144,8 @@ function BadCasePromotionDialog({
     } catch (mutationError) {
       const refreshed = await getBadCase(badCase.id).catch(() => undefined)
       if (refreshed?.status !== 'dismissed') throw mutationError
+      // The policy refreshes the list after a successful update; this one failed.
+      await refreshBadCases(queryClient, knowledgeSpaceId)
     }
   }
 
@@ -169,12 +181,6 @@ function BadCasePromotionDialog({
         }
         throw mutationError
       }
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
-      })
       toast.success(t(($) => $['qualityPage.promotedToast'], { ns: 'knowledgeQuality' }))
       close()
     } catch (error) {
@@ -267,13 +273,9 @@ function BadCaseRow({
       } catch (mutationError) {
         const refreshed = await getBadCase().catch(() => undefined)
         if (refreshed?.status !== 'dismissed') throw mutationError
+        // The row leaves with the refetch; the policy refreshes after a successful update.
+        await refreshBadCases(queryClient, knowledgeSpaceId)
       }
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
-      })
     } catch (error) {
       toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       setPending(false)

@@ -18,10 +18,49 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
               const queryKey = consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryKey({
                 input: { params: { control_space_id: params.control_space_id } },
               })
-              await client.cancelQueries({ queryKey })
+              if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
               client.setQueryData(queryKey, space)
               // Stores the detail from the response and waits for every space list variant.
               return invalidateQueryKeys(client, [consoleQuery.knowledgeFs.spaces.get.key()])
+            },
+          },
+        },
+        // The card keeps the submitted tags until the knowledge lists and the tag counts reload,
+        // also after a rejected replacement, which may still have been applied.
+        tags: {
+          put: {
+            mutationOptions: {
+              onSettled: (_data, _error, _variables, _result, { client }) =>
+                invalidateQueryKeys(client, [
+                  consoleQuery.knowledgeFs.spaces.get.key(),
+                  consoleQuery.tags.get.key({
+                    type: 'query',
+                    input: { query: { type: 'knowledge' } },
+                  }),
+                ]),
+            },
+          },
+        },
+        // Waits for the field list and the documents that show the fields' values.
+        metadata: {
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, { params }, _result, { client }) =>
+                invalidateMetadataQueries(consoleQuery, client, params.control_space_id),
+            },
+          },
+          byFieldId: {
+            patch: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateMetadataQueries(consoleQuery, client, params.control_space_id),
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateMetadataQueries(consoleQuery, client, params.control_space_id),
+              },
             },
           },
         },
@@ -33,7 +72,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.permissions.get.queryKey({
                     input: { params: { control_space_id: params.control_space_id } },
                   })
-                await client.cancelQueries({ queryKey })
+                if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
                 client.setQueryData(queryKey, permissions)
               },
             },
@@ -47,7 +86,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.queryKey({
                     input: { params: { control_space_id: params.control_space_id } },
                   })
-                await client.cancelQueries({ queryKey })
+                if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
                 client.setQueryData(queryKey, externalAccess)
               },
             },
@@ -91,35 +130,47 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryKey({
                     input: { params: { control_space_id: params.control_space_id } },
                   })
-                await client.cancelQueries({ queryKey })
+                if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
                 client.setQueryData(queryKey, response.settings)
               },
             },
           },
         },
         quality: {
+          badCases: {
+            byBadCaseId: {
+              patch: {
+                mutationOptions: {
+                  // Waits for the bad-case list, so a dismissed case leaves it before the row
+                  // stops pending.
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateQueryKeys(client, [
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+                        input: { params: { control_space_id: params.control_space_id } },
+                      }),
+                    ]),
+                },
+              },
+            },
+          },
           replayRuns: {
             post: {
               mutationOptions: {
-                onSuccess: (run, { params }, _result, { client }) => {
+                onSuccess: async (run, { params }, _result, { client }) => {
                   const replayRuns =
                     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns
+                  const queryKey = replayRuns.byRunId.get.queryKey({
+                    input: {
+                      params: { control_space_id: params.control_space_id, run_id: run.id },
+                    },
+                  })
+                  if (client.isFetching({ queryKey, exact: true }))
+                    await client.cancelQueries({ queryKey, exact: true })
                   client.setQueryData(
-                    replayRuns.byRunId.get.queryKey({
-                      input: {
-                        params: { control_space_id: params.control_space_id, run_id: run.id },
-                      },
-                    }),
+                    queryKey,
                     // Polling may already hold a newer revision of the run.
                     (current) => (current && current.revision >= run.revision ? current : run),
                   )
-                  void client.invalidateQueries({
-                    queryKey: replayRuns.get.key({
-                      input: { params: { control_space_id: params.control_space_id } },
-                      type: 'infinite',
-                    }),
-                    refetchType: 'none',
-                  })
                 },
               },
             },
@@ -163,7 +214,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   const get = consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get
                   const input = { params: { control_space_id: params.control_space_id } }
                   const scope = { queryKey: get.key({ input }) }
-                  await client.cancelQueries(scope)
+                  if (client.isFetching(scope)) await client.cancelQueries(scope)
                   client.setQueriesData<InfiniteData<KnowledgeFsGoldenQuestionListResponse>>(
                     { queryKey: get.key({ input, type: 'infinite' }) },
                     (list) =>
@@ -185,14 +236,13 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
         },
         documents: {
           // Waits for the document list (status) and the task list the queued re-index tasks
-          // join; golden questions refresh in the background.
+          // join.
           reindex: {
             post: {
               mutationOptions: {
                 onSuccess: (_data, { params }, _result, { client }) => {
                   const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
                   const input = { params: { control_space_id: params.control_space_id } }
-                  void invalidateQueryKeys(client, [space.goldenQuestions.get.key({ input })])
                   return invalidateQueryKeys(client, [
                     space.logicalDocuments.get.key({ input }),
                     space.backgroundTasks.get.key({ input }),
@@ -204,13 +254,10 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           byDocumentId: {
             patch: {
               mutationOptions: {
-                // Waits for the document's detail and the document list; golden questions that
-                // show a renamed document refresh in the background.
-                onSuccess: (_data, { params, body }, _result, { client }) => {
+                // Waits for the document's detail and the document list.
+                onSuccess: (_data, { params }, _result, { client }) => {
                   const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
                   const input = { params: { control_space_id: params.control_space_id } }
-                  if ('displayName' in body.patch)
-                    void invalidateQueryKeys(client, [space.goldenQuestions.get.key({ input })])
                   return invalidateQueryKeys(client, [
                     space.logicalDocuments.byDocumentId.get.key({ input: { params } }),
                     space.logicalDocuments.get.key({ input }),
@@ -223,26 +270,34 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
         fileScanPolicy: {
           put: {
             mutationOptions: {
-              onSuccess: (policy, variables, _result, context) => {
-                context.client.setQueryData(
+              // Each scanner reports how many knowledge bases select it.
+              meta: { alsoInvalidate: ['fileScan'] },
+              onSuccess: async (policy, variables, _result, context) => {
+                const queryKey =
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
                     input: { params: variables.params },
-                  }),
-                  policy,
-                )
-                // Each scanner reports how many knowledge bases select it.
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.fileScan.providers.get.key(),
-                })
+                  })
+                if (context.client.isFetching({ queryKey, exact: true }))
+                  await context.client.cancelQueries({ queryKey, exact: true })
+                context.client.setQueryData(queryKey, policy)
               },
             },
           },
         },
         delete: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
+            onSuccess: async (_data, variables, _result, context) => {
+              const lists = { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'query' }) }
+              const infiniteLists = {
+                queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'infinite' }),
+              }
+              if (context.client.isFetching(lists) || context.client.isFetching(infiniteLists))
+                await Promise.all([
+                  context.client.cancelQueries(lists),
+                  context.client.cancelQueries(infiniteLists),
+                ])
               context.client.setQueriesData(
-                { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'query' }) },
+                lists,
                 (list: KnowledgeFsSpaceListResponse | undefined) => {
                   if (
                     !list?.data.some(
@@ -259,7 +314,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                 },
               )
               context.client.setQueriesData(
-                { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'infinite' }) },
+                infiniteLists,
                 (list: InfiniteData<KnowledgeFsSpaceListResponse, unknown> | undefined) => {
                   if (
                     !list?.pages.some((page) =>
@@ -329,5 +384,18 @@ function invalidateTidyQueries(query: RouterUtils<ConsoleClient>, client: QueryC
     query.knowledgeFs.spaces.byControlSpaceId.tidy.key(),
     query.knowledgeFs.spaces.byControlSpaceId.documents.key(),
     query.knowledgeFs.spaces.byControlSpaceId.overview.key(),
+  ])
+}
+
+function invalidateMetadataQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  controlSpaceId: string,
+) {
+  const space = query.knowledgeFs.spaces.byControlSpaceId
+  const input = { params: { control_space_id: controlSpaceId } }
+  return invalidateQueryKeys(client, [
+    space.metadata.get.key({ input }),
+    space.logicalDocuments.get.key({ input }),
   ])
 }

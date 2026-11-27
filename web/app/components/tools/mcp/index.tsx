@@ -64,7 +64,7 @@ const MCPList = ({
   const list = providers ?? fallbackMCPToolsQuery.data ?? EMPTY_MCP_TOOLS
   const isLoading = isLoadingProviders ?? fallbackMCPToolsQuery.isLoading
   const queryClient = useQueryClient()
-  // MCP writes have no shared policy yet, so the list refreshes the catalogs it reads from.
+  // Refreshes the catalogs after a provider is opened from elsewhere or its tools are fetched.
   const refreshProviders = useCallback(
     () =>
       Promise.all([
@@ -102,10 +102,9 @@ const MCPList = ({
     consoleQuery.workspaces.current.toolProvider.mcp.delete.mutationOptions(),
   )
 
-  const handleCreate = async (provider: ToolWithProvider) => {
+  const handleCreate = (provider: ToolWithProvider) => {
     if (!canManageMCP) return
 
-    await refreshProviders()
     setCurrentProviderID(provider.id)
     setIsTriggerAuthorize(true)
   }
@@ -148,7 +147,6 @@ const MCPList = ({
     })) as MutationResult
     if (res.result !== 'success') return
 
-    await refreshProviders()
     setCurrentProviderID(editingProvider.id)
     setIsTriggerAuthorize(true)
     setEditingProviderID(undefined)
@@ -168,7 +166,6 @@ const MCPList = ({
     })) as MutationResult
     if (res.result !== 'success') return
 
-    await refreshProviders()
     setCurrentProviderID(undefined)
     setDeletingProviderID(undefined)
   }

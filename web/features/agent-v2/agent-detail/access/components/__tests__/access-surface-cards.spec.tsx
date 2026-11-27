@@ -4,7 +4,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
-import { QueryClient, useQuery } from '@tanstack/react-query'
+import { MutationCache, QueryClient, useQuery } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -12,6 +12,7 @@ import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
@@ -195,7 +196,12 @@ function createConsoleQueryClient(
   webAppAuthEnabled = true,
   agent: AgentAppDetailWithSite = createAgent(),
 ) {
+  // Like the app's client: a site write refreshes the agent behind the app in the background.
+  const invalidation = createMutationInvalidation()
   const queryClient = new QueryClient({
+    mutationCache: new MutationCache({
+      onSuccess: (_data, _variables, _result, mutation) => invalidation.onMutationSuccess(mutation),
+    }),
     defaultOptions: {
       queries: {
         retry: false,
@@ -206,6 +212,7 @@ function createConsoleQueryClient(
       },
     },
   })
+  invalidation.attach(queryClient)
   seedSystemFeatures(queryClient, {
     webapp_auth: {
       enabled: webAppAuthEnabled,
@@ -647,8 +654,6 @@ describe('Agent access surface cards', () => {
         <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
         { agent },
       )
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
-
       await user.click(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
       )
@@ -690,11 +695,13 @@ describe('Agent access surface cards', () => {
       })
       expect(mocks.siteMutation.mock.calls[0]?.[0].body).not.toHaveProperty('enable_sso')
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith({
-          queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-            input: { params: { agent_id: 'agent-1' } },
-          }),
-        })
+        expect(
+          queryClient.getQueryState(
+            consoleQuery.agent.byAgentId.get.queryKey({
+              input: { params: { agent_id: 'agent-1' } },
+            }),
+          )?.isInvalidated,
+        ).toBe(true)
       })
     })
 
