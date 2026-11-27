@@ -284,8 +284,12 @@ class CouchbaseVector(BaseVector):
         analyzed at all — a `TermQuery` on the whole id would match nothing. A `match` query is
         analyzed the same way as the indexed value, and `and` makes every token mandatory.
         """
+        # Couchbase builds its query classes with a runtime factory decorator, so pyrefly sees the
+        # base `SearchQuery.__init__` instead of the real keyword arguments. Go through `Any` here
+        # rather than scattering suppresses over the call sites.
+        match_query: Any = search.MatchQuery
         return search.DisjunctionQuery(
-            *[search.MatchQuery(id, field="metadata.document_id", match_operator="and") for id in document_ids]
+            *[match_query(id, field="metadata.document_id", match_operator="and") for id in document_ids]
         )
 
     @override
@@ -332,7 +336,7 @@ class CouchbaseVector(BaseVector):
         top_k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
         try:
-            search_query: Any = search.QueryStringQuery("text:" + query)
+            search_query: Any = search.QueryStringQuery("text:" + query)  # pyrefly: ignore[bad-argument-count]
             if document_ids_filter:
                 ids_filter = self._build_document_ids_filter(document_ids_filter)
                 search_query = search.ConjunctionQuery(search_query, ids_filter)
