@@ -1317,11 +1317,12 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:agent-app-access-service-boundary]
-name = Agent App access and Sandbox services and contracts are framework and persistence neutral
+name = Agent App access, configuration and Sandbox contracts are framework and persistence neutral
 type = forbidden
 source_modules =
-    services.app.agent_app_service
-    services.app.agent_app_contracts
+    services.agent.agent_app_service
+    services.agent.agent_app_contracts
+    services.agent.agent_config_contracts
     services.agent.sandbox_service
     services.agent.sandbox_contracts
 forbidden_modules =
@@ -1722,7 +1723,9 @@ forbidden_modules =
     services.agent
 allow_indirect_imports = True
 ignore_imports =
-    # This neutral store port is covered by the application boundary below.
+    # These contracts have their own framework and persistence boundaries.
+    repositories.agent.agent_app_repository -> services.agent.agent_app_contracts
+    repositories.agent.agent_app_repository -> services.agent.agent_config_contracts
     repositories.agent.agent_app_repository -> services.agent.build_session_store
     repositories.agent.agent_app_repository -> services.agent.app_composer_store
     repositories.agent.agent_app_repository -> services.agent.errors

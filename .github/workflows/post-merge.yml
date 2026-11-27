@@ -78,7 +78,6 @@ jobs:
               - 'api/services/entities/agent_tool_inner.py'
               - 'api/services/errors/agent_tool_inner.py'
               - 'api/services/agent/**'
-              - 'api/services/app/agent_*.py'
               - 'api/repositories/agent/**'
               - 'api/extensions/application_services/agent.py'
               - 'api/models/agent.py'

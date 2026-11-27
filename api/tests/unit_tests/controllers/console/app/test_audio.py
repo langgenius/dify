@@ -45,7 +45,7 @@ from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.enums import ConversationFromSource
 from models.model import App as _agent_audio_readonly_App
 from models.model import AppMode as _agent_audio_readonly_AppMode
-from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.audio_types import AudioAppRef

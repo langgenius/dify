@@ -84,6 +84,29 @@ from repositories.app.console_repository import (
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from repositories.tag_repository import TagRepository
+from services.agent.agent_app_contracts import (
+    AgentApiAccess,
+    AgentApiAccessChange,
+    AgentAppAccessNotReadyError,
+    AgentAppCopied,
+    AgentAppCopy,
+    AgentAppDetail,
+    AgentAppListItem,
+    AgentAppListPage,
+    AgentAppNameConflictError,
+    AgentAppNotFoundError,
+    AgentReferencingWorkflow,
+)
+from services.agent.agent_config_contracts import (
+    AgentConfigNodeUnboundError,
+    AgentConfigRuntimeMissingError,
+    AgentConfigSelection,
+    AgentConfigVersionMissingError,
+    AgentConfigWorkflowMissingError,
+)
+from services.agent.agent_config_contracts import (
+    AgentConfigVersionKind as ConfigSelectionKind,
+)
 from services.agent.app_composer_store import (
     AgentComposerAgentMissingError,
     AgentComposerCandidateSource,
@@ -113,29 +136,6 @@ from services.agent.build_session_store import (
 )
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
-from services.agent_config_contracts import (
-    AgentConfigNodeUnboundError,
-    AgentConfigRuntimeMissingError,
-    AgentConfigSelection,
-    AgentConfigVersionMissingError,
-    AgentConfigWorkflowMissingError,
-)
-from services.agent_config_contracts import (
-    AgentConfigVersionKind as ConfigSelectionKind,
-)
-from services.app.agent_app_contracts import (
-    AgentApiAccess,
-    AgentApiAccessChange,
-    AgentAppAccessNotReadyError,
-    AgentAppCopied,
-    AgentAppCopy,
-    AgentAppDetail,
-    AgentAppListItem,
-    AgentAppListPage,
-    AgentAppNameConflictError,
-    AgentAppNotFoundError,
-    AgentReferencingWorkflow,
-)
 from services.app_audio_service import AgentTextToSpeechSource
 from services.audio_types import AudioAppRef
 from services.entities.app_entities import (

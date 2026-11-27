@@ -34,12 +34,12 @@ from repositories.app.console_repository import (
     require_console_app,
 )
 from repositories.app.response import app_record
+from services.agent.agent_app_contracts import AgentAppDetail
 from services.agent.errors import AgentNameConflictError
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.app.access import AppAccessFilter, resolve_app_access_filter
-from services.app.agent_app_contracts import AgentAppDetail
 from services.app.console_service import (
     AppLifecycle,
     AppPermissions,

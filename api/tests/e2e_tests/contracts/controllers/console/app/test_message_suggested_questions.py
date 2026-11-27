@@ -46,8 +46,8 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from services.agent.agent_app_service import AgentAppAccessService
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
-from services.app.agent_app_service import AgentAppAccessService
 from services.app_tracing_config_service import AppTracingConfigService
 from services.entities.message_entities import MessageAccount
 from services.evaluation_service import EvaluationService

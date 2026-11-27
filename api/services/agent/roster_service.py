@@ -42,6 +42,7 @@ from repositories.agent.agent_runtime_app import (
     resolve_agent_runtime_app,
 )
 from repositories.agent.agent_version_queries import visible_version_ids, visible_version_operations
+from services.agent.agent_app_contracts import AgentReferencingWorkflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
@@ -51,7 +52,6 @@ from services.agent.errors import (
 )
 from services.agent.knowledge_spaces import validate_agent_knowledge_spaces
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
-from services.app.agent_app_contracts import AgentReferencingWorkflow
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection

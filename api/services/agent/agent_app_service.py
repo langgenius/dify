@@ -5,8 +5,7 @@ from dataclasses import replace
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
-from services.agent_config_contracts import AgentConfigSelection
-from services.app.agent_app_contracts import (
+from services.agent.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
     AgentAppCopied,
@@ -16,6 +15,7 @@ from services.app.agent_app_contracts import (
     AgentAppNotFoundError,
     AgentReferencingWorkflow,
 )
+from services.agent.agent_config_contracts import AgentConfigSelection
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
