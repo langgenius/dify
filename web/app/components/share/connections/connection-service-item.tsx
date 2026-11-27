@@ -70,7 +70,7 @@ export default function ConnectionServiceItem({
         <span id={descriptionId} className="system-xs-regular wrap-anywhere text-text-tertiary">
           {description}
         </span>
-        {warning && (
+        {Boolean(warning) && (
           <span id={warningId} className="system-xs-regular wrap-anywhere text-text-warning">
             {warning}
           </span>

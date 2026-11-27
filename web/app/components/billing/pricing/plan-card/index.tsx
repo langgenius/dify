@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getBillingErrorMessage } from '../../billing-error'
 import { ALL_PLANS } from '../../config'
 import { CloudPlanFeatures } from './features'
@@ -41,6 +42,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
   const currentPlan = billing?.currentPlan
   const isEducationDiscountEligible = billing?.isEducationDiscountEligible
   const { t } = useTranslation(['billing', 'common', 'education'])
+  const describeRequestError = useRequestErrorDescriber()
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [pendingAction, setPendingAction] = React.useState<'plan' | 'education' | null>(null)
   const isYearly = billingInterval === 'year'
@@ -113,7 +115,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
       if (!url) throw new Error('Missing billing URL')
       window.location.href = url
     } catch (error) {
-      toast.error(getBillingErrorMessage(error, t))
+      toast.error(getBillingErrorMessage(error, t, describeRequestError))
     } finally {
       setPendingAction(null)
     }

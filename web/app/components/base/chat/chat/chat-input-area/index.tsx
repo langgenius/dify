@@ -392,7 +392,7 @@ const ChatInputArea = ({
           </div>
         )}
         {isMultipleLine && <div className="px-2.25">{operation}</div>}
-        {disabled && disabledInputAction && (
+        {disabled && Boolean(disabledInputAction) && (
           <div className="pointer-events-auto absolute inset-0">{disabledInputAction}</div>
         )}
       </div>
