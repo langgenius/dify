@@ -418,9 +418,11 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    // The form shows the server's reason once; the cache adds no toast for it.
-    await expect.element(page.getByRole('alert')).toHaveTextContent('response lost')
-    expect(page.getByText('response lost').elements()).toHaveLength(1)
+    // The form shows its own text once for an uncataloged code; the cache adds no toast for it.
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent('knowledgeSources.addSourceFailed')
+    expect(page.getByText('knowledgeSources.addSourceFailed').elements()).toHaveLength(1)
     await expect.element(page.getByRole('button', { name: 'Leave source setup' })).toBeDisabled()
     await expect
       .element(page.getByRole('checkbox', { name: 'Getting started' }))
