@@ -6,7 +6,8 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
@@ -36,6 +37,8 @@ async function setup(ids: string[]) {
   const fake = installFakeApi({
     console: {
       knowledgeFs: {
+        // The invalidation fallback refetches the knowledge features after the delete.
+        features: { get: () => ({ agent_enabled: false, upload_enabled: true }) },
         spaces: {
           byControlSpaceId: {
             logicalDocuments: {
@@ -87,6 +90,8 @@ async function setup(ids: string[]) {
   })
   onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({
+    // Like the app, refresh a mutation's domain after it succeeds.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     systemFeatures: { deployment_edition: 'ENTERPRISE' },
     features: { enable_knowledge_fs: true },
     knowledgeFsFeatures: { upload_enabled: true },

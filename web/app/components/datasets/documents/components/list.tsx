@@ -43,7 +43,7 @@ type DocumentListProps = {
   datasetId: string
   pagination: PaginationProps
   onDelete: (id: string, row: HTMLTableRowElement | null) => void
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
   onManageMetadata: () => void
   remoteSortValue: string
   onSortChange: (value: SortType) => void

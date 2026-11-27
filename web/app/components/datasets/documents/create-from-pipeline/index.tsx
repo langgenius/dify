@@ -73,7 +73,7 @@ const CreateFormPipeline = () => {
   const [documents, setDocuments] = useState<PipelineDocument[]>([])
 
   // Data fetching
-  const { data: pipelineNodes, isFetching: isFetchingPipelineInfo } = useQuery(
+  const { data: pipelineNodes, isLoading: isLoadingPipelineInfo } = useQuery(
     consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryOptions({
       input: { params: { pipeline_id: pipelineId || '' } },
       enabled: !!pipelineId,
@@ -243,7 +243,8 @@ const CreateFormPipeline = () => {
       router.replace(`/datasets/${dataset.id}/documents`)
   }, [dataset, router, shouldRedirectToDocuments])
 
-  if (isFetchingPipelineInfo) return <LoadingPlaceholder className="h-full" />
+  // Only the first load: a background refetch must not unmount the form and its edits.
+  if (isLoadingPipelineInfo) return <LoadingPlaceholder className="h-full" />
 
   if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments)
     return <LoadingPlaceholder className="h-full" />

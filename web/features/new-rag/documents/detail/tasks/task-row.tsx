@@ -43,14 +43,16 @@ export function DocumentTaskRow({
   cancelActionCount,
   documentTitle,
   documentsPending,
-  onSettled,
+  onFailed,
   retryActionCount,
   task,
 }: {
   cancelActionCount: number
   documentTitle?: string
   documentsPending: boolean
-  onSettled: () => Promise<unknown>
+  // A rejected cancel or retry may still have reached the server; the fallback refreshes after
+  // a successful one.
+  onFailed: () => Promise<unknown>
   retryActionCount: number
   task: BackgroundTask
 }) {
@@ -184,8 +186,7 @@ export function DocumentTaskRow({
           error,
           messageKey,
         })
-    } finally {
-      void onSettled()
+      void onFailed()
     }
   }
 

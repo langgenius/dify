@@ -37,7 +37,7 @@ import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
 import { KnowledgeListTitleBar } from './title-bar'
-import { useDatasetList, useInvalidDatasetList } from './use-dataset-list'
+import { useDatasetList } from './use-dataset-list'
 
 const knowledgeViewParser = parseAsStringLiteral(['classic', 'agent']).withDefault('classic')
 
@@ -47,7 +47,6 @@ function LegacyList() {
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
-  const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
@@ -188,7 +187,6 @@ function LegacyList() {
         type="knowledge"
         show={showTagManagementDialog}
         onClose={() => setShowTagManagementDialog(false)}
-        onTagsChange={invalidDatasetList}
       />
     </div>
   )

@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
@@ -523,6 +524,18 @@ const connectionsKey = () =>
 
 let currentQueryClient: ReturnType<typeof renderWithConsoleQuery>['queryClient'] | undefined
 
+// Like the app, refresh a mutation's domain after it succeeds. Mirror the app's cache-level
+// error toasts for specs that count the failure's messages.
+function createPageQueryClient(errorToasts: boolean) {
+  const invalidation = createMutationInvalidation()
+  return createConsoleQueryClient({
+    invalidation,
+    ...(errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
+}
+
 /** Renders inside the space shell's context; by default waits until every settled request lands. */
 async function renderPage(ui: ReactElement, { errorToasts = false, settle = true } = {}) {
   const view = renderWithConsoleQuery(
@@ -531,10 +544,7 @@ async function renderPage(ui: ReactElement, { errorToasts = false, settle = true
     >
       {ui}
     </KnowledgeSpaceTestProvider>,
-    // Mirror the app's cache-level error toasts for specs that count the failure's messages.
-    errorToasts
-      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
-      : undefined,
+    { queryClient: createPageQueryClient(errorToasts) },
   )
   currentQueryClient = view.queryClient
   if (settle) await waitFor(() => expect(view.queryClient.isFetching()).toBe(0))
