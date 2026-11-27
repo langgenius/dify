@@ -3,19 +3,17 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import Engine, create_engine, event, select
+from sqlalchemy import Engine, Select, create_engine, event, select
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
-from services.billing_client.billing import GetSubscriptionInfoReply
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow.tool_credentials import WorkflowToolEndUserAuthError, first_end_user_tool_node
 from services.workflow_service import WorkflowService
-from tests.helpers import billing_builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 
@@ -240,26 +238,33 @@ def test_publish_checks_tool_after_external_validation(
         sqlite_session.commit()
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     service = WorkflowService(sessionmaker(bind=sqlite_engine))
-    locks: list[str] = []
+    tool_locks: list[type[App] | type[WorkflowToolProvider]] = []
 
     def record_lock(state: ORMExecuteState) -> None:
-        if "FOR UPDATE" in str(state.statement):
-            locks.append(str(state.statement))
+        # The draft is already locked to keep its graph in sync with Agent node bindings.
+        statement = state.statement
+        if isinstance(statement, Select) and "FOR UPDATE" in str(statement):
+            for column in statement.column_descriptions:
+                entity = column["entity"]
+                if entity is App or entity is WorkflowToolProvider:
+                    tool_locks.append(entity)
 
-    def validate_before_lock(*_args: object, **_kwargs: object) -> None:
-        assert not locks
+    def validate_before_tool_lock(*_args: object, **_kwargs: object) -> None:
+        assert not tool_locks
 
-    def billing_before_lock(*_args: object, **_kwargs: object) -> GetSubscriptionInfoReply:
-        assert not locks
-        return billing_builders.subscription_info("professional")
+    def plan_before_tool_lock(*_args: object, **_kwargs: object) -> CloudPlan:
+        assert not tool_locks
+        return CloudPlan.PROFESSIONAL
 
     event.listen(sqlite_session, "do_orm_execute", record_lock)
     try:
         with (
-            patch.object(service, "_validate_publish_tool_credentials", side_effect=validate_before_lock) as auth,
-            patch.object(service, "_validate_workflow_credentials", side_effect=validate_before_lock) as policy,
+            patch.object(service, "_validate_publish_tool_credentials", side_effect=validate_before_tool_lock) as auth,
+            patch.object(service, "_validate_workflow_credentials", side_effect=validate_before_tool_lock) as policy,
             patch("services.workflow_service.SystemFeatureService.is_plugin_manager_enabled", return_value=True),
-            patch("services.workflow_service.BillingService.get_info", side_effect=billing_before_lock) as billing,
+            patch(
+                "services.workflow_service.FeatureService.get_workspace_plan", side_effect=plan_before_tool_lock
+            ) as plan,
             patch("services.workflow_service.app_published_workflow_was_updated") as published,
         ):
             if existing_tool:
@@ -271,7 +276,7 @@ def test_publish_checks_tool_after_external_validation(
                 assert result.version != Workflow.VERSION_DRAFT
             auth.assert_called_once()
             policy.assert_called_once()
-            billing.assert_called_once()
-            assert len(locks) == 2
+            plan.assert_called_once_with(app.tenant_id)
+            assert tool_locks == [App, WorkflowToolProvider]
     finally:
         event.remove(sqlite_session, "do_orm_execute", record_lock)

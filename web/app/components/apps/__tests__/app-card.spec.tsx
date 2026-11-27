@@ -649,14 +649,10 @@ describe('AppCard', () => {
       await user.click(trigger)
       await user.click(await screen.findByRole('option', { name: 'Tag 1' }))
       await user.keyboard('{Escape}')
-      await waitFor(() =>
-        expect(api.bind).toHaveBeenCalledWith(
-          {
-            body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
-          },
-          { context: { silent: true } },
-        ),
-      )
+      await waitFor(() => expect(api.bind).toHaveBeenCalledOnce())
+      expect(api.bind.mock.calls[0]![0]).toEqual({
+        body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
+      })
       expect(mockPush).not.toHaveBeenCalled()
     },
   )

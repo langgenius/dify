@@ -68,7 +68,7 @@ export default function CreatorContent({
   const [pluginNextPage, setPluginNextPage] = useState(inventory?.pluginNextPage ?? 2)
   const [templateNextPage, setTemplateNextPage] = useState(inventory?.templateNextPage ?? 2)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [loadMoreFailed, setLoadMoreFailed] = useState(false)
+  const [loadMoreFailed, setLoadMoreFailed] = useState(inventory?.loadFailed ?? false)
   if (creations !== sourceCreations) {
     setSourceCreations(creations)
     setLoadedCreations(creations)
@@ -76,7 +76,7 @@ export default function CreatorContent({
     setTemplateHasMore(inventory?.templateHasMore ?? false)
     setPluginNextPage(inventory?.pluginNextPage ?? 2)
     setTemplateNextPage(inventory?.templateNextPage ?? 2)
-    setLoadMoreFailed(false)
+    setLoadMoreFailed(inventory?.loadFailed ?? false)
   }
   const sortOptions: Array<{ value: CreatorSortField; label: string }> = [
     {
@@ -227,9 +227,11 @@ export default function CreatorContent({
           ))}
         </div>
       ) : (
-        <div className="w-full py-12 text-center system-sm-regular text-text-tertiary">
-          {t(($) => $['marketplace.creatorProfile.empty'], { ns: 'plugin' })}
-        </div>
+        !loadMoreFailed && (
+          <div className="w-full py-12 text-center system-sm-regular text-text-tertiary">
+            {t(($) => $['marketplace.creatorProfile.empty'], { ns: 'plugin' })}
+          </div>
+        )
       )}
 
       {hasMore && (

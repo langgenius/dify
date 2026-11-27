@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { setLocaleOnClient } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -131,7 +132,7 @@ describe('Invitation activation', () => {
             timezone: 'Asia/Shanghai',
           },
         },
-        { context: { silent: true, handleUnauthorizedLocally: true } },
+        { context: { handleUnauthorizedLocally: true } },
       )
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
@@ -148,7 +149,7 @@ describe('Invitation activation', () => {
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
       expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
         { body: { token: 'invite-token' } },
-        { context: { silent: true, handleUnauthorizedLocally: true } },
+        { context: { handleUnauthorizedLocally: true } },
       )
       expect(setLocaleOnClient).not.toHaveBeenCalled()
     },
@@ -193,6 +194,30 @@ describe('Invitation activation', () => {
     await user.click(submit)
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
     expect(screen.queryByText('login.invitationWorkspaceFull')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      name: 'the server message',
+      error: createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_token',
+        message: 'Server says why',
+      }),
+      expected: 'Server says why',
+    },
+    {
+      name: 'a generic message',
+      error: new TypeError('Failed to fetch'),
+      expected: 'common.api.actionFailed',
+    },
+  ])('reports an undeclared activation failure with $name', async ({ error, expected }) => {
+    const toastError = vi.spyOn(toast, 'error')
+    const user = userEvent.setup()
+    mocks.activate.mockRejectedValueOnce(error)
+    setup()
+    await user.type(screen.getByLabelText('login.name'), 'Invitee{Enter}')
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(expected))
+    expect(mocks.replace).not.toHaveBeenCalled()
   })
 
   it('falls back to console home for an external redirect', async () => {

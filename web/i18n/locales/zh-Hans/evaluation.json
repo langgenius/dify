@@ -7,7 +7,7 @@
   "batch.fieldHelp.expectedToolCalls": "以 JSON 数组填写 Agent 预期调用的工具和参数。",
   "batch.fieldHelp.index": "填写不重复的整数作为本条测试的序号，方便定位评测结果。",
   "batch.fieldHelp.input": "填写本条测试的输入内容，例如用户问题、指令或该字段要求的值。",
-  "batch.fieldHelp.retrievalExpectedOutput": "填写本条问题的参考答案或关键事实，用于评估检索内容的相关性和覆盖程度。",
+  "batch.fieldHelp.retrievalExpectedOutput": "填写本条问题的参考答案或关键事实，用于评测检索内容的相关性和覆盖程度。",
   "batch.fieldHelp.successCriteria": "填写 Agent 完成任务必须满足的条件，每行一条；评测会逐条判断。没有额外条件可留空。",
   "batch.fileRequired": "请先上传评测数据集文件，再运行测试。",
   "batch.loadingInputFields": "正在加载模板列...",
@@ -97,6 +97,7 @@
   "history.status.cancelled": "已取消",
   "history.status.completed": "已完成",
   "history.status.failed": "失败",
+  "history.status.notCompleted": "任务未能完成",
   "history.status.partiallyFailed": "部分失败",
   "history.status.pending": "等待中",
   "history.status.running": "运行中",
@@ -136,7 +137,7 @@
   "metrics.custom.warningBadge": "待配置",
   "metrics.custom.workflowLabel": "评测工作流",
   "metrics.custom.workflowPlaceholder": "选择工作流",
-  "metrics.description": "从内置指标中选择（如 Groundedness 和 Correctness），以评估你的工作流输出。",
+  "metrics.description": "从内置指标中选择（如 Groundedness 和 Correctness），以评测你的工作流输出。",
   "metrics.groups.operations": "运行",
   "metrics.groups.other": "其他",
   "metrics.groups.quality": "质量",
@@ -167,5 +168,7 @@
   "results.status.passed": "通过",
   "results.title": "测试详情",
   "title": "评测",
-  "unavailableUntilPublished": "请先发布，再配置评测。"
+  "unavailableUntilPublished": "请先发布，再配置评测。",
+  "upgradePreview.description": "升级到 Professional 或 Team 版计划，即可配置指标并使用自己的数据运行批量测试。",
+  "upgradePreview.title": "你正在使用示例数据预览评测"
 }

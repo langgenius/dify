@@ -97,6 +97,7 @@
   "history.status.cancelled": "Отменено",
   "history.status.completed": "Завершено",
   "history.status.failed": "Ошибка",
+  "history.status.notCompleted": "Не удалось завершить задачу",
   "history.status.partiallyFailed": "Завершено с ошибками",
   "history.status.pending": "В ожидании",
   "history.status.running": "Выполняется",
@@ -169,5 +170,7 @@
   "results.status.passed": "Пройдено",
   "results.title": "Подробности теста",
   "title": "Оценка",
-  "unavailableUntilPublished": "Сначала опубликуйте, чтобы настроить оценку."
+  "unavailableUntilPublished": "Сначала опубликуйте, чтобы настроить оценку.",
+  "upgradePreview.description": "Перейдите на тариф Professional или Team, чтобы настраивать метрики и запускать пакетные тесты на собственных данных.",
+  "upgradePreview.title": "Вы просматриваете оценку на примере данных"
 }

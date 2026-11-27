@@ -231,10 +231,9 @@ describe('VersionHistoryPanel', () => {
 
     await waitFor(() => {
       expect(renderedStore.getState().currentVersion?.id).toBe('published-version-id')
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-        { params: { app_id: 'app-1', workflow_id: 'published-version-id' } },
-        { context: { silent: true } },
-      )
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', workflow_id: 'published-version-id' },
+      })
       expect(renderedStore.getState().isRestoring).toBe(false)
       expect(renderedStore.getState().backupDraft).toBeUndefined()
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()

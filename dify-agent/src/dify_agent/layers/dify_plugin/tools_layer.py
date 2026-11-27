@@ -214,8 +214,14 @@ async def _prepare_tool_arguments(
             raise ValueError(f"tool parameter {parameter.name} not found in tool config")
         else:
             continue
+        parameter_type = parameter.type
+        if parameter.multiple and parameter_type in {
+            DifyPluginToolParameterType.SELECT,
+            DifyPluginToolParameterType.DYNAMIC_SELECT,
+        }:
+            parameter_type = DifyPluginToolParameterType.ARRAY
         prepared_arguments[parameter.name] = await _cast_tool_parameter_value(
-            parameter.type,
+            parameter_type,
             value,
             file_context=file_context,
         )

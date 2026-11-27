@@ -97,6 +97,7 @@
   "history.status.cancelled": "ملغى",
   "history.status.completed": "مكتمل",
   "history.status.failed": "فشل",
+  "history.status.notCompleted": "تعذّر إكمال المهمة",
   "history.status.partiallyFailed": "اكتمل مع إخفاقات",
   "history.status.pending": "قيد الانتظار",
   "history.status.running": "قيد التشغيل",
@@ -171,5 +172,7 @@
   "results.status.passed": "نجح",
   "results.title": "تفاصيل الاختبار",
   "title": "التقييم",
-  "unavailableUntilPublished": "انشر أولاً لإعداد التقييم."
+  "unavailableUntilPublished": "انشر أولاً لإعداد التقييم.",
+  "upgradePreview.description": "قم بالترقية إلى خطة Professional أو Team لتكوين المقاييس وتشغيل الاختبارات الدفعية على بياناتك الخاصة.",
+  "upgradePreview.title": "أنت تعاين التقييم باستخدام بيانات نموذجية"
 }

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { resolveEmoji } from '@/utils/emoji'
 import { EmojiIconEditor } from './emoji-icon-editor'
 import { defaultEmojiBackground, getRandomEmoji, getRandomEmojiBackground } from './emoji-styles'
@@ -188,13 +189,16 @@ function IconPickerSession({
   }, [open])
 
   const upload = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.files.upload.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const uploading = preparing || upload.isPending
   const uploadError =
     preparationError ||
     (upload.isError
-      ? t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' })
+      ? (getRequestErrorMessage(upload.error) ??
+        t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }))
       : '')
   const handleImageChange = (value: ImageIconInputValue | null) => {
     if (uploading) return

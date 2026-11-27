@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Stika ni bilo mogoče odstraniti. Poskusite znova.",
   "directory.removalSingleTitle": "Odstranim {{name}}?",
   "directory.resultCount": "Rezultati: {{count}}",
-  "imPlatform.action.configure": "Konfiguriraj",
   "imPlatform.action.configureChannel": "Konfigurirajte {{provider}}",
   "imPlatform.action.connect": "Poveži",
   "imPlatform.action.copied": "Kopirati",

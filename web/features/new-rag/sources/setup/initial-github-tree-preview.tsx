@@ -12,10 +12,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 
 type DocumentResource = Extract<PreviewResource, { kind: 'document' }>
 type Branch = {
   error: boolean
+  errorMessage?: string
   loaded: boolean
   loading: boolean
   nextCursor: string | null
@@ -141,11 +143,12 @@ export function InitialGitHubTreePreview({
           resources: [...merged.values()],
         })
       })
-    } catch {
+    } catch (error) {
       setBranches((current) => {
         const existing = current.get(scope)
         return new Map(current).set(scope, {
           error: true,
+          errorMessage: getRequestErrorMessage(error),
           loaded: existing?.loaded ?? false,
           loading: false,
           nextCursor: existing?.nextCursor ?? null,
@@ -249,7 +252,9 @@ export function InitialGitHubTreePreview({
       )}
       {root?.error && !root.loaded && (
         <div role="alert" className="rounded-lg bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <p className="system-sm-semibold text-text-primary">
+            {root.errorMessage ?? t(($) => $.providerLoadFailed)}
+          </p>
           <Button
             className="mt-3"
             type="button"

@@ -5,8 +5,13 @@ from typing import Protocol
 
 from machinery.context import RequestContext
 from models.agent_config_entities import AgentSoulConfig
-from models.agent_soul_state import backfill_cli_tool_ids
-from services.agent.app_composer_store import AgentAppComposerStore, AgentComposerState
+from models.agent_soul_state import agent_soul_has_model, backfill_cli_tool_ids
+from services.agent.app_composer_store import (
+    AgentAppComposerStore,
+    AgentComposerState,
+    AgentPublication,
+    AgentPublicationModelMissingError,
+)
 from services.agent.composer_candidates import soul_candidates
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import InvalidComposerConfigError
@@ -45,11 +50,13 @@ class AgentAppComposer:
         store: AgentAppComposerStore,
         authorize_knowledge: ComposerKnowledgeAuthorization,
         workspace_tools: ComposerWorkspaceTools,
+        authorize_publication_bindings: ComposerKnowledgeAuthorization,
     ) -> None:
         """Accept a store that detaches results and integrations callable after it closes its session."""
         self._store = store
         self._authorize_knowledge = authorize_knowledge
         self._workspace_tools = workspace_tools
+        self._authorize_publication_bindings = authorize_publication_bindings
 
     def get(self, context: RequestContext, agent_id: str) -> AgentComposerState:
         """Read the requested Agent's effective configuration without creating a draft."""
@@ -80,18 +87,48 @@ class AgentAppComposer:
         self.get(context, agent_id)
         ComposerConfigValidator.validate_publish_payload(payload)
         if payload.agent_soul is not None:
-            ids = payload.agent_soul.knowledge.dataset_ids()
-            missing = (
-                self._store.missing_composer_datasets(tenant_id=context.active_workspace_id, dataset_ids=ids)
-                if ids
-                else []
-            )
+            self._validate_datasets(context.active_workspace_id, payload.agent_soul)
+        return {"result": "success", "errors": [], **composer_validation_findings(payload)}
+
+    def _validate_datasets(self, tenant_id: str, soul: AgentSoulConfig) -> None:
+        """Reject missing or foreign datasets when validating or publishing a configuration."""
+        ids = soul.knowledge.dataset_ids()
+        if ids:
+            missing = self._store.missing_composer_datasets(tenant_id=tenant_id, dataset_ids=ids)
             if missing:
                 raise InvalidComposerConfigError(
                     "knowledge_dataset_not_found: knowledge sets reference missing or out-of-scope datasets: "
                     + ", ".join(missing)
                 )
-        return {"result": "success", "errors": [], **composer_validation_findings(payload)}
+
+    def publish(self, context: RequestContext, agent_id: str, version_note: str | None) -> AgentPublication:
+        """Validate and authorize a detached draft before attempting to publish it atomically."""
+        tenant_id = context.active_workspace_id
+        source = self._store.prepare_publication(tenant_id=tenant_id, agent_id=agent_id)
+        soul = AgentSoulConfig.model_validate(source.soul)
+        ComposerConfigValidator.validate_publish_payload(
+            ComposerSavePayload(
+                variant=ComposerVariant.AGENT_APP,
+                agent_soul=soul,
+                save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+                version_note=version_note,
+            )
+        )
+        if not agent_soul_has_model(soul):
+            raise AgentPublicationModelMissingError
+        self._validate_datasets(tenant_id, soul)
+        if source.knowledge_app_id is None and soul.knowledge.spaces:
+            raise InvalidComposerConfigError(
+                "knowledge_fs_app_required: Agent Knowledge Base access requires an app-backed Agent"
+            )
+        self._authorize_publication_bindings(tenant_id=tenant_id, account_id=context.account_id, soul=soul)
+        return self._store.publish_composer(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            account_id=context.account_id,
+            source=source,
+            version_note=version_note,
+        )
 
     def candidates(self, context: RequestContext, agent_id: str) -> ComposerCandidatesResponse:
         """Combine detached dataset and Soul data with workspace tools outside the read session."""

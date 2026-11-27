@@ -97,6 +97,7 @@
   "history.status.cancelled": "Annullato",
   "history.status.completed": "Completato",
   "history.status.failed": "Non riuscito",
+  "history.status.notCompleted": "Impossibile completare l’attività",
   "history.status.partiallyFailed": "Completato con errori",
   "history.status.pending": "In attesa",
   "history.status.running": "In esecuzione",
@@ -168,5 +169,7 @@
   "results.status.passed": "Superato",
   "results.title": "Dettagli del test",
   "title": "Valutazione",
-  "unavailableUntilPublished": "Pubblica prima di configurare la valutazione."
+  "unavailableUntilPublished": "Pubblica prima di configurare la valutazione.",
+  "upgradePreview.description": "Esegui l'upgrade a un piano Professional o Team per configurare le metriche ed eseguire test batch sui tuoi dati.",
+  "upgradePreview.title": "Stai visualizzando un'anteprima della valutazione con dati di esempio"
 }

@@ -97,6 +97,7 @@
   "history.status.cancelled": "Скасовано",
   "history.status.completed": "Завершено",
   "history.status.failed": "Помилка",
+  "history.status.notCompleted": "Не вдалося завершити завдання",
   "history.status.partiallyFailed": "Завершено з помилками",
   "history.status.pending": "Очікування",
   "history.status.running": "Виконується",
@@ -169,5 +170,7 @@
   "results.status.passed": "Пройдено",
   "results.title": "Деталі тесту",
   "title": "Оцінювання",
-  "unavailableUntilPublished": "Спершу опублікуйте, щоб налаштувати оцінювання."
+  "unavailableUntilPublished": "Спершу опублікуйте, щоб налаштувати оцінювання.",
+  "upgradePreview.description": "Перейдіть на план Professional або Team, щоб налаштовувати метрики й запускати пакетні тести на власних даних.",
+  "upgradePreview.title": "Ви переглядаєте оцінювання на прикладі даних"
 }

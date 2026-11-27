@@ -10,6 +10,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
@@ -28,18 +29,21 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
       if (!appDetail) return false
 
       if (!workflowId) {
         let syncFailed = false
+        let syncError: unknown
         await doSyncWorkflowDraft(undefined, {
-          onError: () => {
+          onError: (error) => {
             syncFailed = true
+            syncError = error
           },
         })
         if (syncFailed) {
-          toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+          toast.error(getRequestErrorMessage(syncError) ?? t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }
       }
@@ -77,8 +81,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const { items } = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          context: { silent: true },
-          staleTime: 0,
+          meta: { errorToast: false },
         }),
       )
       const list = items.filter((env) => env.value_type === 'secret')

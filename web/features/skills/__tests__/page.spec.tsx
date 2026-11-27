@@ -618,6 +618,23 @@ describe('SkillsPage', () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/created-skill'))
   })
 
+  it('shows the server message when draft creation fails', async () => {
+    const user = userEvent.setup()
+    mocks.createSkillMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_param',
+        message: 'Server says why',
+      }),
+    )
+    renderSkillsPage()
+
+    await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Server says why')
+    })
+  })
+
   it('explains when the workspace skill limit blocks draft creation', async () => {
     const user = userEvent.setup()
     mocks.createSkillMutationFn.mockRejectedValueOnce(
@@ -932,6 +949,17 @@ describe('SkillsPage', () => {
     {
       error: new Error('Skill name "refund-approval" already exists'),
       message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
+    },
+    {
+      error: createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_package',
+        message: 'Server says why',
+      }),
+      message: 'Server says why',
+    },
+    {
+      error: new TypeError('Failed to fetch'),
+      message: 'skill.skillManagement.importFailed',
     },
   ])('explains import errors for $error.code', async ({ error, message }) => {
     const user = userEvent.setup()
@@ -1272,12 +1300,9 @@ describe('SkillsPage', () => {
     await user.click(screen.getByRole('option', { name: 'sales' }))
     await user.keyboard('{Escape}')
     await waitFor(() =>
-      expect(mocks.bindTag).toHaveBeenCalledWith(
-        {
-          body: { type: 'skill', target_id: 'skill-1', tag_ids: ['tag-sales'] },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mocks.bindTag).toHaveBeenCalledWith({
+        body: { type: 'skill', target_id: 'skill-1', tag_ids: ['tag-sales'] },
+      }),
     )
     await user.click(await within(card).findByRole('combobox', { name: 'support, sales' }))
     expect(screen.getByRole('option', { name: 'sales' })).toHaveAttribute('aria-selected', 'true')

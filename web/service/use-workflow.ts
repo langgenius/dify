@@ -1,11 +1,11 @@
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type { ConsoleClientContext } from '@/service/console'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { consoleQuery } from '@/service/console'
 
 // These hooks compose the per-resource generated mutations so the cache policies
-// registered in `service/console/query-policies.ts` still run for each resource kind.
+// registered in `service/console/policies/` still run for each resource kind.
+// Their callers show their own failure messages.
 
 type UpdateVersionParams = {
   resource:
@@ -16,17 +16,21 @@ type UpdateVersionParams = {
   releaseNotes: string
 }
 
-export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
+export const useUpdateWorkflow = () => {
   const { mutateAsync: updateAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({ context }),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: updatePipelineVersion } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions({
-      context,
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: updateSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions({ context }),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const mutateAsync = useCallback(
     ({ resource, versionId, title, releaseNotes }: UpdateVersionParams) => {
@@ -54,17 +58,21 @@ export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
   return { mutateAsync }
 }
 
-export const useDeleteWorkflow = (resource: EditorResource, context?: ConsoleClientContext) => {
+export const useDeleteWorkflow = (resource: EditorResource) => {
   const { mutateAsync: deleteAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions({ context }),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: deletePipelineVersion } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions({
-      context,
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: deleteSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions({ context }),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   return useCallback(

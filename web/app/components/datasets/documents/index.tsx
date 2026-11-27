@@ -30,6 +30,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
@@ -59,7 +60,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   )
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const router = useRouter()
@@ -302,7 +303,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               </AlertDialogDescription>
               {deletion.isError && (
                 <p role="alert" className="text-text-destructive">
-                  {t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
+                  {getRequestErrorMessage(deletion.error) ??
+                    t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
                 </p>
               )}
             </AlertDialogHeader>

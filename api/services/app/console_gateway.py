@@ -74,6 +74,7 @@ from services.entities.dsl_entities import (
     ImportStatus,
     PackagedWorkflowTool,
 )
+from services.errors.app import WorkflowHashNotEqualError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.rbac import contracts as rbac_contracts
@@ -550,6 +551,16 @@ def notify_app_created(context: RequestContext, app: AppRecord) -> None:
     )
 
 
+def inherit_agent_webapp_access(source_app_id: str, target_app_id: str) -> None:
+    """Apply the source App's Enterprise access mode to the committed copy."""
+    if SystemFeatureService.is_webapp_auth_enabled():
+        try:
+            access_mode = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app_id).access_mode
+        except Exception:
+            access_mode = "public"
+        EnterpriseService.WebAppAuth.update_app_access_mode(target_app_id, access_mode)
+
+
 def notify_app_deleted(context: RequestContext, deleted: AppDeletion) -> None:
     """Publish cleanup for an already committed deletion."""
     AppService.notify_deleted_app(deleted, account_id=context.account_id)
@@ -598,18 +609,24 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def create_draft(self, context: RequestContext, app_id: str) -> None:
+        """Ensure an admitted Workflow App has a draft, keeping any competing first save."""
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
-            WorkflowService(self._session_factory).sync_draft_workflow(
-                app_model=app,
-                graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
-                features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
-                unique_hash=None,
-                account=console_app_actor(session, context),
-                environment_variables=[],
-                conversation_variables=[],
-                session=session,
-            )
+            try:
+                WorkflowService(self._session_factory).sync_draft_workflow(
+                    app_model=app,
+                    graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
+                    features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
+                    unique_hash=None,
+                    account=console_app_actor(session, context),
+                    environment_variables=[],
+                    conversation_variables=[],
+                    session=session,
+                    serialize_creation=True,
+                )
+            except WorkflowHashNotEqualError:
+                # A hashless save only conflicts if a draft already exists.
+                return
 
     @override
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion:

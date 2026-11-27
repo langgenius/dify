@@ -207,7 +207,7 @@ def harness(
         app_services,
         _Agents(
             AgentAppAccessService(
-                references=AgentAppRepository(
+                store=AgentAppRepository(
                     session_factory=sqlite_session_factory,
                     stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
                 )

@@ -1470,6 +1470,18 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:console-agent-runtime-controller-boundary]
+name = Console Agent chat and audio handlers do not import repositories directly
+type = forbidden
+source_modules =
+    controllers.console.app.audio
+    controllers.console.app.completion
+forbidden_modules =
+    repositories
+# The files still host legacy App handlers. Agent routes reach the runtime
+# through the composition root, which imports concrete repositories.
+allow_indirect_imports = True
+
 [importlinter:contract:account-lifecycle-boundary]
 name = Account lifecycle use cases and contracts are framework and persistence neutral
 type = forbidden

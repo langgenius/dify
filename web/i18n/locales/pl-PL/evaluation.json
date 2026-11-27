@@ -97,6 +97,7 @@
   "history.status.cancelled": "Anulowano",
   "history.status.completed": "Ukończono",
   "history.status.failed": "Niepowodzenie",
+  "history.status.notCompleted": "Nie udało się ukończyć zadania",
   "history.status.partiallyFailed": "Ukończono z błędami",
   "history.status.pending": "Oczekuje",
   "history.status.running": "W toku",
@@ -169,5 +170,7 @@
   "results.status.passed": "Zaliczone",
   "results.title": "Szczegóły testu",
   "title": "Ewaluacja",
-  "unavailableUntilPublished": "Najpierw opublikuj, aby skonfigurować ocenę."
+  "unavailableUntilPublished": "Najpierw opublikuj, aby skonfigurować ocenę.",
+  "upgradePreview.description": "Przejdź na plan Professional lub Team, aby konfigurować metryki i uruchamiać testy wsadowe na własnych danych.",
+  "upgradePreview.title": "Przeglądasz podgląd ewaluacji z przykładowymi danymi"
 }

@@ -97,6 +97,7 @@
   "history.status.cancelled": "Cancelado",
   "history.status.completed": "Concluído",
   "history.status.failed": "Falhou",
+  "history.status.notCompleted": "Não foi possível concluir a tarefa",
   "history.status.partiallyFailed": "Concluído com falhas",
   "history.status.pending": "Pendente",
   "history.status.running": "Em execução",
@@ -168,5 +169,7 @@
   "results.status.passed": "Aprovado",
   "results.title": "Detalhes do teste",
   "title": "Avaliação",
-  "unavailableUntilPublished": "Publique primeiro para configurar a avaliação."
+  "unavailableUntilPublished": "Publique primeiro para configurar a avaliação.",
+  "upgradePreview.description": "Faça upgrade para um plano Professional ou Team para configurar métricas e executar testes em lote com seus próprios dados.",
+  "upgradePreview.title": "Você está visualizando a avaliação com dados de exemplo"
 }

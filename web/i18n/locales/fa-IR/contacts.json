@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "مخاطب حذف نشد. دوباره تلاش کنید.",
   "directory.removalSingleTitle": "{{name}} حذف شود؟",
   "directory.resultCount": "نتایج: {{count}}",
-  "imPlatform.action.configure": "پیکربندی",
   "imPlatform.action.configureChannel": "{{provider}} را پیکربندی کنید",
   "imPlatform.action.connect": "اتصال",
   "imPlatform.action.copied": "کپی",

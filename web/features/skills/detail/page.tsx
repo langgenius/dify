@@ -93,7 +93,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   })
   const publishMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const queriedDetail = detailQuery.data
@@ -232,22 +232,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           }
           await queryClient.invalidateQueries({ queryKey: detailQueryKey })
           await queryClient.refetchQueries({ queryKey: detailQueryKey, type: 'active' })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({
-              type: 'query',
-              input: {
-                params: {
-                  skill_id: skillId,
-                },
-              },
-            }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
-          })
         },
         onError: (error) => {
           toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.detail.publishFailed']))

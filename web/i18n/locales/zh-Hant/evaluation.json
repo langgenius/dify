@@ -7,7 +7,7 @@
   "batch.fieldHelp.expectedToolCalls": "以 JSON 陣列填寫 Agent 預期呼叫的工具與參數。",
   "batch.fieldHelp.index": "填寫不重複的整數作為本筆測試的序號，方便定位評測結果。",
   "batch.fieldHelp.input": "填寫本筆測試的輸入內容，例如使用者問題、指令或此欄位要求的值。",
-  "batch.fieldHelp.retrievalExpectedOutput": "填寫本筆問題的參考答案或關鍵事實，用於評估檢索內容的相關性與涵蓋程度。",
+  "batch.fieldHelp.retrievalExpectedOutput": "填寫本筆問題的參考答案或關鍵事實，用於評測檢索內容的相關性與涵蓋程度。",
   "batch.fieldHelp.successCriteria": "填寫 Agent 完成任務必須符合的條件，每行一項；評測會逐項判斷。沒有額外條件可留空。",
   "batch.fileRequired": "請先上傳評測資料集檔案，再執行測試。",
   "batch.loadingInputFields": "正在載入範本欄位...",
@@ -97,6 +97,7 @@
   "history.status.cancelled": "已取消",
   "history.status.completed": "已完成",
   "history.status.failed": "失敗",
+  "history.status.notCompleted": "任務未能完成",
   "history.status.partiallyFailed": "部分失敗",
   "history.status.pending": "等待中",
   "history.status.running": "執行中",
@@ -136,7 +137,7 @@
   "metrics.custom.warningBadge": "待設定",
   "metrics.custom.workflowLabel": "評測工作流程",
   "metrics.custom.workflowPlaceholder": "選擇工作流程",
-  "metrics.description": "從內建指標中選擇，例如 Groundedness 和 Correctness，以評估你的工作流程輸出。",
+  "metrics.description": "從內建指標中選擇，例如 Groundedness 和 Correctness，以評測你的工作流程輸出。",
   "metrics.groups.operations": "運作",
   "metrics.groups.other": "其他",
   "metrics.groups.quality": "品質",
@@ -167,5 +168,7 @@
   "results.status.passed": "通過",
   "results.title": "測試詳情",
   "title": "評測",
-  "unavailableUntilPublished": "請先發布，再設定評測。"
+  "unavailableUntilPublished": "請先發布，再設定評測。",
+  "upgradePreview.description": "升級至 Professional 或 Team 方案，即可設定指標並使用自己的資料執行批次測試。",
+  "upgradePreview.title": "你正在使用範例資料預覽評測"
 }

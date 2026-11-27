@@ -70,6 +70,14 @@ function fixture({ downloadFailures = 0, producerFails = false } = {}) {
   return { calls, sleeps, options: { env, execute, webDir: '/test/web', sleep } }
 }
 
+function incompleteMetadataResponse() {
+  return Object.assign(new Error('gh api failed: unexpected end of JSON input'), {
+    code: 1,
+    stdout: '[]',
+    stderr: 'unexpected end of JSON input\n',
+  })
+}
+
 test('downloads the producer-selected artifact on consumer-only reruns without a second metadata lookup', async () => {
   const { calls, options } = fixture()
   await downloadWebBuild({
@@ -96,6 +104,62 @@ test('downloads the producer-selected artifact on consumer-only reruns without a
   assert.equal(extract.command, 'tar')
   assert.deepEqual(extract.args.slice(-2), ['-C', '/test/web'])
   await assert.rejects(access(download.args.at(-1)), { code: 'ENOENT' })
+})
+
+for (const list of ['jobs', 'artifacts']) {
+  test(`retries an incomplete ${list} response before downloading the build`, async () => {
+    const { calls, options } = fixture()
+    let requests = 0
+    await downloadWebBuild({
+      ...options,
+      async execute(command, args) {
+        if (args[0] === 'api' && args[1].includes(`/${list}?`)) {
+          requests++
+          if (requests === 1) throw incompleteMetadataResponse()
+        }
+        return options.execute(command, args)
+      },
+    })
+    assert.equal(requests, 2)
+    assert.equal(calls.at(-1).command, 'tar')
+  })
+}
+
+test('stops after a second incomplete jobs response', async () => {
+  const { options } = fixture()
+  const error = incompleteMetadataResponse()
+  let requests = 0
+  await assert.rejects(
+    downloadWebBuild({
+      ...options,
+      async execute() {
+        requests++
+        throw error
+      },
+    }),
+    (actual) => actual === error,
+  )
+  assert.equal(requests, 2)
+})
+
+test('fails immediately when the jobs request is forbidden', async () => {
+  const { options } = fixture()
+  const error = Object.assign(new Error('gh api failed (HTTP 403)'), {
+    code: 1,
+    stderr: 'gh: Resource not accessible by integration (HTTP 403)\n',
+  })
+  let requests = 0
+  await assert.rejects(
+    downloadWebBuild({
+      ...options,
+      async execute() {
+        requests++
+        throw error
+      },
+    }),
+    (actual) => actual === error,
+  )
+  assert.equal(requests, 1)
 })
 
 test('retries a listed artifact whose archive is temporarily unreadable', async () => {
