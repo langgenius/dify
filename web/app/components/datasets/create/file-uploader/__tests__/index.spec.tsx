@@ -126,7 +126,7 @@ it('preserves existing documents through upload progress, server acceptance, pre
         source: 'datasets',
       },
     },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   const onUploadProgress = upload.mock.calls[0]![1]!.context!.onUploadProgress!
   for (const loaded of [53, 100]) {

@@ -110,14 +110,8 @@ it.each([false, true])(
     )
     expect(screen.queryByRole('tab', { name: 'runLog.result' })).not.toBeInTheDocument()
     expect(await screen.findByText('Message execution')).toBeInTheDocument()
-    expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'inspected-app' }, 'run-1', {
-      silent: true,
-    })
-    expect(fetchTracingList).toHaveBeenCalledWith(
-      { kind: 'app', appId: 'inspected-app' },
-      'run-1',
-      { silent: true },
-    )
+    expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'inspected-app' }, 'run-1')
+    expect(fetchTracingList).toHaveBeenCalledWith({ kind: 'app', appId: 'inspected-app' }, 'run-1')
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('Message execution')).not.toBeInTheDocument()

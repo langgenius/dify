@@ -14,7 +14,7 @@ import {
 import { RiFileDownloadLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
+import { Uploader } from '@/features/dsl-import/uploader'
 import { useUpdateDSLModal } from '../hooks/use-update-dsl-modal'
 import VersionMismatchModal from './version-mismatch-modal'
 

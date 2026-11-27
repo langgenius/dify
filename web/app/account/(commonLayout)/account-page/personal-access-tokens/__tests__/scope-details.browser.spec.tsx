@@ -6,7 +6,7 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { page } from 'vite-plus/test/browser'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { installFakeApi } from '@/test/fake-api'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import ScopeDetails from '../scope-details'
 import { renderWithTokenMessages as render } from './browser-test-env'
@@ -243,4 +243,36 @@ it('explains cross-workspace deployment access without labeling it revoked or ex
   await expect.element(dialog.getByText('Switch to this workspace to check access')).toBeVisible()
   await expect.element(dialog.getByText('Deleted', { exact: true })).not.toBeInTheDocument()
   await expect.element(dialog.getByText(/Expired on/)).not.toBeInTheDocument()
+})
+
+it('reports that the saved scope could not load', async () => {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            byTokenId: {
+              get: () => {
+                throw apiError({ status: 404, code: 'not_found', message: 'Token not found' })
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
+  const queryClient = createTestQueryClient()
+  seedSystemFeatures(queryClient)
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ScopeDetails tokenId="019a0000-0000-7000-8000-000000000001" />
+        </DialogContent>
+      </Dialog>
+    </QueryClientTestProvider>,
+  )
+  await expect
+    .element(screen.getByRole('dialog').getByRole('alert'))
+    .toMatchTextContent(/Could not load access tokens/)
 })

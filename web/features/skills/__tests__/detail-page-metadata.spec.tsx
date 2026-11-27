@@ -2,6 +2,7 @@ import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces
 import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import {
   createAgentReference,
   createSkillDetail,
@@ -349,6 +350,26 @@ describe('SkillDetailPage metadata', () => {
         'Renamed skill',
       )
     })
+  })
+
+  it('shows the save failure when a rename fails with an unknown code', async () => {
+    const user = userEvent.setup()
+    mocks.skillMetadataMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'unknown_failure',
+        message: 'Server says why',
+      }),
+    )
+    renderSkillDetailPage()
+
+    await user.click(await screen.findByRole('button', { name: 'common.operation.rename' }))
+    const renameInput = screen.getByRole('textbox', { name: 'common.operation.rename' })
+    await user.clear(renameInput)
+    await user.type(renameInput, 'Renamed skill{Enter}')
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.saveFailed'),
+    )
   })
 
   it('starts inline rename from the sidebar More menu', async () => {

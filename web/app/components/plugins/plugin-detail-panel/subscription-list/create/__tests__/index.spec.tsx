@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   createTriggerOAuthConfigResponseFixture,
@@ -149,13 +150,10 @@ describe('CreateSubscriptionButton', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.manual.title' })
     await waitFor(() =>
-      expect(mockCreateBuilder).toHaveBeenCalledWith(
-        {
-          params: { provider: 'test-provider' },
-          body: { credential_type: 'unauthorized' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mockCreateBuilder).toHaveBeenCalledWith({
+        params: { provider: 'test-provider' },
+        body: { credential_type: 'unauthorized' },
+      }),
     )
     expect(
       within(dialog).getByRole('textbox', { name: /subscriptionName.label/ }),
@@ -185,13 +183,10 @@ describe('CreateSubscriptionButton', () => {
       within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.verify' }),
     ).toBeInTheDocument()
     await waitFor(() =>
-      expect(mockCreateBuilder).toHaveBeenCalledWith(
-        {
-          params: { provider: 'test-provider' },
-          body: { credential_type: 'api-key' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mockCreateBuilder).toHaveBeenCalledWith({
+        params: { provider: 'test-provider' },
+        body: { credential_type: 'api-key' },
+      }),
     )
   })
 
@@ -268,15 +263,44 @@ describe('CreateSubscriptionButton', () => {
       within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.create' }),
     )
     await waitFor(() =>
-      expect(mockBuildSubscription).toHaveBeenCalledWith(
-        {
-          params: { provider: 'test-provider', subscription_builder_id: 'builder-1' },
-          body: { name: 'OAuth updates' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mockBuildSubscription).toHaveBeenCalledWith({
+        params: { provider: 'test-provider', subscription_builder_id: 'builder-1' },
+        body: { name: 'OAuth updates' },
+      }),
     )
     expect(toastMocks.success).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    [
+      'the translated reason',
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'paid_plan_required',
+        message: 'Server says why',
+      }),
+      'requestErrors.code.paid_plan_required',
+    ],
+    [
+      'the localized fallback',
+      new TypeError('Failed to fetch'),
+      'pluginTrigger.modal.oauth.authorization.authFailed',
+    ],
+  ])('reports %s when OAuth cannot start', async (_case, error, message) => {
+    const user = userEvent.setup()
+    mockProviderInfo = providerInfo([SupportedCreationMethods.OAUTH])
+    mockOAuthConfig = oauthConfig(true)
+    mockInitiateOAuth.mockRejectedValueOnce(error)
+    render(<CreateSubscriptionButton />)
+
+    await user.click(screen.getByRole('button', { name: /subscription\.createButton\.oauth/ }))
+    await user.click(
+      within(await screen.findByRole('listbox')).getByRole('option', {
+        name: /subscription\.addType\.options\.oauth\.title/,
+      }),
+    )
+
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(message))
+    expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
   })
 
   it('does not create more than ten subscriptions', async () => {

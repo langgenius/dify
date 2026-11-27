@@ -10,7 +10,7 @@ export function QueryImageThumbnail({
   image,
 }: {
   className?: string
-  image: RetrievalQueryImage
+  image: Pick<RetrievalQueryImage, 'name' | 'previewUrl'>
 }) {
   const frame = cn('rounded-lg ring-1 ring-components-panel-border', className)
   if (!image.previewUrl) {

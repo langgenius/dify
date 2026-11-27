@@ -5,9 +5,11 @@ import { useStoreApi } from 'reactflow'
 import { updatePendingHumanInputForm } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowNodeHumanInputRequired = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
 
   // Notice: Human input required !== Workflow Paused
@@ -28,15 +30,15 @@ export const useWorkflowNodeHumanInputRequired = () => {
       })
       setWorkflowRunningData(newWorkflowRunningData)
 
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
       const nodes = getNodes()
       const currentNodeIndex = nodes.findIndex((node) => node.id === data.node_id)
       const newNodes = produce(nodes, (draft) => {
         draft[currentNodeIndex]!.data._runningStatus = NodeRunningStatus.Paused
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
     },
-    [store, workflowStore],
+    [collaborativeWorkflow, store, workflowStore],
   )
 
   return {

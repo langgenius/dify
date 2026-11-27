@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "تتيح الأدوات للوكيل التصرف، مثل البحث على الويب أو استدعاء تطبيقاتك",
   "agentDetail.configure.tools.empty.title": "لا توجد أدوات بعد",
   "agentDetail.configure.tools.label": "الأدوات",
-  "agentDetail.configure.tools.moreActions": "إجراءات أخرى لـ {{name}}",
   "agentDetail.configure.tools.removeAction": "إزالة {{name}}",
   "agentDetail.configure.tools.removeProvider": "إزالة جميع الأدوات",
   "agentDetail.configure.tools.richTip": "أضف أدوات Dify من مساحة عملك. <docLink>معرفة المزيد</docLink>\n\nالأدوات التي يثبتها الوكيل في sandbox الخاص به لن تظهر هنا، لكنها ستبقى متاحة له.",
@@ -373,5 +372,17 @@
   "agentDetail.versionHistory.restore": "استعادة",
   "agentDetail.versionHistory.versionName": "الإصدار {{version}}",
   "agentDetail.versionHistory.viewOnly": "عرض فقط",
-  "exportAgent": "تصدير Agent"
+  "exportAgent": "تصدير Agent",
+  "toolCallLimit.invalid": "أدخل عددًا صحيحًا أكبر من 0.",
+  "toolCallLimit.label": "حد الاستدعاءات لـ {{toolName}}",
+  "toolCallLimit.maximum": "الحد الأقصى للاستدعاءات",
+  "toolCallLimit.notExecuted": "لم يُنفّذ",
+  "toolCallLimit.reached": "تم بلوغ حد الاستدعاءات ({{limit}} لكل تشغيل). لم يُنفّذ هذا الطلب.",
+  "toolCallLimit.reason": "السبب",
+  "toolCallLimit.set": "تعيين الحد",
+  "toolCallLimit.summary_one": "{{count}} استدعاء / تشغيل",
+  "toolCallLimit.summary_other": "{{count}} استدعاءات / تشغيل",
+  "toolCallLimit.title": "حد الاستدعاءات لكل تشغيل",
+  "toolCallLimit.used_one": "استُخدم {{used}} من {{limit}} استدعاء",
+  "toolCallLimit.used_other": "استُخدم {{used}} من {{limit}} استدعاءات"
 }

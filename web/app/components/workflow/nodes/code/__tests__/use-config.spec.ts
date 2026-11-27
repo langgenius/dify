@@ -2,15 +2,28 @@ import type { CodeNodeType, OutputVar } from '../types'
 import type { Variable } from '@/app/components/workflow/types'
 import { act, waitFor } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { fetchNodeDefault, fetchPipelineNodeDefault } from '@/service/workflow'
 import { renderNodeConfig } from '../../__tests__/render-node-config'
 import { CodeLanguage } from '../types'
 import useConfig from '../use-config'
 
-vi.mock('@/service/workflow', () => ({
-  fetchNodeDefault: vi.fn(),
-  fetchPipelineNodeDefault: vi.fn(),
+type DefaultsInput = { params: Record<string, string>; query: { q: string } }
+const { fetchNodeDefault, fetchPipelineNodeDefault } = vi.hoisted(() => ({
+  fetchNodeDefault: vi.fn<(input: DefaultsInput) => Promise<{ config: unknown }>>(),
+  fetchPipelineNodeDefault: vi.fn<(input: DefaultsInput) => Promise<{ config: unknown }>>(),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.defaultWorkflowBlockConfigs.byBlockType.get': (input) =>
+        fetchNodeDefault(input),
+      'rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.byBlockType.get': (input) =>
+        fetchPipelineNodeDefault(input),
+    }),
+  }
+})
 const createVariable = (variable: string, valueType: VarType = VarType.string): Variable => ({
   variable,
   value_selector: ['start', variable],
@@ -43,10 +56,10 @@ describe('code/use-config', () => {
   })
   beforeEach(() => {
     for (const fetchDefaults of [fetchNodeDefault, fetchPipelineNodeDefault]) {
-      vi.mocked(fetchDefaults).mockReset()
-      vi.mocked(fetchDefaults)
-        .mockResolvedValueOnce({ config: createData() })
-        .mockResolvedValueOnce({ config: python })
+      fetchDefaults.mockReset()
+      fetchDefaults.mockImplementation(async ({ query }) => ({
+        config: JSON.parse(query.q).code_language === CodeLanguage.python3 ? python : createData(),
+      }))
     }
   })
   it('offers integer variables, such as integer tool outputs, as code inputs while rejecting unsupported types', () => {
@@ -81,13 +94,19 @@ describe('code/use-config', () => {
       const fetchDefaults = kind === 'app' ? fetchNodeDefault : fetchPipelineNodeDefault
       const other = kind === 'app' ? fetchPipelineNodeDefault : fetchNodeDefault
       await waitFor(() =>
-        expect(fetchDefaults).toHaveBeenCalledWith(
-          kind === 'app' ? 'app-1' : 'pipeline-1',
-          BlockEnum.Code,
-          { code_language: CodeLanguage.python3 },
-        ),
+        expect(fetchDefaults).toHaveBeenCalledWith({
+          params:
+            kind === 'app'
+              ? { app_id: 'app-1', block_type: BlockEnum.Code }
+              : { pipeline_id: 'pipeline-1', block_type: BlockEnum.Code },
+          query: { q: JSON.stringify({ code_language: CodeLanguage.python3 }) },
+        }),
       )
-      act(() => result.current.config.handleCodeLanguageChange(CodeLanguage.python3))
+      // The defaults reach the hook on the next render.
+      await waitFor(() => {
+        act(() => result.current.config.handleCodeLanguageChange(CodeLanguage.python3))
+        expect(result.current.flow.getNode('node')?.data).toMatchObject(python)
+      })
       expect(result.current.flow.getNode('node')?.data).toMatchObject(python)
       act(() => result.current.config.handleCodeChange('def main(): pass'))
       act(() =>

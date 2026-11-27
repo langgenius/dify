@@ -50,7 +50,7 @@
   "scanner.lastTested": "上次測試：{{time}}",
   "scanner.loadFailed": "掃描服務清單載入失敗。",
   "scanner.neverTested": "尚未測試",
-  "scanner.readOnly": "只有工作空間擁有者和管理員可以管理掃描服務。",
+  "scanner.readOnly": "你沒有管理掃描服務的權限。",
   "scanner.status.active": "正常",
   "scanner.status.error": "異常",
   "scanner.test": "測試",

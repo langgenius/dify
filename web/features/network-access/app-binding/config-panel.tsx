@@ -24,6 +24,7 @@ type AccessControlConfigPanelProps = {
   policies: readonly AccessControlPolicy[]
   ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   ipCheckStatus?: 'loading' | 'error'
+  ipCheckErrorMessage?: string
   onRetryIpCheck?: () => void
   policySelectOpen?: boolean
   onPolicySelectOpenChange?: (open: boolean) => void
@@ -48,6 +49,7 @@ export function AccessControlConfigPanel({
   policies,
   ipCheck,
   ipCheckStatus,
+  ipCheckErrorMessage,
   onRetryIpCheck,
   policySelectOpen,
   onPolicySelectOpenChange,
@@ -137,6 +139,7 @@ export function AccessControlConfigPanel({
             selectedPolicyId={draft.selectedPolicyId}
             ipCheck={ipCheck}
             ipCheckStatus={ipCheckStatus}
+            ipCheckErrorMessage={ipCheckErrorMessage}
             onRetryIpCheck={onRetryIpCheck}
             open={policySelectOpen}
             onOpenChange={onPolicySelectOpenChange}

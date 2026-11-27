@@ -56,12 +56,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get(
-        {
-          params: { app_id: appId, job_id: jobID },
-        },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
+        params: { app_id: appId, job_id: jobID },
+      })
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
@@ -81,10 +78,10 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
 
   const runBatch = async (csv: File) => {
     try {
-      const res = await consoleClient.apps.byAppId.annotations.batchImport.post(
-        { params: { app_id: appId }, body: { file: csv } },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.apps.byAppId.annotations.batchImport.post({
+        params: { app_id: appId },
+        body: { file: csv },
+      })
       setImportStatus(res.job_status ?? undefined)
       // A rejected CSV or quota check returns `error_msg` without a job to poll.
       if (!res.job_id) {

@@ -7,6 +7,7 @@ import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
 import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
@@ -14,7 +15,7 @@ import plugin from '@/i18n/locales/en-US/plugin.json'
 import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi, route } from '@/test/fake-api'
+import { apiError, installFakeApi, route } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import HomeTrending from '../home-trending'
 
@@ -205,6 +206,7 @@ function getCarousel(screen: Awaited<ReturnType<typeof renderTrending>>) {
 }
 
 describe('Marketplace home trending carousel', () => {
+  let fakeApi: ReturnType<typeof installFakeApi>
   beforeEach(async () => {
     // Autoplay is the contract; reduced-motion cases switch back inside the test.
     await emulateReducedMotion(false)
@@ -215,29 +217,28 @@ describe('Marketplace home trending carousel', () => {
       keySeparator: false,
       resources: { 'en-US': { app, common, navigation, plugin } },
     })
-    onTestFinished(
-      installFakeApi({
-        console: {
-          workspaces: {
-            current: {
-              plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
-            },
+    fakeApi = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
           },
         },
-        routes: [
-          route('GET', 'marketplace', '/plugins/:org/:name', ({ params }) => ({
-            data: {
-              version: { version: '1.0.0' },
-              plugin: {
-                category: 'tool',
-                latest_package_identifier: `${params.org}/${params.name}:1.0.0`,
-                latest_version: '1.0.0',
-              },
+      },
+      routes: [
+        route('GET', 'marketplace', '/plugins/:org/:name', ({ params }) => ({
+          data: {
+            version: { version: '1.0.0' },
+            plugin: {
+              category: 'tool',
+              latest_package_identifier: `${params.org}/${params.name}:1.0.0`,
+              latest_version: '1.0.0',
             },
-          })),
-        ],
-      }),
-    )
+          },
+        })),
+      ],
+    })
+    onTestFinished(fakeApi)
     document.documentElement.dataset.isMarketplace = ''
     window.__marketplaceTracking__ = {
       track: vi.fn(),
@@ -367,6 +368,26 @@ describe('Marketplace home trending carousel', () => {
     await templateDialog.getByRole('button', { name: 'Close' }).click()
     await expect.element(templateDialog).not.toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Support Bot' })).toHaveFocus()
+  })
+
+  it('reports a failed version lookup when a plugin card opens its detail', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    fakeApi.use({
+      routes: [
+        route('GET', 'marketplace', '/plugins/:org/:name', () => {
+          throw apiError({ status: 503, message: 'Marketplace unavailable' })
+        }),
+      ],
+    })
+    const screen = await renderTrending({
+      banners: [mixedRecommendations],
+      isMarketplacePlatform: false,
+    })
+
+    await screen.getByRole('button', { name: 'Dropbox' }).click()
+
+    await expect.element(screen.getByRole('dialog', { name: /Dropbox/ })).toBeVisible()
+    await expect.poll(() => errorToast.mock.calls).toEqual([['Marketplace unavailable']])
   })
 
   it.each([

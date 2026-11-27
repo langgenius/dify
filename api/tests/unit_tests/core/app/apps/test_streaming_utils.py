@@ -6,6 +6,7 @@ import types
 from collections.abc import Callable, Generator, Iterator
 from typing import override
 
+import httpx
 import pytest
 from sqlalchemy.orm import Session
 
@@ -40,10 +41,11 @@ from core.app.entities.task_entities import (
     StreamEvent,
     StreamTopicEvent,
 )
+from core.helper import ssrf_proxy as ssrf_module
 from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
 from extensions.application_services.app_moderation import AppModeration
-from extensions.application_services.moderation import build_llm_moderation_guard
+from extensions.application_services.moderation import build_llm_moderation_guard, build_platform_moderation_service
 from graphon.entities import WorkflowStartReason
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from graphon.runtime import RuntimeState
@@ -53,14 +55,13 @@ from models.enums import ConversationFromSource, EndUserType, MessageStatus
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, EndUser, Message
 from models.workflow import WorkflowType
-from services.moderation_adapters import HostedOpenAIModerationGateway
 from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
-from services.moderation_service import ModerationPhase, ModerationRule, ModerationService
+from services.moderation_service import ModerationPhase, ModerationRule
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
-from tests.helpers.unit.core.model_moderation_fixtures import RecordingHostedModerationClient, make_moderated_model
+from tests.helpers.unit.core.model_moderation_fixtures import make_moderated_model
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
 from tests.workflow_test_utils import build_test_variable_pool
 
@@ -534,7 +535,12 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
     stream: bool,
     terminal_status: str,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=True)
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        HOSTED_MODERATION_ENABLED=True,
+        HOSTED_OPENAI_API_KEY="platform-key",
+        HOSTED_MODERATION_CACHE_TTL=0,
+    )
     monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", AppModeration)
     app = make_app(tenant_id="test-tenant-id", mode=AppMode.ADVANCED_CHAT)
     workflow = make_workflow(
@@ -616,19 +622,16 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
             invoke_from, user, tenant_id=app.tenant_id
         ),
     )
-    client = RecordingHostedModerationClient()
-    if unavailable:
-        client.error = RuntimeError("Private moderation backend failure")
-    service = ModerationService(
-        gateway=HostedOpenAIModerationGateway(
-            client=client,
-            credentials={"openai_api_key": "platform-key"},
-            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
-        )
-    )
+
+    def moderate(request: httpx.Request) -> httpx.Response:
+        if unavailable:
+            raise RuntimeError("Private unexpected moderation failure")
+        texts: list[str] = json.loads(request.content)["input"]
+        return httpx.Response(200, json={"results": [{"flagged": "blocked" in text} for text in texts]})
+
     guard = build_llm_moderation_guard(
         AppRequestContext(tenant_id=app.tenant_id, app_id=app.id),
-        service=service,
+        service=build_platform_moderation_service(),
         rule=ModerationRule(
             type="openai_moderation",
             config={
@@ -644,8 +647,10 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
         list(model.invoke_llm([UserPromptMessage(content=entity.query)], stream=True))
 
     error_type = ModerationUnavailableInvocationError if unavailable else PlatformModerationRejectedInvocationError
-    with pytest.raises(error_type):
-        invoke()
+    with httpx.Client(transport=httpx.MockTransport(moderate)) as transport:
+        monkeypatch.setattr(ssrf_module, "_get_ssrf_client", lambda _verify: transport)
+        with pytest.raises(error_type):
+            invoke()
     queue_manager.publish(QueueWorkflowStartedEvent(), PublishFrom.APPLICATION_MANAGER)
     pipeline._task_state.answer = previous_answer
     queue_manager.publish(

@@ -6,7 +6,7 @@ import type {
   AccessControlSubjectsStatus,
 } from '@/app/components/app/app-access-control/specific-groups-or-members'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessControlForm } from '@/app/components/app/app-access-control/access-control-form'
@@ -44,7 +44,6 @@ function EnvironmentAccessControlContainer({
   onConfirm,
 }: EnvironmentAccessControlProps) {
   const { t } = useTranslation(['app', 'common'])
-  const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [accessMode, setAccessMode] = useState<AccessMode>(initialAccessMode)
   const [subjectsDraft, setSubjectsDraft] = useState<AccessControlSubjects>()
@@ -52,10 +51,6 @@ function EnvironmentAccessControlContainer({
     app_id: appId,
     environment_id: environmentId,
   }
-  const siteQueryOptions =
-    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryOptions({
-      input: { params },
-    })
   const subjectsQueryOptions =
     consoleQuery.enterprise.appDeploy.accessService.getEnvironmentWebAppSubjects.queryOptions({
       input: { params },
@@ -79,11 +74,7 @@ function EnvironmentAccessControlContainer({
   const updateAccessModeMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentWebAppAccessMode.mutationOptions(
       {
-        context: { silent: true },
-        onSuccess: (updatedSite) => {
-          queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
-          void queryClient.invalidateQueries({ queryKey: subjectsQueryOptions.queryKey })
-        },
+        meta: { errorToast: false },
         onError: (error) => {
           toast.error(
             getErrorMessage(error) ??

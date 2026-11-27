@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
@@ -203,7 +204,12 @@ describe('AgentDetailSection', () => {
 
   it('keeps the current agent open when deletion fails', async () => {
     const user = userEvent.setup()
-    mocks.deleteAgent.mockRejectedValue(new Error('Delete failed'))
+    mocks.deleteAgent.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'agent_not_found_error',
+        message: 'Server says why',
+      }),
+    )
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
@@ -216,7 +222,7 @@ describe('AgentDetailSection', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'agentRoster.roster.deleteFailed',
+      'requestErrors.code.agent_not_found_error',
     )
     expect(mocks.replace).not.toHaveBeenCalled()
     expect(dialog).toBeInTheDocument()
@@ -257,14 +263,14 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 
-  it('disables evaluation when the workspace can upgrade into it instead of redirecting', async () => {
+  it('links evaluation when the workspace can upgrade into it so it can preview the page', async () => {
     mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: true }
 
     renderAgentDetailSection()
 
     expect(
-      await screen.findByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
-    ).toBeDisabled()
+      await screen.findByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toHaveAttribute('href', '/agents/agent-1/evaluation')
   })
 
   it('hides evaluation when the workspace cannot use or upgrade into it', () => {

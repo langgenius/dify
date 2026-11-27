@@ -3,7 +3,6 @@ import type {
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
 } from '@/app/components/tools/types'
-import type { ConsoleClientContext } from '@/service/console'
 import {
   selectApiSchemaParameters,
   selectBuiltinProviderTools,
@@ -46,12 +45,6 @@ export const fetchCustomToolList = (collectionName: string) => {
     .then(selectBuiltinProviderTools)
 }
 
-export const fetchWorkflowToolList = (appID: string) => {
-  return toolProvider.workflow.tools
-    .get({ query: { workflow_tool_id: appID } })
-    .then(selectBuiltinProviderTools)
-}
-
 export const parseParamsSchema = (schema: string) => {
   return toolProvider.api.schema.post({ body: { schema } }).then(selectApiSchemaParameters)
 }
@@ -85,14 +78,10 @@ export const importSchemaFromURL = (url: string) => {
 
 export const createWorkflowToolProvider = (
   payload: WorkflowToolProviderRequest & { workflow_app_id: string },
-  context?: ConsoleClientContext,
 ) => {
-  return toolProvider.workflow.create.post(
-    {
-      body: { ...payload, parameters: toWorkflowToolParameters(payload.parameters) },
-    },
-    { context },
-  )
+  return toolProvider.workflow.create.post({
+    body: { ...payload, parameters: toWorkflowToolParameters(payload.parameters) },
+  })
 }
 
 export const saveWorkflowToolProvider = (
@@ -101,20 +90,16 @@ export const saveWorkflowToolProvider = (
       workflow_app_id: string
       workflow_tool_id: string
     }>,
-  context?: ConsoleClientContext,
 ) => {
   const { workflow_tool_id } = payload
   if (!workflow_tool_id) throw new Error('workflow_tool_id is required to update a workflow tool')
-  return toolProvider.workflow.update.post(
-    {
-      body: {
-        ...payload,
-        workflow_tool_id,
-        parameters: toWorkflowToolParameters(payload.parameters),
-      },
+  return toolProvider.workflow.update.post({
+    body: {
+      ...payload,
+      workflow_tool_id,
+      parameters: toWorkflowToolParameters(payload.parameters),
     },
-    { context },
-  )
+  })
 }
 
 export const fetchWorkflowToolDetail = (toolID: string) => {

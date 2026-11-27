@@ -152,7 +152,7 @@ beforeEach(() => {
   api.stream.mockReset().mockImplementation(async (request, callbacks) => {
     const { body } = (await request({
       signal: new AbortController().signal,
-      context: { silent: true, stream: true },
+      context: { stream: true },
     })) as { body: unknown }
     if (!body || typeof body !== 'object' || !('datasource_type' in body))
       throw new Error('Expected a datasource request')

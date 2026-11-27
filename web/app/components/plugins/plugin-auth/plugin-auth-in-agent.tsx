@@ -13,11 +13,13 @@ import { usePluginAuth } from './hooks/use-plugin-auth'
 
 type PluginAuthInAgentProps = {
   pluginPayload: PluginPayload
+  authorizationLabel?: string
   credentialId?: string
   onAuthorizationItemClick?: (id: string) => void
 }
 const PluginAuthInAgent = ({
   pluginPayload,
+  authorizationLabel,
   credentialId,
   onAuthorizationItemClick,
 }: PluginAuthInAgentProps) => {
@@ -91,6 +93,7 @@ const PluginAuthInAgent = ({
       {!isAuthorized && (
         <Authorize
           pluginPayload={pluginPayload}
+          buttonText={authorizationLabel}
           canOAuth={canOAuth}
           canApiKey={canApiKey}
           onUpdate={invalidPluginCredentialInfo}

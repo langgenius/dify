@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 
+from dify_agent.protocol.tool_call_limits import AgentToolActivity
 from pydantic import JsonValue
 
 from graphon.file import File
@@ -76,6 +77,8 @@ class MessageAgentThoughtRecord:
     created_at: datetime | None
     observation: str | None
     files: list[str]
+    # Historical/legacy thoughts have no authoritative native tool activity.
+    tool_activity: AgentToolActivity | None = None
 
 
 @dataclass(frozen=True, slots=True)

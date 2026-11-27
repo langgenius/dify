@@ -16,6 +16,8 @@
   "settings.membersRequired": "Selecteer ten minste één teamlid.",
   "settings.nameRequired": "De naam van de Agent-kennisbank is verplicht.",
   "settings.pageDescription": "Beheer basisinformatie, API-toegang en ophalen.",
+  "settings.personalAgentDescription": "Leden kunnen hun eigen agents (Claude Code, Codex, MCP-clients) deze kennisbank laten lezen met hun rechten.",
+  "settings.personalAgentLabel": "Persoonlijke agents",
   "settings.reloadLatest": "Nieuwste instellingen laden",
   "settings.rerankModelRequired": "Selecteer een rerankmodel.",
   "settings.retrievalDepth": "Ophaaldiepte",

@@ -1,4 +1,6 @@
 import type { KnowledgeFsBackgroundTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
+import type { Getter } from 'jotai'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
@@ -29,12 +31,12 @@ function isFirstSourceTask(task: KnowledgeFsBackgroundTaskResponse) {
   )
 }
 
-const backgroundTasksQueryAtom = atomWithInfiniteQuery((get) =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
+export function overviewBackgroundTasksOptions(knowledgeSpaceId: string) {
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     initialPageParam: null as string | null,
     input: (pageParam) => ({
-      params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
+      params: { control_space_id: knowledgeSpaceId },
       query: {
         ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
         limit: TASK_PAGE_SIZE,
@@ -46,8 +48,54 @@ const backgroundTasksQueryAtom = atomWithInfiniteQuery((get) =>
       )
         ? OVERVIEW_REFRESH_INTERVAL
         : false,
-  }),
+  })
+}
+
+const backgroundTasksQueryAtom = atomWithInfiniteQuery((get) =>
+  overviewBackgroundTasksOptions(get(overviewKnowledgeSpaceIdAtom)),
 )
+
+export type OverviewTaskPolling = {
+  hasActiveTasks: boolean
+  latestTaskUpdatedAt?: number
+}
+
+// A stable completion token, not a copy of task state. It changes when a terminal task is
+// observed (including retry completion) but not on each in-flight progress poll.
+export function overviewTerminalTasksVersion(tasks: KnowledgeFsBackgroundTaskResponse[]) {
+  return tasks
+    .filter((task) => !ACTIVE_TASK_STATES.has(task.state))
+    .map((task) => `${task.task_kind}:${task.id}:${task.state}:${task.updated_at}`)
+    .sort()
+    .join('|')
+}
+
+export function overviewTaskPollingState(
+  tasks: KnowledgeFsBackgroundTaskResponse[],
+): OverviewTaskPolling {
+  return {
+    hasActiveTasks: tasks.some((task) => ACTIVE_TASK_STATES.has(task.state)),
+    latestTaskUpdatedAt: tasks.reduce<number | undefined>((latest, task) => {
+      const updatedAt = Date.parse(task.updated_at)
+      if (!Number.isFinite(updatedAt)) return latest
+      return latest === undefined || updatedAt > latest ? updatedAt : latest
+    }, undefined),
+  }
+}
+
+// Snapshot polling reads the task list from the Query cache when the interval is evaluated.
+// Reading it through the scoped task atoms can return a copy that stopped receiving updates, so
+// polling would never notice that the tasks finished.
+function cachedTaskPolling(
+  queryClient: QueryClient,
+  knowledgeSpaceId: string,
+): OverviewTaskPolling | undefined {
+  const state = queryClient.getQueryState(overviewBackgroundTasksOptions(knowledgeSpaceId).queryKey)
+  if (state?.data) return overviewTaskPollingState(state.data.pages.flatMap((page) => page.data))
+  // A failed task request does not poll again, so it must not keep the snapshots polling either.
+  if (state?.status === 'error') return { hasActiveTasks: false }
+  return undefined
+}
 
 const backgroundTasksQueryDataAtom = selectAtom(backgroundTasksQueryAtom, (query) => query.data)
 const backgroundTasksRefetchAtom = selectAtom(backgroundTasksQueryAtom, (query) => query.refetch)
@@ -55,25 +103,6 @@ const backgroundTasksPendingAtom = selectAtom(backgroundTasksQueryAtom, (query) 
 
 const backgroundTasksAtom = atom(
   (get) => get(backgroundTasksQueryDataAtom)?.pages.flatMap((page) => page.data) ?? [],
-)
-const overviewHasActiveTasksAtom = atom((get) =>
-  get(backgroundTasksAtom).some((task) => ACTIVE_TASK_STATES.has(task.state)),
-)
-// A stable completion token, not a copy of task state. It changes when a terminal task is
-// observed (including retry completion) but not on each in-flight progress poll.
-export const overviewTerminalTasksVersionAtom = atom((get) =>
-  get(backgroundTasksAtom)
-    .filter((task) => !ACTIVE_TASK_STATES.has(task.state))
-    .map((task) => `${task.task_kind}:${task.id}:${task.state}:${task.updated_at}`)
-    .sort()
-    .join('|'),
-)
-const latestTaskUpdatedAtAtom = atom((get) =>
-  get(backgroundTasksAtom).reduce<number | undefined>((latest, task) => {
-    const updatedAt = Date.parse(task.updated_at)
-    if (!Number.isFinite(updatedAt)) return latest
-    return latest === undefined || updatedAt > latest ? updatedAt : latest
-  }, undefined),
 )
 export const overviewIndexingTaskAtom = atom((get) =>
   get(backgroundTasksAtom).find(
@@ -87,18 +116,33 @@ export const overviewFailedFirstSourceTaskAtom = atom((get) => {
   return latestTask?.state === 'failed' ? latestTask : undefined
 })
 
+function snapshotRefreshInterval(get: Getter) {
+  const queryClient = get(queryClientAtom)
+  const knowledgeSpaceId = get(overviewKnowledgeSpaceIdAtom)
+  return (query: { state: { data?: { generated_at?: string } } }) => {
+    const tasks = cachedTaskPolling(queryClient, knowledgeSpaceId)
+    // Keep polling until the task list is known; the next fetch re-evaluates with it.
+    if (!tasks) return OVERVIEW_REFRESH_INTERVAL
+    return overviewRefreshInterval({ generatedAt: query.state.data?.generated_at, ...tasks })
+  }
+}
+
+function activeTaskRefreshInterval(get: Getter) {
+  const queryClient = get(queryClientAtom)
+  const knowledgeSpaceId = get(overviewKnowledgeSpaceIdAtom)
+  return () =>
+    (cachedTaskPolling(queryClient, knowledgeSpaceId)?.hasActiveTasks ?? true)
+      ? OVERVIEW_REFRESH_INTERVAL
+      : false
+}
+
 const statsQueryAtom = atomWithQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.queryOptions({
     input: {
       params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
       query: { window: get(overviewWindowAtom) },
     },
-    refetchInterval: (query) =>
-      overviewRefreshInterval({
-        generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
-      }),
+    refetchInterval: snapshotRefreshInterval(get),
   }),
 )
 export const overviewStatsDataAtom = selectAtom(statsQueryAtom, (query) => query.data)
@@ -112,12 +156,7 @@ const outcomesQueryAtom = atomWithQuery((get) =>
       params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
       query: { window: get(overviewWindowAtom) },
     },
-    refetchInterval: (query) =>
-      overviewRefreshInterval({
-        generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
-      }),
+    refetchInterval: snapshotRefreshInterval(get),
   }),
 )
 export const overviewOutcomesDataAtom = selectAtom(outcomesQueryAtom, (query) => query.data)
@@ -128,12 +167,7 @@ const outcomesRefetchAtom = selectAtom(outcomesQueryAtom, (query) => query.refet
 const inventoryQueryAtom = atomWithQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.inventory.get.queryOptions({
     input: { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } },
-    refetchInterval: (query) =>
-      overviewRefreshInterval({
-        generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
-      }),
+    refetchInterval: snapshotRefreshInterval(get),
   }),
 )
 export const overviewInventoryDataAtom = selectAtom(inventoryQueryAtom, (query) => query.data)
@@ -150,7 +184,7 @@ const attentionQueryAtom = atomWithQuery((get) =>
       params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
       query: { include_dismissed: false, limit: 100 },
     },
-    refetchInterval: get(overviewHasActiveTasksAtom) ? OVERVIEW_REFRESH_INTERVAL : false,
+    refetchInterval: activeTaskRefreshInterval(get),
   }),
 )
 export const overviewAttentionDataAtom = selectAtom(
@@ -191,7 +225,7 @@ const activityPreviewQueryAtom = atomWithQuery((get) =>
           : {}),
       },
     },
-    refetchInterval: get(overviewHasActiveTasksAtom) ? OVERVIEW_REFRESH_INTERVAL : false,
+    refetchInterval: activeTaskRefreshInterval(get),
   }),
 )
 export const overviewActivityPreviewDataAtom = selectAtom(
@@ -262,30 +296,60 @@ export const retryOverviewSnapshotsAtom = atom(null, (get) => {
     get(backgroundTasksRefetchAtom)(),
   ])
 })
-export const reconcileOverviewAfterTasksAtom = atom(null, async (get) => {
+export const reconcileOverviewAfterTasksAtom = atom(
+  null,
+  async (get, _set, { refreshSnapshots }: { refreshSnapshots: boolean }) => {
+    const queryClient = get(queryClientAtom)
+    const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }
+    const overview = consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview
+    // Stopped snapshots do not re-evaluate their interval, so a newly observed terminal task must
+    // refresh them; their interval then keeps polling until they catch up with that task.
+    if (refreshSnapshots) {
+      for (const queryKey of [
+        overview.stats.get.key({ input }),
+        overview.queryOutcomes.get.key({ input }),
+        overview.inventory.get.key({ input }),
+      ])
+        void queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false })
+    }
+    const keys = [overview.attention.get.key({ input }), overview.activity.get.key({ input })]
+    if (get(deploymentEditionAtom) === 'CLOUD') {
+      void Promise.allSettled([
+        queryClient.invalidateQueries(
+          { queryKey: consoleQuery.features.get.key() },
+          { cancelRefetch: false },
+        ),
+        queryClient.invalidateQueries(
+          { queryKey: consoleQuery.features.vectorSpace.get.key() },
+          { cancelRefetch: false },
+        ),
+      ])
+    }
+    await Promise.all(
+      keys.map(async (queryKey) => {
+        // A pre-completion request may finish late with a stale snapshot. Cancel it before the
+        // final fetch; dataUpdatedAt alone cannot tell when its server-side snapshot was taken.
+        await queryClient.cancelQueries({ queryKey })
+        await queryClient.invalidateQueries({ queryKey })
+      }),
+    )
+  },
+)
+// Snapshot intervals are evaluated after each of their own fetches, so a snapshot that stopped
+// polling does not notice a task that starts later. Refresh the snapshots once when that happens;
+// their intervals then read the active task from the cache and resume polling.
+export const resumeOverviewPollingAtom = atom(null, async (get) => {
   const queryClient = get(queryClientAtom)
   const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }
   const overview = consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview
-  const keys = [overview.attention.get.key({ input }), overview.activity.get.key({ input })]
-  if (get(deploymentEditionAtom) === 'CLOUD') {
-    void Promise.allSettled([
-      queryClient.invalidateQueries(
-        { queryKey: consoleQuery.features.get.key() },
-        { cancelRefetch: false },
-      ),
-      queryClient.invalidateQueries(
-        { queryKey: consoleQuery.features.vectorSpace.get.key() },
-        { cancelRefetch: false },
-      ),
-    ])
-  }
   await Promise.all(
-    keys.map(async (queryKey) => {
-      // A pre-completion request may finish late with a stale snapshot. Cancel it before the
-      // final fetch; dataUpdatedAt alone cannot tell when its server-side snapshot was taken.
-      await queryClient.cancelQueries({ queryKey })
-      await queryClient.invalidateQueries({ queryKey })
-    }),
+    [
+      overview.stats.get.key({ input }),
+      overview.queryOutcomes.get.key({ input }),
+      overview.inventory.get.key({ input }),
+      overview.attention.get.key({ input }),
+      overview.activity.get.key({ input }),
+    ].map((queryKey) => queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false })),
   )
 })
 export const retryOverviewActivityPreviewAtom = atom(null, (get) => {

@@ -36,17 +36,13 @@ beforeEach(() => {
 it('loads and displays the selected run and its execution trace', async () => {
   const user = userEvent.setup()
   render(<DetailPanel appId="app-456" runID="run-789" onClose={vi.fn()} />)
-  expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-456' }, 'run-789', {
-    silent: true,
-  })
+  expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-456' }, 'run-789')
   expect(
     screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' }),
   ).not.toBeInTheDocument()
   await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
   expect(await screen.findByText('Execution for run-789')).toBeInTheDocument()
-  expect(fetchTracingList).toHaveBeenCalledWith({ kind: 'app', appId: 'app-456' }, 'run-789', {
-    silent: true,
-  })
+  expect(fetchTracingList).toHaveBeenCalledWith({ kind: 'app', appId: 'app-456' }, 'run-789')
 })
 
 it('requests no run data without a selected run', () => {

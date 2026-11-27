@@ -2,6 +2,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
+import { useMutation } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,14 +13,16 @@ import { emailRegex } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 
 export default function CheckCode() {
   const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
-  const [loading, setIsLoading] = useState(false)
+  const { isPending: loading, mutateAsync: sendResetCode } = useMutation(
+    consoleQuery.forgotPassword.post.mutationOptions(),
+  )
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
   const pageTitle = t(($) => $.resetPassword, { ns: 'login' })
@@ -36,8 +39,7 @@ export default function CheckCode() {
         toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
         return
       }
-      setIsLoading(true)
-      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
+      const res = await sendResetCode({ body: { email, language: locale } })
       if (res.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
@@ -47,8 +49,6 @@ export default function CheckCode() {
       }
     } catch (error) {
       console.error(error)
-    } finally {
-      setIsLoading(false)
     }
   }
 

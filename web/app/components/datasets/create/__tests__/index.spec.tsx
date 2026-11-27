@@ -31,7 +31,10 @@ const api = vi.hoisted(() => ({
   add: vi.fn<
     typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.post
   >(),
-  status: vi.fn<typeof import('@/service/datasets').fetchIndexingStatusBatch>(),
+  status:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get
+    >(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -39,7 +42,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/datasets', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/datasets')>()),
-  fetchIndexingStatusBatch: api.status,
   createFirecrawlTask: api.crawl,
   checkFirecrawlTaskStatus: api.crawlStatus,
 }))
@@ -61,6 +63,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'files.upload.post': api.upload,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.batch.byBatch.indexingStatus.get': (input) => api.status(input),
       'features.vectorSpace.get': () => ({ size: 0, limit: -1 }),
       'auth.plugin.datasource.defaultList.get': api.sources,
       'notion.preImport.pages.get': async () => ({
@@ -267,7 +270,9 @@ it('keeps uploaded files when returning to the source step, then carries the cre
     await screen.findByRole('heading', { name: 'datasetCreation.stepThree.creationTitle' }),
   ).toBeInTheDocument()
   expect(screen.getByText('Team handbook')).toBeInTheDocument()
-  expect(api.status).toHaveBeenCalledWith({ datasetId: 'new-dataset', batchId: 'batch-1' })
+  expect(api.status).toHaveBeenCalledWith({
+    params: { dataset_id: 'new-dataset', batch: 'batch-1' },
+  })
   expect(await screen.findByText('datasetDocuments.embedding.completed')).toHaveAttribute(
     'role',
     'status',
@@ -329,7 +334,9 @@ it('adds documents using the existing dataset permission and identity', async ()
   expect(
     await screen.findByRole('heading', { name: 'datasetCreation.stepThree.additionTitle' }),
   ).toBeInTheDocument()
-  expect(api.status).toHaveBeenCalledWith({ datasetId: 'existing-dataset', batchId: 'batch-1' })
+  expect(api.status).toHaveBeenCalledWith({
+    params: { dataset_id: 'existing-dataset', batch: 'batch-1' },
+  })
 })
 
 it('waits for permissions before redirecting a user who cannot add documents', async () => {

@@ -12,12 +12,13 @@ import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
+import { getBillingErrorMessage } from '@/app/components/billing/billing-error'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 
@@ -33,6 +34,7 @@ type EducationVerificationError = ErrorFromErrorMap<
 function educationVerifyErrorMessage(
   error: EducationVerificationError,
   t: TFunction<['billing', 'education']>,
+  describeRequestError: (error: unknown, fallback?: string) => string,
 ) {
   const code = isDefinedError(error) ? error.code : undefined
   switch (code) {
@@ -41,7 +43,7 @@ function educationVerifyErrorMessage(
     case 'education_verify_limit':
       return t(($) => $.tooManyAttempts, { ns: 'education' })
     default:
-      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+      return getBillingErrorMessage(error, t, describeRequestError)
   }
 }
 
@@ -53,6 +55,7 @@ export default function EducationVerifyPage() {
 
 export function EducationVerifyFlow() {
   const { t } = useTranslation(['billing', 'education'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
   const { data: userEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -77,7 +80,9 @@ export function EducationVerifyFlow() {
     mutate: verifyEducation,
     reset: resetVerification,
   } = useMutation(
-    consoleQuery.account.education.verify.get.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.education.verify.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   const startVerification = useCallback(() => {
@@ -113,9 +118,7 @@ export function EducationVerifyFlow() {
   if (educationStatusQuery.isError)
     return (
       <EducationVerifyError
-        message={t(($) => $[billingErrorMessageKey(educationStatusQuery.error)], {
-          ns: 'billing',
-        })}
+        message={getBillingErrorMessage(educationStatusQuery.error, t, describeRequestError)}
         onRetry={() => {
           void educationStatusQuery.refetch()
         }}
@@ -170,7 +173,7 @@ export function EducationVerifyFlow() {
   if (isVerificationError)
     return (
       <EducationVerifyError
-        message={educationVerifyErrorMessage(verificationError, t)}
+        message={educationVerifyErrorMessage(verificationError, t, describeRequestError)}
         onRetry={() => {
           verificationStartedRef.current = false
           resetVerification()

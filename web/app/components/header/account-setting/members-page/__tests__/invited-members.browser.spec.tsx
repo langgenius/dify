@@ -4,12 +4,16 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { TEST_WORKSPACE_ID } from '@/test/console/ids'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { MembersPage } from '../index'
+
+let fake: ReturnType<typeof installFakeApi>
 
 const setup = (
   inviteResults: MemberInviteResponse['invitation_results'],
@@ -18,6 +22,8 @@ const setup = (
 ) => {
   let invitations: PendingWorkspaceInvitationResponse[] = []
   const { queryClient } = createConsoleQueryWrapper({
+    // Like the app's client: a write refreshes its domain in the background.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     currentWorkspace: { role: 'owner' },
     systemFeatures: {
       deployment_edition: 'CLOUD',
@@ -44,83 +50,82 @@ const setup = (
 
   const features = queryClient.getQueryData(consoleQuery.features.get.queryKey())!
   onTestFinished(() => queryClient.clear())
-  onTestFinished(
-    installFakeApi({
-      console: {
-        features: { get: () => features },
-        workspaces: {
-          current: {
-            members: {
-              get: () => ({ accounts }),
-              inviteEmail: {
-                post: () => {
-                  invitations = inviteResults
-                    .filter(({ status }) => status === 'success')
-                    .map(({ email }) => ({
-                      email,
-                      role: 'editor',
-                      expires_at: '2026-12-01T09:00:00Z',
-                    }))
-                  return {
-                    result: 'success',
-                    tenant_id: TEST_WORKSPACE_ID,
-                    invitation_results: inviteResults,
-                  }
-                },
-              },
-            },
-            rbac: {
-              roles: {
-                get: () => ({
-                  data: [
-                    {
-                      id: 'editor',
-                      tenant_id: TEST_WORKSPACE_ID,
-                      type: 'workspace',
-                      category: 'global_system_default',
-                      name: 'Editor',
-                      description: 'Edit apps',
-                      is_builtin: true,
-                      permission_keys: [],
-                      role_tag: '',
-                    },
-                  ],
-                  pagination: { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 },
-                }),
+  fake = installFakeApi({
+    console: {
+      features: { get: () => features },
+      workspaces: {
+        current: {
+          members: {
+            get: () => ({ accounts }),
+            inviteEmail: {
+              post: () => {
+                invitations = inviteResults
+                  .filter(({ status }) => status === 'success')
+                  .map(({ email }) => ({
+                    email,
+                    role: 'editor',
+                    expires_at: '2026-12-01T09:00:00Z',
+                  }))
+                return {
+                  result: 'success',
+                  tenant_id: TEST_WORKSPACE_ID,
+                  invitation_results: inviteResults,
+                }
               },
             },
           },
-          byWorkspaceId: {
-            members: {
-              pendingInvitations: {
-                get: () => ({ invitations }),
-                revoke: {
-                  post: ({ body: { email } }) => {
-                    const live =
-                      invitations.some((invitation) => invitation.email === email) ||
-                      accounts.some(
-                        (account) => account.email === email && account.status === 'pending',
-                      )
-                    invitations = invitations.filter((invitation) => invitation.email !== email)
-                    accounts = accounts.filter(
-                      (account) => !(account.email === email && account.status === 'pending'),
-                    )
-                    if (!live || email === acceptedMeanwhile)
-                      throw apiError({
-                        status: 404,
-                        code: 'pending_invitation_not_found',
-                        message: 'No live invitation exists for this email in the workspace.',
-                      })
-                    return { result: 'success' }
+          rbac: {
+            roles: {
+              get: () => ({
+                data: [
+                  {
+                    id: 'editor',
+                    tenant_id: TEST_WORKSPACE_ID,
+                    type: 'workspace',
+                    category: 'global_system_default',
+                    name: 'Editor',
+                    description: 'Edit apps',
+                    is_builtin: true,
+                    permission_keys: [],
+                    role_tag: '',
                   },
+                ],
+                pagination: { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 },
+              }),
+            },
+          },
+        },
+        byWorkspaceId: {
+          members: {
+            pendingInvitations: {
+              get: () => ({ invitations }),
+              revoke: {
+                post: ({ body: { email } }) => {
+                  const live =
+                    invitations.some((invitation) => invitation.email === email) ||
+                    accounts.some(
+                      (account) => account.email === email && account.status === 'pending',
+                    )
+                  invitations = invitations.filter((invitation) => invitation.email !== email)
+                  accounts = accounts.filter(
+                    (account) => !(account.email === email && account.status === 'pending'),
+                  )
+                  if (!live || email === acceptedMeanwhile)
+                    throw apiError({
+                      status: 404,
+                      code: 'pending_invitation_not_found',
+                      message: 'No live invitation exists for this email in the workspace.',
+                    })
+                  return { result: 'success' }
                 },
               },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   return queryClient
 }
 
@@ -234,6 +239,30 @@ it('closes the revoke dialog and refreshes when the invitation was accepted mean
     .not.toBeInTheDocument()
 })
 
+it('keeps the revoke dialog open with the action failure when revoking fails', async () => {
+  const email = 'invited@example.com'
+  const queryClient = setup([{ status: 'success', email, url: 'https://example.com/invite' }])
+  fake.console.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'service_unavailable', message: 'Server says why' }),
+  )
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <MembersPage />
+    </QueryClientTestProvider>,
+  )
+  await sendInvite(screen, email)
+
+  await screen
+    .getByRole('table')
+    .getByRole('button', { name: new RegExp(`members\\.invitationActions.*${email}`) })
+    .click()
+  await screen.getByRole('menuitem', { name: /members\.revokeInvitation$/ }).click()
+  const confirm = screen.getByRole('alertdialog', { name: /members\.revokeInvitationTitle/ })
+  await confirm.getByRole('button', { name: /members\.revokeInvitation$/ }).click()
+
+  await expect.element(confirm.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+})
+
 it('shows the new invitation link after a resend without email delivery', async () => {
   const email = 'invited@example.com'
   const queryClient = setup(
@@ -257,4 +286,33 @@ it('shows the new invitation link after a resend without email delivery', async 
 
   const result = screen.getByRole('dialog', { name: /members\.invitationSent$/ })
   await expect.element(result.getByText(/members\.invitationLink$/)).toBeVisible()
+})
+
+it('reports the action failure when a resend fails', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  onTestFinished(() => toastError.mockRestore())
+  const email = 'invited@example.com'
+  const queryClient = setup(
+    [{ status: 'success', email, url: 'https://example.com/invite' }],
+    undefined,
+    false,
+  )
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <MembersPage />
+    </QueryClientTestProvider>,
+  )
+  await sendInvite(screen, email)
+  await screen.getByRole('button', { name: /members\.ok$/ }).click()
+  fake.console.workspaces.current.members.inviteEmail.post.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'service_unavailable', message: 'Server says why' }),
+  )
+
+  await screen
+    .getByRole('table')
+    .getByRole('button', { name: new RegExp(`members\\.invitationActions.*${email}`) })
+    .click()
+  await screen.getByRole('menuitem', { name: /members\.resendInvitation$/ }).click()
+
+  await expect.poll(() => toastError).toHaveBeenCalledWith('common.api.actionFailed')
 })

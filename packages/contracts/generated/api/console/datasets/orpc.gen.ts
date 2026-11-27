@@ -11,6 +11,10 @@ import {
   zDatasetNameDuplicateError,
   zDocumentAlreadyFinishedError,
   zDocumentIndexingError,
+  zEvaluationConfigInvalidError,
+  zEvaluationDatasetInvalidError,
+  zEvaluationFrameworkNotConfiguredError,
+  zEvaluationMaxConcurrentRunsError,
   zIndexingEstimateError,
   zInvalidActionError,
   zInvalidMetadataError,
@@ -1552,7 +1556,16 @@ export const post16 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdEvaluationRunResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+    evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+    evaluation_framework_not_configured: {
+      status: 400,
+      data: zEvaluationFrameworkNotConfiguredError,
+    },
+    evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const run = {
   post: post16,
@@ -1588,7 +1601,16 @@ export const post18 = oc
   })
   .input(z.object({ params: zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryPath }))
   .output(zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+    evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+    evaluation_framework_not_configured: {
+      status: 400,
+      data: zEvaluationFrameworkNotConfiguredError,
+    },
+    evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const retry = {
   post: post18,
@@ -1668,7 +1690,10 @@ export const put2 = oc
     }),
   )
   .output(zPutDatasetsByDatasetIdEvaluationResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const evaluation = {
   get: get31,

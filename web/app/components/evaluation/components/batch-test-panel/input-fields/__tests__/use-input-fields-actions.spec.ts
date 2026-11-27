@@ -1,5 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { useInputFieldsActions } from '../use-input-fields-actions'
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   setUploadedFile: vi.fn(),
   setUploadedFileName: vi.fn(),
   templateColumnsQuery: vi.fn(),
+  uploadedFileId: null as string | null,
 }))
 
 const configPayload = {
@@ -76,7 +79,7 @@ vi.mock('../../../../store', () => ({
     judgmentConfig: { conditions: [], logicalOperator: 'and' },
     metrics: [],
     selectedRunId: null,
-    uploadedFileId: null,
+    uploadedFileId: mocks.uploadedFileId,
     uploadedFileName: null,
   }),
   useEvaluationStore: (selector: (state: Record<string, unknown>) => unknown) =>
@@ -96,6 +99,7 @@ vi.mock('../../../../store-utils', () => ({
 describe('useInputFieldsActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.uploadedFileId = null
     mocks.downloadTemplate.mockResolvedValue(new Blob(['template']))
     mocks.templateColumnsQuery.mockReturnValue({
       data: { columns: [{ name: 'Answer : expected_output', type: 'string' }] },
@@ -147,5 +151,77 @@ describe('useInputFieldsActions', () => {
       configPayload,
     )
     expect(mocks.downloadTemplate).toHaveBeenCalledWith(configPayload)
+  })
+
+  it('reports a failed template download with its translated failure, not the server text', async () => {
+    mocks.downloadTemplate.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 404 }), {
+        code: 'not_found',
+        message: 'Server says why',
+      }),
+    )
+    const { result } = renderHook(() =>
+      useInputFieldsActions({
+        isPanelReady: true,
+        isRunnable: true,
+        resourceId: 'app-1',
+        resourceType: 'apps',
+        templateFileName: 'evaluation-template.xlsx',
+      }),
+    )
+
+    await act(result.current.handleDownloadTemplate)
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('translated')
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('shows why the template could not be generated', async () => {
+    const message =
+      'Evaluation datasets only support string, number, and boolean inputs; unsupported input type: file.'
+    mocks.downloadTemplate.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'evaluation_dataset_invalid',
+        message,
+      }),
+    )
+    const { result } = renderHook(() =>
+      useInputFieldsActions({
+        isPanelReady: true,
+        isRunnable: true,
+        resourceId: 'app-1',
+        resourceType: 'apps',
+        templateFileName: 'evaluation-template.xlsx',
+      }),
+    )
+
+    await act(result.current.handleDownloadTemplate)
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
+  })
+
+  it.each([
+    ['evaluation_dataset_invalid', "Dataset input 'temperature' must be a number; invalid row: 7."],
+    ['evaluation_framework_not_configured', 'The selected evaluation framework is not installed.'],
+    ['evaluation_config_invalid', 'answer_relevancy needs a default embedding model.'],
+  ])('shows the reason a run was rejected with %s', async (code, message) => {
+    mocks.uploadedFileId = 'file-1'
+    mocks.buildEvaluationRunRequest.mockReturnValue({ file_id: 'file-1' })
+    mocks.runEvaluation.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { code, message, status: 400 }),
+    )
+    const { result } = renderHook(() =>
+      useInputFieldsActions({
+        isPanelReady: true,
+        isRunnable: true,
+        resourceId: 'app-1',
+        resourceType: 'apps',
+        templateFileName: 'evaluation-template.xlsx',
+      }),
+    )
+
+    await act(result.current.handleRun)
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
   })
 })

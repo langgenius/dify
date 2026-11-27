@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
-from collections.abc import Callable
-from typing import cast
+from collections.abc import Callable, Coroutine
+from typing import Any, cast
 
 import httpx2 as httpx
 import pytest
@@ -29,7 +30,7 @@ from dify_agent.runtime_backend.enterprise import (
 
 def _mock_http(
     monkeypatch: pytest.MonkeyPatch,
-    handler: Callable[[httpx.Request], httpx.Response],
+    handler: Callable[[httpx.Request], httpx.Response] | Callable[[httpx.Request], Coroutine[Any, Any, httpx.Response]],
 ) -> list[httpx.AsyncClient]:
     original_async_client = httpx.AsyncClient
     transport = httpx.MockTransport(handler)
@@ -77,6 +78,8 @@ async def test_enterprise_acquire_exposes_canonical_layout_through_gateway_proxy
         requests.append(request)
         assert request.headers["X-Sandbox-Id"] == "sandbox-1"
         assert request.headers["X-Inner-Api-Key"] == "secret"
+        if request.url.path == "/proxy/healthz":
+            return httpx.Response(200, json={"status": "ok"})
         if request.method == "POST":
             payload = cast(dict[str, object], json.loads(request.content))
             script = payload["script"]
@@ -98,11 +101,73 @@ async def test_enterprise_acquire_exposes_canonical_layout_through_gateway_proxy
     assert lease.layout.home_dir == "/home/dify"
     assert lease.layout.workspace_dir == "/workspace"
     assert [request.url.path for request in requests] == [
+        "/proxy/healthz",
         "/proxy/v1/jobs/run",
         "/proxy/v1/jobs/job-1",
     ]
     assert clients[0].timeout.read == 90
     await backend.release(lease)
+    assert clients[0].is_closed
+
+
+@pytest.mark.anyio
+async def test_enterprise_lease_renews_through_health_until_release(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    heartbeats = 0
+    in_flight = asyncio.Event()
+    cancelled = asyncio.Event()
+    allow_exit = asyncio.Event()
+    heartbeat_exited = asyncio.Event()
+    transport_closing = asyncio.Event()
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal heartbeats
+        if request.url.path == "/proxy/healthz":
+            heartbeats += 1
+            if heartbeats == 2:
+                return httpx.Response(503, json={"reason": "SANDBOX_UNAVAILABLE"})
+            if heartbeats == 3:
+                in_flight.set()
+                try:
+                    await asyncio.Future[None]()
+                except asyncio.CancelledError:
+                    cancelled.set()
+                    await allow_exit.wait()
+                    raise
+                finally:
+                    heartbeat_exited.set()
+            return httpx.Response(200, json={"status": "ok"})
+        return _job_response()
+
+    original_aclose = httpx.MockTransport.aclose
+
+    async def close_transport(transport: httpx.MockTransport) -> None:
+        transport_closing.set()
+        assert heartbeat_exited.is_set()
+        await original_aclose(transport)
+
+    monkeypatch.setattr(httpx.MockTransport, "aclose", close_transport)
+    clients = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(
+        gateway_endpoint="http://gateway.example",
+        auth_token="secret",
+        keepalive_interval=0.01,
+    )
+    lease = await backend.acquire("sandbox-1")
+    release_task: asyncio.Task[None] | None = None
+    try:
+        await asyncio.wait_for(in_flight.wait(), timeout=2)
+        assert "Enterprise sandbox keepalive failed" in caplog.text
+        release_task = asyncio.create_task(backend.release(lease))
+        await asyncio.wait_for(cancelled.wait(), timeout=2)
+        assert not transport_closing.is_set()
+    finally:
+        allow_exit.set()
+        if release_task is not None:
+            await asyncio.wait_for(release_task, timeout=2)
+        else:
+            await backend.release(lease)
     assert clients[0].is_closed
 
 
@@ -140,6 +205,8 @@ async def test_enterprise_acquire_treats_missing_runtime_directories_as_lost(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/proxy/healthz":
+            return httpx.Response(200, json={"status": "ok"})
         if request.method == "POST":
             return _job_response(exit_code=1)
         return httpx.Response(200, json={"job_id": "job-1"})
@@ -529,6 +596,8 @@ async def test_enterprise_snapshot_create_posts_to_the_lease_sandbox(
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        if request.url.path == "/proxy/healthz":
+            return httpx.Response(200, json={"status": "ok"})
         if request.url.path == "/v1/sandboxes/sandbox-1/home-snapshots":
             assert json.loads(request.content) == {
                 "tenantId": "tenant-1",
@@ -575,6 +644,8 @@ async def test_enterprise_snapshot_create_maps_the_size_limit_to_too_large(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/proxy/healthz":
+            return httpx.Response(200, json={"status": "ok"})
         if request.url.path.endswith("/home-snapshots"):
             return httpx.Response(
                 413,
@@ -604,6 +675,8 @@ async def test_enterprise_snapshot_create_maps_other_gateway_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/proxy/healthz":
+            return httpx.Response(200, json={"status": "ok"})
         if request.url.path.endswith("/home-snapshots"):
             return httpx.Response(
                 500,
@@ -633,6 +706,8 @@ async def test_enterprise_snapshot_create_rejects_a_reply_without_a_ref(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/proxy/healthz":
+            return httpx.Response(200, json={"status": "ok"})
         if request.url.path.endswith("/home-snapshots"):
             return httpx.Response(200, json={"snapshotRef": ""})
         return _job_response()

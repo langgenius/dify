@@ -65,7 +65,7 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.audio_runtime_fixtures import record_calls
-from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file, make_workflow
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
@@ -828,6 +828,7 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     ).create_draft(context, app_id)
 
     assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
+    assert syncs[0]["serialize_creation"] is True
     assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
     with sqlite_session_factory() as session:
         draft = session.scalar(
@@ -835,6 +836,32 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
         )
         assert draft is not None
         assert draft.graph_dict == console_gateway._STARTER_DRAFT_GRAPHS[mode]
+
+
+def test_create_draft_keeps_an_existing_first_save(
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+) -> None:
+    context, app_id = copy_source
+    graph: dict[str, object] = {"nodes": [{"id": "existing-start", "data": {"type": "start"}}], "edges": []}
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, app_id)
+        assert app is not None
+        app.mode = AppMode.WORKFLOW
+        draft = make_workflow(workflow_id=str(uuid4()), app_id=app.id, tenant_id=app.tenant_id, graph=graph)
+        session.add(draft)
+
+    AppLifecycleGateway(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    ).create_draft(context, app_id)
+
+    with sqlite_session_factory() as session:
+        stored = session.scalars(
+            select(Workflow).where(Workflow.app_id == app_id, Workflow.version == Workflow.VERSION_DRAFT)
+        ).one()
+        assert stored.id == draft.id
+        assert stored.graph_dict == graph
 
 
 def test_chatflow_starter_draft_is_start_llm_answer_as_the_editor_saves_it() -> None:

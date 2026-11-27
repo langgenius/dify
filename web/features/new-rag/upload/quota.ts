@@ -9,7 +9,8 @@ export async function getKnowledgeFsUploadQuotaFailure(
   try {
     const features = await queryClient.query(
       consoleQuery.features.get.queryOptions({
-        context: { silent: true },
+        // The upload reports an unavailable quota as its own task failure.
+        meta: { errorToast: false },
         retry: false,
         staleTime: 0,
       }),
@@ -30,7 +31,8 @@ export async function getKnowledgeFsUploadQuotaFailure(
   try {
     const quota = await queryClient.query(
       consoleQuery.features.vectorSpace.get.queryOptions({
-        context: { silent: true },
+        // The upload reports an unavailable quota as its own task failure.
+        meta: { errorToast: false },
         retry: false,
         staleTime: 0,
       }),

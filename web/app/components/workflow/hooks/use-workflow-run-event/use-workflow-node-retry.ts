@@ -3,16 +3,18 @@ import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowNodeRetry = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowNodeRetry = useCallback(
     (params: NodeFinishedResponse) => {
       const { data } = params
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
 
       const nodes = getNodes()
       setWorkflowRunningData(
@@ -25,9 +27,9 @@ export const useWorkflowNodeRetry = () => {
 
         currentNode.data._retryIndex = data.retry_index
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
     },
-    [workflowStore, store],
+    [collaborativeWorkflow, workflowStore, store],
   )
 
   return {

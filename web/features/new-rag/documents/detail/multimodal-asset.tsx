@@ -49,7 +49,7 @@ function protectedDocumentAssetQueryOptions(sources: string[]) {
           const blob: Blob =
             await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.multimodal.byItemId.asset.get(
               input,
-              { signal, context: { silent: true } },
+              { signal },
             )
           return { blob, rawSource }
         } catch (error) {
@@ -58,6 +58,7 @@ function protectedDocumentAssetQueryOptions(sources: string[]) {
       }
       throw new Error('Document multimodal asset is unavailable')
     },
+    meta: { errorToast: false },
     queryKey: ['knowledge-fs', 'document-multimodal-asset', sources],
     retry: false,
   })

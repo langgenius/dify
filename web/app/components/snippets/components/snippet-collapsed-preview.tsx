@@ -12,15 +12,12 @@ export function SnippetCollapsedPreview({
   section,
   isPublished,
   evaluationEnabled,
-  evaluationRequiresUpgrade = false,
 }: {
   inputFieldCount: number
   snippetId?: string
   section: SnippetSection
   isPublished?: boolean
   evaluationEnabled: boolean
-  /** The plan excludes evaluation; the entry stays visible but says why it is disabled. */
-  evaluationRequiresUpgrade?: boolean
 }) {
   const { t } = useTranslation(['snippet', 'evaluation', 'common'])
   const orchestrateLabel = t(($) => $.sectionOrchestrate, { ns: 'snippet' })
@@ -48,12 +45,8 @@ export function SnippetCollapsedPreview({
               name={evaluationLabel}
               href={`/snippets/${snippetId}/evaluation`}
               active={section === 'evaluation'}
-              disabled={evaluationRequiresUpgrade || !isPublished}
-              disabledReason={
-                evaluationRequiresUpgrade
-                  ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
-                  : t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })
-              }
+              disabled={!isPublished}
+              disabledReason={t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })}
               iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
             />
           )}

@@ -14,28 +14,27 @@ export function useDeployWorkflow({
   onSuccess?: (response: DeployWorkflowResponse) => Promise<void> | void
 }) {
   const queryClient = useQueryClient()
-  const mutationOptions =
-    consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions()
+  return useMutation(
+    consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions({
+      // The embedded deployment flow refreshes the environments once the deployment finishes.
+      ...(invalidateAppEnvironmentsOnSuccess ? {} : { meta: { invalidate: false } }),
+      onSuccess: async (response) => {
+        if (!appId) return
 
-  return useMutation({
-    ...mutationOptions,
-    onSuccess: async (response, variables, onMutateResult, context) => {
-      await mutationOptions.onSuccess?.(response, variables, onMutateResult, context)
-      if (!appId) return
-
-      if (invalidateAppEnvironmentsOnSuccess) {
-        const appEnvironmentsQuery =
-          consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
-            input: {
-              params: {
-                app_id: appId,
+        if (invalidateAppEnvironmentsOnSuccess) {
+          const appEnvironmentsQuery =
+            consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+              input: {
+                params: {
+                  app_id: appId,
+                },
               },
-            },
-          })
-        await queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey })
-      }
+            })
+          await queryClient.invalidateQueries({ queryKey: appEnvironmentsQuery.queryKey })
+        }
 
-      await onSuccess?.(response)
-    },
-  })
+        await onSuccess?.(response)
+      },
+    }),
+  )
 }

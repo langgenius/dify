@@ -14,13 +14,19 @@ let isOwner = true
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: (await import('@/test/console/service-responses')).withConsoleClientResponses(
-    (await importOriginal<typeof import('@/service/console')>()).consoleClient,
-    { 'workspaces.info.post': vi.fn() },
-  ),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const responses = { 'workspaces.info.post': vi.fn() }
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, responses)
+  return {
+    ...actual,
+    consoleClient,
+    consoleQuery: createConsoleQuery(consoleClient),
+  }
+})
+
 vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
@@ -87,7 +93,7 @@ describe('EditWorkspaceContent', () => {
         {
           body: { name: 'Renamed Workspace' },
         },
-        { context: { silent: true } },
+        expect.anything(),
       )
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
     })
@@ -120,6 +126,34 @@ describe('EditWorkspaceContent', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /operation\.save/i })).toBeEnabled()
     })
+  })
+
+  it('still redirects when the dialog closes before the update resolves', async () => {
+    const user = userEvent.setup()
+    const mockAssign = vi.fn()
+    vi.stubGlobal('location', {
+      ...window.location,
+      assign: mockAssign,
+      origin: 'http://localhost',
+    })
+    let resolveUpdate!: (value: { result: 'success'; tenant: { id: string } }) => void
+    vi.mocked(consoleClient.workspaces.info.post).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpdate = resolve
+        }),
+    )
+    renderModal()
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Renamed Workspace')
+    await user.click(getSaveButton())
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    resolveUpdate({ result: 'success', tenant: { id: 'workspace-id' } })
+    await waitFor(() => expect(mockAssign).toHaveBeenCalledWith('http://localhost'))
   })
 
   it('should show error toast when update fails', async () => {

@@ -28,7 +28,7 @@ type AnnotationTableRowProps = {
   appId: string
   item: Annotation
   formattedCreatedAt: string
-  onRemoved: () => void
+  onRemoved?: () => void
 }
 
 function AnnotationTableRow({
@@ -45,7 +45,7 @@ function AnnotationTableRow({
     consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions({
       onSuccess: () => {
         removeConfirmActionsRef.current?.close()
-        onRemoved()
+        onRemoved?.()
       },
     }),
   )
@@ -119,8 +119,10 @@ type AnnotationListProps = {
   isLoading?: boolean
   appId: string
   list: Annotation[]
-  onEdited: () => void
-  onRemoved: () => void
+  /** Called after a save; the list itself refreshes through the annotation cache policies. */
+  onEdited?: () => void
+  /** Called after a removal; the list itself refreshes through the annotation cache policies. */
+  onRemoved?: () => void
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
   onBatchDelete: () => Promise<void>
@@ -146,7 +148,7 @@ export function List({
   const removalFocus = useRef<HTMLElement | null>(null)
   const update = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: onEdited,
     }),
   )
@@ -165,7 +167,7 @@ export function List({
       onOpenChangeComplete={(open) => {
         if (!open) {
           update.reset()
-          if (removed.current) onRemoved()
+          if (removed.current) onRemoved?.()
         }
       }}
     >
@@ -265,7 +267,7 @@ export function List({
                   appId={appId}
                   item={payload}
                   isPending={update.isPending}
-                  isError={update.isError}
+                  error={update.error}
                   onSave={(body, onSuccess) =>
                     update.mutate(
                       { params: { app_id: appId, annotation_id: payload.id }, body },

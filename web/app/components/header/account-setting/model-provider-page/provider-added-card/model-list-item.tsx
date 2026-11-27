@@ -3,18 +3,16 @@ import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { consoleClient, consoleQuery } from '@/service/console'
-import { hasPermission } from '@/utils/permission'
+import { consoleQuery } from '@/service/console'
+import { canConfigureModelsAtom } from '../atoms'
 import { ModelStatusEnum } from '../declarations'
-import { useUpdateModelList } from '../hooks'
 import { ConfigModel } from '../model-auth'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
@@ -49,50 +47,25 @@ const ModelListItem = ({
       }),
     }),
   )
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
-  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
-  const queryClient = useQueryClient()
-  const updateModelList = useUpdateModelList()
-  const modelProviderModelListQueryKey =
-    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
-      input: {
-        params: {
-          provider: provider.provider,
-        },
-      },
-    })
+  const canConfigureModels = useAtomValue(canConfigureModelsAtom)
+  const { mutateAsync: enableModel } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.enable.patch.mutationOptions(),
+  )
+  const { mutateAsync: disableModel } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.disable.patch.mutationOptions(),
+  )
 
   const toggleModelEnablingStatus = useCallback(
     async (enabled: boolean) => {
-      if (enabled)
-        await consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch({
-          params: { provider: provider.provider },
-          body: { model: model.model, model_type: model.model_type },
-        })
-      else
-        await consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch({
-          params: { provider: provider.provider },
-          body: { model: model.model, model_type: model.model_type },
-        })
-
-      queryClient.invalidateQueries({
-        queryKey: modelProviderModelListQueryKey,
-        exact: true,
-        refetchType: 'none',
+      const toggleModel = enabled ? enableModel : disableModel
+      await toggleModel({
+        params: { provider: provider.provider },
+        body: { model: model.model, model_type: model.model_type },
       })
-      updateModelList(model.model_type)
       onChange?.(provider.provider)
     },
-    [
-      model.model,
-      model.model_type,
-      modelProviderModelListQueryKey,
-      onChange,
-      provider.provider,
-      queryClient,
-      updateModelList,
-    ],
+    [disableModel, enableModel, model.model, model.model_type, onChange, provider.provider],
   )
 
   const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, {

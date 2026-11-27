@@ -15,13 +15,12 @@ from core.db.session_factory import session_factory
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.knowledge_fs import (
-    AppKnowledgeFSSpaceJoin,
-    KnowledgeFSAppSpaceJoinType,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
 )
 from models.workflow import Workflow
+from repositories.knowledge_fs_app_bindings import has_agent_app_bindings
 from services.agent.errors import InvalidComposerConfigError
 from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 from services.knowledge_fs.product_authorization import (
@@ -143,19 +142,7 @@ def sync_agent_app_knowledge_bindings(
             )
         return
     ids = [binding.control_space_id for binding in agent_soul.knowledge.spaces]
-    if (
-        not ids
-        and session.scalar(
-            select(AppKnowledgeFSSpaceJoin.id)
-            .where(
-                AppKnowledgeFSSpaceJoin.tenant_id == tenant_id,
-                AppKnowledgeFSSpaceJoin.app_id == app_id,
-                AppKnowledgeFSSpaceJoin.join_type == KnowledgeFSAppSpaceJoinType.AGENT,
-            )
-            .limit(1)
-        )
-        is None
-    ):
+    if not ids and not has_agent_app_bindings(session, tenant_id=tenant_id, app_id=app_id):
         return
     get_knowledge_fs_runtime(session_factory.get_session_maker()).app_bindings.sync_agent_bindings(
         tenant_id=tenant_id,
@@ -164,6 +151,21 @@ def sync_agent_app_knowledge_bindings(
         control_space_ids=ids,
         session=session,
     )
+
+
+def authorize_published_agent_knowledge_bindings(
+    *, session_maker: sessionmaker[Session], tenant_id: str, account_id: str, soul: AgentSoulConfig
+) -> None:
+    """Apply both the authoring policy and the product binding policy before the publish transaction."""
+    authorize_composer_knowledge(session_factory=session_maker, tenant_id=tenant_id, account_id=account_id, soul=soul)
+    if soul.knowledge.spaces:
+        from services.knowledge_fs.runtime import get_knowledge_fs_runtime
+
+        get_knowledge_fs_runtime(session_maker).app_bindings.authorize_agent_bindings(
+            tenant_id=tenant_id,
+            actor_account_id=account_id,
+            control_space_ids=[binding.control_space_id for binding in soul.knowledge.spaces],
+        )
 
 
 def collect_workflow_agent_knowledge_space_ids(*, session: Session, workflow: Workflow) -> tuple[str, ...]:

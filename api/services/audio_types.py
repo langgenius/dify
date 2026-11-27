@@ -2,7 +2,14 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import IO
+from typing import IO, TypedDict
+
+
+class AudioVoice(TypedDict):
+    """A voice identifier and its display name."""
+
+    name: str
+    value: str
 
 
 @dataclass(frozen=True, slots=True)

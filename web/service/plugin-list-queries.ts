@@ -123,13 +123,14 @@ export function marketplacePluginsByInfoQueryOptions(infos: MarketplacePluginInf
 export function marketplacePluginManifestQueryOptions(pluginUID: string) {
   const separatorIndex = pluginUID.indexOf('/')
   return marketplaceQuery.pluginDetail.queryOptions({
-    input: {
-      params: {
-        organization: separatorIndex === -1 ? pluginUID : pluginUID.slice(0, separatorIndex),
-        pluginName: separatorIndex === -1 ? '' : pluginUID.slice(separatorIndex + 1),
-      },
-    },
-    enabled: !!pluginUID,
+    input: pluginUID
+      ? {
+          params: {
+            organization: separatorIndex === -1 ? pluginUID : pluginUID.slice(0, separatorIndex),
+            pluginName: separatorIndex === -1 ? '' : pluginUID.slice(separatorIndex + 1),
+          },
+        }
+      : skipToken,
     retry: 0,
   })
 }

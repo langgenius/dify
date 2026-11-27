@@ -18,6 +18,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { reportRequestError } from '@/app/query-error-toast'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -94,29 +95,31 @@ const WorkflowAppWithAdditionalContext = () => {
 
   useEffect(() => {
     if (!replayRunId || !appACLCapabilities.canTestAndRun) return
-    fetchRunDetail({ kind: 'app', appId }, replayRunId).then((res) => {
-      const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } =
-        workflowStore.getState()
-      const rawInputs = res.inputs
-      let parsedInputs: unknown = rawInputs
+    fetchRunDetail({ kind: 'app', appId }, replayRunId)
+      .then((res) => {
+        const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } =
+          workflowStore.getState()
+        const rawInputs = res.inputs
+        let parsedInputs: unknown = rawInputs
 
-      if (typeof rawInputs === 'string') {
-        try {
-          parsedInputs = JSON.parse(rawInputs) as unknown
-        } catch (error) {
-          console.error('Failed to parse workflow run inputs', error)
-          return
+        if (typeof rawInputs === 'string') {
+          try {
+            parsedInputs = JSON.parse(rawInputs) as unknown
+          } catch (error) {
+            console.error('Failed to parse workflow run inputs', error)
+            return
+          }
         }
-      }
 
-      const userInputs = coerceReplayUserInputs(parsedInputs)
+        const userInputs = coerceReplayUserInputs(parsedInputs)
 
-      if (!userInputs || !Object.keys(userInputs).length) return
+        if (!userInputs || !Object.keys(userInputs).length) return
 
-      setInputs(userInputs)
-      setShowInputsPanel(true)
-      setShowDebugAndPreviewPanel(true)
-    })
+        setInputs(userInputs)
+        setShowInputsPanel(true)
+        setShowDebugAndPreviewPanel(true)
+      })
+      .catch((error) => reportRequestError(error))
   }, [appACLCapabilities.canTestAndRun, appId, replayRunId, workflowStore])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {

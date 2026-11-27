@@ -2,8 +2,9 @@ import { onlineManager } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
 import {
@@ -52,6 +53,8 @@ async function setup(options: Partial<Payload> = {}) {
     ...options,
   }
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
+    // Failed saves are reported by the app's mutation cache.
+    queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   })
   seedModelProviderQueries(queryClient)
@@ -71,11 +74,18 @@ async function setup(options: Partial<Payload> = {}) {
 it.each([
   // An offline request has no response, so only the dialog reports the failure.
   { failure: 'a network failure', error: networkError, toast: 'common.api.actionFailed' },
-  // An HTTP error with a backend message is reported by the shared error toast instead.
+  // An HTTP error with a backend message is reported by the mutation cache's toast instead.
   {
     failure: 'a 502 response',
     error: () => apiError({ status: 502, code: 'BAD_GATEWAY', message: 'Bad gateway' }),
     toast: 'Bad gateway',
+  },
+  // Without a backend message only the mutation cache's generic server text is shown; the dialog
+  // adds none.
+  {
+    failure: 'a 502 response without a message',
+    error: () => apiError({ status: 502, code: 'BAD_GATEWAY', message: ' ' }),
+    toast: 'requestErrors.generic.server',
   },
 ])('retains the draft and allows retry after $failure', async ({ error, toast }) => {
   const failed = createDeferred<{ result: string }>()
@@ -101,6 +111,9 @@ it.each([
     .toHaveBeenCalledOnce()
   failed.reject(error())
   await expect.element(screen.getByText(toast, { exact: true })).toBeVisible()
+  // The dialog's own toast is only for requests that never got a response.
+  if (toast !== 'common.api.actionFailed')
+    expect(screen.getByText('common.api.actionFailed', { exact: true }).query()).toBeNull()
   await expect.element(key).toBeEnabled()
   await expect.element(key).toHaveValue('draft-key')
   expect(onSave).not.toHaveBeenCalled()

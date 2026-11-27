@@ -30,6 +30,7 @@ import {
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { streamEvents } from '@/service/event-stream'
 import { submitHumanInputForm } from '@/service/workflow'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
@@ -731,7 +732,12 @@ export const useChat = (
     const form = threadMessages
       .flatMap((item) => item.humanInputFormDataList ?? [])
       .find((item) => item.form_token === formToken)
-    await submitHumanInputForm(formToken, formData, form?.form_version)
+    try {
+      await submitHumanInputForm(formToken, formData, form?.form_version)
+    } catch (error) {
+      reportRequestError(error)
+      throw error
+    }
   }
 
   const getHumanInputNodeData = (nodeID: string) => {

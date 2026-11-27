@@ -23,36 +23,18 @@ beforeEach(() => {
 it.each(owners)('loads the $owner.kind run detail and node executions', async ({ owner, path }) => {
   request.mockImplementation(async () => Response.json({ id: 'run-1', data: [] }))
 
-  await expect(fetchRunDetail(owner, 'run-1', { silent: true })).resolves.toEqual({
+  await expect(fetchRunDetail(owner, 'run-1')).resolves.toEqual({
     id: 'run-1',
     data: [],
   })
-  await expect(fetchTracingList(owner, 'run-1', { silent: true })).resolves.toEqual({
+  await expect(fetchTracingList(owner, 'run-1')).resolves.toEqual({
     id: 'run-1',
     data: [],
   })
 
-  const [detailCall, tracingCall] = request.mock.calls as unknown as [
-    string,
-    RequestInit,
-    { silent?: boolean },
-  ][]
+  const [detailCall, tracingCall] = request.mock.calls as unknown as [string][]
   expect(new URL(detailCall![0], 'http://localhost').pathname).toMatch(new RegExp(`${path}$`))
-  expect(detailCall![2]).toMatchObject({ silent: true })
   expect(new URL(tracingCall![0], 'http://localhost').pathname).toMatch(
     new RegExp(`${path}/node-executions$`),
-  )
-  expect(tracingCall![2]).toMatchObject({ silent: true })
-})
-
-it('lets request errors toast when the caller is not silent', async () => {
-  request.mockResolvedValue(Response.json({ inputs: '{}' }))
-
-  await fetchRunDetail({ kind: 'app', appId: 'app-1' }, 'run-1')
-
-  expect(request).toHaveBeenCalledWith(
-    expect.any(String),
-    expect.any(Object),
-    expect.not.objectContaining({ silent: true }),
   )
 })

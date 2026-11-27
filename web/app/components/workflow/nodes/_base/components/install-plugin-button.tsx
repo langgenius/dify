@@ -2,12 +2,13 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { TaskStatus } from '@/app/components/plugins/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
 
@@ -26,12 +27,12 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       [uniqueIdentifier, ...extraIdentifiers].filter((item): item is string => Boolean(item)),
     ),
   )
-  const manifest = useQuery(
-    installedPluginsByIdsQueryOptions({
-      pluginIds: identifiers,
-      enabled: identifiers.length > 0,
-    }),
-  )
+  const manifestQueryOptions = installedPluginsByIdsQueryOptions({
+    pluginIds: identifiers,
+    enabled: identifiers.length > 0,
+  })
+  const manifest = useQuery(manifestQueryOptions)
+  const queryClient = useQueryClient()
   const install = useMutation(
     consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
   )
@@ -47,7 +48,8 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       {
         onSuccess: async (response) => {
           const finish = async () => {
-            await manifest.refetch()
+            // Marketplace installs only seed the task list; the button reads the installed lookup.
+            await queryClient.invalidateQueries({ queryKey: manifestQueryOptions.queryKey })
             onSuccess?.()
             setIsTracking(false)
             install.reset()
@@ -77,7 +79,8 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
             }
 
             await finish()
-          } catch {
+          } catch (error) {
+            reportRequestError(error)
             setIsTracking(false)
             install.reset()
           }

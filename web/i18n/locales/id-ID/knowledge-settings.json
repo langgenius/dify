@@ -16,6 +16,8 @@
   "settings.membersRequired": "Pilih setidaknya satu anggota tim.",
   "settings.nameRequired": "Nama basis pengetahuan Agent wajib diisi.",
   "settings.pageDescription": "Kelola informasi dasar, akses API, dan pengambilan.",
+  "settings.personalAgentDescription": "Anggota dapat membiarkan agen mereka sendiri (Claude Code, Codex, klien MCP) membaca basis pengetahuan ini dengan izin mereka.",
+  "settings.personalAgentLabel": "Agen pribadi",
   "settings.reloadLatest": "Muat ulang pengaturan terbaru",
   "settings.rerankModelRequired": "Pilih model rerank.",
   "settings.retrievalDepth": "Kedalaman pengambilan",

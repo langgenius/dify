@@ -11,7 +11,6 @@ import { request } from './base'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 
 type WebAppClientContext = {
-  silent?: boolean
   /** The response is an event stream: no time limit on its first frame. */
   stream?: boolean
   /** `false` lifts the time limit, e.g. for uploads the server finishes only after fetching a remote file. */
@@ -67,7 +66,6 @@ export const webAppClient: JsonifiedClient<
         isPublicAPI: true,
         fetchCompat: true,
         request: await withURL(input, publicURL),
-        silent: context.silent,
         onUploadProgress: context.onUploadProgress,
         timeout: context.stream || context.timeout === false ? false : undefined,
       })

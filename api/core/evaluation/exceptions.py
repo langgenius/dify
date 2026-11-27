@@ -25,6 +25,8 @@ class EvaluationErrorCode(StrEnum):
     RUN_FAILED = "EVAL_RUN_FAILED"
     RUN_DISPATCH_FAILED = "EVAL_RUN_DISPATCH_FAILED"
     RUN_RETRYING = "EVAL_RUN_RETRYING"
+    RUN_QUOTA_EXCEEDED = "EVAL_RUN_QUOTA_EXCEEDED"
+    APP_CONCURRENCY_TIMEOUT = "EVAL_APP_CONCURRENCY_TIMEOUT"
     INVALID_CONFIG = "EVAL_INVALID_CONFIG"
     JUDGMENT_FAILED = "EVAL_JUDGMENT_FAILED"
 
@@ -45,6 +47,12 @@ _PUBLIC_MESSAGES = {
     EvaluationErrorCode.RUN_FAILED: "Evaluation run failed. Please retry or contact support.",
     EvaluationErrorCode.RUN_DISPATCH_FAILED: "Could not start evaluation. Please retry or contact support.",
     EvaluationErrorCode.RUN_RETRYING: "Evaluation is retrying after a temporary failure.",
+    EvaluationErrorCode.RUN_QUOTA_EXCEEDED: (
+        "Workflow execution quota was exhausted before the evaluation could finish."
+    ),
+    EvaluationErrorCode.APP_CONCURRENCY_TIMEOUT: (
+        "Evaluation timed out while waiting for the target app concurrency limit. Please retry."
+    ),
     EvaluationErrorCode.INVALID_CONFIG: "Evaluation configuration is invalid. Check it and retry.",
     EvaluationErrorCode.JUDGMENT_FAILED: "Evaluation judgment failed. Check its conditions and retry.",
 }

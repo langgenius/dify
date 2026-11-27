@@ -1,5 +1,6 @@
 import type { Var, Variable } from '../../types'
 import type { CodeNodeType, OutputVar } from './types'
+import { useQueries } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
@@ -8,7 +9,7 @@ import {
   editorPipelineIdAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { fetchNodeDefault, fetchPipelineNodeDefault } from '@/service/workflow'
+import { consoleQuery } from '@/service/console'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { BlockEnum, VarType } from '../../types'
@@ -16,53 +17,47 @@ import useOutputVarList from '../_base/hooks/use-output-var-list'
 import useVarList from '../_base/hooks/use-var-list'
 import { CodeLanguage } from './types'
 
+const CODE_LANGUAGES = [CodeLanguage.javascript, CodeLanguage.python3] as const
+
 const useConfig = (id: string, payload: CodeNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
   const appId = useAtomValue(editorAppIdAtom)
   const pipelineId = useAtomValue(editorPipelineIdAtom)
 
-  const [allLanguageDefault, setAllLanguageDefault] = useState<Record<
-    CodeLanguage,
-    CodeNodeType
-  > | null>(null)
-  useEffect(() => {
-    if (appId) {
-      ;(async () => {
-        const { config: javaScriptConfig } = (await fetchNodeDefault(appId, BlockEnum.Code, {
-          code_language: CodeLanguage.javascript,
-        })) as any
-        const { config: pythonConfig } = (await fetchNodeDefault(appId, BlockEnum.Code, {
-          code_language: CodeLanguage.python3,
-        })) as any
-        setAllLanguageDefault({
-          [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
-          [CodeLanguage.python3]: pythonConfig as CodeNodeType,
-        } as any)
-      })()
-    }
-  }, [appId])
-
-  useEffect(() => {
-    if (pipelineId) {
-      ;(async () => {
-        const { config: javaScriptConfig } = (await fetchPipelineNodeDefault(
-          pipelineId,
-          BlockEnum.Code,
-          { code_language: CodeLanguage.javascript },
-        )) as any
-        const { config: pythonConfig } = (await fetchPipelineNodeDefault(
-          pipelineId,
-          BlockEnum.Code,
-          { code_language: CodeLanguage.python3 },
-        )) as any
-        setAllLanguageDefault({
-          [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
-          [CodeLanguage.python3]: pythonConfig as CodeNodeType,
-        } as any)
-      })()
-    }
-  }, [pipelineId])
+  const codeDefaultInput = (codeLanguage: CodeLanguage) => ({
+    query: { q: JSON.stringify({ code_language: codeLanguage }) },
+  })
+  const allLanguageDefault = useQueries({
+    queries: CODE_LANGUAGES.map((codeLanguage) =>
+      appId || !pipelineId
+        ? consoleQuery.apps.byAppId.workflows.defaultWorkflowBlockConfigs.byBlockType.get.queryOptions(
+            {
+              input: {
+                params: { app_id: appId ?? '', block_type: BlockEnum.Code },
+                ...codeDefaultInput(codeLanguage),
+              },
+              enabled: !!appId,
+            },
+          )
+        : consoleQuery.rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.byBlockType.get.queryOptions(
+            {
+              input: {
+                params: { pipeline_id: pipelineId, block_type: BlockEnum.Code },
+                ...codeDefaultInput(codeLanguage),
+              },
+            },
+          ),
+    ),
+    combine: (results) => {
+      const [javaScript, python] = results
+      if (!javaScript?.data || !python?.data) return null
+      return {
+        [CodeLanguage.javascript]: javaScript.data.config as CodeNodeType,
+        [CodeLanguage.python3]: python.data.config as CodeNodeType,
+      } as Record<CodeLanguage, CodeNodeType>
+    },
+  })
 
   const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type]
   const { inputs, setInputs } = useNodeCrud<CodeNodeType>(id, payload)

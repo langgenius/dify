@@ -5,7 +5,7 @@ const Page = async (props: { params: Promise<{ appId: string }> }) => {
   const { appId } = await props.params
 
   return (
-    <EvaluationPlanGuard fallbackHref={`/app/${appId}/overview`}>
+    <EvaluationPlanGuard fallbackHref={`/app/${appId}/overview`} resourceType="apps">
       <Evaluation resourceType="apps" resourceId={appId} />
     </EvaluationPlanGuard>
   )

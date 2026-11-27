@@ -8,11 +8,14 @@ import redis
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
-from core.entities.provider_configuration import ProviderModelBundle
+from core.entities.model_entities import ModelStatus
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
+    CustomConfiguration,
     CustomModelConfiguration,
     CustomProviderConfiguration,
     ModelLoadBalancingConfiguration,
+    ModelSettings,
     ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
@@ -25,6 +28,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.hosting_configuration import HostingConfiguration
 from core.model_manager import (
     HostedCreditFallbackModelInstance,
     LBModelManager,
@@ -33,14 +37,15 @@ from core.model_manager import (
     QuotaManagedModelInstance,
 )
 from core.plugin.impl.model_runtime import PluginModelRuntime
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_runtime
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk
@@ -282,6 +287,201 @@ def _make_hosted_credit_model(quota_type: ProviderQuotaType) -> tuple[HostedCred
     instance = manager.get_model_instance(configuration.tenant_id, config.provider, ModelType.LLM, config.model)
     assert isinstance(instance, HostedCreditFallbackModelInstance)
     return instance, llm
+
+
+def test_exhausted_hosted_pool_keeps_only_zero_credit_models_on_system(config_overrides: Callable[..., None]) -> None:
+    """Free models keep hosted credentials; paid, unoffered, and explicitly custom routes do not."""
+    config_overrides(HOSTED_MODEL_CREDIT_CONFIG="gpt-4:0,custom-only:0")
+    hosted, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
+    bundle = hosted.provider_model_bundle
+    configuration = bundle.configuration
+    quota = configuration.system_configuration.quota_configurations[0]
+    quota.quota_used = quota.quota_limit
+    quota.is_valid = False
+    quota.restrict_models = [RestrictModel(model=name, model_type=ModelType.LLM) for name in ("gpt-4", "gpt-4o")]
+    schema = configuration.provider.models[0]
+    configuration.provider.models.extend(
+        schema.model_copy(update={"model": name}) for name in ("gpt-4o", "custom-only")
+    )
+    assert [m.model for m in configuration.get_provider_models(only_active=True)] == ["gpt-4"]
+
+    configuration.using_provider_type = ProviderType.CUSTOM
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
+    manager = ModelManager(RecordingProviderManager(bundle), enable_credentials_cache=True)
+    for name in ("gpt-4", "gpt-4o", "custom-only"):
+        instance = manager.get_model_instance(configuration.tenant_id, hosted.provider, ModelType.LLM, name)
+        assert instance.invoke_llm([], stream=False).message.content == "ok"
+    custom = manager.get_model_instance(
+        configuration.tenant_id, hosted.provider, ModelType.LLM, "gpt-4", require_custom_credentials=True
+    )
+    assert custom.credentials == {"api_key": "custom"}
+    assert llm.credential_calls == [{"api_key": "hosted"}, {"api_key": "custom"}, {"api_key": "custom"}]
+    assert configuration.using_provider_type == ProviderType.CUSTOM
+
+    configuration.preferred_provider_type = ProviderType.CUSTOM
+    preferred = manager.get_model_instance(configuration.tenant_id, hosted.provider, ModelType.LLM, "gpt-4")
+    assert preferred.credentials == custom.credentials
+
+
+@pytest.mark.parametrize("bucket", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID])
+@pytest.mark.parametrize("remaining", [0, 1])
+def test_zero_credit_access_uses_only_the_selected_bucket(
+    config_overrides: Callable[..., None], bucket: ProviderQuotaType, remaining: int
+) -> None:
+    """Neither a zero price nor another bucket's offer grants hosted access."""
+    config_overrides(
+        HOSTED_OPENAI_TRIAL_ENABLED=True,
+        HOSTED_OPENAI_TRIAL_MODELS="gpt-4o-mini",
+        HOSTED_OPENAI_PAID_ENABLED=True,
+        HOSTED_OPENAI_PAID_MODELS="gpt-4o",
+        HOSTED_MODEL_CREDIT_CONFIG="gpt-4o-mini:0,gpt-4o:0",
+    )
+    instance, llm = _make_hosted_credit_model(bucket)
+    bundle = instance.provider_model_bundle
+    config = bundle.configuration
+    schema = config.provider.models[0]
+    offers = {ProviderQuotaType.TRIAL: "gpt-4o-mini", ProviderQuotaType.PAID: "gpt-4o"}
+    config.provider.models = [schema.model_copy(update={"model": name}) for name in offers.values()]
+    config.system_configuration.quota_configurations = [
+        QuotaConfiguration(
+            quota_type=offer.quota_type,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=1,
+            quota_used=1 - remaining,
+            is_valid=bool(remaining),
+            restrict_models=offer.restrict_models,
+        )
+        for offer in HostingConfiguration().init_openai().quotas
+    ]
+    manager = ModelManager(RecordingProviderManager(bundle))
+    for quota_type, name in offers.items():
+        entry = config.get_provider_model(ModelType.LLM, name)
+        assert entry is not None
+        if quota_type == bucket:
+            assert entry.status == ModelStatus.ACTIVE
+            allowed = manager.get_model_instance(config.tenant_id, instance.provider, ModelType.LLM, name)
+            assert allowed.invoke_llm([], stream=False).message.content == "ok"
+        else:
+            assert entry.status == ModelStatus.NO_PERMISSION
+            with pytest.raises(ModelCurrentlyNotSupportError, match=name):
+                manager.get_model_instance(config.tenant_id, instance.provider, ModelType.LLM, name)
+    assert llm.credential_calls == [{"api_key": "hosted"}]
+
+
+@pytest.mark.parametrize("route", [ProviderType.SYSTEM, ProviderType.CUSTOM])
+def test_disabled_zero_credit_offer_cannot_use_cached_credentials(
+    config_overrides: Callable[..., None], route: ProviderType
+) -> None:
+    config_overrides(HOSTED_MODEL_CREDIT_CONFIG="gpt-4:0")
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
+    bundle = instance.provider_model_bundle
+    config = bundle.configuration
+    config.using_provider_type = route
+    config.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "workspace"})
+    quota = config.system_configuration.quota_configurations[0]
+    quota.is_valid = False
+    quota.quota_used = quota.quota_limit
+    manager = ModelManager(RecordingProviderManager(bundle), enable_credentials_cache=True)
+    args = (config.tenant_id, instance.provider, ModelType.LLM, instance.model_name)
+    assert manager.get_model_instance(*args).credentials == {"api_key": "hosted"}
+    assert manager.get_model_instance(*args, require_custom_credentials=True).credentials == {"api_key": "workspace"}
+
+    config.model_settings = [ModelSettings(model=instance.model_name, model_type=ModelType.LLM, enabled=False)]
+    with pytest.raises(ValueError, match="disabled"):
+        manager.get_model_instance(*args)
+    assert not llm.credential_calls
+
+
+@pytest.mark.usefixtures("unbound_session_factory")
+@pytest.mark.parametrize("hosted_embedding", [False, True])
+def test_zero_credit_fallback_requires_the_requested_hosted_model_type(
+    config_overrides: Callable[..., None], hosted_embedding: bool
+) -> None:
+    """A name-only bucket entry covers actual hosted types, never a workspace-only namesake."""
+    name = "shared"
+    provider = "langgenius/example/example"
+    config_overrides(HOSTED_MODEL_CREDIT_CONFIG=f"{name}:0")
+    llm = AIModelEntity(
+        model=name,
+        label=I18nObject(en_US=name),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+    )
+    embedding = llm.model_copy(update={"model_type": ModelType.TEXT_EMBEDDING})
+    config = ProviderConfiguration(
+        tenant_id="tenant-1",
+        provider=ProviderEntity(
+            provider=provider,
+            label=llm.label,
+            supported_model_types=[ModelType.LLM, ModelType.TEXT_EMBEDDING],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL, ConfigurateMethod.CUSTOMIZABLE_MODEL],
+            models=[llm, embedding] if hosted_embedding else [llm],
+        ),
+        preferred_provider_type=ProviderType.SYSTEM,
+        using_provider_type=ProviderType.CUSTOM,
+        system_configuration=SystemConfiguration(
+            enabled=True,
+            credentials={"api_key": "hosted"},
+            current_quota_type=ProviderQuotaType.PAID,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_type=ProviderQuotaType.PAID,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=1,
+                    quota_used=1,
+                    is_valid=False,
+                    restrict_models=[RestrictModel(model=name, model_type=ModelType.LLM)],
+                )
+            ],
+        ),
+        custom_configuration=CustomConfiguration(
+            provider=None,
+            models=[
+                CustomModelConfiguration(
+                    model=name, model_type=ModelType.TEXT_EMBEDDING, credentials={"api_key": "workspace"}
+                )
+            ],
+        ),
+        model_settings=[],
+    )
+    assembly = create_plugin_model_assembly(tenant_id=config.tenant_id)
+    runtime = assembly.model_runtime
+    config.bind_model_runtime(runtime)
+    catalog = ProviderConfigurations(tenant_id=config.tenant_id)
+    catalog[provider] = config
+    providers = assembly.provider_manager
+    providers._configurations_cache[config.tenant_id] = catalog
+    manager = ModelManager(providers, enable_credentials_cache=True)
+    result = EmbeddingResult.model_validate(
+        {
+            "model": name,
+            "embeddings": [[1.0]],
+            "usage": {
+                "tokens": 1,
+                "total_tokens": 1,
+                "unit_price": 0,
+                "price_unit": 1,
+                "total_price": 0,
+                "currency": "USD",
+                "latency": 0,
+            },
+        }
+    )
+    with (
+        patch.object(runtime, "get_model_schema", return_value=embedding),
+        patch.object(runtime, "invoke_text_embedding", return_value=result) as invoke,
+    ):
+        entries = catalog.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
+        assert [(entry.model, entry.fetch_from) for entry in entries] == [
+            (name, FetchFrom.PREDEFINED_MODEL if hosted_embedding else FetchFrom.CUSTOMIZABLE_MODEL)
+        ]
+        chat = manager.get_model_instance(config.tenant_id, provider, ModelType.LLM, name)
+        assert chat.credentials == {"api_key": "hosted"}
+        embed = manager.get_model_instance(config.tenant_id, provider, ModelType.TEXT_EMBEDDING, name)
+        assert embed.invoke_text_embedding(["text"]) is result
+        assert invoke.call_args.kwargs["credentials"] == {"api_key": "hosted" if hosted_embedding else "workspace"}
+    assert config.using_provider_type == ProviderType.CUSTOM
 
 
 def test_hosted_credit_denial_uses_custom_only_for_this_invocation(config_overrides: Callable[..., None]) -> None:

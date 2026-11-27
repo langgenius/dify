@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, HTTPException, NotFound
 
 from constants.oauth_bearer import TokenType
 from controllers.common.errors import PaidPlanRequiredError
@@ -56,7 +56,7 @@ from models.account import Account, Tenant
 from models.enums import AppStatus
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowType
-from services.errors.evaluation import EvaluationPlanRequiredError
+from services.errors.evaluation import EvaluationDisabledError, EvaluationPlanRequiredError
 from services.workflow.graph_diff import draft_token
 from services.workflow_service import WorkflowService
 
@@ -557,16 +557,22 @@ def test_publish_refusal_is_a_bad_request(
     assert stored_app.workflow_id is None
 
 
-def test_publish_evaluator_plan_denial_is_forbidden(
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [(EvaluationPlanRequiredError, PaidPlanRequiredError), (EvaluationDisabledError, NotFound)],
+)
+def test_publish_evaluator_maps_evaluation_denial(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
+    service_error: type[Exception],
+    http_error: type[HTTPException],
 ) -> None:
     service = _workflow_service(monkeypatch, sqlite_session_factory)
 
     def publish_workflow(**_kwargs: object) -> Workflow:
-        raise EvaluationPlanRequiredError()
+        raise service_error()
 
     monkeypatch.setattr(service, "publish_workflow", publish_workflow)
     ctx = _app_context(sqlite_session)
@@ -575,5 +581,5 @@ def test_publish_evaluator_plan_denial_is_forbidden(
     endpoint_view: object = type(api).post
     assert isinstance(endpoint_view, _EndpointView)
     with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
-        with pytest.raises(PaidPlanRequiredError):
+        with pytest.raises(http_error):
             endpoint_view.__handler__(api, ctx, "app-1", body=PublishPayload())

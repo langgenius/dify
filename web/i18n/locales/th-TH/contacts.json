@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "ไม่สามารถนำผู้ติดต่อออกได้ โปรดลองอีกครั้ง",
   "directory.removalSingleTitle": "นำ {{name}} ออกหรือไม่",
   "directory.resultCount": "ผลลัพธ์: {{count}}",
-  "imPlatform.action.configure": "กําหนดค่า",
   "imPlatform.action.configureChannel": "กำหนดค่า {{provider}}",
   "imPlatform.action.connect": "ติด",
   "imPlatform.action.copied": "คัด ลอก",

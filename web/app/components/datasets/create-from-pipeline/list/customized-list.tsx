@@ -41,21 +41,10 @@ const CustomizedList = ({
   const deleteFilter = { mutationKey, exact: true }
   const deletion = useMutation({
     ...deleteTemplate.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       networkMode: 'always',
-      onSuccess: (_result, { params }) => {
-        queryClient.setQueryData(
-          listKey,
-          (current) =>
-            current && {
-              ...current,
-              pipeline_templates: current.pipeline_templates.filter(
-                (template) => template.id !== params.template_id,
-              ),
-            },
-        )
+      onSuccess: () => {
         deleteDialog.close()
-        void queryClient.invalidateQueries({ queryKey: listKey, exact: true })
       },
     }),
     mutationKey,

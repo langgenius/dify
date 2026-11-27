@@ -25,6 +25,7 @@ import {
   documentShowsAvailabilityAction,
   taskCanRetry,
 } from './model'
+import { ReindexConfirmDialog } from './reindex-confirm-dialog'
 import {
   useDocumentRowPendingAction,
   useDownloadDocumentAction,
@@ -35,6 +36,7 @@ import {
 } from './row-actions/use-document-row-actions'
 import { createDocumentRowActionFactsAtom, createDocumentRowCanEditAtom } from './state/results'
 import { documentCanDownloadAtom } from './state/runtime'
+import { useReindexConfirmation } from './use-reindex-confirmation'
 
 function useDocumentActionFacts(documentId: string) {
   const factsAtom = useMemo(() => createDocumentRowActionFactsAtom(documentId), [documentId])
@@ -150,11 +152,17 @@ function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
   )
 }
 
-function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
+function ReindexDocumentMenuItem({
+  document,
+  onOpen,
+}: {
+  document: LogicalDocument
+  onOpen: () => void
+}) {
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
   const canEdit = useDocumentCanEdit(document.id)
   const { status } = useDocumentActionFacts(document.id)
-  const { busy, run } = useReindexDocumentAction(document, status)
+  const busy = Boolean(useDocumentRowPendingAction(document.id))
   const disabled = !canEdit || !documentCanReindex(status)
 
   return (
@@ -162,7 +170,7 @@ function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
       aria-describedby={disabled ? `new-document-${document.id}-actions-unavailable` : undefined}
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={busy || disabled}
-      onClick={() => void run()}
+      onClick={onOpen}
     >
       <span aria-hidden className="i-ri-loop-left-line size-4" />
       {t(($) => $.reindexDocument, { ns: 'knowledgeDocuments' })}
@@ -170,12 +178,33 @@ function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
   )
 }
 
-function ReprocessDocumentMenuItem({ document }: { document: LogicalDocument }) {
+/**
+ * Asks, then runs the reindex. It is mounted beside the menu, which closes when an item is
+ * chosen, and shows from the moment it is mounted: each request to reindex mounts a new one.
+ */
+function ReindexDocumentConfirmation({ document }: { document: LogicalDocument }) {
+  const canEdit = useDocumentCanEdit(document.id)
+  const { status } = useDocumentActionFacts(document.id)
+  const { busy, run } = useReindexDocumentAction(document, status)
+  const { open, setOpen } = useReindexConfirmation(
+    canEdit && documentCanReindex(status) && !busy,
+    true,
+  )
+  return <ReindexConfirmDialog open={open} onOpenChange={setOpen} onConfirm={() => void run()} />
+}
+
+function ReprocessDocumentMenuItem({
+  document,
+  onReindex,
+}: {
+  document: LogicalDocument
+  onReindex: () => void
+}) {
   const { status } = useDocumentActionFacts(document.id)
   return status === 'failed' ? (
     <RetryDocumentMenuItem document={document} />
   ) : (
-    <ReindexDocumentMenuItem document={document} />
+    <ReindexDocumentMenuItem document={document} onOpen={onReindex} />
   )
 }
 
@@ -266,6 +295,9 @@ export function DocumentActionsMenu({
   const pendingAction = useDocumentRowPendingAction(document.id)
   const busy = Boolean(pendingAction)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  // A list has hundreds of rows and few of them are ever reindexed, so a row gets a confirmation
+  // (a dialog and the action behind it) only once a reindex was asked for; 0 is "never".
+  const [reindexRequest, setReindexRequest] = useState(0)
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
   return (
@@ -294,7 +326,10 @@ export function DocumentActionsMenu({
         </MenuTrigger>
         <MenuContent align="end" className="w-50">
           <RenameDocumentMenuItem document={document} onOpen={() => setRenameDialogOpen(true)} />
-          <ReprocessDocumentMenuItem document={document} />
+          <ReprocessDocumentMenuItem
+            document={document}
+            onReindex={() => setReindexRequest((request) => request + 1)}
+          />
           <DownloadDocumentMenuItem document={document} />
           <ToggleDocumentAvailabilityMenuItem document={document} />
           <MenuSeparator className="my-px" />
@@ -315,6 +350,9 @@ export function DocumentActionsMenu({
           <RenameDocumentForm document={document} onSaved={() => setRenameDialogOpen(false)} />
         </DialogContent>
       </Dialog>
+      {reindexRequest > 0 && (
+        <ReindexDocumentConfirmation key={reindexRequest} document={document} />
+      )}
     </>
   )
 }

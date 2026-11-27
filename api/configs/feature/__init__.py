@@ -716,6 +716,16 @@ class HttpConfig(BaseSettings):
         default=True,
     )
 
+    KNOWLEDGE_AGENT_ACCESS_ENABLED: bool = Field(
+        description=(
+            "Let members connect personal agents (Claude Code, Codex, any MCP client) to Agent Knowledge "
+            "Bases over MCP at /mcp/knowledge, with OAuth sign-in or personal tokens. Independent of "
+            "OPENAPI_ENABLED; workspace admins can still turn it off per workspace."
+        ),
+        validation_alias=AliasChoices("KNOWLEDGE_AGENT_ACCESS_ENABLED"),
+        default=True,
+    )
+
     inner_openapi_cors_allow_origins: str = Field(
         description=(
             "Comma-separated allowlist for /openapi/v1/* CORS. "
@@ -1215,7 +1225,7 @@ class ModerationConfig(BaseSettings):
     )
 
     MODERATION_NON_STREAM_SEGMENT_SIZE: PositiveInt = Field(
-        description="Maximum characters checked per moderation request for input or non-streaming output",
+        description="Maximum characters per input or non-streaming output moderation segment",
         default=2000,
     )
 
@@ -1541,15 +1551,15 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
-        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        description="Enable periodic recovery of conversation cleanup and detached retired Workspaces",
         default=True,
     )
     CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
-        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        description="Conversation cleanup recovery interval in minutes",
         default=5,
     )
     CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
-        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        description="Maximum IDs dispatched per cleanup sweep for each of conversations and detached Workspaces",
         default=100,
     )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
@@ -1819,8 +1829,12 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
 
 
 class EvaluationConfig(BaseSettings):
-    """Configuration for the evaluation runtime."""
+    """Deployment availability and runtime settings for Evaluation."""
 
+    ENABLE_EVALUATION: bool = Field(
+        description="Enable Evaluation on deployments and workspaces that support it.",
+        default=False,
+    )
     EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
         description="Maximum active evaluation runs per tenant.",
         default=3,
@@ -1848,6 +1862,10 @@ class EvaluationConfig(BaseSettings):
     EVALUATION_MAX_PARALLEL_TARGETS: PositiveInt = Field(
         description="Maximum target executions performed in parallel by one evaluation task.",
         default=5,
+    )
+    EVALUATION_APP_CONCURRENCY_WAIT_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds an evaluation row waits for an app concurrency slot.",
+        default=300,
     )
 
     @model_validator(mode="after")

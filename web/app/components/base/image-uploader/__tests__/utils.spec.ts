@@ -1,8 +1,6 @@
 import type { ConsoleClient } from '@/service/console'
-import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
-import { createInstance } from 'i18next'
-import { getImageUploadErrorMessage, imageUpload } from '../utils'
+import { imageUpload } from '../utils'
 
 const upload = vi.hoisted(() =>
   vi.fn<typeof import('@/service/webapp-client').webAppClient.files.upload.post>(),
@@ -21,32 +19,9 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-const i18n = createInstance()
-beforeAll(async () => {
-  await i18n.init({
-    lng: 'en',
-    resources: {
-      en: { common: { fileUploader: { fileExtensionBlocked: 'This file type is blocked.' } } },
-    },
-  })
-})
 beforeEach(() => {
   upload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'image.png', size: 5 })
   consoleUpload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'image.png', size: 5 })
-})
-
-it.each([
-  {
-    error: new ORPCError('forbidden', { message: 'Forbidden by policy' }),
-    expected: 'Forbidden by policy',
-  },
-  { error: new ORPCError('file_extension_blocked'), expected: 'This file type is blocked.' },
-  { error: new ORPCError('unexpected_error'), expected: 'Upload failed' },
-  { error: new Error('Network unavailable'), expected: 'Upload failed' },
-])('returns the user-facing error for $error.code / $error.message', ({ error, expected }) => {
-  expect(getImageUploadErrorMessage(error, 'Upload failed', i18n.getFixedT('en', ['common']))).toBe(
-    expected,
-  )
 })
 
 const file = () => new File(['image'], 'image.png', { type: 'image/png' })
@@ -62,7 +37,7 @@ it('uploads console images through the files contract and reports the server res
   imageUpload({ file: selected, ...events })
   expect(consoleUpload).toHaveBeenCalledExactlyOnceWith(
     { body: { file: selected } },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   expect(upload).not.toHaveBeenCalled()
   await waitFor(() =>
@@ -91,7 +66,7 @@ it('uploads public web app images through the WebApp files contract', async () =
   )
   expect(upload).toHaveBeenCalledExactlyOnceWith(
     { body: { file: selected } },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   expect(consoleUpload).not.toHaveBeenCalled()
 })

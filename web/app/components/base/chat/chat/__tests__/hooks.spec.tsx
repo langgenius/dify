@@ -5,6 +5,7 @@ import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/t
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
+import { createHttpError } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
   createHumanInputFormFixture,
@@ -1045,7 +1046,7 @@ describe('useChat', () => {
       ])
     })
 
-    it('should retain the streamed answer and original settlement when history fails', async () => {
+    it('should retain the streamed answer and original settlement and report a failed history refresh', async () => {
       const historyError = new Response(null, { status: 503 })
       const onGetConversationMessages = vi.fn().mockRejectedValue(historyError)
       const onGetSuggestedQuestions = vi.fn()
@@ -1083,7 +1084,41 @@ describe('useChat', () => {
       expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
       expect(onConversationComplete).not.toHaveBeenCalled()
       expect(onSendSettled).toHaveBeenCalledExactlyOnceWith(undefined)
-      expect(toast.error).not.toHaveBeenCalled()
+      // A history refresh that fails outside the request layer still tells the user.
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.unknown')
+    })
+
+    it('reports a failed history refresh request with its server message', async () => {
+      const onGetConversationMessages = vi
+        .fn()
+        .mockRejectedValue(
+          createHttpError(
+            { status: 429, statusText: '', headers: new Headers() },
+            { message: 'Too many requests' },
+          ),
+        )
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat({ suggested_questions_after_answer: { enabled: true } } as ChatConfig),
+      )
+
+      act(() => {
+        result.current.handleSend(
+          streams.sender('chat-messages'),
+          { query: 'test' },
+          { onGetConversationMessages, onGetSuggestedQuestions: vi.fn() },
+        )
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onData('Streamed answer', true, {
+          messageId: 'answer-1',
+          conversationId: 'conversation-1',
+        })
+        await callbacks.onCompleted()
+      })
+
+      expect(result.current.chatList.at(-1)?.content).toBe('Streamed answer')
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Too many requests')
     })
 
     it.each(['denied', 'navigation', 'new request', 'stop', 'unmount'] as const)(
@@ -2556,8 +2591,262 @@ describe('useChat', () => {
   })
 
   describe('handleStop and handleRestart', () => {
+    it('reloads authoritative Agent activity after stopping the live SSE consumer', async () => {
+      const stopChat = vi.fn().mockResolvedValue(undefined)
+      const toolActivity = {
+        id: 'run:call',
+        run_id: 'run',
+        tool_call_id: 'call',
+        tool_name: 'search',
+        status: 'cancelled',
+        call_limit: {
+          tool_identity: 'operation',
+          limit: 3,
+          used: 1,
+          execution_status: 'unconfirmed',
+        },
+      }
+      const onGetConversationMessages = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'answer',
+            answer: '',
+            agent_thoughts: [
+              {
+                id: 'thought',
+                tool: 'search',
+                tool_input: '{}',
+                observation: '',
+                thought: '',
+                message_id: 'answer',
+                conversation_id: 'conversation',
+                position: 1,
+                tool_activity: toolActivity,
+              },
+            ],
+          },
+        ],
+      })
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, stopChat, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend(
+          streams.sender('chat-messages'),
+          { query: 'test' },
+          { onGetConversationMessages },
+        )
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      const controller = createAbortControllerMock()
+      act(() => {
+        callbacks.onData('', true, { messageId: 'answer', conversationId: 'conversation' })
+        callbacks.onWorkflowStarted({ task_id: 'task' })
+        callbacks.getAbortController(controller)
+      })
+      await act(async () => {
+        await result.current.handleStop()
+      })
+      await act(async () => {
+        await callbacks.onCompleted(true)
+      })
+      expect(stopChat).toHaveBeenCalledWith('task')
+      expect(controller.abort).toHaveBeenCalledOnce()
+      expect(result.current.chatList.at(-1)?.agent_thoughts?.[0]?.tool_activity).toEqual(
+        toolActivity,
+      )
+    })
+
+    it('waits for stopped Agent history to contain terminal tool activity', async () => {
+      vi.useFakeTimers()
+      try {
+        const activity = {
+          id: 'run:call',
+          run_id: 'run',
+          tool_call_id: 'call',
+          tool_name: 'search',
+          status: 'running',
+        }
+        const thought = {
+          id: 'thought',
+          message_id: 'answer',
+          conversation_id: 'conversation',
+          tool: 'search',
+          tool_input: '{}',
+          thought: '',
+          observation: '',
+          tool_activity: activity,
+        }
+        const cancelled = {
+          ...activity,
+          status: 'cancelled',
+          call_limit: {
+            tool_identity: 'operation',
+            limit: 3,
+            used: 1,
+            execution_status: 'unconfirmed',
+          },
+        }
+        const history = vi
+          .fn()
+          .mockResolvedValueOnce({ data: [] })
+          .mockResolvedValueOnce({ data: [{ id: 'answer', agent_thoughts: [thought] }] })
+          .mockResolvedValue({
+            data: [{ id: 'answer', agent_thoughts: [{ ...thought, tool_activity: cancelled }] }],
+          })
+        const complete = vi.fn()
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat(
+            undefined,
+            undefined,
+            undefined,
+            vi.fn().mockResolvedValue(undefined),
+            undefined,
+            undefined,
+            undefined,
+            { isNewAgent: true },
+          ),
+        )
+        act(() => {
+          result.current.handleSend(
+            streams.sender('chat-messages'),
+            { query: 'test' },
+            { onGetConversationMessages: history, onConversationComplete: complete },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        act(() => {
+          callbacks.onData('', true, { messageId: 'answer', conversationId: 'conversation' })
+          callbacks.onThought(thought)
+          callbacks.onWorkflowStarted({ task_id: 'task' })
+        })
+        let stopped: Promise<unknown>
+        await act(async () => {
+          stopped = result.current.handleStop()
+        })
+        expect(history).toHaveBeenCalledTimes(1)
+        expect(complete).not.toHaveBeenCalled()
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000)
+          await stopped!
+          await callbacks.onCompleted(true)
+        })
+        expect(history).toHaveBeenCalledTimes(3)
+        expect(complete).toHaveBeenCalledOnce()
+        expect(result.current.chatList.at(-1)?.agent_thoughts?.[0]?.tool_activity).toEqual(
+          cancelled,
+        )
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not refresh stopped history after a new send supersedes it', async () => {
+      vi.useFakeTimers()
+      try {
+        const history = vi.fn().mockResolvedValue({ data: [] })
+        const complete = vi.fn()
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat(
+            undefined,
+            undefined,
+            undefined,
+            vi.fn().mockResolvedValue(undefined),
+            undefined,
+            undefined,
+            undefined,
+            { isNewAgent: true },
+          ),
+        )
+        act(() => {
+          result.current.handleSend(
+            streams.sender('chat-messages'),
+            { query: 'old' },
+            { onGetConversationMessages: history, onConversationComplete: complete },
+          )
+        })
+        const oldCallbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        act(() => {
+          oldCallbacks.onData('', true, {
+            messageId: 'old-answer',
+            conversationId: 'old-conversation',
+          })
+          oldCallbacks.onWorkflowStarted({ task_id: 'old-task' })
+        })
+        let stopped: Promise<unknown>
+        await act(async () => {
+          stopped = result.current.handleStop()
+        })
+        act(() => {
+          vi.setSystemTime(Date.now() + 100)
+          result.current.handleSend(streams.sender('chat-messages'), { query: 'new' }, {})
+        })
+        const newCallbacks = vi.mocked(ssePost).mock.calls[1]![2] as HookCallbacks
+        await act(async () => {
+          newCallbacks.onData('New answer', true, {
+            messageId: 'new-answer',
+            conversationId: 'new-conversation',
+          })
+          await vi.advanceTimersByTimeAsync(500)
+          await stopped!
+        })
+        expect(history).toHaveBeenCalledOnce()
+        expect(complete).not.toHaveBeenCalled()
+        expect(result.current.chatList.at(-1)?.content).toBe('New answer')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('bounds stopped history refresh when the backend does not settle', async () => {
+      vi.useFakeTimers()
+      try {
+        const history = vi.fn().mockResolvedValue({ data: [] })
+        const settled = vi.fn()
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat(
+            undefined,
+            undefined,
+            undefined,
+            vi.fn().mockResolvedValue(undefined),
+            undefined,
+            undefined,
+            undefined,
+            { isNewAgent: true },
+          ),
+        )
+        act(() => {
+          result.current.handleSend(
+            streams.sender('chat-messages'),
+            { query: 'test' },
+            { onGetConversationMessages: history, onSendSettled: settled },
+          )
+        })
+        const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+        act(() => {
+          callbacks.onData('', true, { messageId: 'answer', conversationId: 'conversation' })
+          callbacks.onWorkflowStarted({ task_id: 'task' })
+        })
+        let stopped: Promise<unknown>
+        await act(async () => {
+          stopped = result.current.handleStop()
+        })
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(10000)
+          await stopped!
+        })
+        expect(history).toHaveBeenCalledTimes(20)
+        expect(settled).toHaveBeenCalledOnce()
+        expect(result.current.isResponding).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it.each(['rejection', 'throw'] as const)(
-      'should finish stopping locally after a service %s',
+      'should finish stopping locally and report the failed stop after a service %s',
       async (failure) => {
         const error = new Error('Stop request failed')
         const stopChat = vi.fn(() => {
@@ -2580,7 +2869,8 @@ describe('useChat', () => {
 
         expect(result.current.isResponding).toBe(false)
         expect(controller.abort).toHaveBeenCalledOnce()
-        expect(toast.error).not.toHaveBeenCalled()
+        // The response stops locally, and the failed stop request is still reported.
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.unknown')
         unmount()
       },
     )
@@ -2624,6 +2914,41 @@ describe('useChat', () => {
         expect(toast.error).not.toHaveBeenCalled()
       },
     )
+
+    it.each([
+      [
+        'the translated reason',
+        createHttpError(new Response(null, { status: 404 }), {
+          code: 'conversation_not_found',
+          message: 'Server says why',
+        }),
+        'appDebug.operation.stopResponding: requestErrors.code.conversation_not_found',
+      ],
+      [
+        'the localized fallback',
+        new Error('Stop request failed'),
+        'appDebug.operation.stopResponding: common.api.actionFailed',
+      ],
+    ])('should report %s when a new agent cannot stop', async (_case, error, message) => {
+      const stopChat = vi.fn(() => Promise.reject(error))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, stopChat, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend(streams.sender('chat-messages'), { query: 'test' }, {})
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onWorkflowStarted({ task_id: 'task-123' })
+        await result.current.handleStop()
+      })
+
+      expect(stopChat).toHaveBeenCalledWith('task-123')
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
+      expect(result.current.isResponding).toBe(true)
+    })
 
     it('clears messages and suggested questions when restarting', async () => {
       const cb = vi.fn()

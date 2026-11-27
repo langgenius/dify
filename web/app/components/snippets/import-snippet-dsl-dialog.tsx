@@ -23,14 +23,14 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { Uploader } from '@/features/dsl-import/uploader'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { canCreateAndModifySnippets } from './utils/permission'
@@ -117,12 +117,12 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const { mutateAsync: importSnippet, isPending: isImporting } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.imports.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: confirmSnippetImport, isPending: isConfirmingImport } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.imports.byImportId.confirm.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(
@@ -269,18 +269,19 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
               >
                 <TabsTab
                   value={ImportSnippetDSLDialogTab.FromFile}
-                  className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                  className="h-full pt-0 pb-0"
                   disabled={isSubmitting}
                 >
                   {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
                 </TabsTab>
                 <TabsTab
                   value={ImportSnippetDSLDialogTab.FromUrl}
-                  className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                  className="h-full pt-0 pb-0"
                   disabled={isSubmitting}
                 >
                   {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
                 </TabsTab>
+                <TabsIndicator />
               </TabsList>
               <TabsPanel
                 value={ImportSnippetDSLDialogTab.FromFile}

@@ -45,16 +45,13 @@ export async function stageKnowledgeFsDocument(file: File, signal?: AbortSignal)
     {
       body: { file },
     },
-    { context: { silent: true }, signal },
+    { signal },
   )
   return staged.id
 }
 
 export async function discardKnowledgeFsStagedUpload(uploadId: string) {
-  await consoleClient.knowledgeFs.uploads.byUploadId.delete(
-    { params: { upload_id: uploadId } },
-    { context: { silent: true } },
-  )
+  await consoleClient.knowledgeFs.uploads.byUploadId.delete({ params: { upload_id: uploadId } })
 }
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -70,13 +67,10 @@ async function claimKnowledgeFsDocument(
 ): Promise<FileScanFailure | undefined> {
   for (let retries = 0; ; retries++) {
     try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.post(
-        {
-          body: { upload_id: upload.uploadId },
-          params: { control_space_id: controlSpaceId },
-        },
-        { context: { silent: true } },
-      )
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.post({
+        body: { upload_id: upload.uploadId },
+        params: { control_space_id: controlSpaceId },
+      })
       return undefined
     } catch (error) {
       const failure = fileScanFailureFromError(error, upload.file.name)

@@ -40,7 +40,7 @@ describe('background task snapshot recovery', () => {
     expect(listBackgroundTasks).toHaveBeenCalledOnce()
     expect(listBackgroundTasks).toHaveBeenCalledWith(
       { params: { control_space_id: 'space-1' }, query: { task_ids: 'target' } },
-      { signal: undefined, context: { silent: true } },
+      { signal: undefined },
     )
   })
 

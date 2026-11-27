@@ -204,3 +204,14 @@ it('returns to Create token if a refresh removes the row while deletion is open'
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
 })
+
+it('reports that the saved token could not load', async () => {
+  fake.console.account.personalAccessTokens.byTokenId.get.mockRejectedValue(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Token storage unavailable' }),
+  )
+  const { screen } = await renderTokenPage()
+  await screen.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect
+    .element(screen.getByRole('dialog').getByRole('alert'))
+    .toMatchTextContent(/Could not load access tokens/)
+})

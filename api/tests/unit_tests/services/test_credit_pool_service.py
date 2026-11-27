@@ -54,7 +54,20 @@ def test_get_pool_reads_billing_quota_balance() -> None:
     )
 
 
-def test_reserve_credits_commits_billing_reservation_once() -> None:
+@pytest.mark.parametrize(
+    ("attribution", "expected_app_type", "expected_created_by"),
+    [
+        ({}, "unknown", "unknown"),
+        (
+            {"app_type": CreditUsageAppType.WORKFLOW, "created_by": CreditUsageCreatedBy.EVALUATION},
+            "workflow",
+            "evaluation",
+        ),
+    ],
+)
+def test_reserve_credits_commits_billing_reservation_once(
+    attribution: dict[str, str], expected_app_type: str, expected_created_by: str
+) -> None:
     with (
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
@@ -67,7 +80,7 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
             credits_required=3,
             pool_type=ProviderQuotaType.TRIAL,
             request_id="request-1",
-            meta={"source": "test"},
+            meta={"source": "test", **attribution},
         )
         reservation.commit()
         reservation.commit()
@@ -76,8 +89,8 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
     assert reservation.state == CreditPoolReservationState.COMMITTED
     expected_metadata = {
         "source": "test",
-        "created_by": CreditUsageCreatedBy.UNKNOWN.value,
-        "app_type": CreditUsageAppType.UNKNOWN.value,
+        "created_by": expected_created_by,
+        "app_type": expected_app_type,
     }
     quota_reserve.assert_called_once_with(
         tenant_id="tenant-1",
@@ -120,6 +133,15 @@ def test_reserve_credits_releases_billing_reservation() -> None:
         bucket="trial",
         reservation_id="reservation-1",
     )
+
+
+def test_billing_outage_does_not_permit_an_unreserved_hosted_call() -> None:
+    """Only catalog reads may degrade; a live charge still requires a successful reservation."""
+    with (
+        patch.object(billing, "quota_reserve", side_effect=billing.BillingQuotaUpstreamUnavailableError()),
+        pytest.raises(billing.BillingQuotaUpstreamUnavailableError),
+    ):
+        CreditPoolService.reserve_credits("tenant-1", 1, "paid", request_id="request-1")
 
 
 def test_reserve_credits_raises_when_billing_has_no_reservation() -> None:

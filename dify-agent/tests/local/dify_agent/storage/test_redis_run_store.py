@@ -26,6 +26,7 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import RunFinalizationResult, RunStreamSealedError
+from dify_agent.runtime.tool_call_limits import InMemoryToolCallLimitStore
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_idempotency_key, run_record_key
 from dify_agent.storage.redis_run_store import (
     DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
@@ -34,6 +35,85 @@ from dify_agent.storage.redis_run_store import (
     RedisRunStore,
     RunNotFoundError,
 )
+
+
+@pytest.mark.parametrize("terminal", ["succeeded", "failed", "cancelled"])
+def test_terminal_preserves_the_owners_snapshot_without_live_run_record_counters(terminal: str) -> None:
+    async def scenario() -> None:
+        async with AsyncFakeRedis() as redis:
+            store = RedisRunStore(redis)
+            record = await store.create_run()
+            counter = InMemoryToolCallLimitStore()
+            large_limit = 2**53 + 123
+            await counter.reserve(
+                run_id=record.run_id, tool_identity="operation", tool_call_id="pending", limit=large_limit
+            )
+            snapshot = counter.seal()
+            session = SessionSnapshot(layers={"output": {"empty": {}, "large": large_limit}})
+            if terminal == "cancelled":
+                await store.request_cancellation(record.run_id, CancelRunRequest(reason="stop"))
+                intent = await store.get_cancellation_intent(record.run_id)
+                assert intent is not None
+                result = await store.finalize_cancellation(
+                    record.run_id, intent, session_snapshot=session, tool_call_limits=snapshot
+                )
+            elif terminal == "succeeded":
+                result = await store.finalize_run(
+                    RunSucceededEvent(
+                        run_id=record.run_id,
+                        data=RunSucceededEventData(
+                            output={"empty": {}, "large": large_limit}, session_snapshot=session
+                        ),
+                        tool_call_limits=snapshot,
+                    )
+                )
+            else:
+                result = await store.finalize_run(
+                    RunFailedEvent(
+                        run_id=record.run_id,
+                        data=RunFailedEventData(error="failed", session_snapshot=session),
+                        tool_call_limits=snapshot,
+                    )
+                )
+            assert result.applied
+            events = (await store.get_events(record.run_id)).events
+            stored = events[-1]
+            assert isinstance(stored, (RunSucceededEvent, RunFailedEvent, RunCancelledEvent))
+            assert stored.tool_call_limits == snapshot
+            assert next(iter(stored.tool_call_limits.values())).limit == large_limit
+            assert stored.data.session_snapshot == session
+            if isinstance(stored, RunSucceededEvent):
+                assert stored.data.output == {"empty": {}, "large": large_limit}
+            raw = await redis.get(run_record_key(store.prefix, record.run_id))
+            assert raw is not None and b"tool_call_limits" not in raw
+            competing = await store.finalize_run(
+                RunFailedEvent(run_id=record.run_id, data=RunFailedEventData(error="late"), tool_call_limits={})
+            )
+            assert not competing.applied
+            assert (await store.get_events(record.run_id)).events == events
+
+    asyncio.run(scenario())
+
+
+def test_retained_legacy_records_replay_without_restoring_or_rewriting_live_quota() -> None:
+    async def scenario() -> None:
+        async with AsyncFakeRedis() as redis:
+            store = RedisRunStore(redis)
+            record, created = await store.create_run_idempotent(idempotency_key="legacy", request_fingerprint="same")
+            assert created
+            legacy = record.model_dump(mode="json")
+            legacy["tool_call_limits"] = {
+                "operation": {"tool_identity": "search", "limit": "3", "used": 1, "call_ids": {"old": 1}}
+            }
+            await redis.set(run_record_key(store.prefix, record.run_id), json.dumps(legacy), ex=60)
+            loaded = await store.get_run(record.run_id)
+            assert "tool_call_limits" not in loaded.model_dump(mode="json")
+            replay, created = await store.create_run_idempotent(idempotency_key="legacy", request_fingerprint="same")
+            assert not created and replay == loaded
+            raw = await redis.get(run_record_key(store.prefix, record.run_id))
+            assert raw is not None and json.loads(raw)["tool_call_limits"] == legacy["tool_call_limits"]
+
+    asyncio.run(scenario())
 
 
 class FakeRedis:

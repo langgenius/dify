@@ -8,7 +8,7 @@ from http import HTTPStatus
 from typing import Any, Final
 
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 from constants import HIDDEN_VALUE
 from constants.oauth_bearer import Scope
@@ -71,7 +71,11 @@ from libs.helper import to_timestamp
 from models import App, AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
@@ -207,6 +211,8 @@ class AppPublishApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationDisabledError as exc:
+            raise NotFound() from exc
         except EvaluationPlanRequiredError as exc:
             raise PaidPlanRequiredError() from exc
         except EvaluationEntitlementUnavailableError as exc:

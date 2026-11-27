@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
@@ -12,13 +12,14 @@ import { emailRegex } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 
 export default function CheckCode() {
   const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const sendResetCode = useMutation(consoleQuery.forgotPassword.post.mutationOptions())
+  const loading = sendResetCode.isPending
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
   const pageTitle = t(($) => $.resetPassword, { ns: 'login' })
@@ -27,8 +28,7 @@ export default function CheckCode() {
   const handleGetEMailVerificationCode = async (email: string) => {
     if (loading) return
     try {
-      setLoading(true)
-      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
+      const res = await sendResetCode.mutateAsync({ body: { email, language: locale } })
       if (res.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
@@ -40,8 +40,6 @@ export default function CheckCode() {
       }
     } catch (error) {
       console.error(error)
-    } finally {
-      setLoading(false)
     }
   }
 

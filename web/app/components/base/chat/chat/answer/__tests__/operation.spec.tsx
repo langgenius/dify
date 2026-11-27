@@ -41,14 +41,17 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
+  const { createFeaturesFixture } = await import('@/test/console/query-data')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      // Adding an annotation refreshes the quota.
+      'features.get': () => createFeaturesFixture(),
+      'apps.byAppId.annotations.post': (input) => mockAddAnnotation(input),
       'apps.byAppId.annotations.byAnnotationId.post': (input) => mockEditAnnotation(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => mockRemoveAnnotation(input),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.annotations.post': mockAddAnnotation,
       'apps.byAppId.annotations.byAnnotationId.post': mockEditAnnotation,
     }),
   }

@@ -50,7 +50,7 @@
   "scanner.lastTested": "Остання перевірка: {{time}}",
   "scanner.loadFailed": "Не вдалося завантажити сканери.",
   "scanner.neverTested": "Ще не перевірявся",
-  "scanner.readOnly": "Керувати сканерами можуть лише власники та адміністратори робочого простору.",
+  "scanner.readOnly": "У вас немає дозволу керувати сканерами.",
   "scanner.status.active": "Активний",
   "scanner.status.error": "Помилка",
   "scanner.test": "Перевірити",

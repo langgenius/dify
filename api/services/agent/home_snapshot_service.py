@@ -12,13 +12,8 @@ from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
-from models.agent import (
-    Agent,
-    AgentHomeSnapshot,
-    AgentStatus,
-    AgentWorkingResourceStatus,
-)
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from models.agent import AgentHomeSnapshot, AgentWorkingResourceStatus
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 
 logger = logging.getLogger(__name__)
 
@@ -101,30 +96,7 @@ def create_home_snapshot_client() -> Client:
     )
 
 
-def validate_home_snapshot_binding(*, session: Session, agent: Agent, home_snapshot_id: str | None) -> None:
-    if home_snapshot_id is None:
-        return
-    _require_owned_home_snapshot(session=session, agent=agent, home_snapshot_id=home_snapshot_id)
-
-
-def _require_owned_home_snapshot(*, session: Session, agent: Agent, home_snapshot_id: str) -> AgentHomeSnapshot:
-    if agent.status != AgentStatus.ACTIVE:
-        raise AgentHomeSnapshotUnavailableError(f"Agent {agent.id} is not active")
-    home_snapshot = session.scalar(
-        select(AgentHomeSnapshot).where(
-            AgentHomeSnapshot.id == home_snapshot_id,
-            AgentHomeSnapshot.tenant_id == agent.tenant_id,
-            AgentHomeSnapshot.agent_id == agent.id,
-            AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
-        )
-    )
-    if home_snapshot is None:
-        raise AgentHomeSnapshotUnavailableError(f"Home Snapshot {home_snapshot_id} is unavailable for Agent {agent.id}")
-    return home_snapshot
-
-
 __all__ = [
     "AgentHomeSnapshotService",
     "AgentHomeSnapshotUnavailableError",
-    "validate_home_snapshot_binding",
 ]

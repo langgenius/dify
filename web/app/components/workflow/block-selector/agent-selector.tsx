@@ -106,9 +106,6 @@ function AgentSelectorList({
       }),
       initialPageParam: 1,
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-      // Returning to a filter starts on page one, even if more pages were loaded before.
-      gcTime: 0,
-      staleTime: 0,
     }),
   )
   const agents = agentsQuery.data?.pages.flatMap((page) => page.data) ?? []

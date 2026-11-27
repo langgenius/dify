@@ -392,7 +392,6 @@ describe('SettingsModal', () => {
             permission: PermissionLevel.allTeamMembers,
           }),
         }),
-        { silent: true },
       )
       expect(toastMocks.call).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -439,7 +438,6 @@ describe('SettingsModal', () => {
             }),
           }),
         }),
-        { silent: true },
       )
     })
 
@@ -481,7 +479,6 @@ describe('SettingsModal', () => {
             }),
           }),
         }),
-        { silent: true },
       )
     })
 
@@ -524,7 +521,6 @@ describe('SettingsModal', () => {
             ],
           }),
         }),
-        { silent: true },
       )
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -4,6 +4,7 @@ from typing import Any, TypeVar, override
 from pydantic import BaseModel
 from ragas.llms.base import InstructorBaseRagasLLM
 
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from libs.structured_output_schema import to_strict_json_schema
 
 _OutputT = TypeVar("_OutputT", bound=BaseModel)
@@ -19,6 +20,7 @@ class DifyModelWrapper(InstructorBaseRagasLLM):
         self.user_id = user_id
 
     def _get_model_instance(self) -> Any:
+        """Resolve the configured judge model with Evaluation credit attribution."""
         from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
         from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -28,6 +30,7 @@ class DifyModelWrapper(InstructorBaseRagasLLM):
             provider=self.model_provider,
             model_type=ModelType.LLM,
             model=self.model_name,
+            request_metadata=get_evaluation_credit_usage_metadata(),
         )
 
     @staticmethod

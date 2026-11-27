@@ -1,15 +1,15 @@
 'use client'
-import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { uniq } from 'es-toolkit/array'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
@@ -57,7 +57,6 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         </button>
       </div>
       <AgentLogContent
-        key={JSON.stringify([appId, conversationID, messageID])}
         appId={appId}
         conversationID={conversationID}
         messageID={messageID}
@@ -78,8 +77,21 @@ function AgentLogContent({
   log,
   currentTab,
 }: AgentLogContentProps) {
-  const [loading, setLoading] = useState(true)
-  const [runDetail, setRunDetail] = useState<AgentLogResponse>()
+  const {
+    data: runDetail,
+    error,
+    isPending: loading,
+  } = useQuery(
+    consoleQuery.apps.byAppId.agent.logs.get.queryOptions({
+      input: {
+        params: { app_id: appId },
+        query: { conversation_id: conversationID, message_id: messageID },
+      },
+      meta: { errorToast: false },
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
   const tools = useMemo(
     () =>
       uniq(
@@ -92,32 +104,10 @@ function AgentLogContent({
     [runDetail],
   )
 
+  // The query opts out of the cache toast, so its failure is reported here once per error.
   useEffect(() => {
-    let active = true
-    consoleClient.apps.byAppId.agent.logs
-      .get(
-        {
-          params: { app_id: appId },
-          query: { conversation_id: conversationID, message_id: messageID },
-        },
-        { context: { silent: true } },
-      )
-      .then(
-        (data) => {
-          if (!active) return
-          setRunDetail(data)
-          setLoading(false)
-        },
-        (error) => {
-          if (!active) return
-          toast.error(error instanceof Error ? error.message : String(error))
-          setLoading(false)
-        },
-      )
-    return () => {
-      active = false
-    }
-  }, [appId, conversationID, messageID])
+    if (error) toast.error(error.message)
+  }, [error])
 
   return (
     <div

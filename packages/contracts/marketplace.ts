@@ -493,6 +493,21 @@ const templateDetailContract = base
   )
   .output(type<TemplateDetailResponse>())
 
+const templateDslContract = base
+  .route({
+    path: '/templates/{templateId}/dsl',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      params: {
+        templateId: string
+      }
+    }>(),
+  )
+  // Served as a YAML attachment, which the OpenAPI client decodes to a File.
+  .output(type<Blob>())
+
 const templateCollectionsContract = base
   .route({
     path: '/template-collections',
@@ -740,6 +755,7 @@ export const marketplaceRouterContract = {
   templateCollections: templateCollectionsContract,
   templateCollectionTemplates: templateCollectionTemplatesContract,
   templateDetail: templateDetailContract,
+  templateDsl: templateDslContract,
   templateSearch: templateSearchContract,
   downloadPlugin: downloadPluginContract,
   pluginVersions: pluginVersionsContract,

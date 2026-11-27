@@ -28,7 +28,8 @@ export const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2Nod
 export function createPanelEnvironment({
   data = createData(),
   resource = { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
-}: { data?: AgentV2NodeType; resource?: EditorResource } = {}) {
+  readonly = false,
+}: { data?: AgentV2NodeType; resource?: EditorResource; readonly?: boolean } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['agent.create'],
     systemFeatures: { rbac_enabled: false },
@@ -79,6 +80,7 @@ export function createPanelEnvironment({
       ],
       edges: [createEdge({ source: 'source', target: 'agent-node' })],
       hooksStoreProps: { doSyncWorkflowDraft: syncDraft },
+      initialStoreState: { canvasReadOnly: readonly },
     }),
   )
   return {

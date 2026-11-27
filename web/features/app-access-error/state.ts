@@ -2,6 +2,7 @@ import { atom, createStore } from 'jotai/vanilla'
 import { z } from 'zod'
 import { env } from '@/env'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
+import { markErrorHandled } from '@/service/handled-error'
 import { registerRequestGuard } from '@/service/request-guard'
 import { parseWebAppAddress } from '@/service/webapp-address'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
@@ -119,7 +120,11 @@ export function handleAppAccessError(
   if (!scope || !isAppAccessErrorResponse(status, data, appIdentity)) return false
   if (isScopeBeingDeleted(scope)) return false
 
-  if (error) handledErrors.add(error)
+  if (error) {
+    handledErrors.add(error)
+    // The access-error page is this failure's feedback, so call sites must not toast it too.
+    markErrorHandled(error)
+  }
   if (!isAppAccessScopeCurrent(scope)) return true
 
   const clientIp = getClientIp(data)

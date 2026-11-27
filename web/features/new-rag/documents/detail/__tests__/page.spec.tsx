@@ -16,7 +16,9 @@ import { zGetFeaturesVectorSpaceResponse } from '@dify/contracts/api/console/fea
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import {
@@ -37,6 +39,28 @@ const knowledgeSpacePermissionState = vi.hoisted(() => ({
 
 const multimodalAssetGet = vi.hoisted(() => vi.fn())
 
+// Confirming a reindex has its own spec; here every request to reindex is confirmed at once.
+vi.mock('../../reindex-confirm-dialog', async () => {
+  const { useEffect } = await import('react')
+  return {
+    ReindexConfirmDialog: ({
+      onConfirm,
+      onOpenChange,
+      open,
+    }: {
+      onConfirm: () => void
+      onOpenChange: (open: boolean) => void
+      open: boolean
+    }) => {
+      useEffect(() => {
+        if (!open) return
+        onOpenChange(false)
+        onConfirm()
+      }, [onConfirm, onOpenChange, open])
+      return null
+    },
+  }
+})
 vi.mock('../../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -290,6 +314,7 @@ const task = (overrides: Partial<DocumentProcessingTask>): DocumentProcessingTas
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const forever = () => new Promise<never>(() => {})
@@ -370,27 +395,28 @@ vi.mock('@/service/console', async (importOriginal) => {
             return state.data ?? notFound()
           })
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: retryTaskRequest,
+    // Protected images are fetched as blobs through the multimodal asset route.
+    [`${space}.documents.byDocumentId.multimodal.byItemId.asset.get`]: multimodalAssetGet,
+    [`${space}.documents.byDocumentId.patch`]: patchDocumentMetadata,
+    [`${space}.metadata.get`]: () =>
+      metadataFieldsQuery.isPending
+        ? forever()
+        : track(async () => {
+            if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
+            if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
+            return {
+              data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
+              next_cursor: null,
+            }
+          }),
+    [`${space}.metadata.post`]: createMetadataField,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: retryTaskRequest,
-      // Protected images are fetched as blobs through the multimodal asset route.
-      [`${space}.documents.byDocumentId.multimodal.byItemId.asset.get`]: multimodalAssetGet,
-      [`${space}.documents.byDocumentId.patch`]: patchDocumentMetadata,
-      [`${space}.metadata.get`]: () =>
-        metadataFieldsQuery.isPending
-          ? forever()
-          : track(async () => {
-              if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
-              if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
-              return {
-                data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
-                next_cursor: null,
-              }
-            }),
-      [`${space}.metadata.post`]: createMetadataField,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: (input: never) =>
         cancelMutation.mutateAsync(input),
       [`${space}.backgroundTasks.get`]: (input: {
@@ -522,6 +548,8 @@ vi.mock('@tanstack/react-virtual', () => ({
 }))
 
 type DetailRenderOptions = {
+  /** Mirror the app's cache-level error toasts, so a failure's messages can be counted. */
+  errorToasts?: boolean
   onUrlUpdate?: ComponentProps<typeof QueryTestingAdapter>['onUrlUpdate']
   searchParams?: string
   settle?: boolean
@@ -570,7 +598,14 @@ function seedDocumentsList(queryClient: ReturnType<typeof createConsoleQueryClie
 
 async function render(ui: ReactElement, options: DetailRenderOptions = {}) {
   const onUrlUpdate = options.onUrlUpdate ?? vi.fn()
-  const queryClient = createConsoleQueryClient()
+  // Like the app, refresh a mutation's domain after it succeeds.
+  const invalidation = createMutationInvalidation()
+  const queryClient = createConsoleQueryClient({
+    invalidation,
+    ...(options.errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
   // The page retries transient failures itself; keep those retries immediate.
   queryClient.setDefaultOptions({
     ...queryClient.getDefaultOptions(),
@@ -1243,7 +1278,7 @@ describe('DocumentDetailPage', () => {
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       1,
       { params: assetParams },
-      { signal: expect.any(AbortSignal), context: { silent: true } },
+      { signal: expect.any(AbortSignal) },
     )
     fireEvent.error(image)
     await waitFor(() =>
@@ -1254,7 +1289,7 @@ describe('DocumentDetailPage', () => {
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       2,
       { params: assetParams, query: { variant: 'thumbnail' } },
-      { signal: expect.any(AbortSignal), context: { silent: true } },
+      { signal: expect.any(AbortSignal) },
     )
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
     expect(
@@ -1526,7 +1561,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { category: 'security' } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     await waitFor(() => expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'))
     await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
@@ -1596,7 +1631,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { priority: 42 } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -1674,7 +1709,7 @@ describe('DocumentDetailPage', () => {
         body: { expectedRowVersion: 2, patch: { category: 'product' } },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -1715,20 +1750,14 @@ describe('DocumentDetailPage', () => {
     )
     await user.keyboard('{Enter}')
 
-    expect(createMetadataField).toHaveBeenCalledWith(
-      {
-        body: { name: 'priority', type: 'number' },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
-    expect(patchDocumentMetadata).toHaveBeenCalledWith(
-      {
-        body: { expectedRowVersion: 2, patch: { priority: 0 } },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(createMetadataField).toHaveBeenCalledWith({
+      body: { name: 'priority', type: 'number' },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { priority: 0 } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     expect(patchDocumentMetadata).toHaveBeenCalledOnce()
     expect(listLogicalDocuments).not.toHaveBeenCalled()
   })
@@ -1993,6 +2022,59 @@ describe('DocumentDetailPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows a failed task interrupt once, with the translated reason in the task row', async () => {
+    const user = userEvent.setup()
+    documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'document_already_finished',
+        message: 'The task has already finished',
+      }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      errorToasts: true,
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const taskDrawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(
+      within(taskDrawer).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    )
+
+    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.document_already_finished',
+    )
+    expect(toastState.error).not.toHaveBeenCalled()
+  })
+
+  it('keeps a rate-limited task interrupt failure in the row once write access is confirmed', async () => {
+    const user = userEvent.setup()
+    // The knowledge rate limit fails with a plain 403, like a permission denial.
+    const message = 'Sorry, you have reached the knowledge base request rate limit.'
+    documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      errorToasts: true,
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const taskDrawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(
+      within(taskDrawer).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    )
+
+    await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
+    // A message without a cataloged code gives way to the action's own text.
+    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(
+      'knowledgeSpace.taskActionFailed',
+    )
+    expect(toastState.error).not.toHaveBeenCalled()
+  })
+
   it('loads task document titles only while the task drawer is open', async () => {
     documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
     const user = userEvent.setup()
@@ -2023,6 +2105,26 @@ describe('DocumentDetailPage', () => {
       },
     })
     await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
+  })
+
+  it('reports a failed re-index cancel once, with the server reason', async () => {
+    const user = userEvent.setup()
+    const message = 'The re-index has already finished'
+    taskSnapshotQuery.data = task({ state: 'running' })
+    documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      errorToasts: true,
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
+    )
+
+    await waitFor(() => expect(toastState.error).toHaveBeenCalled())
+    expect(toastState.error).toHaveBeenCalledExactlyOnceWith(message)
   })
 
   it('cancels a newly accepted re-index before task discovery catches up', async () => {
@@ -2749,8 +2851,68 @@ describe('DocumentDetailPage', () => {
       'knowledgeErrors.taskFailure.vectorSpaceQuotaUnavailable',
     )
     expect(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeEnabled()
-    expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything(), { context: { silent: true } })
+    expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything(), {
+      context: expect.any(Object),
+    })
     expect(permissionState.refresh).not.toHaveBeenCalled()
+  })
+
+  it('shows the server message when a detail re-index fails', async () => {
+    const user = userEvent.setup()
+    reindexMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
+
+    await waitFor(() => expect(toastState.error).toHaveBeenCalledWith('Server says why'))
+  })
+
+  it('shows the translated error code when a detail task retry fails', async () => {
+    const user = userEvent.setup()
+    const failedTask = task({ state: 'failed' })
+    taskSnapshotQuery.data = failedTask
+    documentQuery.data = logicalDocument({ latestTask: failedTask })
+    tasksQuery.data = { pages: [{ items: [failedTask] }] }
+    retryTaskRequest.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const drawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+    expect(await within(drawer).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.invalid_input',
+    )
+  })
+
+  it('refreshes the document and the drawer documents after a drawer task action', async () => {
+    const user = userEvent.setup()
+    const failedTask = task({ state: 'failed' })
+    taskSnapshotQuery.data = failedTask
+    documentQuery.data = logicalDocument({ latestTask: failedTask })
+    tasksQuery.data = { pages: [{ items: [failedTask] }] }
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const drawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await waitFor(() => expect(listLogicalDocuments).toHaveBeenCalled())
+    const documentReads = server.reads.get('document') ?? 0
+    const drawerDocumentReads = listLogicalDocuments.mock.calls.length
+
+    await user.click(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+    await waitFor(() => expect(retryTaskRequest).toHaveBeenCalledOnce())
+    await waitFor(() => expect(server.reads.get('document')).toBeGreaterThan(documentReads))
+    await waitFor(() =>
+      expect(listLogicalDocuments.mock.calls.length).toBeGreaterThan(drawerDocumentReads),
+    )
   })
 
   it('prompts for model setup before re-indexing a document', async () => {
@@ -3168,7 +3330,7 @@ describe('DocumentDetailPage', () => {
             body: { expectedRowVersion: 2, patch: { category: 'security' } },
             params: { control_space_id: 'space-1', document_id: 'document-1' },
           },
-          { context: { silent: true } },
+          { context: expect.any(Object) },
         ),
       )
     })

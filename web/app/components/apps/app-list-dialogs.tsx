@@ -49,10 +49,14 @@ export function AppListDialogs({ handles }: { handles: AppListDialogHandles }) {
   const editNameRef = useRef<HTMLInputElement>(null)
   const duplicateNameRef = useRef<HTMLInputElement>(null)
   const edit = useMutation(
-    consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const copy = useMutation(
-    consoleQuery.apps.byAppId.copy.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.copy.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const switching = useSwitchAppMutation()
   const secretExport = useExportAppDsl()

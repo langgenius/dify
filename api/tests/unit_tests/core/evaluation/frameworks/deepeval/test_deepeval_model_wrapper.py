@@ -35,6 +35,7 @@ class _ModelRuntime:
     def __init__(self) -> None:
         """Start with no invocations so tests can inspect the actual adapter call."""
         self.invoke_calls: list[dict[str, object]] = []
+        self.model_requests: list[dict[str, object]] = []
 
     def invoke_llm(self, **kwargs: object) -> _LLMResponse:
         """Record an invocation and return a concrete text response."""
@@ -51,8 +52,9 @@ class _ModelManager:
         """Bind the concrete runtime returned for the configured model."""
         self.model = model
 
-    def get_model_instance(self, **_kwargs: object) -> _ModelRuntime:
+    def get_model_instance(self, **kwargs: object) -> _ModelRuntime:
         """Return the configured runtime to the DeepEval adapter."""
+        self.model.model_requests.append(kwargs)
         return self.model
 
 
@@ -78,6 +80,7 @@ def test_generate_uses_dify_model_runtime(model_runtime: _ModelRuntime) -> None:
     kwargs = model_runtime.invoke_calls[0]
     assert kwargs["model_parameters"] == {"temperature": 0.0}
     assert kwargs["stream"] is False
+    assert model_runtime.model_requests[0]["request_metadata"] == {"app_type": "unknown", "created_by": "evaluation"}
     assert model.get_model_name() == "provider/judge-model"
 
 

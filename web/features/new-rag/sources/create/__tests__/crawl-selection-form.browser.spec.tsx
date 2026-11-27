@@ -8,7 +8,9 @@ import type { TestNavigation } from '@/test/next-navigation'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
@@ -187,13 +189,17 @@ async function renderSelectionForm({
       </>
     )
   }
-  const { wrapper: QueryProvider } = createConsoleQueryWrapper()
+  // The app's cache-level error toasts, so a failure's messages can be counted.
+  const { wrapper: QueryProvider } = createConsoleQueryWrapper({
+    queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+  })
   navigation = createTestNavigation({ url: '/datasets/new/space-1/sources/new/website' })
   const { NavigationProvider } = navigation
   return render(
     <NavigationProvider>
       <QueryProvider>
         <SourceSetup />
+        <AppToaster />
       </QueryProvider>
     </NavigationProvider>,
   )
@@ -412,9 +418,11 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
+    // The form shows its own text once for an uncataloged code; the cache adds no toast for it.
     await expect
       .element(page.getByRole('alert'))
       .toHaveTextContent('knowledgeSources.addSourceFailed')
+    expect(page.getByText('knowledgeSources.addSourceFailed').elements()).toHaveLength(1)
     await expect.element(page.getByRole('button', { name: 'Leave source setup' })).toBeDisabled()
     await expect
       .element(page.getByRole('checkbox', { name: 'Getting started' }))

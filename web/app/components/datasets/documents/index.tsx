@@ -30,6 +30,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
@@ -49,6 +50,7 @@ const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation(['common', 'datasetDocuments'])
+  const describeRequestError = useRequestErrorDescriber()
   const listRef = useRef<HTMLDivElement>(null)
   const [deleteDialog] = useState(() =>
     createAlertDialogHandle<{
@@ -59,7 +61,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   )
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const router = useRouter()
@@ -136,26 +138,32 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     [queryClient, datasetId],
   )
 
-  const handleUpdate = useCallback(() => {
-    invalidDocumentList()
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
-    })
-    setTimeout(() => {
-      const params = { dataset_id: datasetId }
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
-          input: { params },
-        }),
-      })
-      queryClient.invalidateQueries({
-        queryKey:
-          consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
-            { input: { params } },
-          ),
-      })
-    }, 5000)
-  }, [queryClient, datasetId, invalidDocumentList])
+  const handleUpdate = useCallback(
+    (operationName?: string) => {
+      // Syncs run through read endpoints, which the invalidation fallback skips.
+      if (operationName === 'sync') {
+        invalidDocumentList()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+        })
+      }
+      setTimeout(() => {
+        const params = { dataset_id: datasetId }
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+            input: { params },
+          }),
+        })
+        queryClient.invalidateQueries({
+          queryKey:
+            consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+              { input: { params } },
+            ),
+        })
+      }, 5000)
+    },
+    [queryClient, datasetId, invalidDocumentList],
+  )
 
   // Metadata editing hook
   const {
@@ -302,7 +310,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               </AlertDialogDescription>
               {deletion.isError && (
                 <p role="alert" className="text-text-destructive">
-                  {t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
+                  {describeRequestError(
+                    deletion.error,
+                    t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+                  )}
                 </p>
               )}
             </AlertDialogHeader>

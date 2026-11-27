@@ -1,10 +1,8 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useUpdateWorkflow } from '@/service/use-workflow'
-import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfoUpdate = {
@@ -24,15 +22,7 @@ export function useVersionInfo({
 }) {
   const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
-  const queryClient = useQueryClient()
-  const invalidateAppWorkflow = useCallback(
-    (workflowAppId: string) =>
-      queryClient.invalidateQueries({
-        queryKey: appWorkflowQueryOptions(workflowAppId).queryKey,
-      }),
-    [queryClient],
-  )
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
 
   function openEditor() {
     if (!publishedWorkflow) return
@@ -52,7 +42,6 @@ export function useVersionInfo({
         releaseNotes: params.releaseNotes,
       })
       toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }))
-      invalidateAppWorkflow(appId)
     } catch (error) {
       toast.error(
         getErrorMessage(error) ??

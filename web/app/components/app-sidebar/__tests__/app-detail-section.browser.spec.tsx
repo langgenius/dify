@@ -175,7 +175,7 @@ describe('AppDetailSection', () => {
     await expect.element(screen.getByText('evaluation.unavailableUntilPublished')).toBeVisible()
   })
 
-  it('explains why evaluation is disabled when the workspace can upgrade into it', async () => {
+  it('links evaluation when the workspace can upgrade into it so it can preview the page', async () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
@@ -183,10 +183,9 @@ describe('AppDetailSection', () => {
       publishedWorkflow: true,
     })
 
-    const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
-    await expect.element(evaluation).toHaveAttribute('aria-disabled', 'true')
-    await userEvent.hover(evaluation)
-    await expect.element(screen.getByText('common.compliance.sandboxUpgradeTooltip')).toBeVisible()
+    await expect
+      .element(screen.getByRole('link', { name: 'evaluation.title' }))
+      .toHaveAttribute('href', '/app/app-1/evaluation')
   })
 
   it('omits evaluation for non-workflow apps', async () => {

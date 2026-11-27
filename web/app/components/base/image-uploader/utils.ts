@@ -1,29 +1,5 @@
-import type { TFunction } from 'i18next'
-import { ORPCError } from '@orpc/client'
 import { uploadPublicFile } from '@/app/components/base/file-uploader/public-upload'
 import { consoleClient } from '@/service/console'
-
-/**
- * Get appropriate error message for image upload errors
- * @param error - The error object from upload failure
- * @param defaultMessage - Default error message to use if no specific error is matched
- * @param t - Translation function
- * @returns Localized error message
- */
-export const getImageUploadErrorMessage = (
-  error: unknown,
-  defaultMessage: string,
-  t: TFunction<['common']>,
-): string => {
-  const errorCode = error instanceof ORPCError ? error.code : undefined
-
-  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
-
-  if (errorCode === 'file_extension_blocked')
-    return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
-
-  return defaultMessage
-}
 
 type ImageUploadParams = {
   file: File
@@ -46,7 +22,7 @@ export const imageUpload: ImageUpload = (
   } else {
     uploading = consoleClient.files.upload.post(
       { body: { file } },
-      { context: { silent: true, onUploadProgress } },
+      { context: { onUploadProgress } },
     )
   }
 

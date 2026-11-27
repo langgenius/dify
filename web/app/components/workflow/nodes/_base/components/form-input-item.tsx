@@ -143,8 +143,8 @@ const FormInputItem: FC<Props> = ({
   )
 
   // Fetch dynamic options hook for triggers
-  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useQuery(
-    triggerPluginDynamicOptionsQueryOptions(
+  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useQuery({
+    ...triggerPluginDynamicOptionsQueryOptions(
       {
         plugin_id: currentProvider?.plugin_id || '',
         provider: currentProvider?.name || '',
@@ -159,7 +159,10 @@ const FormInputItem: FC<Props> = ({
         !!currentTool &&
         !!currentProvider,
     ),
-  )
+    // This select has no error slot, so the query cache reports a failure, as it does for the
+    // tool options mutation above.
+    meta: undefined,
+  })
 
   // Computed values for dynamic options (unified for triggers and tools)
   const triggerOptions = triggerDynamicOptions?.options

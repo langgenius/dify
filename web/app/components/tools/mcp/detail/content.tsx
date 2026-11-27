@@ -16,7 +16,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -57,7 +57,6 @@ const MCPDetailContent: FC<Props> = ({
   const [isShowUpdateConfirm, { setTrue: showUpdateConfirm, setFalse: hideUpdateConfirm }] =
     useBoolean(false)
 
-  const queryClient = useQueryClient()
   const { data, isFetching: isGettingTools } = useQuery(
     consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryOptions({
       input: { params: { provider_id: detail.id } },
@@ -67,17 +66,8 @@ const MCPDetailContent: FC<Props> = ({
   )
   const { mutate: updateTools, isPending: isUpdating } = useMutation(
     consoleQuery.workspaces.current.toolProvider.mcp.update.byProviderId.get.mutationOptions({
-      onSuccess: (_data, variables) => {
+      onSuccess: () => {
         hideUpdateConfirm()
-        queryClient.invalidateQueries({
-          queryKey:
-            consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey({
-              input: { params: { provider_id: variables.params.provider_id } },
-            }),
-        })
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
-        })
         onUpdate()
       },
     }),

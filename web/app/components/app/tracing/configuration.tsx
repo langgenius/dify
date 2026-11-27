@@ -79,10 +79,16 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
   const resourceId = resource.kind === 'agent' ? resource.agentId : resource.appId
   const scope = { id: `tracing:${resource.kind}:${resourceId}` }
   const updateAppTrace = useMutation(
-    consoleQuery.apps.byAppId.trace.post.mutationOptions({ context: { silent: true }, scope }),
+    consoleQuery.apps.byAppId.trace.post.mutationOptions({
+      meta: { errorToast: false },
+      scope,
+    }),
   )
   const updateAgentTrace = useMutation(
-    consoleQuery.agent.byAgentId.trace.post.mutationOptions({ context: { silent: true }, scope }),
+    consoleQuery.agent.byAgentId.trace.post.mutationOptions({
+      meta: { errorToast: false },
+      scope,
+    }),
   )
   const updateTracingStatus = resource.kind === 'agent' ? updateAgentTrace : updateAppTrace
   const isCurrentMutation =

@@ -176,6 +176,8 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
 
 
 def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Run the view only when Evaluation is available on this deployment, or return 404."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if not FeatureService.is_evaluation_supported():

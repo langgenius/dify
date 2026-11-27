@@ -31,11 +31,10 @@ const tPrefix = 'subscription.list.item.actions.deleteConfirm'
 export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
   const { refetch } = useSubscriptionList()
-  const { mutate: deleteSubscription, isPending: isDeleting } = useMutation(
-    deleteTriggerSubscriptionMutationOptions({
-      silent: true,
-    }),
-  )
+  const { mutate: deleteSubscription, isPending: isDeleting } = useMutation({
+    ...deleteTriggerSubscriptionMutationOptions(),
+    meta: { errorToast: false },
+  })
   const { t } = useTranslation(['common', 'pluginTrigger'])
   const [inputName, setInputName] = useState('')
 

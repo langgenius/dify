@@ -7,7 +7,7 @@ import type {
   PluginInstallTaskStartResponse,
   PluginListResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { InfiniteData } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
   Dependency,
@@ -37,7 +37,7 @@ import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
+import { pluginTaskListInput, upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
 import { pluginTaskListQueryOptions } from '@/service/plugin-install-queries'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
@@ -611,50 +611,60 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
-  const invalidateAllBuiltInTools = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
-    })
-  return (category?: PluginCategoryEnum) => {
-    if (category) {
-      const invalidateCategoryPluginList = queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
-          type: 'infinite',
-          input: { params: { category } },
+  return useCallback(
+    (category?: PluginCategoryEnum) => {
+      // Plugin installs and updates can change a provider's actions and their parameter schemas.
+      const invalidateAllBuiltInTools = () =>
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey:
+              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.tools.get.key(),
+          }),
+        ])
+      if (category) {
+        const invalidateCategoryPluginList = queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+            type: 'infinite',
+            input: { params: { category } },
+          }),
+        })
+        const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
+            type: 'query',
+            input: { query: { category } },
+          }),
+        })
+
+        if (category === PluginCategoryEnum.tool)
+          return Promise.all([
+            invalidateCategoryPluginList,
+            invalidateCategoryInstalledIds,
+            invalidateAllBuiltInTools(),
+          ]).then(() => undefined)
+
+        return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
+          () => undefined,
+        )
+      }
+
+      return Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
         }),
-      })
-      const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
-          type: 'query',
-          input: { query: { category } },
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
         }),
-      })
-
-      if (category === PluginCategoryEnum.tool)
-        return Promise.all([
-          invalidateCategoryPluginList,
-          invalidateCategoryInstalledIds,
-          invalidateAllBuiltInTools(),
-        ]).then(() => undefined)
-
-      return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
-        () => undefined,
-      )
-    }
-
-    return Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
-      }),
-      invalidateAllBuiltInTools(),
-    ]).then(() => undefined)
-  }
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
+        }),
+        invalidateAllBuiltInTools(),
+      ]).then(() => undefined)
+    },
+    [queryClient],
+  )
 }
 
 export const useInstallOrUpdate = ({
@@ -866,6 +876,22 @@ const areAutoUpgradeSettingsEqual = (
 //   return isAdmin
 // }
 
+// Settings saves are not optimistic: the setting keeps its saved value while a save is
+// pending, shows the accepted value once the server confirms it, and is read again afterwards
+// (the invalidation fallback waits until no plugin write is pending).
+async function writeSavedSetting(queryClient: QueryClient, queryKey: QueryKey, value: unknown) {
+  if (queryClient.isFetching({ queryKey })) await queryClient.cancelQueries({ queryKey })
+  queryClient.setQueryData(queryKey, value)
+}
+
+const permissionChangeKey = () =>
+  consoleQuery.workspaces.current.plugin.permission.change.post.mutationKey()
+// Categories are separate settings, so each has its own pending count.
+const autoUpgradeChangeKey = (category: PluginCategoryEnum) => [
+  ...consoleQuery.workspaces.current.plugin.autoUpgrade.change.post.mutationKey(),
+  category,
+]
+
 export const useMutationPluginPermissionSettings = ({
   onSuccess,
 }: {
@@ -874,24 +900,12 @@ export const useMutationPluginPermissionSettings = ({
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: permissionChangeKey(),
     mutationFn: (payload: Permissions) => {
       return consoleClient.workspaces.current.plugin.permission.change.post({ body: payload })
     },
-    onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey())
-      const hadPreviousPermission = previousPermission !== undefined
-
-      queryClient.setQueryData(pluginPermissionSettingsQueryKey(), payload)
-
-      return { previousPermission, hadPreviousPermission }
-    },
-    onError: (_error, _payload, context) => {
-      if (context?.hadPreviousPermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), context.previousPermission)
-      else queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-    },
-    onSuccess: () => {
+    onSuccess: async (_data, payload) => {
+      await writeSavedSetting(queryClient, pluginPermissionSettingsQueryKey(), payload)
       onSuccess?.()
     },
   })
@@ -907,6 +921,7 @@ export const useMutationPluginAutoUpgradeSettings = ({
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: autoUpgradeChangeKey(category),
     mutationFn: (payload: AutoUpdateConfig) => {
       return consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
         body: {
@@ -915,27 +930,13 @@ export const useMutationPluginAutoUpgradeSettings = ({
         },
       })
     },
-    onMutate: async (payload) => {
-      const queryKey = pluginAutoUpgradeSettingsQueryKey(category)
-      await queryClient.cancelQueries({ queryKey })
-      const previousAutoUpgrade = queryClient.getQueryData(queryKey)
-      const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
-
-      queryClient.setQueryData(queryKey, {
-        category,
+    // The category this save started for; the caller may have moved to another one since.
+    onMutate: () => ({ category }),
+    onSuccess: async (_data, payload, { category: savedCategory }) => {
+      await writeSavedSetting(queryClient, pluginAutoUpgradeSettingsQueryKey(savedCategory), {
+        category: savedCategory,
         auto_upgrade: payload,
       })
-
-      return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
-    },
-    onError: (_error, _payload, context) => {
-      // Roll back the category this save started for; the caller may have moved to another one.
-      if (!context) return
-      if (context.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(context.queryKey, context.previousAutoUpgrade)
-      else queryClient.removeQueries({ queryKey: context.queryKey })
-    },
-    onSuccess: () => {
       onSuccess?.()
     },
   })
@@ -950,94 +951,23 @@ export const useMutationReferenceSettings = ({
   currentReferenceSetting?: ReferenceSetting
   onSuccess?: () => void
 }) => {
-  const queryClient = useQueryClient()
+  const permission = useMutationPluginPermissionSettings()
+  const autoUpgrade = useMutationPluginAutoUpgradeSettings({ category })
 
-  return useMutation({
-    mutationFn: (payload: ReferenceSetting) => {
-      const mutations: Array<Promise<unknown>> = []
+  const mutate = (payload: ReferenceSetting) => {
+    const saves: Array<Promise<unknown>> = []
+    if (!arePermissionsEqual(payload.permission, currentReferenceSetting?.permission))
+      saves.push(permission.mutateAsync(payload.permission))
+    if (!areAutoUpgradeSettingsEqual(payload.auto_upgrade, currentReferenceSetting?.auto_upgrade))
+      saves.push(autoUpgrade.mutateAsync(payload.auto_upgrade))
+    // Failures are reported by the mutation cache.
+    Promise.all(saves).then(
+      () => onSuccess?.(),
+      () => {},
+    )
+  }
 
-      if (!arePermissionsEqual(payload.permission, currentReferenceSetting?.permission))
-        mutations.push(
-          consoleClient.workspaces.current.plugin.permission.change.post({
-            body: payload.permission,
-          }),
-        )
-
-      if (
-        !areAutoUpgradeSettingsEqual(payload.auto_upgrade, currentReferenceSetting?.auto_upgrade)
-      ) {
-        mutations.push(
-          consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
-            body: {
-              category,
-              auto_upgrade: payload.auto_upgrade,
-            },
-          }),
-        )
-      }
-
-      return Promise.all(mutations)
-    },
-    onMutate: async (payload) => {
-      const shouldUpdatePermission = !arePermissionsEqual(
-        payload.permission,
-        currentReferenceSetting?.permission,
-      )
-      const shouldUpdateAutoUpgrade = !areAutoUpgradeSettingsEqual(
-        payload.auto_upgrade,
-        currentReferenceSetting?.auto_upgrade,
-      )
-      const autoUpgradeQueryKey = pluginAutoUpgradeSettingsQueryKey(category)
-
-      await Promise.all([
-        shouldUpdatePermission
-          ? queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-          : Promise.resolve(),
-        shouldUpdateAutoUpgrade
-          ? queryClient.cancelQueries({ queryKey: autoUpgradeQueryKey })
-          : Promise.resolve(),
-      ])
-
-      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey())
-      const previousAutoUpgrade = queryClient.getQueryData(autoUpgradeQueryKey)
-      const hadPreviousPermission = previousPermission !== undefined
-      const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
-
-      if (shouldUpdatePermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), payload.permission)
-
-      if (shouldUpdateAutoUpgrade) {
-        queryClient.setQueryData(autoUpgradeQueryKey, {
-          category,
-          auto_upgrade: payload.auto_upgrade,
-        })
-      }
-
-      return {
-        previousPermission,
-        previousAutoUpgrade,
-        hadPreviousPermission,
-        hadPreviousAutoUpgrade,
-        shouldUpdatePermission,
-        shouldUpdateAutoUpgrade,
-      }
-    },
-    onError: (_error, _payload, context) => {
-      if (context?.shouldUpdatePermission && context.hadPreviousPermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), context.previousPermission)
-      else if (context?.shouldUpdatePermission)
-        queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-
-      if (context?.shouldUpdateAutoUpgrade && context.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(
-          pluginAutoUpgradeSettingsQueryKey(category),
-          context.previousAutoUpgrade,
-        )
-      else if (context?.shouldUpdateAutoUpgrade)
-        queryClient.removeQueries({ queryKey: pluginAutoUpgradeSettingsQueryKey(category) })
-    },
-    onSuccess,
-  })
+  return { mutate, isPending: permission.isPending || autoUpgrade.isPending }
 }
 
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
@@ -1047,7 +977,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
   const query = useQuery(pluginTaskListQueryOptions({ enabled: canManagement }))
-  const { data, isFetched, isRefetching, refetch } = query
+  const { data, isFetched, isRefetching } = query
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
@@ -1071,25 +1001,31 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
       )
   }, [category, data, isRefetching, refreshPluginList])
 
-  const handleRefetch = useCallback(() => {
-    refetch()
-  }, [refetch])
+  const invalidatePluginTasks = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
+          input: pluginTaskListInput,
+        }),
+      }),
+    [queryClient],
+  )
 
   const handleInstallTaskStart = useCallback(
     (response: PluginInstallTaskStartResponse) => {
       if (response.all_installed) return
 
       upsertStartedPluginTask(consoleQuery, queryClient, response)
-      refetch()
+      void invalidatePluginTasks()
     },
-    [queryClient, refetch],
+    [invalidatePluginTasks, queryClient],
   )
 
   return {
     data,
     pluginTasks: data?.tasks || [],
     isFetched,
-    handleRefetch,
+    invalidatePluginTasks,
     handleInstallTaskStart,
   }
 }

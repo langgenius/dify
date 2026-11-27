@@ -13,6 +13,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel, Field, create_model, model_validator
 
 from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     AgentToolDefinition,
@@ -203,6 +204,7 @@ class _DifyAgentJudgeModel:
     """Invoke a tenant-scoped Dify model with strict structured output."""
 
     def __init__(self, model_provider: str, model_name: str, tenant_id: str) -> None:
+        """Resolve the configured Agent judge model with Evaluation credit attribution."""
         from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
         from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -212,6 +214,7 @@ class _DifyAgentJudgeModel:
             provider=model_provider,
             model_type=ModelType.LLM,
             model=model_name,
+            request_metadata=get_evaluation_credit_usage_metadata(),
         )
         self.model_identifier = f"{model_provider}/{model_name}"
 

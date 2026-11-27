@@ -59,7 +59,7 @@ module.exports = async function waitForBuild({
           .addHeading('E2E Web build wait')
           .addRaw(`Artifact wait: ${seconds}s`)
           .write()
-        return String(artifact.id)
+        return { id: String(artifact.id), name: artifact.name }
       }
     }
 

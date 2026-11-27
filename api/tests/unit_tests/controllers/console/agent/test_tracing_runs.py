@@ -22,7 +22,7 @@ from libs.external_api import ExternalApi
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
-from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.tracing.collection import TraceRunStatus
 from services.tracing.errors import TraceCollectionConflictError, TraceCollectionError, TraceCollectionNotFoundError
 from tests.helpers.unit.config_override import apply_config_overrides

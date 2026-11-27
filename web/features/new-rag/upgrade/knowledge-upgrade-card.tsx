@@ -42,16 +42,9 @@ export function KnowledgeUpgradeCard({
     consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryOptions({
       input: jobInput,
     })
-  const retryMutation = useMutation({
-    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.post.mutationOptions(),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: jobQueryOptions.queryKey })
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-      })
-    },
-  })
+  const retryMutation = useMutation(
+    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.post.mutationOptions(),
+  )
   const { data: job } = useQuery({
     ...jobQueryOptions,
     enabled: isActiveUpgrade(upgrade.job.status) || retryMutation.isSuccess,

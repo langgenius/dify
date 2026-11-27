@@ -7,7 +7,7 @@ import type {
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
@@ -66,19 +66,12 @@ function TriggerAccessPointItem({
   triggerPlugins: TriggerWithProvider[]
 }) {
   const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
-  const queryClient = useQueryClient()
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },
-      onSuccess: () =>
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
-            input: { params: { app_id: appId } },
-          }),
-        }),
       onError: (error) => {
         toast.error(
           getErrorMessage(error) ??

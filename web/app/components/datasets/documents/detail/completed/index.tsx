@@ -108,7 +108,6 @@ const Completed: FC<ICompletedProps> = ({
     currChunkId: modalState.currChunkId,
     isFullDocMode: segmentListDataHook.isFullDocMode,
     onCloseChildSegmentDetail: modalState.onCloseChildSegmentDetail,
-    refreshChunkListDataWithDetailChanged: segmentListDataHook.markOtherStatusListsStale,
     updateSegmentInCache: segmentListDataHook.updateSegmentInCache,
   })
 
