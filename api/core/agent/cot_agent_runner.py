@@ -196,7 +196,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
             # Check if max iteration is reached and model still wants to call tools
             if iteration_step == max_iteration_steps and scratchpad.action:
-                if scratchpad.action.action_name.lower() != "final answer":
+                if not scratchpad.is_final():
                     raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # get llm usage
@@ -227,7 +227,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 # failed to extract action, return final answer directly
                 final_answer = ""
             else:
-                if scratchpad.action.action_name.lower() == "final answer":
+                if scratchpad.is_final():
                     # action is final answer, return final answer directly
                     try:
                         match scratchpad.action.action_input:
