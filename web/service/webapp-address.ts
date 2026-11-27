@@ -21,6 +21,10 @@ export type WebAppAddress =
       code: string
     }
 
+export function getWebAppRouteSegment(mode: string) {
+  return mode === 'completion' || mode === 'workflow' ? mode : 'chat'
+}
+
 const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`)
 
 export const removeWebAppBasePath = (pathname: string) => {
