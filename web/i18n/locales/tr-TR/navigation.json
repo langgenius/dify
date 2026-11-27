@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "ÇALIŞMA ALANI",
   "toolsPage.description": "Workspace’inizde kullanılabilen tüm araçlar — yerleşik araçlar ve Marketplace’ten yüklenen entegrasyonler.",
-  "toolsPage.toolPlugin": "Araç Eklentisi"
+  "toolsPage.toolPlugin": "Araç Eklentisi",
+  "workspaceUnavailable.description": "<workspace>{{workspaceName}}</workspace> adlı çalışma alanına erişiminiz yok. Erişime ihtiyacınız varsa çalışma alanının sahibi veya bir yöneticisiyle iletişime geçin.",
+  "workspaceUnavailable.descriptionWithoutName": "Erişime ihtiyacınız varsa çalışma alanının sahibi veya bir yöneticisiyle iletişime geçin.",
+  "workspaceUnavailable.switchWorkspace": "Çalışma alanını değiştir",
+  "workspaceUnavailable.title": "Bu çalışma alanına erişemezsiniz"
 }

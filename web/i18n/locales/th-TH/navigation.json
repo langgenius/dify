@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "เครื่องมือทั้งหมดที่มีใน workspace ของคุณ — เครื่องมือในตัวและ integration ที่ติดตั้งจาก Marketplace",
-  "toolsPage.toolPlugin": "Tool Plugin"
+  "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.description": "คุณไม่มีสิทธิ์เข้าถึง <workspace>{{workspaceName}}</workspace> หากต้องการสิทธิ์เข้าถึง โปรดติดต่อเจ้าของหรือผู้ดูแลระบบของพื้นที่ทำงาน",
+  "workspaceUnavailable.descriptionWithoutName": "หากต้องการสิทธิ์เข้าถึง โปรดติดต่อเจ้าของหรือผู้ดูแลระบบของพื้นที่ทำงาน",
+  "workspaceUnavailable.switchWorkspace": "สลับพื้นที่ทำงาน",
+  "workspaceUnavailable.title": "คุณไม่สามารถเข้าถึงพื้นที่ทำงานนี้ได้"
 }

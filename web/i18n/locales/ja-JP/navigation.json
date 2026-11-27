@@ -48,5 +48,9 @@
   "settings.trigger": "トリガー",
   "settings.workspace": "ワークスペース",
   "toolsPage.description": "ワークスペースで利用可能なすべてのツール —— 組み込みのものとマーケットプレイスからインストールしたものを含みます。",
-  "toolsPage.toolPlugin": "ツールプラグイン"
+  "toolsPage.toolPlugin": "ツールプラグイン",
+  "workspaceUnavailable.description": "<workspace>{{workspaceName}}</workspace> へのアクセス権がありません。 アクセスが必要な場合は、ワークスペースのオーナーまたは管理者に連絡してください。",
+  "workspaceUnavailable.descriptionWithoutName": "アクセスが必要な場合は、ワークスペースのオーナーまたは管理者に連絡してください。",
+  "workspaceUnavailable.switchWorkspace": "ワークスペースを切り替える",
+  "workspaceUnavailable.title": "このワークスペースにアクセスできません"
 }

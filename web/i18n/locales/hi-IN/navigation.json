@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "आपके workspace में उपलब्ध सभी टूल — built-in टूल और Marketplace से इंस्टॉल किए गए integrations।",
-  "toolsPage.toolPlugin": "Tool Plugin"
+  "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.description": "आपके पास <workspace>{{workspaceName}}</workspace> का एक्सेस नहीं है। अगर आपको एक्सेस चाहिए, तो वर्कस्पेस के मालिक या एडमिन से संपर्क करें।",
+  "workspaceUnavailable.descriptionWithoutName": "अगर आपको एक्सेस चाहिए, तो वर्कस्पेस के मालिक या एडमिन से संपर्क करें।",
+  "workspaceUnavailable.switchWorkspace": "वर्कस्पेस बदलें",
+  "workspaceUnavailable.title": "आप इस वर्कस्पेस को एक्सेस नहीं कर सकते"
 }

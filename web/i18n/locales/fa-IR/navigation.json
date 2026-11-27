@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "همه ابزارهای موجود در فضای کاری شما — ابزارهای داخلی و یکپارچه‌سازی‌های نصب‌شده از Marketplace.",
-  "toolsPage.toolPlugin": "Tool Plugin"
+  "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.description": "به <workspace>{{workspaceName}}</workspace> دسترسی ندارید. اگر به دسترسی نیاز دارید، با مالک یا یکی از مدیران فضای کاری تماس بگیرید.",
+  "workspaceUnavailable.descriptionWithoutName": "اگر به دسترسی نیاز دارید، با مالک یا یکی از مدیران فضای کاری تماس بگیرید.",
+  "workspaceUnavailable.switchWorkspace": "تغییر فضای کاری",
+  "workspaceUnavailable.title": "به این فضای کاری دسترسی ندارید"
 }

@@ -48,5 +48,9 @@
   "settings.trigger": "ຕົວຈຸດຊະນວນ (Trigger)",
   "settings.workspace": "ພື້ນທີ່ເຮັດວຽກ",
   "toolsPage.description": "ເຄື່ອງມືທັງໝົດທີ່ມີໃນພື້ນທີ່ເຮັດວຽກຂອງທ່ານ — ທັງແບບພາຍໃນ ແລະ ທີ່ຕິດຕັ້ງຈາກຕະຫຼາດແອັບ.",
-  "toolsPage.toolPlugin": "ປລັກອິນເຄື່ອງມື"
+  "toolsPage.toolPlugin": "ປລັກອິນເຄື່ອງມື",
+  "workspaceUnavailable.description": "ທ່ານບໍ່ມີສິດເຂົ້າເຖິງ <workspace>{{workspaceName}}</workspace>. ຫາກທ່ານຕ້ອງການສິດເຂົ້າເຖິງ, ໃຫ້ຕິດຕໍ່ເຈົ້າຂອງ ຫຼື ຜູ້ດູແລພື້ນທີ່ເຮັດວຽກ.",
+  "workspaceUnavailable.descriptionWithoutName": "ຫາກທ່ານຕ້ອງການສິດເຂົ້າເຖິງ, ໃຫ້ຕິດຕໍ່ເຈົ້າຂອງ ຫຼື ຜູ້ດູແລພື້ນທີ່ເຮັດວຽກ.",
+  "workspaceUnavailable.switchWorkspace": "ສະຫຼັບພື້ນທີ່ເຮັດວຽກ",
+  "workspaceUnavailable.title": "ທ່ານບໍ່ສາມາດເຂົ້າເຖິງພື້ນທີ່ເຮັດວຽກນີ້ໄດ້"
 }

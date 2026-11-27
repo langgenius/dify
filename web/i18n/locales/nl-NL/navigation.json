@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Alle tools die beschikbaar zijn in je workspace — ingebouwde tools en integraties die zijn geïnstalleerd vanuit Marketplace.",
-  "toolsPage.toolPlugin": "Tool Plugin"
+  "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.description": "Je hebt geen toegang tot <workspace>{{workspaceName}}</workspace>. Neem contact op met de eigenaar of een beheerder van de werkruimte als je toegang nodig hebt.",
+  "workspaceUnavailable.descriptionWithoutName": "Neem contact op met de eigenaar of een beheerder van de werkruimte als je toegang nodig hebt.",
+  "workspaceUnavailable.switchWorkspace": "Van werkruimte wisselen",
+  "workspaceUnavailable.title": "Je hebt geen toegang tot deze werkruimte"
 }

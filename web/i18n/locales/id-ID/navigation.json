@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Semua alat yang tersedia di workspace Anda — alat bawaan dan integrasi yang diinstal dari Marketplace.",
-  "toolsPage.toolPlugin": "Tool Plugin"
+  "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.description": "Anda tidak memiliki akses ke <workspace>{{workspaceName}}</workspace>. Hubungi pemilik atau admin workspace jika Anda memerlukan akses.",
+  "workspaceUnavailable.descriptionWithoutName": "Hubungi pemilik atau admin workspace jika Anda memerlukan akses.",
+  "workspaceUnavailable.switchWorkspace": "Ganti workspace",
+  "workspaceUnavailable.title": "Anda tidak dapat mengakses workspace ini"
 }

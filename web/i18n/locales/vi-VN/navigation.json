@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Tất cả công cụ có trong workspace của bạn — công cụ tích hợp sẵn và tích hợp được cài đặt từ Marketplace.",
-  "toolsPage.toolPlugin": "Tool Plugin"
+  "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.description": "Bạn không có quyền truy cập <workspace>{{workspaceName}}</workspace>. Nếu cần quyền truy cập, hãy liên hệ với chủ sở hữu hoặc quản trị viên không gian làm việc.",
+  "workspaceUnavailable.descriptionWithoutName": "Nếu cần quyền truy cập, hãy liên hệ với chủ sở hữu hoặc quản trị viên không gian làm việc.",
+  "workspaceUnavailable.switchWorkspace": "Chuyển không gian làm việc",
+  "workspaceUnavailable.title": "Bạn không thể truy cập không gian làm việc này"
 }

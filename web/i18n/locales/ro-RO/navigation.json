@@ -48,5 +48,9 @@
   "settings.trigger": "Trigger",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Toate instrumentele disponibile în workspace — instrumente integrate și integrări instalate din Marketplace.",
-  "toolsPage.toolPlugin": "Tool Plugin"
+  "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.description": "Nu ai acces la <workspace>{{workspaceName}}</workspace>. Dacă ai nevoie de acces, contactează proprietarul sau un administrator al spațiului de lucru.",
+  "workspaceUnavailable.descriptionWithoutName": "Dacă ai nevoie de acces, contactează proprietarul sau un administrator al spațiului de lucru.",
+  "workspaceUnavailable.switchWorkspace": "Schimbă spațiul de lucru",
+  "workspaceUnavailable.title": "Nu poți accesa acest spațiu de lucru"
 }
