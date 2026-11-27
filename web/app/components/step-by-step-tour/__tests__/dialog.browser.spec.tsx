@@ -45,15 +45,17 @@ it('visually hides the expanded tour behind a modal and restores it when the mod
       </DialogContent>
     </Dialog>,
   )
-  const region = screen.getByRole('region')
-  await expect.element(region).toBeVisible()
-  const checklist = region.element()
+  const checklist = screen.getByRole('dialog', { name: 'onboarding.stepByStepTour.title' })
+  await expect.element(checklist).toBeVisible()
+  const checklistElement = checklist.element()
   const trigger = screen.getByRole('button', { name: 'Open editor' })
   await trigger.click()
   await expect.element(screen.getByRole('dialog', { name: 'Editor' })).toBeVisible()
-  await expect.poll(() => checklist.checkVisibility({ visibilityProperty: true })).toBe(false)
+  await expect
+    .poll(() => checklistElement.checkVisibility({ visibilityProperty: true }))
+    .toBe(false)
   await userEvent.keyboard('{Escape}')
-  await expect.element(region).toBeVisible()
+  await expect.element(checklist).toBeVisible()
   await expect.element(trigger).toHaveFocus()
 })
 

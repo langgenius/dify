@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Bu axtarışa uyğun sənəd yoxdur.",
   "parentChildChunkCount": "{{parentCount}} ana / {{childCount}} alt fraqment",
   "partialDocumentResults": "Daha çox sənəd uyğun ola bilər. Axtarışa davam etmək üçün daha çox yükləyin.",
+  "reindexConfirmDescription": "Yenidən indeksləmə bütün fraqmentləri və indeks qeydlərini mənbə fayldan yenidən yaradır. Bilik bazasında fraqmentlərə edilmiş düzəlişlər, məsələn, ziddiyyəti həll edərkən başqa sənədin ifadəsinin istifadə edilməsi, mənbə faylın məzmunu ilə əvəz olunacaq. Yenidən indeksləmə bitənə qədər axtarış cari indeksdən istifadə edir.",
+  "reindexConfirmTitle": "Mənbə fayldan yenidən indekslənsin?",
   "reindexDocument": "Yenidən indekslə",
   "retrievalCountValue": "Son 7 gündə {{value}}",
   "retryReindexDocument": "Bir daha indekslə",

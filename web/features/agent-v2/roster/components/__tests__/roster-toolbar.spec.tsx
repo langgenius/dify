@@ -165,8 +165,7 @@ describe('RosterToolbar', () => {
 
   it('opens the shared create menu for blank Agent creation and App import', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderToolbar()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    renderToolbar()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
@@ -179,11 +178,8 @@ describe('RosterToolbar', () => {
       await screen.findByRole('dialog', { name: 'agentRoster.roster.importDSL' }),
     ).toBeInTheDocument()
 
+    // The import's own policy refreshes the roster; the dialog closes on completion.
     await user.click(screen.getByRole('button', { name: 'Complete agent import' }))
-
-    expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith({
-      queryKey: consoleQuery.agent.get.key(),
-    })
   })
 
   it('enables roster filters and emits the selected filter', async () => {

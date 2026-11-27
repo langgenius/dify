@@ -68,8 +68,9 @@ it('renders persisted call identity, frozen rejection quota and cancellation wit
       }}
     />,
   )
+  await expect.element(page.getByText('Stopped', { exact: true })).toBeVisible()
   await expect.element(page.getByText('Not executed', { exact: true })).not.toBeInTheDocument()
   await expect.element(page.getByText('3 of 3 calls used')).not.toBeInTheDocument()
-  await page.getByRole('button', { name: /search/ }).click()
+  // The same tool call keeps its details expanded across the update.
   await expect.element(page.getByText('Stopped before the result was received.')).toBeVisible()
 })

@@ -12,6 +12,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -25,6 +26,28 @@ import {
   logicalDocumentsInfiniteOptions,
 } from '../queries'
 
+// Confirming a reindex has its own spec; here every request to reindex is confirmed at once.
+vi.mock('../reindex-confirm-dialog', async () => {
+  const { useEffect } = await import('react')
+  return {
+    ReindexConfirmDialog: ({
+      onConfirm,
+      onOpenChange,
+      open,
+    }: {
+      onConfirm: () => void
+      onOpenChange: (open: boolean) => void
+      open: boolean
+    }) => {
+      useEffect(() => {
+        if (!open) return
+        onOpenChange(false)
+        onConfirm()
+      }, [onConfirm, onOpenChange, open])
+      return null
+    },
+  }
+})
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -389,6 +412,11 @@ vi.mock('@/service/console', async (importOriginal) => {
     }
   }
   const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    // The invalidation fallback refetches the knowledge features after knowledge writes.
+    'knowledgeFs.features.get': async () => ({
+      agent_enabled: false,
+      upload_enabled: systemFeaturesStateMock.uploadEnabled,
+    }),
     [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: async (input: never) =>
       taskApiResponse(await cancelMutation.mutateAsync(input)),
     [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: async (input: never) =>
@@ -670,9 +698,14 @@ type RenderOptions = {
 
 async function render(ui: ReactElement, options: RenderOptions = {}) {
   const onUrlUpdate = vi.fn<NonNullable<RenderOptions['onUrlUpdate']>>(options.onUrlUpdate)
-  queryClient = createConsoleQueryClient(
-    options.errorToasts ? { caches: createErrorToastCaches() } : undefined,
-  )
+  // Like the app, refresh a mutation's domain after it succeeds.
+  const invalidation = createMutationInvalidation()
+  queryClient = createConsoleQueryClient({
+    invalidation,
+    ...(options.errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
   queryClient.setDefaultOptions({
     ...queryClient.getDefaultOptions(),
     queries: { ...queryClient.getDefaultOptions().queries, retryDelay: 0 },
@@ -2054,8 +2087,8 @@ describe('DocumentsPage', () => {
       ).not.toBeInTheDocument(),
     )
     await waitFor(() => expect(menuButton).toHaveFocus())
+    // Golden questions show the document's name; the invalidation fallback refreshes them.
     expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState(goldenQuestionsKey('space-2'))?.isInvalidated).toBe(false)
   })
 
   it('disables the document from the row action', async () => {
@@ -2077,7 +2110,6 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
-    expect(queryClient.getQueryState(goldenQuestionsKey('space-2'))?.isInvalidated).toBe(false)
   })
 
   it('re-enables a disabled document from the same row action', async () => {
@@ -2085,6 +2117,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document({ enabled: false })] }] }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    seedGoldenQuestions()
     expect(screen.getByText('knowledgeSpace.documentStatus.disabled')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'dataset.enable' }))
@@ -2096,10 +2129,8 @@ describe('DocumentsPage', () => {
       },
       { context: expect.any(Object) },
     )
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
+    await waitFor(() =>
+      expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
   })
 
@@ -4574,6 +4605,7 @@ describe('DocumentsPage', () => {
     }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    seedGoldenQuestions()
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
 
@@ -4598,10 +4630,8 @@ describe('DocumentsPage', () => {
       },
       { context: expect.any(Object) },
     )
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
+    await waitFor(() =>
+      expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
     await waitFor(() =>
       expect(
@@ -4624,6 +4654,7 @@ describe('DocumentsPage', () => {
     }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    seedGoldenQuestions()
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
     const actions = screen.getByRole('group', {
@@ -4644,10 +4675,8 @@ describe('DocumentsPage', () => {
       },
       { context: expect.any(Object) },
     )
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
+    await waitFor(() =>
+      expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
   })
 
@@ -5623,6 +5652,14 @@ describe('DocumentsPage', () => {
       'requestErrors.code.document_already_finished',
     )
     expect(toastMock.error).not.toHaveBeenCalled()
+    // A rejected interrupt may still have reached the server, so the drawer refreshes its tasks.
+    await waitFor(() =>
+      expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
+        }),
+      ),
+    )
   })
 
   it('keeps a rate-limited interrupt failure visible once write access is confirmed', async () => {
@@ -5973,7 +6010,12 @@ describe('DocumentsPage', () => {
     documentsQuery.error = createHttpError(new Response(null, { status: 403 }))
     await rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await act(async () => resolveCancel?.(task({ id: 'revoked-action', state: 'canceled' })))
-    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+    // Only the invalidation fallback refreshes after the accepted cancel; the drawer does not.
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+      }),
+    )
 
     documentsQuery.error = null
     await rerender(<DocumentsPage knowledgeSpaceId="space-1" />)

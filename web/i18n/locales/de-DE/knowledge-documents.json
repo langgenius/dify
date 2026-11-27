@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Zu dieser Suche passen keine Dokumente.",
   "parentChildChunkCount": "{{parentCount}} übergeordnete / {{childCount}} untergeordnete",
   "partialDocumentResults": "Weitere Dokumente könnten passen. Lade mehr, um die Suche fortzusetzen.",
+  "reindexConfirmDescription": "Beim Neuindizieren werden alle Abschnitte und Indexeinträge aus der Quelldatei neu erstellt. Änderungen an Abschnitten in der Wissensdatenbank, etwa die Übernahme der Aussage eines anderen Dokuments beim Lösen eines Konflikts, werden durch den Inhalt der Quelldatei überschrieben. Die Suche verwendet den aktuellen Index, bis die Neuindizierung abgeschlossen ist.",
+  "reindexConfirmTitle": "Aus der Quelldatei neu indizieren?",
   "reindexDocument": "Neu indizieren",
   "retrievalCountValue": "{{value}} in den letzten 7 Tagen",
   "retryReindexDocument": "Erneut neu indizieren",

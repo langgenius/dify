@@ -8,7 +8,7 @@ import {
   PasswordFieldInput,
   PasswordFieldToggle,
 } from '@langgenius/dify-ui/password-field'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -34,7 +34,6 @@ function hasErrorCode(error: unknown, code: string) {
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation(['login'])
   const router = useRouter()
-  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
@@ -63,7 +62,6 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } else {

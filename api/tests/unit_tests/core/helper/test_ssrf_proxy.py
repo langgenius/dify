@@ -172,7 +172,9 @@ def test_retry_exceed_max_retries(mock_get_client, client_factory, retry_sleep_c
     assert retry_sleep_calls == [BACKOFF_FACTOR * 2**attempt for attempt in range(SSRF_DEFAULT_MAX_RETRIES - 1)]
 
 
-def test_retry_exhaustion_preserves_the_last_request_error(retry_sleep_calls: list[float]) -> None:
+def test_retry_exhaustion_preserves_the_last_request_error(
+    retry_sleep_calls: list[float], caplog: pytest.LogCaptureFixture
+) -> None:
     request_errors: list[httpx.ConnectError] = []
 
     def fail_request(request: httpx.Request) -> httpx.Response:
@@ -191,11 +193,16 @@ def test_retry_exhaustion_preserves_the_last_request_error(retry_sleep_calls: li
     assert len(request_errors) == 2
     assert exc_info.value.__cause__ is request_errors[-1]
     assert retry_sleep_calls == [BACKOFF_FACTOR]
+    warnings = [record.getMessage() for record in caplog.records if record.name == "core.helper.ssrf_proxy"]
+    assert warnings == [
+        "HTTP request failed on attempt 1: ConnectError",
+        "HTTP request failed on attempt 2: ConnectError",
+    ]
 
 
 @pytest.mark.usefixtures("retry_sleep_calls")
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory):
+def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory, caplog: pytest.LogCaptureFixture):
     mock_response = httpx.Response(503)
     mock_client, send_calls = client_factory(mock_response)
     mock_get_client.return_value = mock_client
@@ -205,6 +212,8 @@ def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory)
 
     assert exc_info.value.status_code == 503
     assert len(send_calls) == 3
+    warnings = [record.getMessage() for record in caplog.records if record.name == "core.helper.ssrf_proxy"]
+    assert warnings == ["HTTP request received retryable status code 503"] * len(send_calls)
 
 
 @pytest.mark.usefixtures("retry_sleep_calls")

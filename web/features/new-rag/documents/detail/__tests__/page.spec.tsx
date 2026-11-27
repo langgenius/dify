@@ -18,6 +18,7 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import {
@@ -38,6 +39,28 @@ const knowledgeSpacePermissionState = vi.hoisted(() => ({
 
 const multimodalAssetGet = vi.hoisted(() => vi.fn())
 
+// Confirming a reindex has its own spec; here every request to reindex is confirmed at once.
+vi.mock('../../reindex-confirm-dialog', async () => {
+  const { useEffect } = await import('react')
+  return {
+    ReindexConfirmDialog: ({
+      onConfirm,
+      onOpenChange,
+      open,
+    }: {
+      onConfirm: () => void
+      onOpenChange: (open: boolean) => void
+      open: boolean
+    }) => {
+      useEffect(() => {
+        if (!open) return
+        onOpenChange(false)
+        onConfirm()
+      }, [onConfirm, onOpenChange, open])
+      return null
+    },
+  }
+})
 vi.mock('../../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -575,9 +598,14 @@ function seedDocumentsList(queryClient: ReturnType<typeof createConsoleQueryClie
 
 async function render(ui: ReactElement, options: DetailRenderOptions = {}) {
   const onUrlUpdate = options.onUrlUpdate ?? vi.fn()
-  const queryClient = createConsoleQueryClient(
-    options.errorToasts ? { caches: createErrorToastCaches() } : undefined,
-  )
+  // Like the app, refresh a mutation's domain after it succeeds.
+  const invalidation = createMutationInvalidation()
+  const queryClient = createConsoleQueryClient({
+    invalidation,
+    ...(options.errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
   // The page retries transient failures itself; keep those retries immediate.
   queryClient.setDefaultOptions({
     ...queryClient.getDefaultOptions(),

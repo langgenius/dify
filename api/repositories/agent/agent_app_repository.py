@@ -59,10 +59,11 @@ from repositories.agent.agent_drafts import (
 )
 from repositories.agent.agent_roster_queries import (
     find_agent_draft,
+    load_published_workflows_by_agent_id,
     load_reference_counts_by_agent_id,
     project_agent_draft_summary,
+    project_referencing_workflow,
 )
-from repositories.agent.agent_roster_repository import load_published_references_by_agent_id
 from repositories.agent.agent_runtime_app import (
     create_backing_agent_for_app,
     ensure_workflow_agent_backing_app,
@@ -134,8 +135,7 @@ from services.agent.build_session_store import (
     AgentBuildRefresh,
     AgentBuildSandbox,
 )
-from services.agent.errors import AgentNameConflictError, AgentNotFoundError
-from services.agent.roster_service import AgentRosterService
+from services.agent.errors import AgentNameConflictError
 from services.app_audio_service import AgentTextToSpeechSource
 from services.audio_types import AudioAppRef
 from services.entities.app_entities import (
@@ -372,7 +372,7 @@ class AgentAppRepository:
             tags = TagRepository.load_tags_for_targets(
                 session, tenant_id=tenant_id, tag_type="agent", target_ids=agent_ids
             )
-            references = load_published_references_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
+            references = load_published_workflows_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
             reference_counts = load_reference_counts_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
             items: list[AgentAppListItem] = []
             for app in page.items:
@@ -406,19 +406,8 @@ class AgentAppRepository:
                         ),
                         reference_count=reference_counts.get(agent.id, 0) if agent else None,
                         published_references=[
-                            AgentReferencingWorkflow(
-                                app_id=ref.app_id,
-                                app_name=ref.app_name,
-                                app_icon_type=ref.app_icon_type,
-                                app_icon=ref.app_icon,
-                                app_icon_background=ref.app_icon_background,
-                                app_mode=ref.app_mode,
-                                app_updated_at=ref.app_updated_at,
-                                workflow_id=ref.workflow_id,
-                                workflow_version=ref.workflow_version,
-                                node_ids=list(ref.node_ids),
-                            )
-                            for ref in (references.get(agent.id, ()) if agent else ())
+                            project_referencing_workflow(reference)
+                            for reference in (references.get(agent.id, ()) if agent else ())
                         ],
                         permission_keys=[],
                     )
@@ -1409,13 +1398,16 @@ class AgentAppRepository:
         return app
 
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]:
+        """Require a public Agent App and return its current published Workflow references without writing."""
         with self._session_factory() as session:
-            roster = AgentRosterService(session)
-            try:
-                app = roster.get_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-            except AgentNotFoundError as exc:
-                raise AgentAppNotFoundError from exc
-            return roster.list_workflows_referencing_app_agent(tenant_id=tenant_id, app_id=app.id)
+            app = get_roster_agent_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            if app is None:
+                raise AgentAppNotFoundError
+            agent = get_app_backing_agent(session, tenant_id=tenant_id, app_id=app.id)
+            if agent is None:
+                return []
+            references = load_published_workflows_by_agent_id(session, tenant_id=tenant_id, agent_ids=[agent.id])
+            return [project_referencing_workflow(reference) for reference in references.get(agent.id, ())]
 
     def update_features(self, *, tenant_id: str, app_id: str, account_id: str, config: dict[str, Any]) -> None:
         """Commit the feature version, app pointer and dataset joins together."""

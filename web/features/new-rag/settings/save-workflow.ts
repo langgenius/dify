@@ -81,6 +81,11 @@ export function rebaseSettingsDraft(
         draft.external.workflowEnabled !== original.external.workflowEnabled
           ? draft.external.workflowEnabled
           : fresh.external.workflowEnabled,
+      personalAgentEnabled:
+        !completed.includes('external') &&
+        draft.external.personalAgentEnabled !== original.external.personalAgentEnabled
+          ? draft.external.personalAgentEnabled
+          : fresh.external.personalAgentEnabled,
     },
     retrieval: {
       embeddingModel:
@@ -166,6 +171,7 @@ export function settingsExternalPayload(
     service_api_enabled: draft.external.serviceApiEnabled,
     workflow_enabled: draft.external.workflowEnabled,
     mcp_enabled: baseline.externalAccess?.mcp_enabled ?? false,
+    personal_agent_enabled: draft.external.personalAgentEnabled,
   }
 }
 

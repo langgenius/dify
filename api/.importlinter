@@ -43,6 +43,7 @@ name = Strict moderation use cases depend only on plain contracts and injected g
 type = forbidden
 source_modules =
     services.moderation_service
+    services.hosted_moderation_service
 forbidden_modules =
     celery
     configs
@@ -65,6 +66,8 @@ source_modules =
 forbidden_modules =
     services.moderation_service
     services.moderation_adapters
+    services.hosted_moderation_service
+    services.hosted_moderation_adapters
     repositories.api_based_extension_repository
 allow_indirect_imports = True
 
@@ -1729,7 +1732,16 @@ ignore_imports =
     repositories.agent.agent_app_repository -> services.agent.build_session_store
     repositories.agent.agent_app_repository -> services.agent.app_composer_store
     repositories.agent.agent_app_repository -> services.agent.errors
-    repositories.agent.agent_app_repository -> services.agent.roster_service
+
+[importlinter:contract:agent-sandbox-repository-boundary]
+name = Agent Sandbox persistence does not call legacy roster or workspace services
+type = forbidden
+source_modules =
+    repositories.agent.agent_sandbox_repository
+forbidden_modules =
+    services.agent.roster_service
+    services.agent.workspace_service
+allow_indirect_imports = True
 
 [importlinter:contract:agent-build-session-service-boundary]
 name = Agent Build session use cases and contracts are framework and persistence neutral

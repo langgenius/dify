@@ -152,8 +152,13 @@ function reportMutationError(error: unknown, mutation: AnyMutation) {
   if (requestError) toastReportableRequestError(requestError, mutation.meta?.errorMessage)
 }
 
-/** The caches that report request errors; tests opt in to mirror the app's QueryClient. */
-export function createErrorToastCaches() {
+/**
+ * The caches that report request errors; tests opt in to mirror the app's QueryClient.
+ * `onMutationSuccess` runs when a mutation's request succeeds, before its callbacks.
+ */
+export function createErrorToastCaches({
+  onMutationSuccess,
+}: { onMutationSuccess?: (mutation: AnyMutation) => void } = {}) {
   return {
     queryCache: (() => {
       const queryCache = new QueryCache({
@@ -166,6 +171,7 @@ export function createErrorToastCaches() {
       return queryCache
     })(),
     mutationCache: new MutationCache({
+      onSuccess: (_data, _variables, _onMutateResult, mutation) => onMutationSuccess?.(mutation),
       onError: (error, _variables, _onMutateResult, mutation) =>
         reportMutationError(error, mutation),
     }),

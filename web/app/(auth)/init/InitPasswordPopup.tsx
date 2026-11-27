@@ -4,7 +4,7 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { ORPCError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
@@ -23,7 +23,6 @@ const isIncorrectPasswordError = (error: Error | null) =>
 
 const InitPasswordPopup = () => {
   const router = useRouter()
-  const queryClient = useQueryClient()
   const { t } = useTranslation(['login', 'common'])
   const pageTitle = t(($) => $.adminInitPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
@@ -55,7 +54,6 @@ const InitPasswordPopup = () => {
       { body: { password } },
       {
         onSuccess: () => {
-          queryClient.setQueryData(consoleQuery.init.get.queryKey(), { status: 'finished' })
           router.replace('/install')
         },
         onError: (error) => leaveCompletedSetup(error, router.replace),

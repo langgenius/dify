@@ -18,6 +18,7 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
+from services.agent.agent_app_contracts import AgentReferencingWorkflow
 from services.agent.build_session_store import AgentDraftSummary
 
 
@@ -65,6 +66,23 @@ class PublishedWorkflowReference:
     workflow_id: str
     workflow_version: str
     node_ids: tuple[str, ...]
+
+
+def project_referencing_workflow(reference: PublishedWorkflowReference) -> AgentReferencingWorkflow:
+    """Detach the published workflow's presentation fields while its App is loaded."""
+    app = reference.app
+    return AgentReferencingWorkflow(
+        app_id=app.id,
+        app_name=app.name,
+        app_icon_type=app.icon_type.value if app.icon_type else None,
+        app_icon=app.icon,
+        app_icon_background=app.icon_background,
+        app_mode=str(app.mode),
+        app_updated_at=to_timestamp(app.updated_at),
+        workflow_id=reference.workflow_id,
+        workflow_version=reference.workflow_version,
+        node_ids=list(reference.node_ids),
+    )
 
 
 def build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None) -> Select[tuple[Agent]]:

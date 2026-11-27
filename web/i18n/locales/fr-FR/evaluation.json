@@ -75,6 +75,7 @@
   "entry.checkFailed": "La version publiée n’a pas pu être vérifiée. Veuillez réessayer.",
   "entry.duplicateNodeNames": "La version publiée contient des nœuds portant le même nom ({{names}}). Vous pouvez poursuivre l’évaluation, mais les renommer et publier une nouvelle version facilitera la distinction des résultats.",
   "entry.duplicateNodeNamesTitle": "Noms de nœuds en double",
+  "entry.triggerUnsupported": "Les workflows démarrés par un déclencheur ne peuvent pas être évalués. Publiez un workflow avec un nœud de départ « Entrée utilisateur ».",
   "history.actions.cancel": "Annuler l’exécution",
   "history.actions.downloadFailed": "Impossible de télécharger le fichier d’évaluation.",
   "history.actions.downloadResultFile": "Télécharger le résultat",
