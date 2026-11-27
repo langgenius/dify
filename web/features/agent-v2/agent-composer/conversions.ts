@@ -277,6 +277,7 @@ const toProviderToolFormState = (
       id: actionId,
       name: tool.name ?? toolName,
       toolName,
+      maxCallsPerRun: tool.max_calls_per_run ?? null,
       description: tool.description ?? '',
     }
 
@@ -331,6 +332,7 @@ const toDifyToolConfigs = (
       plugin_id: tool.pluginId,
       provider_type: tool.providerType,
       tool_name: action.toolName,
+      max_calls_per_run: action.maxCallsPerRun ?? null,
       runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
       credential_type: credentialType,
       credential_ref: tool.credentialId

@@ -27,7 +27,7 @@ import { getCountQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { InvitationResultsContent } from '../invitation-results-content'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
@@ -72,6 +72,7 @@ function InviteForm({
   onDismissError,
 }: InviteFormProps) {
   const { t } = useTranslation(['workspaceMembers'])
+  const describeRequestError = useRequestErrorDescriber()
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const workspaceId = useAtomValue(currentWorkspaceAtom).id
   const { data: reservedSeats = 0 } = useQuery({
@@ -92,8 +93,10 @@ function InviteForm({
         : undefined
   const formError =
     error && !fieldErrors
-      ? (getRequestErrorMessage(error) ??
-        t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }))
+      ? describeRequestError(
+          error,
+          t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }),
+        )
       : null
   const memberLimit = features
     ? getCountQuota(

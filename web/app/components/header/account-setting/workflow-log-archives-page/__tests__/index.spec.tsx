@@ -247,7 +247,9 @@ describe('WorkflowLogArchivesPage', () => {
         within(dialog).getByRole('button', { name: 'appLog.archives.delete.confirm' }),
       )
 
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'appLog.archives.delete.requestFailed',
+      )
       expect(dialog).toBeInTheDocument()
       await user.click(
         within(dialog).getByRole('button', { name: 'appLog.archives.delete.confirm' }),

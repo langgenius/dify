@@ -1,3 +1,7 @@
+import type {
+  AgentToolActivity,
+  ToolCallLimitMetadata,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -43,12 +47,7 @@ export type WorkflowProcess = {
   humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
-export type WorkflowAgentToolActivityStatus =
-  | 'started'
-  | 'running'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
+export type WorkflowAgentToolActivityStatus = AgentToolActivity['status']
 
 export type WorkflowAgentToolActivity = {
   id: string
@@ -63,6 +62,7 @@ export type WorkflowAgentToolActivity = {
     tool_input: string
     tool_output: string
     node_title: string
+    call_limit?: ToolCallLimitMetadata | null
   }
 }
 

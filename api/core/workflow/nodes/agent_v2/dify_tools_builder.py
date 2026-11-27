@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Final, Literal, Protocol
 
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolProviderType, DifyCoreToolsLayerConfig
@@ -20,6 +20,7 @@ from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.__base.tool import Tool
+from core.tools.entities.common_entities import I18nObjectDict
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.tool import PluginTool
@@ -77,8 +78,16 @@ class MCPProviderIDResolver(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class WorkflowAgentToolLayers:
+    """Prepared transports and detached, credential-free display labels.
+
+    Labels are keyed by the exact exposed native tool name, including generated
+    aliases. Empty labels support native-only and older internal constructors.
+    """
+
     plugin_tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
+    # API-owned display snapshots; never sent in credential-bearing runtime configs.
+    tool_labels: Mapping[str, I18nObjectDict] = field(default_factory=dict)
 
     def exposed_tool_names(self) -> list[str]:
         names: list[str] = []
@@ -184,6 +193,13 @@ class WorkflowAgentDifyToolsBuilder:
         Composer test run, SERVICE_API / WEB_APP for a published run). It must
         be threaded through to `ToolManager` so credential quotas, rate limits,
         and audit tags match the actual call site.
+
+        Requires validated Agent Soul tools. Preserves each concrete
+        operation's call limit on either transport, including generated
+        Knowledge Base variants, so exposing another name cannot add quota.
+        Declaration or credential failures abort request preparation.
+        Display labels are detached from the resolved runtime and stay outside
+        the backend layer configs, so consumers can freeze them in process logs.
         """
         enabled_tools = [tool for tool in tools.dify_tools if tool.enabled]
         if not enabled_tools:
@@ -191,6 +207,7 @@ class WorkflowAgentDifyToolsBuilder:
 
         prepared_plugin: list[DifyPluginToolConfig] = []
         prepared_core: list[DifyCoreToolConfig] = []
+        tool_labels: dict[str, I18nObjectDict] = {}
         seen_names: set[str] = set()
 
         for tool_config in self._expand_provider_entries(tenant_id=tenant_id, enabled_tools=enabled_tools):
@@ -220,6 +237,7 @@ class WorkflowAgentDifyToolsBuilder:
                     invoke_from=invoke_from,
                     tool_config=normalized_tool_config,
                 )
+                tool_labels[exposed_name] = tool_runtime.entity.identity.label.to_dict()
 
                 if destination == "plugin":
                     prepared_plugin.append(
@@ -243,6 +261,7 @@ class WorkflowAgentDifyToolsBuilder:
         return WorkflowAgentToolLayers(
             plugin_tools=DifyPluginToolsLayerConfig(tools=prepared_plugin) if prepared_plugin else None,
             core_tools=DifyCoreToolsLayerConfig(tools=prepared_core) if prepared_core else None,
+            tool_labels=tool_labels,
         )
 
     def _expand_provider_entries(
@@ -461,6 +480,7 @@ class WorkflowAgentDifyToolsBuilder:
             runtime_parameters=runtime_parameters,
             parameters=parameters,
             parameters_json_schema=self._plugin_parameters_json_schema(tool_runtime, parameters),
+            max_calls_per_run=tool_config.max_calls_per_run,
         )
 
     def _to_core_backend_tool_config(
@@ -481,6 +501,7 @@ class WorkflowAgentDifyToolsBuilder:
             runtime_parameters=self._runtime_parameters(tool_runtime, parameters),
             parameters=parameters,
             parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
+            max_calls_per_run=tool_config.max_calls_per_run,
         )
 
     @staticmethod

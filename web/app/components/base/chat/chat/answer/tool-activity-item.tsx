@@ -1,3 +1,7 @@
+import type {
+  AgentToolActivity,
+  ToolCallLimitMetadata,
+} from '@dify/contracts/api/console/agent/types.gen'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useTranslation } from 'react-i18next'
 
@@ -8,13 +12,7 @@ export const SHELL_TOOL_NAMES = new Set([
   'shell_interrupt',
 ])
 
-type ToolActivityStatus =
-  | 'started'
-  | 'running'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
-  | 'interrupted'
+type ToolActivityStatus = AgentToolActivity['status'] | 'interrupted'
 
 export type ToolActivity = {
   kind: 'shell' | 'tool'
@@ -26,17 +24,30 @@ export type ToolActivity = {
   isFinished: boolean
   status?: ToolActivityStatus
   error?: string | null
+  callLimit?: ToolCallLimitMetadata | null
 }
 
 export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
   const { t } = useTranslation(['agentV2', 'tools', 'workflow'])
-  const hasDetails = !!tool.input || !!tool.output || !!tool.error
+  const blocked = tool.status === 'not_executed'
+  const limitRejection =
+    blocked && tool.callLimit?.reason === 'call_limit_reached' ? tool.callLimit : null
+  const error = limitRejection
+    ? t(($) => $['toolCallLimit.reached'], { limit: limitRejection.limit, ns: 'agentV2' })
+    : tool.error
+  const output = blocked ? '' : tool.output
+  const hasDetails = !!tool.input || !!output || !!error
   const hasStatusBadge =
-    tool.status === 'failed' || tool.status === 'cancelled' || tool.status === 'interrupted'
+    blocked ||
+    tool.status === 'failed' ||
+    tool.status === 'cancelled' ||
+    tool.status === 'interrupted'
   const statusText = hasStatusBadge
-    ? tool.status === 'failed'
-      ? t(($) => $['tracing.status.failed'], { ns: 'workflow' })
-      : t(($) => $['tracing.status.stopped'], { ns: 'workflow' })
+    ? blocked
+      ? t(($) => $['toolCallLimit.notExecuted'], { ns: 'agentV2' })
+      : tool.status === 'failed'
+        ? t(($) => $['tracing.status.failed'], { ns: 'workflow' })
+        : t(($) => $['tracing.status.stopped'], { ns: 'workflow' })
     : ''
   const resolvedPhase =
     tool.status ?? (tool.isFinished ? ('succeeded' as const) : ('running' as const))
@@ -75,9 +86,23 @@ export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
         {!!hasStatusBadge && statusText && (
           <span
             role="status"
-            className="shrink-0 rounded-sm bg-state-base-hover px-1 py-0.5 system-xs-medium text-text-tertiary"
+            className={
+              blocked
+                ? 'shrink-0 system-xs-regular text-text-warning'
+                : 'shrink-0 rounded-sm bg-state-base-hover px-1 py-0.5 system-xs-medium text-text-tertiary'
+            }
           >
             {statusText}
+          </span>
+        )}
+        {limitRejection && (
+          <span className="system-xs-regular text-text-tertiary">
+            {t(($) => $['toolCallLimit.used'], {
+              count: limitRejection.limit,
+              used: limitRejection.used,
+              limit: limitRejection.limit,
+              ns: 'agentV2',
+            })}
           </span>
         )}
       </span>
@@ -99,13 +124,6 @@ export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
             <div className="w-full max-w-full min-w-0 space-y-2 pt-2 pb-2">
-              {!!tool.error && (
-                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
-                  <div className="mt-1 max-w-full min-w-0 code-xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
-                    {tool.error}
-                  </div>
-                </div>
-              )}
               {!!tool.input && (
                 <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
                   <div className="system-xs-semibold-uppercase text-text-tertiary">
@@ -116,13 +134,25 @@ export function ToolActivityItem({ tool }: { tool: ToolActivity }) {
                   </div>
                 </div>
               )}
-              {!!tool.output && (
+              {!!error && (
+                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
+                  {blocked && (
+                    <div className="system-xs-semibold-uppercase text-text-tertiary">
+                      {t(($) => $['toolCallLimit.reason'], { ns: 'agentV2' })}
+                    </div>
+                  )}
+                  <div className="mt-1 max-w-full min-w-0 code-xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
+                    {error}
+                  </div>
+                </div>
+              )}
+              {!!output && (
                 <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
                   <div className="system-xs-semibold-uppercase text-text-tertiary">
                     {t(($) => $['thought.responseTitle'], { ns: 'tools' })}
                   </div>
                   <div className="mt-1 max-w-full min-w-0 code-xs-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
-                    {tool.output}
+                    {output}
                   </div>
                 </div>
               )}

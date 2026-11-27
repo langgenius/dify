@@ -45,7 +45,8 @@ import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-se
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage, isNotFoundError } from '@/service/http-error'
+import { isNotFoundError } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
@@ -204,6 +205,7 @@ function DirectoryLoading() {
 export function ContactsDirectoryPage() {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const context = useContactsFeatureContext()
   const [browsing, setBrowsing] = useQueryStates({
     contact_kind: kindParser,
@@ -549,10 +551,10 @@ export function ContactsDirectoryPage() {
                       {t(($) => $['action.retry'])}
                     </Button>
                   }
-                  description={
-                    getRequestErrorMessage(directoryQuery.error) ??
-                    t(($) => $['directory.errorDescription'])
-                  }
+                  description={describeRequestError(
+                    directoryQuery.error,
+                    t(($) => $['directory.errorDescription']),
+                  )}
                   icon="i-ri-error-warning-line"
                   title={t(($) => $['directory.errorTitle'])}
                 />
@@ -660,8 +662,10 @@ export function ContactsDirectoryPage() {
                       {directoryQuery.isFetchNextPageError && (
                         <div className="flex flex-col items-center gap-2 p-3">
                           <p role="alert" className="system-xs-regular text-text-destructive">
-                            {getRequestErrorMessage(directoryQuery.error) ??
-                              t(($) => $['directory.pageError'])}
+                            {describeRequestError(
+                              directoryQuery.error,
+                              t(($) => $['directory.pageError']),
+                            )}
                           </p>
                           <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
                             {t(($) => $['action.retry'])}
@@ -731,7 +735,10 @@ export function ContactsDirectoryPage() {
                 className="my-auto text-center system-sm-regular text-text-tertiary"
               >
                 {detailsFailed
-                  ? (getRequestErrorMessage(detailsQuery.error) ?? t(($) => $['details.error']))
+                  ? describeRequestError(
+                      detailsQuery.error,
+                      t(($) => $['details.error']),
+                    )
                   : t(($) => $['details.notFound'])}
               </p>
             )}
@@ -823,7 +830,8 @@ export function ContactsDirectoryPage() {
           {removalError && (
             <AlertDialogBody>
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {getRequestErrorMessage(removeContacts.error) ??
+                {describeRequestError(
+                  removeContacts.error,
                   t(
                     ($) =>
                       $[
@@ -831,7 +839,8 @@ export function ContactsDirectoryPage() {
                           ? 'directory.removalSingleFailed'
                           : 'directory.removalFailed'
                       ],
-                  )}
+                  ),
+                )}
               </p>
             </AlertDialogBody>
           )}

@@ -30,7 +30,7 @@ import {
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { streamEvents } from '@/service/event-stream'
 import { submitHumanInputForm } from '@/service/workflow'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
@@ -735,7 +735,7 @@ export const useChat = (
     try {
       await submitHumanInputForm(formToken, formData, form?.form_version)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       throw error
     }
   }

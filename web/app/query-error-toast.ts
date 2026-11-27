@@ -47,16 +47,20 @@ function withRequestErrorTranslator(report: (t: RequestErrorTranslator | undefin
   i18n.loadNamespaces('requestErrors').then(translate, () => report(undefined))
 }
 
-/** The message for a failed request: translated by its code, or the server's own. */
+/**
+ * The message for a failed request: translated by its code. Without translations it is the
+ * caller's text, then the server's own.
+ */
 function requestErrorMessage(
   error: ORPCError<string, unknown>,
   t: RequestErrorTranslator | undefined,
   fallback?: string,
 ) {
   if (t) return resolveRequestErrorMessage(error, { t, fallback })
+  if (fallback) return { message: fallback, source: 'fallback' as const }
   const serverMessage = getHttpErrorBodyMessage(error.data)
   if (serverMessage) return { message: serverMessage, source: 'server' as const }
-  return { message: fallback ?? actionFailedMessage(), source: 'generic' as const }
+  return { message: actionFailedMessage(), source: 'generic' as const }
 }
 
 // A polling query fails once per interval, so a message is shown once per window per query.
@@ -76,7 +80,8 @@ function pruneExpiredQueryToasts(now: number) {
 
 /**
  * Reports a failed first load and a failed background refetch alike, so no read fails without
- * feedback. A query whose owner renders its own error state sets `meta.errorToast: false`.
+ * feedback. `meta.errorMessage` is the query's text for codes the catalog does not know; a query
+ * whose owner renders its own error state sets `meta.errorToast: false`.
  */
 function reportQueryError(error: unknown, query: AnyQuery) {
   if (query.meta?.errorToast === false) return
@@ -89,9 +94,7 @@ function reportQueryError(error: unknown, query: AnyQuery) {
   // Once reported, a caller that rethrows the error must not report it again.
   markErrorHandled(requestError)
   withRequestErrorTranslator((t) => {
-    const { message } = errorMessage
-      ? { message: errorMessage }
-      : requestErrorMessage(requestError, t)
+    const { message } = requestErrorMessage(requestError, t, errorMessage)
 
     const now = Date.now()
     pruneExpiredQueryToasts(now)
@@ -104,50 +107,49 @@ function reportQueryError(error: unknown, query: AnyQuery) {
   })
 }
 
-/**
- * Reports a failed request that a user action awaits outside TanStack Query, the same way the
- * mutation cache would. Prefer running the action through a mutation.
- */
-export function toastRequestError(error: unknown, message?: string) {
-  const requestError = getReportableRequestError(error)
-  if (!requestError) return
-  // A nested mutation or a caller that rethrows the same error must not report it again.
+/** Shows a reportable request error's message once; a caller that rethrows it stays silent. */
+function toastReportableRequestError(requestError: ORPCError<string, unknown>, fallback?: string) {
   markErrorHandled(requestError)
-  if (message) return toast.error(message)
-  withRequestErrorTranslator((t) => toast.error(requestErrorMessage(requestError, t).message))
+  withRequestErrorTranslator((t) =>
+    toast.error(requestErrorMessage(requestError, t, fallback).message),
+  )
 }
 
 const isAbortError = (error: unknown) =>
   error instanceof DOMException && error.name === 'AbortError'
 
 /**
- * Reports any failure of a user action that no mutation reports, such as a lookup before an
- * install: request errors as `toastRequestError` does, and a network failure or timeout with
- * a generic message for its kind. A failure that was already reported, a sign-in failure and a
- * cancellation stay silent.
+ * Reports a failure of a user action that no mutation reports, such as a request awaited outside
+ * TanStack Query or a lookup before an install, so no action fails silently. A request error shows
+ * its translated message, with `fallback` as the caller's text for codes the catalog does not
+ * know; a network failure, a timeout or another exception shows generic text for its kind. A
+ * failure that was already reported, a sign-in failure and a cancellation stay silent. Prefer
+ * running the action through a mutation.
  */
-export function toastActionError(error: unknown) {
+export function reportRequestError(error: unknown, fallback?: string) {
   if (isAbortError(error) || isErrorHandled(error)) return
   if (error instanceof ORPCError && typeof error.status === 'number') {
-    // A client without the console transport, such as the marketplace one, keeps a response body
-    // that is not an oRPC error under `data.body`.
-    const data = error.data as { body?: unknown } | undefined
-    toastRequestError(error, getHttpErrorBodyMessage(data?.body))
+    const requestError = getReportableRequestError(error)
+    if (requestError) toastReportableRequestError(requestError, fallback)
     return
   }
   markErrorHandled(error)
   withRequestErrorTranslator((t) =>
-    toast.error(t ? describeRequestError(error, { t }) : actionFailedMessage()),
+    toast.error(
+      t ? describeRequestError(error, { t, fallback }) : (fallback ?? actionFailedMessage()),
+    ),
   )
 }
 
 /**
- * Every failed write is a separate user action. A mutation sets `meta.errorMessage` to replace
- * the server's message, or `meta.errorToast: false` when its owner presents the failure itself.
+ * Every failed write is a separate user action. A mutation sets `meta.errorMessage` as its text
+ * for codes the catalog does not know, or `meta.errorToast: false` when its owner presents the
+ * failure itself.
  */
 function reportMutationError(error: unknown, mutation: AnyMutation) {
   if (mutation.meta?.errorToast === false) return
-  toastRequestError(error, mutation.meta?.errorMessage)
+  const requestError = getReportableRequestError(error)
+  if (requestError) toastReportableRequestError(requestError, mutation.meta?.errorMessage)
 }
 
 /** The caches that report request errors; tests opt in to mirror the app's QueryClient. */

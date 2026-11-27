@@ -24,6 +24,7 @@ from typing import Protocol
 
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from dify_agent.runtime.context import Services
 from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
 from dify_agent.runtime.cancellation import RunCancellationIntent
@@ -83,6 +84,7 @@ class RunStore(RunEventSink, Protocol):
         *,
         session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
+        tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
     ) -> RunFinalizationResult:
         """Publish cancellation after the owner runner has exited."""
         ...
@@ -99,6 +101,15 @@ class RunnableRun(Protocol):
     @property
     def terminal_usage(self) -> AgentRunUsage | None:
         """Return usage accumulated before this run exited, if available."""
+        ...
+
+    @property
+    def terminal_tool_call_limits(self) -> dict[str, ToolCallLimitSnapshot]:
+        """Return detached reservations sealed after native cleanup."""
+        ...
+
+    def close_tool_admission(self) -> None:
+        """Close reservations as soon as this owner observes cancellation."""
         ...
 
     async def run(self) -> None:
@@ -225,6 +236,7 @@ class RunScheduler:
         )
 
         async def cancel_runner_and_wait() -> None:
+            runner.close_tool_admission()
             if not cancel_requested.is_set() and not runner_task.done():
                 cancel_requested.set()
                 _ = runner_task.cancel()
@@ -244,6 +256,7 @@ class RunScheduler:
                         reason="cancellation_observer",
                         session_snapshot=runner.terminal_session_snapshot,
                         usage=runner.terminal_usage,
+                        tool_call_limits=runner.terminal_tool_call_limits,
                     )
                     if not finalization.applied and finalization.status == "running":
                         intent = await self.store.get_cancellation_intent(record.run_id)
@@ -253,6 +266,7 @@ class RunScheduler:
                                 intent,
                                 session_snapshot=runner.terminal_session_snapshot,
                                 usage=runner.terminal_usage,
+                                tool_call_limits=runner.terminal_tool_call_limits,
                             )
                     raise
 
@@ -262,6 +276,7 @@ class RunScheduler:
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
                     usage=runner.terminal_usage,
+                    tool_call_limits=runner.terminal_tool_call_limits,
                 )
             else:
                 runner_error: Exception | None = None
@@ -277,10 +292,12 @@ class RunScheduler:
                         intent,
                         session_snapshot=runner.terminal_session_snapshot,
                         usage=runner.terminal_usage,
+                        tool_call_limits=runner.terminal_tool_call_limits,
                     )
                 if runner_error is not None:
                     raise runner_error
         except asyncio.CancelledError:
+            runner.close_tool_admission()
             await self._cancel_and_wait(observer_task)
             await cancel_runner_and_wait()
             intent = await self.store.get_cancellation_intent(record.run_id)
@@ -290,12 +307,14 @@ class RunScheduler:
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
                     usage=runner.terminal_usage,
+                    tool_call_limits=runner.terminal_tool_call_limits,
                 )
             else:
                 finalization = await self._mark_cancelled_run_failed(
                     record.run_id,
                     session_snapshot=runner.terminal_session_snapshot,
                     usage=runner.terminal_usage,
+                    tool_call_limits=runner.terminal_tool_call_limits,
                 )
                 if finalization is not None and not finalization.applied and finalization.status == "running":
                     intent = await self.store.get_cancellation_intent(record.run_id)
@@ -305,11 +324,13 @@ class RunScheduler:
                             intent,
                             session_snapshot=runner.terminal_session_snapshot,
                             usage=runner.terminal_usage,
+                            tool_call_limits=runner.terminal_tool_call_limits,
                         )
             raise
         except Exception:
             logger.exception("scheduled run failed", extra={"run_id": record.run_id})
         finally:
+            runner.close_tool_admission()
             await self._cancel_and_wait(observer_task)
             if not runner_task.done():
                 await cancel_runner_and_wait()
@@ -321,7 +342,7 @@ class RunScheduler:
         *,
         is_cancelled: Callable[[], bool],
     ) -> RunnableRun:
-        """Create a runner while keeping injected test runners source-compatible."""
+        """Create the native runner or an injected implementation of its owner contract."""
         if self.runner_factory is not None:
             return self.runner_factory(record, request)
         return self._default_runner_factory(record, request, is_cancelled=is_cancelled)
@@ -364,6 +385,7 @@ class RunScheduler:
         *,
         session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
+        tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
     ) -> RunFinalizationResult | None:
         """Best-effort failure event/status for shutdown-cancelled runs."""
         message = "run cancelled during server shutdown"
@@ -375,6 +397,7 @@ class RunScheduler:
                 reason="shutdown",
                 session_snapshot=session_snapshot,
                 usage=usage,
+                tool_call_limits=tool_call_limits,
             )
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})

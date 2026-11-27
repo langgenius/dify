@@ -203,7 +203,10 @@ describe('usePipelineInit', () => {
 
   it('shows the server message when creating the template draft fails', async () => {
     mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
-    mockRequest.mockResolvedValue(Response.json({ message: 'Draft unavailable' }, { status: 500 }))
+    // The transport rejects a failed response with the decoded backend envelope.
+    mockRequest.mockRejectedValue(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Draft unavailable' }),
+    )
     const { result } = renderPipelineInit()
 
     await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))

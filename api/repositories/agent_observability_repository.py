@@ -25,7 +25,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
-from models.model import App, Conversation, Message, MessageFeedback
+from models.model import App, Conversation, Message, MessageAgentThought, MessageFeedback
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionModel,
@@ -34,7 +34,9 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.app.agent_runtime_app import resolve_agent_runtime_app
+from repositories.message_projection import snapshot_agent_thought
 from services.agent.observability_contracts import AgentLogQuery, AgentObservabilityNotFoundError, AgentStatisticsQuery
+from services.entities.message_entities import MessageAgentThoughtRecord
 
 
 @dataclass(frozen=True)
@@ -221,8 +223,16 @@ class AgentObservabilityQueries:
     def list_log_messages(
         self, *, app: App, agent_id: str, conversation_id: str, params: AgentLogQueryParams
     ) -> dict[str, Any]:
+        """Return existing source-filtered messages with one page-scoped thought read.
+
+        The caller must supply the admitted Agent's runtime App. Native tool
+        activity is read from persisted thoughts independently of Tracing; its
+        presence does not change message status, ownership or source filters.
+        No thought queries are issued per message, and an empty page adds none.
+        """
         source_filters = self.resolve_source_filters(params.sources)
         rows: list[dict[str, Any]] = []
+        webapp_message_ids: set[str] = set()
         for source_filter in source_filters:
             if source_filter.kind in {"all", "webapp"}:
                 messages = self._list_webapp_messages(
@@ -232,6 +242,7 @@ class AgentObservabilityQueries:
                     source_filter=source_filter,
                 )
                 feedbacks_by_message = self._list_message_feedbacks(app=app, messages=messages)
+                webapp_message_ids.update(message.id for message in messages)
                 rows.extend(
                     self.serialize_log_message(
                         message,
@@ -260,13 +271,52 @@ class AgentObservabilityQueries:
         total = len(sorted_rows)
         start = (params.page - 1) * params.limit
         end = start + params.limit
+        page_rows = sorted_rows[start:end]
+        thoughts_by_message = self._list_agent_thoughts(
+            app=app,
+            conversation_id=conversation_id,
+            message_ids=[row["message_id"] for row in page_rows if row["message_id"] in webapp_message_ids],
+        )
         return {
-            "data": sorted_rows[start:end],
+            "data": [row | {"agent_thoughts": thoughts_by_message.get(row["message_id"], [])} for row in page_rows],
             "page": params.page,
             "limit": params.limit,
             "total": total,
             "has_more": end < total,
         }
+
+    def _list_agent_thoughts(
+        self, *, app: App, conversation_id: str, message_ids: Sequence[str]
+    ) -> dict[str, list[MessageAgentThoughtRecord]]:
+        """Detach thoughts for this admitted page in one owner-scoped SQL query.
+
+        Requires identifiers from already filtered page messages. The joins
+        recheck App, tenant and conversation ownership even for stale or invalid
+        identifiers. Results are ordered by thought position and ID; no ORM
+        objects or raw tool metadata escape the repository session.
+        """
+        if not message_ids:
+            return {}
+        statement = (
+            select(MessageAgentThought)
+            .join(Message, Message.id == MessageAgentThought.message_id)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .join(App, App.id == Message.app_id)
+            .where(
+                App.id == app.id,
+                App.tenant_id == app.tenant_id,
+                Conversation.id == conversation_id,
+                Conversation.app_id == app.id,
+                Message.conversation_id == conversation_id,
+                Message.app_id == app.id,
+                Message.id.in_(message_ids),
+            )
+            .order_by(MessageAgentThought.message_id, MessageAgentThought.position, MessageAgentThought.id)
+        )
+        grouped: dict[str, list[MessageAgentThoughtRecord]] = {}
+        for thought in self._session.scalars(statement):
+            grouped.setdefault(thought.message_id, []).append(snapshot_agent_thought(thought))
+        return grouped
 
     def list_log_sources(self, *, app: App, agent_id: str) -> dict[str, Any]:
         webapp_source = self._serialize_webapp_source(app)
