@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Menu,
@@ -16,6 +17,7 @@ import {
 } from '@/app/components/step-by-step-tour/menu'
 
 type CreateAppMenuProps = {
+  leadingItems?: ReactNode
   onCreateBlank?: () => void
   onCreateTemplate?: () => void
   onImportDSL?: () => void
@@ -25,6 +27,7 @@ type CreateAppMenuProps = {
 }
 
 export function CreateAppMenu({
+  leadingItems,
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -60,6 +63,12 @@ export function CreateAppMenu({
         })}
         className="w-70 p-0"
       >
+        {leadingItems && (
+          <>
+            <MenuGroup className="py-1">{leadingItems}</MenuGroup>
+            <MenuSeparator className="my-0" />
+          </>
+        )}
         {(onCreateBlank || onCreateTemplate) && (
           <MenuGroup className="py-1">
             {onCreateBlank && (

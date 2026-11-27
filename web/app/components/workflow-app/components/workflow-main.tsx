@@ -140,6 +140,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const isCollaborationGraphLoading =
     isCollaborationEnabled &&
     (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady)
+  const isWorkflowDataLoaded = useStore((state) => state.isWorkflowDataLoaded)
   const loadingPanelInset = useStore((state) =>
     isCollaborationGraphLoading ? state.rightPanelWidth : undefined,
   )
@@ -627,6 +628,11 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     <DifyBuilderProvider
       appId={appId}
       canEdit={appACLCapabilities.canEdit}
+      creationReady={
+        isWorkflowDataLoaded &&
+        (!isCollaborationEnabled ||
+          (!isCollaborationGraphLoading && collaborationManager.canPersistLocalGraph()))
+      }
       getCanvasSnapshot={getCanvasSnapshot}
       onSyncDraft={prepareBuilderDraft}
       onRefreshCanvas={refreshBuilderCanvas}

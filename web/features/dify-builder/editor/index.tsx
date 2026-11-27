@@ -6,7 +6,7 @@ import type { DifyBuilderCanvasSnapshot } from './initial-draft'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { WorkflowDraftRefreshResult } from '@/features/dify-builder/editor/use-canvas-refresh'
 import { useQueryClient } from '@tanstack/react-query'
-import { useStore as useAtomStore } from 'jotai'
+import { useStore as useAtomStore, useAtomValue } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -15,12 +15,14 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { DifyBuilderAttachmentScope } from '../composer/attachment-scope'
 import { useDifyBuilderAttachmentDraft } from '../composer/use-attachment-draft'
+import { pendingBuilderPromptAtom } from '../creation/pending-prompt'
 import { DifyBuilderSessionPersistence } from '../session/persistence'
 import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { getSessionStorageKey } from '../session/storage'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../state'
 import { DifyBuilderCanvasLockCleanup } from './canvas-lock-cleanup'
+import { DifyBuilderCreationStart } from './creation-start'
 import { useDifyBuilderCanvasEvents } from './use-canvas-events'
 import { useDifyBuilderCanvasRefresh } from './use-canvas-refresh'
 import { useWorkflowDifyBuilderEnabled } from './use-enabled'
@@ -29,6 +31,7 @@ import { useDifyBuilderRunEvents } from './use-run-events'
 type DifyBuilderProviderProps = {
   appId?: string
   canEdit: boolean
+  creationReady?: boolean
   children: ReactNode
   getCanvasSnapshot: () => DifyBuilderCanvasSnapshot
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
@@ -40,6 +43,7 @@ type DifyBuilderProviderProps = {
 const DifyBuilderProviderContent = ({
   appId,
   canEdit,
+  creationReady = false,
   children,
   getCanvasSnapshot,
   onRefreshCanvas,
@@ -48,6 +52,7 @@ const DifyBuilderProviderContent = ({
   userId,
 }: DifyBuilderProviderProps) => {
   const enabled = useWorkflowDifyBuilderEnabled()
+  const pendingCreation = useAtomValue(pendingBuilderPromptAtom)
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const fileUploadConfig = useStore((state) => state.fileUploadConfig)
   const setPublishedAt = useStore((state) => state.setPublishedAt)
@@ -166,6 +171,9 @@ const DifyBuilderProviderContent = ({
         tenantId={tenantId}
         userId={userId}
       />
+      {enabled && canEdit && pendingCreation && pendingCreation.appId === appId && (
+        <DifyBuilderCreationStart appId={appId} ready={creationReady} />
+      )}
     </>
   )
 }
