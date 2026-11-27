@@ -14,16 +14,19 @@ let sessionRevision = 0
 
 export type WebAppPassportSource = 'anonymous' | 'authenticated'
 
+function getCredentialStorage() {
+  // oxlint-disable-next-line no-restricted-globals -- Auth transport synchronously reads, invalidates, and enumerates legacy credential keys.
+  return localStorage
+}
+
 function notifySessionChanged() {
   sessionRevision += 1
   for (const listener of sessionListeners) listener()
 }
 
 function clearPassports(prefix: string) {
-  // oxlint-disable-next-line no-restricted-globals -- Enumerate only the selected credential namespace without deleting session IDs or other credentials.
-  const passportKeys = Object.keys(localStorage).filter((key) => key.startsWith(prefix))
-  // oxlint-disable-next-line no-restricted-globals -- Credential invalidation must complete synchronously before any new request.
-  for (const key of passportKeys) localStorage.removeItem(key)
+  const passportKeys = Object.keys(getCredentialStorage()).filter((key) => key.startsWith(prefix))
+  for (const key of passportKeys) getCredentialStorage().removeItem(key)
 }
 
 function clearAuthenticatedWebAppPassports() {
@@ -35,8 +38,7 @@ function clearAuthenticatedWebAppPassports() {
 }
 
 function handleStorageChange(event: StorageEvent) {
-  // oxlint-disable-next-line no-restricted-globals -- The credential boundary owns cross-tab identity changes in this storage area.
-  if (event.storageArea && event.storageArea !== localStorage) return
+  if (event.storageArea && event.storageArea !== getCredentialStorage()) return
   if (
     event.key === ACCESS_TOKEN_LOCAL_STORAGE_NAME ||
     event.key === WEB_APP_LOGIN_MODE_KEY ||
@@ -72,9 +74,8 @@ export function subscribeWebAppAuthSession(listener: () => void) {
 
 /** Invalidate account-bound credentials while retaining anonymous Passports and history. */
 export function expireWebAppAccountSession() {
-  localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
-  // oxlint-disable-next-line no-restricted-globals -- Keep the credential source marker in the same synchronous storage boundary as the proof.
-  localStorage.removeItem(WEB_APP_LOGIN_MODE_KEY)
+  getCredentialStorage().removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
+  getCredentialStorage().removeItem(WEB_APP_LOGIN_MODE_KEY)
   clearAuthenticatedWebAppPassports()
   notifySessionChanged()
 }
@@ -84,28 +85,25 @@ function getWebAppAuthorizationRecoveryKey(address: WebAppAddress) {
 }
 
 export function getWebAppLoginMode(): 'end_user' | 'console' {
-  // oxlint-disable-next-line no-restricted-globals -- Request/bootstrap owners must synchronously distinguish account proof from legacy SSO credentials.
-  return localStorage.getItem(WEB_APP_LOGIN_MODE_KEY) === 'end_user' ? 'end_user' : 'console'
+  return getCredentialStorage().getItem(WEB_APP_LOGIN_MODE_KEY) === 'end_user'
+    ? 'end_user'
+    : 'console'
 }
 
 export function setWebAppAccessToken(token: string, mode: 'end_user' | 'console' = 'console') {
   if (getWebAppAccessToken() === token && getWebAppLoginMode() === mode) return
   clearAuthenticatedWebAppPassports()
-  // oxlint-disable-next-line no-restricted-globals -- Persist credential provenance alongside the existing proof for refresh and legacy SSO compatibility.
-  localStorage.setItem(WEB_APP_LOGIN_MODE_KEY, mode)
-  localStorage.setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, token)
+  getCredentialStorage().setItem(WEB_APP_LOGIN_MODE_KEY, mode)
+  getCredentialStorage().setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, token)
   notifySessionChanged()
 }
 
 /** Record a newly issued HttpOnly account session without exposing its login proof. */
 export function startWebAppAccountSession() {
   clearAuthenticatedWebAppPassports()
-  // oxlint-disable-next-line no-restricted-globals -- Cookie login must remove any legacy bearer before new account requests begin.
-  localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
-  // oxlint-disable-next-line no-restricted-globals -- Reset the mode so other tabs observe a cookie-session replacement even when the mode stays end_user.
-  localStorage.removeItem(WEB_APP_LOGIN_MODE_KEY)
-  // oxlint-disable-next-line no-restricted-globals -- Persist only the login mode; the account proof belongs to the HttpOnly cookie.
-  localStorage.setItem(WEB_APP_LOGIN_MODE_KEY, 'end_user')
+  getCredentialStorage().removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
+  getCredentialStorage().removeItem(WEB_APP_LOGIN_MODE_KEY)
+  getCredentialStorage().setItem(WEB_APP_LOGIN_MODE_KEY, 'end_user')
   notifySessionChanged()
 }
 
@@ -123,12 +121,12 @@ export function setWebAppPassport(
     ? 'authenticated'
     : 'anonymous',
 ) {
-  localStorage.setItem(getPassportStorageKey(address, source), token)
+  getCredentialStorage().setItem(getPassportStorageKey(address, source), token)
 }
 
 function readWebAppPassport(address: WebAppAddress | null, source: WebAppPassportSource) {
   if (!address) return ''
-  return localStorage.getItem(getPassportStorageKey(address, source)) || ''
+  return getCredentialStorage().getItem(getPassportStorageKey(address, source)) || ''
 }
 
 export function getAnonymousWebAppPassport(address: WebAppAddress | null) {
@@ -137,22 +135,19 @@ export function getAnonymousWebAppPassport(address: WebAppAddress | null) {
 
 export function getAnonymousWebAppPassports() {
   const prefix = PASSPORT_LOCAL_STORAGE_NAME('')
-  // oxlint-disable-next-line no-restricted-globals -- Migration enumerates the anonymous credential namespace across Apps.
-  return Object.keys(localStorage)
+  return Object.keys(getCredentialStorage())
     .filter((key) => key.startsWith(prefix))
     .flatMap((key) => {
-      // oxlint-disable-next-line no-restricted-globals -- Keep the storage key with the snapshot so successful claims remove only their original proof.
-      const passport = localStorage.getItem(key)
+      const passport = getCredentialStorage().getItem(key)
       return passport ? [{ key, passport }] : []
     })
 }
 
 export function removeAnonymousWebAppPassport(candidate: { key: string; passport: string }) {
   if (!candidate.key.startsWith(PASSPORT_LOCAL_STORAGE_NAME(''))) return
-  // oxlint-disable-next-line no-restricted-globals -- A concurrent tab may have replaced this anonymous Passport while migration was running.
-  if (localStorage.getItem(candidate.key) === candidate.passport)
-    // oxlint-disable-next-line no-restricted-globals -- Remove only the selected anonymous Passport snapshot.
-    localStorage.removeItem(candidate.key)
+  // A concurrent tab may have already replaced the Passport being migrated.
+  if (getCredentialStorage().getItem(candidate.key) === candidate.passport)
+    getCredentialStorage().removeItem(candidate.key)
 }
 
 export function getAuthenticatedWebAppPassport(address: WebAppAddress | null) {
@@ -172,7 +167,7 @@ export function completeWebAppAuthorizationRecovery(address: WebAppAddress) {
 }
 
 export function getWebAppAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME) || ''
+  return getCredentialStorage().getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME) || ''
 }
 
 export function getWebAppPassport(address: WebAppAddress | null) {
@@ -183,20 +178,18 @@ export function getOrCreateWebAppSessionId(address: WebAppAddress) {
   if (address.kind !== 'environment') return ''
 
   const key = `session_id-${getWebAppScopeKey(address)}`
-  // oxlint-disable-next-line no-restricted-globals -- Environment passport requests need a stable session ID synchronously.
-  const sessionId = localStorage.getItem(key)
+  const sessionId = getCredentialStorage().getItem(key)
   if (sessionId) return sessionId
 
   const created = uuidV4()
-  // oxlint-disable-next-line no-restricted-globals -- Environment passport requests need a stable session ID synchronously.
-  localStorage.setItem(key, created)
+  getCredentialStorage().setItem(key, created)
   return created
 }
 
 export function clearWebAppPassport(address: WebAppAddress | null) {
   if (!address) return
   const source = getAuthenticatedWebAppPassport(address) ? 'authenticated' : 'anonymous'
-  localStorage.removeItem(getPassportStorageKey(address, source))
+  getCredentialStorage().removeItem(getPassportStorageKey(address, source))
 }
 
 export async function webAppLoginStatus(shareCode: string, userId?: string) {
@@ -220,8 +213,14 @@ export async function webAppLogout(address: WebAppAddress | null) {
   const isAuthSessionCurrent = captureWebAppAuthSession()
   const { webAppClient } = await import('./webapp')
   if (!isAuthSessionCurrent()) throw new DOMException('The Web App account changed.', 'AbortError')
-  await webAppClient.logout.post(undefined, {
-    context: address ? { address } : {},
-  })
-  if (isAuthSessionCurrent()) expireWebAppAccountSession()
+  try {
+    await webAppClient.logout.post(undefined, {
+      context: address ? { address } : {},
+    })
+  } finally {
+    if (isAuthSessionCurrent()) {
+      if (address) getCredentialStorage().removeItem(getPassportStorageKey(address, 'anonymous'))
+      expireWebAppAccountSession()
+    }
+  }
 }

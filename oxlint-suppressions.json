@@ -2994,11 +2994,6 @@
       "count": 1
     }
   },
-  "web/service/webapp-auth.ts": {
-    "no-restricted-globals": {
-      "count": 6
-    }
-  },
   "web/types/assets.d.ts": {
     "typescript/no-explicit-any": {
       "count": 5

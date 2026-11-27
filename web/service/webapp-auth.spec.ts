@@ -198,7 +198,7 @@ describe('Webapp credentials', () => {
     unsubscribe()
   })
 
-  it('sends logout with the session cookie, then keeps anonymous Passports for a deferred history decision', async () => {
+  it('sends logout with the session cookie and clears the current app passport', async () => {
     setWebAppPassport(ordinary, 'anonymous-ordinary', 'anonymous')
     setWebAppPassport(environment, 'anonymous-environment', 'anonymous')
     startWebAppAccountSession()
@@ -227,13 +227,13 @@ describe('Webapp credentials', () => {
     expect(getWebAppAccessToken()).toBe('')
     expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
     expect(getAuthenticatedWebAppPassport(environment)).toBe('')
-    expect(getWebAppPassport(ordinary)).toBe('anonymous-ordinary')
+    expect(getWebAppPassport(ordinary)).toBe('')
     expect(getWebAppPassport(environment)).toBe('anonymous-environment')
     expect(getWebAppAuthSessionSnapshot()).not.toBe(revision)
   })
 
   it.each(['network', 'HTTP'] as const)(
-    'preserves account credentials and reports a failed logout after a %s failure',
+    'clears local credentials and reports a failed logout after a %s failure',
     async (failure) => {
       vi.spyOn(console, 'error').mockImplementation(() => {})
       const otherApp = { kind: 'default', code: 'another-app' } as const
@@ -250,17 +250,15 @@ describe('Webapp credentials', () => {
 
       await expect(webAppLogout(ordinary)).rejects.toThrow()
 
-      expect(getWebAppAccessToken()).toBe('account-proof')
-      expect(getWebAppLoginMode()).toBe('end_user')
+      expect(getWebAppAccessToken()).toBe('')
+      expect(getWebAppLoginMode()).toBe('console')
       for (const address of scopes) {
-        expect(getAuthenticatedWebAppPassport(address)).toBe(
-          `account-${address.kind}-${address.code}`,
-        )
+        expect(getAuthenticatedWebAppPassport(address)).toBe('')
         expect(getAnonymousWebAppPassport(address)).toBe(
-          `anonymous-${address.kind}-${address.code}`,
+          address === ordinary ? '' : `anonymous-${address.kind}-${address.code}`,
         )
       }
-      expect(getWebAppAuthSessionSnapshot()).toBe(revision)
+      expect(getWebAppAuthSessionSnapshot()).not.toBe(revision)
     },
   )
 
