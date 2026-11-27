@@ -168,6 +168,9 @@ class TestPluginParameterEntities:
             (1.5, 1.5),
             ("2", 2),
             ("2.5", 2.5),
+            ("1e-05", 1e-05),
+            ("1E+16", 1e16),
+            ("-2.5e3", -2500.0),
         ],
     )
     def test_cast_parameter_value_number(self, value, expected):
