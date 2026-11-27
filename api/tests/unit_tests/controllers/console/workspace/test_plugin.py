@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -1378,28 +1379,30 @@ class TestPluginChangeAutoUpgradeApi:
         assert result["success"] is False
 
 
+@pytest.mark.usefixtures("sqlite_session_factory")
 class TestPluginFetchAutoUpgradeApi:
-    def test_success(self, app: Flask) -> None:
+    def test_returns_saved_strategy_for_tenant_and_category(self, app: Flask, sqlite_session: Session) -> None:
         api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
-
-        auto_upgrade = TenantPluginAutoUpgradeStrategy(
-            tenant_id="t1",
-            category=TenantPluginAutoUpgradeCategory.TOOL,
-            strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
-            upgrade_time_of_day=1,
-            upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
-            exclude_plugins=[],
-            include_plugins=[],
+        sqlite_session.add_all(
+            TenantPluginAutoUpgradeStrategy(
+                tenant_id=tenant_id,
+                category=category,
+                strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
+                upgrade_time_of_day=hour,
+                upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
+                exclude_plugins=[],
+                include_plugins=[],
+            )
+            for tenant_id, category, hour in (
+                ("t1", TenantPluginAutoUpgradeCategory.TOOL, 1),
+                ("t2", TenantPluginAutoUpgradeCategory.TOOL, 2),
+                ("t1", TenantPluginAutoUpgradeCategory.MODEL, 3),
+            )
         )
+        sqlite_session.commit()
 
-        with (
-            app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.TOOL.value}"),
-            patch(
-                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
-                return_value=auto_upgrade,
-            ),
-        ):
+        with app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.TOOL.value}"):
             result = method(
                 api,
                 ParserAutoUpgradeFetch.model_validate({"category": TenantPluginAutoUpgradeCategory.TOOL.value}),
@@ -1415,10 +1418,6 @@ class TestPluginFetchAutoUpgradeApi:
 
         with (
             app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.MODEL.value}"),
-            patch(
-                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
-                return_value=None,
-            ),
             patch(
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.default_upgrade_time_of_day",
                 return_value=78300,

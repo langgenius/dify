@@ -33,6 +33,7 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from core.db.session_factory import session_factory
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.parameters import PluginParameterOption
@@ -1264,10 +1265,14 @@ class PluginFetchAutoUpgradeApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserAutoUpgradeFetch)
     def get(self, req_data: ParserAutoUpgradeFetch, tenant_id: str):
-        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, req_data.category, session=db.session())
-        auto_upgrade_dict = (
-            _auto_upgrade_settings_to_dict(auto_upgrade) if auto_upgrade else _missing_auto_upgrade_settings(tenant_id)
-        )
+        """Read a tenant's persisted category strategy, or return defaults without writing."""
+        with session_factory.create_session() as session:
+            auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, req_data.category, session=session)
+            auto_upgrade_dict = (
+                _auto_upgrade_settings_to_dict(auto_upgrade)
+                if auto_upgrade
+                else _missing_auto_upgrade_settings(tenant_id)
+            )
 
         return jsonable_encoder(
             {
