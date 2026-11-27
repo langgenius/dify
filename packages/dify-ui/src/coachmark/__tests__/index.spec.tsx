@@ -855,3 +855,52 @@ it('opens the next step in place instead of gliding when the previous target is 
   await expect.element(screen.getByRole('dialog', { name: 'second' })).toBeVisible()
   expect(glided).not.toContain(true)
 })
+
+it('stays above a dialog that opens with the next target inside it', async () => {
+  const flags = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
+  const animationsDisabled = flags.BASE_UI_ANIMATIONS_DISABLED
+  flags.BASE_UI_ANIMATIONS_DISABLED = false
+  onTestFinished(() => {
+    flags.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
+  })
+  function DialogStepDemo({ step }: { step: 'card' | 'create' }) {
+    return (
+      <React.Fragment>
+        {step === 'card' && (
+          <button type="button" data-step-target="card" style={{ margin: 40 }}>
+            Lesson card
+          </button>
+        )}
+        <Dialog open={step === 'create'}>
+          <DialogContent>
+            <DialogTitle>Lesson</DialogTitle>
+            <button type="button" data-step-target="create">
+              Create from lesson
+            </button>
+          </DialogContent>
+        </Dialog>
+        <Coachmark open target={`[data-step-target="${step}"]`} modal="allow-target" payload={step}>
+          {({ payload }) => (
+            <CoachmarkPortal>
+              <CoachmarkSpotlight />
+              <CoachmarkPositioner>
+                <CoachmarkPopup>
+                  <CoachmarkTitle>{payload}</CoachmarkTitle>
+                  <CoachmarkClose>Skip</CoachmarkClose>
+                </CoachmarkPopup>
+              </CoachmarkPositioner>
+            </CoachmarkPortal>
+          )}
+        </Coachmark>
+      </React.Fragment>
+    )
+  }
+  const screen = await render(<DialogStepDemo step="card" />)
+  await expect.element(screen.getByRole('dialog', { name: 'card' })).toBeVisible()
+
+  await screen.rerender(<DialogStepDemo step="create" />)
+  const coachmark = screen.getByRole('dialog', { name: 'create' })
+  await expect.element(coachmark).toBeVisible()
+  const skip = screen.getByRole('button', { name: 'Skip' }).element()
+  await expect.poll(() => pointAt(skip)).toBe(skip)
+})
