@@ -4,10 +4,10 @@ from collections.abc import Mapping
 from typing import override
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.db.session_factory import session_factory
+from core.db.session_factory import session_factory, sessionmaker_for
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -23,7 +23,6 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.model import App, AppMode
@@ -46,13 +45,33 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
     provider_id: str
     tools: list[WorkflowTool] | None
 
-    def __init__(self, entity: ToolProviderEntity, provider_id: str):
+    def __init__(
+        self,
+        entity: ToolProviderEntity,
+        provider_id: str,
+        *,
+        session_maker: sessionmaker[Session],
+    ):
+        """Create a controller whose tools are not loaded yet.
+
+        Precondition: ``session_maker`` creates sessions for the database that holds
+        ``provider_id``; it may be unbound when ``tools`` is set before ``get_tools`` runs.
+        Postcondition: ``tools`` is ``None`` and no session is opened.
+        """
         super().__init__(entity=entity)
         self.provider_id = provider_id
         self.tools = None
+        self._session_maker = session_maker
 
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
+        """Build a controller and its single tool from ``db_provider``.
+
+        Precondition: the process-wide session factory is configured.
+        Postcondition: ``tools`` holds one tool, and later ``get_tools`` reads use the same
+        bind as the session opened here. Raises ``ValueError`` when the app or the pinned
+        workflow version is missing.
+        """
         with session_factory.create_session() as session, session.begin():
             app = session.get(App, db_provider.app_id)
             if not app:
@@ -72,6 +91,7 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
                     plugin_id=None,
                 ),
                 provider_id=db_provider.id,
+                session_maker=sessionmaker_for(session),
             )
 
             controller.tools = [
@@ -213,13 +233,20 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
         """
         fetch tools from database
 
+        Precondition: when ``tools`` is ``None``, the injected session maker is bound.
+        Postcondition: cached ``tools`` are returned without opening a session. Otherwise
+        one short-lived session from the injected maker reads the provider scoped by
+        ``tenant_id`` and ``provider_id``; ``[]`` is returned when it is missing, and the
+        loaded tool is cached in ``tools``. Raises ``ValueError`` when the app or the
+        pinned workflow version is missing, leaving ``tools`` as ``None``.
+
         :param tenant_id: the tenant id
         :return: the tools
         """
         if self.tools is not None:
             return self.tools
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+        with self._session_maker(expire_on_commit=False) as session, session.begin():
             db_provider: WorkflowToolProvider | None = session.scalar(
                 select(WorkflowToolProvider)
                 .where(

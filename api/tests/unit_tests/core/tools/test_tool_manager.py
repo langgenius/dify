@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
@@ -644,7 +644,11 @@ def test_get_tool_runtime_api_path():
             )
 
 
-def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase):
+def test_get_tool_runtime_workflow_path(
+    monkeypatch: pytest.MonkeyPatch,
+    tool_database: _ToolDatabase,
+    sqlite_session_factory: sessionmaker[Session],
+):
     tenant_id = "00000000-0000-0000-0000-000000000001"
     provider_id = "00000000-0000-0000-0000-000000000002"
     workflow_provider = _workflow_provider(provider_id=provider_id, tenant_id=tenant_id)
@@ -673,6 +677,7 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
             ),
         ),
         provider_id=provider_id,
+        session_maker=sqlite_session_factory,
     )
     workflow_controller.tools = [workflow_tool]
     with patch(
