@@ -44,6 +44,7 @@ import {
 import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import { startIpPolicyForm } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState, getAccessControlStatusChipState } from './chip-status'
 import { AccessControlConfigPanel } from './config-panel'
@@ -132,7 +133,6 @@ function AccessControlSession({
   const bindingQuery = useQuery(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
       input: { params: { app_id: appId } },
-      meta: { errorToast: false },
       retry: false,
       enabled: canFetchNetworkAccess && Boolean(appId),
     }),
@@ -552,6 +552,7 @@ function AccessControlSession({
                       ? 'error'
                       : undefined
                 }
+                ipCheckErrorMessage={getRequestErrorMessage(saveCheck.error ?? ipCheck.error)}
                 onRetryIpCheck={() => {
                   saveCheck.reset()
                   void ipCheck.refetch()
@@ -660,7 +661,8 @@ function AccessControlSession({
             )}
             {saveCheck.isError && (
               <p role="alert" className="system-sm-regular text-text-warning">
-                {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+                {getRequestErrorMessage(saveCheck.error) ??
+                  t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
               </p>
             )}
           </div>

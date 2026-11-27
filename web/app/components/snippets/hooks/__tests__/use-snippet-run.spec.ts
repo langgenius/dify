@@ -1,7 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { useNodes } from 'reactflow'
-import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createEdge,
+  createNode,
+  createNodeTracing,
+} from '@/app/components/workflow/__tests__/fixtures'
 import {
   baseRunningData,
   renderWorkflowCanvasHook,
@@ -101,8 +105,11 @@ let queryClient: QueryClient
 
 const seedRunQueries = () => {
   queryClient.setQueryData(runHistoryKey, { data: [], has_more: false, limit: 20 })
-  queryClient.setQueryData(lastRunKey, { id: 'execution-1', node_id: 'llm' })
-  queryClient.setQueryData(otherSnippetLastRunKey, { id: 'execution-2', node_id: 'llm' })
+  queryClient.setQueryData(lastRunKey, createNodeTracing({ id: 'execution-1', node_id: 'llm' }))
+  queryClient.setQueryData(
+    otherSnippetLastRunKey,
+    createNodeTracing({ id: 'execution-2', node_id: 'llm' }),
+  )
 }
 
 const isInvalidated = (queryKey: readonly unknown[]) =>

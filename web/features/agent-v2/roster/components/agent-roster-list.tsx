@@ -33,6 +33,7 @@ import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentRosterSkeleton } from './agent-roster-skeleton'
 import { AgentRosterTags } from './agent-roster-tags'
@@ -592,7 +593,11 @@ export function AgentRosterList({
               <DeleteAgentForm
                 agentName={payload.name}
                 isPending={deletion.isPending}
-                error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+                error={
+                  deletion.isError
+                    ? (getRequestErrorMessage(deletion.error) ?? t(($) => $['roster.deleteFailed']))
+                    : undefined
+                }
                 onSubmit={() => {
                   if (deletion.isPending) return
                   deletion.mutate(

@@ -10,6 +10,7 @@ import { use } from 'react'
 import { useStoreApi } from 'reactflow'
 import { createDefaultFormInputByType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createEdge, createNode } from '../../../../__tests__/fixtures'
@@ -224,6 +225,20 @@ it('reports the server preflight blocker without changing the graph', async () =
   )
   expect(view.graph()).toEqual(original)
   expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
+})
+
+it('reports the server message when the migration preflight fails', async () => {
+  const view = setup({ nodes: [createLegacyNode(true)] })
+  const original = view.graph()
+  postMigration.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 500 }), {
+      code: 'internal_server_error',
+      message: 'Server says why',
+    }),
+  )
+  await confirmMigration(newUser())
+  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(view.graph()).toEqual(original)
 })
 
 it('preserves a supported select field through migration', async () => {

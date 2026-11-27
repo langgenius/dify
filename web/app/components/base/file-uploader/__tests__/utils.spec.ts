@@ -71,9 +71,25 @@ describe('file-uploader utils', () => {
       )
     })
 
-    it('should return default message for other errors', () => {
+    it('should return the server message for other errors', () => {
+      const error = createHttpError(new Response(null, { status: 413 }), {
+        code: 'file_too_large',
+        message: 'File size exceeded. 15 MB maximum.',
+      })
+      expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe(
+        'File size exceeded. 15 MB maximum.',
+      )
+    })
+
+    it('should return default message when the server returned no message', () => {
       const error = createHttpError(new Response(null, { status: 400 }), { code: 'unknown_error' })
       expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe('Upload failed')
+    })
+
+    it('should return default message for client-side failures', () => {
+      expect(
+        getFileUploadErrorMessage(new TypeError('Failed to fetch'), 'Upload failed', createMockT()),
+      ).toBe('Upload failed')
     })
 
     it('should return default message when error has no response', () => {

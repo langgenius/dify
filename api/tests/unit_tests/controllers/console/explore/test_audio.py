@@ -16,12 +16,12 @@ from werkzeug.test import TestResponse
 import controllers.console.explore.audio as module
 from controllers.common.errors import UnauthorizedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.application_services.agent import build_agent_app_repository
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import AccountTrialAppRecord, App, AppMode, AppModelConfig, InstalledApp
 from services import audio_provider_gateway
 from services.agent.errors import AgentVersionNotFoundError
 from services.app_audio_adapters import AppAudioRuntime
-from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -126,7 +126,7 @@ class _Runtime:
 
 @dataclass(frozen=True)
 class _Services:
-    app_audio: AppAudio
+    app_audio: AppAudioRuntime | _Runtime
 
 
 @pytest.fixture
@@ -345,7 +345,11 @@ def test_shared_runtime_routes_audio_to_actual_owner_despite_stale_installation_
 
     monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
     monkeypatch.setattr(audio_provider_gateway, "text_to_speech", synthesize)
-    services = _Services(app_audio=AppAudioRuntime(session_factory=runtime.factory))
+    services = _Services(
+        app_audio=AppAudioRuntime(
+            session_factory=runtime.factory, agent_audio=build_agent_app_repository(database_client=runtime.factory)
+        )
+    )
     monkeypatch.setattr(module, "application_services", lambda: services)
 
     response = runtime.request(operation)
@@ -376,7 +380,11 @@ def test_shared_runtime_rejects_app_changes_after_admission(
                 app.mode = AppMode.CHAT
 
     runtime.harness.state.permission_action = change_app
-    services = _Services(app_audio=AppAudioRuntime(session_factory=runtime.factory))
+    services = _Services(
+        app_audio=AppAudioRuntime(
+            session_factory=runtime.factory, agent_audio=build_agent_app_repository(database_client=runtime.factory)
+        )
+    )
     monkeypatch.setattr(module, "application_services", lambda: services)
 
     _error(runtime.request(operation), status=400, code="app_unavailable")

@@ -18,6 +18,7 @@ import {
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
@@ -120,6 +121,7 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
@@ -231,14 +233,14 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       discardExternalWaitRun()
       externalCallbacksRef.current = callback ?? {}
       const resolvedParams: WorkflowRunParams = params ?? {}
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft: Node[]) => {
         draft.forEach((node) => {
           node.data.selected = false
           node.data._runningStatus = undefined
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       await doSyncWorkflowDraft()
 
       const {
@@ -471,6 +473,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       streamEvents(request, finalCallbacks)
     },
     [
+      collaborativeWorkflow,
       store,
       doSyncWorkflowDraft,
       workflowStore,

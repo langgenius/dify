@@ -100,7 +100,8 @@ response_path = sys.argv[2]
 max_bytes = int(sys.argv[3])
 file_fd = None
 try:
-    file_fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    # Reach the regular-file check even when a FIFO has no writer.
+    file_fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     file_stat = os.fstat(file_fd)
     if not stat.S_ISREG(file_stat.st_mode):
         raise FileNotFoundError(path)

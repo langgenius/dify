@@ -20,6 +20,8 @@ from services.agent.build_config_gateway import AgentBuildConfigGateway
 from services.agent.build_session_service import AgentBuildSessionService
 from services.agent.build_snapshot_gateway import AgentBuildSnapshotGateway
 from services.agent.composer_tools import list_workspace_dify_tools
+from services.agent.config_service import AgentConfigService
+from services.agent.console_runtime import AgentConsoleRuntime
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.knowledge_spaces import (
@@ -46,6 +48,7 @@ from services.app.console_gateway import (
     notify_app_created,
     notify_app_deleted,
 )
+from services.app_generate_service import AppGenerateService
 from services.app_service import AppService
 from services.evaluation_service import EvaluationService
 from services.feature_service import FeatureService
@@ -68,6 +71,8 @@ class AgentAppServices:
     sandbox: AgentAppSandboxService
     build_session: AgentBuildSessionService
     composer: AgentAppComposer
+    config_assets: AgentConfigService
+    runtime: AgentConsoleRuntime
 
 
 def _can_restore_version(
@@ -77,11 +82,9 @@ def _can_restore_version(
     return edition != DeploymentEdition.CLOUD or ((plan := get_plan(tenant_id)) is not None and plan.is_paid)
 
 
-def build_agent_app_services(
-    *, database_client: sessionmaker[Session], rbac_members: MemberService
-) -> AgentAppServices:
-    """Wire Agent App use cases to the shared repository and their post-commit effects."""
-    apps = AgentAppRepository(
+def build_agent_app_repository(*, database_client: sessionmaker[Session]) -> AgentAppRepository:
+    """Build the shared Agent App repository with its publication transaction participant."""
+    return AgentAppRepository(
         session_factory=database_client,
         stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
         stage_publication_bindings=partial(
@@ -89,6 +92,12 @@ def build_agent_app_services(
             load_stager=lambda: get_knowledge_fs_runtime(database_client).app_bindings,
         ),
     )
+
+
+def build_agent_app_services(
+    *, database_client: sessionmaker[Session], rbac_members: MemberService, apps: AgentAppRepository
+) -> AgentAppServices:
+    """Wire Agent App use cases to the shared repository and their post-commit effects."""
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(
         store=apps,
@@ -96,7 +105,7 @@ def build_agent_app_services(
         notify_updated=notify_agent_app_updated,
     )
     return AgentAppServices(
-        access=AgentAppAccessService(references=apps),
+        access=AgentAppAccessService(store=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
         lifecycle=deletion_service,
         detail=detail,
@@ -114,6 +123,12 @@ def build_agent_app_services(
             inherit_webapp_access=inherit_agent_webapp_access,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
+        runtime=AgentConsoleRuntime(
+            session_factory=database_client,
+            preview_enabled=FeatureService.is_agent_preview_enabled,
+            generate=AppGenerateService.generate,
+        ),
+        config_assets=AgentConfigService(session_factory=database_client),
         composer=AgentAppComposer(
             store=apps,
             authorize_knowledge=partial(authorize_composer_knowledge, session_factory=database_client),

@@ -68,7 +68,7 @@ SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
     "services.external_agents.io_contracts.OutputField": "ExternalAgentOutputField",
     "services.external_agents.runtime_contracts.WaitPolicy": "ExternalAgentWaitPolicy",
     "services.external_agents.runtime_contracts.TimeoutPolicy": "ExternalAgentTimeoutPolicy",
-    "services.agent_config_service.AgentConfigVersionKind": "AgentConfigTargetVersionKind",
+    "services.agent_config_contracts.AgentConfigVersionKind": "AgentConfigTargetVersionKind",
     "graphon.model_runtime.entities.common_entities.I18nObject": "ModelRuntimeI18nObject",
     "services.knowledge.entities.knowledge_entities.FileInfo": "KnowledgeFileInfo",
     "services.entities.knowledge_entities.rag_pipeline_entities.IconInfo": "RagPipelineIconInfo",

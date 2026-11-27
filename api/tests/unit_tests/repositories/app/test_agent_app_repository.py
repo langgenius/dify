@@ -11,6 +11,7 @@ from machinery.context import RequestContext
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig
 from repositories.app.agent_app_repository import AgentAppRepository
+from services.agent.app_composer_store import AgentComposerAgentMissingError
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.entities.app_entities import AppListParams
@@ -33,6 +34,29 @@ def test_tracing_owner_rejects_inline_without_materializing_app(sqlite_session_f
         agent = session.get(Agent, "inline-agent")
         assert agent is not None
         assert agent.backing_app_id is None
+
+
+def test_composer_rejects_external_agent(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            Agent(
+                id="external-agent",
+                tenant_id="tenant-1",
+                name="External Agent",
+                description="",
+                agent_kind=AgentKind.EXTERNAL_A2A,
+                scope=AgentScope.ROSTER,
+                source=AgentSource.ROSTER,
+                status=AgentStatus.ACTIVE,
+            )
+        )
+
+    repository = AgentAppRepository(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    )
+    with pytest.raises(AgentComposerAgentMissingError):
+        repository.get_composer(tenant_id="tenant-1", agent_id="external-agent")
 
 
 @pytest.fixture

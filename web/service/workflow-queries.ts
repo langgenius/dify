@@ -1,10 +1,10 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippets/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import { mutationOptions, skipToken } from '@tanstack/react-query'
+import { mutationOptions, queryOptions, skipToken } from '@tanstack/react-query'
 import { getExternalAgentInvocationId } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 
 const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 
@@ -137,6 +137,26 @@ export function workflowVersionHistoryKey(resource: EditorResource) {
   }
 }
 
+/**
+ * A node that never ran answers 404, which the panel shows as "no last run" (`null`). Any other
+ * failure is reported by the query cache.
+ */
+function withMissingLastRunAsNull<TContext, TData, TOptions extends object>(
+  options: TOptions & { queryFn: (context: TContext) => TData | Promise<TData> },
+) {
+  return {
+    ...options,
+    queryFn: async (context: TContext): Promise<TData | null> => {
+      try {
+        return await options.queryFn(context)
+      } catch (error) {
+        if (isNotFoundError(error)) return null
+        throw error
+      }
+    },
+  }
+}
+
 export function lastRunQueryOptions(
   resource: EditorResource,
   nodeId: string,
@@ -144,17 +164,21 @@ export function lastRunQueryOptions(
 ) {
   switch (resource.kind) {
     case 'app':
-      return consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
-        input: { params: { app_id: resource.appId, node_id: nodeId } },
-        retry: 0,
-        meta: { errorToast: false },
+      return queryOptions({
+        ...withMissingLastRunAsNull(
+          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
+            input: { params: { app_id: resource.appId, node_id: nodeId } },
+            retry: 0,
+          }),
+        ),
         select: (execution) =>
-          expectedExecutionId && execution.id !== expectedExecutionId ? undefined : execution,
+          execution && expectedExecutionId && execution.id !== expectedExecutionId
+            ? undefined
+            : execution,
         refetchInterval: (query) => {
           const execution = query.state.data
           if (query.state.error) {
-            if ([401, 403, 404, 410].includes(getHttpErrorStatus(query.state.error) ?? 0))
-              return false
+            if ([401, 403, 410].includes(getHttpErrorStatus(query.state.error) ?? 0)) return false
             return expectedExecutionId || (execution && getExternalAgentInvocationId(execution))
               ? 1_500
               : false
@@ -168,20 +192,20 @@ export function lastRunQueryOptions(
         },
       })
     case 'knowledge-pipeline':
-      return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
-        {
-          input: { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
-          retry: 0,
-          meta: { errorToast: false },
-        },
+      return withMissingLastRunAsNull(
+        consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
+          {
+            input: { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
+            retry: 0,
+          },
+        ),
       )
     case 'snippet':
-      return consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
-        {
+      return withMissingLastRunAsNull(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
           input: { params: { snippet_id: resource.snippetId, node_id: nodeId } },
           retry: 0,
-          meta: { errorToast: false },
-        },
+        }),
       )
   }
 }

@@ -4,7 +4,11 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { act, waitFor } from '@testing-library/react'
 import { useNodes } from 'reactflow'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createEdge,
+  createNode,
+  createNodeTracing,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { lastRunQueryOptions, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
@@ -99,8 +103,11 @@ let queryClient: QueryClient
 
 const seedRunQueries = () => {
   queryClient.setQueryData(runHistoryKey, { data: [], has_more: false, limit: 20 })
-  queryClient.setQueryData(lastRunKey, { id: 'execution-1', node_id: 'kb' })
-  queryClient.setQueryData(otherPipelineLastRunKey, { id: 'execution-2', node_id: 'kb' })
+  queryClient.setQueryData(lastRunKey, createNodeTracing({ id: 'execution-1', node_id: 'kb' }))
+  queryClient.setQueryData(
+    otherPipelineLastRunKey,
+    createNodeTracing({ id: 'execution-2', node_id: 'kb' }),
+  )
 }
 
 const isInvalidated = (queryKey: readonly unknown[]) =>

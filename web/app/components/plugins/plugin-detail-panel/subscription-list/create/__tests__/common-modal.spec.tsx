@@ -5,6 +5,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { CommonCreateModal } from '../common-modal'
@@ -127,6 +128,32 @@ it('initializes a builder, verifies entered credentials and submits validated co
     body: { name: 'Repo updates', parameters: { repo: 'dify' } },
   })
   expect(requests.refetch).toHaveBeenCalledOnce()
+})
+
+it.each([
+  [
+    'the server message',
+    createHttpError(new Response(null, { status: 400 }), {
+      code: 'invalid_param',
+      message: 'Server says why',
+    }),
+    'Server says why',
+  ],
+  [
+    'the localized fallback',
+    new TypeError('Failed to fetch'),
+    'pluginTrigger.modal.errors.createFailed',
+  ],
+])('reports %s when the builder cannot be initialized', async (_case, error, message) => {
+  // boundary: the failure is logged before it is reported.
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.mocked(toast.error).mockClear()
+  requests.create.mockRejectedValueOnce(error)
+  renderWithConsoleQuery(
+    <CommonCreateModal createType={SupportedCreationMethods.APIKEY} onClose={vi.fn()} />,
+  )
+  await waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith(message))
+  consoleError.mockRestore()
 })
 
 it('shows a verification failure and lets the user correct credentials before continuing', async () => {

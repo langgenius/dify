@@ -5,7 +5,7 @@ import { captureAppAccessScope, handleAppAccessError } from '@/features/app-acce
 import { markErrorHandled } from '@/service/handled-error'
 import { createHttpError } from '@/service/http-error'
 import { getQueryClient } from '../get-query-client'
-import { toastRequestError } from '../query-error-toast'
+import { toastActionError, toastRequestError } from '../query-error-toast'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
@@ -260,6 +260,49 @@ describe('toastRequestError', () => {
     ['the error is not a request error', new DOMException('Aborted', 'AbortError')],
   ])('does not report when %s', (_case, error) => {
     toastRequestError(error)
+
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('toastActionError', () => {
+  beforeEach(() => {
+    vi.mocked(toast.error).mockClear()
+  })
+
+  it('reports a request failure with the server message and a network failure with the default', () => {
+    toastActionError(httpError(404, { message: 'Plugin not found' }))
+    // The marketplace client's shape for a response body that is not an oRPC error.
+    toastActionError(
+      new ORPCError('SERVICE_UNAVAILABLE', {
+        status: 503,
+        data: { status: 503, body: { message: 'Marketplace unavailable' } },
+      }),
+    )
+    toastActionError(new TypeError('Failed to fetch'))
+    toastActionError(new DOMException('Signal timed out.', 'TimeoutError'))
+
+    expect(vi.mocked(toast.error).mock.calls).toEqual([
+      ['Plugin not found'],
+      ['Marketplace unavailable'],
+      ['api.actionFailed'],
+      ['api.actionFailed'],
+    ])
+  })
+
+  it.each([
+    ['the session expired', httpError(401, { message: 'Unauthorized' })],
+    ['the user cancelled', new DOMException('Aborted', 'AbortError')],
+  ])('does not report when %s', (_case, error) => {
+    toastActionError(error)
+
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('does not report a failure a mutation already reported', () => {
+    const error = httpError(500, { message: 'Install failed' })
+    markErrorHandled(error)
+    toastActionError(error)
 
     expect(toast.error).not.toHaveBeenCalled()
   })

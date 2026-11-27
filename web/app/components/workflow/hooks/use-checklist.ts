@@ -76,6 +76,7 @@ import { extractPluginId } from '../utils/plugin'
 import { isNodePluginMissing } from '../utils/plugin-install-check'
 import { getTriggerCheckParams } from '../utils/trigger'
 import { normalizeWorkflowOutputName } from '../utils/variable'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
@@ -758,6 +759,7 @@ export const useChecklistBeforePublish = () => {
   const queryClient = useQueryClient()
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const store = useStoreApi()
+  const { setNodes } = useCollaborativeWorkflow()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useQuery(
     consoleQuery.workspaces.current.agentProviders.get.queryOptions(),
@@ -967,12 +969,16 @@ export const useChecklistBeforePublish = () => {
           capabilities.input_file_modes,
         )
         if (issues.length || variableIssues.length) {
-          store.getState().setNodes(
-            nodes.map((item) => ({
-              ...item,
-              selected: item.id === node.id,
-              data: { ...item.data, selected: item.id === node.id },
-            })),
+          setNodes(
+            store
+              .getState()
+              .getNodes()
+              .map((item) => ({
+                ...item,
+                selected: item.id === node.id,
+                data: { ...item.data, selected: item.id === node.id },
+              })),
+            false,
           )
           return false
         }
@@ -1134,6 +1140,7 @@ export const useChecklistBeforePublish = () => {
     return true
   }, [
     store,
+    setNodes,
     workflowStore,
     getNodesAvailableVarList,
     shouldCheckStartNode,

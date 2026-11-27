@@ -7,6 +7,7 @@ import { produce } from 'immer'
 import { useCallback, useEffect, useEffectEvent, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
@@ -25,6 +26,7 @@ export function useExternalWaitRun(
 ) {
   const workflowStore = useWorkflowStore()
   const flowStore = useStoreApi()
+  const { setNodes } = useCollaborativeWorkflow()
   const discardRef = useRef<() => void>(() => {})
   const complete = useEffectEvent(onCompleted)
   const snapshot = useEffectEvent(
@@ -98,7 +100,7 @@ export function useExternalWaitRun(
           .filter((execution) => execution.node_id)
           .map((execution) => [execution.node_id, execution]),
       )
-      const { getNodes, setNodes } = flowStore.getState()
+      const { getNodes } = flowStore.getState()
       setNodes(
         produce(getNodes(), (nodes) => {
           for (const node of nodes) {
@@ -110,6 +112,7 @@ export function useExternalWaitRun(
               node.data._runningStatus = execution.status as NodeRunningStatus
           }
         }),
+        false,
       )
     }
 
@@ -171,6 +174,6 @@ export function useExternalWaitRun(
       unsubscribe()
       discardRef.current = () => {}
     }
-  }, [appId, flowStore, workflowStore])
+  }, [appId, flowStore, setNodes, workflowStore])
   return useCallback(() => discardRef.current(), [])
 }

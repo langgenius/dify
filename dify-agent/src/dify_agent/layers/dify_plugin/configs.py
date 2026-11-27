@@ -89,12 +89,14 @@ class DifyPluginToolParameter(BaseModel):
     The DTO intentionally accepts both API-side ``ToolParameter`` dumps and
     attribute objects so callers can adapt existing tool runtime declarations
     without coupling Dify Agent to API-internal model classes.
+    ``multiple`` keeps select and dynamic-select values as arrays at invocation.
     """
 
     name: str
     type: DifyPluginToolParameterType
     form: DifyPluginToolParameterForm
     required: bool = False
+    multiple: bool = False
     default: DifyPluginToolValue = None
     llm_description: str | None = None
     input_schema: dict[str, JsonValue] | None = None

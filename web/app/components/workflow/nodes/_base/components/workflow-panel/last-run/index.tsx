@@ -15,7 +15,6 @@ import {
 } from '@/app/components/workflow/nodes/agent-v2/execution'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { isNotFoundError } from '@/service/http-error'
 import { lastRunQueryOptions } from '@/service/workflow-queries'
 import NoData from './no-data'
 
@@ -76,11 +75,7 @@ const LastRun: FC<Props> = ({
     isRunAfterSingleRun && singleRunResult && getExternalAgentInvocationId(singleRunResult)
       ? singleRunResult.id
       : undefined
-  const {
-    data: lastRunResult,
-    isFetching,
-    error,
-  } = useQuery({
+  const { data: lastRunResult, isFetching } = useQuery({
     ...lastRunQueryOptions(resource, nodeId, expectedExecutionId),
     enabled: canRunLastRun,
   })
@@ -92,7 +87,7 @@ const LastRun: FC<Props> = ({
       ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching && !hasExternalLastRun)
 
-  const noLastRun = isNotFoundError(error)
+  const noLastRun = lastRunResult === null && !expectedExecutionId
   const runResult =
     (canRunLastRun ? lastRunResult : singleRunResult) ||
     lastRunResult ||

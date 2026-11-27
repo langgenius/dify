@@ -9,7 +9,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import {
@@ -329,7 +329,11 @@ export function useRetryDocumentTaskAction(
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-        toast.error(messageKey ? tError(($) => $[messageKey]) : t(($) => $.taskActionFailed))
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : (getRequestErrorMessage(error) ?? t(($) => $.taskActionFailed)),
+        )
       }
       return false
     } finally {
@@ -394,7 +398,8 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : (getRequestErrorMessage(error) ??
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
         )
       }
       return false

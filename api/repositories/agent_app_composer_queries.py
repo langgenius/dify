@@ -4,7 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from libs.helper import to_timestamp
-from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigDraftType, AgentConfigSnapshot, AgentScope
+from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
+    Agent,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentKind,
+    AgentScope,
+)
 from repositories.agent_drafts import find_agent_snapshot
 from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
 from services.agent.app_composer_store import (
@@ -19,8 +26,15 @@ from services.entities.agent_entities import ComposerSaveStrategy
 
 
 def require_composer_agent(session: Session, *, tenant_id: str, agent_id: str) -> Agent:
-    """Find the requested tenant's Agent, including workflow-only and archived Agents."""
-    agent = session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id))
+    """Load a native Agent in the requested tenant, including workflow-only and archived Agents.
+
+    Raise AgentComposerAgentMissingError if the id is unavailable to the native Composer.
+    """
+    agent = session.scalar(
+        select(Agent).where(
+            Agent.tenant_id == tenant_id, Agent.id == agent_id, Agent.agent_kind == AgentKind.DIFY_AGENT
+        )
+    )
     if agent is None:
         raise AgentComposerAgentMissingError
     return agent

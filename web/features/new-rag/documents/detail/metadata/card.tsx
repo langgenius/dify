@@ -98,6 +98,8 @@ function DocumentMetadataCardContent() {
   )
   const metadataFieldsQuery = useQuery({
     ...knowledgeFsMetadataFieldsQueryOptions(controlSpaceId),
+    // The editor renders a failed field list inline.
+    meta: { errorToast: false },
     enabled: editing,
   })
   const fields = useMemo(() => metadataFieldsQuery.data ?? [], [metadataFieldsQuery.data])
@@ -329,7 +331,7 @@ function DocumentMetadataCardContent() {
               allowedExistingName={retryableCreateName}
               creating={creating}
               disabled={saving}
-              error={Boolean(metadataFieldsQuery.error)}
+              error={metadataFieldsQuery.error}
               fields={fields}
               loading={metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching}
               onCreate={createField}

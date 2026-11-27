@@ -7,7 +7,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import {
@@ -156,7 +156,8 @@ export function useBulkReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : (getRequestErrorMessage(error) ??
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
         )
       }
     } finally {

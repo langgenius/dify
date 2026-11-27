@@ -21,6 +21,7 @@ import {
 import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { consoleQuery } from '@/service/console'
 import { useDeleteWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
@@ -737,7 +738,8 @@ describe('workflow editor cache keys', () => {
       const nodeA = lastRunQueryOptions(resource, 'node-a').queryKey
       const nodeB = lastRunQueryOptions(resource, 'node-b').queryKey
       const otherNode = lastRunQueryOptions(other, 'node-a').queryKey
-      for (const key of [nodeA, nodeB, otherNode]) queryClient.setQueryData(key, { id: 'run' })
+      for (const key of [nodeA, nodeB, otherNode])
+        queryClient.setQueryData(key, createNodeTracing({ id: 'run' }))
 
       await queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource, 'node-a') })
       expect(queryClient.getQueryState(nodeA)?.isInvalidated).toBe(true)

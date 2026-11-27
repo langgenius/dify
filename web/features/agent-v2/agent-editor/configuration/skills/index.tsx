@@ -29,6 +29,7 @@ import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -515,7 +516,10 @@ export function AgentSkills() {
               )
               return
             }
-            toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
+            toast.error(
+              getRequestErrorMessage(error) ??
+                t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']),
+            )
           },
           onSuccess: () => {
             onSuccess?.()
