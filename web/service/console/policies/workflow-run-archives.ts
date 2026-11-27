@@ -8,13 +8,13 @@ export function workflowRunArchivePolicies(
     downloads: {
       post: {
         mutationOptions: {
-          onSuccess: (task, _variables, _onMutateResult, context) => {
-            context.client.setQueryData(
-              consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryKey({
-                input: { params: { download_id: task.download_id } },
-              }),
-              task,
-            )
+          onSuccess: async (task, _variables, _onMutateResult, context) => {
+            const queryKey = consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryKey({
+              input: { params: { download_id: task.download_id } },
+            })
+            if (context.client.isFetching({ queryKey, exact: true }))
+              await context.client.cancelQueries({ queryKey, exact: true })
+            context.client.setQueryData(queryKey, task)
           },
         },
       },
@@ -23,9 +23,11 @@ export function workflowRunArchivePolicies(
       byMonth: {
         delete: {
           mutationOptions: {
-            onSuccess: (task, _variables, _onMutateResult, context) => {
+            onSuccess: async (task, _variables, _onMutateResult, context) => {
               const queryKey = consoleQuery.workflowRunArchives.get.queryKey()
               const deletionStatus = task.status
+              if (context.client.isFetching({ queryKey, exact: true }))
+                await context.client.cancelQueries({ queryKey, exact: true })
               context.client.setQueryData<GetWorkflowRunArchivesResponse>(queryKey, (data) => {
                 if (!data) return data
 

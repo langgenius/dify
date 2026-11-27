@@ -52,7 +52,6 @@ type UseSegmentListDataReturn = {
   resetList: () => void
   viewNewlyAddedChunk: () => void
   invalidSegmentList: () => void
-  markOtherStatusListsStale: () => void
   updateSegmentInCache: (
     segmentId: string,
     updater: (seg: SegmentResponse) => SegmentResponse,
@@ -113,16 +112,6 @@ export const useSegmentListData = (
       }),
     })
   }, [queryClient, datasetId, documentId])
-  // After an optimistic edit, the lists under the other status filters are stale; the current
-  // list already shows the change, so it is not refetched.
-  const markOtherStatusListsStale = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
-        input: { params: { dataset_id: datasetId, document_id: documentId } },
-      }),
-      refetchType: 'none',
-    })
-  }, [queryClient, datasetId, documentId])
   // Scroll to bottom when needed
   useEffect(() => {
     if (segmentListRef.current && needScrollToBottom.current) {
@@ -149,11 +138,6 @@ export const useSegmentListData = (
     clearSelection()
     invalidSegmentList()
   }, [clearSelection, invalidSegmentList])
-  // A toggled segment leaves a filtered list, so that list is refetched.
-  const refreshChunkListWithStatusChanged = useCallback(() => {
-    if (selectedStatus === 'all') markOtherStatusListsStale()
-    else invalidSegmentList()
-  }, [selectedStatus, markOtherStatusListsStale, invalidSegmentList])
   // Optimistic update helper using React Query's setQueryData
   const updateSegmentInCache = useCallback(
     (segmentId: string, updater: (seg: SegmentResponse) => SegmentResponse) => {
@@ -211,8 +195,8 @@ export const useSegmentListData = (
             // A single segment is toggled from its switch, which already shows the result.
             if (!segId)
               toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+            // Shown at once; the invalidation fallback then refetches the lists.
             updateSegmentsInCache(targetIds, (seg) => ({ ...seg, enabled: enable }))
-            refreshChunkListWithStatusChanged()
           },
           onError: (error) => {
             toast.error(
@@ -223,15 +207,7 @@ export const useSegmentListData = (
         },
       )
     },
-    [
-      datasetId,
-      documentId,
-      selectedSegmentIds,
-      switchSegments,
-      t,
-      updateSegmentsInCache,
-      refreshChunkListWithStatusChanged,
-    ],
+    [datasetId, documentId, selectedSegmentIds, switchSegments, t, updateSegmentsInCache],
   )
   const onDelete = useCallback(
     async (segId?: string) => {
@@ -244,8 +220,7 @@ export const useSegmentListData = (
         {
           onSuccess: () => {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            resetList()
-            if (!segId) clearSelection()
+            clearSelection()
           },
           onError: (error) => {
             toast.error(
@@ -256,7 +231,7 @@ export const useSegmentListData = (
         },
       )
     },
-    [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, clearSelection, t],
+    [datasetId, documentId, selectedSegmentIds, deleteSegment, clearSelection, t],
   )
   const handleUpdateSegment = useCallback(
     async (
@@ -323,7 +298,6 @@ export const useSegmentListData = (
               updated_at: res.data.updated_at,
               child_chunks: res.data.child_chunks,
             }))
-            markOtherStatusListsStale()
             eventEmitter?.emit('update-segment-success')
           },
           onSettled() {
@@ -340,7 +314,6 @@ export const useSegmentListData = (
       eventEmitter,
       onCloseSegmentDetail,
       updateSegmentInCache,
-      markOtherStatusListsStale,
       t,
     ],
   )
@@ -383,7 +356,6 @@ export const useSegmentListData = (
     resetList,
     viewNewlyAddedChunk,
     invalidSegmentList,
-    markOtherStatusListsStale,
     updateSegmentInCache,
   }
 }

@@ -1,9 +1,9 @@
 """Adapters for existing ORM-based summary callers and indexing infrastructure."""
 
 import logging
-import time
 import uuid
 from collections.abc import Callable
+from time import sleep
 from typing import TypedDict, cast
 
 from sqlalchemy import select, update
@@ -250,7 +250,7 @@ class SummaryIndexAdapter:
             vectors=SummaryVectorGateway(owned_dataset, factory),
             new_id=lambda: str(uuid.uuid4()),
             text_hash=helper.generate_text_hash,
-            sleep=time.sleep,
+            sleep=sleep,
         )
         try:
             result = service.vectorize(command)

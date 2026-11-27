@@ -143,6 +143,7 @@ export default function IntegrationsPage({
     canDeletePlugin,
     canUpdatePlugin,
     handlePermissionChange,
+    isPermissionUpdatePending,
     isPluginCategory,
     isReferenceSettingLoading,
     permission,
@@ -359,6 +360,7 @@ export default function IntegrationsPage({
             canDebugger={canDebugger}
             permission={permission}
             showPermissionQuickPanel={showPermissionQuickPanel}
+            permissionUpdatePending={isPermissionUpdatePending}
             onPermissionChange={handlePermissionChange}
           />
         )}

@@ -99,7 +99,8 @@ export function DocumentDetailTasksDrawer({
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
   const taskProgressStore = taskProgressStoreRef.current
-  // Task controls can change the document and its siblings, so mark both stale with the tasks.
+  // A failed task control can still change the document and its siblings, so mark both stale
+  // with the tasks.
   const refreshDocumentsAndTasks = () =>
     Promise.all([
       queryClient.invalidateQueries({
@@ -282,7 +283,7 @@ export function DocumentDetailTasksDrawer({
                           task.documentId ? documentTitles.get(task.documentId) : undefined
                         }
                         documentsPending={documentsPending}
-                        onSettled={refreshDocumentsAndTasks}
+                        onFailed={refreshDocumentsAndTasks}
                         retryActionCount={retryActionCount}
                         task={task}
                       />

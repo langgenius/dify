@@ -1,6 +1,6 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect } from 'react'
 import { toast } from '@/app/notifications'
@@ -25,7 +25,6 @@ const useEditDatasetMetadata = ({
       localStorage.removeItem(isShowManageMetadataLocalStorageKey)
     }
   }, [])
-  const queryClient = useQueryClient()
   const datasetMetaDataQueryOptions = consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
     input: { params: { dataset_id: datasetId } },
   })
@@ -90,14 +89,10 @@ const useEditDatasetMetadata = ({
     builtInMetaData: builtInMetaData?.fields,
     builtInEnabled: datasetMetaData?.built_in_field_enabled,
     setBuiltInEnabled: async (enable: boolean) => {
+      // The policy shows the new state at once, then reloads the metadata.
       await updateBuiltInStatus({
         params: { dataset_id: datasetId, action: enable ? 'enable' : 'disable' },
       })
-      // Show the new state at once; the cache policy then reloads the metadata.
-      queryClient.setQueryData(
-        datasetMetaDataQueryOptions.queryKey,
-        (data) => data && { ...data, built_in_field_enabled: enable },
-      )
     },
   }
 }

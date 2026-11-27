@@ -253,15 +253,6 @@ export function SkillTagsEditor({
         type="skill"
         show={showTagManagement}
         onClose={() => setShowTagManagement(false)}
-        onTagsChange={() => {
-          invalidateSkillDetail(queryClient, skillId)
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-          })
-        }}
       />
     </>
   )

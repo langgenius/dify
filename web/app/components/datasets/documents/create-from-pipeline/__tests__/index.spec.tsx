@@ -127,6 +127,7 @@ function renderPage({
       workspacePermissionKeys: ['dataset.create_and_management'],
     },
   )
+  return { queryClient }
 }
 
 const nextButton = () => screen.getByRole('button', { name: 'datasetCreation.stepOne.button' })
@@ -177,4 +178,25 @@ it('lets paid users advance after an upload even when capacity usage is unknown'
   expect(
     await screen.findByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
   ).toBeEnabled()
+})
+
+it('keeps the uploaded document while the pipeline reloads in the background', async () => {
+  const user = userEvent.setup()
+  const { queryClient } = renderPage()
+  await uploadDocument(user)
+  expect(await screen.findByText('Guide.pdf')).toBeInTheDocument()
+
+  // A refetch that has not landed yet, such as one after a write elsewhere in the pipeline.
+  void queryClient
+    .query({
+      queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+        input: { params: { pipeline_id: 'pipeline-1' } },
+      }),
+      queryFn: () => new Promise<never>(() => {}),
+      staleTime: 0,
+    })
+    .catch(() => undefined)
+
+  await waitFor(() => expect(screen.getByText('Guide.pdf')).toBeInTheDocument())
+  expect(nextButton()).toBeInTheDocument()
 })

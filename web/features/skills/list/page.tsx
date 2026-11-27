@@ -3,7 +3,7 @@
 import type { UIEvent } from 'react'
 import type { SkillGridState } from './grid'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
@@ -18,7 +18,6 @@ import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
 import { useSkillPermissions } from '../permissions'
 import { SkillGrid } from './grid'
 import { ImportSkillDialogForm } from './import-dialog'
-import { invalidateSkillListQueries } from './query'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 import { SkillsToolbar } from './toolbar'
 
@@ -37,7 +36,6 @@ export default function SkillsPage() {
   const { t } = useTranslation(['skill'])
   const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const { canDelete, canEdit } = useSkillPermissions()
   const [importOpen, setImportOpen] = useState(false)
   const listViewportRef = useRef<HTMLDivElement>(null)
@@ -279,7 +277,6 @@ export default function SkillsPage() {
         type="skill"
         show={showTagManagementDialog}
         onClose={() => setShowTagManagementDialog(false)}
-        onTagsChange={() => invalidateSkillListQueries(queryClient)}
       />
     </div>
   )

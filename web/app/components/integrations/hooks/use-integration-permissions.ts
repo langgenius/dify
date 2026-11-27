@@ -24,13 +24,16 @@ export function useIntegrationPermissions(section: IntegrationSection) {
     isPermissionLoading,
     permissionError,
     setPluginPermissionSettings,
+    isPermissionUpdatePending,
   } = usePluginSettingsAccess()
   const isPluginCategory = isPluginCategorySection(section)
   const showPluginCategorySetting = isPluginCategory && canSetPluginPreferences
   const showPermissionQuickPanel = canSetPermissions && !!permission
 
+  // Saves are not optimistic: each one builds on the value the previous save wrote, so the
+  // controls wait while one is pending.
   const handlePermissionChange = (key: PermissionSettingKey, value: PermissionType) => {
-    if (!permission) return
+    if (!permission || isPermissionUpdatePending) return
 
     setPluginPermissionSettings({
       ...permission,
@@ -46,6 +49,7 @@ export function useIntegrationPermissions(section: IntegrationSection) {
     canUpdatePlugin,
     canManagement: canInstallPlugin,
     handlePermissionChange,
+    isPermissionUpdatePending,
     isPluginCategory,
     isReferenceSettingLoading: isPermissionLoading,
     permission,

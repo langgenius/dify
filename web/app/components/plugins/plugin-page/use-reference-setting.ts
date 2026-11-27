@@ -1,5 +1,5 @@
 import type { PluginCategoryEnum } from '../types'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -120,18 +120,11 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
           auto_upgrade: autoUpgradeQuery.data.auto_upgrade,
         }
       : undefined
-  const queryClient = useQueryClient()
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } =
     useMutationReferenceSettings({
       category,
       currentReferenceSetting: data,
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.plugin.permission.fetch.get.key(),
-        })
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.key(),
-        })
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       },
     })

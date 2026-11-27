@@ -8,13 +8,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryState } from 'nuqs'
@@ -94,7 +88,6 @@ function isUnavailableError(error: unknown) {
 export function NewKnowledgeList() {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
-  const queryClient = useQueryClient()
   const listRef = useRef<HTMLElement>(null)
   const [deleteDialog] = useState(() =>
     createAlertDialogHandle<{
@@ -472,11 +465,6 @@ export function NewKnowledgeList() {
         type="knowledge"
         show={showTagManagementDialog}
         onClose={() => setShowTagManagementDialog(false)}
-        onTagsChange={() => {
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-          })
-        }}
       />
     </section>
   )
