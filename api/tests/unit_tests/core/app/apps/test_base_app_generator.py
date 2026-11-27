@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
+from core.app.app_config.easy_ui_based_app.variables.manager import BasicVariablesConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
@@ -811,3 +812,95 @@ def test_api_shaped_and_remote_upload_defaults(default_upload_file: UploadFile, 
         result = _prepare_file_inputs(variable, {})
     assert resolve_file_record_id(result.reference) == default_upload_file.id
     assert result.transfer_method == "remote_url"
+
+
+@pytest.mark.parametrize(
+    ("variable_type", "default", "expected"),
+    [
+        ("text-input", "hello", "hello"),
+        ("paragraph", "multiple\nlines", "multiple\nlines"),
+        ("number", "3.5", 3.5),
+        ("number", "0", 0),
+        ("number", "", None),
+        ("select", "a", "a"),
+        ("checkbox", False, False),
+    ],
+)
+def test_prepare_user_inputs_uses_form_default(variable_type: str, default: object, expected: object):
+    """Given an omitted optional input, convert and validate its declared default."""
+    variables, _ = BasicVariablesConfigManager.convert(
+        {
+            "user_input_form": [
+                {variable_type: {"variable": "value", "label": "Value", "default": default, "options": ["a", "b"]}}
+            ]
+        }
+    )
+
+    result = BaseAppGenerator()._prepare_user_inputs(user_inputs={}, variables=variables, tenant_id="tenant-1")
+
+    assert result == {"value": expected}
+    assert type(result["value"]) is type(expected)
+
+
+@pytest.mark.parametrize("user_inputs", [{}, {"value": None}])
+@pytest.mark.parametrize("variable_type", ["select", "checkbox"])
+def test_prepare_user_inputs_ignores_empty_choice_default(variable_type: str, user_inputs: dict[str, object]):
+    """Given an optional choice saved without a default, omitted or null input stays None."""
+    variables, _ = BasicVariablesConfigManager.convert(
+        {"user_input_form": [{variable_type: {"variable": "value", "label": "Value", "default": "", "options": ["a"]}}]}
+    )
+
+    result = BaseAppGenerator()._prepare_user_inputs(user_inputs=user_inputs, variables=variables, tenant_id="tenant-1")
+
+    assert result == {"value": None}
+
+
+def test_prepare_user_inputs_uses_form_default_for_null_input():
+    """Given a null input, the declared default applies as it does for an omitted input."""
+    variables, _ = BasicVariablesConfigManager.convert(
+        {"user_input_form": [{"text-input": {"variable": "value", "label": "Value", "default": "hello"}}]}
+    )
+
+    result = BaseAppGenerator()._prepare_user_inputs(
+        user_inputs={"value": None}, variables=variables, tenant_id="tenant-1"
+    )
+
+    assert result == {"value": "hello"}
+
+
+@pytest.mark.parametrize(
+    ("variable_type", "default", "message"),
+    [
+        ("number", "invalid", "must be a valid number"),
+        ("select", "missing", "must be one of the following"),
+    ],
+)
+def test_prepare_user_inputs_rejects_invalid_form_default(variable_type: str, default: str, message: str):
+    """Given an invalid default, omitted input still triggers existing validation."""
+    variables, _ = BasicVariablesConfigManager.convert(
+        {
+            "user_input_form": [
+                {variable_type: {"variable": "value", "label": "Value", "default": default, "options": ["a", "b"]}}
+            ]
+        }
+    )
+
+    with pytest.raises(ValueError, match=message):
+        BaseAppGenerator()._prepare_user_inputs(user_inputs={}, variables=variables, tenant_id="tenant-1")
+
+
+@pytest.mark.parametrize("required", [False, True])
+def test_prepare_user_inputs_without_form_default(required: bool):
+    """Given no default, omitted optional inputs stay None and required inputs fail."""
+    variables, _ = BasicVariablesConfigManager.convert(
+        {"user_input_form": [{"text-input": {"variable": "value", "label": "Value", "required": required}}]}
+    )
+    generator = BaseAppGenerator()
+
+    if required:
+        with pytest.raises(ValueError, match="value is required in input form"):
+            generator._prepare_user_inputs(user_inputs={}, variables=variables, tenant_id="tenant-1")
+    else:
+        assert generator._prepare_user_inputs(user_inputs={}, variables=variables, tenant_id="tenant-1") == {
+            "value": None
+        }
