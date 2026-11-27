@@ -2997,6 +2997,36 @@ describe('RetrievalTestPage', () => {
     createObjectUrl.mockRestore()
   })
 
+  it('reports transferred bytes as a percentage while a query image uploads', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
+    let resolveUpload: (value: { id: string }) => void = () => undefined
+    apiMock.uploadFile.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+    const user = userEvent.setup()
+    await renderPage()
+
+    await user.upload(
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
+      new File(['diagram'], 'diagram.png', { type: 'image/png' }),
+    )
+    const progress = screen.getByRole('progressbar')
+    expect(progress).toHaveAttribute('aria-valuenow', '0')
+    const { onUploadProgress } = apiMock.uploadFile.mock.calls[0]?.[1].context
+    act(() => onUploadProgress({ loaded: 449, total: 1000 }))
+    expect(progress).toHaveAttribute('aria-valuenow', '45')
+    act(() => onUploadProgress({ loaded: 0, total: 0 }))
+    expect(progress).toHaveAttribute('aria-valuenow', '45')
+    act(() => onUploadProgress({ loaded: 1000, total: 1000 }))
+    expect(progress).toHaveAttribute('aria-valuenow', '100')
+    await act(async () => resolveUpload({ id: 'upload-image-a' }))
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    createObjectUrl.mockRestore()
+  })
+
   it('does not let the composer shortcut run while query images are uploading', async () => {
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
     let resolveUpload: (value: { id: string }) => void = () => undefined

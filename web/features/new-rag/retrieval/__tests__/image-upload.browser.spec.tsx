@@ -1,14 +1,12 @@
-import type { ConsoleClientContext } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
+import { hold, installFakeApi, networkError } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
+import { createTestNavigation } from '@/test/next-navigation'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { RetrievalTestPage } from '../page'
 
-const api = vi.hoisted(() => ({ upload: vi.fn() }))
 // boundary: Use real English catalogs for upload control names; locale loading and switching are outside these upload lifecycle tests.
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-i18next')>()
@@ -33,46 +31,6 @@ vi.mock('react-i18next', async (importOriginal) => {
     ),
   }
 })
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => new URLSearchParams(),
-  usePathname: () => '/datasets/new/space-1/retrieval',
-  useRouter: () => ({ push: vi.fn() }),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  const space = 'knowledgeFs.spaces.byControlSpaceId'
-  const empty = () => ({ data: [], next_cursor: null })
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'files.upload.post': api.upload,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      [`${space}.traces.get`]: empty,
-      [`${space}.researchTasks.get`]: empty,
-      [`${space}.settings.get`]: () => ({
-        configuration_state: 'active',
-        active_profile_available: true,
-        active_profile_revisions: { embedding: 1, retrieval: 1 },
-        capabilities: {
-          deep: true,
-          query: true,
-          research: true,
-          index: true,
-          ingest: true,
-          source_sync: true,
-        },
-        embedding: null,
-        retrieval: null,
-        issues: [],
-        revision: 1,
-      }),
-    }),
-  }
-})
-
 const imageFile = (name: string) => {
   const canvas = document.createElement('canvas')
   canvas.width = 64
@@ -85,73 +43,91 @@ const imageFile = (name: string) => {
   )
   return new File([bytes], name, { type: 'image/png' })
 }
-const uploads: Array<
-  ReturnType<typeof createDeferred<{ id: string }>> & {
-    file: File
-    signal: AbortSignal
-    context: ConsoleClientContext
-  }
-> = []
+const nameOf = (file: Blob) => (file instanceof File ? file.name : '')
+const uploaded = (id: string, file: Blob) => ({ id, name: nameOf(file), size: file.size })
+const empty = () => ({ data: [], next_cursor: null })
 
-let network: ReturnType<typeof guardUnexpectedFetch>
-beforeEach(() => {
-  network = guardUnexpectedFetch()
-  uploads.length = 0
-  api.upload
-    .mockReset()
-    .mockImplementation(
-      (
-        input: { body: { file: File } },
-        options: { signal: AbortSignal; context: ConsoleClientContext },
-      ) => {
-        const deferred = createDeferred<{ id: string }>()
-        uploads.push({ ...deferred, file: input.body.file, ...options })
-        return deferred.promise
-      },
-    )
-})
-afterEach(() => {
-  network()
-  vi.restoreAllMocks()
-})
+afterEach(() => vi.restoreAllMocks())
 
 async function renderPage() {
+  const fake = installFakeApi({
+    console: {
+      files: {
+        upload: {
+          post: ({ body }) => uploaded('00000000-0000-4000-8000-000000000000', body.file),
+        },
+      },
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            traces: { get: empty },
+            researchTasks: { get: empty },
+            settings: {
+              get: () => ({
+                configuration_state: 'active',
+                active_profile_available: true,
+                active_profile_revisions: { embedding: 1, retrieval: 1 },
+                capabilities: {
+                  deep: true,
+                  query: true,
+                  research: true,
+                  index: true,
+                  ingest: true,
+                  source_sync: true,
+                },
+                embedding: null,
+                retrieval: null,
+                issues: [],
+                revision: 1,
+              }),
+            },
+          },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
-  return render(
-    <QueryWrapper>
-      <QueryTestingAdapter>
-        <KnowledgeSpaceTestProvider
-          space={createKnowledgeSpaceFixture({
-            permission_keys: ['knowledge_space_edit', 'knowledge_space_query'],
-          })}
-        >
-          <div className="h-160 w-full">
-            <RetrievalTestPage knowledgeSpaceId="space-1" />
-          </div>
-        </KnowledgeSpaceTestProvider>
-      </QueryTestingAdapter>
-    </QueryWrapper>,
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/new/space-1/retrieval' })
+  const view = await render(
+    <NavigationProvider>
+      <QueryWrapper>
+        <QueryTestingAdapter>
+          <KnowledgeSpaceTestProvider
+            space={createKnowledgeSpaceFixture({
+              permission_keys: ['knowledge_space_edit', 'knowledge_space_query'],
+            })}
+          >
+            <div className="h-160 w-full">
+              <RetrievalTestPage knowledgeSpaceId="space-1" />
+            </div>
+          </KnowledgeSpaceTestProvider>
+        </QueryTestingAdapter>
+      </QueryWrapper>
+    </NavigationProvider>,
   )
+  /** Hold the next upload request open so the test controls when the server answers. */
+  const holdUpload = () => hold(fake.console.files.upload.post)
+  return { view, holdUpload }
 }
 const input = () => page.getByLabelText('Add images')
 const run = () => page.getByRole('button', { name: 'Run' })
 
-it('shows the selected image and byte progress immediately, and waits for the server before enabling retrieval', async () => {
+it('shows the selected image and its progress immediately, and waits for the server before enabling retrieval', async () => {
   await page.viewport(1280, 800)
-  await renderPage()
-  await userEvent.upload(input(), imageFile('diagram.png'))
+  const { holdUpload } = await renderPage()
+  const upload = holdUpload()
+  const file = imageFile('diagram.png')
+  await userEvent.upload(input(), file)
   const thumbnail = page.getByRole('img', { name: 'diagram.png' })
   await expect.element(thumbnail).toBeVisible()
   await expect.poll(() => (thumbnail.element() as HTMLImageElement).naturalWidth).toBe(64)
   const progress = page.getByRole('progressbar', { name: 'Uploading diagram.png' })
   await expect.element(progress).toHaveAttribute('aria-valuenow', '0')
-  uploads[0]!.context.onUploadProgress?.({ loaded: 45, total: 100 })
-  await expect.element(progress).toHaveAttribute('aria-valuenow', '45')
-  await expect.element(run()).toBeDisabled()
-  uploads[0]!.context.onUploadProgress?.({ loaded: 100, total: 100 })
+  await upload.arrived
   await expect.element(progress).toBeVisible()
   await expect.element(run()).toBeDisabled()
-  uploads[0]!.resolve({ id: 'uploaded-image' })
+  upload.resolve(uploaded('11111111-1111-4111-8111-111111111111', file))
   await expect.element(progress).not.toBeInTheDocument()
   await expect.element(thumbnail).toBeVisible()
   await expect.element(run()).toBeEnabled()
@@ -159,45 +135,53 @@ it('shows the selected image and byte progress immediately, and waits for the se
 
 it('keeps successful images while offering retry for only the failed upload', async () => {
   await page.viewport(600, 720)
-  await renderPage()
-  await userEvent.upload(input(), [imageFile('success.png'), imageFile('retry.png')])
-  expect(uploads).toHaveLength(2)
-  uploads[0]!.resolve({ id: 'success-image' })
-  uploads[1]!.reject(new Error('network unavailable'))
+  const { holdUpload } = await renderPage()
+  const first = holdUpload()
+  const second = holdUpload()
+  const success = imageFile('success.png')
+  const failing = imageFile('retry.png')
+  await userEvent.upload(input(), [success, failing])
+  expect(nameOf((await first.arrived).body.file)).toBe('success.png')
+  expect(nameOf((await second.arrived).body.file)).toBe('retry.png')
+  first.resolve(uploaded('22222222-2222-4222-8222-222222222222', success))
+  second.reject(networkError())
   const retry = page.getByRole('button', { name: 'Retry retry.png' })
   await expect.element(retry).toBeVisible()
   await expect.element(page.getByRole('alert')).toHaveTextContent('Image upload failed. Try again.')
   await expect.element(page.getByRole('img', { name: 'success.png' })).toBeVisible()
   await expect.element(run()).toBeDisabled()
+  const retried = holdUpload()
   await retry.click()
-  expect(uploads).toHaveLength(3)
-  expect(uploads[2]!.file.name).toBe('retry.png')
-  uploads[2]!.context.onUploadProgress?.({ loaded: 60, total: 100 })
-  await expect.element(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '60')
-  uploads[2]!.resolve({ id: 'retried-image' })
-  await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument()
+  expect(nameOf((await retried.arrived).body.file)).toBe('retry.png')
+  await expect.element(page.getByRole('progressbar')).toBeVisible()
   await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
+  retried.resolve(uploaded('33333333-3333-4333-8333-333333333333', failing))
+  await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument()
   await expect.element(run()).toBeEnabled()
 })
 
 it('cancels removed uploads, ignores late responses and releases previews on removal and unmount', async () => {
   const revoke = vi.spyOn(URL, 'revokeObjectURL')
-  const view = await renderPage()
-  await userEvent.upload(input(), imageFile('removed.png'))
+  const { view, holdUpload } = await renderPage()
+  const removed = holdUpload()
+  const file = imageFile('removed.png')
+  await userEvent.upload(input(), file)
+  await removed.arrived
   const thumbnail = page.getByRole('img', { name: 'removed.png' })
   const preview = thumbnail.element().getAttribute('src')
   await page.getByRole('button', { name: 'Remove removed.png' }).click()
-  await expect.poll(() => uploads[0]!.signal.aborted).toBe(true)
   await expect.element(thumbnail).not.toBeInTheDocument()
   expect(revoke).toHaveBeenCalledWith(preview)
-  uploads[0]!.resolve({ id: 'removed-image' })
+  removed.resolve(uploaded('44444444-4444-4444-8444-444444444444', file))
   await expect.element(run()).toBeDisabled()
+  await expect.element(page.getByRole('img')).not.toBeInTheDocument()
+  const unfinished = holdUpload()
   await userEvent.upload(input(), imageFile('unfinished.png'))
+  await unfinished.arrived
   const unfinishedPreview = page
     .getByRole('img', { name: 'unfinished.png' })
     .element()
     .getAttribute('src')
   await view.unmount()
-  expect(uploads[1]!.signal.aborted).toBe(true)
   expect(revoke).toHaveBeenCalledWith(unfinishedPreview)
 })
