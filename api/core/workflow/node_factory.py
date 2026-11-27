@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequenc
 from copy import copy
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, cast, final, override
+from typing import TYPE_CHECKING, Any, Protocol, cast, final, override
 
 from sqlalchemy import select
 
@@ -312,6 +312,10 @@ class DefaultWorkflowCodeExecutor:
         return isinstance(error, CodeExecutionError)
 
 
+class _NodeClassResolver(Protocol):
+    def __call__(self, *, node_type: NodeType, node_version: str, node_data: BaseNodeData) -> type[Node]: ...
+
+
 @final
 class DifyNodeFactory(NodeFactory):
     """
@@ -599,15 +603,22 @@ class DifyNodeFactory(NodeFactory):
         self,
         node_config: Mapping[str, Any],
     ) -> tuple[dict[str, Any], NodeConfigDict, type[Node], BaseNodeData]:
+        return self.validate_node_config(node_config, resolve=self._resolve_node_class_for_factory)
+
+    @classmethod
+    def validate_node_config(
+        cls,
+        node_config: Mapping[str, Any],
+        *,
+        resolve: _NodeClassResolver | None = None,
+    ) -> tuple[dict[str, Any], NodeConfigDict, type[Node], BaseNodeData]:
+        """Validate saved node data with the execution schema without constructing a node."""
         adapted_node_config = adapt_node_config_for_graph(node_config)
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class_for_factory(
-            node_type=node_data.type,
-            node_version=str(node_data.version),
-            node_data=node_data,
-        )
-        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+        resolve_class = resolve or cls._resolve_node_class
+        node_class = resolve_class(node_type=node_data.type, node_version=str(node_data.version), node_data=node_data)
+        resolved_node_data = cls._validate_resolved_node_data(node_class, node_data)
         return adapted_node_config, typed_node_config, node_class, resolved_node_data
 
     @staticmethod

@@ -261,7 +261,6 @@ def disclose(
     scope_binding: str = "",
     code_risk_assessments: Mapping[str, Any] | None = None,
     code_facts_digests: Mapping[str, str] | None = None,
-    api_tool_definitions: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> EffectDisclosure:
     """Disclose configuration, resolved accounts, and direct invocation inputs.
 
@@ -273,7 +272,7 @@ def disclose(
     """
     from runtime_contracts.builder.execution import canonical_digest
     from services.dify_builder.api_tool_effects import is_api_tool
-    from services.dify_builder.code_risk_assessment import UNAVAILABLE, _safe_urls, validated_assessments
+    from services.dify_builder.code_risk_assessment import UNAVAILABLE, validated_assessments
 
     code_risks = validated_assessments(code_risk_assessments)
     names = accounts or {}
@@ -366,18 +365,10 @@ def disclose(
             graph_binding = None
             config_tier = tier
             if api_tool:
-                definition = (api_tool_definitions or {}).get(node_id, {})
-                bundle = definition.get("bundle") or {}
-                target = config_target = (
-                    f"{str(bundle.get('method', '')).upper()} {_host(str(bundle.get('server_url', '')))}"
-                )
-                obj = _truncate(
-                    "; ".join(part for part in (_safe_urls(str(bundle.get("server_url") or "")), obj) if part)
-                )
-                account = str(definition.get("account") or account)
-                if not definition:
-                    assessment_status = "unavailable"
-                    tier = config_tier = EffectTier.SIDE_EFFECT
+                # Preserve the missing-definition target in existing confirmation signatures.
+                target = config_target = " "
+                assessment_status = "unavailable"
+                tier = config_tier = EffectTier.SIDE_EFFECT
             else:
                 target = config_target = "Code runtime (destinations depend on the bound source and inputs)"
                 obj = ""
@@ -385,7 +376,7 @@ def disclose(
                 "assessment": assessment_digest,
                 "status": assessment_status,
                 "facts": (code_facts_digests or {}).get(node_id, ""),
-                **({"api_definition": (api_tool_definitions or {}).get(node_id)} if api_tool else {}),
+                **({"api_definition": None} if api_tool else {}),
             }
         title = data.get("title") if isinstance(data.get("title"), str) else ""
         items.append(

@@ -12,9 +12,10 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from constants.trigger import TRIGGER_NODE_TYPES
-from core.workflow.human_input_adapter import adapt_node_config_for_graph
-from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.human_input_adapter import adapt_node_config_for_graph, parse_human_input_delivery_methods
+from core.workflow.node_factory import DifyNodeFactory, resolve_workflow_node_class
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
@@ -67,6 +68,19 @@ class GraphIssue:
 
 
 ResourceCheck = Callable[[Mapping[str, Any]], str | None]
+
+
+def is_canvas_note(node: Mapping[str, Any]) -> bool:
+    """Canvas notes are persisted with the graph but have no executable data."""
+    return node.get("type") == _CANVAS_NOTE_TYPE
+
+
+def validate_runtime_node(node: Mapping[str, Any]) -> BaseNodeData:
+    """Use the execution schema without supplying editor defaults or creating a node."""
+    _, typed, _, resolved = DifyNodeFactory.validate_node_config(node)
+    if typed["data"].type == BuiltinNodeTypes.HUMAN_INPUT:
+        parse_human_input_delivery_methods(resolved)
+    return resolved
 
 
 def refused_node_types(mode: AppMode) -> frozenset[str]:
@@ -315,7 +329,7 @@ def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceC
     shape_issues = _shape_issues(graph)
     if shape_issues:
         return shape_issues
-    raw_nodes = {str(n["id"]): n for n in graph["nodes"] if n.get("type") != _CANVAS_NOTE_TYPE}
+    raw_nodes = {str(n["id"]): n for n in graph["nodes"] if not is_canvas_note(n)}
     view = _Graph(
         nodes={node_id: _read_node(node_id, raw) for node_id, raw in raw_nodes.items()},
         edges=graph.get("edges") or [],

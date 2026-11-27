@@ -10,15 +10,16 @@ mutation only — no DB, no services, no I/O.
 import copy
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from typing import Any, NamedTuple
 
 from constants.trigger import TRIGGER_NODE_TYPES
 from core.dify_builder.models import Graph, MutationIntent
-from core.dify_builder.node_defaults import default_config_or_empty
 from services.dify_builder import credentials
-from services.workflow_generation.graph_normalizers import declared_branch_handles, heal_nodes_for_preflight
+from services.workflow.node_defaults import generated_node_defaults
+from services.workflow_generation.graph_normalizers import heal_nodes_for_preflight
+from services.workflow_variable_reference_validator import branch_handles
 
 MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
     "set_node_config": ("node_id", "path", "value"),
@@ -296,32 +297,9 @@ def _build_node(
     ``"custom-iteration-start"`` / ``"custom-loop-start"`` and the canvas has
     no component for them under ``"custom"`` (React error #130, ESQ1-288).
 
-    ``node_type``'s registered defaults (``core.dify_builder.node_defaults``)
-    are merged UNDER ``config``: a key the caller supplied always wins, and a
-    key it omitted is filled with the value Dify's own editor would have
-    created the node with. Several node types have engine-required fields with
-    no default -- a ``template-transform`` without ``variables`` makes the draft
-    preflight refuse the whole repair batch -- and an LLM writes only the fields
-    it was thinking about. This is the one chokepoint every created node passes
-    through, so it covers Build, Edit and Fix, ``create_node`` and
-    ``insert_between``, and the ``filter_applicable`` dry run alike.
-
-    The merge goes ONE level into a default whose value is a dict, for the same
-    reason: an LLM writing ``model: {provider, name}`` was thinking about the
-    provider and the model name, not about ``mode`` or ``completion_params``,
-    and a shallow merge dropped those with the rest of the block -- so the
-    engine refused the node for ``model.mode`` and the one corrective re-prompt
-    was spent on a field the default was already carrying. One level, not a
-    recursive merge: a caller value that is not a dict replaces the default
-    outright, and a dict nested deeper is still the caller's word entirely.
-
-    With one exclusion, and it is the reason this is not a blanket deep merge
-    (see ``_MODE_KEY``): a default block whose ``type`` the caller did not write
-    keeps today's shallow behaviour, because ``type`` reinterprets its siblings
-    instead of sitting beside them. Merging it in turns a partial
-    ``authorization`` -- the caller's ``config`` with a bearer token in it --
-    into a ``no-auth`` node that sends no credential and is written in silence,
-    which is exactly the failure a default is forbidden from creating.
+    Merge generated node defaults one level deep, preserving explicit values.
+    A partial discriminated block (for example, HTTP authorization without a
+    type) stays partial so validation can reject it instead of changing its mode.
     """
     if flow_type == "custom-note":
         if node_type:
@@ -376,7 +354,7 @@ def _build_node(
     else:
         new_id = _next_node_id(node_type, existing_ids)
 
-    defaults = default_config_or_empty(node_type)
+    defaults = generated_node_defaults(node_type)
     data = {**defaults, **copy.deepcopy(config)}
     for key, default_value in defaults.items():
         supplied = data.get(key)
@@ -474,6 +452,12 @@ def _make_edge(
     }
 
 
+def _node_branch_handles(node: Graph) -> frozenset[str] | None:
+    """Use the workflow checker’s source handles for a persisted canvas node."""
+    data = node.get("data")
+    return branch_handles(data) if isinstance(data, Mapping) else None
+
+
 def apply_connect(
     graph: Graph,
     from_node: str,
@@ -503,11 +487,12 @@ def apply_connect(
     # -- including the default "source" -- hangs off nothing: its arm never
     # runs and the run still reports "succeeded" (ESQ1-303). Reject it here
     # like a dangling node ref; the caller's ``except ValueError`` shows it.
-    declared = declared_branch_handles(nodes_by_id[from_node])
+    declared = _node_branch_handles(nodes_by_id[from_node])
     handle = source_handle or "source"
-    if declared and handle not in declared:
+    if declared is not None and handle not in declared:
         raise OperationValidationError(
-            f"branch node {from_node!r} has no handle {handle!r}; it declares {declared}", "invalid_branch_handle"
+            f"branch node {from_node!r} has no handle {handle!r}; it declares {sorted(declared)}",
+            "invalid_branch_handle",
         )
 
     existing_edge_ids = {e.get("id") for e in new_graph.get("edges", [])}
@@ -554,8 +539,8 @@ def _reused_insertion_node(
         or data.get("isInLoop")
     ):
         raise ValueError("reuse_existing does not support entry, terminal or container nodes/children")
-    declared = declared_branch_handles(node)
-    if declared and "source" not in declared:
+    declared = _node_branch_handles(node)
+    if declared is not None and "source" not in declared:
         raise ValueError("reuse_existing node does not declare the required outgoing source handle")
     source = next((n for n in graph.get("nodes", []) if n.get("id") == edge["source"]), None)
     target = next((n for n in graph.get("nodes", []) if n.get("id") == edge["target"]), None)
@@ -567,8 +552,8 @@ def _reused_insertion_node(
         for endpoint in (source, target)
     ):
         raise ValueError("reuse_existing does not support edges inside containers")
-    declared_source = declared_branch_handles(source)
-    if declared_source and edge.get("sourceHandle", "source") not in declared_source:
+    declared_source = _node_branch_handles(source)
+    if declared_source is not None and edge.get("sourceHandle", "source") not in declared_source:
         raise ValueError("reuse_existing edge does not name a declared source branch handle")
     return node
 

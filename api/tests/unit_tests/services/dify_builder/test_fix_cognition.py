@@ -119,14 +119,14 @@ def test_real_fix_cognition_routes_repairs_through_core_approval(
     from datetime import datetime
 
     from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.node_defaults import default_config
     from core.dify_builder.state import PcState
     from services.dify_builder.agent import llm_agent
     from services.dify_builder.application.handlers_fix import fix_registry
     from services.dify_builder.application.runner import Env, Runner
+    from services.workflow.node_defaults import generated_node_defaults
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
 
-    data = default_config("llm")
+    data = generated_node_defaults("llm")
     data.update(
         type="llm",
         title="LLM",
@@ -191,9 +191,9 @@ def test_real_fix_cognition_routes_repairs_through_core_approval(
 
 
 def test_invalid_model_replacement_still_fails_native_preflight() -> None:
-    from core.dify_builder.node_defaults import default_config
+    from services.workflow.node_defaults import generated_node_defaults
 
-    data = {**default_config("llm"), "type": "llm", "title": "LLM"}
+    data = {**generated_node_defaults("llm"), "type": "llm", "title": "LLM"}
     graph: Graph = {"nodes": [{"id": "llm", "data": data}], "edges": []}
     payload = json.dumps(
         {

@@ -11,7 +11,12 @@ from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import CredentialType, PluginToolProviderEntity
 from core.plugin.impl.exc import PluginDaemonError
 from core.plugin.impl.tool import PluginToolManager
-from tests.unit_tests.services.dify_builder.installed_tool_inventory import DaemonRequest, FakeToolDaemon
+from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
+    DaemonRequest,
+    FakeTool,
+    FakeToolDaemon,
+    provider_payload,
+)
 
 
 class RouteDefect(StrEnum):
@@ -40,10 +45,9 @@ class DaemonOptions(TypedDict, total=False, closed=True):
 
 
 def _tool_provider(name: str = "provider") -> PluginToolProviderEntity:
-    from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _provider
-
-    provider = _provider(plugin_id="org/plugin", provider=name, plugin_unique_identifier=f"org/plugin:0.0.1@{'0' * 64}")
-    provider.declaration.identity.name = name
+    provider = PluginToolProviderEntity.model_validate(
+        provider_payload("org/plugin", name, [FakeTool(name="run", label="Run")])
+    )
     for tool in provider.declaration.tools:
         tool.identity.provider = ""
     return provider

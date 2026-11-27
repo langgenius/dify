@@ -132,7 +132,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
 
 def test_input_from_dict(d: dict[str, Any]) -> TestInput:
     """Decode historical inputs without inventing fixture provenance."""
-    from services.dify_builder.application.execution_policy import decode_http_fixture_set
+    from runtime_contracts.builder.execution import decode_http_fixture_set
 
     return TestInput(
         id=d.get("id", ""),

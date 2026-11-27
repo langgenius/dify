@@ -19,7 +19,7 @@ from core.dify_builder.models import (
     Risk,
 )
 from models.dify_builder import DifyBuilderRun
-from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
+from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 from services.dify_builder.application.verification import is_execution_policy_blocker, publication_decision
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.serde import context_from_dict, context_to_dict

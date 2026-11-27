@@ -421,14 +421,9 @@ def credential_scope(error: Exception | None) -> Literal["enterprise_global"] | 
 def failure_http_status(error: Exception | None) -> int | None:
     """Read an observed provider status from at most eight explicit causes.
 
-    Accept typed HTTP responses or the existing validated daemon 502 envelope.
-    Return None when unavailable; never inspect arbitrary exception text,
-    implicit context, requests, headers or bodies, or grant retry authority.
+    Read the status from typed HTTP responses in the explicit cause chain.
     """
     from httpx import HTTPStatusError
-
-    from core.plugin.impl.exc import PluginInvokeError
-    from core.plugin.impl.model import _metadata_gateway_unavailable
 
     seen: set[int] = set()
     current: BaseException | None = error
@@ -437,8 +432,6 @@ def failure_http_status(error: Exception | None) -> int | None:
         if isinstance(current, HTTPStatusError):
             status = current.response.status_code
             return status if type(status) is int and 100 <= status <= 599 else None
-        if isinstance(current, PluginInvokeError) and _metadata_gateway_unavailable(current):
-            return 502
         current = current.__cause__
     return None
 
@@ -451,8 +444,6 @@ def _failure_reason(error: BaseException) -> FailureReason:
     """
     from httpx import HTTPStatusError
 
-    from core.plugin.impl.exc import PluginInvokeError
-    from core.plugin.impl.model import _metadata_gateway_unavailable
     from core.tools.errors import ToolProviderCredentialValidationError
     from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
     from services.enterprise.plugin_manager_service import CredentialPolicyViolationError
@@ -465,8 +456,6 @@ def _failure_reason(error: BaseException) -> FailureReason:
         )
     if isinstance(error, ToolProviderCredentialValidationError):
         return ExecutionFailureReason.CREDENTIAL_UNAVAILABLE
-    if isinstance(error, PluginInvokeError) and _metadata_gateway_unavailable(error):
-        return ExecutionFailureReason.SERVICE_UNAVAILABLE
     if isinstance(error, Exception) and plugin_activation_unavailable(error):
         return ExecutionFailureReason.SERVICE_UNAVAILABLE
     if isinstance(error, ConnectionRefusedError):

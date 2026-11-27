@@ -1,16 +1,8 @@
-"""Tests for the per-node-type default-config registry.
-
-Values are pinned against the FE registry they mirror (``web/app/components
-/workflow/nodes/<type>/default.ts``) -- see the per-entry comments in
-``node_defaults.py`` for the exact source lines -- and every entry is run
-through the engine node data class that consumes it, pinned in BOTH directions:
-no structural field is missing, and no PURPOSE field is fabricated.
-"""
+"""Generated nodes share editor scaffolding and require their own output, tool, and branch choices."""
 
 import pytest
 from pydantic import ValidationError
 
-from core.dify_builder.node_defaults import default_config
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from graphon.nodes.answer.entities import AnswerNodeData
 from graphon.nodes.code.entities import CodeNodeData
@@ -22,13 +14,14 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.variable_aggregator.entities import VariableAggregatorNodeData
+from services.workflow.node_defaults import generated_node_defaults
 
 
 def test_default_config_returns_a_fresh_copy_each_call() -> None:
-    first = default_config("start")
+    first = generated_node_defaults("start")
     first["variables"].append({"variable": "mutated"})
 
-    second = default_config("start")
+    second = generated_node_defaults("start")
 
     assert second == {"variables": []}
 
@@ -52,7 +45,7 @@ def test_no_entry_fabricates_a_purpose_field(node_type: str, forbidden: str) -> 
     """A field whose empty value produces a node that RUNS and yields nothing
     must be left to the caller. Supplying it turns a loud preflight refusal into
     a silent wrong answer -- the failure shape this module exists to prevent."""
-    assert forbidden not in default_config(node_type)
+    assert forbidden not in generated_node_defaults(node_type)
 
 
 def test_an_empty_condition_group_always_matches_so_it_is_not_safe_to_default() -> None:
@@ -130,7 +123,7 @@ def test_the_engine_reports_exactly_the_purpose_fields_as_missing(
         ("graphon.nodes.question_classifier.entities", "QuestionClassifierNodeData"): QuestionClassifierNodeData,
         ("graphon.nodes.tool.entities", "ToolNodeData"): ToolNodeData,
     }[(module_name, class_name)]
-    payload = {"type": node_type, "title": "T", **default_config(node_type)}
+    payload = {"type": node_type, "title": "T", **generated_node_defaults(node_type)}
 
     if not expected_missing:
         data_class.model_validate(payload)  # must not raise

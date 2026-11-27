@@ -1,18 +1,15 @@
-"""Shared immutable Builder execution contracts and compatible context decoding."""
+"""Stable Builder run metadata and fixture types for persisted records."""
 
 import hashlib
 import json
 import math
 from collections.abc import Mapping
-from enum import StrEnum
-from typing import Annotated, Any, Literal, Protocol
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    StrictBool,
-    TypeAdapter,
     ValidationError,
     field_validator,
     model_validator,
@@ -29,30 +26,6 @@ class HttpFixtureSource(BuilderStringEnum):
 class HttpFixtureContentType(BuilderStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"
-
-
-class RestrictedExecutionMode(BuilderStringEnum):
-    RESTRICTED = "restricted"
-    MOCK = "mock"
-
-
-class RestrictedSandboxProfile(BuilderStringEnum):
-    DISABLED = "disabled"
-    NETWORK_DISABLED_V1 = "network-disabled-v1"
-
-
-class JsonToolRuntimeType(BuilderStringEnum):
-    LOCAL = "local"
-    SERVERLESS = "serverless"
-
-
-class ExecutionObservationKind(BuilderStringEnum):
-    FIXTURE_SERVED = "fixture_served"
-    EFFECT_BLOCKED = "effect_blocked"
-    SANDBOX_STARTED = "sandbox_started"
-    SANDBOX_COMPLETED = "sandbox_completed"
-    SANDBOX_FAILED = "sandbox_failed"
-    QUALIFIED_JSON_COMPLETED = "qualified_json_completed"
 
 
 class EvidencePolicyVersion(BuilderStringEnum):
@@ -115,23 +88,8 @@ class ExecutionActionState(BuilderStringEnum):
     UNKNOWN = "unknown"
 
 
-class WorkerExit(BuilderStringEnum):
-    RETURNED = "returned"
-    POLICY_REFUSED = "policy_refused"
-    STOPPED = "stopped"
-    FAILED = "failed"
-    NOT_OBSERVED = "not_observed"
-
-
-class WorkflowExecutionTransport(StrEnum):
-    CELERY = "celery"
-    IN_PROCESS = "in_process"
-
-
-ScalarValue = str | int | float | bool | None
 BoundedID = Annotated[str, Field(strict=True, min_length=1, max_length=128)]
 Digest = Annotated[str, Field(strict=True, pattern=r"^[0-9a-f]{64}$")]
-MAX_OBSERVATIONS = 4096
 
 
 class BuilderExecutionPolicyError(ValueError):
@@ -174,12 +132,6 @@ def canonical_json(value: Any) -> bytes:
 
 def canonical_digest(value: Any) -> str:
     return hashlib.sha256(canonical_json(value)).hexdigest()
-
-
-def scalar_inputs_digest(inputs: Mapping[str, Any]) -> str:
-    if not isinstance(inputs, dict) or any(type(v) not in (str, int, float, bool, type(None)) for v in inputs.values()):
-        raise BuilderExecutionPolicyError("unsupported_input_value")
-    return canonical_digest(inputs)
 
 
 class _TrustedModel(BaseModel):
@@ -271,202 +223,6 @@ def decode_http_fixture_set(raw: Any) -> HttpFixtureSetV1 | None:
         return HttpFixtureSetV1.model_validate(raw)
     except (ValidationError, ValueError, TypeError):
         raise BuilderExecutionPolicyError("invalid_http_fixture_envelope") from None
-
-
-class AdmittedNodeBinding(_TrustedModel):
-    node_id: BoundedID
-    implementation: Annotated[str, Field(strict=True, min_length=1, max_length=256)]
-    node_version: Literal["1"]
-    normalized_config_digest: Digest
-
-
-class BuilderExecutionContext(_TrustedModel):
-    policy_version: Literal["builder-restricted-v1"] = "builder-restricted-v1"
-    request_id: BoundedID
-    tenant_id: BoundedID
-    app_id: BoundedID
-    workflow_id: BoundedID
-    actor_id: BoundedID
-    session_id: BoundedID
-    test_input_id: BoundedID
-    execution_revision: Digest
-    graph_revision: Digest
-    submitted_inputs_digest: Digest
-    effective_inputs_digest: Digest
-    fixture_digest: Digest
-    context_digest: Digest
-    mode: RestrictedExecutionMode
-    sandbox_profile: RestrictedSandboxProfile
-    admitted_nodes: Annotated[tuple[AdmittedNodeBinding, ...], Field(max_length=128)]
-    http_fixtures: Annotated[tuple[HttpResponseFixtureV1, ...], Field(max_length=128)]
-
-
-class ConfirmedToolExecutionContext(_TrustedModel):
-    """One consented native Tool run. Holds consent references, never credentials.
-
-    The service reconstructs this from its durable reservation; it is not an
-    authorization object a client may submit.
-    """
-
-    policy_version: Literal["builder-confirmed-gmail-read-v1"]
-    request_id: BoundedID
-    tenant_id: BoundedID
-    app_id: BoundedID
-    workflow_id: BoundedID
-    actor_id: BoundedID
-    session_id: BoundedID
-    test_input_id: BoundedID
-    execution_revision: Digest
-    graph_revision: Digest
-    submitted_inputs_digest: Digest
-    effective_inputs_digest: Digest
-    context_digest: Digest
-    mode: Literal["confirmed_tool"]
-    sandbox_profile: Literal["disabled"]
-    admitted_nodes: Annotated[tuple[AdmittedNodeBinding, ...], Field(max_length=128)]
-    consent_id: BoundedID
-    scope_digest: Digest
-    command_id: BoundedID
-
-
-class QualifiedJsonToolBinding(_TrustedModel):
-    """Installed, runtime-qualified parse action and its expected scalar call."""
-
-    node_id: BoundedID
-    tenant_id: BoundedID
-    installation_id: BoundedID
-    plugin_id: BoundedID
-    provider_id: BoundedID
-    tool_name: Literal["parse"]
-    unique_identifier: Annotated[str, Field(strict=True, min_length=1, max_length=256)]
-    version: BoundedID
-    checksum: Digest
-    provider_schema_digest: Digest
-    tool_schema_digest: Digest
-    runtime_type: JsonToolRuntimeType
-    qualification_digest: Digest
-    final_parameters_digest: Digest
-
-
-class JsonToolExecutionContext(_TrustedModel):
-    """One restricted native JSON Parse run; no fixture or consent authority."""
-
-    policy_version: Literal["builder-json-parse-v1"]
-    request_id: BoundedID
-    tenant_id: BoundedID
-    app_id: BoundedID
-    workflow_id: BoundedID
-    actor_id: BoundedID
-    session_id: BoundedID
-    test_input_id: BoundedID
-    execution_revision: Digest
-    graph_revision: Digest
-    submitted_inputs_digest: Digest
-    effective_inputs_digest: Digest
-    context_digest: Digest
-    mode: Literal["restricted"]
-    sandbox_profile: Literal["disabled"]
-    admitted_nodes: Annotated[tuple[AdmittedNodeBinding, AdmittedNodeBinding, AdmittedNodeBinding], Field()]
-    qualified_tool: QualifiedJsonToolBinding
-
-    @model_validator(mode="after")
-    def validate_binding(self) -> "JsonToolExecutionContext":
-        if (
-            self.qualified_tool.tenant_id != self.tenant_id
-            or self.qualified_tool.node_id != self.admitted_nodes[1].node_id
-        ):
-            raise ValueError("JSON binding owner mismatch")
-        return self
-
-
-BuilderExecutionContextValue = Annotated[
-    BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext,
-    Field(discriminator="policy_version"),
-]
-_CONTEXT_VALUE_ADAPTER: TypeAdapter[
-    BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext
-] = TypeAdapter(BuilderExecutionContextValue)
-
-
-def context_digest(context: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext) -> str:
-    """The dumped policy tag domain-separates all execution digests."""
-    return canonical_digest(context.model_dump(mode="json", exclude={"context_digest"}))
-
-
-def validate_execution_context(
-    raw: Any,
-) -> BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext:
-    """Decode a tagged context at a JSON/process boundary and verify its digest.
-
-    Only an absent tag is filled with the restricted default; it never infers the
-    other variants, whose exclusive fields then fail restricted validation.
-    """
-    if isinstance(raw, dict) and "policy_version" not in raw:
-        raw = {**raw, "policy_version": "builder-restricted-v1"}
-    try:
-        context = _CONTEXT_VALUE_ADAPTER.validate_python(raw)
-    except (ValidationError, ValueError, TypeError):
-        raise BuilderExecutionPolicyError("invalid_execution_context") from None
-    if context.context_digest != context_digest(context):
-        raise BuilderExecutionPolicyError("context_digest_mismatch")
-    return context
-
-
-def fixture_digest(execution_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]) -> str:
-    return canonical_digest(
-        HttpFixtureSetV1(execution_revision=execution_revision, fixtures=fixtures).model_dump(mode="json")
-    )
-
-
-class BuilderExecutionObservation(_TrustedModel):
-    observation_id: BoundedID
-    invocation_id: BoundedID
-    request_id: BoundedID
-    node_id: BoundedID
-    kind: ExecutionObservationKind
-    implementation_version: Annotated[str, Field(strict=True, min_length=1, max_length=256)]
-    reason_code: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,127}$")]
-    fixture_digest: Digest | None = None
-    profile_digest: Digest | None = None
-    request_hmac: Digest | None = None
-    native_node_execution_id: BoundedID | None = None
-    qualification_digest: Digest | None = None
-    installed_binding_digest: Digest | None = None
-    final_parameters_digest: Digest | None = None
-    pre_binding_digest: Digest | None = None
-    post_binding_digest: Digest | None = None
-    native_text_output_digest: Digest | None = None
-    text_bytes: Annotated[int, Field(strict=True, ge=0, le=65536)] | None = None
-    text_messages: Annotated[int, Field(strict=True, ge=0, le=8)] | None = None
-
-    @model_validator(mode="after")
-    def validate_json_receipt(self) -> "BuilderExecutionObservation":
-        json_values = (
-            self.native_node_execution_id,
-            self.qualification_digest,
-            self.installed_binding_digest,
-            self.final_parameters_digest,
-            self.pre_binding_digest,
-            self.post_binding_digest,
-            self.native_text_output_digest,
-            self.text_bytes,
-            self.text_messages,
-        )
-        if self.kind == "qualified_json_completed":
-            if any(value is None for value in json_values) or any(
-                value is not None for value in (self.fixture_digest, self.profile_digest, self.request_hmac)
-            ):
-                raise ValueError("invalid JSON completion receipt")
-        elif any(value is not None for value in json_values):
-            raise ValueError("non-JSON receipt contains JSON metadata")
-        return self
-
-
-class BuilderExecutionRecorder(Protocol):
-    @property
-    def healthy(self) -> bool: ...
-
-    def record(self, observation: BuilderExecutionObservation) -> None: ...
 
 
 ReasonCode = Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,127}$")]
@@ -621,33 +377,3 @@ class BuilderExecutionRefusal(_TrustedModel):
 
     safety_outcome: Literal["unsupported_safe_execution"] = "unsupported_safe_execution"
     reason_code: ReasonCode
-
-
-class TrustedExecutionCompletion(_TrustedModel):
-    """Transient finish facts captured by the native worker/port owner, never posted."""
-
-    context: BuilderExecutionContextValue
-    native_run_id: BoundedID | None
-    task_id: BoundedID | None
-    worker_finished: StrictBool
-    worker_exit: WorkerExit
-    recorder_healthy: StrictBool
-    response_completed: StrictBool
-    refusal: BuilderExecutionRefusal | None = None
-    preworker_refusal: StrictBool = False
-
-    @model_validator(mode="after")
-    def validate_completion(self) -> "TrustedExecutionCompletion":
-        if (self.native_run_id is None) != (self.task_id is None):
-            raise ValueError("incomplete claim identity")
-        if self.worker_exit == "not_observed" and self.worker_finished:
-            raise ValueError("unobserved worker cannot be finished")
-        if self.preworker_refusal and (
-            self.refusal is None
-            or self.native_run_id is not None
-            or self.recorder_healthy
-            or self.worker_finished
-            or self.worker_exit != "not_observed"
-        ):
-            raise ValueError("invalid preworker refusal origin")
-        return self

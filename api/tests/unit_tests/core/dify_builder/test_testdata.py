@@ -3,7 +3,7 @@
 import importlib
 
 from core.dify_builder.models import Turn
-from services.dify_builder.application.execution_policy import (
+from runtime_contracts.builder.execution import (
     HttpFixtureSetV1,
 )
 from services.dify_builder.application.ports import DifyPort

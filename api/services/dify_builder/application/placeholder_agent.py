@@ -10,7 +10,6 @@ as a compact fixture for state-machine tests that do not exercise model calls.
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from core.dify_builder import node_defaults
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import (
     BuildNodesResult,
@@ -29,6 +28,7 @@ from core.dify_builder.models import (
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
 from services.dify_builder.plan import WorkflowPlan
+from services.workflow.node_defaults import generated_node_defaults
 
 __all__ = [
     "BUILD_END_ID",
@@ -195,7 +195,7 @@ class PlaceholderAgent:
                     op="create_node",
                     args={
                         "node_type": BuiltinNodeTypes.START,
-                        "config": node_defaults.default_config(BuiltinNodeTypes.START),
+                        "config": generated_node_defaults(BuiltinNodeTypes.START),
                         "node_id": BUILD_START_ID,
                     },
                 ),
@@ -204,7 +204,7 @@ class PlaceholderAgent:
                     args={
                         "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
                         "config": {
-                            **node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+                            **generated_node_defaults(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
                             "dataset_ids": [],
                         },
                         "node_id": BUILD_KNOWLEDGE_ID,
@@ -215,7 +215,7 @@ class PlaceholderAgent:
                     op="create_node",
                     args={
                         "node_type": BuiltinNodeTypes.LLM,
-                        "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
+                        "config": generated_node_defaults(BuiltinNodeTypes.LLM),
                         "node_id": BUILD_LLM_ID,
                     },
                 ),
@@ -224,7 +224,7 @@ class PlaceholderAgent:
                     op="create_node",
                     args={
                         "node_type": BuiltinNodeTypes.END,
-                        "config": {**node_defaults.default_config(BuiltinNodeTypes.END), "outputs": []},
+                        "config": {**generated_node_defaults(BuiltinNodeTypes.END), "outputs": []},
                         "node_id": BUILD_END_ID,
                     },
                 ),

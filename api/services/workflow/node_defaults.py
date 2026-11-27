@@ -178,6 +178,87 @@ def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
     return {**copy.deepcopy(dict(empty)), **data}
 
 
+# Extra scaffolding for newly generated nodes. Values such as End outputs,
+# a condition, a tool identity, or a retrieval dataset must come from the caller.
+_MODEL_SCAFFOLD: Final = {
+    "provider": "",
+    "name": "",
+    "mode": "chat",
+    "completion_params": {"temperature": 0.7},
+}
+_CREATION_SCAFFOLD: Final[Mapping[str, Mapping[str, Any]]] = {
+    BuiltinNodeTypes.ANSWER: {
+        "variables": [],
+    },
+    BuiltinNodeTypes.LLM: {
+        "model": _MODEL_SCAFFOLD,
+        "prompt_template": [{"role": "system", "text": ""}],
+        "context": {"enabled": False, "variable_selector": []},
+        "vision": {"enabled": False},
+    },
+    BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: {
+        "query_variable_selector": [],
+        "query_attachment_selector": [],
+        "retrieval_mode": "multiple",
+        "multiple_retrieval_config": {
+            "top_k": 4,
+            "score_threshold": None,
+            "reranking_enable": False,
+        },
+    },
+    BuiltinNodeTypes.CODE: {
+        "code": "",
+        "code_language": "python3",
+        "outputs": {},
+    },
+    BuiltinNodeTypes.QUESTION_CLASSIFIER: {
+        "model": _MODEL_SCAFFOLD,
+        "vision": {"enabled": False},
+    },
+    BuiltinNodeTypes.HTTP_REQUEST: {
+        "variables": [],
+        "method": "get",
+        "url": "",
+        "authorization": {
+            "type": "no-auth",
+            "config": None,
+        },
+        "headers": "",
+        "params": "",
+        "ssl_verify": True,
+        "timeout": {
+            "max_connect_timeout": 0,
+            "max_read_timeout": 0,
+            "max_write_timeout": 0,
+        },
+        "retry_config": {
+            "retry_enabled": True,
+            "max_retries": 3,
+            "retry_interval": 100,
+        },
+    },
+    BuiltinNodeTypes.VARIABLE_AGGREGATOR: {
+        "output_type": "any",
+    },
+    BuiltinNodeTypes.TOOL: {
+        "tool_node_version": "2",
+    },
+}
+
+
+def generated_node_defaults(node_type: str) -> dict[str, Any]:
+    """Reuse editor defaults where they do not supply a generated node's purpose."""
+    if node_type not in _CREATION_SCAFFOLD and node_type not in {
+        BuiltinNodeTypes.START,
+        BuiltinNodeTypes.TEMPLATE_TRANSFORM,
+    }:
+        return {}
+    scaffold = copy.deepcopy(dict(_CREATION_SCAFFOLD.get(node_type, {})))
+    defaults = editor_defaults({"type": node_type, **scaffold})
+    defaults.pop("type")
+    return defaults
+
+
 def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:
     filled = editor_defaults(data)
     node_type = filled.get("type")

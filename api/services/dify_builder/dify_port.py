@@ -83,14 +83,14 @@ from models.enums import CreatorUserRole
 from models.model import App
 from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from runtime_contracts.builder.execution import canonical_digest
+from runtime_contracts.builder.execution import (
+    BuilderExecutionPolicyError,
+    BuilderExecutionRefusal,
+    canonical_digest,
+)
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
-from services.dify_builder.application.execution_policy import (
-    BuilderExecutionPolicyError,
-    BuilderExecutionRefusal,
-)
 from services.dify_builder.application.handlers_fix import run_finished_without_output
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.execution_policy_service import (

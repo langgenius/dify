@@ -43,7 +43,6 @@ from typing import Unpack, override
 
 from typing_extensions import TypedDict
 
-from core.dify_builder import node_defaults
 from core.dify_builder.contract import ConversationPage, ResourceOption
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
@@ -92,6 +91,7 @@ from services.dify_builder.graph_ops import (
     structural_fingerprint as _structural_fingerprint,
 )
 from services.dify_builder.plan import WorkflowPlan
+from services.workflow.node_defaults import generated_node_defaults
 
 __all__ = ["FakeBuildDifyPort", "FakeDifyPort", "FakeEditDifyPort", "InMemoryRepository", "StubAgent"]
 
@@ -1008,7 +1008,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.START,
-            "config": node_defaults.default_config(BuiltinNodeTypes.START),
+            "config": generated_node_defaults(BuiltinNodeTypes.START),
             "node_id": "start",
         },
     ),
@@ -1016,7 +1016,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-            "config": {**node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL), "dataset_ids": []},
+            "config": {**generated_node_defaults(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL), "dataset_ids": []},
             "node_id": "knowledge_retrieval",
         },
     ),
@@ -1025,7 +1025,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.LLM,
-            "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
+            "config": generated_node_defaults(BuiltinNodeTypes.LLM),
             "node_id": "llm",
         },
     ),
@@ -1034,7 +1034,7 @@ _EDIT_SEED_INTENTS = [
         op="create_node",
         args={
             "node_type": BuiltinNodeTypes.END,
-            "config": {**node_defaults.default_config(BuiltinNodeTypes.END), "outputs": []},
+            "config": {**generated_node_defaults(BuiltinNodeTypes.END), "outputs": []},
             "node_id": "end",
         },
     ),
@@ -1063,7 +1063,7 @@ class FakeEditDifyPort(FakeBuildDifyPort):
 
 def successful_verification(dify: FakeDifyPort, *, no_output: bool = False) -> RunVerification:
     """Unit policy fixture only; never evidence of a composed native execution."""
-    from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
+    from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 
     return RunVerification(
         execution_evidence=ExecutionEvidenceSummary(

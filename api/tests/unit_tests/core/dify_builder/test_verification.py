@@ -6,8 +6,7 @@ from typing_extensions import TypedDict
 
 from core.dify_builder import models
 from core.dify_builder.models import OutputFindingState, Run
-from runtime_contracts.builder.execution import ExecutionActionState, SafetyOutcome
-from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
+from runtime_contracts.builder.execution import ExecutionActionState, ExecutionEvidenceSummary, SafetyOutcome
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 

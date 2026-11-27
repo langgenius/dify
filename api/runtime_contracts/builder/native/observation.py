@@ -38,10 +38,6 @@ class NativeModelFailureDiagnostic:
             raise ValueError("invalid_native_model_failure_diagnostic")
 
 
-def format_native_model_failure(diagnostic: NativeModelFailureDiagnostic) -> str:
-    return f"Native Agent model invocation failed. [stage={diagnostic.stage}; reason={diagnostic.category}]"
-
-
 def parse_native_model_failure(error: str) -> NativeModelFailureDiagnostic | None:
     """Accept only the full fixed gateway error preserved by the existing SDK."""
     if len(error) > 256:
@@ -59,10 +55,3 @@ def parse_native_model_failure(error: str) -> NativeModelFailureDiagnostic | Non
     return NativeModelFailureDiagnostic(
         stage=NativeModelFailureStage(stage), category=NativeModelFailureCategory(category)
     )
-
-
-class NativeObservationError(RuntimeError):
-    """Only fixed safe diagnostics leave a failed observation adapter."""
-
-    def __init__(self) -> None:
-        super().__init__("native_observation_failed")

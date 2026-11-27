@@ -130,7 +130,6 @@ def code_facts(
     model_config: dict[str, Any],
     scope_binding: str,
     reply_language: str = "",
-    api_tool_definitions: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, CodeFacts]:
     """Project Code/custom API facts; private values and account versions remain in hashes.
 
@@ -174,7 +173,7 @@ def code_facts(
             "inputs": bound,
             "scope": scope_binding,
             "reply_language": reply_language,
-            **({"api_tool": (api_tool_definitions or {}).get(node["id"])} if api_tool else {}),
+            **({"api_tool": None} if api_tool else {}),
         }
         digest = canonical_digest(material)
         metadata = [
@@ -202,11 +201,10 @@ def code_facts(
             "destinations": "Only source/configuration destinations are known; runtime destinations may be unresolved.",
         }
         if api_tool:
-            definition = (api_tool_definitions or {}).get(node["id"], {})
             projected = {
                 "goal": goal_text,
                 "reply_language": reply_language,
-                "api_tool": dict(definition.get("bundle") or {}),
+                "api_tool": {},
                 "parameters": {
                     key: {
                         "binding": value.get("type", "unknown") if isinstance(value, dict) else "constant",

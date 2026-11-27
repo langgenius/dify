@@ -6,9 +6,8 @@ import pytest
 import pytest_mock
 
 from core.dify_builder.models import Run, RunVerification
-from runtime_contracts.builder.execution import SafetyOutcome
+from runtime_contracts.builder.execution import ExecutionEvidenceSummary, SafetyOutcome
 from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix, verification
-from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 from tests.unit_tests.installed_spies import installed_mock
 
 

@@ -266,7 +266,7 @@ def test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision_o
 
 def test_execution_evidence_round_trips_without_historical_backfill(repo: SqlDifyBuilderRepository) -> None:
     from core.dify_builder.models import RunVerification
-    from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
+    from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 
     # This is serialization evidence only, not a native execution positive control.
     evidence = RunVerification(

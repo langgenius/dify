@@ -482,30 +482,22 @@ def test_planning_facts_survive_sql_cas_and_public_trace_export(
     diagnostic_model: DiagnosticFactory,
     provider_failure: bool,
 ) -> None:
+    from httpx import HTTPStatusError, Request, Response
+
     from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
     from core.dify_builder.contract import AssistantTurnItem, ExecutionProgress
     from core.dify_builder.models import Action, DifyBuilderContext, Turn
     from core.dify_builder.state import PcState
-    from core.plugin.impl.exc import PluginInvokeError
     from libs.helper import dump_response
     from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
     from services.dify_builder.application.runner import Runner, StepResult
     from services.dify_builder.cognition_model_gateway import PolicyModelInstance
     from tests.unit_tests.core.dify_builder.test_runner import _actor
-    from tests.unit_tests.core.plugin.impl.test_model_readiness import GATEWAY_MESSAGE
 
+    request = Request("POST", "https://provider.example.invalid/models")
     model = diagnostic_model(
         "{}",
-        failure=PluginInvokeError(
-            description=json.dumps(
-                {
-                    "error_type": "PluginDaemonInnerError",
-                    "message": GATEWAY_MESSAGE,
-                }
-            )
-        )
-        if provider_failure
-        else None,
+        failure=HTTPStatusError("PRIVATE", request=request, response=Response(502)) if provider_failure else None,
     )
     agent = LlmBuilderAgent("tenant")
     agent._model_instance = PolicyModelInstance(lambda: model)

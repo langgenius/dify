@@ -15,7 +15,6 @@ import json_repair
 from constants.trigger import TRIGGER_NODE_TYPES
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent, NodeOutput, Run
-from core.dify_builder.node_defaults import default_config_or_empty
 from core.workflow.generator.prompts.builder_prompts import (
     CODE_FAILURE_POLICY_RULES,
     TOOL_PARAMETER_SEMANTICS_RULES,
@@ -32,6 +31,7 @@ from services.dify_builder.plan import (
     WorkflowPlan,
     parse_plan_response,
 )
+from services.workflow.node_defaults import generated_node_defaults
 from services.workflow_generation.graph_normalizers import declared_branch_handles
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
@@ -77,7 +77,7 @@ def _authored_config(node: dict) -> dict[str, Any]:
     data = node.get("data")
     if not isinstance(data, dict):
         return {}
-    defaults = default_config_or_empty(str(data.get("type", "")))
+    defaults = generated_node_defaults(str(data.get("type", "")))
     return {k: v for k, v in data.items() if k not in defaults or defaults[k] != v}
 
 

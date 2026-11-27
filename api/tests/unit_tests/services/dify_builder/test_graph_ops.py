@@ -316,7 +316,7 @@ def test_apply_connect_accepts_a_declared_branch_handle() -> None:
 def test_apply_connect_rejects_an_undeclared_branch_handle_and_names_the_declared_ones() -> None:
     graph: Graph = {"nodes": [_IF_ELSE, _TARGET], "edges": []}
 
-    with pytest.raises(ValueError, match=r"branch node 'branch' has no handle 'else'.*\['true', 'false'\]"):
+    with pytest.raises(ValueError, match=r"branch node 'branch' has no handle 'else'.*\['false', 'true'\]"):
         apply_connect(graph, "branch", "a", source_handle="else")
 
 
@@ -327,7 +327,7 @@ def test_apply_connect_rejects_the_default_handle_on_a_branch_node() -> None:
         apply_connect(graph, "branch", "a")
 
 
-# ---- apply_connect: declared_branch_handles acceptances (Task 4) -----------
+# ---- apply_connect: native runtime branch handles --------------------------
 # fail-branch nodes declare "source" (their real success handle, not an
 # invented "success") + "fail-branch"; human-input declares its action ids +
 # the implicit "__timeout" arm. apply_connect must accept a connect on any of
@@ -362,6 +362,23 @@ def test_apply_connect_accepts_the_timeout_handle_on_a_human_input_node() -> Non
     new_graph, _ = apply_connect(graph, "human1", "a", source_handle="__timeout")
 
     assert new_graph["edges"][0]["sourceHandle"] == "__timeout"
+
+
+def test_apply_connect_uses_native_workspace_agent_routes() -> None:
+    agent = {
+        "id": "agent",
+        "data": {
+            "type": "agent",
+            "agent_output_routes": {"enabled": True, "routes": [{"id": "resolved"}]},
+        },
+    }
+    graph: Graph = {"nodes": [agent, _TARGET], "edges": []}
+
+    with pytest.raises(ValueError, match="has no handle 'source'"):
+        apply_connect(graph, "agent", "a")
+
+    new_graph, _ = apply_connect(graph, "agent", "a", source_handle="resolved")
+    assert new_graph["edges"][0]["sourceHandle"] == "resolved"
 
 
 def test_apply_connect_accepts_true_on_a_legacy_if_else_without_cases() -> None:
@@ -939,7 +956,7 @@ def test_an_authorization_that_does_write_its_type_still_gains_the_defaults_sibl
     being reinterpreted and the deeper merge applies as it does everywhere
     else."""
     graph: Graph = {"nodes": [], "edges": []}
-    default_config = graph_ops.default_config_or_empty("http-request")["authorization"]
+    default_config = graph_ops.generated_node_defaults("http-request")["authorization"]
     assert set(default_config) == {"type", "config"}
 
     new_graph, _ = graph_ops.apply_create_node(

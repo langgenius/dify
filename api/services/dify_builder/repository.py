@@ -1289,7 +1289,7 @@ class SqlDifyBuilderRepository:
 
     @staticmethod
     def _to_domain_run(row: DifyBuilderRun) -> Run:
-        from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
+        from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 
         evidence = row.verification
         verification = None
