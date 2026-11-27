@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.plugin import (
     ParserAsset,
@@ -21,7 +20,6 @@ from controllers.console.workspace.plugin import (
     ParserLatest,
     ParserList,
     ParserMarketplaceUpgrade,
-    ParserPermissionChange,
     ParserPluginIdentifierQuery,
     ParserPluginIdentifiers,
     ParserReadme,
@@ -31,7 +29,6 @@ from controllers.console.workspace.plugin import (
     PluginAutoUpgradeExcludePluginApi,
     PluginCategoryListApi,
     PluginChangeAutoUpgradeApi,
-    PluginChangePermissionApi,
     PluginDebuggingKeyApi,
     PluginDeleteAllInstallTaskItemsApi,
     PluginDeleteInstallTaskApi,
@@ -41,7 +38,6 @@ from controllers.console.workspace.plugin import (
     PluginFetchInstallTasksApi,
     PluginFetchManifestApi,
     PluginFetchMarketplacePkgApi,
-    PluginFetchPermissionApi,
     PluginIconApi,
     PluginInstalledIdsApi,
     PluginInstalledIdsQuery,
@@ -74,8 +70,6 @@ from models.account import (
     TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategy,
     TenantPluginAutoUpgradeStrategySetting,
-    TenantPluginDebugPermission,
-    TenantPluginInstallPermission,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.error_body import raised_error
@@ -681,59 +675,6 @@ class TestPluginUninstallApi:
             "x",
             preserve_credentials=preserve_credentials,
         )
-
-
-class TestPluginChangePermissionApi:
-    def test_change_permission_forbidden(self, app: Flask) -> None:
-        api = PluginChangePermissionApi()
-        method = unwrap(api.post)
-
-        user = _account(TenantAccountRole.NORMAL)
-
-        payload = {
-            "install_permission": TenantPluginInstallPermission.EVERYONE,
-            "debug_permission": TenantPluginDebugPermission.EVERYONE,
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, ParserPermissionChange(), "t1", user)
-
-    def test_change_permission_success(self, app: Flask) -> None:
-        api = PluginChangePermissionApi()
-        method = unwrap(api.post)
-
-        user = _account()
-
-        payload = {
-            "install_permission": TenantPluginInstallPermission.EVERYONE,
-            "debug_permission": TenantPluginDebugPermission.EVERYONE,
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
-        ):
-            result = method(api, ParserPermissionChange(), "t1", user)
-
-        assert result["success"] is True
-
-
-class TestPluginFetchPermissionApi:
-    def test_fetch_permission_default(self, app: Flask) -> None:
-        api = PluginFetchPermissionApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.plugin.PluginPermissionService.get_permission", return_value=None),
-        ):
-            result = method(api, "t1")
-
-        assert result["install_permission"] == TenantPluginInstallPermission.ADMINS
-        assert result["debug_permission"] == TenantPluginDebugPermission.EVERYONE
 
 
 class TestPluginReadmeApi:

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models import Tenant
@@ -290,44 +290,20 @@ class TestPluginLifecycleSqliteCases:
         def test_get_returns_none_for_new_tenant(self, tenant: str, sqlite_session: Session) -> None:
             assert PluginPermissionService.get_permission(tenant, session=sqlite_session) is None
 
-        def test_change_creates_row(self, tenant: str, sqlite_session: Session) -> None:
-            result = PluginPermissionService.change_permission(
-                tenant,
-                TenantPluginInstallPermission.ADMINS,
-                TenantPluginDebugPermission.EVERYONE,
-                session=sqlite_session,
+        def test_get_returns_stored_row(self, tenant: str, sqlite_session: Session) -> None:
+            sqlite_session.add(
+                TenantPluginPermission(
+                    tenant_id=tenant,
+                    install_permission=TenantPluginInstallPermission.EVERYONE,
+                    debug_permission=TenantPluginDebugPermission.ADMINS,
+                )
             )
-            assert result is True
+            sqlite_session.commit()
 
-            perm = PluginPermissionService.get_permission(tenant, session=sqlite_session)
-            assert perm is not None
-            assert perm.install_permission == TenantPluginInstallPermission.ADMINS
-            assert perm.debug_permission == TenantPluginDebugPermission.EVERYONE
-
-        def test_change_updates_existing_row(self, tenant: str, sqlite_session: Session) -> None:
-            PluginPermissionService.change_permission(
-                tenant,
-                TenantPluginInstallPermission.ADMINS,
-                TenantPluginDebugPermission.NOBODY,
-                session=sqlite_session,
-            )
-            PluginPermissionService.change_permission(
-                tenant,
-                TenantPluginInstallPermission.EVERYONE,
-                TenantPluginDebugPermission.ADMINS,
-                session=sqlite_session,
-            )
             perm = PluginPermissionService.get_permission(tenant, session=sqlite_session)
             assert perm is not None
             assert perm.install_permission == TenantPluginInstallPermission.EVERYONE
             assert perm.debug_permission == TenantPluginDebugPermission.ADMINS
-
-            count = sqlite_session.scalar(
-                select(func.count())
-                .select_from(TenantPluginPermission)
-                .where(TenantPluginPermission.tenant_id == tenant)
-            )
-            assert count == 1
 
     class TestPluginAutoUpgradeLifecycle:
         def test_get_returns_none_for_new_tenant(self, tenant: str, sqlite_session: Session) -> None:

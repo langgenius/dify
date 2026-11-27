@@ -3,10 +3,12 @@ from __future__ import annotations
 from uuid import uuid4
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import TenantPluginDebugPermission, TenantPluginInstallPermission, TenantPluginPermission
+from repositories.plugin_permission_repository import SQLAlchemyPluginPermissionRepository
 from services.plugin.plugin_permission_service import PluginPermissionService
+from services.plugin.plugin_permission_settings_service import PluginPermissionSettings
 
 
 def _tenant_id() -> str:
@@ -51,21 +53,27 @@ class TestGetPermission:
         assert result is None
 
 
-class TestChangePermission:
-    """Integration tests for PluginPermissionService.change_permission using testcontainers."""
+def _repository(session: Session) -> SQLAlchemyPluginPermissionRepository:
+    return SQLAlchemyPluginPermissionRepository(
+        session_factory=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+    )
+
+
+class TestSaveSettings:
+    """Integration tests for the plugin permission settings repository using testcontainers."""
 
     def test_creates_new_permission_when_not_exists(self, db_session_with_containers: Session) -> None:
         tenant_id = _tenant_id()
 
-        result = PluginPermissionService.change_permission(
+        _repository(db_session_with_containers).save_settings(
             tenant_id,
-            TenantPluginInstallPermission.EVERYONE,
-            TenantPluginDebugPermission.EVERYONE,
-            session=db_session_with_containers,
+            PluginPermissionSettings(
+                install_permission=TenantPluginInstallPermission.EVERYONE,
+                debug_permission=TenantPluginDebugPermission.EVERYONE,
+            ),
         )
 
         permission = _get_permission(db_session_with_containers, tenant_id)
-        assert result is True
         assert permission is not None
         assert permission.install_permission == TenantPluginInstallPermission.EVERYONE
         assert permission.debug_permission == TenantPluginDebugPermission.EVERYONE
@@ -80,17 +88,38 @@ class TestChangePermission:
         db_session_with_containers.add(existing)
         db_session_with_containers.commit()
 
-        result = PluginPermissionService.change_permission(
+        _repository(db_session_with_containers).save_settings(
             tenant_id,
-            TenantPluginInstallPermission.ADMINS,
-            TenantPluginDebugPermission.ADMINS,
-            session=db_session_with_containers,
+            PluginPermissionSettings(
+                install_permission=TenantPluginInstallPermission.ADMINS,
+                debug_permission=TenantPluginDebugPermission.ADMINS,
+            ),
         )
 
         permission = _get_permission(db_session_with_containers, tenant_id)
-        assert result is True
         assert permission is not None
         assert permission.id == existing.id
         assert permission.install_permission == TenantPluginInstallPermission.ADMINS
         assert permission.debug_permission == TenantPluginDebugPermission.ADMINS
+        assert _count_permissions(db_session_with_containers, tenant_id) == 1
+
+    def test_repeated_unchanged_settings_preserve_single_row(self, db_session_with_containers: Session) -> None:
+        tenant_id = _tenant_id()
+        repository = _repository(db_session_with_containers)
+        settings = PluginPermissionSettings(
+            install_permission=TenantPluginInstallPermission.ADMINS,
+            debug_permission=TenantPluginDebugPermission.EVERYONE,
+        )
+        repository.save_settings(tenant_id, settings)
+        stored = _get_permission(db_session_with_containers, tenant_id)
+        assert stored is not None
+        row_id = stored.id
+
+        repository.save_settings(tenant_id, settings)
+
+        permission = _get_permission(db_session_with_containers, tenant_id)
+        assert permission is not None
+        assert permission.id == row_id
+        assert permission.install_permission == settings.install_permission
+        assert permission.debug_permission == settings.debug_permission
         assert _count_permissions(db_session_with_containers, tenant_id) == 1

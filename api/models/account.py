@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from enums.account import TenantAccountRole
+from enums.plugin_permission import TenantPluginDebugPermission, TenantPluginInstallPermission
 
 from .base import TypeBase
 from .types import EnumText, LongText, StringUUID
@@ -287,18 +288,6 @@ class InvitationCode(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=sa.func.current_timestamp(), nullable=False, init=False
     )
-
-
-class TenantPluginInstallPermission(enum.StrEnum):
-    EVERYONE = "everyone"
-    ADMINS = "admins"
-    NOBODY = "noone"
-
-
-class TenantPluginDebugPermission(enum.StrEnum):
-    EVERYONE = "everyone"
-    ADMINS = "admins"
-    NOBODY = "noone"
 
 
 class TenantPluginPermission(TypeBase):

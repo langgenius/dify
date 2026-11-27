@@ -66,13 +66,10 @@ from models.account import (
     TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategy,
     TenantPluginAutoUpgradeStrategySetting,
-    TenantPluginDebugPermission,
-    TenantPluginInstallPermission,
 )
 from models.provider_ids import ToolProviderID
 from services.entities.model_provider_entities import ProviderEntityResponse
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
-from services.plugin.plugin_permission_service import PluginPermissionService
 from services.tools.tools_transform_service import ToolTransformService
 
 _PLUGIN_PACKAGE_UPLOAD_PARAMS = {
@@ -182,11 +179,6 @@ class ParserUninstall(BaseModel):
     preserve_credentials: bool = False
 
 
-class ParserPermissionChange(BaseModel):
-    install_permission: TenantPluginInstallPermission = TenantPluginInstallPermission.EVERYONE
-    debug_permission: TenantPluginDebugPermission = TenantPluginDebugPermission.EVERYONE
-
-
 class ParserDynamicOptions(BaseModel):
     plugin_id: str
     provider: str
@@ -203,11 +195,6 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     parameter: str
     credential_id: str
     credentials: Mapping[str, Any]
-
-
-class PluginPermissionSettingsPayload(BaseModel):
-    install_permission: TenantPluginInstallPermission = TenantPluginInstallPermission.EVERYONE
-    debug_permission: TenantPluginDebugPermission = TenantPluginDebugPermission.EVERYONE
 
 
 class PluginAutoUpgradeSettingsPayload(BaseModel):
@@ -396,11 +383,6 @@ class PluginTaskResponse(ResponseModel):
     task: PluginInstallTask
 
 
-class PluginPermissionResponse(ResponseModel):
-    install_permission: TenantPluginInstallPermission
-    debug_permission: TenantPluginDebugPermission
-
-
 class PluginDynamicOptionsResponse(ResponseModel):
     options: list[PluginParameterOption]
 
@@ -420,7 +402,6 @@ register_schema_models(
     PluginCategoryListQuery,
     PluginInstalledIdsQuery,
     PluginAutoUpgradeSettingsPayload,
-    PluginPermissionSettingsPayload,
     ParserLatest,
     ParserIcon,
     ParserAsset,
@@ -432,7 +413,6 @@ register_schema_models(
     ParserMarketplaceUpgrade,
     ParserGithubUpgrade,
     ParserUninstall,
-    ParserPermissionChange,
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
     ParserAutoUpgradeChange,
@@ -460,7 +440,6 @@ register_response_schema_models(
     PluginListResponse,
     PluginManifestResponse,
     PluginOperationSuccessResponse,
-    PluginPermissionResponse,
     PluginReadmeResponse,
     PluginTaskResponse,
     PluginTasksResponse,
@@ -470,11 +449,9 @@ register_response_schema_models(
 
 register_enum_models(
     console_ns,
-    TenantPluginDebugPermission,
     TenantPluginAutoUpgradeCategory,
     TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategySetting,
-    TenantPluginInstallPermission,
 )
 
 
@@ -1114,54 +1091,6 @@ class PluginUninstallApi(Resource):
             }
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
-
-
-@console_ns.route("/workspaces/current/plugin/permission/change")
-class PluginChangePermissionApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPermissionChange.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @model_validate(ParserPermissionChange)
-    def post(self, req_data: ParserPermissionChange, tenant_id: str, user: Account):
-        if not user.is_admin_or_owner:
-            raise Forbidden()
-
-        set_permission_result = PluginPermissionService.change_permission(
-            tenant_id, req_data.install_permission, req_data.debug_permission, session=db.session()
-        )
-        if not set_permission_result:
-            return jsonable_encoder({"success": False, "message": "Failed to set permission"})
-
-        return jsonable_encoder({"success": True})
-
-
-@console_ns.route("/workspaces/current/plugin/permission/fetch")
-class PluginFetchPermissionApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[PluginPermissionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str):
-        permission = PluginPermissionService.get_permission(tenant_id, session=db.session())
-        if not permission:
-            return jsonable_encoder(
-                {
-                    "install_permission": TenantPluginInstallPermission.ADMINS,
-                    "debug_permission": TenantPluginDebugPermission.EVERYONE,
-                }
-            )
-
-        return jsonable_encoder(
-            {
-                "install_permission": permission.install_permission,
-                "debug_permission": permission.debug_permission,
-            }
-        )
 
 
 @console_ns.route("/workspaces/current/plugin/parameters/dynamic-options")

@@ -3137,12 +3137,25 @@ export const parameters = {
   dynamicOptionsWithCredentials,
 }
 
+/**
+ * Replace the active workspace's plugin permission settings
+ *
+ * Preconditions: admission yielded an initialized account with an active
+ * workspace, and the payload validated.
+ * Postconditions: returns ``{"success": True}`` after the settings commit.
+ * Raises ``Forbidden`` before any write when ``Account.is_admin_or_owner``
+ * rejects the admitted account. As before, that property admits every role
+ * when RBAC is enabled.
+ */
 export const post47 = oc
   .route({
+    description:
+      'Preconditions: admission yielded an initialized account with an active\nworkspace, and the payload validated.\nPostconditions: returns ``{"success": True}`` after the settings commit.\nRaises ``Forbidden`` before any write when ``Account.is_admin_or_owner``\nrejects the admitted account. As before, that property admits every role\nwhen RBAC is enabled.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesCurrentPluginPermissionChange',
     path: '/workspaces/current/plugin/permission/change',
+    summary: "Replace the active workspace's plugin permission settings",
     tags: ['console'],
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginPermissionChangeBody }))
@@ -3152,12 +3165,21 @@ export const change2 = {
   post: post47,
 }
 
+/**
+ * Return the active workspace's effective plugin permission settings
+ *
+ * Postconditions: returns the stored settings, or install by admins and debug
+ * by everyone when the workspace has none. No state changes.
+ */
 export const get52 = oc
   .route({
+    description:
+      'Postconditions: returns the stored settings, or install by admins and debug\nby everyone when the workspace has none. No state changes.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentPluginPermissionFetch',
     path: '/workspaces/current/plugin/permission/fetch',
+    summary: "Return the active workspace's effective plugin permission settings",
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPluginPermissionFetchResponse)
