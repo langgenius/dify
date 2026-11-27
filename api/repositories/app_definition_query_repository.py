@@ -77,7 +77,7 @@ def load_app_parameter_config(app: App, *, session: Session) -> AppParameterConf
             return None
         return AppParameterConfig(
             features_dict=workflow.features_dict,
-            user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
+            user_input_form=workflow.user_input_form(to_old_structure=True),
         )
 
     app_model_config = _load_app_model_config(app, session=session)
@@ -329,7 +329,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                     default_language=default_language or "en-US",
                     parameters=AppParameterConfig(
                         features_dict=workflow.features_dict,
-                        user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
+                        user_input_form=workflow.user_input_form(to_old_structure=True),
                     ),
                     workflow_id=workflow.id,
                     requires_end_user_connections=requires_end_user_connections(workflow.graph_dict),

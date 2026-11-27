@@ -589,9 +589,11 @@ def test_publish_refusal_names_the_end_user_auth_mutual_exclusion(
     ctx = _app_context(sqlite_session)
     api = AppPublishApi()
 
+    endpoint_view: object = type(api).post
+    assert isinstance(endpoint_view, _EndpointView)
     with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
         with pytest.raises(expected) as exc:
-            cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
+            endpoint_view.__handler__(api, ctx, "app-1", body=PublishPayload())
 
     assert str(raised) in str(exc.value.description)
     assert exc.value.hint is not None

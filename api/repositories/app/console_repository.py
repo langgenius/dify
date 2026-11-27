@@ -95,7 +95,7 @@ from services.openapi.visibility import apply_openapi_gate
 
 logger = logging.getLogger(__name__)
 
-type ConsumerAppRow = tuple[App, str, datetime | None, datetime | None, datetime | None]
+type ConsumerAppRow = tuple[App, str | None, datetime | None, datetime | None, datetime | None]
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
@@ -177,12 +177,13 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 published_app_filter(),
             )
         )
-        # SQLAlchemy does not infer outer-join nullability or the Site code predicate.
-        return cast(sa.Select[ConsumerAppRow], stmt)
+        return stmt
 
     @staticmethod
     def _consumer_app(identity: ConsumerIdentity, row: Row[ConsumerAppRow], view: str) -> ConsumerApp:
         app, code, favorited_at, last_used, removed_at = row
+        if not code:
+            raise ValueError("A published consumer WebApp must have a site code.")
         timestamp = last_used if view == "recent" else favorited_at if view == "favorites" else None
         continuation = base64.urlsafe_b64encode(
             json.dumps(

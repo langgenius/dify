@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -107,12 +106,18 @@ def identity_flow(
     return signer, accounts
 
 
+def _passport_services() -> SimpleNamespace:
+    services: object = passport.application_services()
+    assert isinstance(services, SimpleNamespace)
+    return services
+
+
 def test_internal_account_passports_are_redacted_app_scoped_and_reuse_mapping(
     app: Flask,
     identity_flow: tuple[PassportService, WebAccounts],
 ) -> None:
     signer, accounts = identity_flow
-    services = cast(SimpleNamespace, passport.application_services())
+    services = _passport_services()
     login = signer.issue(webapp_login_claims())
     tokens: list[str] = []
     end_user_ids: list[str] = []
@@ -158,7 +163,7 @@ def test_public_passport_keeps_user_id_restoration_with_account_cookie_and_missi
     edition: DeploymentEdition,
 ) -> None:
     signer, _ = identity_flow
-    services = cast(SimpleNamespace, passport.application_services())
+    services = _passport_services()
     if not enabled:
         monkeypatch.setattr(services, "web_passport", services.reader_only_passport)
     apply_config_overrides(
@@ -196,7 +201,7 @@ def test_account_passport_requires_matching_webapp_cookie_after_issuance_rollbac
     login_account: str | None,
 ) -> None:
     signer, _ = identity_flow
-    services = cast(SimpleNamespace, passport.application_services())
+    services = _passport_services()
     initial_login = signer.issue(webapp_login_claims())
     original = services.web_passport.issue_for_account(app_code="app-a", access_token=initial_login).access_token
     monkeypatch.setattr(services, "web_passport", services.reader_only_passport)
@@ -224,7 +229,7 @@ def test_internal_account_issuance_does_not_bind_existing_guest(
     sqlite_session: Session,
 ) -> None:
     signer, _ = identity_flow
-    services = cast(SimpleNamespace, passport.application_services())
+    services = _passport_services()
     with app.test_request_context("/passport?user_id=legacy-session", headers={"X-App-Code": "app-a"}):
         guest = passport.PassportResource().get()["access_token"]
     guest_id = signer.verify(guest)["end_user_id"]
@@ -256,7 +261,7 @@ def test_account_passport_rejects_missing_or_invalid_webapp_cookie(
     app: Flask, identity_flow: tuple[PassportService, WebAccounts], credential: str
 ) -> None:
     signer, _ = identity_flow
-    services = cast(SimpleNamespace, passport.application_services())
+    services = _passport_services()
     login = signer.issue(webapp_login_claims())
     token = services.web_passport.issue_for_account(app_code="app-a", access_token=login).access_token
     console_login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
@@ -284,7 +289,7 @@ def test_console_session_cannot_override_matching_webapp_cookie(
     app: Flask, identity_flow: tuple[PassportService, WebAccounts]
 ) -> None:
     signer, _ = identity_flow
-    services = cast(SimpleNamespace, passport.application_services())
+    services = _passport_services()
     login = signer.issue(webapp_login_claims())
     token = services.web_passport.issue_for_account(app_code="app-a", access_token=login).access_token
     other_console = signer.issue({"sub": "Console API Passport", "user_id": str(uuid4()), "exp": 2_000_000_000})

@@ -430,7 +430,9 @@ def test_activation_starts_at_workspace_commit_and_retries_reuse_membership(
 
     signal.connect(observe)
     result = service.activate(account_id, name="First workspace")
-    cast(Mock, service._policies).is_workspace_creation_allowed.return_value = False
+    creation_allowed = service._policies.is_workspace_creation_allowed
+    assert isinstance(creation_allowed, Mock)
+    creation_allowed.return_value = False
     repeated = service.activate(account_id, name="Ignored retry name")
 
     assert result == repeated
@@ -541,7 +543,9 @@ def test_activation_policy_failure_rolls_back_without_starting_builder_lifecycle
         account = Account(name="User", email="user@example.com")
         session.add(account)
         account_id = account.id
-    cast(Mock, service._policies).is_workspace_creation_allowed.return_value = False
+    creation_allowed = service._policies.is_workspace_creation_allowed
+    assert isinstance(creation_allowed, Mock)
+    creation_allowed.return_value = False
 
     with pytest.raises(WorkSpaceNotAllowedCreateError):
         service.activate(account_id, name="Blocked")

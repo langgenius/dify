@@ -1,7 +1,7 @@
 """Adapt saved tool configuration and workspace credential runtime for Builder tests."""
 
-from collections.abc import Callable, Mapping
-from typing import Any
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Protocol
 from uuid import UUID
 
 from clients.plugin.auth import PluginCredentialAuthClient
@@ -13,7 +13,7 @@ from core.tools.entities.tool_entities import ToolInvokeFrom, ToolProviderType
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.provider_ids import ToolProviderID
-from services.credentials.query import CredentialQuery, ToolCredentialRecord
+from services.credentials.query import ToolCredentialRecord
 from services.workflow.tool_credential_validation import resolve_tool_credential_root
 from services.workflow_test_credentials import (
     BuilderScope,
@@ -92,11 +92,17 @@ class DraftTestCredentialPlanner:
         return tuple(roots[key] for key in sorted(roots))
 
 
+class BuilderToolCredentialQuery(Protocol):
+    """List tool credentials visible to the admitted Builder, without broadening that scope."""
+
+    def list_tools(self, *, workspace_id: str, provider: str, actor_id: str) -> Sequence[ToolCredentialRecord]: ...
+
+
 class WorkspaceTestCredentialGateway:
     def __init__(
         self,
         *,
-        queries: CredentialQuery,
+        queries: BuilderToolCredentialQuery,
         auth: PluginCredentialAuthClient,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     ) -> None:

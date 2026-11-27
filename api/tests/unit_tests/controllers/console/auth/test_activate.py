@@ -1,7 +1,6 @@
 """Transport-boundary tests for account invitation activation."""
 
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -129,7 +128,8 @@ class TestActivateCheckApi:
         app: Flask,
         activation_service: AccountActivationService,
     ) -> None:
-        check_mock = cast(MagicMock, activation_service.check)
+        check_mock = activation_service.check
+        assert isinstance(check_mock, MagicMock)
         check_mock.return_value = ActivationCheckResult(
             is_valid=True,
             data=ActivationCheckData(

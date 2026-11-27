@@ -5,7 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from dataclasses import field
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, cast, overload
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 from warnings import deprecated
 
@@ -539,7 +539,14 @@ class Workflow(TypeBase):
             for _, node_data in self.walk_nodes()
         )
 
+    @overload
+    def user_input_form(self, to_old_structure: Literal[True]) -> list[dict[str, Any]]: ...
+
+    @overload
+    def user_input_form(self, to_old_structure: bool = False) -> list[Any]: ...
+
     def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
+        """Read Start variables; legacy callers receive one single-key dictionary per variable."""
         # get start node from graph
         if not self.graph:
             return []

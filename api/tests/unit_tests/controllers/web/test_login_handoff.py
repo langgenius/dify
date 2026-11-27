@@ -4,7 +4,6 @@ from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit
 from uuid import uuid4
@@ -78,7 +77,8 @@ def handoff(
         raise AssertionError(command)
 
     commands.side_effect = execute
-    services = cast(SimpleNamespace, passport.application_services())
+    services: object = passport.application_services()
+    assert isinstance(services, SimpleNamespace)
     with sqlite_session_factory.begin() as session:
         session.add(make_account(account_id=ACCOUNT_ID, email="portal@example.net", status=AccountStatus.UNINITIALIZED))
     accounts = SQLAlchemyAccountRepository(sqlite_session_factory)

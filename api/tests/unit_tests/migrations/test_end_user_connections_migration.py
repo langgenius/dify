@@ -1,7 +1,7 @@
 import importlib.util
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 import pytest
@@ -32,6 +32,7 @@ TABLE_NAMES = {
 }
 
 
+@runtime_checkable
 class ConnectionMigration(Protocol):
     op: Operations
 
@@ -49,9 +50,9 @@ def load_migration(
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    migration = cast(ConnectionMigration, module)
-    migration.op = Operations(MigrationContext.configure(connection))
-    return migration
+    assert isinstance(module, ConnectionMigration)
+    module.op = Operations(MigrationContext.configure(connection))
+    return module
 
 
 @pytest.fixture
