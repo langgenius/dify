@@ -1,9 +1,10 @@
 import json
-from types import SimpleNamespace
+from dataclasses import replace
 
 import pytest
 
 from extensions import ext_application_services
+from extensions.ext_application_services import ApplicationServices
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -13,7 +14,9 @@ from tests.helpers.workflow_test_credentials import SCOPE, BuilderCredentialHarn
 
 
 @pytest.fixture
-def execution(monkeypatch: pytest.MonkeyPatch) -> tuple[App, Account, Workflow, BuilderCredentialHarness]:
+def execution(
+    monkeypatch: pytest.MonkeyPatch, application_service_graph: ApplicationServices
+) -> tuple[App, Account, Workflow, BuilderCredentialHarness]:
     graph = {"nodes": [tool_node("a")]}
     app = App(id=SCOPE.app_id, tenant_id=SCOPE.tenant_id, name="Test", mode=AppMode.WORKFLOW)
     user = Account(name="Builder", email="builder@example.com")
@@ -31,7 +34,7 @@ def execution(monkeypatch: pytest.MonkeyPatch) -> tuple[App, Account, Workflow, 
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(workflow_test_credentials=harness.service),
+        lambda: replace(application_service_graph, workflow_test_credentials=harness.service),
     )
     return app, user, workflow, harness
 

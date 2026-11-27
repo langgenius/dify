@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import SimpleNamespace
 from typing import Never
 from unittest.mock import MagicMock
@@ -44,6 +44,7 @@ from controllers.console.error import (
 from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions import ext_login
+from extensions.ext_application_services import ApplicationServices
 from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from models.account import Account, AccountStatus
@@ -550,6 +551,7 @@ def test_logout_revokes_workspace_less_account_session_even_with_expired_access(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     expired_access: bool,
+    application_service_graph: ApplicationServices,
 ) -> None:
     config_overrides(
         SECRET_KEY="account-session-test-key-with-32-bytes",
@@ -598,9 +600,10 @@ def test_logout_revokes_workspace_less_account_session_even_with_expired_access(
     ext_login.bind_account_loader(app, identity.load_user)
     ext_login.bind_account_only_loader(app, identity.load_account)
     monkeypatch.setattr(ext_login.session_factory, "create_session", sqlite_session_factory)
-    monkeypatch.setattr(
-        login, "application_services", lambda: SimpleNamespace(accounts=SimpleNamespace(authentication=authentication))
+    services = replace(
+        application_service_graph, accounts=replace(application_service_graph.accounts, authentication=authentication)
     )
+    monkeypatch.setitem(app.extensions, "application_services", services)
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
     assert identity.load_user(account.id) is None
     loaded = identity.load_account(account.id)

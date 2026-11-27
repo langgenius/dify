@@ -1,7 +1,6 @@
 from collections.abc import Generator
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import Never
 from unittest import mock
 from unittest.mock import MagicMock
@@ -446,7 +445,9 @@ class TestWrapsCases:
         assert calls == []
 
     @staticmethod
-    def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -> None:
+    def test_decode_jwt_token_uses_shared_session_factory(
+        sqlite_session: Session, application_service_graph: ApplicationServices
+    ) -> None:
         from controllers.web import wraps
         from models.enums import EndUserType
         from models.model import AppMode, CustomizeTokenStrategy, Site
@@ -483,10 +484,9 @@ class TestWrapsCases:
         sqlite_session.add_all((site, end_user))
         sqlite_session.commit()
 
+        app = Flask(__name__)
+        app.extensions["application_services"] = replace(application_service_graph, web_identity=web_identities())
         with (
-            mock.patch.object(
-                wraps, "application_services", return_value=SimpleNamespace(web_identity=web_identities())
-            ),
             mock.patch.object(wraps, "extract_webapp_passport", return_value="jwt-token"),
             mock.patch.object(wraps, "PassportService") as mock_passport_service,
             mock.patch.object(
@@ -502,7 +502,7 @@ class TestWrapsCases:
                 "end_user_id": end_user.id,
             }
 
-            with Flask(__name__).test_request_context("/", headers={"X-App-Code": "app-code"}):
+            with app.test_request_context("/", headers={"X-App-Code": "app-code"}):
                 result_app, result_end_user = wraps.decode_jwt_token()
 
         assert result_app.id == app_model.id
@@ -511,7 +511,10 @@ class TestWrapsCases:
     @staticmethod
     @pytest.mark.parametrize("missing", ["app", "site", "code", "disabled", "unpublished", "end_user", "resource"])
     def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
-        sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, missing: str
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        missing: str,
+        application_service_graph: ApplicationServices,
     ) -> None:
         from controllers.common.app_access_error import register_app_access_error_metadata
         from controllers.web import wraps
@@ -573,10 +576,8 @@ class TestWrapsCases:
 
         api.add_resource(ProtectedResource, "/chat-messages")
         app.register_blueprint(bp)
+        app.extensions["application_services"] = replace(application_service_graph, web_identity=web_identities())
         with (
-            mock.patch.object(
-                wraps, "application_services", return_value=SimpleNamespace(web_identity=web_identities())
-            ),
             mock.patch.object(wraps, "extract_webapp_passport", return_value="fixture-passport"),
             mock.patch.object(wraps, "PassportService") as passport,
             mock.patch.object(wraps.SystemFeatureService, "is_webapp_auth_enabled", return_value=False),

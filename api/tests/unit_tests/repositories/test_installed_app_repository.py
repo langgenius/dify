@@ -305,7 +305,7 @@ def test_candidate_and_detail_publication_filters_preserve_mode_and_reference_ru
     repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
 
     candidates = repository.get_candidates(
-        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=None, name=None, mode="all"
+        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=None, name=None, mode=InstalledAppListMode.ALL
     )
     detail = repository.get_published(installed_app=reference)
 
@@ -334,7 +334,7 @@ def test_candidates_return_detached_nested_data_and_stored_installation_owner(
     repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
 
     result = repository.get_candidates(
-        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=None, name=None, mode="all"
+        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=None, name=None, mode=InstalledAppListMode.ALL
     )
 
     assert result == (
@@ -389,21 +389,30 @@ def test_candidates_order_and_cursor_cover_pin_groups_ties_and_null_dates(
     repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
 
     all_rows = repository.get_candidates(
-        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=20, app_id=None, name=None, mode="all"
+        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=20, app_id=None, name=None, mode=InstalledAppListMode.ALL
     )
 
     assert [row.id for row in all_rows] == ordered
     for index, row in enumerate(all_rows):
         after = repository.get_candidates(
-            tenant_id=_VIEWER_TENANT_ID, cursor=row.cursor(), limit=20, app_id=None, name=None, mode="all"
+            tenant_id=_VIEWER_TENANT_ID,
+            cursor=row.cursor(),
+            limit=20,
+            app_id=None,
+            name=None,
+            mode=InstalledAppListMode.ALL,
         )
         assert [candidate.id for candidate in after] == ordered[index + 1 :]
     assert (
-        repository.get_candidates(tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=0, app_id=None, name=None, mode="all")
+        repository.get_candidates(
+            tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=0, app_id=None, name=None, mode=InstalledAppListMode.ALL
+        )
         == ()
     )
     assert (
-        repository.get_candidates(tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=2, app_id=None, name=None, mode="all")
+        repository.get_candidates(
+            tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=2, app_id=None, name=None, mode=InstalledAppListMode.ALL
+        )
         == all_rows[:2]
     )
 
@@ -435,7 +444,13 @@ def test_candidates_sort_by_app_timestamps_and_page_through_equal_timestamps(
     expected = [installation_ids[number] for number in expected_numbers]
 
     rows = repository.get_candidates(
-        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=20, app_id=None, name=None, mode="all", sort_by=sort_by
+        tenant_id=_VIEWER_TENANT_ID,
+        cursor=None,
+        limit=20,
+        app_id=None,
+        name=None,
+        mode=InstalledAppListMode.ALL,
+        sort_by=sort_by,
     )
 
     assert [row.id for row in rows] == expected
@@ -444,7 +459,13 @@ def test_candidates_sort_by_app_timestamps_and_page_through_equal_timestamps(
         assert isinstance(cursor, InstalledAppSortCursor)
         assert cursor.sort_by == sort_by
         remaining = repository.get_candidates(
-            tenant_id=_VIEWER_TENANT_ID, cursor=cursor, limit=20, app_id=None, name=None, mode="all", sort_by=sort_by
+            tenant_id=_VIEWER_TENANT_ID,
+            cursor=cursor,
+            limit=20,
+            app_id=None,
+            name=None,
+            mode=InstalledAppListMode.ALL,
+            sort_by=sort_by,
         )
         assert [candidate.id for candidate in remaining] == expected[index + 1 :]
 
@@ -468,7 +489,13 @@ def test_candidates_order_compiles_without_nulls_last_for_every_dialect(
         else InstalledAppSortCursor(sort_by=sort_by, timestamp=_USED_AT, installed_app_id=str(uuid4()))
     )
     repository.get_candidates(
-        tenant_id=_VIEWER_TENANT_ID, cursor=cursor, limit=20, app_id=None, name=None, mode="all", sort_by=sort_by
+        tenant_id=_VIEWER_TENANT_ID,
+        cursor=cursor,
+        limit=20,
+        app_id=None,
+        name=None,
+        mode=InstalledAppListMode.ALL,
+        sort_by=sort_by,
     )
 
     assert len(statements) == 1
@@ -491,40 +518,58 @@ def test_candidates_filter_literal_case_insensitive_name_and_app_with_workspace_
     repository = SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory)
 
     candidates = repository.get_candidates(
-        tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=matching.id, name=search, mode="completion"
+        tenant_id=_VIEWER_TENANT_ID,
+        cursor=None,
+        limit=10,
+        app_id=matching.id,
+        name=search,
+        mode=InstalledAppListMode.COMPLETION,
     )
 
     assert [row.app.id for row in candidates] == [matching.id]
     if search != "literal":
         by_name = repository.get_candidates(
-            tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=None, name=search, mode="completion"
+            tenant_id=_VIEWER_TENANT_ID,
+            cursor=None,
+            limit=10,
+            app_id=None,
+            name=search,
+            mode=InstalledAppListMode.COMPLETION,
         )
         assert [row.app.id for row in by_name] == [matching.id]
     assert (
         len(
             repository.get_candidates(
-                tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id="", name="  ", mode="all"
+                tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id="", name="  ", mode=InstalledAppListMode.ALL
             )
         )
         == 2
     )
     assert (
         repository.get_candidates(
-            tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=foreign.id, name=None, mode="completion"
+            tenant_id=_VIEWER_TENANT_ID,
+            cursor=None,
+            limit=10,
+            app_id=foreign.id,
+            name=None,
+            mode=InstalledAppListMode.COMPLETION,
         )
         == ()
     )
     assert (
         repository.get_candidates(
-            tenant_id=_VIEWER_TENANT_ID, cursor=None, limit=10, app_id=matching.id, name=search, mode="workflow"
+            tenant_id=_VIEWER_TENANT_ID,
+            cursor=None,
+            limit=10,
+            app_id=matching.id,
+            name=search,
+            mode=InstalledAppListMode.WORKFLOW,
         )
         == ()
     )
 
 
-@pytest.mark.parametrize(
-    "mode", ["all", "completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel"]
-)
+@pytest.mark.parametrize("mode", list(InstalledAppListMode))
 def test_candidates_filter_exact_mode_without_relaxing_publication_or_workspace_scope(
     sqlite_session_factory: sessionmaker[Session], mode: InstalledAppListMode
 ) -> None:

@@ -2,7 +2,6 @@ import json
 from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -15,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.end_user_connections import ConnectionCredentialStatus
 from controllers.web import bp, connections, wraps
 from extensions import ext_application_services
+from extensions.ext_application_services import ApplicationServices
 from models.end_user_connection import EndUserConnection
 from models.enums import EndUserType
 from models.model import App, AppMode, Conversation, EndUser
@@ -25,9 +25,14 @@ from tests.helpers.end_user_oauth import make_oauth_harness
 
 
 @pytest.fixture
-def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> ConversationHarness:
+def harness(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
+) -> ConversationHarness:
     harness = make_conversation_harness(make_oauth_harness(sqlite_session_factory, monkeypatch))
-    services = SimpleNamespace(
+    services = replace(
+        application_service_graph,
         end_user_connection_execution=harness.execution,
         connection_selections=harness.service,
         end_user_connections=harness.oauth.base.service,

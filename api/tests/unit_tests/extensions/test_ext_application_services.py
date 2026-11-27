@@ -129,6 +129,7 @@ from services.installed_app_access_service import (
 )
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
+from services.installed_app_service import InstalledAppListMode
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
@@ -1848,7 +1849,7 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
             limit=1,
             app_id=None,
             name=None,
-            mode="all",
+            mode=InstalledAppListMode.ALL,
         )
         assert page.editable is True
         assert page.has_more is False
@@ -2197,11 +2198,11 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
     monkeypatch.setattr(
         EnterpriseService.WebAppAuth,
         "get_app_access_mode_by_id",
-        MagicMock(return_value=WebAppSettings(accessMode="public")),
+        lambda *_args, **_kwargs: WebAppSettings(accessMode="public"),
     )
     account = Account(name="Consumer", email="consumer@example.com")
     sqlite_session.add(account)
-    app_model = App(tenant_id=str(uuid4()), name="Rollout", mode="chat", enable_site=True, enable_api=False)
+    app_model = App(tenant_id=str(uuid4()), name="Rollout", mode=AppMode.CHAT, enable_site=True, enable_api=False)
     sqlite_session.add(app_model)
     sqlite_session.flush()
     config = AppModelConfig(app_id=app_model.id)

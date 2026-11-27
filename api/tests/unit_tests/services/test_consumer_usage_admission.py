@@ -1,7 +1,7 @@
 """Usage writes follow accepted interactive execution requests, not worker completion."""
 
-from types import SimpleNamespace
-from unittest.mock import Mock
+from dataclasses import replace
+from typing import Never
 
 import pytest
 import sqlalchemy as sa
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions import ext_application_services
+from extensions.ext_application_services import ApplicationServices
 from models.account import Account
 from models.account_webapp import AccountWebApp
 from models.model import App, AppMode, EndUser
@@ -26,14 +27,14 @@ def test_only_accepted_account_browser_webapp_executions_record_usage(
     mode: AppMode,
     source: InvokeFrom,
     actor: str,
+    application_service_graph: ApplicationServices,
 ) -> None:
     harness = make_consumer_harness(sqlite_session_factory, monkeypatch)
     base = harness.oauth.base
     accepted = object()
-    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", Mock(return_value=accepted))
-    monkeypatch.setattr(
-        ext_application_services, "application_services", lambda: SimpleNamespace(consumer=harness.service)
-    )
+    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", lambda *_args, **_kwargs: accepted)
+    services = replace(application_service_graph, consumer=harness.service)
+    monkeypatch.setattr(ext_application_services, "application_services", lambda: services)
     with base.sessions.begin() as session:
         session.execute(sa.update(App).where(App.id == base.context.app_id).values(mode=mode))
     with base.sessions() as session:
@@ -57,14 +58,19 @@ def test_only_accepted_account_browser_webapp_executions_record_usage(
 
 
 def test_rejected_executions_do_not_record_usage(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
 ) -> None:
     harness = make_consumer_harness(sqlite_session_factory, monkeypatch)
     base = harness.oauth.base
-    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", Mock(side_effect=ValueError("Rejected execution")))
-    monkeypatch.setattr(
-        ext_application_services, "application_services", lambda: SimpleNamespace(consumer=harness.service)
-    )
+
+    def reject(*_args: object, **_kwargs: object) -> Never:
+        raise ValueError("Rejected execution")
+
+    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", reject)
+    services = replace(application_service_graph, consumer=harness.service)
+    monkeypatch.setattr(ext_application_services, "application_services", lambda: services)
     with base.sessions() as session:
         app = session.get(App, base.context.app_id)
         user = session.get(EndUser, base.context.end_user_id)
@@ -79,15 +85,19 @@ def test_preference_write_failure_does_not_fail_an_accepted_execution(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
+    application_service_graph: ApplicationServices,
 ) -> None:
     harness = make_consumer_harness(sqlite_session_factory, monkeypatch)
     base = harness.oauth.base
     accepted = object()
-    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", Mock(return_value=accepted))
-    monkeypatch.setattr(
-        ext_application_services, "application_services", lambda: SimpleNamespace(consumer=harness.service)
-    )
-    monkeypatch.setattr(harness.service, "record_usage", Mock(side_effect=RuntimeError("Storage unavailable")))
+    monkeypatch.setattr(AppGenerateService, "_run_with_guardrails", lambda *_args, **_kwargs: accepted)
+    services = replace(application_service_graph, consumer=harness.service)
+    monkeypatch.setattr(ext_application_services, "application_services", lambda: services)
+
+    def fail_to_record(*_args: object, **_kwargs: object) -> Never:
+        raise RuntimeError("Storage unavailable")
+
+    monkeypatch.setattr(harness.service, "record_usage", fail_to_record)
     with base.sessions() as session:
         app = session.get(App, base.context.app_id)
         user = session.get(EndUser, base.context.end_user_id)

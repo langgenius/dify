@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from types import SimpleNamespace
 from typing import NoReturn
 from urllib.parse import parse_qs, urlencode, urlsplit
 
@@ -13,6 +12,7 @@ from controllers.console import wraps as console_wraps
 from controllers.console.auth import oauth as oauth_controller
 from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from libs.oauth import AccountOAuthState, decode_account_oauth_state, encode_account_oauth_state, encode_oauth_state
 from services.account_errors import (
     InvalidOAuthProviderError,
@@ -73,14 +73,20 @@ def _oauth_admission(
     )
 
 
+@pytest.fixture(autouse=True)
+def _oauth_application_services(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, application_service_graph: ApplicationServices
+) -> None:
+    monkeypatch.setitem(app.extensions, "application_services", application_service_graph)
+
+
 def _install_service(monkeypatch: pytest.MonkeyPatch, service: FakeOAuthService) -> None:
-    services = SimpleNamespace(
-        accounts=SimpleNamespace(oauth=service),
-        web_login_handoff=SimpleNamespace(
-            personal_session=lambda _access_token: WebLoginSession("personal-login", 2000000000)
-        ),
+    services = oauth_controller.application_services()
+    monkeypatch.setattr(services.accounts.oauth, "start_authorization", service.start_authorization)
+    monkeypatch.setattr(services.accounts.oauth, "complete_authorization", service.complete_authorization)
+    monkeypatch.setattr(
+        services.web_login_handoff, "personal_session", lambda _token: WebLoginSession("personal-login", 2000000000)
     )
-    monkeypatch.setattr(oauth_controller, "application_services", lambda: services)
 
 
 def test_login_parses_input_and_delegates_to_application_service(

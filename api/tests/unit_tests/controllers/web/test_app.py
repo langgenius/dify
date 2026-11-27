@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
+from dataclasses import replace
 from importlib import import_module
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
@@ -623,13 +623,19 @@ def asset_harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: py
 
 
 @pytest.fixture
-def asset_reader() -> MagicMock:
-    return MagicMock(return_value=b"\x89PNG\r\n\x1a\n\x00\xff")
+def asset_reader() -> Iterator[MagicMock]:
+    from core.plugin.plugin_service import PluginService
+
+    with patch.object(PluginService, "extract_asset", return_value=b"\x89PNG\r\n\x1a\n\x00\xff") as read:
+        yield read
 
 
 @pytest.fixture
 def asset_client(
-    asset_harness: OAuthHarness, asset_reader: MagicMock, monkeypatch: pytest.MonkeyPatch
+    asset_harness: OAuthHarness,
+    asset_reader: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
 ) -> Iterator[FlaskClient]:
     def identity() -> tuple[App, EndUser]:
         with asset_harness.base.sessions() as session:
@@ -650,8 +656,8 @@ def asset_client(
         ),
     )
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
-    monkeypatch.setattr(app_controller, "application_services", lambda: SimpleNamespace(app_definitions=definitions))
     app = Flask(__name__)
+    app.extensions["application_services"] = replace(application_service_graph, app_definitions=definitions)
     app.config["TESTING"] = True
     app.register_blueprint(bp)
     with app.test_client() as asset_client:

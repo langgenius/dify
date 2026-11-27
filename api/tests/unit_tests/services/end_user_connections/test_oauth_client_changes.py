@@ -3,7 +3,6 @@
 import json
 from collections.abc import Mapping
 from dataclasses import replace
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -42,7 +41,9 @@ class ClientCipher:
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:
     harness = make_oauth_harness(sqlite_session_factory, monkeypatch)
-    monkeypatch.setattr(builtin_tools_manage_service, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    monkeypatch.setattr(
+        type(builtin_tools_manage_service.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"])
+    )
     monkeypatch.setattr(
         builtin_tools_manage_service.ToolManager, "get_builtin_provider", lambda *_args: harness.providers.controller
     )
@@ -266,7 +267,6 @@ def test_platform_client_rotation_disconnects_associated_grants_across_tenants(
     save_choices(harness, [first.id])
     workspace_revision = harness.base.connection_revision
     platform_revision = harness.base.service.get_connection_revision(harness.base.context, first.id).connection_revision
-    monkeypatch.setattr(plugin_commands, "db", SimpleNamespace(engine=harness.base.sessions.kw["bind"]))
     monkeypatch.setattr(plugin_commands, "encrypt_system_params", json.dumps)
     monkeypatch.setattr(plugin_commands, "decrypt_system_params", json.loads)
     result = CliRunner().invoke(

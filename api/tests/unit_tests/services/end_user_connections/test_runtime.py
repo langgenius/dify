@@ -2,7 +2,6 @@ import json
 from collections.abc import Mapping
 from dataclasses import replace
 from datetime import datetime
-from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -21,6 +20,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.system_encryption import encrypt_system_params
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from extensions import ext_application_services
+from extensions.ext_application_services import ApplicationServices
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.exc import ToolRuntimeResolutionError
 from graphon.runtime import VariablePool
@@ -38,7 +38,11 @@ from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
 
 @pytest.fixture
-def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:
+def harness(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
+) -> OAuthHarness:
     harness = make_oauth_harness(sqlite_session_factory, monkeypatch)
     service = ConnectionRuntimeService(
         store=harness.base.repository, checks=harness.base.service, cipher=harness.base.cipher
@@ -47,7 +51,9 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: harness.providers.controller)
     monkeypatch.setattr(adapters, "PluginApiKeyCredentialGateway", lambda **_kwargs: harness.providers)
     monkeypatch.setattr(
-        ext_application_services, "application_services", lambda: SimpleNamespace(end_user_connection_runtime=service)
+        ext_application_services,
+        "application_services",
+        lambda: replace(application_service_graph, end_user_connection_runtime=service),
     )
     return harness
 

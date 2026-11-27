@@ -1,8 +1,8 @@
 import json
 from collections.abc import Mapping
 from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -21,6 +21,7 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+from extensions.ext_application_services import ApplicationServices
 from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import ConversationFromSource
 from models.enums import InvokeFrom as ConversationInvokeFrom
@@ -359,14 +360,18 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
 
 
 def test_entry_ignores_client_authority_fields(
-    harness: OAuthHarness, service: ConnectionExecutionService, monkeypatch: pytest.MonkeyPatch
+    harness: OAuthHarness,
+    service: ConnectionExecutionService,
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
 ) -> None:
     from extensions import ext_application_services
 
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(
+        lambda: replace(
+            application_service_graph,
             end_user_connection_execution=service,
             connection_selections=make_selection_service(harness),
         ),
@@ -400,14 +405,18 @@ def test_entry_ignores_client_authority_fields(
 @pytest.mark.parametrize("pin", ["matching", "missing", "stale"])
 @pytest.mark.parametrize("selection", ["omitted", "empty", "unused", "unused-null"])
 def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
-    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, pin: str, selection: str
+    harness: OAuthHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    pin: str,
+    selection: str,
+    application_service_graph: ApplicationServices,
 ) -> None:
     from extensions import ext_application_services
 
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(connection_selections=make_selection_service(harness)),
+        lambda: replace(application_service_graph, connection_selections=make_selection_service(harness)),
     )
     with harness.base.sessions.begin() as session:
         app = session.get(App, harness.base.context.app_id)

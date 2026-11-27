@@ -1,7 +1,6 @@
 import json
 from copy import deepcopy
 from dataclasses import replace
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -14,6 +13,7 @@ from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedA
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from extensions import ext_application_services
+from extensions.ext_application_services import ApplicationServices
 from models.end_user_connection import EndUserConnection, SessionConnection
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow
@@ -30,12 +30,20 @@ from tests.helpers.end_user_oauth import make_oauth_harness
 
 
 @pytest.fixture
-def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> ConversationHarness:
+def harness(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
+) -> ConversationHarness:
     harness = make_conversation_harness(make_oauth_harness(sqlite_session_factory, monkeypatch))
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(end_user_connection_execution=harness.execution, connection_selections=harness.service),
+        lambda: replace(
+            application_service_graph,
+            end_user_connection_execution=harness.execution,
+            connection_selections=harness.service,
+        ),
     )
     return harness
 

@@ -11,6 +11,7 @@ from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web.error import WebAppAuthRequiredError
 from controllers.web.passport import PassportQuery, PassportResource
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from services.entities.passport_entities import WebPassportRequest, WebPassportResult
 from services.web_passport_service import (
     WebPassportAuthenticationRequiredError,
@@ -96,14 +97,13 @@ def test_passport_resource_translates_application_errors(
     service_error: Exception,
     http_error: type[Exception],
     app: Flask,
+    application_service_graph: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = MagicMock()
-    service.issue.side_effect = service_error
-    services = SimpleNamespace(web_passport=service)
-
+    monkeypatch.setitem(app.extensions, "application_services", application_service_graph)
     with (
         app.test_request_context("/passport", headers={"X-App-Code": "app-code"}),
-        patch("controllers.web.passport.application_services", return_value=services),
+        patch.object(application_service_graph.web_passport, "issue", side_effect=service_error),
         pytest.raises(http_error),
     ):
         PassportResource().get()

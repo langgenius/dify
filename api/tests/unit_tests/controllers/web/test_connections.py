@@ -1,6 +1,5 @@
 from collections.abc import Callable, Iterator
 from dataclasses import replace
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -13,6 +12,7 @@ from clients.plugin.auth_entities import CredentialCheckResult
 from controllers.web import bp, connections, wraps
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.entities.common_entities import I18nObject
+from extensions.ext_application_services import ApplicationServices
 from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
 from tests.helpers.end_user_api_key import ConnectionHarness, TestProviders, make_harness
@@ -24,7 +24,9 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> ConnectionHarness:
 
 
 @pytest.fixture
-def client(harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[FlaskClient]:
+def client(
+    harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch, application_service_graph: ApplicationServices
+) -> Iterator[FlaskClient]:
     def identity() -> tuple[App, EndUser]:
         with harness.sessions() as session:
             app = session.get(App, harness.context.app_id)
@@ -35,7 +37,9 @@ def client(harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch) -> Itera
 
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
     monkeypatch.setattr(
-        connections, "application_services", lambda: SimpleNamespace(end_user_connections=harness.service)
+        connections,
+        "application_services",
+        lambda: replace(application_service_graph, end_user_connections=harness.service),
     )
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)

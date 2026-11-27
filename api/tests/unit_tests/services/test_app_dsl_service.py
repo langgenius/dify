@@ -1176,13 +1176,13 @@ def test_workflow_export_filters_test_credentials_but_keeps_personal_requirement
             "edges": [],
         }
     )
-    monkeypatch.setattr(AppDslService, "_load_export_workflow", Mock(return_value=workflow))
-    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", Mock(return_value=[]))
+    monkeypatch.setattr(AppDslService, "_load_export_workflow", lambda *_args, **_kwargs: workflow)
+    monkeypatch.setattr(AppDslService, "_extract_dependencies_from_workflow", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(
         "services.app_dsl_service.AgentDslService.export_workflow_packages",
         lambda _self, **kwargs: (kwargs["graph"], {}),
     )
-    exported: dict = {}
+    exported: dict[str, object] = {}
 
     AppDslService._append_workflow_export_data(
         export_data=exported,
@@ -1191,11 +1191,13 @@ def test_workflow_export_filters_test_credentials_but_keeps_personal_requirement
         session=sqlite_session,
     )
 
-    exported_data = exported["workflow"]["graph"]["nodes"][0]["data"]
+    workflow_export = exported["workflow"]
+    assert isinstance(workflow_export, dict)
+    exported_data = workflow_export["graph"]["nodes"][0]["data"]
     assert ("test_credential_id" in exported_data) is include_secret
     assert exported_data["end_user_auth"] == node_data["end_user_auth"]
     assert exported_data["credential_source"] == "end_user"
-    assert exported["workflow"]["graph"]["nodes"][1]["data"] == reuse_data
+    assert workflow_export["graph"]["nodes"][1]["data"] == reuse_data
     assert workflow.graph_dict["nodes"][0]["data"] == node_data
 
 
@@ -1210,10 +1212,10 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
     package = AgentPackage.model_validate({"metadata": {"name": app.name}, "soul": {}})
     monkeypatch.setattr(
         "services.app_dsl_service.AgentDslService.export_agent_app",
-        Mock(return_value=("agent_1", {"agent_1": package})),
+        lambda *_args, **_kwargs: ("agent_1", {"agent_1": package}),
     )
     monkeypatch.setattr(
-        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", Mock(return_value=[])
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", lambda *_args, **_kwargs: []
     )
 
     def append_workflow(*, export_data: dict[str, object], **_kwargs: object) -> list[str]:

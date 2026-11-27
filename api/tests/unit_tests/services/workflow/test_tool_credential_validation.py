@@ -306,18 +306,17 @@ def test_alias_compatibility_preserves_provider_boundaries(overrides: dict[str, 
 
 
 def test_alias_comparison_does_not_load_remote_providers(monkeypatch: pytest.MonkeyPatch) -> None:
-    from unittest.mock import Mock
-
     from core.tools.tool_manager import ToolManager
 
-    remote_lookup = Mock(side_effect=AssertionError("Static checks must not fetch plugin metadata"))
-    monkeypatch.setattr(ToolManager, "get_plugin_provider", remote_lookup)
+    def unexpected_lookup(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Static checks must not fetch plugin metadata.")
+
+    monkeypatch.setattr(ToolManager, "get_plugin_provider", unexpected_lookup)
     target = tool_node("target", provider_id="jina")
     reuse = reuse_node("reuse", "target")
     reuse["data"]["provider_id"] = "langgenius/jina_tool/jina"
 
     assert check_tool_credentials({"nodes": [target, reuse]}, complete=True) == []
-    remote_lookup.assert_not_called()
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,6 @@
 from collections.abc import Callable, Iterator
 from dataclasses import replace
 from datetime import datetime
-from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -17,6 +16,7 @@ from controllers.common import end_user_connection_oauth
 from controllers.console import bp as console_bp
 from controllers.web import bp, connection_oauth, connection_preflight, connections, wraps
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
 from models.tools import ToolOAuthTenantClient
@@ -32,7 +32,9 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
 
 
 @pytest.fixture
-def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[FlaskClient]:
+def client(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, application_service_graph: ApplicationServices
+) -> Iterator[FlaskClient]:
     def identity() -> tuple[App, EndUser]:
         with harness.base.sessions() as session:
             app = session.get(App, harness.base.context.app_id)
@@ -42,7 +44,8 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
             return app, user
 
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
-    services = SimpleNamespace(
+    services = replace(
+        application_service_graph,
         end_user_connection_oauth=harness.service,
         end_user_connections=harness.base.service,
         end_user_connection_preflight=ConnectionPreflightService(

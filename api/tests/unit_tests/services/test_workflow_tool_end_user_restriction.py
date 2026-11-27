@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -8,6 +7,7 @@ from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_database import db
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
@@ -78,7 +78,7 @@ def test_convert_published_workflow(
     source: str | None, sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _app_and_workflow(sqlite_session, source)
-    monkeypatch.setattr("services.tools.workflow_tools_manage_service.db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
     if source == "end_user":
         with pytest.raises(WorkflowToolEndUserAuthError, match="Node node-1"):
             WorkflowToolManageService.create_workflow_tool(
@@ -150,7 +150,7 @@ def test_update_tool_cannot_pin_legacy_published_personal_credentials(
     )
     sqlite_session.add(provider)
     sqlite_session.commit()
-    monkeypatch.setattr("services.tools.workflow_tools_manage_service.db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
     with pytest.raises(WorkflowToolEndUserAuthError, match="Node node-1"):
         WorkflowToolManageService.update_workflow_tool("user", "tenant", provider.id, "tool", "Changed", {}, "", [])
     sqlite_session.refresh(provider)
@@ -176,8 +176,7 @@ def test_tool_writes_with_single_connection_pool(
     _app_and_workflow(sqlite_session, "workspace")
     engine = create_engine(sqlite_engine.url, poolclass=QueuePool, pool_size=1, max_overflow=0, pool_timeout=0.1)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
-    monkeypatch.setattr("services.tools.workflow_tools_manage_service.db", SimpleNamespace(engine=engine))
-    monkeypatch.setattr("core.tools.tool_label_manager.db", SimpleNamespace(engine=engine))
+    monkeypatch.setattr(type(db), "engine", property(lambda _: engine))
     monkeypatch.setattr("core.db.session_factory._session_maker", factory)
     try:
         if update:

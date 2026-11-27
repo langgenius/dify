@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 from flask import Flask
 
@@ -9,6 +11,7 @@ from controllers.console.app.workflow import (
     IterationNodeRunPayload,
     LoopNodeRunPayload,
 )
+from extensions.ext_application_services import ApplicationServices
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.workflow_test_credentials import SCOPE, BuilderCredentialHarness, tool_node
 
@@ -51,9 +54,9 @@ def test_run_payloads_keep_the_existing_inputs_without_a_draft_hash() -> None:
         assert "draft_hash" not in model.model_fields
 
 
-def test_full_preflight_requires_no_body_and_reports_unready_nodes(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    from types import SimpleNamespace
-
+def test_full_preflight_requires_no_body_and_reports_unready_nodes(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, application_service_graph: ApplicationServices
+) -> None:
     from werkzeug.local import LocalProxy
 
     from controllers.console import wraps
@@ -80,11 +83,11 @@ def test_full_preflight_requires_no_body_and_reports_unready_nodes(app: Flask, m
     monkeypatch.setattr(login, "check_csrf_token", lambda *_: None)
     monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (account, SCOPE.tenant_id))
     monkeypatch.setattr(controller, "current_account_with_tenant", lambda: (account, SCOPE.tenant_id))
-    monkeypatch.setattr(
-        controller, "application_services", lambda: SimpleNamespace(workflow_test_credentials=harness.service)
-    )
+    services = replace(application_service_graph, workflow_test_credentials=harness.service)
+    monkeypatch.setattr(controller, "application_services", lambda: services)
     with app.test_request_context("/preflight", method="POST"):
-        result = controller.TestCredentialPreflightApi().post(app_id=SCOPE.app_id)
+        result: object = controller.TestCredentialPreflightApi().post(app_id=SCOPE.app_id)
+    assert isinstance(result, dict)
     assert result["ready"] is False
     assert len(result["credentials"]) == 2
     assert "draft_hash" not in result

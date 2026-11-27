@@ -1,5 +1,5 @@
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -10,6 +10,7 @@ from werkzeug.exceptions import Unauthorized
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN, HEADER_NAME_PASSPORT
 from controllers.web import passport, wraps
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.ext_application_services import ApplicationServices
 from libs.passport import PassportService
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, EndUser, Site
@@ -39,10 +40,23 @@ class PublicAppAccess:
         raise AssertionError(f"Public App should not require user permission: {user_id}, {app_id}")
 
 
+@dataclass(frozen=True)
+class IdentityFlow:
+    signer: PassportService
+    accounts: WebAccounts
+    services: ApplicationServices
+    reader_only_passport: WebPassportService
+    app_sessions: PassportWebAppSessionGateway
+
+
 @pytest.fixture
 def identity_flow(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> tuple[PassportService, WebAccounts]:
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    application_service_graph: ApplicationServices,
+) -> IdentityFlow:
     apply_config_overrides(
         monkeypatch,
         SECRET_KEY="test-web-passport-signing-key-with-32-bytes",
@@ -51,16 +65,16 @@ def identity_flow(
         COOKIE_DOMAIN="",
     )
     for code in ("app-a", "app-b"):
-        app = App(tenant_id=str(uuid4()), name=code, mode=AppMode.CHAT, enable_site=True, enable_api=False)
-        sqlite_session.add(app)
+        app_model = App(tenant_id=str(uuid4()), name=code, mode=AppMode.CHAT, enable_site=True, enable_api=False)
+        sqlite_session.add(app_model)
         sqlite_session.flush()
-        config = AppModelConfig(app_id=app.id)
+        config = AppModelConfig(app_id=app_model.id)
         sqlite_session.add(config)
         sqlite_session.flush()
-        app.app_model_config_id = config.id
+        app_model.app_model_config_id = config.id
         sqlite_session.add(
             Site(
-                app_id=app.id,
+                app_id=app_model.id,
                 code=code,
                 title=code,
                 default_language="en-US",
@@ -94,30 +108,18 @@ def identity_flow(
             access_token_expire_minutes=60,
         )
 
-    services = SimpleNamespace(
-        web_identity=identity,
-        web_passport=service(True),
-        reader_only_passport=service(False),
-        app_sessions=sessions,
-    )
-    monkeypatch.setattr(passport, "application_services", lambda: services)
-    monkeypatch.setattr(wraps, "application_services", lambda: services)
+    services = replace(application_service_graph, web_identity=identity, web_passport=service(True))
+    monkeypatch.setitem(app.extensions, "application_services", services)
     monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda **_kwargs: False)
-    return signer, accounts
-
-
-def _passport_services() -> SimpleNamespace:
-    services: object = passport.application_services()
-    assert isinstance(services, SimpleNamespace)
-    return services
+    return IdentityFlow(signer, accounts, services, service(False), sessions)
 
 
 def test_internal_account_passports_are_redacted_app_scoped_and_reuse_mapping(
     app: Flask,
-    identity_flow: tuple[PassportService, WebAccounts],
+    identity_flow: IdentityFlow,
 ) -> None:
-    signer, accounts = identity_flow
-    services = _passport_services()
+    signer, accounts = identity_flow.signer, identity_flow.accounts
+    services = identity_flow.services
     login = signer.issue(webapp_login_claims())
     tokens: list[str] = []
     end_user_ids: list[str] = []
@@ -155,17 +157,17 @@ def test_internal_account_passports_are_redacted_app_scoped_and_reuse_mapping(
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
 def test_public_passport_keeps_user_id_restoration_with_account_cookie_and_missing_or_invalid_passport(
     app: Flask,
-    identity_flow: tuple[PassportService, WebAccounts],
+    identity_flow: IdentityFlow,
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     enabled: bool,
     old_passport: str | None,
     edition: DeploymentEdition,
 ) -> None:
-    signer, _ = identity_flow
-    services = _passport_services()
+    signer = identity_flow.signer
     if not enabled:
-        monkeypatch.setattr(services, "web_passport", services.reader_only_passport)
+        services = replace(identity_flow.services, web_passport=identity_flow.reader_only_passport)
+        monkeypatch.setitem(app.extensions, "application_services", services)
     apply_config_overrides(
         monkeypatch,
         DEPLOYMENT_EDITION=edition,
@@ -196,21 +198,22 @@ def test_public_passport_keeps_user_id_restoration_with_account_cookie_and_missi
 @pytest.mark.parametrize("login_account", [ACCOUNT_ID, "8a3e045b-9051-4e12-8431-93786413c002", None])
 def test_account_passport_requires_matching_webapp_cookie_after_issuance_rollback(
     app: Flask,
-    identity_flow: tuple[PassportService, WebAccounts],
+    identity_flow: IdentityFlow,
     monkeypatch: pytest.MonkeyPatch,
     login_account: str | None,
 ) -> None:
-    signer, _ = identity_flow
-    services = _passport_services()
+    signer = identity_flow.signer
+    services = identity_flow.services
     initial_login = signer.issue(webapp_login_claims())
     original = services.web_passport.issue_for_account(app_code="app-a", access_token=initial_login).access_token
-    monkeypatch.setattr(services, "web_passport", services.reader_only_passport)
+    reader_only_services = replace(services, web_passport=identity_flow.reader_only_passport)
+    monkeypatch.setitem(app.extensions, "application_services", reader_only_services)
     headers = {"X-App-Code": "app-a", HEADER_NAME_PASSPORT: original}
     if login_account:
         web_login = signer.issue(webapp_login_claims(user_id=login_account))
         headers["Cookie"] = f"{COOKIE_NAME_WEBAPP_ACCESS_TOKEN}={web_login}"
     with app.test_request_context("/conversations", headers=headers):
-        assert services.app_sessions.verify(
+        assert identity_flow.app_sessions.verify(
             token=original, app_code="app-a", user_id=None, account_id=login_account
         ) is (login_account == ACCOUNT_ID)
         if login_account == ACCOUNT_ID:
@@ -220,16 +223,16 @@ def test_account_passport_requires_matching_webapp_cookie_after_issuance_rollbac
             with pytest.raises(Unauthorized):
                 wraps.decode_jwt_token()
     with pytest.raises(WebPassportAccountExchangeDisabledError):
-        services.web_passport.issue_for_account(app_code="app-a", access_token=initial_login)
+        identity_flow.reader_only_passport.issue_for_account(app_code="app-a", access_token=initial_login)
 
 
 def test_internal_account_issuance_does_not_bind_existing_guest(
     app: Flask,
-    identity_flow: tuple[PassportService, WebAccounts],
+    identity_flow: IdentityFlow,
     sqlite_session: Session,
 ) -> None:
-    signer, _ = identity_flow
-    services = _passport_services()
+    signer = identity_flow.signer
+    services = identity_flow.services
     with app.test_request_context("/passport?user_id=legacy-session", headers={"X-App-Code": "app-a"}):
         guest = passport.PassportResource().get()["access_token"]
     guest_id = signer.verify(guest)["end_user_id"]
@@ -258,10 +261,10 @@ def test_internal_account_issuance_does_not_bind_existing_guest(
     ],
 )
 def test_account_passport_rejects_missing_or_invalid_webapp_cookie(
-    app: Flask, identity_flow: tuple[PassportService, WebAccounts], credential: str
+    app: Flask, identity_flow: IdentityFlow, credential: str
 ) -> None:
-    signer, _ = identity_flow
-    services = _passport_services()
+    signer = identity_flow.signer
+    services = identity_flow.services
     login = signer.issue(webapp_login_claims())
     token = services.web_passport.issue_for_account(app_code="app-a", access_token=login).access_token
     console_login = signer.issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
@@ -285,11 +288,9 @@ def test_account_passport_rejects_missing_or_invalid_webapp_cookie(
         wraps.decode_jwt_token()
 
 
-def test_console_session_cannot_override_matching_webapp_cookie(
-    app: Flask, identity_flow: tuple[PassportService, WebAccounts]
-) -> None:
-    signer, _ = identity_flow
-    services = _passport_services()
+def test_console_session_cannot_override_matching_webapp_cookie(app: Flask, identity_flow: IdentityFlow) -> None:
+    signer = identity_flow.signer
+    services = identity_flow.services
     login = signer.issue(webapp_login_claims())
     token = services.web_passport.issue_for_account(app_code="app-a", access_token=login).access_token
     other_console = signer.issue({"sub": "Console API Passport", "user_id": str(uuid4()), "exp": 2_000_000_000})

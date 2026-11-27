@@ -4,7 +4,6 @@ from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
-from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -26,6 +25,7 @@ from controllers.console.workspace import workspace as controller
 from controllers.console.workspace.error import AccountNotInitializedError, CurrentWorkspaceArchivedError
 from controllers.console.workspace.workspace import WorkspacePermissionApi
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from extensions.ext_redis import RedisClientWrapper
 from libs import login as login_adapter
 from libs.login import AccountWithTenant
@@ -175,14 +175,13 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     redis_transport: tuple[RedisClientWrapper, Mock],
     scenario: str,
     expected_status: int,
+    account_application_services: ApplicationServices,
 ) -> None:
     from controllers.console import bp as console_bp
-    from controllers.console.workspace import account as account_controller
     from dify_app import DifyApp
     from extensions import ext_login
     from services.account.adapters import AccountIdentityGateway
     from services.account.login_adapters import RedisAccountSessionGateway
-    from services.account_profile_service import AccountProfileService
     from services.workspace.contracts import WorkspaceCreation
     from services.workspace.provisioning_service import WorkspaceProvisioningEffects
 
@@ -202,20 +201,13 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
     effects.prepare.return_value = WorkspaceCreation("workspace", "My workspace", "key", 123, {})
     monkeypatch.setattr(account_domain.provisioning, "_effects", effects)
-    services = SimpleNamespace(
-        workspaces=SimpleNamespace(
-            provisioning=account_domain.provisioning,
-            queries=create_autospec(WorkspaceQueryService, instance=True),
-        ),
-        accounts=SimpleNamespace(profile=AccountProfileService(accounts=account_domain.repository)),
-    )
-    services.workspaces.queries.list_for_account.return_value = ()
-    monkeypatch.setattr(controller, "application_services", lambda: services)
-    monkeypatch.setattr(account_controller, "application_services", lambda: services)
+    services = account_application_services
+    monkeypatch.setattr(services.workspaces.queries, "list_for_account", lambda _context: ())
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
     redis, _ = redis_transport
     identity = AccountIdentityGateway(accounts=account_domain.repository, redis=redis)
     app = DifyApp("workspace-activation")
+    monkeypatch.setitem(app.extensions, "application_services", services)
     app.register_blueprint(console_bp)
     ext_login.init_app(app)
     ext_login.bind_account_loader(app, identity.load_user)

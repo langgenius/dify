@@ -3,7 +3,6 @@ from importlib import import_module
 from io import StringIO
 from pathlib import Path
 from types import ModuleType
-from unittest.mock import MagicMock
 
 import pytest
 import sqlalchemy as sa
@@ -12,6 +11,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from alembic.script import ScriptDirectory
 from sqlalchemy import event
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection
 
 from models.model import UploadFile
@@ -165,25 +165,35 @@ def test_postgresql_existing_index_requires_healthy_build(
     migration: ModuleType, monkeypatch: pytest.MonkeyPatch, healthy: bool
 ) -> None:
     """Reuse matching healthy PostgreSQL indexes; reject abandoned invalid builds."""
-    operations = MagicMock()
-    operations.get_bind.return_value.dialect.name = "postgresql"
-    operations.get_bind.return_value.scalar.return_value = healthy
-    inspector = MagicMock()
-    inspector.get_indexes.return_value = [
-        {
-            "name": "tool_file_owner_idx",
-            "column_names": ["tenant_id", "user_id"],
-            "unique": False,
-            "dialect_options": {"postgresql_include": list[str]()},
-        }
-    ]
-    monkeypatch.setattr(migration, "op", operations)
-    monkeypatch.setattr(sa, "inspect", lambda _bind: inspector)
-    if healthy:
-        assert migration._index_exists("tool_files", "tool_file_owner_idx", ["tenant_id", "user_id"])
-    else:
-        with pytest.raises(RuntimeError, match="unhealthy"):
-            migration._index_exists("tool_files", "tool_file_owner_idx", ["tenant_id", "user_id"])
+    engine = sa.create_engine("sqlite://")
+    try:
+        with engine.connect() as connection:
+            inspector = sa.inspect(connection)
+            indexes = [
+                {
+                    "name": "tool_file_owner_idx",
+                    "column_names": ["tenant_id", "user_id"],
+                    "unique": False,
+                    "dialect_options": {"postgresql_include": list[str]()},
+                }
+            ]
+            monkeypatch.setattr(inspector, "get_indexes", lambda _table: indexes)
+            monkeypatch.setattr(sa, "inspect", lambda _bind: inspector)
+            monkeypatch.setattr(connection, "dialect", postgresql.dialect())
+
+            def catalog_health(_statement: object, params: dict[str, str]) -> bool:
+                assert params == {"name": "tool_file_owner_idx", "table_name": "tool_files"}
+                return healthy
+
+            monkeypatch.setattr(connection, "scalar", catalog_health)
+            monkeypatch.setattr(migration, "op", Operations(MigrationContext.configure(connection)))
+            if healthy:
+                assert migration._index_exists("tool_files", "tool_file_owner_idx", ["tenant_id", "user_id"])
+            else:
+                with pytest.raises(RuntimeError, match="unhealthy"):
+                    migration._index_exists("tool_files", "tool_file_owner_idx", ["tenant_id", "user_id"])
+    finally:
+        engine.dispose()
 
 
 @pytest.mark.parametrize("dialect", ["postgresql", "mysql"])

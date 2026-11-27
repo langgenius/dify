@@ -1,8 +1,9 @@
 import importlib.util
 import json
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 import pytest
@@ -183,12 +184,10 @@ def test_celery_serialization_preserves_references_and_rejects_replacement(execu
         _update_workflow_run_from_execution(run, changed)
 
 
-@runtime_checkable
-class ContextMigration(Protocol):
-    op: Operations
-
-    def upgrade(self) -> None: ...
-    def downgrade(self) -> None: ...
+@dataclass(frozen=True)
+class ContextMigration:
+    upgrade: Callable[[], None]
+    downgrade: Callable[[], None]
 
 
 def test_nullable_context_migration_preserves_existing_runs() -> None:
@@ -201,13 +200,12 @@ def test_nullable_context_migration_preserves_existing_runs() -> None:
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert isinstance(module, ContextMigration)
-    migration = module
+    migration = ContextMigration(module.upgrade, module.downgrade)
     engine = sa.create_engine("sqlite://")
     with engine.begin() as connection:
         connection.exec_driver_sql("CREATE TABLE workflow_runs (id TEXT PRIMARY KEY, graph TEXT)")
         connection.exec_driver_sql("INSERT INTO workflow_runs VALUES ('legacy', '{}')")
-        migration.op = Operations(MigrationContext.configure(connection))
+        vars(module)["op"] = Operations(MigrationContext.configure(connection))
         migration.upgrade()
         assert connection.exec_driver_sql("SELECT connection_context FROM workflow_runs").scalar() is None
         migration.downgrade()
@@ -223,12 +221,15 @@ def test_logstore_keeps_the_same_secret_free_run_snapshot(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from unittest.mock import MagicMock
-
     from extensions.logstore.repositories import logstore_workflow_execution_repository as logstore
     from extensions.logstore.repositories.logstore_api_workflow_run_repository import _dict_to_workflow_run
 
-    monkeypatch.setattr(logstore, "AliyunLogStore", MagicMock())
+    monkeypatch.setattr(logstore.AliyunLogStore, "_instance", None)
+    monkeypatch.setattr(logstore.AliyunLogStore, "_initialized", False)
+    monkeypatch.setattr(logstore.AliyunLogStore, "_check_endpoint_connectivity", lambda *_args: None)
+    monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "example.invalid")
+    monkeypatch.setenv("ALIYUN_SLS_ACCESS_KEY_ID", "test-key")
+    monkeypatch.setenv("ALIYUN_SLS_ACCESS_KEY_SECRET", "test-secret")
     user = EndUser(
         tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, account_id="account", session_id="browser"
     )

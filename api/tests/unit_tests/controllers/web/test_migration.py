@@ -1636,9 +1636,7 @@ def test_chatbot_generated_attachment_cannot_be_added_after_claim(
     def save_after_claim(_key: str, _data: bytes) -> None:
         assert harness.claim().get_json()["data"][0]["status"] == "success"
 
-    storage = MagicMock()
-    storage.save.side_effect = save_after_claim
-    monkeypatch.setattr(tool_file_manager, "storage", storage)
+    monkeypatch.setattr(tool_file_manager.storage, "save", save_after_claim)
     with base.sessions() as session, pytest.raises(ConversationAccessDeniedError):
         AppRunner()._handle_multimodal_image_content(
             content=ImagePromptMessageContent(

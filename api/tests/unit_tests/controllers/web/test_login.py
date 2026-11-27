@@ -1,10 +1,8 @@
 """Controller-boundary tests for Web login endpoints."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from inspect import unwrap
-from types import SimpleNamespace
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -355,21 +353,28 @@ def test_logout_expires_the_webapp_cookie_with_legacy_sso_same_site(app: Flask, 
 
 @pytest.mark.parametrize("valid_login", [True, False])
 def test_webapp_logout_never_revokes_account_or_clears_its_cookies(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, context: RequestContext, valid_login: bool
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    context: RequestContext,
+    valid_login: bool,
+    application_service_graph: ApplicationServices,
 ) -> None:
     apply_config_overrides(
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
         SECRET_KEY="test-cloud-logout-signing-key-at-least-32-bytes",
     )
-    authentication = MagicMock()
-    services = SimpleNamespace(web_identity=web_identities(), accounts=SimpleNamespace(authentication=authentication))
-    monkeypatch.setattr(login, "application_services", lambda: services)
+    services = replace(application_service_graph, web_identity=web_identities())
+    monkeypatch.setitem(app.extensions, "application_services", services)
+
+    def unexpected_logout(**_kwargs: object) -> None:
+        pytest.fail("WebApp logout must not revoke the Console account session.")
+
+    monkeypatch.setattr(services.accounts.authentication, "logout", unexpected_logout)
     token = PassportService().issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
     cookie = token if valid_login else "invalid-token"
     with app.test_request_context("/logout", method="POST", headers={"Cookie": f"access_token={cookie}"}):
         response = unwrap(LogoutApi.post)(LogoutApi(), context)
-    authentication.logout.assert_not_called()
     cookies = response.headers.getlist("Set-Cookie")
     assert len(cookies) == 1
     assert "webapp_access_token=" in cookies[0]

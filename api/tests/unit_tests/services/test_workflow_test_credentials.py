@@ -1,8 +1,8 @@
 from copy import deepcopy
-from typing import Literal
 
 import pytest
 
+from constants.end_user_connections import CredentialCheckStatus
 from services.workflow_test_credentials import TestCredentialCheck as CredentialCheck
 from services.workflow_test_credentials import TestCredentialError as CredentialError
 from services.workflow_test_credentials import TestCredentialNotReadyError as NotReady
@@ -44,12 +44,14 @@ def test_single_node_ignores_unconfigured_unrelated_node() -> None:
     ],
 )
 def test_readiness_preserves_provider_outcomes(
-    status: Literal["valid", "invalid", "temporarily_unavailable", "unsupported"],
+    status: str,
     reason: str | None,
     expected: str,
 ) -> None:
     harness = BuilderCredentialHarness({"nodes": [tool_node("a")]})
-    harness.check = CredentialCheck(status=status, reason_code=reason, retryable=status == "temporarily_unavailable")
+    harness.check = CredentialCheck(
+        status=CredentialCheckStatus(status), reason_code=reason, retryable=status == "temporarily_unavailable"
+    )
     if expected == "connected":
         assert harness.service.require_ready(SCOPE, graph=harness.graph, node_id=None) is None
     else:
@@ -64,7 +66,9 @@ def test_readiness_preserves_provider_outcomes(
             harness.service.resolve(SCOPE, graph=harness.graph, node_id="a")
 
 
-@pytest.mark.parametrize("status", ["disconnected", "incompatible", "temporarily_unavailable"])
+@pytest.mark.parametrize(
+    "status", [CredentialStatus.DISCONNECTED, CredentialStatus.INCOMPATIBLE, CredentialStatus.TEMPORARILY_UNAVAILABLE]
+)
 def test_admission_rechecks_credentials_on_every_run(status: CredentialStatus) -> None:
     harness = BuilderCredentialHarness({"nodes": [tool_node("a")]})
     assert harness.service.require_ready(SCOPE, graph=harness.graph, node_id=None) is None

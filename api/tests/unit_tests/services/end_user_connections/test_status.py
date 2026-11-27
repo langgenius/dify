@@ -1,5 +1,4 @@
 from dataclasses import replace
-from typing import Literal
 
 import pytest
 
@@ -7,6 +6,7 @@ from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import (
     ConnectionCredentialStatus,
     ConnectionCredentialType,
+    CredentialCheckStatus,
     NodeConnectionStatus,
     OAuthClientSource,
 )
@@ -26,8 +26,6 @@ from services.end_user_connections.errors import (
     ConnectionRevisionChangedError,
 )
 from services.end_user_connections.status import resolve_node_connection_status
-
-CheckStatus = Literal["valid", "invalid", "unsupported", "temporarily_unavailable"]
 
 
 @pytest.fixture
@@ -79,11 +77,13 @@ def selection(record: ConnectionAccessRecord, target: ToolConnectionTarget) -> N
     return NodeConnectionSelection(workflow_id=target.workflow_id, node_id=target.node_id, connection_id=record.id)
 
 
-def checked(record: ConnectionAccessRecord, status: CheckStatus) -> ConnectionCheckSnapshot:
+def checked(record: ConnectionAccessRecord, status: str) -> ConnectionCheckSnapshot:
     return ConnectionCheckSnapshot(
         connection_id=record.id,
         revision=record.revision,
-        result=CredentialCheckResult(status=status, checked_at=1792540800, reason_code=None, retryable=False),
+        result=CredentialCheckResult(
+            status=CredentialCheckStatus(status), checked_at=1792540800, reason_code=None, retryable=False
+        ),
     )
 
 
@@ -115,7 +115,7 @@ def test_connected_requires_compatible_selection_and_a_completed_check(
     target: ToolConnectionTarget,
     selection: NodeConnectionSelection,
     record: ConnectionAccessRecord,
-    check_status: CheckStatus,
+    check_status: str,
 ) -> None:
     check = checked(record, check_status)
     status = resolve_node_connection_status(context, selection=selection, target=target, record=record, check=check)
@@ -148,7 +148,7 @@ def test_missing_or_transient_check_is_not_invalidity_or_readiness(
     target: ToolConnectionTarget,
     selection: NodeConnectionSelection,
     record: ConnectionAccessRecord,
-    check_status: CheckStatus | None,
+    check_status: str | None,
 ) -> None:
     check = checked(record, check_status) if check_status is not None else None
     with pytest.raises(ConnectionCheckUnavailableError):
@@ -171,7 +171,7 @@ def test_projection_does_not_revive_a_stored_credential_before_lifecycle_repair(
     record: ConnectionAccessRecord,
     credential_status: ConnectionCredentialStatus,
     node_status: NodeConnectionStatus,
-    check_status: CheckStatus | None,
+    check_status: str | None,
 ) -> None:
     record = replace(record, credential_status=credential_status)
     status = resolve_node_connection_status(

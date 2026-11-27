@@ -4600,131 +4600,53 @@ class TestWorkflowHumanInputDeliveryCases:
         assert sqlite_session.in_transaction()
 
     @staticmethod
-    @pytest.mark.parametrize("sqlite_session", [(Workflow,)], indirect=True)
-    def test_human_input_delivery_allows_disabled_method(
+    @pytest.mark.parametrize(
+        ("enabled", "debug_mode", "manual_inputs"),
+        [
+            pytest.param(False, False, {}, id="disabled-method"),
+            pytest.param(True, False, {"#node-1.output#": "value"}, id="manual-inputs"),
+            pytest.param(True, True, {}, id="debug-recipient"),
+        ],
+    )
+    def test_human_input_delivery_dispatches_with_expected_methods_and_inputs(
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
-    ):
+        sqlite_engine: _workflow_service_Engine,
+        enabled: bool,
+        debug_mode: bool,
+        manual_inputs: dict[str, str],
+    ) -> None:
         service = _make_service(sqlite_session)
-        delivery_method = _make_email_method(enabled=False)
+        delivery_method = _make_email_method(enabled=enabled, debug_mode=debug_mode)
         _persist_workflow(sqlite_session, [delivery_method])
-        service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[attr-defined]
-        node_stub = MagicMock()
-        node_stub.render_form_content_before_submission.return_value = "rendered"
-        node_stub.resolve_default_values.return_value = {}
-        service._build_human_input_node_for_debugging = MagicMock(return_value=node_stub)  # type: ignore[attr-defined]
-        service._create_human_input_delivery_test_form = MagicMock(  # type: ignore[attr-defined]
-            return_value=("form-1", [])
-        )
-
-        test_service_instance = MagicMock()
-        monkeypatch.setattr(
-            workflow_service_module,
-            "HumanInputDeliveryTestService",
-            MagicMock(return_value=test_service_instance),
-        )
-
-        app_model = _app()
+        monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
         account = _account()
 
-        service.test_human_input_delivery(
-            app_model=app_model,
-            account=account,
-            node_id="node-1",
-            delivery_method_id=str(delivery_method.id),
-            session=sqlite_session,
-        )
+        with (
+            patch.object(service, "_build_human_input_variable_pool", return_value=VariablePool()) as build_pool,
+            patch.object(service, "_create_human_input_delivery_test_form", return_value=("form-1", [])),
+            patch.object(workflow_service_module.HumanInputDeliveryTestService, "send_test") as send,
+        ):
+            service.test_human_input_delivery(
+                app_model=_app(),
+                account=account,
+                node_id="node-1",
+                delivery_method_id=str(delivery_method.id),
+                inputs=manual_inputs,
+                session=sqlite_session,
+            )
 
-        test_service_instance.send_test.assert_called_once()
-        assert sqlite_session.in_transaction()
-
-    @staticmethod
-    @pytest.mark.parametrize("sqlite_session", [(Workflow,)], indirect=True)
-    def test_human_input_delivery_dispatches_to_test_service(
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
-    ):
-        service = _make_service(sqlite_session)
-        delivery_method = _make_email_method(enabled=True)
-        _persist_workflow(sqlite_session, [delivery_method])
-        service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[attr-defined]
-        node_stub = MagicMock()
-        node_stub.render_form_content_before_submission.return_value = "rendered"
-        node_stub.resolve_default_values.return_value = {}
-        service._build_human_input_node_for_debugging = MagicMock(return_value=node_stub)  # type: ignore[attr-defined]
-        service._create_human_input_delivery_test_form = MagicMock(  # type: ignore[attr-defined]
-            return_value=("form-1", [])
-        )
-
-        test_service_instance = MagicMock()
-        monkeypatch.setattr(
-            workflow_service_module,
-            "HumanInputDeliveryTestService",
-            MagicMock(return_value=test_service_instance),
-        )
-
-        app_model = _app()
-        account = _account()
-
-        service.test_human_input_delivery(
-            app_model=app_model,
-            account=account,
-            node_id="node-1",
-            delivery_method_id=str(delivery_method.id),
-            inputs={"#node-1.output#": "value"},
-            session=sqlite_session,
-        )
-
-        pool_args = service._build_human_input_variable_pool.call_args.kwargs
-        assert pool_args["manual_inputs"] == {"#node-1.output#": "value"}
-        test_service_instance.send_test.assert_called_once()
-        assert sqlite_session.in_transaction()
-
-    @staticmethod
-    @pytest.mark.parametrize("sqlite_session", [(Workflow,)], indirect=True)
-    def test_human_input_delivery_debug_mode_overrides_recipients(
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
-    ):
-        service = _make_service(sqlite_session)
-        delivery_method = _make_email_method(enabled=True, debug_mode=True)
-        _persist_workflow(sqlite_session, [delivery_method])
-        service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[attr-defined]
-        node_stub = MagicMock()
-        node_stub.render_form_content_before_submission.return_value = "rendered"
-        node_stub.resolve_default_values.return_value = {}
-        service._build_human_input_node_for_debugging = MagicMock(return_value=node_stub)  # type: ignore[attr-defined]
-        service._create_human_input_delivery_test_form = MagicMock(  # type: ignore[attr-defined]
-            return_value=("form-1", [])
-        )
-
-        test_service_instance = MagicMock()
-        monkeypatch.setattr(
-            workflow_service_module,
-            "HumanInputDeliveryTestService",
-            MagicMock(return_value=test_service_instance),
-        )
-
-        app_model = _app()
-        account = _account()
-
-        service.test_human_input_delivery(
-            app_model=app_model,
-            account=account,
-            node_id="node-1",
-            delivery_method_id=str(delivery_method.id),
-            session=sqlite_session,
-        )
-
-        test_service_instance.send_test.assert_called_once()
-        sent_method = test_service_instance.send_test.call_args.kwargs["method"]
+        assert build_pool.call_args.kwargs["manual_inputs"] == manual_inputs
+        send.assert_called_once()
+        sent_method = send.call_args.kwargs["method"]
         assert isinstance(sent_method, EmailDeliveryMethod)
-        assert sent_method.config.debug_mode is True
-        assert sent_method.config.recipients.include_bound_group is False
-        assert len(sent_method.config.recipients.items) == 1
-        recipient = sent_method.config.recipients.items[0]
-        assert isinstance(recipient, MemberRecipient)
-        assert recipient.reference_id == account.id
+        assert sent_method.enabled is enabled
+        assert sent_method.config.debug_mode is debug_mode
+        if debug_mode:
+            assert not sent_method.config.recipients.include_bound_group
+            (recipient,) = sent_method.config.recipients.items
+            assert isinstance(recipient, MemberRecipient)
+            assert recipient.reference_id == account.id
         assert sqlite_session.in_transaction()
 
 

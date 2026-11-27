@@ -62,6 +62,7 @@ from controllers.console.workspace.tool_providers import (
     WorkflowToolUpdatePayload,
     is_valid_url,
 )
+from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
 from core.tools.entities.api_entities import ToolProviderApiEntity as CoreToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter
@@ -1130,13 +1131,19 @@ def _mock_oauth_callback_deps(controller_module: ModuleType, monkeypatch: pytest
             "langgenius/github:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "abc"}
         ),
     )
-    add_provider = MagicMock(return_value={"result": "success", "id": "oauth-credential-1"})
-    monkeypatch.setattr(controller_module.BuiltinToolManageService, "add_builtin_tool_provider", add_provider)
-    credentials_response = MagicMock(credentials={"access_token": "tok"}, expires_at=-1)
-    oauth_handler_instance = MagicMock()
-    oauth_handler_instance.get_credentials.return_value = credentials_response
-    monkeypatch.setattr(controller_module, "OAuthHandler", MagicMock(return_value=oauth_handler_instance))
-    yield add_provider
+    with (
+        patch.object(
+            controller_module.BuiltinToolManageService,
+            "add_builtin_tool_provider",
+            return_value={"result": "success", "id": "oauth-credential-1"},
+        ) as add_provider,
+        patch.object(
+            controller_module.OAuthHandler,
+            "get_credentials",
+            return_value=PluginOAuthCredentialsResponse(credentials={"access_token": "tok"}, expires_at=-1),
+        ),
+    ):
+        yield add_provider
 
 
 class TestToolProvidersCases:
@@ -1223,19 +1230,21 @@ class TestToolProvidersCases:
         user.role = TenantAccountRole.ADMIN
         _set_current_account(monkeypatch, controller_module, user, "tenant-456")
 
-        service_mock = MagicMock(return_value={"result": "success", "id": "credential-1"})
-        monkeypatch.setattr(controller_module.BuiltinToolManageService, "add_builtin_tool_provider", service_mock)
-
         payload = {
             "credentials": {"api_key": "sk-test"},
             "name": "MyTool",
             "type": controller_module.CredentialType.API_KEY,
         }
 
-        with app.test_request_context(
-            "/workspaces/current/tool-provider/builtin/openai/add",
-            method="POST",
-            json=payload,
+        with (
+            app.test_request_context(
+                "/workspaces/current/tool-provider/builtin/openai/add", method="POST", json=payload
+            ),
+            patch.object(
+                controller_module.BuiltinToolManageService,
+                "add_builtin_tool_provider",
+                return_value={"result": "success", "id": "credential-1"},
+            ) as service_mock,
         ):
             response = controller_module.ToolBuiltinProviderAddApi().post(provider="openai")
 

@@ -1,7 +1,7 @@
 import importlib.util
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 import pytest
@@ -32,13 +32,10 @@ TABLE_NAMES = {
 }
 
 
-@runtime_checkable
-class ConnectionMigration(Protocol):
-    op: Operations
-
-    def upgrade(self) -> None: ...
-
-    def downgrade(self) -> None: ...
+@dataclass(frozen=True)
+class ConnectionMigration:
+    upgrade: Callable[[], None]
+    downgrade: Callable[[], None]
 
 
 def load_migration(
@@ -50,9 +47,8 @@ def load_migration(
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert isinstance(module, ConnectionMigration)
-    module.op = Operations(MigrationContext.configure(connection))
-    return module
+    vars(module)["op"] = Operations(MigrationContext.configure(connection))
+    return ConnectionMigration(module.upgrade, module.downgrade)
 
 
 @pytest.fixture

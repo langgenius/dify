@@ -27,11 +27,11 @@ from tests.helpers.installed_app_connections import (
     seed_installed_connections,
 )
 
+type _InstalledConnectionCases = tuple[sessionmaker[Session], InstalledConnectionData, InstalledConnectionData]
+
 
 @pytest.fixture
-def cases(
-    flask_app_with_containers: Flask,
-) -> Iterator[tuple[sessionmaker[Session], InstalledConnectionData, InstalledConnectionData]]:
+def cases(flask_app_with_containers: Flask) -> Iterator[_InstalledConnectionCases]:
     """Use the container schema and bound each isolated transaction's lock wait."""
     with flask_app_with_containers.app_context():
         sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -66,7 +66,9 @@ def cases(
 
 
 @pytest.mark.parametrize("independent_scope", ["app", "member", "conversation", "defaults_and_conversation"])
-def test_independent_scope_commits_while_first_save_remains_open(cases, independent_scope):
+def test_independent_scope_commits_while_first_save_remains_open(
+    cases: _InstalledConnectionCases, independent_scope: str
+) -> None:
     sessions, first, second = cases
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sessions)
     first_scope, second_scope = first.scope, first.scope
@@ -94,7 +96,7 @@ def test_independent_scope_commits_while_first_save_remains_open(cases, independ
             assert repository.configuration(second_scope, second_conversation_id) == configuration
 
 
-def test_new_conversation_initializations_do_not_serialize_on_workspace(cases):
+def test_new_conversation_initializations_do_not_serialize_on_workspace(cases: _InstalledConnectionCases) -> None:
     sessions, first, _second = cases
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sessions)
 
@@ -117,7 +119,9 @@ def test_new_conversation_initializations_do_not_serialize_on_workspace(cases):
 
 
 @pytest.mark.parametrize("existing", [False, True])
-def test_concurrent_first_or_existing_saves_commit_one_complete_configuration(cases, existing):
+def test_concurrent_first_or_existing_saves_commit_one_complete_configuration(
+    cases: _InstalledConnectionCases, existing: bool
+) -> None:
     sessions, first, _second = cases
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sessions)
     graph = repository.graph(first.scope)
@@ -146,7 +150,7 @@ def test_concurrent_first_or_existing_saves_commit_one_complete_configuration(ca
         assert len(session.scalars(select(InstalledAppConnectionConfiguration)).all()) == 1
 
 
-def test_same_scope_waits_for_its_configuration_writer(cases):
+def test_same_scope_waits_for_its_configuration_writer(cases: _InstalledConnectionCases) -> None:
     sessions, first, _second = cases
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sessions)
     graph = repository.graph(first.scope)
@@ -160,7 +164,7 @@ def test_same_scope_waits_for_its_configuration_writer(cases):
 
 
 @pytest.mark.parametrize("change", ["tenant", "account", "member", "installation", "publication", "workflow"])
-def test_invalidation_waits_for_configuration_commit(cases, change):
+def test_invalidation_waits_for_configuration_commit(cases: _InstalledConnectionCases, change: str) -> None:
     sessions, first, _second = cases
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sessions)
     graph = repository.graph(first.scope)

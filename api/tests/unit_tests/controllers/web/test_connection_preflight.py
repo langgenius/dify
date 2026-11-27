@@ -1,6 +1,6 @@
 import json
 from collections.abc import Callable, Iterator
-from types import SimpleNamespace
+from dataclasses import replace
 from uuid import uuid4
 
 import pytest
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from clients.plugin.auth_entities import CredentialCheckResult
 from controllers.web import app as app_controller
 from controllers.web import bp, connection_preflight, wraps
+from extensions.ext_application_services import ApplicationServices
 from models.model import App, AppMode, EndUser, Site
 from models.workflow import Workflow
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
@@ -28,7 +29,9 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
 
 
 @pytest.fixture
-def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[FlaskClient]:
+def client(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, application_service_graph: ApplicationServices
+) -> Iterator[FlaskClient]:
     def identity() -> tuple[App, EndUser]:
         with harness.base.sessions() as session:
             app = session.get(App, harness.base.context.app_id)
@@ -49,7 +52,9 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
     )
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
     monkeypatch.setattr(
-        connection_preflight, "application_services", lambda: SimpleNamespace(end_user_connection_preflight=service)
+        connection_preflight,
+        "application_services",
+        lambda: replace(application_service_graph, end_user_connection_preflight=service),
     )
 
     def plugin_readme(tenant_id: str, identifier: str, language: str) -> str:
@@ -65,7 +70,9 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
         builtin_icon_url_prefix="",
         connection_revisions=PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository),
     )
-    monkeypatch.setattr(app_controller, "application_services", lambda: SimpleNamespace(app_definitions=definitions))
+    monkeypatch.setattr(
+        app_controller, "application_services", lambda: replace(application_service_graph, app_definitions=definitions)
+    )
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(bp)

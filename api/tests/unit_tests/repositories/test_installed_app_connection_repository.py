@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import Table, event, inspect, select, update
 from sqlalchemy.dialects import mysql, postgresql, sqlite
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import Select
 
@@ -31,7 +32,9 @@ def data(sqlite_session_factory: sessionmaker[Session]) -> InstalledConnectionDa
     return seed_installed_connections(sqlite_session_factory)
 
 
-def test_replacements_preserve_row_identity_and_allow_idempotent_saves(sqlite_session_factory, data):
+def test_replacements_preserve_row_identity_and_allow_idempotent_saves(
+    sqlite_session_factory: sessionmaker[Session], data: InstalledConnectionData
+) -> None:
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
     graph = repository.graph(data.scope)
     repository.save(data.scope, graph, data.configuration, None)
@@ -46,7 +49,9 @@ def test_replacements_preserve_row_identity_and_allow_idempotent_saves(sqlite_se
 
 
 @pytest.mark.parametrize("owner_field", ["tenant_id", "app_id"])
-def test_conflicting_owner_is_not_overwritten(sqlite_session_factory, data, owner_field):
+def test_conflicting_owner_is_not_overwritten(
+    sqlite_session_factory: sessionmaker[Session], data: InstalledConnectionData, owner_field: str
+) -> None:
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
     graph = repository.graph(data.scope)
     saved = InstalledAppConnectionConfiguration(
@@ -72,7 +77,9 @@ def test_conflicting_owner_is_not_overwritten(sqlite_session_factory, data, owne
 
 
 @pytest.mark.parametrize("change", ["publication", "graph"])
-def test_protection_uses_current_projection_not_stale_orm_identity(sqlite_session_factory, data, change):
+def test_protection_uses_current_projection_not_stale_orm_identity(
+    sqlite_session_factory: sessionmaker[Session], data: InstalledConnectionData, change: str
+) -> None:
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
     graph = repository.graph(data.scope)
     with sqlite_session_factory.begin() as session:
@@ -94,9 +101,11 @@ def test_protection_uses_current_projection_not_stale_orm_identity(sqlite_sessio
 
 
 @pytest.mark.parametrize("initialize", [False, True])
-def test_write_paths_use_one_shared_single_table_protection_pass(sqlite_session_factory, data, initialize):
+def test_write_paths_use_one_shared_single_table_protection_pass(
+    sqlite_session_factory: sessionmaker[Session], data: InstalledConnectionData, initialize: bool
+) -> None:
     repository = SQLAlchemyInstalledConnectionRepository(session_factory=sqlite_session_factory)
-    statements: list[Select] = []
+    statements: list[Select[tuple[object, ...]]] = []
 
     def observe(state: ORMExecuteState) -> None:
         if isinstance(state.statement, Select):
@@ -134,7 +143,7 @@ def test_write_paths_use_one_shared_single_table_protection_pass(sqlite_session_
 
 
 @pytest.mark.parametrize("dialect", [postgresql.dialect(), mysql.dialect(), sqlite.dialect()])
-def test_first_save_insert_preserves_conflicting_row(dialect, data):
+def test_first_save_insert_preserves_conflicting_row(dialect: Dialect, data: InstalledConnectionData) -> None:
     row = InstalledAppConnectionConfiguration(
         tenant_id=data.tenant.id,
         installed_app_id=data.installation.id,
@@ -153,7 +162,9 @@ def test_first_save_insert_preserves_conflicting_row(dialect, data):
 
 
 @pytest.mark.parametrize("failure", ["configuration", "outer_transaction"])
-def test_initialization_does_not_commit_conversation_or_message(sqlite_session_factory, data, failure):
+def test_initialization_does_not_commit_conversation_or_message(
+    sqlite_session_factory: sessionmaker[Session], data: InstalledConnectionData, failure: str
+) -> None:
     execution = data.execution
     if failure == "configuration":
         execution = execution.model_copy(
