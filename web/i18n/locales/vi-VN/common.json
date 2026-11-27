@@ -110,7 +110,6 @@
   "feedback.placeholder": "Xin vui lòng miêu tả những gì đã xảy ra không đúng hoặc chúng tôi có thể cải thiện như thế nào...",
   "feedback.subtitle": "Xin vui lòng cho chúng tôi biết điều gì đã sai với phản hồi này",
   "feedback.title": "Cung cấp phản hồi",
-  "fileUploader.fileExtensionBlocked": "Loại tệp này bị chặn vì lý do bảo mật",
   "fileUploader.fileExtensionNotSupport": "Phần mở rộng tệp không được hỗ trợ",
   "fileUploader.pasteFileLink": "Dán liên kết tệp",
   "fileUploader.pasteFileLinkInputPlaceholder": "Nhập URL...",

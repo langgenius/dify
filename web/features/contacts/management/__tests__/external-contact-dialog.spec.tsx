@@ -243,10 +243,10 @@ it.each([
   {
     name: 'a blocked extension',
     error: createHttpError(new Response(null, { status: 400 }), {
-      code: 'file_extension_blocked',
+      code: 'unsupported_file_type',
       message: 'Blocked',
     }),
-    expected: 'common.fileUploader.fileExtensionBlocked',
+    expected: 'requestErrors.code.unsupported_file_type',
   },
   {
     name: 'another failure',
