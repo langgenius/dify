@@ -1514,6 +1514,8 @@ def test_reconnect_and_stop_use_the_persisted_workflow_run(
             ]
         )
     messages: Queue[dict[str, object]] = Queue()
+    # Redis acknowledges SUBSCRIBE before delivering data; the subscription waits for that ack.
+    messages.put({"type": "subscribe", "channel": f"channel:workflow:{run_id}".encode(), "data": 1})
     messages.put(
         {
             "type": "message",

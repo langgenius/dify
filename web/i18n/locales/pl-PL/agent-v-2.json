@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Narzędzia pozwalają agentowi działać — np. przeszukiwać sieć lub wywoływać Twoje aplikacje",
   "agentDetail.configure.tools.empty.title": "Brak narzędzi",
   "agentDetail.configure.tools.label": "Narzędzia",
-  "agentDetail.configure.tools.moreActions": "Więcej akcji dla {{name}}",
   "agentDetail.configure.tools.removeAction": "Usuń {{name}}",
   "agentDetail.configure.tools.removeProvider": "Usuń wszystkie narzędzia",
   "agentDetail.configure.tools.richTip": "Dodaj narzędzia Dify ze swojego workspace. <docLink>Dowiedz się więcej</docLink>\n\nNarzędzia instalowane przez agenta w jego sandbox nie pojawią się tutaj, ale pozostaną dla niego dostępne.",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "Przywróć",
   "agentDetail.versionHistory.versionName": "Wersja {{version}}",
   "agentDetail.versionHistory.viewOnly": "Tylko podgląd",
-  "exportAgent": "Eksportuj agenta"
+  "exportAgent": "Eksportuj agenta",
+  "toolCallLimit.invalid": "Wpisz liczbę całkowitą większą od 0.",
+  "toolCallLimit.label": "Limit wywołań dla {{toolName}}",
+  "toolCallLimit.maximum": "Maksymalna liczba wywołań",
+  "toolCallLimit.notExecuted": "Nie wykonano",
+  "toolCallLimit.reached": "Osiągnięto limit wywołań ({{limit}} na uruchomienie). Nie wykonano tego żądania.",
+  "toolCallLimit.reason": "Powód",
+  "toolCallLimit.set": "Ustaw limit",
+  "toolCallLimit.summary_one": "{{count}} wywołanie / uruchomienie",
+  "toolCallLimit.summary_other": "{{count}} wywołań / uruchomienie",
+  "toolCallLimit.title": "Limit wywołań na uruchomienie",
+  "toolCallLimit.used_one": "Wykorzystano {{used}} z {{limit}} wywołania",
+  "toolCallLimit.used_other": "Wykorzystano {{used}} z {{limit}} wywołań"
 }

@@ -1,11 +1,11 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
+import { isDefinedError, ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toIconInfo } from '@/app/components/datasets/dataset-fields'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { toastActionError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { consoleClient } from '@/service/console'
 import { fetchPipelineWorkflowDraft } from '@/service/workflow'
@@ -63,9 +63,13 @@ export const usePipelineInit = () => {
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: unknown) {
-      if (!(error instanceof ORPCError) || error.code !== 'draft_workflow_not_exist') {
+      const draftMissing =
+        error instanceof ORPCError &&
+        isDefinedError(error) &&
+        error.code === 'draft_workflow_not_exist'
+      if (!draftMissing) {
         // The editor stays on its loading state, so the failure is reported here.
-        toastActionError(error)
+        reportRequestError(error)
         return
       }
       if (pipelineId) {
@@ -89,7 +93,7 @@ export const usePipelineInit = () => {
             setDraftUpdatedAt(res.updated_at)
             handleGetInitialWorkflowData()
           })
-          .catch(toastActionError)
+          .catch(reportRequestError)
       }
     }
   }, [nodesTemplate, edgesTemplate, workflowStore, pipelineId])

@@ -385,6 +385,8 @@ export const apiKeys = {
 }
 
 /**
+ * Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft
+ *
  * Transcribe audio using the current Agent debug configuration
  */
 export const post3 = oc
@@ -394,6 +396,7 @@ export const post3 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdAudioToText',
     path: '/agent/{agent_id}/audio-to-text',
+    summary: 'Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft',
     tags: ['console'],
   })
   .input(
@@ -426,6 +429,8 @@ export const audioToText = {
 }
 
 /**
+ * Drain the admitted account's Build turn to the first message-end event
+ *
  * Run a build-draft Agent App turn that asks the agent to push config updates
  */
 export const post4 = oc
@@ -435,6 +440,7 @@ export const post4 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdBuildChatFinalize',
     path: '/agent/{agent_id}/build-chat/finalize',
+    summary: "Drain the admitted account's Build turn to the first message-end event",
     tags: ['console'],
   })
   .input(z.object({ params: zPostAgentByAgentIdBuildChatFinalizePath }))
@@ -619,6 +625,8 @@ export const byMessageId = {
 }
 
 /**
+ * Stop a task owned by the admitted account after resolving the Agent's runtime App
+ *
  * Stop a running Agent App chat message generation
  */
 export const post7 = oc
@@ -628,6 +636,7 @@ export const post7 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdChatMessagesByTaskIdStop',
     path: '/agent/{agent_id}/chat-messages/{task_id}/stop',
+    summary: "Stop a task owned by the admitted account after resolving the Agent's runtime App",
     tags: ['console'],
   })
   .input(z.object({ params: zPostAgentByAgentIdChatMessagesByTaskIdStopPath }))
@@ -1800,6 +1809,8 @@ export const statistics = {
 }
 
 /**
+ * Require an existing runtime App, then discover provider voices without a DB session
+ *
  * Get available TTS voices for an Agent and language
  */
 export const get33 = oc
@@ -1809,6 +1820,7 @@ export const get33 = oc
     method: 'GET',
     operationId: 'getAgentByAgentIdTextToAudioVoices',
     path: '/agent/{agent_id}/text-to-audio/voices',
+    summary: 'Require an existing runtime App, then discover provider voices without a DB session',
     tags: ['console'],
   })
   .input(
@@ -1831,6 +1843,8 @@ export const voices = {
 }
 
 /**
+ * Synthesize an owned message or preview text using the existing runtime App
+ *
  * Preview an Agent TTS voice or read an Agent chat message
  */
 export const post20 = oc
@@ -1840,6 +1854,7 @@ export const post20 = oc
     method: 'POST',
     operationId: 'postAgentByAgentIdTextToAudio',
     path: '/agent/{agent_id}/text-to-audio',
+    summary: 'Synthesize an owned message or preview text using the existing runtime App',
     tags: ['console'],
   })
   .input(

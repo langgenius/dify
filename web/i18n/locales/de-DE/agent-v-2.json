@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Tools ermöglichen es dem Agenten zu handeln, z. B. das Web zu durchsuchen oder Ihre Apps aufzurufen",
   "agentDetail.configure.tools.empty.title": "Noch keine Tools",
   "agentDetail.configure.tools.label": "Tools",
-  "agentDetail.configure.tools.moreActions": "Weitere Aktionen für {{name}}",
   "agentDetail.configure.tools.removeAction": "{{name}} entfernen",
   "agentDetail.configure.tools.removeProvider": "Alle Tools entfernen",
   "agentDetail.configure.tools.richTip": "Fügen Sie Dify-Tools aus Ihrem Workspace hinzu. <docLink>Mehr erfahren</docLink>\n\nTools, die der Agent in seiner Sandbox installiert, erscheinen hier nicht, bleiben ihm aber verfügbar.",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "Wiederherstellen",
   "agentDetail.versionHistory.versionName": "Version {{version}}",
   "agentDetail.versionHistory.viewOnly": "Nur anzeigen",
-  "exportAgent": "Agent exportieren"
+  "exportAgent": "Agent exportieren",
+  "toolCallLimit.invalid": "Gib eine ganze Zahl größer als 0 ein.",
+  "toolCallLimit.label": "Aufruflimit für {{toolName}}",
+  "toolCallLimit.maximum": "Maximale Aufrufe",
+  "toolCallLimit.notExecuted": "Nicht ausgeführt",
+  "toolCallLimit.reached": "Aufruflimit erreicht ({{limit}} pro Ausführung). Diese Anfrage wurde nicht ausgeführt.",
+  "toolCallLimit.reason": "Grund",
+  "toolCallLimit.set": "Limit festlegen",
+  "toolCallLimit.summary_one": "{{count}} Aufruf / Ausführung",
+  "toolCallLimit.summary_other": "{{count}} Aufrufe / Ausführung",
+  "toolCallLimit.title": "Aufruflimit pro Ausführung",
+  "toolCallLimit.used_one": "{{used}} von {{limit}} Aufruf verwendet",
+  "toolCallLimit.used_other": "{{used}} von {{limit}} Aufrufen verwendet"
 }

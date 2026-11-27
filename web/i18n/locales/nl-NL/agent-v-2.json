@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Tools laten de agent handelen, zoals het web doorzoeken of je apps aanroepen",
   "agentDetail.configure.tools.empty.title": "Nog geen tools",
   "agentDetail.configure.tools.label": "Tools",
-  "agentDetail.configure.tools.moreActions": "Meer acties voor {{name}}",
   "agentDetail.configure.tools.removeAction": "{{name}} verwijderen",
   "agentDetail.configure.tools.removeProvider": "Alle tools verwijderen",
   "agentDetail.configure.tools.richTip": "Voeg Dify-tools uit uw workspace toe. <docLink>Meer informatie</docLink>\n\nTools die de agent in zijn sandbox installeert, verschijnen hier niet, maar blijven beschikbaar.",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "Herstellen",
   "agentDetail.versionHistory.versionName": "Versie {{version}}",
   "agentDetail.versionHistory.viewOnly": "Alleen bekijken",
-  "exportAgent": "Agent exporteren"
+  "exportAgent": "Agent exporteren",
+  "toolCallLimit.invalid": "Voer een geheel getal groter dan 0 in.",
+  "toolCallLimit.label": "Aanroeplimiet voor {{toolName}}",
+  "toolCallLimit.maximum": "Maximumaantal aanroepen",
+  "toolCallLimit.notExecuted": "Niet uitgevoerd",
+  "toolCallLimit.reached": "Aanroeplimiet bereikt ({{limit}} per uitvoering). Dit verzoek is niet uitgevoerd.",
+  "toolCallLimit.reason": "Reden",
+  "toolCallLimit.set": "Limiet instellen",
+  "toolCallLimit.summary_one": "{{count}} aanroep / uitvoering",
+  "toolCallLimit.summary_other": "{{count}} aanroepen / uitvoering",
+  "toolCallLimit.title": "Aanroeplimiet per uitvoering",
+  "toolCallLimit.used_one": "{{used}} van {{limit}} aanroep gebruikt",
+  "toolCallLimit.used_other": "{{used}} van {{limit}} aanroepen gebruikt"
 }

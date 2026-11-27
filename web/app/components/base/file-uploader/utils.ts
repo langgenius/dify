@@ -1,33 +1,12 @@
-import type { TFunction } from 'i18next'
 import type { FileEntity, FilePreviewKind } from './types'
 import type { FileResponse } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
 import { TransferMethod } from '@/types/app'
 import { uploadPublicFile } from './public-upload'
 import { FileAppearanceTypeEnum } from './types'
-
-/**
- * Get appropriate error message for file upload errors
- * @param error - The error object from upload failure
- * @param defaultMessage - Fallback when the server returned no message
- * @param t - Translation function
- * @returns Localized error message
- */
-export const getFileUploadErrorMessage = (
-  error: unknown,
-  defaultMessage: string,
-  t: TFunction<['common']>,
-): string => {
-  if (error instanceof ORPCError && error.code === 'file_extension_blocked')
-    return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
-
-  return getRequestErrorMessage(error) ?? defaultMessage
-}
 
 type FileUploadResponse = {
   created_at: number

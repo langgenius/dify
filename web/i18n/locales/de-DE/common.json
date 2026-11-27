@@ -110,7 +110,6 @@
   "feedback.placeholder": "Bitte beschreiben Sie, was schiefgelaufen ist oder wie wir uns verbessern können...",
   "feedback.subtitle": "Bitte sagen Sie uns, was mit dieser Antwort falsch gelaufen ist.",
   "feedback.title": "Feedback geben",
-  "fileUploader.fileExtensionBlocked": "Dieser Dateityp ist aus Sicherheitsgründen gesperrt",
   "fileUploader.fileExtensionNotSupport": "Dateiendung nicht bedient",
   "fileUploader.pasteFileLink": "Dateilink einfügen",
   "fileUploader.pasteFileLinkInputPlaceholder": "URL eingeben...",

@@ -9,7 +9,7 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import {
   captureAppAccessScope,
@@ -68,7 +68,7 @@ export default function Splash({ children }: PropsWithChildren) {
     try {
       await webAppLogout(address)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     const url = getSigninUrl()

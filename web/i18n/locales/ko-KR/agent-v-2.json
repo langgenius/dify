@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "도구를 사용하면 에이전트가 웹 검색이나 앱 호출 등의 작업을 수행할 수 있습니다",
   "agentDetail.configure.tools.empty.title": "아직 도구가 없습니다",
   "agentDetail.configure.tools.label": "도구",
-  "agentDetail.configure.tools.moreActions": "{{name}}의 추가 작업",
   "agentDetail.configure.tools.removeAction": "{{name}} 제거",
   "agentDetail.configure.tools.removeProvider": "모든 도구 제거",
   "agentDetail.configure.tools.richTip": "워크스페이스의 Dify 도구를 추가하세요. <docLink>자세히 알아보기</docLink>\n\n에이전트가 sandbox에 설치한 도구는 여기에 표시되지 않지만 계속 사용할 수 있습니다.",
@@ -372,5 +371,17 @@
   "agentDetail.versionHistory.restore": "복원",
   "agentDetail.versionHistory.versionName": "버전 {{version}}",
   "agentDetail.versionHistory.viewOnly": "보기 전용",
-  "exportAgent": "에이전트 내보내기"
+  "exportAgent": "에이전트 내보내기",
+  "toolCallLimit.invalid": "0보다 큰 정수를 입력하세요.",
+  "toolCallLimit.label": "{{toolName}} 호출 한도",
+  "toolCallLimit.maximum": "최대 호출 횟수",
+  "toolCallLimit.notExecuted": "실행되지 않음",
+  "toolCallLimit.reached": "호출 한도(실행당 {{limit}}회)에 도달했습니다. 이 요청은 실행되지 않았습니다.",
+  "toolCallLimit.reason": "이유",
+  "toolCallLimit.set": "한도 설정",
+  "toolCallLimit.summary_one": "실행당 {{count}}회",
+  "toolCallLimit.summary_other": "실행당 {{count}}회",
+  "toolCallLimit.title": "실행당 호출 한도",
+  "toolCallLimit.used_one": "{{limit}}회 중 {{used}}회 사용",
+  "toolCallLimit.used_other": "{{limit}}회 중 {{used}}회 사용"
 }

@@ -20,8 +20,8 @@ from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.agent.errors import AgentNotFoundError
-from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
 class AgentReferencingWorkflowResponse(ResponseModel):

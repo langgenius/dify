@@ -35,7 +35,7 @@ import { TagSelector } from '@/features/tag-management/tag-selector'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
 import { DuplicateAgentDialogContent } from './duplicate-agent-dialog'
@@ -470,6 +470,7 @@ export function AgentRosterList({
 }: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAgentDialogPayload>())
   const [editDialog] = useState(() => createDialogHandle<AgentAppPartial>())
@@ -649,7 +650,10 @@ export function AgentRosterList({
                 isPending={deletion.isPending}
                 error={
                   deletion.isError
-                    ? (getRequestErrorMessage(deletion.error) ?? t(($) => $['roster.deleteFailed']))
+                    ? describeRequestError(
+                        deletion.error,
+                        t(($) => $['roster.deleteFailed']),
+                      )
                     : undefined
                 }
                 onSubmit={() => {

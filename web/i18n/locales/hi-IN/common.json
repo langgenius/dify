@@ -110,7 +110,6 @@
   "feedback.placeholder": "कृपया बताएं कि क्या गलत हुआ या हम कैसे सुधार कर सकते हैं...",
   "feedback.subtitle": "कृपया हमें बताएं कि इस प्रतिक्रिया में क्या गलत हुआ",
   "feedback.title": "प्रतिक्रिया प्रदान करें",
-  "fileUploader.fileExtensionBlocked": "सुरक्षा कारणों से इस फ़ाइल प्रकार को अवरुद्ध कर दिया गया है",
   "fileUploader.fileExtensionNotSupport": "फ़ाइल एक्सटेंशन समर्थित नहीं है",
   "fileUploader.pasteFileLink": "फ़ाइल लिंक पेस्ट करें",
   "fileUploader.pasteFileLinkInputPlaceholder": "URL दर्ज करें...",

@@ -2,7 +2,7 @@ import type { HumanInputFormSubmitData } from './chat/answer/human-input-content
 import type { InstalledAppConnectionsState } from '@/app/components/explore/installed-app/connections/provider'
 import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
 import { useCallback, useEffect, useRef } from 'react'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import { submitHumanInputForm } from '@/service/share'
 import { submitHumanInputForm as submitInstalledHumanInputForm } from '@/service/workflow'
@@ -59,7 +59,7 @@ export function useChatHumanInputSubmission({
       try {
         await submit(formToken, submission, formVersion)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         throw error
       }
     },

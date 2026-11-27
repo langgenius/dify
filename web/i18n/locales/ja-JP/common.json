@@ -110,7 +110,6 @@
   "feedback.placeholder": "何が間違っていたか、またはどのように改善できるかを教えてください...",
   "feedback.subtitle": "この回答で何が間違っていたのか教えてください。",
   "feedback.title": "フィードバックを提供する",
-  "fileUploader.fileExtensionBlocked": "このファイルタイプは、セキュリティ上の理由でブロックされています",
   "fileUploader.fileExtensionNotSupport": "ファイル拡張子はサポートされていません",
   "fileUploader.pasteFileLink": "ファイルリンクの貼り付け",
   "fileUploader.pasteFileLinkInputPlaceholder": "URL を入力...",

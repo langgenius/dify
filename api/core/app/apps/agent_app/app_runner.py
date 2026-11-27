@@ -12,10 +12,21 @@ import json
 import logging
 import time
 from collections.abc import Mapping
+from contextlib import suppress
 from decimal import Decimal
 from typing import Any, Literal
 
+from dify_agent.protocol.tool_call_limits import (
+    AGENT_TOOL_ACTIVITY_META_KEY,
+    AgentToolActivity,
+    AgentToolActivityStatus,
+    agent_tool_activity_from_metadata,
+    runtime_tool_failed,
+    unconfirmed_reservation,
+    validated_call_limit,
+)
 from pydantic import JsonValue
+from sqlalchemy import select
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
@@ -49,6 +60,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.tools.entities.common_entities import I18nObjectDict
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File
@@ -258,7 +270,12 @@ class _AgentProcessRecorder:
     Thinking and answer rows expose snapshot updates for contiguous model-text
     segments. Tool events close currently open text segments so later model text
     starts a fresh row instead of replaying content that was already streamed
-    before the tool.
+    before the tool. Within the owning stream and its sequential replays,
+    native run/call identities reuse one thought row and terminal states never
+    regress. Structured activity metadata is persisted
+    before queue notification, including after the user stops consuming SSE.
+    Prepared tool labels are copied for this run and frozen on the persisted
+    thought; reconstructing a recorder never relabels an existing invocation.
     """
 
     def __init__(
@@ -267,10 +284,12 @@ class _AgentProcessRecorder:
         dify_context: DifyRunContext,
         message_id: str,
         queue_manager: AppQueueManager,
+        tool_labels: Mapping[str, I18nObjectDict] | None = None,
     ) -> None:
         self._dify_context = dify_context
         self._message_id = message_id
         self._queue_manager = queue_manager
+        self._tool_labels = {name: label.copy() for name, label in (tool_labels or {}).items()}
         self._next_position = 1
         self._thinking_by_index: dict[int, str] = {}
         self._answer_thought_id: str | None = None
@@ -278,8 +297,135 @@ class _AgentProcessRecorder:
         self._tool_by_call_id: dict[str, str] = {}
         self._open_tool_by_name: dict[str, set[str]] = {}
         self._knowledge_receipts: set[str] = set()
+        self._run_id: str | None = None
+        self._activities: dict[str, AgentToolActivity] = {}
+        self._finished_tools: set[str] = set()
+        self._restore_tool_identities()
+
+    def _restore_tool_identities(self) -> None:
+        """Restore identities for this committed message and its owning App.
+
+        The runner supplies a validated message/App context. Old rows without
+        the typed sidecar retain their display position but assert no native
+        identity or quota. Sequential stream replays reuse persisted rows.
+        """
+        rows = db.session.scalars(
+            select(MessageAgentThought)
+            .join(Message, Message.id == MessageAgentThought.message_id)
+            .where(Message.id == self._message_id, Message.app_id == self._dify_context.app_id)
+            .order_by(MessageAgentThought.position, MessageAgentThought.id)
+        ).all()
+        self._next_position = max((row.position for row in rows), default=0) + 1
+        for row in rows:
+            activity = agent_tool_activity_from_metadata(row.tool_meta)
+            if activity is not None:
+                self._activities[row.id] = activity
+                self._tool_by_call_id[activity.id] = row.id
+                if activity.status in {"started", "running"}:
+                    self._open_tool_by_name.setdefault(activity.tool_name, set()).add(row.id)
+                else:
+                    self._finished_tools.add(row.id)
+
+    def _bind_run(self, run_id: str) -> None:
+        """Bind one recorder to exactly one native run before applying events."""
+        if self._run_id is not None and self._run_id != run_id:
+            raise ValueError("An Agent process recorder cannot combine different native runs")
+        self._run_id = run_id
+
+    def _call_key(self, tool_call_id: str) -> str:
+        """Scope native ids by their run; direct legacy helpers keep their old key."""
+        return f"{self._run_id}:{tool_call_id}" if self._run_id is not None else tool_call_id
+
+    def _activity(
+        self,
+        *,
+        tool_call_id: str | None,
+        tool_name: str | None,
+        status: AgentToolActivityStatus,
+        part: Mapping[str, JsonValue] | None = None,
+    ) -> AgentToolActivity | None:
+        """Build allowlisted metadata from a native call, never from model claims."""
+        if self._run_id is None or tool_call_id is None:
+            return None
+        thought_id = self._tool_by_call_id.get(self._call_key(tool_call_id))
+        previous = self._activities.get(thought_id) if thought_id is not None else None
+        name = tool_name or (previous.tool_name if previous is not None else None)
+        if name is None:
+            return None
+        metadata = part.get("metadata") if part is not None else None
+        limit = validated_call_limit(metadata)
+        error: str | None = None
+        if part is not None:
+            if limit is not None and limit.execution_status == "not_executed":
+                status = "not_executed"
+                error = (
+                    f"Call limit reached ({limit.limit} per run). This request was not executed."
+                    if limit.reason == "call_limit_reached"
+                    else "Duplicate tool call. This request was not executed."
+                )
+            elif (
+                part.get("part_kind") == "retry-prompt"
+                or part.get("outcome") == "failure"
+                or runtime_tool_failed(metadata, has_quota=limit is not None)
+            ):
+                status = "failed"
+                error = (_json_or_text(part.get("content")) or "Tool call failed.")[: 16 * 1024]
+        return AgentToolActivity(
+            id=self._call_key(tool_call_id),
+            run_id=self._run_id,
+            tool_call_id=tool_call_id,
+            tool_name=name,
+            status=status,
+            error=error,
+            call_limit=limit,
+        )
+
+    def finish(
+        self,
+        terminal: AgentBackendRunSucceededInternalEvent
+        | AgentBackendRunFailedInternalEvent
+        | AgentBackendRunCancelledInternalEvent,
+    ) -> None:
+        """Persist unfinished calls using the owning run's authoritative terminal.
+
+        Completed records stay unchanged. A retained reservation with no tool
+        result becomes unconfirmed, never successful or definitively unexecuted.
+        A stopped queue cannot prevent any row from being committed.
+        """
+        self._bind_run(terminal.run_id)
+        for thought_id, activity in list(self._activities.items()):
+            if activity.run_id == terminal.run_id and activity.status in {"started", "running"}:
+                status: AgentToolActivityStatus = "failed"
+                error = "Tool call did not return a result."
+                if isinstance(terminal, AgentBackendRunCancelledInternalEvent):
+                    status = "cancelled"
+                    error = terminal.message or terminal.reason or "Tool call was cancelled before its result returned."
+                elif isinstance(terminal, AgentBackendRunFailedInternalEvent):
+                    error = terminal.error or error
+                updated = AgentToolActivity(
+                    id=activity.id,
+                    run_id=activity.run_id,
+                    tool_call_id=activity.tool_call_id,
+                    tool_name=activity.tool_name,
+                    status=status,
+                    error=error[: 16 * 1024],
+                    call_limit=unconfirmed_reservation(activity.tool_call_id, terminal.tool_call_limits),
+                )
+                self._update_thought(thought_id, tool_activity=updated)
+                self._mark_tool_observed(thought_id)
+
+    def _publish_thought(self, thought_id: str) -> None:
+        """Notify only after commit; a concurrent Stop cannot discard saved metadata."""
+        if not self._queue_manager.is_stopped():
+            # A concurrent Stop may reject publication after the durable commit.
+            with suppress(GenerateTaskStoppedError):
+                self._queue_manager.publish(
+                    QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
+                )
 
     def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
+        """Apply one validated owning-run stream event without replaying terminal tools."""
+        self._bind_run(event.run_id)
         data = event.data
         if not isinstance(data, dict):
             return
@@ -379,7 +525,7 @@ class _AgentProcessRecorder:
         content = data.get("content")
         if content is not None:
             self._record_tool_observation(
-                tool_call_id=_string_or_none(data.get("tool_call_id")),
+                tool_call_id=_native_call_id(data.get("tool_call_id")),
                 tool_name=_string_or_none(data.get("tool_name")),
                 observation=content,
             )
@@ -393,14 +539,22 @@ class _AgentProcessRecorder:
             return
         self._update_thought(thought_id, thought_delta=content_delta)
 
-    def _record_tool_call_delta(self, index: int, delta: dict[str, Any]) -> None:
+    def _record_tool_call_delta(self, index: int, delta: dict[str, JsonValue]) -> None:
+        """Persist partial tool input, retaining one row for each native identity."""
         self._close_thinking_segments()
-        tool_call_id = _string_or_none(delta.get("tool_call_id"))
+        tool_call_id = _native_call_id(delta.get("tool_call_id"))
         tool_name = _string_or_none(delta.get("tool_name_delta"))
         args_delta = delta.get("args_delta")
         thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
+        if thought_id in self._finished_tools:
+            if index >= 0 and thought_id is not None:
+                self._tool_by_index[index] = thought_id
+            return
+        activity = self._activity(tool_call_id=tool_call_id, tool_name=tool_name, status="started")
         if thought_id is None:
-            thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(args_delta))
+            thought_id = self._create_thought(
+                tool=tool_name, tool_input=_json_or_text(args_delta), tool_activity=activity
+            )
             self._remember_tool_thought(
                 index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
             )
@@ -410,16 +564,25 @@ class _AgentProcessRecorder:
             thought_id,
             tool=tool_name,
             tool_input_delta=_json_or_text(args_delta),
+            tool_activity=activity,
         )
         self._remember_tool_thought(index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id)
 
-    def _record_tool_call_part(self, index: int, part: dict[str, Any]) -> None:
+    def _record_tool_call_part(self, index: int, part: dict[str, JsonValue]) -> None:
+        """Start a native invocation without letting replay or index reuse regress it."""
         self._close_thinking_segments()
-        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_call_id = _native_call_id(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
+        if thought_id in self._finished_tools:
+            if index >= 0 and thought_id is not None:
+                self._tool_by_index[index] = thought_id
+            return
+        activity = self._activity(tool_call_id=tool_call_id, tool_name=tool_name, status="running")
         if thought_id is None:
-            thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(part.get("args")))
+            thought_id = self._create_thought(
+                tool=tool_name, tool_input=_json_or_text(part.get("args")), tool_activity=activity
+            )
             self._remember_tool_thought(
                 index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
             )
@@ -429,10 +592,12 @@ class _AgentProcessRecorder:
             thought_id,
             tool=tool_name,
             tool_input=_json_or_text(part.get("args")),
+            tool_activity=activity,
         )
         self._remember_tool_thought(index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id)
 
-    def _record_tool_return_part(self, part: dict[str, Any]) -> None:
+    def _record_tool_return_part(self, part: dict[str, JsonValue]) -> None:
+        """Persist native observations and validated status/quota as separate values."""
         self._close_thinking_segments()
         sources = []
         for source in knowledge_sources_from_tool_part(part):
@@ -444,28 +609,51 @@ class _AgentProcessRecorder:
             self._queue_manager.publish(
                 QueueRetrieverResourcesEvent(retriever_resources=sources), PublishFrom.APPLICATION_MANAGER
             )
-        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_call_id = _native_call_id(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         content = part.get("content")
         if content is None:
             content = part
-        self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
+        self._record_tool_observation(
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            observation=content,
+            activity=self._activity(tool_call_id=tool_call_id, tool_name=tool_name, status="succeeded", part=part),
+        )
 
-    def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
+    def _record_tool_observation(
+        self,
+        *,
+        tool_call_id: str | None,
+        tool_name: str | None,
+        observation: Any,
+        activity: AgentToolActivity | None = None,
+    ) -> None:
+        """Complete one known call once, keeping its identity for sequential replay."""
         self._close_thinking_segments()
         thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
+        if thought_id in self._finished_tools:
+            return
         if thought_id is None:
-            thought_id = self._create_thought(tool=tool_name)
+            thought_id = self._create_thought(
+                tool=tool_name, observation=_json_or_text(observation), tool_activity=activity
+            )
+            self._remember_tool_thought(index=-1, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id)
         else:
-            self._mark_tool_observed(thought_id)
-        self._update_thought(thought_id, observation=_json_or_text(observation))
+            self._update_thought(thought_id, observation=_json_or_text(observation), tool_activity=activity)
+        self._mark_tool_observed(thought_id)
 
     def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
-        if tool_call_id and tool_call_id in self._tool_by_call_id:
-            return self._tool_by_call_id[tool_call_id]
+        """Prefer stable ids; a reused model part index cannot alias another native call."""
+        if tool_call_id and self._call_key(tool_call_id) in self._tool_by_call_id:
+            return self._tool_by_call_id[self._call_key(tool_call_id)]
         if index < 0:
             return None
-        return self._tool_by_index.get(index)
+        thought_id = self._tool_by_index.get(index)
+        activity = self._activities.get(thought_id) if thought_id is not None else None
+        if tool_call_id and activity is not None and activity.tool_call_id != tool_call_id:
+            return None
+        return thought_id
 
     def _remember_tool_thought(
         self, *, index: int, tool_call_id: str | None, tool_name: str | None, thought_id: str
@@ -473,24 +661,27 @@ class _AgentProcessRecorder:
         if index >= 0:
             self._tool_by_index[index] = thought_id
         if tool_call_id:
-            self._tool_by_call_id[tool_call_id] = thought_id
+            self._tool_by_call_id[self._call_key(tool_call_id)] = thought_id
         if tool_name:
             self._open_tool_by_name.setdefault(tool_name, set()).add(thought_id)
 
     def _lookup_observation_thought(self, *, tool_call_id: str | None, tool_name: str | None) -> str | None:
         if tool_call_id:
-            return self._tool_by_call_id.get(tool_call_id)
+            return self._tool_by_call_id.get(self._call_key(tool_call_id))
         if tool_name:
-            open_thought_ids = self._open_tool_by_name.get(tool_name, set())
+            open_thought_ids = {
+                thought_id
+                for thought_id in self._open_tool_by_name.get(tool_name, set())
+                if (activity := self._activities.get(thought_id)) is None or activity.run_id == self._run_id
+            }
             if len(open_thought_ids) == 1:
                 return next(iter(open_thought_ids))
         return None
 
     def _mark_tool_observed(self, thought_id: str) -> None:
+        """Close transient matching while retaining stable identity to reject replay."""
+        self._finished_tools.add(thought_id)
         self._tool_by_index = {index: value for index, value in self._tool_by_index.items() if value != thought_id}
-        self._tool_by_call_id = {
-            tool_call_id: value for tool_call_id, value in self._tool_by_call_id.items() if value != thought_id
-        }
         for open_thought_ids in self._open_tool_by_name.values():
             open_thought_ids.discard(thought_id)
 
@@ -505,16 +696,22 @@ class _AgentProcessRecorder:
         answer: str | None = None,
         tool: str | None = None,
         tool_input: str | None = None,
+        observation: str | None = None,
+        tool_activity: AgentToolActivity | None = None,
     ) -> str:
+        """Commit a process row and its allowlisted metadata before publishing it."""
         row = MessageAgentThought(
             message_id=self._message_id,
             message_chain_id=None,
             thought=thought or "",
             tool=tool or "",
-            tool_labels_str=_tool_labels(tool),
-            tool_meta_str="{}",
+            tool_labels_str=self._labels_for_tool(tool),
+            tool_meta_str=json.dumps(
+                {AGENT_TOOL_ACTIVITY_META_KEY: tool_activity.model_dump(mode="json")} if tool_activity else {},
+                ensure_ascii=False,
+            ),
             tool_input=tool_input or "",
-            observation="",
+            observation=observation or "",
             tool_process_data=None,
             message="",
             message_token=0,
@@ -537,9 +734,9 @@ class _AgentProcessRecorder:
         db.session.add(row)
         db.session.commit()
         thought_id = str(row.id)
-        self._queue_manager.publish(
-            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
-        )
+        if tool_activity is not None:
+            self._activities[thought_id] = tool_activity
+        self._publish_thought(thought_id)
         return thought_id
 
     def _update_thought(
@@ -552,34 +749,64 @@ class _AgentProcessRecorder:
         tool_input_delta: str | None = None,
         observation: str | None = None,
         answer_delta: str | None = None,
+        tool_activity: AgentToolActivity | None = None,
     ) -> None:
+        """Commit an actual row change; identical replay emits no additional update."""
         row = db.session.get(MessageAgentThought, thought_id)
         if row is None:
             return
+        changed = False
 
         if thought_delta:
             row.thought = f"{row.thought or ''}{thought_delta}"
-        if tool:
+            changed = True
+        if tool and row.tool != tool:
             row.tool = tool
-            row.tool_labels_str = _tool_labels(tool)
-        if tool_input is not None:
+            row.tool_labels_str = self._labels_for_tool(tool)
+            changed = True
+        if tool_input is not None and row.tool_input != tool_input:
             row.tool_input = tool_input
+            changed = True
         if tool_input_delta:
             row.tool_input = f"{row.tool_input or ''}{tool_input_delta}"
-        if observation is not None:
+            changed = True
+        if observation is not None and row.observation != observation:
             row.observation = observation
+            changed = True
         if answer_delta:
             row.answer = f"{row.answer or ''}{answer_delta}"
+            changed = True
+        if tool_activity is not None and self._activities.get(thought_id) != tool_activity:
+            metadata = row.tool_meta
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata[AGENT_TOOL_ACTIVITY_META_KEY] = tool_activity.model_dump(mode="json")
+            row.tool_meta_str = json.dumps(metadata, ensure_ascii=False)
+            changed = True
+        if not changed:
+            return
 
         db.session.commit()
-        self._queue_manager.publish(
-            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
-        )
+        if tool_activity is not None:
+            self._activities[thought_id] = tool_activity
+        self._publish_thought(thought_id)
 
     def _created_by_role(self) -> CreatorUserRole:
         if self._dify_context.invoke_from.runs_as_account():
             return CreatorUserRole.ACCOUNT
         return CreatorUserRole.END_USER
+
+    def _labels_for_tool(self, tool: str | None) -> str:
+        """Freeze the prepared label for a new name, falling back for native tools.
+
+        The run's prepared labels contain only declared display metadata.
+        Existing rows retain their original labels unless their technical
+        name is still being assembled by the native stream.
+        """
+        if not tool:
+            return "{}"
+        label = self._tool_labels.get(tool) or {"en_US": tool, "zh_Hans": tool}
+        return json.dumps({tool: label}, ensure_ascii=False)
 
 
 def _event_index(data: dict[str, Any]) -> int:
@@ -596,6 +823,18 @@ def _string_or_none(value: Any) -> str | None:
     return normalized
 
 
+def _native_call_id(value: JsonValue) -> str | None:
+    """Keep opaque native identities verbatim so their reservation hashes match.
+
+    Keep the existing missing-ID behavior for blank values and legacy
+    ``None``/``null`` placeholders. Other native ids retain whitespace padding
+    rather than being normalized into another call's identity.
+    """
+    if not isinstance(value, str) or not value.strip() or value.strip().lower() in {"none", "null"}:
+        return None
+    return value
+
+
 def _json_or_text(value: Any) -> str | None:
     if value is None:
         return None
@@ -605,12 +844,6 @@ def _json_or_text(value: Any) -> str | None:
         return json.dumps(value, ensure_ascii=False)
     except Exception:
         return str(value)
-
-
-def _tool_labels(tool: str | None) -> str:
-    if not tool:
-        return "{}"
-    return json.dumps({tool: {"en_US": tool, "zh_Hans": tool}}, ensure_ascii=False)
 
 
 def _suffix_prefix_overlap_length(text: str, prefix_source: str) -> int:
@@ -701,6 +934,7 @@ class AgentAppRunner:
             query=query,
             session_scope=scope,
             binding_id=runtime.binding_id,
+            tool_labels=runtime.tool_labels,
         )
 
         terminal_usage = None
@@ -854,6 +1088,7 @@ class AgentAppRunner:
         query: str | None,
         session_scope: AgentAppSessionScope,
         binding_id: str,
+        tool_labels: Mapping[str, I18nObjectDict] | None = None,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -861,6 +1096,7 @@ class AgentAppRunner:
             dify_context=dify_context,
             message_id=message_id,
             queue_manager=queue_manager,
+            tool_labels=tool_labels,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
         last_event_id: str | None = None
@@ -888,6 +1124,24 @@ class AgentAppRunner:
             if pending_text:
                 persist_answer_text(pending_text)
 
+        cancellation_attempted = False
+
+        def cancel_current_run() -> None:
+            """Finish retained tool metadata once even when Stop races a text flush."""
+            nonlocal cancellation_attempted
+            if not cancellation_attempted:
+                cancellation_attempted = True
+                self._cancel_run(
+                    run_id,
+                    after=last_event_id,
+                    session_scope=session_scope,
+                    binding_id=binding_id,
+                    message_id=message_id,
+                    dify_context=dify_context,
+                    queue_manager=queue_manager,
+                    process_recorder=process_recorder,
+                )
+
         try:
             public_events = self._agent_backend_client.stream_events(
                 run_id,
@@ -911,29 +1165,9 @@ class AgentAppRunner:
                 if terminal is not None:
                     break
                 if queue_manager.is_stopped():
-                    flush_pending_agent_message_text()
-                    self._cancel_run(
-                        run_id,
-                        after=last_event_id,
-                        session_scope=session_scope,
-                        binding_id=binding_id,
-                        message_id=message_id,
-                        dify_context=dify_context,
-                        queue_manager=queue_manager,
-                    )
                     raise GenerateTaskStoppedError()
                 for internal_event in internal_events:
                     if queue_manager.is_stopped():
-                        flush_pending_agent_message_text()
-                        self._cancel_run(
-                            run_id,
-                            after=last_event_id,
-                            session_scope=session_scope,
-                            binding_id=binding_id,
-                            message_id=message_id,
-                            dify_context=dify_context,
-                            queue_manager=queue_manager,
-                        )
                         raise GenerateTaskStoppedError()
                     if internal_event.type in (
                         AgentBackendInternalEventType.RUN_STARTED,
@@ -962,21 +1196,19 @@ class AgentAppRunner:
                             continue
                         continue
         except GenerateTaskStoppedError:
+            with suppress(GenerateTaskStoppedError):
+                flush_pending_agent_message_text()
+            cancel_current_run()
             raise
         except Exception as error:
-            flush_pending_agent_message_text()
-            self._cancel_run(
-                run_id,
-                after=last_event_id,
-                session_scope=session_scope,
-                binding_id=binding_id,
-                message_id=message_id,
-                dify_context=dify_context,
-                queue_manager=queue_manager,
-            )
+            with suppress(GenerateTaskStoppedError):
+                flush_pending_agent_message_text()
+            cancel_current_run()
             if queue_manager.is_stopped():
                 raise GenerateTaskStoppedError() from error
             raise
+        if terminal is not None:
+            process_recorder.finish(terminal)
         try:
             flush_pending_agent_message_text()
         except GenerateTaskStoppedError:
@@ -988,6 +1220,8 @@ class AgentAppRunner:
                     binding_id=binding_id,
                     message_id=message_id,
                 )
+            else:
+                cancel_current_run()
             raise
         if queue_manager.is_stopped():
             if terminal is not None:
@@ -999,15 +1233,7 @@ class AgentAppRunner:
                     message_id=message_id,
                 )
             else:
-                self._cancel_run(
-                    run_id,
-                    after=last_event_id,
-                    session_scope=session_scope,
-                    binding_id=binding_id,
-                    message_id=message_id,
-                    dify_context=dify_context,
-                    queue_manager=queue_manager,
-                )
+                cancel_current_run()
             raise GenerateTaskStoppedError()
         return terminal, process_recorder
 
@@ -1021,11 +1247,22 @@ class AgentAppRunner:
         message_id: str,
         dify_context: DifyRunContext,
         queue_manager: AppQueueManager,
+        process_recorder: _AgentProcessRecorder | None = None,
     ) -> None:
+        """Retain terminal usage and thought metadata even after SSE consumption stops."""
         try:
             public_event = self._agent_backend_client.cancel_run_and_wait(run_id, after=after)
             for internal_event in self._event_adapter.adapt(public_event):
-                if isinstance(internal_event, AgentBackendRunCancelledInternalEvent):
+                if isinstance(
+                    internal_event,
+                    AgentBackendRunSucceededInternalEvent
+                    | AgentBackendRunFailedInternalEvent
+                    | AgentBackendRunCancelledInternalEvent,
+                ):
+                    recorder = process_recorder or _AgentProcessRecorder(
+                        dify_context=dify_context, message_id=message_id, queue_manager=queue_manager
+                    )
+                    recorder.finish(internal_event)
                     self._finish_stopped_terminal(
                         internal_event,
                         dify_context=dify_context,

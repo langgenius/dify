@@ -2,6 +2,8 @@ import type { ReactElement } from 'react'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleClient } from '@/service/console'
+import { isErrorHandled } from '@/service/handled-error'
+import { createHttpError } from '@/service/http-error'
 import { expectLoadingButton } from '@/test/button'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
@@ -188,6 +190,27 @@ describe('InstallForm', () => {
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/signin')
     })
+  })
+
+  it('sends a completed setup to sign in without reporting it', async () => {
+    const error = createHttpError(new Response(null, { status: 403 }), {
+      code: 'already_setup',
+      message: 'Dify has been successfully installed.',
+    })
+    mockSetup.mockRejectedValue(error)
+
+    render(<InstallForm />)
+
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
+    fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /login\.installBtn/ }))
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/signin'))
+    expect(mockLogin).not.toHaveBeenCalled()
+    expect(isErrorHandled(error)).toBe(true)
   })
 
   it('should disable submit while request is in flight', async () => {

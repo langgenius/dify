@@ -1701,7 +1701,9 @@ describe('trusted IP checks before saving', () => {
     const dialog = await screen.findByRole('alertdialog')
     server.checkStatus = 503
     await user.click(within(dialog).getByRole('button', { name: 'Save anyway' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('IP unavailable')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Unable to check your IP address. Please try again.',
+    )
     expect(server.writes).toHaveLength(0)
   })
 
@@ -1729,7 +1731,9 @@ describe('trusted IP checks before saving', () => {
     server.checkStatus = 503
     renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
     await openSelectedConfig(user)
-    expect(await screen.findByText('IP unavailable')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(server.writes).toHaveLength(0)
     server.checkStatus = 200
@@ -1749,7 +1753,9 @@ describe('trusted IP checks before saving', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     server.checkStatus = 503
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    expect(await screen.findByText('IP unavailable')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
     expect(server.writes).toHaveLength(0)
   })
 })

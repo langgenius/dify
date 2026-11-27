@@ -6,7 +6,13 @@ from werkzeug.datastructures import Headers
 
 def serialize_request(request: Request) -> bytes:
     method = request.method
-    path = request.full_path.rstrip("?")
+    # ``Request.full_path`` always appends a "?" separator, even when the query
+    # string is empty. Strip only that separator; a trailing "?" that belongs to
+    # the query string itself is data and must be preserved for downstream
+    # consumers of the serialized request.
+    path = request.full_path
+    if not request.query_string and path.endswith("?"):
+        path = path[:-1]
     raw = f"{method} {path} HTTP/1.1\r\n".encode()
 
     for name, value in request.headers.items():

@@ -17,7 +17,7 @@ from extensions.ext_application_services import ApplicationServices
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
-from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigRecord
 from services.tracing.provider_configs import TraceProviderCapabilitiesQuery
 from services.tracing.registry import EntryPointTraceProviderCatalog

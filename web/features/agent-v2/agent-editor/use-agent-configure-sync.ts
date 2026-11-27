@@ -29,7 +29,7 @@ import {
 import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   getAgentToolPublishIssue,
   useAgentToolPresentation,
@@ -59,6 +59,7 @@ export function useAgentConfigureSync({
 }) {
   const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tWorkflow } = useTranslation(['workflow'])
+  const describeRequestError = useRequestErrorDescriber()
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
   const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
   const toolProviderCatalog = useAgentToolProviderCatalog()
@@ -301,7 +302,12 @@ export function useAgentConfigureSync({
         silent: false,
       })
     } catch (error) {
-      toast.error(getRequestErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
+      toast.error(
+        describeRequestError(
+          error,
+          tCommon(($) => $['api.actionFailed']),
+        ),
+      )
       throw error
     } finally {
       explicitlySavingDraftKeysRef.current.delete(draftKey)
@@ -312,6 +318,7 @@ export function useAgentConfigureSync({
     saveComposer,
     store,
     tCommon,
+    describeRequestError,
     explicitlySavingDraftKeysRef,
   ])
 

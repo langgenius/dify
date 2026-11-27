@@ -37,7 +37,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
@@ -55,6 +55,7 @@ type Props = Readonly<{
 
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation(['common', 'datasetHitTesting'])
+  const describeRequestError = useRequestErrorDescriber()
 
   const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
@@ -138,9 +139,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     ns: 'datasetHitTesting',
     num: result?.records.length ?? 0,
   })
-  const retrievalErrorMessage =
-    getRequestErrorMessage(isExternal ? externalKnowledgeBaseHitTestingError : hitTestingError) ??
-    t(($) => $['api.actionFailed'], { ns: 'common' })
+  const retrievalErrorMessage = describeRequestError(
+    isExternal ? externalKnowledgeBaseHitTestingError : hitTestingError,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const panelTitle =
     !isRetrievalLoading && !isRetrievalError && result
       ? resultTitle

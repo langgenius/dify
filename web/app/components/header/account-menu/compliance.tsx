@@ -25,6 +25,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadUrl } from '@/utils/download'
 import PremiumBadge from '../../base/premium-badge'
 import { MenuItemContent } from './menu-item-content'
@@ -104,6 +105,7 @@ type ComplianceDocRowItemProps = {
 
 function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProps) {
   const { t } = useTranslation(['billing', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: docName !== DocName.GDPR,
@@ -129,7 +131,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
           toast.error(t(($) => $['compliance.documentNotFound'], { ns: 'common' }))
         else if (code === 'compliance_rate_limit')
           toast.error(t(($) => $['compliance.rateLimit'], { ns: 'common' }))
-        else toast.error(getBillingErrorMessage(error, t))
+        else toast.error(getBillingErrorMessage(error, t, describeRequestError))
       },
     }),
   )

@@ -12,7 +12,7 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   lastRunQueryKey,
   restoreWorkflowMutationOptions,
@@ -29,6 +29,7 @@ export type HeaderInRestoringProps = {
 }
 const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const { t } = useTranslation(['billing', 'workflow', 'workflowHistory'])
+  const describeRequestError = useRequestErrorDescriber()
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -139,8 +140,10 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       await emitWorkflowUpdate()
     } catch (error) {
       toast.error(
-        getRequestErrorMessage(error) ??
+        describeRequestError(
+          error,
           t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }),
+        ),
       )
       await emitRestoreComplete(false, 'restore failed')
     } finally {
@@ -159,6 +162,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     workflowStore,
     handleRefreshWorkflowDraft,
     t,
+    describeRequestError,
     deleteAllInspectVars,
     invalidAllLastRun,
     emitRestoreComplete,

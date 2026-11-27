@@ -34,6 +34,8 @@ class DifyCoreToolConfig(BaseModel):
     runtime_parameters: dict[str, JsonValue] = Field(default_factory=dict)
     parameters: list[DifyPluginToolParameter] = Field(default_factory=list)
     parameters_json_schema: dict[str, JsonValue] = Field(default_factory=_default_parameters_json_schema)
+    # None leaves this operation unlimited and preserves pre-limit wire contracts.
+    max_calls_per_run: int | None = Field(default=None, strict=True, gt=0, exclude_if=lambda value: value is None)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 

@@ -761,3 +761,57 @@ class TestFileUploads:
         assert b"emoji.txt" in restored_body
         assert file_content in restored_body
         assert b'{"encoding": "utf-8", "size": 42}' in restored_body
+
+
+class TestSerializeRequestQueryString:
+    """Query strings are user input; a '?' in them is data, not a separator."""
+
+    def test_serialize_preserves_trailing_question_mark_in_query(self) -> None:
+        environ = {
+            "REQUEST_METHOD": "GET",
+            "PATH_INFO": "/api/search",
+            "QUERY_STRING": "q=what?",
+            "SERVER_NAME": "localhost",
+            "SERVER_PORT": "8000",
+            "wsgi.input": None,
+            "wsgi.url_scheme": "http",
+        }
+        request = Request(environ)
+
+        raw_data = serialize_request(request)
+
+        assert raw_data.startswith(b"GET /api/search?q=what? HTTP/1.1")
+        restored_request = deserialize_request(raw_data)
+        assert restored_request.args.get("q") == "what?"
+
+    def test_serialize_preserves_internal_question_marks(self) -> None:
+        environ = {
+            "REQUEST_METHOD": "GET",
+            "PATH_INFO": "/api/search",
+            "QUERY_STRING": "q=a?b?c",
+            "SERVER_NAME": "localhost",
+            "SERVER_PORT": "8000",
+            "wsgi.input": None,
+            "wsgi.url_scheme": "http",
+        }
+        request = Request(environ)
+
+        raw_data = serialize_request(request)
+
+        assert raw_data.startswith(b"GET /api/search?q=a?b?c HTTP/1.1")
+
+    def test_serialize_empty_query_omits_separator_only(self) -> None:
+        environ = {
+            "REQUEST_METHOD": "GET",
+            "PATH_INFO": "/api/test",
+            "QUERY_STRING": "",
+            "SERVER_NAME": "localhost",
+            "SERVER_PORT": "8000",
+            "wsgi.input": None,
+            "wsgi.url_scheme": "http",
+        }
+        request = Request(environ)
+
+        raw_data = serialize_request(request)
+
+        assert raw_data.startswith(b"GET /api/test HTTP/1.1")

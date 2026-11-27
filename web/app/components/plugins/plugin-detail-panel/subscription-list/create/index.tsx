@@ -18,12 +18,12 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { getRequestErrorMessage } from '@/service/http-error'
 import {
   initiateTriggerOAuthMutationOptions,
   triggerOAuthConfigQueryOptions,
   triggerProviderInfoQueryOptions,
 } from '@/service/trigger-queries'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
@@ -53,6 +53,7 @@ export const CreateSubscriptionButton = ({
   shape = 'square',
 }: Props) => {
   const { t } = useTranslation(['plugin', 'pluginTrigger'])
+  const describeRequestError = useRequestErrorDescriber()
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{
@@ -245,8 +246,10 @@ export const CreateSubscriptionButton = ({
           },
           onError: (error) => {
             toast.error(
-              getRequestErrorMessage(error) ??
+              describeRequestError(
+                error,
                 t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
+              ),
             )
           },
         })

@@ -21,7 +21,7 @@ from libs.datetime_utils import ensure_naive_utc, utc_now
 from models.account import Account
 from models.agent import WorkflowAgentNodeBinding
 from models.model import App
-from repositories.app.agent_runtime_app import find_runtime_resolvable_agent
+from repositories.agent.agent_runtime_app import find_runtime_resolvable_agent
 from services.agent.observability_contracts import AgentLogExportFilters
 from services.billing_client import saas
 from services.entities.conversation_entities import ConsoleConversationLogFilters, ConsoleLogIdentitySource

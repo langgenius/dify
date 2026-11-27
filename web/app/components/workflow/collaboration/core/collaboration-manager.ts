@@ -188,6 +188,8 @@ export class CollaborationManager {
   private joinFailure: JoinFailure | null = null
   private joinPending = false
   private hasJoinedRoom = false
+  // Keep the identity in this page's manager across reconnects and editor remounts.
+  private pageSessionId: string | null = null
   private joinAttempt = 0
   private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
@@ -264,10 +266,14 @@ export class CollaborationManager {
     this.joinPending = true
     const attempt = ++this.joinAttempt
     const sid = socket.id
+    this.pageSessionId ??= uuid4()
     emitWithAuthGuard(
       socket,
       'user_connect',
-      { workflow_id: this.currentAppId },
+      {
+        workflow_id: this.currentAppId,
+        resume: { page_id: this.pageSessionId, sequence: attempt },
+      },
       {
         onAck: (...args) => {
           if (
@@ -1936,7 +1942,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: { isLeader: boolean }) => {
+    socket.on('status', (data: { isLeader: boolean; requiresGraphReload?: boolean }) => {
       try {
         if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
@@ -1950,10 +1956,14 @@ export class CollaborationManager {
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
+        if (this.isLeader && data.requiresGraphReload) this.crdtTrusted = false
 
         if (
           this.isLeader &&
-          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
+          (data.requiresGraphReload ||
+            this.reconnectedWithFreshDoc ||
+            this.awaitingSnapshotImport ||
+            this.graphReloadRequired)
         ) {
           this.clearInitialSyncRetry()
           this.pendingInitialSync = false
