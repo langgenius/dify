@@ -1670,6 +1670,38 @@ def test_agent_build_finalize_relays_sse_error_status_code_and_details(
     assert agent_generator.closed_streams == 1
 
 
+def test_agent_chat_messages_preflight_relays_sse_error_before_streaming(
+    harness: Harness, agent_generator: _AgentGenerator
+) -> None:
+    """Relay an immediate post-ping SSE error as a JSON HTTP error before committing text/event-stream."""
+    agent_id, _ = harness.create_agent()
+    agent_generator.custom_chunks = [
+        "event: ping\n\n",
+        (
+            'data: {"event":"error","status":503,"code":"backend_unavailable",'
+            '"message":"Upstream overloaded","conversation_id":"conv-1","message_id":"msg-1","task_id":"task-1"}\n\n'
+        ),
+    ]
+
+    response = harness.client.post(
+        f"/console/api/agent/{agent_id}/chat-messages",
+        headers={**harness.headers, "X-Trace-Id": "chat-error-trace"},
+        json={"inputs": {}, "query": "Build", "draft_type": "debug_build"},
+    )
+
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    assert response.mimetype == "application/json"
+    body = response.get_json()
+    assert body["code"] == "backend_unavailable"
+    assert body["status"] == HTTPStatus.SERVICE_UNAVAILABLE
+    assert body["message"] == "Upstream overloaded"
+    assert body["details"]["conversation_id"] == "conv-1"
+    assert body["details"]["message_id"] == "msg-1"
+    assert body["details"]["task_id"] == "task-1"
+    assert body["details"]["trace_id"] == "chat-error-trace"
+    assert agent_generator.closed_streams == 1
+
+
 def test_agent_chat_checks_conversation_ownership_before_invoking_generation(harness: Harness) -> None:
     """Send an unowned conversation through real admission and runtime selection."""
     agent_id, _ = harness.create_agent()

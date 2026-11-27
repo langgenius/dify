@@ -74,6 +74,18 @@ describe('core E2E preparation', () => {
     const completed = new Promise<Error | undefined>((resolve) => {
       finishBuild = () => resolve(undefined)
     })
+    let markCaptureStarted!: () => void
+    const captureStarted = new Promise<void>((resolve) => {
+      markCaptureStarted = resolve
+    })
+    let finishCapture!: () => void
+    const captureDone = new Promise<void>((resolve) => {
+      finishCapture = resolve
+    })
+    vi.mocked(captureMiddlewareLogs).mockImplementationOnce(() => {
+      markCaptureStarted()
+      return captureDone
+    })
     const downloadProcess = managedProcess()
     vi.mocked(startWebBuildDownload).mockResolvedValue({
       process: downloadProcess,
@@ -89,6 +101,14 @@ describe('core E2E preparation', () => {
     expect(runCommand).not.toHaveBeenCalled()
 
     finishBuild()
+    await captureStarted
+    // Flush microtasks to verify stopMiddleware awaits captureMiddlewareLogs completion.
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(captureMiddlewareLogs).toHaveBeenCalledWith('/e2e/.logs/cucumber-middleware.log')
+    expect(stopMiddleware).not.toHaveBeenCalled()
+
+    finishCapture()
     await run
     expect(startWebServer).toHaveBeenCalledBefore(vi.mocked(runCommand))
     expect(runCommand).toHaveBeenCalledWith(
@@ -99,7 +119,6 @@ describe('core E2E preparation', () => {
     expect(stopManagedProcess).toHaveBeenCalledWith(downloadProcess)
     expect(stopWebServer).toHaveBeenCalledOnce()
     expect(stopMiddleware).toHaveBeenCalledOnce()
-    expect(captureMiddlewareLogs).toHaveBeenCalledWith('/e2e/.logs/cucumber-middleware.log')
     expect(captureMiddlewareLogs).toHaveBeenCalledBefore(vi.mocked(stopMiddleware))
   })
 

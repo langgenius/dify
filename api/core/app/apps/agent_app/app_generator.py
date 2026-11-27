@@ -339,13 +339,14 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 backend_error = e if isinstance(e, AgentBackendRunFailedError) else e.__cause__
                 logger.exception(
                     "Unknown Error in Agent App generate worker: agent_id=%s app_id=%s "
-                    "conversation_id=%s message_id=%s task_id=%s agent_run_id=%s",
+                    "conversation_id=%s message_id=%s task_id=%s agent_run_id=%s agent_run_reason=%s",
                     application_generate_entity.agent_id,
                     application_generate_entity.app_config.app_id,
                     conversation_id,
                     message_id,
                     application_generate_entity.task_id,
                     backend_error.run_id if isinstance(backend_error, AgentBackendRunFailedError) else None,
+                    backend_error.reason if isinstance(backend_error, AgentBackendRunFailedError) else None,
                 )
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:

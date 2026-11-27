@@ -36,7 +36,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
 )
 from core.moderation.base import ModerationError
-from graphon.model_runtime.errors.invoke import InvokeRateLimitError
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models import Account as _app_generator_Account
 from models import AppModelConfig
 from models.account import Account as _resolve_agent_Account
@@ -611,12 +611,12 @@ class TestAppGeneratorCases:
         def test_unexpected_error_is_published(
             self, generator: AgentAppGenerator, mocker: MockerFixture, caplog: pytest.LogCaptureFixture, failure: str
         ) -> None:
-            backend_error = AgentBackendRunFailedError("run-1", {}, reason="InvokeRateLimitError")
+            backend_error = AgentBackendRunFailedError("run-1", {}, reason="CredentialsValidateFailedError")
             error: Exception = ValueError("boom")
             if failure == "backend":
                 error = backend_error
             elif failure == "invoke":
-                error = InvokeRateLimitError()
+                error = InvokeBadRequestError()
                 error.__cause__ = backend_error
             self._wire(generator, mocker, run_side_effect=error)
             queue_manager = mocker.MagicMock()
@@ -626,6 +626,8 @@ class TestAppGeneratorCases:
             for field in ("agent_id=a", "app_id=app1", "conversation_id=conv", "message_id=msg", "task_id=task-1"):
                 assert field in record.message
             assert f"agent_run_id={'run-1' if failure != 'unexpected' else 'None'}" in record.message
+            expected_reason = "CredentialsValidateFailedError" if failure != "unexpected" else "None"
+            assert f"agent_run_reason={expected_reason}" in record.message
             assert record.exc_info
             assert record.exc_info[1] is error
 
