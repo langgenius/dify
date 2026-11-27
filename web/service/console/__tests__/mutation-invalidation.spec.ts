@@ -137,7 +137,28 @@ describe('mutation invalidation fallback', () => {
     await vi.waitFor(() => expect(client.getQueryData(appsListKey())).toBe(2))
   })
 
-  it('joins a read already running instead of cancelling it', async () => {
+  it('restarts an observed read already running, so its pre-write response is dropped', async () => {
+    const client = createClient()
+    const background = createDeferred<string>()
+    const queryFn = vi
+      .fn()
+      .mockResolvedValueOnce('first')
+      .mockReturnValueOnce(background.promise)
+      .mockResolvedValue('after write')
+    const observer = new QueryObserver(client, { queryKey: appsListKey(), queryFn })
+    cleanups.push(observer.subscribe(() => undefined))
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('first'))
+    void observer.refetch()
+
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+    background.resolve('before write')
+
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('after write'))
+    expect(queryFn).toHaveBeenCalledTimes(3)
+  })
+
+  it('leaves an unobserved read running instead of cancelling it', async () => {
     const client = createClient()
     const running = createDeferred<string>()
     const queryFn = vi.fn().mockReturnValueOnce(running.promise).mockResolvedValue('fresh')

@@ -70,15 +70,15 @@ function participantOf(mutation: AnyMutation): Participant | undefined {
  * writes; this one is never awaited.
  *
  * - It starts once the mutation's own callbacks have settled. Every matching query is marked
- *   stale and observed ones refetch; a read already running is joined, never cancelled
- *   (`cancelRefetch: false`), so an awaited `query()` such as a download URL is not lost.
+ *   stale and observed ones refetch, restarting a read already running (it may predate the
+ *   write). Unobserved reads, such as an awaited `query()` for a download URL, are only marked
+ *   stale, never cancelled. A policy that writes into the cache cancels those reads first.
  * - A query that sets `meta.invalidateAfterWrites: false` is never refreshed by it.
  * - While another mutation of the same domain is pending, it only records what to refresh;
  *   the last one to finish refreshes everything. A refetch therefore never lands on a
  *   sibling's optimistic value (TkDodo's `isMutating({ mutationKey }) === 1` guard).
  *
- * Known trade-offs: a query a policy already refreshed is fetched again, and a read that
- * started before the write and is still running when it settles keeps its response.
+ * Known trade-off: a query a policy already refreshed is fetched again.
  */
 export function createMutationInvalidation() {
   const succeeded = new WeakSet<AnyMutation>()
@@ -115,14 +115,11 @@ export function createMutationInvalidation() {
         const entry = deferred.get(domain)
         deferred.delete(domain)
         for (const target of entry ?? [])
-          void client.invalidateQueries(
-            {
-              queryKey: consolePathKey(target),
-              refetchType: 'active',
-              predicate: (query) => query.meta?.invalidateAfterWrites !== false,
-            },
-            { cancelRefetch: false },
-          )
+          void client.invalidateQueries({
+            queryKey: consolePathKey(target),
+            refetchType: 'active',
+            predicate: (query) => query.meta?.invalidateAfterWrites !== false,
+          })
       })
     },
   }

@@ -76,15 +76,15 @@ the background (`mutation-invalidation.ts`). The domain is the first path segmen
 the first resource under `workspaces` (`workspaces.current.<resource>`,
 `workspaces.byWorkspaceId.<resource>`) and `enterprise.<service>`. The refresh is never
 awaited and starts after the mutation's callbacks. It marks every query under the domain
-stale and refetches the observed ones; a read already running is joined, never cancelled
-(`cancelRefetch: false`). While another mutation of the same domain is pending it waits,
-so the last one refreshes for all. A read that remounts its owner on new data and is kept
-current by it (a streaming chat's history) sets `meta: { invalidateAfterWrites: false }`
-in its `queryOptions` policy.
+stale and refetches the observed ones, restarting a read already running; unobserved reads
+(an awaited `queryClient.query()`) are only marked stale, never cancelled. While another
+mutation of the same domain is pending it waits, so the last one refreshes for all. A read
+that remounts its owner on new data and is kept current by it (a streaming chat's history)
+sets `meta: { invalidateAfterWrites: false }` in its `queryOptions` policy.
 
-Known trade-offs: a query a policy already refreshed is fetched once more, and a read that
-started before the write and is still running when the write settles keeps its response
-until it is next stale. A flow that must not show that response refreshes in its policy.
+A policy that writes into the cache (`setQueryData`, `setQueriesData`) first awaits
+`cancelQueries` for those keys, so a read that started before the write cannot land over it.
+Known trade-off: a query a policy already refreshed is fetched once more.
 
 - **Write a policy** only for the primary source a flow must wait for (an awaited
   refresh) or for writing the response into the cache.
