@@ -3,8 +3,8 @@ from collections.abc import Mapping, Sequence
 import pytest
 
 from machinery.context import AppRequestContext
-from services.hosted_moderation_service import BatchedHostedModerationService
-from services.moderation_service import ModerationError, ModerationRejectedError, ModerationRule
+from services.hosted_moderation_service import BatchedHostedModerationService, HostedModerationUnavailableError
+from services.moderation_service import ModerationRejectedError, ModerationRule
 
 _CONTEXT = AppRequestContext(tenant_id="tenant-1", app_id="app-1")
 _RULE = ModerationRule(
@@ -85,7 +85,7 @@ def test_incomplete_batch_does_not_approve_or_cache_any_returned_verdict() -> No
     cache = _VerdictCache()
     service = BatchedHostedModerationService(client=client, cache=cache)
     client.incomplete = True
-    with pytest.raises(ModerationError, match="invalid batch verdicts"):
+    with pytest.raises(HostedModerationUnavailableError, match="invalid batch verdicts"):
         service.check_segments(_CONTEXT, rule=_RULE, segments=["one", "two"], phase="input")
     assert cache.entries == {}
     client.incomplete = False
@@ -97,5 +97,5 @@ def test_missing_platform_credentials_cannot_use_a_cached_approval() -> None:
     cache = _VerdictCache()
     cache.store(_CONTEXT.tenant_id, {"cached": False})
     service = BatchedHostedModerationService(client=None, cache=cache)
-    with pytest.raises(ModerationError, match="credentials are not configured"):
+    with pytest.raises(HostedModerationUnavailableError, match="credentials are not configured"):
         service.check_segments(_CONTEXT, rule=_RULE, segments=["cached"], phase="input")

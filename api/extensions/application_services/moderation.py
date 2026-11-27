@@ -17,7 +17,12 @@ from repositories.api_based_extension_repository import APIBasedExtensionReposit
 from services.api_based_extension_adapters import WorkspaceTokenCipher
 from services.hosted_moderation_adapters import OpenAIHostedModerationClient, RedisHostedModerationVerdictCache
 from services.hosted_moderation_service import BatchedHostedModerationService
-from services.moderation_adapters import ChainedLLMModerationPolicy, ExtensionModerationGateway, LLMModerationGuard
+from services.moderation_adapters import (
+    ChainedLLMModerationPolicy,
+    ExtensionModerationGateway,
+    LLMModerationGuard,
+    ModerationCheck,
+)
 from services.moderation_service import (
     ModerationPhase,
     ModerationRule,
@@ -84,7 +89,8 @@ def build_llm_moderation_guard(
     Missing or malformed phase enablement fails during assembly. Disabled phases
     do not inspect content, and disabled output moderation preserves live streaming.
     Platform rejection rendering is reserved for a trusted OpenAI service and
-    matching rule. The bound service may reuse validated per-segment verdicts.
+    matching rule. Only the platform batch service supplies a cache-only checker
+    that can enforce existing verdicts without retrying an unavailable backend.
     """
     rule = rule.model_copy(deep=True)
     if platform and rule.type != "openai_moderation":
@@ -93,8 +99,17 @@ def build_llm_moderation_guard(
     outputs = moderation_phase_config(rule, "output")
 
     def check(segments: Iterable[str], phase: ModerationPhase) -> None:
-        """Require the bound service to approve all segments for the runtime phase."""
+        """Resolve verdicts for the runtime phase or raise the service's typed failure."""
         service.check_segments(context, rule=rule, segments=segments, phase=phase)
+
+    check_cached: ModerationCheck | None = None
+    if platform and isinstance(service, BatchedHostedModerationService):
+
+        def check_cache_only(segments: Iterable[str], phase: ModerationPhase) -> None:
+            """Enforce existing verdicts without making or caching a new classification."""
+            service.check_segments(context, rule=rule, segments=segments, phase=phase, cache_only=True)
+
+        check_cached = check_cache_only
 
     return LLMModerationGuard(
         tenant_id=context.tenant_id,
@@ -104,4 +119,5 @@ def build_llm_moderation_guard(
         non_stream_segment_size=dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE,
         stream_segment_size=dify_config.MODERATION_BUFFER_SIZE,
         platform=platform,
+        check_cached=check_cached,
     )

@@ -19,8 +19,12 @@ _MAX_BATCH_ITEMS = 32
 _MAX_BATCH_TEXT_BYTES = 8192
 
 
+class HostedModerationUnavailableError(ModerationError):
+    """No trustworthy verdict is available from the platform backend; the message is safe to log."""
+
+
 class HostedModerationBatchClient(Protocol):
-    """Classify exact strings independently and return one boolean per item in request order."""
+    """Return one verdict per exact string or raise HostedModerationUnavailableError for backend failures."""
 
     def moderate(self, texts: Sequence[str]) -> tuple[bool, ...]: ...
 
@@ -59,7 +63,7 @@ def _batches(texts: Iterable[str]) -> Iterator[list[str]]:
 
 
 class BatchedHostedModerationService:
-    """Approve every nonempty segment using valid verdicts, never on missing results."""
+    """Treat known rejections as final and keep unavailable verdicts distinct from approvals."""
 
     def __init__(
         self, *, client: HostedModerationBatchClient | None, cache: HostedModerationVerdictCache | None
@@ -75,19 +79,19 @@ class BatchedHostedModerationService:
         rule: ModerationRule,
         segments: Iterable[str],
         phase: ModerationPhase,
+        cache_only: bool = False,
     ) -> None:
-        """Approve an enabled OpenAI phase only after every distinct nonempty segment passes.
+        """Classify each distinct segment, or enforce only existing verdicts in cache-only mode.
 
-        A valid cached rejection is final. Confirmed batches can be cached even
-        when they contain a rejection; malformed or failed batches cannot.
+        Cached and live rejections are final. An unavailable live check raises
+        without writing verdicts for its batch. Cache-only mode makes no remote
+        requests and leaves misses unclassified.
         """
         if not context.tenant_id or rule.type != "openai_moderation":
             raise ValueError("Batch moderation requires a tenant scope and an OpenAI rule.")
         phase_config = moderation_phase_config(rule, phase)
         if not phase_config["enabled"]:
             return
-        if self._client is None:
-            raise ModerationError("Hosted moderation credentials are not configured.")
 
         texts = tuple(dict.fromkeys(text for text in segments if text))
         if not texts:
@@ -98,11 +102,15 @@ class BatchedHostedModerationService:
         message = preset if isinstance(preset, str) else ""
         if any(cached.get(text) is True for text in texts):
             self._reject(context, phase, message)
+        if cache_only:
+            return
+        if self._client is None:
+            raise HostedModerationUnavailableError("Hosted moderation credentials are not configured.")
 
         for batch in _batches(text for text in texts if cached.get(text) is not False):
             verdicts = self._client.moderate(batch)
             if len(verdicts) != len(batch) or any(not isinstance(flagged, bool) for flagged in verdicts):
-                raise ModerationError("Hosted moderation returned invalid batch verdicts.")
+                raise HostedModerationUnavailableError("Hosted moderation returned invalid batch verdicts.")
             if cache is not None:
                 cache.store(context.tenant_id, dict(zip(batch, verdicts, strict=True)))
             if any(verdicts):

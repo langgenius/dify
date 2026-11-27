@@ -22,6 +22,7 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from machinery.context import AppRequestContext
 from services.api_based_extension_application_service import APIBasedExtensionSecretCipher, APIBasedExtensionStore
+from services.hosted_moderation_service import HostedModerationUnavailableError
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
@@ -57,12 +58,12 @@ class ChainedLLMModerationPolicy:
         return self._policies[0].tenant_id
 
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
-        """Require every bound policy to approve inputs before model or quota effects."""
+        """Enforce every bound input policy before model or quota effects."""
         for policy in self._policies:
             policy.check_inputs(prompt_messages)
 
     def check_result(self, result: LLMResult) -> None:
-        """Require every policy to approve a completed result without modifying it."""
+        """Enforce every bound output policy without modifying the completed result."""
         for policy in self._policies:
             policy.check_result(result)
 
@@ -209,32 +210,35 @@ def result_text(result: LLMResult) -> str:
     return "\n".join(parts)
 
 
-class LLMModerationGuard:
-    """Check model inputs and segmented outputs before exposing them to the caller.
+type ModerationCheck = Callable[[Iterable[str], ModerationPhase], None]
 
-    Non-streaming output checks all text segments before returning the original
-    result. Streaming output checks each independent threshold-sized segment
-    before yielding its chunks. Segments never reuse previously checked text. The
-    guard owns and closes the provider stream. Model quota accounting completes
-    before output checks; rejection never refunds completed model usage.
+
+class LLMModerationGuard:
+    """Enforce model moderation without changing the request or response text.
+
+    Only recognized platform backend failures allow unchecked segments through.
+    After an outage, the rest of the current stream uses cached verdicts only.
+    A rejected segment is never delivered. The guard closes the provider stream
+    and never retries model generation or refunds completed usage.
     """
 
     def __init__(
         self,
         *,
         tenant_id: str,
-        check: Callable[[Iterable[str], ModerationPhase], None],
+        check: ModerationCheck,
         check_input: bool,
         check_output: bool,
         non_stream_segment_size: int,
         stream_segment_size: int,
         platform: bool = False,
+        check_cached: ModerationCheck | None = None,
     ) -> None:
-        """Bind a nonempty tenant, phase enablement, and positive segment limits.
+        """Bind a tenant, phase enablement, and positive segment limits without I/O.
 
-        Both limits are mandatory, matching model assembly configuration. Disabled
-        phases perform no inspection or I/O. Failures propagate through the
-        caller's normal exception and workflow event channels.
+        Disabled phases do no work. On a platform backend outage, streaming
+        switches to the cache-only checker if supplied; otherwise it has no
+        further verdicts to enforce. Explicit policies always propagate failures.
         """
         if not tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
@@ -243,6 +247,7 @@ class LLMModerationGuard:
                 raise ValueError("Moderation segment sizes must be positive.")
         self._tenant_id = tenant_id
         self._check = check
+        self._check_cached = check_cached
         self._check_input = check_input
         self._check_output = check_output
         self._non_stream_segment_size = non_stream_segment_size
@@ -255,7 +260,7 @@ class LLMModerationGuard:
         return self._tenant_id
 
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
-        """Approve every input segment before model/quota effects.
+        """Enforce input verdicts before model/quota effects, unless the platform backend is unavailable.
 
         Platform policies preserve independent message boundaries;
         explicitly supplied policies retain the joined prompt representation.
@@ -267,22 +272,22 @@ class LLMModerationGuard:
                 else [prompt_text(prompt_messages)]
             )
             segments = (segment for text in texts for segment in self._segments(text, self._non_stream_segment_size))
-            self._check_segments(segments, "input")
+            self._check_segments(self._check, segments, "input")
 
     def check_result(self, result: LLMResult) -> None:
-        """Approve every non-streaming output segment, including structured content, without mutation."""
+        """Check non-streaming output, including structure, without changing the result."""
         if self._check_output:
-            self._check_segments(self._segments(result_text(result), self._non_stream_segment_size), "output")
+            segments = self._segments(result_text(result), self._non_stream_segment_size)
+            self._check_segments(self._check, segments, "output")
 
-    def _check_segments(self, segments: Iterable[str], phase: ModerationPhase) -> None:
-        """Approve all segments or raise a typed app error without exposing backend failure details.
+    def _check_segments(self, check: ModerationCheck, segments: Iterable[str], phase: ModerationPhase) -> bool:
+        """Return False only for a recognized platform outage that allows the invocation to proceed.
 
-        The bound checker owns the verdict. Rejections retain their phase and
-        configured message; other checker failures are logged and chained to a
-        safe unavailable error. Neither failure permits delivery or model retry.
+        A rejection always raises. Strict-policy and unexpected failures become
+        a safe unavailable error with the original cause retained.
         """
         try:
-            self._check(segments, phase)
+            check(segments, phase)
         except ModerationRejectedError as error:
             rejection = (
                 PlatformModerationRejectedInvocationError(error.phase, str(error))
@@ -291,12 +296,21 @@ class LLMModerationGuard:
             )
             raise rejection from error
         except Exception as error:
+            if self._platform and isinstance(error, HostedModerationUnavailableError):
+                logger.warning(
+                    "Platform moderation unavailable; skipping unchecked segments. tenant_id=%s phase=%s reason=%s",
+                    self._tenant_id,
+                    phase,
+                    error,
+                )
+                return False
             logger.exception("Moderation %s check failed", phase)
             unavailable = ModerationUnavailableInvocationError()
             raise unavailable from error
+        return True
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
-        """Return the original approved result or a guarded stream, propagating all failures.
+        """Return the original result or a guarded stream; only platform unavailability is recoverable.
 
         Model invocation and accounting must already be complete or owned by the
         supplied stream. No model retry or accounting refund occurs on rejection.
@@ -330,12 +344,13 @@ class LLMModerationGuard:
         return "".join(parts)
 
     def _check_stream_segments(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
-        """Check each independent segment before release and close the stream on every exit.
+        """Check each buffer before release and close the stream on every exit.
 
-        Tool names are inspected alongside content and arguments, but collected
-        separately so repeated name fields do not interrupt argument fragments
-        within the same segment.
+        After a platform outage, keep enforcing cached flags but make no more
+        upstream checks in this stream. Tool names are collected separately so
+        repeated names do not interrupt argument fragments within a buffer.
         """
+        check: ModerationCheck | None = self._check
         segment_size = self._stream_segment_size
         chunks: list[LLMResultChunk] = []
         fragment_parts: list[str] = []
@@ -353,7 +368,8 @@ class LLMModerationGuard:
                         fragment_length += len(tool.function.name)
                 if fragment_length >= segment_size:
                     text = "\n".join(["".join(fragment_parts), *tool_names])
-                    self._check_segments((text,), "output")
+                    if check is not None and not self._check_segments(check, (text,), "output"):
+                        check = self._check_cached
                     yield from chunks
                     chunks = []
                     fragment_parts = []
@@ -362,8 +378,8 @@ class LLMModerationGuard:
 
             if chunks:
                 text = "\n".join(["".join(fragment_parts), *tool_names])
-                if text:
-                    self._check_segments((text,), "output")
+                if text and check is not None:
+                    self._check_segments(check, (text,), "output")
                 yield from chunks
         finally:
             response.close()

@@ -5,9 +5,9 @@
 `AppRequestContext`, a `ModerationRule`, text, and an `input` or `output` phase.
 It does not depend on Flask, persistence models, or app queue managers.
 
-An enabled phase returns only after approval. Any flagged verdict raises
-`ModerationRejectedError`, including API verdicts requesting replacement rather
-than rejection. Backend failures propagate instead of silently approving text.
+For an explicit policy, an enabled phase returns only after approval. Any
+flagged verdict raises `ModerationRejectedError`, including API verdicts requesting
+replacement rather than rejection. Explicit backend failures propagate.
 Disabled phases perform no moderation I/O. Strict policies are selected when
 assembling models. For a direct app invocation, an admitted Cloud AI-credit LLM
 uses platform moderation. An app OpenAI rule can supply replacement text without
@@ -47,8 +47,7 @@ HTTPS egress to this endpoint through the SSRF-protected client. Requests use TL
 verification and do not follow redirects.
 
 Platform moderation does not need a tenant plugin, tenant API key, or a hosted
-OpenAI trial/paid provider. There is no plugin fallback: missing platform
-credentials or a failed upstream check blocks the affected invocation. The
+OpenAI trial/paid provider. It never falls back to a plugin or tenant key. The
 moderation service does not reserve or deduct user credits; the target LLM retains
 normal accounting, including charges for consumed usage when its output is rejected.
 
@@ -75,6 +74,20 @@ as misses, and an outage or concurrent misses can cause duplicate provider
 checks. After an OpenAI alias update, older verdicts can be reused until expiry.
 The cache and batch transport do not apply to tenant-configured app rules.
 
+### Platform backend unavailability
+
+A recognized platform failure (missing credentials, invalid endpoint, timeout,
+HTTP error, or invalid response) logs a scoped warning and lets generation or
+delivery proceed for unclassified segments. A skip is not an approval and does
+not populate the cache. A verified cached or live rejection still blocks.
+
+Input and non-streaming checks stop making remote requests in that phase after
+the first failure. On a streaming output failure, the rest of that stream
+checks cached flags only, including its final partial buffer, so it does not
+wait for repeated upstream timeouts. A new invocation can try OpenAI again.
+Unexpected internal errors and explicit or tenant-configured policy failures
+still propagate.
+
 ## App-level ownership and replacement
 
 Chatbot, Completion, and legacy Agent Chat use their resolved model bundle to
@@ -92,8 +105,8 @@ Tenant OpenAI requires a workspace OpenAI plugin and custom credentials for
 `omni-moderation-latest`. Its model resolution does not fall back to system
 credentials or the platform gateway, even if the workspace prefers a system
 OpenAI provider for other calls. Disabling an app rule or phase does not disable
-mandatory platform checks. Each model invocation still needs approval for all
-of its segments, even when the batch service reuses prior verdicts.
+mandatory platform checks. Each invocation enforces the available verdicts,
+including those reused by the batch service.
 
 Chatflows, Workflows, and remote Agent apps do not have a single local model
 bundle representing their response. Per-model guards still apply to eligible
@@ -172,7 +185,7 @@ rejections follow their configured node error strategy. Its own keyword/API
 input and output verdicts still use normal App replacement handling, without
 forcing an internal node failure over the workflow's own result.
 
-Unavailable checks are errors, not content verdicts, and never become replies.
+A skipped platform check produces neither a content verdict nor an error reply.
 Direct App check failures and unhandled typed model failures produce a safe
 `moderation_unavailable` error. Internal workflow errors keep Graphon's native
 projection. Historical unavailability cannot change a successful response or
@@ -286,10 +299,10 @@ whole-stream buffering mode selected by an omitted limit.
 
 ## Guarantees and trade-offs
 
-- Input checks precede model invocation and quota reservation. All prompt roles,
-  text parts of multimodal messages, and assistant tool arguments are inspected
-  as independent non-stream segments, so long prompts are fully covered without
-  sending one oversized moderation request. Each platform-checked prompt message
+- Input checks precede model invocation and quota reservation. When the backend
+  is available, all prompt roles, text parts of multimodal messages, and assistant
+  tool arguments are inspected as independent non-stream segments without sending
+  one oversized moderation request. Each platform-checked prompt message
   has its own segment sequence. The batch transport may reuse verdicts for exact
   segments, but it never changes message or segment boundaries. Platform-owned
   app response handling does not schedule another moderation request.
@@ -302,8 +315,8 @@ whole-stream buffering mode selected by an omitted limit.
   name-only deltas. Streaming name fields are collected separately so repeated
   tool metadata cannot split the argument text being checked.
 - Non-stream output is checked in independent segments of
-  `MODERATION_NON_STREAM_SEGMENT_SIZE` characters. Every segment must pass before
-  the original result is returned.
+  `MODERATION_NON_STREAM_SEGMENT_SIZE` characters before returning the original
+  result, subject to the platform availability policy above.
 - Streaming output is buffered until it reaches
   `MODERATION_BUFFER_SIZE` characters, then checked before its original
   chunks are released. The final partial segment is also checked before release.
@@ -333,10 +346,11 @@ requires an explicit boolean `flagged` field in every API verdict.
 ## RAG failure handling
 
 `ModerationInvocationError` identifies model moderation failures without exposing
-application-service dependencies to RAG consumers. Both rejection and service
-unavailability remain terminal for the affected operation, not best-effort empty
-results. Input failures precede model usage; output failures retain consumed
-model charges.
+application-service dependencies to RAG consumers. Rejection and any
+unavailability propagated by a strict policy or an unexpected failure remain
+terminal, not best-effort empty results. Recognized platform outages are handled
+at the model guard, not by RAG. Input failures precede model usage; output
+failures retain consumed model charges.
 
 QA formatting propagates moderation failures in preview and indexing mode.
 Bounded worker futures return failures to the indexing coordinator, which marks

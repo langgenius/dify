@@ -11,9 +11,11 @@ import httpx
 from pydantic import BaseModel, StrictBool, ValidationError
 from redis import RedisError
 
-from core.helper.ssrf_proxy import buffer_response
+from core.helper.ssrf_proxy import MaxRetriesExceededError, ResponseLimitError, buffer_response
+from core.tools.errors import ToolSSRFError
 from extensions.ext_redis import RedisClientWrapper
 from extensions.redis_names import serialize_redis_name
+from services.hosted_moderation_service import HostedModerationUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -74,37 +76,44 @@ class OpenAIHostedModerationClient:
         return self._cache_key
 
     def moderate(self, texts: Sequence[str]) -> tuple[bool, ...]:
-        """Send distinct, nonempty texts together; reject invalid endpoints or incomplete verdicts."""
+        """Send a nonempty batch; translate expected transport and response failures without exposing payloads."""
+        if not texts:
+            raise ValueError("A moderation batch must not be empty.")
         try:
             endpoint = httpx.URL(self._endpoint)
         except (httpx.InvalidURL, ValueError):
-            raise ValueError("The hosted OpenAI moderation endpoint is invalid.") from None
+            raise HostedModerationUnavailableError("The hosted OpenAI moderation endpoint is invalid.") from None
         if endpoint.scheme != "https" or not endpoint.host or endpoint.userinfo or endpoint.query or endpoint.fragment:
-            raise ValueError(
+            raise HostedModerationUnavailableError(
                 "Hosted OpenAI moderation requires an HTTPS base URL without user info, query, or fragment."
             )
-        if not texts:
-            raise ValueError("A moderation batch must not be empty.")
-        response = self._http_client.post(
-            str(endpoint),
-            headers=self._headers,
-            json={"model": _MODEL, "input": list(texts)},
-            timeout=httpx.Timeout(15.0, connect=3.0),
-            follow_redirects=False,
-            ssl_verify=True,
-            max_retries=0,
-            stream_response=True,
-        )
-        if not response.is_success:
-            response.close()
-            raise ValueError(f"OpenAI moderation returned HTTP {response.status_code}.")
-        buffered = buffer_response(response, max_response_bytes=_MAX_RESPONSE_BYTES)
+
+        try:
+            response = self._http_client.post(
+                str(endpoint),
+                headers=self._headers,
+                json={"model": _MODEL, "input": list(texts)},
+                timeout=httpx.Timeout(15.0, connect=3.0),
+                follow_redirects=False,
+                ssl_verify=True,
+                max_retries=0,
+                stream_response=True,
+            )
+            if not response.is_success:
+                response.close()
+                raise HostedModerationUnavailableError(f"OpenAI moderation returned HTTP {response.status_code}.")
+            buffered = buffer_response(response, max_response_bytes=_MAX_RESPONSE_BYTES)
+        except (httpx.RequestError, MaxRetriesExceededError, ResponseLimitError, ToolSSRFError) as error:
+            raise HostedModerationUnavailableError(
+                f"OpenAI moderation request failed ({type(error).__name__})."
+            ) from error
+
         try:
             parsed = _OpenAIResponse.model_validate_json(buffered.content)
         except ValidationError:
-            raise ValueError("OpenAI moderation returned a malformed response.") from None
+            raise HostedModerationUnavailableError("OpenAI moderation returned a malformed response.") from None
         if len(parsed.results) != len(texts):
-            raise ValueError("OpenAI moderation returned the wrong number of verdicts.")
+            raise HostedModerationUnavailableError("OpenAI moderation returned the wrong number of verdicts.")
         return tuple(result.flagged for result in parsed.results)
 
 

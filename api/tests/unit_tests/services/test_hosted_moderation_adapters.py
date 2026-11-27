@@ -7,11 +7,14 @@ import httpx
 import pytest
 
 from core.helper import ssrf_proxy as ssrf_module
+from extensions.application_services.moderation import build_llm_moderation_guard
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import AppRequestContext
 from services.hosted_moderation_adapters import OpenAIHostedModerationClient, RedisHostedModerationVerdictCache
-from services.hosted_moderation_service import BatchedHostedModerationService
+from services.hosted_moderation_service import BatchedHostedModerationService, HostedModerationUnavailableError
+from services.moderation_invocation_errors import PlatformModerationRejectedInvocationError
 from services.moderation_service import ModerationRule
+from tests.helpers.unit.core.model_moderation_fixtures import make_moderated_model
 
 
 @pytest.fixture
@@ -73,7 +76,7 @@ def test_openai_refuses_incomplete_or_coerced_verdicts(
 ) -> None:
     _, responses = openai_transport
     responses.append(httpx.Response(200, json={"results": results}))
-    with pytest.raises(ValueError, match=error) as caught:
+    with pytest.raises(HostedModerationUnavailableError, match=error) as caught:
         _client().moderate(["first", "second"])
     assert "private" not in str(caught.value)
 
@@ -83,7 +86,7 @@ def test_openai_never_follows_redirects_with_the_platform_key(
 ) -> None:
     requests, responses = openai_transport
     responses.append(httpx.Response(307, headers={"Location": "https://redirect.example/moderations"}))
-    with pytest.raises(ValueError, match="HTTP 307"):
+    with pytest.raises(HostedModerationUnavailableError, match="HTTP 307"):
         _client().moderate(["text"])
     assert [request.url.host for request in requests] == ["api.openai.com"]
 
@@ -93,7 +96,7 @@ def test_openai_refuses_insecure_base_urls_before_sending_credentials(
     openai_transport: tuple[list[httpx.Request], list[httpx.Response]], base_url: str
 ) -> None:
     requests, _ = openai_transport
-    with pytest.raises(ValueError, match="HTTPS base URL"):
+    with pytest.raises(HostedModerationUnavailableError, match="HTTPS base URL"):
         _client(base_url=base_url).moderate(["text"])
     assert not requests
 
@@ -177,6 +180,47 @@ def test_a_rebuilt_service_reuses_redis_verdicts_and_only_sends_new_segments(
     service().check_segments(context, rule=rule, segments=["system", "prior", "new"], phase="input")
     assert [json.loads(request.content)["input"] for request in requests] == [["system", "prior"], ["new"]]
     assert len(redis.entries) == 3
+
+
+@pytest.mark.parametrize("buffer_size", [4, 5])
+def test_stream_uses_cache_only_after_outage_and_retries_on_the_next_invocation(
+    openai_transport: tuple[list[httpx.Request], list[httpx.Response]],
+    config_overrides: Callable[..., None],
+    buffer_size: int,
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=buffer_size)
+    requests, responses = openai_transport
+    context = AppRequestContext(tenant_id="test-tenant-id", app_id="app-1")
+    client = _client()
+    cache = RedisHostedModerationVerdictCache(_Redis(), ttl=600, hash_key=client.cache_key)
+    cache.store(context.tenant_id, {"flag": True})
+    service = BatchedHostedModerationService(client=client, cache=cache)
+    guard = build_llm_moderation_guard(
+        context,
+        service=service,
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={"inputs_config": {"enabled": False}, "outputs_config": {"enabled": True}},
+        ),
+        platform=True,
+    )
+    instance, provider = make_moderated_model(quota=False, parts=["first", "second", "flag"], moderation=guard)
+    responses.append(httpx.Response(503))
+    stream = instance.invoke_llm([], stream=True)
+    assert next(stream).delta.message.content == "first"
+    assert next(stream).delta.message.content == "second"
+    with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
+        next(stream)
+    assert rejected.value.phase == "output"
+    assert provider.stream_closed
+    assert [json.loads(request.content)["input"] for request in requests] == [["first"]]
+    assert cache.lookup(context.tenant_id, ["first", "second", "flag"]) == {"flag": True}
+
+    provider.parts = ["first"]
+    responses.append(httpx.Response(200, json={"results": [{"flagged": False}]}))
+    assert [chunk.delta.message.content for chunk in instance.invoke_llm([], stream=True)] == ["first"]
+    assert [json.loads(request.content)["input"] for request in requests] == [["first"], ["first"]]
+    assert cache.lookup(context.tenant_id, ["first"]) == {"first": False}
 
 
 def test_redis_failure_is_a_miss_and_cache_writes_are_best_effort() -> None:

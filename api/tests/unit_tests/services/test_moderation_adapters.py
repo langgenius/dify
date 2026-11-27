@@ -31,6 +31,7 @@ from models.api_based_extension import APIBasedExtension
 from models.base import TypeBase
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_application_service import APIBasedExtensionInput
+from services.hosted_moderation_service import HostedModerationUnavailableError
 from services.moderation_adapters import ExtensionModerationGateway, LLMModerationGuard
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
@@ -135,7 +136,7 @@ def test_provider_stream_failure_is_not_converted_to_approval(keyword_guard: LLM
 
 
 @pytest.mark.parametrize("mode", ["input", "non_stream", "segmented_stream"])
-@pytest.mark.parametrize("failure", ["rejected", "authorization", "transport", "malformed_verdict"])
+@pytest.mark.parametrize("failure", ["rejected", "authorization", "transport", "malformed_verdict", "unavailable"])
 def test_guard_maps_checker_failures_without_delivering_content(mode: str, failure: str) -> None:
     phase: ModerationPhase = "input" if mode == "input" else "output"
     errors: dict[str, Exception] = {
@@ -143,6 +144,7 @@ def test_guard_maps_checker_failures_without_delivering_content(mode: str, failu
         "authorization": InvokeAuthorizationError("Invalid platform key: secret-key"),
         "transport": RuntimeError("Private plugin address: internal-host"),
         "malformed_verdict": ValueError("Invalid verdict: private-payload"),
+        "unavailable": HostedModerationUnavailableError("Upstream unavailable"),
     }
     original_error = errors[failure]
     events: list[str] = []

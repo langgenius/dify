@@ -36,10 +36,7 @@ from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
 from services.moderation_adapters import ChainedLLMModerationPolicy, LLMModerationGuard
-from services.moderation_invocation_errors import (
-    ModerationUnavailableInvocationError,
-    PlatformModerationRejectedInvocationError,
-)
+from services.moderation_invocation_errors import PlatformModerationRejectedInvocationError
 from services.moderation_service import ModerationRejectedError, ModerationRule, ModerationService
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (
@@ -430,7 +427,17 @@ def test_platform_switch_applies_to_manager_cache_and_preserves_explicit_policy(
 
 
 @pytest.mark.parametrize(
-    "scenario", ["approved", "input_rejected", "output_rejected", "incomplete", "api_error", "missing_key"]
+    "scenario",
+    [
+        "approved",
+        "input_rejected",
+        "output_rejected",
+        "incomplete",
+        "api_error",
+        "rate_limit",
+        "timeout",
+        "missing_key",
+    ],
 )
 def test_platform_guard_uses_openai_and_preserves_quota_and_failure_contracts(
     monkeypatch: pytest.MonkeyPatch,
@@ -470,8 +477,10 @@ def test_platform_guard_uses_openai_and_preserves_quota_and_failure_contracts(
         assert str(request.url) == "https://moderation.example/internal/v1/moderations"
         texts: list[str] = json.loads(request.content)["input"]
         batches.append(texts)
-        if scenario == "api_error":
-            return httpx.Response(503, text="private-provider-error")
+        if scenario in {"api_error", "rate_limit"}:
+            return httpx.Response(429 if scenario == "rate_limit" else 503, text="private-provider-error")
+        if scenario == "timeout":
+            raise httpx.ReadTimeout("read timed out", request=request)
         flagged_text = {"input_rejected": "prior", "output_rejected": "safe"}.get(scenario)
         classified = texts[:-1] if scenario == "incomplete" else texts
         return httpx.Response(200, json={"results": [{"flagged": text == flagged_text} for text in classified]})
@@ -485,26 +494,26 @@ def test_platform_guard_uses_openai_and_preserves_quota_and_failure_contracts(
     ]
     with httpx.Client(transport=httpx.MockTransport(moderate)) as http_client:
         monkeypatch.setattr(ssrf_module, "_get_ssrf_client", lambda _verify: http_client)
-        if scenario == "approved":
-            assert instance.invoke_llm(messages, stream=False).message.content == "safe"
-        elif scenario in {"input_rejected", "output_rejected"}:
+        if scenario in {"input_rejected", "output_rejected"}:
             with pytest.raises(PlatformModerationRejectedInvocationError) as rejected:
                 instance.invoke_llm(messages, stream=False)
             assert rejected.value.phase == ("input" if scenario == "input_rejected" else "output")
         else:
-            with pytest.raises(ModerationUnavailableInvocationError):
-                instance.invoke_llm(messages, stream=False)
+            assert instance.invoke_llm(messages, stream=False).message.content == "safe"
 
-    generated = scenario in {"approved", "output_rejected"}
+    generated = scenario != "input_rejected"
     expected_input = ["setup", "prior", "reply", "abcde", "f"]
     expected_batches = [] if scenario == "missing_key" else [expected_input]
-    if generated:
+    if generated and scenario != "missing_key":
         expected_batches.append(["safe"])
+    if generated:
         (reservation,) = instance.reservations
         assert reservation.state == ModelQuotaReservationState.COMMITTED
         assert len(reservation.commits) == 1
     assert batches == expected_batches
     assert provider.invocations == int(generated)
     assert len(instance.reservations) == int(generated)
+    skipped = scenario in {"incomplete", "api_error", "rate_limit", "timeout", "missing_key"}
+    assert ("Platform moderation unavailable; skipping unchecked segments" in caplog.text) is skipped
     assert "private-provider-error" not in caplog.text
     assert "server-key" not in caplog.text

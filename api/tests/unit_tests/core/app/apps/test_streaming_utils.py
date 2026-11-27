@@ -588,7 +588,7 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
 
     def moderate(request: httpx.Request) -> httpx.Response:
         if unavailable:
-            return httpx.Response(503, text="Private moderation backend failure")
+            raise RuntimeError("Private unexpected moderation failure")
         texts: list[str] = json.loads(request.content)["input"]
         return httpx.Response(200, json={"results": [{"flagged": "blocked" in text} for text in texts]})
 
