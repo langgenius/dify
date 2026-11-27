@@ -2,6 +2,7 @@ import hmac
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from typing import NoReturn
 
 from flask import Request
 from werkzeug.exceptions import Unauthorized
@@ -205,7 +206,7 @@ def check_csrf_token(request: Request, user_id: str):
     if request.method in {"GET", "HEAD"} and _ACCOUNT_AVATAR_FILE_PATH.fullmatch(request.path):
         return
 
-    def _unauthorized():
+    def _unauthorized() -> NoReturn:
         raise Unauthorized("CSRF token is missing or invalid.")
 
     for pattern in CSRF_WHITE_LIST:
