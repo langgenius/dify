@@ -269,7 +269,7 @@ it('blocks closing during a pending import and does not add duplicates', async (
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
 
-it('shows the server message when candidates fail to load', async () => {
+it('shows the load failure when candidates fail with an unknown code', async () => {
   const user = userEvent.setup()
   api.candidates.mockRejectedValueOnce(
     createHttpError(new Response(null, { status: 503 }), {
@@ -279,14 +279,14 @@ it('shows the server message when candidates fail to load', async () => {
   )
   setup()
   await open(user)
-  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await screen.findByRole('alert')).toHaveTextContent('contacts.platformPicker.error')
 })
 
 it.each([
   {
-    name: 'the server message for an unmapped failure',
+    name: 'the add failure for an unmapped failure',
     status: 400,
-    expected: 'Server says why',
+    expected: 'contacts.platformPicker.addFailed',
   },
   {
     name: 'the permission message for 403',

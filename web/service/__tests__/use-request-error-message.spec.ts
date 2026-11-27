@@ -1,10 +1,25 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vite-plus/test'
 import { createHttpError } from '../http-error'
-import { useRequestErrorDescriber } from '../use-request-error-message'
+import { useRequestErrorDescriber, useRequestErrorMessage } from '../use-request-error-message'
 
 const httpError = (status: number, body?: unknown) =>
   createHttpError({ status, statusText: '', headers: new Headers() }, body)
+
+describe('useRequestErrorMessage', () => {
+  it('has no message without an error', () => {
+    const { result } = renderHook(() => useRequestErrorMessage(null, 'Could not load'))
+
+    expect(result.current).toBeUndefined()
+  })
+
+  it('resolves the message for an error', () => {
+    const error = httpError(404, { code: 'not_found', message: 'Workflow not found' })
+    const { result } = renderHook(() => useRequestErrorMessage(error))
+
+    expect(result.current).toBe('Workflow not found')
+  })
+})
 
 describe('useRequestErrorDescriber', () => {
   it('describes each error with its own fallback', () => {
