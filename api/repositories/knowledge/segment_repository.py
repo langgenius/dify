@@ -506,6 +506,32 @@ class SQLAlchemySegmentRepository:
                 for segment_id in segment_ids
             )
 
+    def get_exclusive_attachment_ids(self, segment_ref: SegmentRef, attachment_ids: Sequence[str]) -> tuple[str, ...]:
+        """Return candidates with no other segment binding in the same dataset.
+
+        Accepts a trusted segment reference and candidate upload IDs. This read
+        does not mutate bindings or uploads. Disabled segments still own their
+        attachments; references in other datasets do not own this dataset's
+        vector collection. The result reflects bindings at read time.
+        """
+        if not attachment_ids:
+            return ()
+        with self._session_factory() as session:
+            shared_ids = set(
+                session.scalars(
+                    select(SegmentAttachmentBinding.attachment_id).where(
+                        SegmentAttachmentBinding.tenant_id == segment_ref.document.dataset.tenant_id,
+                        SegmentAttachmentBinding.dataset_id == segment_ref.document.dataset.dataset_id,
+                        SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
+                        or_(
+                            SegmentAttachmentBinding.document_id != segment_ref.document.document_id,
+                            SegmentAttachmentBinding.segment_id != segment_ref.segment_id,
+                        ),
+                    )
+                )
+            )
+        return tuple(attachment_id for attachment_id in attachment_ids if attachment_id not in shared_ids)
+
     def replace_attachments(self, segment_ref: SegmentRef, attachment_ids: Sequence[str]) -> None:
         with self._session_factory.begin() as session:
             if _get_segment(session, segment_ref) is None:
