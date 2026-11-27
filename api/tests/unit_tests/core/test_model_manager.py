@@ -28,6 +28,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.hosting_configuration import HostingConfiguration
 from core.model_manager import (
     HostedCreditFallbackModelInstance,
     LBModelManager,
@@ -329,23 +330,29 @@ def test_zero_credit_access_uses_only_the_selected_bucket(
     config_overrides: Callable[..., None], bucket: ProviderQuotaType, remaining: int
 ) -> None:
     """Neither a zero price nor another bucket's offer grants hosted access."""
-    config_overrides(HOSTED_MODEL_CREDIT_CONFIG="trial-only:0,paid-only:0")
+    config_overrides(
+        HOSTED_OPENAI_TRIAL_ENABLED=True,
+        HOSTED_OPENAI_TRIAL_MODELS="gpt-4o-mini",
+        HOSTED_OPENAI_PAID_ENABLED=True,
+        HOSTED_OPENAI_PAID_MODELS="gpt-4o",
+        HOSTED_MODEL_CREDIT_CONFIG="gpt-4o-mini:0,gpt-4o:0",
+    )
     instance, llm = _make_hosted_credit_model(bucket)
     bundle = instance.provider_model_bundle
     config = bundle.configuration
     schema = config.provider.models[0]
-    offers = {ProviderQuotaType.TRIAL: "trial-only", ProviderQuotaType.PAID: "paid-only"}
+    offers = {ProviderQuotaType.TRIAL: "gpt-4o-mini", ProviderQuotaType.PAID: "gpt-4o"}
     config.provider.models = [schema.model_copy(update={"model": name}) for name in offers.values()]
     config.system_configuration.quota_configurations = [
         QuotaConfiguration(
-            quota_type=quota_type,
+            quota_type=offer.quota_type,
             quota_unit=QuotaUnit.CREDITS,
             quota_limit=1,
             quota_used=1 - remaining,
             is_valid=bool(remaining),
-            restrict_models=[RestrictModel(model=name, model_type=ModelType.LLM)],
+            restrict_models=offer.restrict_models,
         )
-        for quota_type, name in offers.items()
+        for offer in HostingConfiguration().init_openai().quotas
     ]
     manager = ModelManager(RecordingProviderManager(bundle))
     for quota_type, name in offers.items():

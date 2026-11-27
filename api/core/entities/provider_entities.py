@@ -72,6 +72,11 @@ class QuotaConfiguration(BaseModel):
     restrict_models: list[RestrictModel] = []
 
     @property
+    def allowed_model_names(self) -> frozenset[str] | None:
+        """Return this bucket's exact model IDs, or None when its list does not restrict names."""
+        return frozenset(entry.model for entry in self.restrict_models) if self.restrict_models else None
+
+    @property
     def uses_metered_hosted_credits(self) -> bool:
         """Only finite trial and paid credit pools use the hosted model price table."""
         return (

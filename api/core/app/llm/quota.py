@@ -186,7 +186,7 @@ def reserve_model_quota_for_configuration(
 
     credit_cost = quota_configuration.hosted_credit_cost(model)
     if credit_cost == 0:
-        provider_configuration.require_active_system_model(model_type, model)
+        provider_configuration.require_enabled_system_model(model_type, model)
         reservation.quota_unit = QuotaUnit.CREDITS
         return reservation
 
@@ -256,14 +256,15 @@ def reserve_llm_quota_for_model(
 
 
 def ensure_llm_quota_available_for_model(*, tenant_id: str, provider: str, model: str) -> None:
-    """Require the selected bucket on System; only an active, offered zero-credit LLM can ignore exhaustion."""
-    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    """Check the LLM's resolved route without reserving credits; binding rejects an ineligible zero-credit offer."""
+    provider_configuration = configuration_for_model(
+        _get_provider_configuration(tenant_id=tenant_id, provider=provider), ModelType.LLM, model
+    )
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return
 
     quota = provider_configuration.require_current_system_quota()
     if quota.hosted_credit_cost(model) == 0:
-        provider_configuration.require_active_system_model(ModelType.LLM, model)
         return
 
     provider_model = provider_configuration.get_provider_model(

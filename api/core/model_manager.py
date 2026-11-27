@@ -1076,19 +1076,15 @@ class ModelManager:
         model_type: ModelType,
         model: str,
     ) -> None:
+        """Reject IDs outside the selected System bucket before reading credentials; Custom is unrestricted by it."""
         configuration = provider_model_bundle.configuration
         if configuration.using_provider_type != ProviderType.SYSTEM:
             return
 
-        # Hosted allowlists retain the existing comma-separated format. Model names
-        # are matched exactly; model-type-specific entries will be introduced later.
-        quota_configuration = current_quota_configuration(configuration.system_configuration)
-        if quota_configuration is None or not quota_configuration.restrict_models:
-            return
-        if any(restricted_model.model == model for restricted_model in quota_configuration.restrict_models):
-            return
-
-        raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
+        quota = current_quota_configuration(configuration.system_configuration)
+        allowed_names = quota.allowed_model_names if quota is not None else None
+        if allowed_names is not None and model not in allowed_names:
+            raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
 
     @staticmethod
     def _model_instance_class(provider_model_bundle: ProviderModelBundle) -> type[ModelInstance]:

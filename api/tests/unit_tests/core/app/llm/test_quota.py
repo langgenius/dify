@@ -26,6 +26,7 @@ from core.entities.model_entities import ModelStatus
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from core.entities.provider_entities import (
     CustomModelConfiguration,
+    ModelSettings,
     ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
@@ -33,6 +34,7 @@ from core.entities.provider_entities import (
     SystemConfiguration,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, QuotaExceededError
+from core.hosting_configuration import HostingConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderManager
@@ -278,17 +280,12 @@ def test_reserve_model_quota_skips_zero_credit_charge(
     deduct.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    ("model_type", "expected_route", "expected_unit"),
-    [(ModelType.LLM, ProviderType.SYSTEM, QuotaUnit.CREDITS), (ModelType.TEXT_EMBEDDING, ProviderType.CUSTOM, None)],
-)
-def test_quota_resolves_only_the_typed_free_offer_on_provider_fallback(
-    config_overrides: Callable[..., None],
-    model_type: ModelType,
-    expected_route: ProviderType,
-    expected_unit: QuotaUnit | None,
-) -> None:
-    config_overrides(HOSTED_MODEL_CREDIT_CONFIG="gpt-4o:0")
+@pytest.fixture
+def exhausted_paid_fallback(config_overrides: Callable[..., None]) -> ProviderConfiguration:
+    config_overrides(
+        HOSTED_OPENAI_PAID_MODELS="gpt-4o,text-embedding-3-small",
+        HOSTED_MODEL_CREDIT_CONFIG="gpt-4o:0,text-embedding-3-small:0",
+    )
     config = _provider_configuration(
         using_provider_type=ProviderType.CUSTOM,
         system_configuration=SystemConfiguration(
@@ -302,7 +299,7 @@ def test_quota_resolves_only_the_typed_free_offer_on_provider_fallback(
                     quota_limit=1,
                     quota_used=1,
                     is_valid=False,
-                    restrict_models=[RestrictModel(model="gpt-4o", model_type=ModelType.LLM)],
+                    restrict_models=HostingConfiguration.parse_restrict_models_from_env("HOSTED_OPENAI_PAID_MODELS"),
                 )
             ],
         ),
@@ -313,15 +310,42 @@ def test_quota_resolves_only_the_typed_free_offer_on_provider_fallback(
             model="gpt-4o", model_type=ModelType.TEXT_EMBEDDING, credentials={"api_key": "workspace"}
         )
     ]
+    return config
+
+
+@pytest.mark.parametrize(
+    ("model_type", "model", "expected_route"),
+    [
+        (ModelType.LLM, "gpt-4o", ProviderType.SYSTEM),
+        (ModelType.TEXT_EMBEDDING, "text-embedding-3-small", ProviderType.SYSTEM),
+        (ModelType.TEXT_EMBEDDING, "gpt-4o", ProviderType.CUSTOM),
+    ],
+)
+def test_quota_resolves_free_offers_by_model_id_on_provider_fallback(
+    exhausted_paid_fallback: ProviderConfiguration, model_type: ModelType, model: str, expected_route: ProviderType
+) -> None:
+    config = exhausted_paid_fallback
     with patch("core.app.llm.quota.create_plugin_provider_manager", return_value=_provider_manager(config)):
         reservation = reserve_model_quota_for_model(
-            tenant_id=config.tenant_id, provider="openai", model="gpt-4o", model_type=model_type
+            tenant_id=config.tenant_id, provider="openai", model=model, model_type=model_type
         )
 
     assert reservation.provider_configuration.using_provider_type == expected_route
-    assert reservation.quota_unit == expected_unit
+    assert reservation.quota_unit == (QuotaUnit.CREDITS if expected_route == ProviderType.SYSTEM else None)
     assert reservation.credit_pool_reservation is None
     assert config.using_provider_type == ProviderType.CUSTOM
+
+
+def test_preflight_rejects_disabled_free_model_on_provider_fallback(
+    exhausted_paid_fallback: ProviderConfiguration,
+) -> None:
+    config = exhausted_paid_fallback
+    config.model_settings = [ModelSettings(model="gpt-4o", model_type=ModelType.LLM, enabled=False)]
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=_provider_manager(config)),
+        pytest.raises(ValueError, match="disabled"),
+    ):
+        ensure_llm_quota_available_for_model(tenant_id=config.tenant_id, provider="openai", model="gpt-4o")
 
 
 @pytest.mark.parametrize("name", ["gpt-4o", "text-embedding-3-small"])

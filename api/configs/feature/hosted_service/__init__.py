@@ -17,7 +17,10 @@ def _hosted_credit_rates(config: str) -> dict[str, str]:
 
 class HostedCreditConfig(BaseSettings):
     HOSTED_MODEL_CREDIT_CONFIG: str = Field(
-        description="Model credit configuration in format 'model:credits,model:credits', e.g., 'gpt-4:20,gpt-4o:10'",
+        description=(
+            "Deployment-wide prices by exact model ID, e.g. 'gpt-4o-mini:1,gpt-4o:0'. "
+            "A zero price skips charging; it does not add the model to any provider's trial or paid list."
+        ),
         default="",
     )
 
