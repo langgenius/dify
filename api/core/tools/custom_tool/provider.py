@@ -4,8 +4,9 @@ from typing import override
 
 from pydantic import Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.db.session_factory import sessionmaker_for
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -21,7 +22,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
     ToolProviderType,
 )
-from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 
@@ -30,11 +30,19 @@ class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTo
     tenant_id: str
     tools: list[ApiTool] = Field(default_factory=list)
 
-    def __init__(self, entity: ToolProviderEntity, provider_id: str, tenant_id: str):
+    def __init__(
+        self,
+        entity: ToolProviderEntity,
+        provider_id: str,
+        tenant_id: str,
+        *,
+        session_maker: sessionmaker[Session],
+    ):
         super().__init__(entity)
         self.provider_id = provider_id
         self.tenant_id = tenant_id
         self.tools = []
+        self._session_maker = session_maker
 
     @classmethod
     def from_db(
@@ -124,6 +132,7 @@ class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTo
             ),
             provider_id=db_provider.id or "",
             tenant_id=db_provider.tenant_id or "",
+            session_maker=sessionmaker_for(session),
         )
 
     @property
@@ -184,14 +193,14 @@ class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTo
 
         tools: list[ApiTool] = []
 
-        # get tenant api providers
-        db_providers = db.session.scalars(
-            select(ApiToolProvider).where(
-                ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name
-            )
-        ).all()
+        # get tenant api providers through a short-lived session from the injected factory
+        with self._session_maker() as session:
+            db_providers = session.scalars(
+                select(ApiToolProvider).where(
+                    ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name
+                )
+            ).all()
 
-        if db_providers and len(db_providers) != 0:
             for db_provider in db_providers:
                 for tool in db_provider.tools:
                     assistant_tool = self._parse_tool_bundle(tool)
