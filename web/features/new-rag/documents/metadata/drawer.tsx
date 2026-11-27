@@ -35,7 +35,7 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -71,7 +71,6 @@ function useMetadataFields() {
 
 function useMetadataFieldMutation() {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'common'])
-  const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
@@ -89,15 +88,8 @@ function useMetadataFieldMutation() {
     async (mutation: () => Promise<unknown>) => {
       if (!canWrite || isPending) return false
       try {
+        // Resolves once the policy has refreshed the field list and the documents.
         await mutation()
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
-          }),
-        ])
         return true
       } catch (error) {
         if (getHttpErrorStatus(error) === 403) denyWrite()
@@ -110,7 +102,7 @@ function useMetadataFieldMutation() {
         return false
       }
     },
-    [canWrite, denyWrite, isPending, queryClient, t],
+    [canWrite, denyWrite, isPending, t],
   )
 
   return { canWrite, fieldMutations, knowledgeSpaceId, mutate, pending: isPending }

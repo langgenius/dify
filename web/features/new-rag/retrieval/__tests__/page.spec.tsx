@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { toast } from '@/app/notifications'
 import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
@@ -150,6 +151,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       })
   const space = 'knowledgeFs.spaces.byControlSpaceId'
   const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    'files.upload.post': apiMock.uploadFile,
     'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
     [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
     [`${space}.goldenQuestions.post`]: (input: never) => apiMock.createGolden(input),
@@ -164,7 +166,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient,
     consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
-      'files.upload.post': apiMock.uploadFile,
       [`${space}.goldenQuestions.evidenceMatches.post`]: apiMock.matchEvidence,
       [`${space}.researchTasks.byTaskId.get`]: (input: { params: { task_id: string } }) => {
         const detail = () =>
@@ -258,6 +259,18 @@ async function refetchQueries() {
   })
 }
 
+// Like the app, refresh a mutation's domain after it succeeds. Mirror the app's cache-level
+// error toasts for specs that count the failure's messages.
+function createPageQueryClient(errorToasts: boolean) {
+  const invalidation = createMutationInvalidation()
+  return createConsoleQueryClient({
+    invalidation,
+    ...(errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
+}
+
 async function renderPage({
   errorToasts = false,
   searchParams = '',
@@ -271,10 +284,7 @@ async function renderPage({
         <RetrievalTestPage knowledgeSpaceId="space-1" />
       </KnowledgeSpaceTestProvider>
     </QueryWrapper>,
-    // Mirror the app's cache-level error toasts for specs that count the failure's messages.
-    errorToasts
-      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
-      : undefined,
+    { queryClient: createPageQueryClient(errorToasts) },
   )
   currentQueryClient = view.queryClient
   await settle()
@@ -2985,7 +2995,8 @@ describe('RetrievalTestPage', () => {
     await act(async () => resolveUpload({ id: 'upload-image-a' }))
 
     expect(screen.queryByRole('img', { name: 'diagram.png' })).not.toBeInTheDocument()
-    expect(createObjectUrl).not.toHaveBeenCalled()
+    expect(createObjectUrl).toHaveBeenCalledOnce()
+    expect(apiMock.uploadFile.mock.calls[0]?.[1].signal.aborted).toBe(true)
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
     await waitFor(() =>
       expect(apiMock.queryAdmission).toHaveBeenCalledWith({
@@ -2993,6 +3004,36 @@ describe('RetrievalTestPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
+    createObjectUrl.mockRestore()
+  })
+
+  it('reports transferred bytes as a percentage while a query image uploads', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
+    let resolveUpload: (value: { id: string }) => void = () => undefined
+    apiMock.uploadFile.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+    const user = userEvent.setup()
+    await renderPage()
+
+    await user.upload(
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
+      new File(['diagram'], 'diagram.png', { type: 'image/png' }),
+    )
+    const progress = screen.getByRole('progressbar')
+    expect(progress).toHaveAttribute('aria-valuenow', '0')
+    const { onUploadProgress } = apiMock.uploadFile.mock.calls[0]?.[1].context
+    act(() => onUploadProgress({ loaded: 449, total: 1000 }))
+    expect(progress).toHaveAttribute('aria-valuenow', '45')
+    act(() => onUploadProgress({ loaded: 0, total: 0 }))
+    expect(progress).toHaveAttribute('aria-valuenow', '45')
+    act(() => onUploadProgress({ loaded: 1000, total: 1000 }))
+    expect(progress).toHaveAttribute('aria-valuenow', '100')
+    await act(async () => resolveUpload({ id: 'upload-image-a' }))
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     createObjectUrl.mockRestore()
   })
 

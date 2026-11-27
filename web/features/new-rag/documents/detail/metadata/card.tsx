@@ -183,8 +183,6 @@ function DocumentMetadataCardContent() {
     },
   })
 
-  // The call site awaits a wider refresh (including the metadata catalog) before leaving edit
-  // mode, so it owns onSuccess instead of the shared document patch policy.
   const saveMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch.mutationOptions({
       meta: { errorToast: false },
@@ -192,11 +190,6 @@ function DocumentMetadataCardContent() {
         toast.error(
           getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
         )
-      },
-      onSuccess: async () => {
-        await invalidateMetadataQueries()
-        cancelEditing()
-        toast.success(tCommon(($) => $['api.actionSuccess']))
       },
     }),
   )
@@ -236,10 +229,19 @@ function DocumentMetadataCardContent() {
       cancelEditing()
       return
     }
-    saveMutation.mutate({
-      body: { expectedRowVersion: editBaseline.rowVersion, patch },
-      params: { control_space_id: controlSpaceId, document_id: document.id },
-    })
+    // Runs after the policy's refresh, so edit mode closes on the saved values.
+    saveMutation.mutate(
+      {
+        body: { expectedRowVersion: editBaseline.rowVersion, patch },
+        params: { control_space_id: controlSpaceId, document_id: document.id },
+      },
+      {
+        onSuccess: () => {
+          cancelEditing()
+          toast.success(tCommon(($) => $['api.actionSuccess']))
+        },
+      },
+    )
   }
 
   const creating = createFieldMutation.isPending

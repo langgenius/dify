@@ -7,9 +7,12 @@ export function apiBasedExtensionPolicies(
   return {
     post: {
       mutationOptions: {
-        onSuccess: (createdExtension, _variables, _onMutateResult, context) => {
+        onSuccess: async (createdExtension, _variables, _onMutateResult, context) => {
+          const queryKey = consoleQuery.apiBasedExtension.get.queryKey()
+          if (context.client.isFetching({ queryKey, exact: true }))
+            await context.client.cancelQueries({ queryKey, exact: true })
           context.client.setQueryData(
-            consoleQuery.apiBasedExtension.get.queryKey(),
+            queryKey,
             (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
               oldExtensions ? [createdExtension, ...oldExtensions] : oldExtensions,
           )
@@ -19,9 +22,12 @@ export function apiBasedExtensionPolicies(
     byId: {
       post: {
         mutationOptions: {
-          onSuccess: (updatedExtension, variables, _onMutateResult, context) => {
+          onSuccess: async (updatedExtension, variables, _onMutateResult, context) => {
+            const queryKey = consoleQuery.apiBasedExtension.get.queryKey()
+            if (context.client.isFetching({ queryKey, exact: true }))
+              await context.client.cancelQueries({ queryKey, exact: true })
             context.client.setQueryData(
-              consoleQuery.apiBasedExtension.get.queryKey(),
+              queryKey,
               (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
                 oldExtensions?.map((extension) =>
                   extension.id === variables.params.id ? updatedExtension : extension,
@@ -32,9 +38,12 @@ export function apiBasedExtensionPolicies(
       },
       delete: {
         mutationOptions: {
-          onSuccess: (_data, variables, _onMutateResult, context) => {
+          onSuccess: async (_data, variables, _onMutateResult, context) => {
+            const queryKey = consoleQuery.apiBasedExtension.get.queryKey()
+            if (context.client.isFetching({ queryKey, exact: true }))
+              await context.client.cancelQueries({ queryKey, exact: true })
             context.client.setQueryData(
-              consoleQuery.apiBasedExtension.get.queryKey(),
+              queryKey,
               (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
                 oldExtensions?.filter((extension) => extension.id !== variables.params.id),
             )

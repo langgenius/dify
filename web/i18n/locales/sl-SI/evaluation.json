@@ -75,6 +75,7 @@
   "entry.checkFailed": "Objavljene različice ni bilo mogoče preveriti. Poskusite znova.",
   "entry.duplicateNodeNames": "Objavljena različica vsebuje vozlišča z enakim imenom ({{names}}). Vrednotenje lahko nadaljujete, vendar bodo rezultati lažje razločljivi, če vozlišča preimenujete in objavite novo različico.",
   "entry.duplicateNodeNamesTitle": "Podvojena imena vozlišč",
+  "entry.triggerUnsupported": "Potekov dela, ki se začnejo s sprožilcem, ni mogoče ocenjevati. Objavite potek dela z začetnim vozliščem za uporabniški vnos.",
   "history.actions.cancel": "Prekliči izvajanje",
   "history.actions.downloadFailed": "Datoteke vrednotenja ni bilo mogoče prenesti.",
   "history.actions.downloadResultFile": "Prenesi rezultat",

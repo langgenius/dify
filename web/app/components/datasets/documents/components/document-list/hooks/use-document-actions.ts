@@ -14,7 +14,7 @@ type UseDocumentActionsOptions = {
   datasetId: string
   selectedIds: string[]
   downloadableSelectedIds: string[]
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
   onClearSelection: () => void
 }
 

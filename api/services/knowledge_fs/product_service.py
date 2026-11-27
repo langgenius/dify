@@ -98,10 +98,14 @@ class KnowledgeFSProductService:
         creator_ids: list[str] | None = None,
         tag_ids: list[str] | None = None,
         query: str | None = None,
+        control_space_ids: list[str] | None = None,
     ) -> KnowledgeFSSpaceListResponse:
+        """List the Spaces the member can read; ``control_space_ids`` restricts the listing to those ids."""
         self.require_product_routes(tenant_id=tenant_id)
         with self._session_maker() as session:
             statement = visible_control_space_statement(tenant_id=tenant_id, account_id=account_id)
+            if control_space_ids is not None:
+                statement = statement.where(KnowledgeFSControlSpace.id.in_(control_space_ids))
             if creator_ids:
                 statement = statement.where(KnowledgeFSControlSpace.owner_account_id.in_(creator_ids))
             if tag_ids:

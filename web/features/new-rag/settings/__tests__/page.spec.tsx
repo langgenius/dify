@@ -82,6 +82,7 @@ describe('KnowledgeSettingsPage', () => {
       revision: 1,
       service_api_enabled: false,
       workflow_enabled: false,
+      personal_agent_enabled: true,
     })
     serviceMock.getPermissions.mockResolvedValue({ data: [] })
     serviceMock.getSettings.mockResolvedValue(settings)

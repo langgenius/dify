@@ -3,15 +3,21 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
-import { invalidateQueryKeys, refreshAgentTagCatalogs } from './shared'
+import { invalidateQueryKeys } from './shared'
+
+// A renamed or deleted tag changes the tag chips on every resource that carries it.
+const taggedResources = ['apps', 'agent', 'datasets', 'knowledgeFs', 'workspaces.current.skills']
 
 export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags'] {
   return {
     post: {
       mutationOptions: {
+        // Skills read their tag catalog from their own endpoint.
+        meta: { alsoInvalidate: ['workspaces.current.skills'] },
         onSuccess: async (tag, { body: { type } }, _result, { client, meta }) => {
           const queryKey = consoleQuery.tags.get.queryKey({ input: { query: { type } } })
-          if (type === 'agent') await client.cancelQueries({ queryKey })
+          if (client.isFetching({ queryKey, exact: true }))
+            await client.cancelQueries({ queryKey, exact: true })
 
           client.setQueryData(
             queryKey,
@@ -30,46 +36,31 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
     byTagId: {
       patch: {
         mutationOptions: {
-          onSuccess: (updatedTag, variables, _onMutateResult, context) => {
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.get.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => {
-                if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
-                return oldTags.map((tag) => (tag.id === variables.params.tag_id ? updatedTag : tag))
-              },
-            )
-
-            if (updatedTag.type === 'agent')
-              void refreshAgentTagCatalogs(consoleQuery, context.client)
-            void invalidateTaggedResources(consoleQuery, context.client, updatedTag.type)
+          meta: { alsoInvalidate: taggedResources },
+          onSuccess: async (updatedTag, variables, _onMutateResult, context) => {
+            const queryKey = consoleQuery.tags.get.key({ type: 'query' })
+            // A catalog read started before the rename must not overwrite it.
+            if (context.client.isFetching({ queryKey }))
+              await context.client.cancelQueries({ queryKey })
+            context.client.setQueriesData({ queryKey }, (oldTags: Tag[] | undefined) => {
+              if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
+              return oldTags.map((tag) => (tag.id === variables.params.tag_id ? updatedTag : tag))
+            })
           },
         },
       },
       delete: {
         mutationOptions: {
-          onSuccess: (_data, variables, _onMutateResult, context) => {
-            const deletedTag = context.client
-              .getQueriesData<Tag[]>({
-                queryKey: consoleQuery.tags.get.key({ type: 'query' }),
-              })
-              .flatMap(([, tags]) => tags ?? [])
-              .find((tag) => tag.id === variables.params.tag_id)
-
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.get.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => {
-                if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
-                return oldTags.filter((tag) => tag.id !== variables.params.tag_id)
-              },
-            )
-
-            if (deletedTag?.type === 'agent')
-              void refreshAgentTagCatalogs(consoleQuery, context.client)
-            void invalidateTaggedResources(consoleQuery, context.client, deletedTag?.type)
+          meta: { alsoInvalidate: taggedResources },
+          onSuccess: async (_data, variables, _onMutateResult, context) => {
+            const queryKey = consoleQuery.tags.get.key({ type: 'query' })
+            // A catalog read started before the delete must not bring the tag back.
+            if (context.client.isFetching({ queryKey }))
+              await context.client.cancelQueries({ queryKey })
+            context.client.setQueriesData({ queryKey }, (oldTags: Tag[] | undefined) => {
+              if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
+              return oldTags.filter((tag) => tag.id !== variables.params.tag_id)
+            })
           },
         },
       },

@@ -16,6 +16,8 @@
   "settings.membersRequired": "Izberite vsaj enega člana ekipe.",
   "settings.nameRequired": "Ime zbirke znanja Agent je obvezno.",
   "settings.pageDescription": "Upravljajte osnovne podatke, dostop do API-ja in pridobivanje.",
+  "settings.personalAgentDescription": "Člani lahko svojim agentom (Claude Code, Codex, odjemalci MCP) dovolijo branje te baze znanja s svojimi dovoljenji.",
+  "settings.personalAgentLabel": "Osebni agenti",
   "settings.reloadLatest": "Naloži najnovejše nastavitve",
   "settings.rerankModelRequired": "Izberite model za ponovno razvrščanje.",
   "settings.retrievalDepth": "Globina pridobivanja",

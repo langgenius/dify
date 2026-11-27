@@ -16,7 +16,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { isDefinedError, ORPCError } from '@orpc/client'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolvePostLoginRedirect } from '@/app/(auth)/signin/utils/post-login-redirect'
@@ -70,7 +70,6 @@ const OneMoreStep = () => {
   const { t } = useTranslation(['common', 'login'])
   const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
 
   const [state, dispatch] = useReducer(reducer, {
@@ -106,7 +105,6 @@ const OneMoreStep = () => {
           timezone: state.timezone,
         },
       })
-      await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
       replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
     } catch (error: unknown) {
       if (

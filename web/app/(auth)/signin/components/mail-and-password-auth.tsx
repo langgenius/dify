@@ -64,7 +64,6 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } else {

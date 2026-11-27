@@ -87,21 +87,6 @@ describe('useAccessPointActions', () => {
     } satisfies AppSiteResponse)
   })
 
-  it('refreshes access metadata through the app detail query', async () => {
-    const { result, queryClient } = renderActions()
-
-    await act(async () => result.current.refreshAppDetail())
-
-    await waitFor(() => {
-      expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
-      expect(
-        queryClient.getQueryData(
-          consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-        ),
-      ).toEqual(createAppDetailFixture())
-    })
-  })
-
   it('reports a failed save without invalidating app details', async () => {
     mocks.updateAppSiteConfig.mockRejectedValueOnce(new Error('request failed'))
     const { result } = renderActions()
@@ -114,7 +99,7 @@ describe('useAccessPointActions', () => {
     })
   })
 
-  it('invalidates app detail and lists after saving site configuration', async () => {
+  it('waits for the app detail after saving site configuration', async () => {
     const { queryClient, result } = renderActions()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -129,11 +114,8 @@ describe('useAccessPointActions', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: consoleQuery.apps.get.key() })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.apps.starred.get.key(),
-    })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: consoleQuery.apps.recent.get.key() })
+    // App lists refresh through the global mutation fallback, not the site policy.
+    expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: consoleQuery.apps.get.key() })
     await waitFor(() =>
       expect(
         queryClient.getQueryData(
