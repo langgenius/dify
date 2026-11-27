@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getEndUserAppHref } from '@/app/components/end-user/app-link'
-import Link from '@/next/link'
 import { webAppQuery } from '@/service/webapp'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 
@@ -33,7 +32,7 @@ function LinkedAppItem({ app }: { app: ConsumerAppResponse }) {
 
   return (
     <li className="h-16 border-b border-divider-subtle">
-      <Link
+      <a
         href={getEndUserAppHref(app)}
         target="_blank"
         rel="noopener noreferrer"
@@ -56,7 +55,7 @@ function LinkedAppItem({ app }: { app: ConsumerAppResponse }) {
         >
           <span className="i-ri-arrow-right-up-line size-4" />
         </span>
-      </Link>
+      </a>
     </li>
   )
 }
