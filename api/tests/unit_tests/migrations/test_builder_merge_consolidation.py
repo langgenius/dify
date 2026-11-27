@@ -8,7 +8,13 @@ from alembic.runtime.migration import HeadMaintainer, RevisionStep
 from alembic.script import ScriptDirectory
 from alembic.util.exc import CommandError
 
-from tests.helpers.builder_migration import BUILDER_MAIN_REVISION, BUILDER_REVISION, MIGRATIONS_DIR
+from tests.helpers.builder_migration import (
+    BUILDER_MAIN_REVISION,
+    BUILDER_MERGE_REVISION,
+    BUILDER_REVISION,
+    KNOWLEDGE_AGENT_REVISION,
+    MIGRATIONS_DIR,
+)
 
 _RETIRED_REVISIONS = (
     "b28a1b2fbf4d",
@@ -45,13 +51,17 @@ def _upgrade_steps(directory: ScriptDirectory, starting: str, target: str) -> li
     ]
 
 
-def test_builder_has_one_revision_after_main() -> None:
+@pytest.mark.parametrize(
+    ("starting", "pending"),
+    [(BUILDER_REVISION, KNOWLEDGE_AGENT_REVISION), (KNOWLEDGE_AGENT_REVISION, BUILDER_REVISION)],
+)
+def test_each_branch_applies_only_the_missing_parent_and_merge(starting: str, pending: str) -> None:
     scripts = _scripts()
-    assert scripts.get_heads() == [BUILDER_REVISION]
-    assert [step.revision.revision for step in _upgrade_steps(scripts, BUILDER_MAIN_REVISION, "head")] == [
-        BUILDER_REVISION
+    assert scripts.get_heads() == [BUILDER_MERGE_REVISION]
+    assert [step.revision.revision for step in _upgrade_steps(scripts, starting, "head")] == [
+        pending,
+        BUILDER_MERGE_REVISION,
     ]
-    assert not _upgrade_steps(scripts, BUILDER_REVISION, "head")
 
 
 @pytest.mark.parametrize("revision", _RETIRED_REVISIONS)
@@ -61,17 +71,16 @@ def test_intermediate_builder_checkpoints_require_the_previous_checkout(revision
 
 
 @pytest.mark.parametrize("starting", ["base", "e7b2a9c4d601", "f1d3c5b7a902", "53c10126d551", BUILDER_MAIN_REVISION])
-def test_main_upgrade_keeps_upstream_steps_and_finishes_at_builder_head(starting: str) -> None:
+def test_main_upgrade_keeps_upstream_steps_and_finishes_at_merged_head(starting: str) -> None:
     scripts = _scripts()
     upstream = _upgrade_steps(scripts, starting, BUILDER_MAIN_REVISION)
     planned = _upgrade_steps(scripts, starting, "head")
-    assert [step.revision.revision for step in planned] == [
-        *(step.revision.revision for step in upstream),
-        BUILDER_REVISION,
-    ]
+    assert [step.revision.revision for step in planned[:-3]] == [step.revision.revision for step in upstream]
+    assert {step.revision.revision for step in planned[-3:-1]} == {BUILDER_REVISION, KNOWLEDGE_AGENT_REVISION}
+    assert planned[-1].revision.revision == BUILDER_MERGE_REVISION
     initial = () if starting == "base" else (starting,)
     context = MigrationContext.configure(dialect_name="postgresql", opts={"as_sql": True, "output_buffer": StringIO()})
     maintainer = HeadMaintainer(context, initial)
     for step in planned:
         maintainer.update_to_step(step)
-    assert maintainer.heads == {BUILDER_REVISION}
+    assert maintainer.heads == {BUILDER_MERGE_REVISION}

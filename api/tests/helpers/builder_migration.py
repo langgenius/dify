@@ -6,6 +6,8 @@ from types import ModuleType
 
 BUILDER_REVISION = "430a56d97885"
 BUILDER_MAIN_REVISION = "f8b6e2c4a901"
+KNOWLEDGE_AGENT_REVISION = "6b1d2f4e8a90"
+BUILDER_MERGE_REVISION = "998595ace7d2"
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 BUILDER_MIGRATION_PATH = MIGRATIONS_DIR / "versions" / "2026_11_23_1100-430a56d97885_add_dify_builder_schema.py"
 
