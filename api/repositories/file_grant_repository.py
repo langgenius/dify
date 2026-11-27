@@ -114,10 +114,27 @@ class FileGrantRepository:
         return [uploads.get(ref.id) if ref.kind == FileKind.UPLOAD else tool_files.get(ref.id) for ref in refs]
 
     def get_content_record(self, *, file_id: str, kind: FileKind) -> FileContentRecord | None:
+        """Return detached metadata once the caller has verified the signed file ID and kind."""
+        return self._get_content_record(file_id=file_id, kind=kind, tenant_id=None)
+
+    def get_workspace_content_record(self, *, tenant_id: str, file_id: str, kind: FileKind) -> FileContentRecord | None:
+        """Read an admitted workspace file by ID and kind, irrespective of who uploaded it.
+
+        The caller must authorize access to the workspace resource referencing
+        the file. Missing, foreign, or different-kind files return None. The
+        metadata is detached before the caller can read storage.
+        """
+        return self._get_content_record(file_id=file_id, kind=kind, tenant_id=tenant_id)
+
+    def _get_content_record(self, *, file_id: str, kind: FileKind, tenant_id: str | None) -> FileContentRecord | None:
+        """Read metadata for one kind and close its session, optionally applying the workspace scope."""
         with self._session_factory() as session:
             match kind:
                 case FileKind.UPLOAD:
-                    upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+                    upload_statement = select(UploadFile).where(UploadFile.id == file_id)
+                    if tenant_id is not None:
+                        upload_statement = upload_statement.where(UploadFile.tenant_id == tenant_id)
+                    upload_file = session.scalar(upload_statement.limit(1))
                     if upload_file is None:
                         return None
                     return FileContentRecord(
@@ -127,7 +144,10 @@ class FileGrantRepository:
                         storage_key=upload_file.key,
                     )
                 case FileKind.TOOL:
-                    tool_file = session.scalar(select(ToolFile).where(ToolFile.id == file_id).limit(1))
+                    tool_statement = select(ToolFile).where(ToolFile.id == file_id)
+                    if tenant_id is not None:
+                        tool_statement = tool_statement.where(ToolFile.tenant_id == tenant_id)
+                    tool_file = session.scalar(tool_statement.limit(1))
                     if tool_file is None:
                         return None
                     return FileContentRecord(

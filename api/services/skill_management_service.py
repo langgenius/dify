@@ -2502,7 +2502,12 @@ class SkillManagementService:
         name: str,
         include_draft: bool = False,
     ) -> PublishedSkillArchive:
-        """Pull one bound published workspace Skill by Skill name."""
+        """Pull a published workspace Skill by name from the Agent's selected bindings.
+
+        Scope the lookup to the given tenant and Agent. Release the service-owned
+        session before inspecting legacy metadata or loading the archive. Raise
+        skill_not_found when no bound Skill has the requested published name.
+        """
         normalized_name = validate_skill_name(name)
         with self._session_scope() as session:
             binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
@@ -2520,32 +2525,29 @@ class SkillManagementService:
                 .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
                 .join(Agent, Agent.id == binding_model.agent_id)
                 .where(*conditions)
-            )
-            row = next(
-                (
-                    (skill, version)
-                    for skill, version in rows
-                    if self._published_skill_identity(skill, version)[0] == normalized_name
-                ),
-                None,
-            )
-            if row is None:
-                raise SkillManagementServiceError("skill_not_found", "skill not found", status_code=404)
-            skill, version = row
-            tool_file_id = version.archive_tool_file_id
-            published_name, published_display_name, published_description = self._published_skill_identity(
-                skill, version
-            )
-            archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id)
-            archive_bytes = self._normalize_published_archive_identity(
-                archive_bytes,
-                name=published_name,
-                display_name=published_display_name,
-                description=published_description,
-            )
-            filename = f"{published_name}.zip"
+            ).all()
+
+        selection = next(
+            (
+                (version.archive_tool_file_id, identity)
+                for skill, version in rows
+                if (identity := self._published_skill_identity(skill, version))[0] == normalized_name
+            ),
+            None,
+        )
+        if selection is None:
+            raise SkillManagementServiceError("skill_not_found", "skill not found", status_code=404)
+
+        tool_file_id, (published_name, published_display_name, published_description) = selection
+        archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id)
+        archive_bytes = self._normalize_published_archive_identity(
+            archive_bytes,
+            name=published_name,
+            display_name=published_display_name,
+            description=published_description,
+        )
         return PublishedSkillArchive(
-            filename=filename,
+            filename=f"{published_name}.zip",
             mime_type=_ZIP_MIME_TYPE,
             payload=archive_bytes,
         )

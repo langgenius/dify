@@ -10,6 +10,7 @@ directly from the Dify API data plane.
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import Literal
 
 from flask import request
@@ -20,13 +21,13 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.exception import RelayedHTTPError
 from libs.helper import dump_response
 from models.agent_config_entities import validate_config_name, validate_config_skill_name
 from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.config_service import (
-    AgentConfigService,
     AgentConfigServiceError,
     ConfigPushPayload,
 )
@@ -101,8 +102,18 @@ class AgentConfigPromptResponse(ResponseModel):
     prompt: str
 
 
+class AgentConfigLegacyErrorResponse(ResponseModel):
+    """Keep the two-field error body used by the original Agent config routes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    message: str
+
+
 register_schema_models(inner_api_ns, AgentConfigPromptUpdatePayload)
-register_response_schema_models(inner_api_ns, AgentConfigPromptResponse)
+register_response_schema_models(inner_api_ns, AgentConfigPromptResponse, AgentConfigLegacyErrorResponse)
+_LEGACY_ERROR_MODEL = inner_api_ns.models[AgentConfigLegacyErrorResponse.__name__]
 
 
 def _target_query_from_request() -> _ConfigTargetQuery:
@@ -125,10 +136,12 @@ class AgentConfigManifestApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @inner_api_ns.doc("agent_config_manifest")
+    @inner_api_ns.response(HTTPStatus.BAD_REQUEST, "Invalid config version query", _LEGACY_ERROR_MODEL)
+    @inner_api_ns.response(HTTPStatus.NOT_FOUND, "Agent or config version not found", _LEGACY_ERROR_MODEL)
     def get(self, agent_id: str):
         try:
             query = _target_query_from_request()
-            return AgentConfigService().manifest(
+            return application_services().agent_apps.config_assets.manifest(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
                 user_id=query.user_id,
@@ -146,10 +159,11 @@ class AgentConfigDownloadRequestApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @inner_api_ns.doc("agent_config_download_request")
+    @inner_api_ns.response(HTTPStatus.BAD_REQUEST, "Invalid config download request", _LEGACY_ERROR_MODEL)
     def post(self, agent_id: str):
         try:
             body = _ConfigDownloadRequest.model_validate(request.get_json(silent=True) or {})
-            result = AgentConfigService().request_download(
+            result = application_services().agent_apps.config_assets.request_download(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
                 user_id=body.user_id,
@@ -178,7 +192,7 @@ class AgentConfigSkillInspectApi(Resource):
     def get(self, agent_id: str, name: str):
         try:
             query = _target_query_from_request()
-            return AgentConfigService().inspect_skill(
+            return application_services().agent_apps.config_assets.inspect_skill(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
                 user_id=query.user_id,
@@ -197,10 +211,12 @@ class AgentConfigPushApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @inner_api_ns.doc("agent_config_push")
+    @inner_api_ns.response(HTTPStatus.BAD_REQUEST, "Invalid config push request", _LEGACY_ERROR_MODEL)
+    @inner_api_ns.response(HTTPStatus.FORBIDDEN, "Config version is read-only", _LEGACY_ERROR_MODEL)
     def post(self, agent_id: str):
         try:
             body = _ConfigPushRequest.model_validate(request.get_json(silent=True) or {})
-            return AgentConfigService().push(
+            return application_services().agent_apps.config_assets.push(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
                 user_id=body.user_id,
@@ -222,7 +238,7 @@ class AgentConfigEnvApi(Resource):
     def patch(self, agent_id: str):
         try:
             body = _ConfigEnvUpdateRequest.model_validate(request.get_json(silent=True) or {})
-            return AgentConfigService().update_env(
+            return application_services().agent_apps.config_assets.update_env(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
                 user_id=body.user_id,
@@ -244,7 +260,7 @@ class AgentConfigNoteApi(Resource):
     def put(self, agent_id: str):
         try:
             body = _ConfigNoteUpdateRequest.model_validate(request.get_json(silent=True) or {})
-            return AgentConfigService().update_note(
+            return application_services().agent_apps.config_assets.update_note(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
                 user_id=body.user_id,
@@ -267,7 +283,7 @@ class AgentConfigPromptApi(Resource):
     def get(self, agent_id: str):
         try:
             query = _target_query_from_request()
-            result = AgentConfigService().get_prompt(
+            result = application_services().agent_apps.config_assets.get_prompt(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
                 user_id=query.user_id,
@@ -288,7 +304,7 @@ class AgentConfigPromptApi(Resource):
     def put(self, agent_id: str):
         try:
             body = AgentConfigPromptUpdatePayload.model_validate(request.get_json(silent=True) or {})
-            result = AgentConfigService().update_prompt(
+            result = application_services().agent_apps.config_assets.update_prompt(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
                 user_id=body.user_id,

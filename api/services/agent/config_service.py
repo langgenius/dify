@@ -22,22 +22,21 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from operator import itemgetter
-from typing import Literal
+from typing import Literal, Protocol
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Select, select
+from sqlalchemy import select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.file_access.controller import DatabaseFileAccessController
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-from core.db.session_factory import session_factory as default_session_factory
 from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
-from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot
+from models.agent import AgentConfigDraft, AgentConfigSnapshot
 from models.agent_config_entities import (
     AgentConfigFileRefConfig,
     AgentConfigSkillRefConfig,
@@ -48,9 +47,17 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.tools import ToolFile
-from services.agent.agent_config_contracts import AgentConfigVersionKind
+from services.agent.agent_config_contracts import AgentConfigSelection, AgentConfigVersionKind
+from services.agent.config_assets_store import (
+    AgentConfigFileReader,
+    AgentConfigReader,
+    AgentConfigTarget,
+    AgentConfigTargetError,
+    AgentConfigTargetErrorCode,
+)
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
+from services.entities.file_grant_entities import FileKind
 from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
@@ -104,14 +111,29 @@ class ConfigPushPayload(BaseModel):
 
 
 @dataclass(slots=True)
-class AgentConfigTarget:
-    tenant_id: str
-    agent_id: str
-    version_id: str
-    kind: AgentConfigVersionKind
-    writable: bool
+class _AgentConfigWriteTarget(AgentConfigTarget):
+    """Extend the read record with the version attached to a legacy write transaction."""
+
     version: AgentConfigSnapshot | AgentConfigDraft
-    agent_soul: AgentSoulConfig
+
+
+class _ConfigVersions(AgentConfigReader, Protocol):
+    def get_version_in_session(
+        self, session: Session, selection: AgentConfigSelection, *, for_update: bool
+    ) -> AgentConfigSnapshot | AgentConfigDraft:
+        """Reuse version selection in the existing writer's transaction."""
+        ...
+
+
+def _target_error(error: AgentConfigTargetError) -> AgentConfigServiceError:
+    """Preserve the Config API's public code and status for a scoped version lookup failure."""
+    return AgentConfigServiceError(
+        error.code.value,
+        str(error),
+        status_code=404
+        if error.code in {AgentConfigTargetErrorCode.AGENT_NOT_FOUND, AgentConfigTargetErrorCode.VERSION_NOT_FOUND}
+        else 400,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,13 +165,18 @@ class AgentConfigService:
     def __init__(
         self,
         *,
+        configs: _ConfigVersions,
+        files: AgentConfigFileReader,
+        session_factory: Callable[[], Session],
         tool_file_manager: ToolFileManager | None = None,
         skill_normalize_service: ConfigSkillNormalizeService | None = None,
-        session_factory: Callable[[], Session] | None = None,
     ) -> None:
+        """Use injected metadata reads and retain the session factory for existing mutations."""
+        self._configs = configs
+        self._files = files
         self._tool_files = tool_file_manager or ToolFileManager()
         self._skill_normalizer = skill_normalize_service or ConfigSkillNormalizeService()
-        self._session_factory = session_factory or default_session_factory.create_session
+        self._session_factory = session_factory
 
     def resolve_target(
         self,
@@ -160,24 +187,12 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> AgentConfigTarget:
-        with self._session_factory() as session:
-            target = self._resolve_target_in_session(
-                session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                config_version_id=config_version_id,
-                config_version_kind=config_version_kind,
-                user_id=user_id,
-            )
-            return AgentConfigTarget(
-                tenant_id=tenant_id,
-                agent_id=target.agent_id,
-                version_id=target.version_id,
-                kind=target.kind,
-                writable=target.writable,
-                version=target.version,
-                agent_soul=target.agent_soul.model_copy(deep=True),
-            )
+        """Read the addressed version through its repository and return detached configuration."""
+        selection = AgentConfigSelection(tenant_id, agent_id, user_id, config_version_id, config_version_kind)
+        try:
+            return self._configs.get_config_target(selection)
+        except AgentConfigTargetError as exc:
+            raise _target_error(exc) from exc
 
     def manifest(
         self,
@@ -1004,94 +1019,22 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None,
         for_update: bool = False,
-    ) -> AgentConfigTarget:
-        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id, for_update=for_update)
-        version_query: Select[tuple[AgentConfigSnapshot]] | Select[tuple[AgentConfigDraft]]
+    ) -> _AgentConfigWriteTarget:
+        """Load the existing mutation target in its caller-owned transaction."""
+        selection = AgentConfigSelection(tenant_id, agent_id, user_id, config_version_id, config_version_kind)
         try:
-            match config_version_kind:
-                case AgentConfigVersionKind.SNAPSHOT:
-                    version_query = select(AgentConfigSnapshot).where(
-                        AgentConfigSnapshot.tenant_id == tenant_id,
-                        AgentConfigSnapshot.agent_id == agent_id,
-                        AgentConfigSnapshot.id == config_version_id,
-                    )
-                    writable = False
-                case AgentConfigVersionKind.DRAFT:
-                    version_query = select(AgentConfigDraft).where(
-                        AgentConfigDraft.tenant_id == tenant_id,
-                        AgentConfigDraft.agent_id == agent_id,
-                        AgentConfigDraft.id == config_version_id,
-                        AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                        AgentConfigDraft.account_id.is_(None),
-                    )
-                    writable = False
-                case AgentConfigVersionKind.BUILD_DRAFT:
-                    if not user_id:
-                        raise AgentConfigServiceError(
-                            "missing_user_id",
-                            "user_id is required for build draft config access",
-                            status_code=400,
-                        )
-                    version_query = select(AgentConfigDraft).where(
-                        AgentConfigDraft.tenant_id == tenant_id,
-                        AgentConfigDraft.agent_id == agent_id,
-                        AgentConfigDraft.id == config_version_id,
-                        AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
-                        AgentConfigDraft.account_id == user_id,
-                    )
-                    writable = True
-                case _:
-                    raise AgentConfigServiceError("invalid_config_version_kind", "unsupported config version kind")
-            version_query = version_query.execution_options(autoflush=False)
-            if for_update and config_version_kind != AgentConfigVersionKind.SNAPSHOT:
-                # Re-read under the lock even when this Session already loaded the draft.
-                version_query = version_query.with_for_update().execution_options(
-                    populate_existing=True, autoflush=False
-                )
-            version = session.scalar(version_query)
-        except (DataError, SQLAlchemyError) as exc:
-            session.rollback()
-            raise AgentConfigServiceError(
-                "config_version_not_found",
-                "agent config version was not found",
-                status_code=404,
-            ) from exc
-        if version is None:
-            raise AgentConfigServiceError(
-                "config_version_not_found",
-                "agent config version was not found",
-                status_code=404,
-            )
-        return AgentConfigTarget(
+            version = self._configs.get_version_in_session(session, selection, for_update=for_update)
+        except AgentConfigTargetError as exc:
+            raise _target_error(exc) from exc
+        return _AgentConfigWriteTarget(
             tenant_id=tenant_id,
             agent_id=agent_id,
             version_id=version.id,
             kind=config_version_kind,
-            writable=writable,
+            writable=config_version_kind == AgentConfigVersionKind.BUILD_DRAFT,
             version=version,
             agent_soul=AgentSoulConfig.model_validate(version.config_snapshot_dict),
         )
-
-    @staticmethod
-    def _assert_agent_belongs_to_tenant(
-        session: Session, *, tenant_id: str, agent_id: str, for_update: bool = False
-    ) -> None:
-        try:
-            query = (
-                select(Agent)
-                .where(Agent.id == agent_id, Agent.tenant_id == tenant_id)
-                .execution_options(autoflush=False)
-            )
-            if for_update:
-                query = query.with_for_update().execution_options(populate_existing=True, autoflush=False)
-            found = session.scalar(query)
-        except (DataError, SQLAlchemyError) as exc:
-            session.rollback()
-            raise AgentConfigServiceError(
-                "agent_not_found", "agent does not belong to this tenant", status_code=404
-            ) from exc
-        if found is None:
-            raise AgentConfigServiceError("agent_not_found", "agent does not belong to this tenant", status_code=404)
 
     @staticmethod
     def _require_writable(target: AgentConfigTarget, *, surface: AgentConfigMutationSurface) -> None:
@@ -1617,11 +1560,11 @@ class AgentConfigService:
         return file_ref.file_id
 
     def _load_tool_file_bytes(self, *, tenant_id: str, file_id: str) -> tuple[bytes, str | None]:
-        with self._session_factory() as session:
-            tool_file = session.scalar(select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id))
-        if tool_file is None:
+        """Read the workspace's skill archive after releasing its metadata session."""
+        metadata = self._files.get_workspace_content_record(tenant_id=tenant_id, file_id=file_id, kind=FileKind.TOOL)
+        if metadata is None:
             raise AgentConfigServiceError("config_skill_not_found", "config skill payload is missing", status_code=404)
-        return storage.load_once(tool_file.file_key), tool_file.mimetype
+        return storage.load_once(metadata.storage_key), metadata.mime_type
 
     def _load_file_ref_bytes(
         self,
@@ -1630,22 +1573,12 @@ class AgentConfigService:
         file_kind: Literal["upload_file", "tool_file"],
         file_id: str,
     ) -> tuple[bytes, str | None, str | None]:
-        with self._session_factory() as session:
-            if file_kind == "tool_file":
-                tool_file = session.scalar(
-                    select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)
-                )
-                if tool_file is None:
-                    raise AgentConfigServiceError(
-                        "config_file_not_found", "config file payload is missing", status_code=404
-                    )
-                return storage.load_once(tool_file.file_key), tool_file.name, tool_file.mimetype
-            upload_file = session.scalar(
-                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
-            )
-        if upload_file is None:
+        """Read a workspace config file after releasing its metadata session."""
+        kind = FileKind.TOOL if file_kind == "tool_file" else FileKind.UPLOAD
+        metadata = self._files.get_workspace_content_record(tenant_id=tenant_id, file_id=file_id, kind=kind)
+        if metadata is None:
             raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
-        return storage.load_once(upload_file.key), upload_file.name, upload_file.mime_type
+        return storage.load_once(metadata.storage_key), metadata.name, metadata.mime_type
 
     def _resolve_download_request(
         self,
@@ -1658,47 +1591,40 @@ class AgentConfigService:
         missing_code: str,
         missing_message: str,
     ) -> ConfigDownloadRequest:
-        with self._session_factory() as session:
-            if file_kind == "tool_file":
-                tool_file = session.scalar(
-                    select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)
-                )
-                if tool_file is None:
-                    raise AgentConfigServiceError(missing_code, missing_message, status_code=404)
-                extension = (
-                    os.path.splitext(tool_file.name)[1].lower()
-                    or mimetypes.guess_extension(tool_file.mimetype)
-                    or os.path.splitext(tool_file.file_key)[1].lower()
-                    or ".bin"
-                )
-                uri = sign_tool_file_uri(tool_file_id=file_id, extension=extension)
-                mime_type = tool_file.mimetype or default_mime_type
-                size = tool_file.size
-            else:
-                upload_file = session.scalar(
-                    select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
-                )
-                if upload_file is None:
-                    raise AgentConfigServiceError(missing_code, missing_message, status_code=404)
-                runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
-                uri = runtime.resolve_upload_file_uri(upload_file_id=file_id, as_attachment=True)
-                mime_type = upload_file.mime_type or default_mime_type
-                size = upload_file.size
+        """Sign a download for a workspace file after closing its metadata session."""
+        kind = FileKind.TOOL if file_kind == "tool_file" else FileKind.UPLOAD
+        metadata = self._files.get_workspace_content_record(tenant_id=tenant_id, file_id=file_id, kind=kind)
+        if metadata is None:
+            raise AgentConfigServiceError(missing_code, missing_message, status_code=404)
 
         if file_kind == "tool_file":
+            extension = (
+                os.path.splitext(metadata.name)[1].lower()
+                or (mimetypes.guess_extension(metadata.mime_type) if metadata.mime_type else None)
+                or os.path.splitext(metadata.storage_key)[1].lower()
+                or ".bin"
+            )
+            uri = sign_tool_file_uri(tool_file_id=file_id, extension=extension)
             parsed = urllib.parse.urlsplit(uri)
             query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
             query.append(("as_attachment", "true"))
             uri = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
+        else:
+            runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+            uri = runtime.resolve_upload_file_uri(upload_file_id=file_id, as_attachment=True)
 
-        return ConfigDownloadRequest(filename=filename, mime_type=mime_type, size=size, download_uri=uri)
+        return ConfigDownloadRequest(
+            filename=filename,
+            mime_type=metadata.mime_type or default_mime_type,
+            size=metadata.size,
+            download_uri=uri,
+        )
 
 
 __all__ = [
     "AgentConfigMutationSurface",
     "AgentConfigService",
     "AgentConfigServiceError",
-    "AgentConfigTarget",
     "ConfigDownload",
     "ConfigDownloadRequest",
     "ConfigPushFileItem",

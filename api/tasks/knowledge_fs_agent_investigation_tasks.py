@@ -2,13 +2,13 @@
 
 import logging
 
-from celery import shared_task
+from celery import Task, shared_task
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPayload
 from pydantic import ValidationError
 
-from services.agent.config_service import AgentConfigServiceError
-from services.agent.knowledge_gateway import AgentKnowledgeGateway
+from extensions.ext_application_services import application_services
+from services.agent.config_assets_store import AgentConfigTargetError
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from services.knowledge_fs_capability import KnowledgeFSCapabilityPolicyError
@@ -17,15 +17,15 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset", bind=True, max_retries=3, default_retry_delay=30)
-def capture_agent_knowledge_investigation_task(self, *, report: dict, control_space_id: str) -> None:
+def capture_agent_knowledge_investigation_task(self: Task, *, report: dict[str, object], control_space_id: str) -> None:
     """Reconstruct authorization on every attempt; report IDs survive queue redelivery."""
     context = {"control_space_id": control_space_id, "investigation_id": str(report.get("investigation_id", ""))[:36]}
     try:
         payload = KnowledgeInvestigationPayload.model_validate(report)
-        AgentKnowledgeGateway().capture_investigation(payload, control_space_id)
+        application_services().agent_apps.knowledge.capture_investigation(payload, control_space_id)
     except (
         KnowledgeFsError,
-        AgentConfigServiceError,
+        AgentConfigTargetError,
         KnowledgeFSAppAdmissionError,
         KnowledgeFSCapabilityPolicyError,
         ValidationError,
