@@ -1,15 +1,14 @@
 import type { FC } from 'react'
 import type { ToolNodeType } from './types'
-import type { CommonNodeType, NodeProps } from '@/app/components/workflow/types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { isToolAuthorizationRequired } from './auth'
-import { resolveToolAuthorization } from './authorization'
 import useCurrentToolCollection from './hooks/use-current-tool-collection'
+import { useToolAuthorization } from './hooks/use-tool-authorization'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
   const { t } = useTranslation(['workflow', 'plugin'])
@@ -19,11 +18,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
     useNodePluginInstallation(data)
   const { currCollection } = useCurrentToolCollection(data.provider_type, data.provider_id)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
-  const nodes = useNodes<CommonNodeType>()
-  const authorization = resolveToolAuthorization({
-    node: { id, data },
-    nodes,
-  })
+  const authorization = useToolAuthorization(id, data)
   const ownAuthorization =
     authorization?.status === 'resolved' && authorization.sourceNodeId === id
       ? authorization

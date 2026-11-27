@@ -28,10 +28,10 @@ export type ToolAuthorizationResolution =
 
 type ResolveToolAuthorizationParams = {
   node: Pick<Node, 'id' | 'data'>
-  nodes: readonly Node[]
+  nodes: readonly Pick<Node, 'id' | 'data'>[]
 }
 
-const isToolNode = (
+export const isToolNode = (
   node: Pick<Node, 'id' | 'data'>,
 ): node is Pick<Node<ToolNodeType>, 'id' | 'data'> => node.data.type === BlockEnum.Tool
 
