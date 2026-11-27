@@ -22,9 +22,11 @@ from pydantic import BaseModel, ConfigDict, Field
 MAX_CONCURRENT_CHECK_TASKS = 20
 CHECK_TASK_TIME_LIMIT = 30 * 60
 CHECK_SLOT_LEASE_SECONDS = CHECK_TASK_TIME_LIMIT + 60
-CHECK_QUEUE_DEADLINE_SECONDS = 24 * 60 * 60
+CHECK_QUEUE_DEADLINE_SECONDS = 3 * 60 * 60
 CHECK_INTERVAL_SECONDS = 15 * 60
 SCHEDULE_WINDOW_LEAD_SECONDS = 30
+_SECONDS_PER_DAY = 24 * 60 * 60
+_SCHEDULE_ANCHOR_TTL_SECONDS = 24 * 60 * 60
 
 # All script keys share a Redis Cluster hash slot, even when a deployment adds
 # its own Redis namespace prefix. register_script applies that prefix for us.
@@ -65,20 +67,23 @@ _RESERVE_SCRIPT = """
 local clock = redis.call('TIME')
 local now = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
 local deadline = tonumber(ARGV[2])
-if now >= deadline then
-    return 0
-end
 if redis.call('EXISTS', KEYS[1]) == 1 then
     if redis.call('HGET', KEYS[1], 'token') == ARGV[1]
-        and redis.call('HGET', KEYS[1], 'deadline') == ARGV[2]
         and redis.call('HGET', KEYS[1], 'state') == 'pending' then
-        return 1
+        -- A producer retry must recover the deadline written before a rollout.
+        local existing_deadline = tonumber(redis.call('HGET', KEYS[1], 'deadline'))
+        if existing_deadline and now < existing_deadline then
+            return existing_deadline
+        end
     end
+    return 0
+end
+if now >= deadline then
     return 0
 end
 redis.call('HSET', KEYS[1], 'token', ARGV[1], 'deadline', ARGV[2], 'state', 'pending')
 redis.call('PEXPIREAT', KEYS[1], deadline)
-return 1
+return deadline
 """
 
 _SCHEDULE_ANCHOR_SCRIPT = """
@@ -174,7 +179,7 @@ def _execution_key(reservation: CheckReservation) -> str:
 
 def _logical_day(upgrade_time_of_day: int, scheduled_at: float) -> str:
     """Map a valid strategy in the producer's window to its UTC occurrence day."""
-    if not 0 <= upgrade_time_of_day < CHECK_QUEUE_DEADLINE_SECONDS:
+    if not 0 <= upgrade_time_of_day < _SECONDS_PER_DAY:
         raise ValueError("upgrade_time_of_day must be within one UTC day")
     if not math.isfinite(scheduled_at) or scheduled_at <= 0:
         raise ValueError("scheduled_at must be a positive finite Unix timestamp")
@@ -206,7 +211,7 @@ class RedisPluginAutoUpgradeCoordinator:
         if not math.isfinite(scheduled_at) or scheduled_at <= 0:
             raise ValueError("scheduled_at must be a positive finite Unix timestamp")
         producer_key = f"{_KEY_PREFIX}:producer:{hashlib.sha256(producer_id.encode()).hexdigest()}"
-        anchor = self._schedule_anchor(keys=[producer_key], args=[repr(scheduled_at), CHECK_QUEUE_DEADLINE_SECONDS])
+        anchor = self._schedule_anchor(keys=[producer_key], args=[repr(scheduled_at), _SCHEDULE_ANCHOR_TTL_SECONDS])
         return float(anchor)
 
     def reserve(
@@ -219,11 +224,12 @@ class RedisPluginAutoUpgradeCoordinator:
     ) -> CheckReservation | None:
         """Reserve a scheduled check until its deadline, or return None if already reserved.
 
-        A reservation covers queued, running, and completed deliveries. With a
-        stable producer_id, the same producer can recover a pending reservation
-        after losing Redis's reply or crashing before publication. The caller
-        must retain scheduled_at on retry and mark successful publication queued.
-        Redis errors propagate instead of permitting uncoordinated work.
+        A new check can start within three hours of scheduling and deduplicates
+        until that deadline. With a stable producer_id, the same producer can
+        recover a pending reservation and its original deadline after losing
+        Redis's reply or crashing before publication. The caller must retain
+        scheduled_at on retry and mark successful publication queued. Redis errors
+        propagate instead of permitting uncoordinated work.
         """
         if producer_id == "":
             raise ValueError("producer_id must not be empty when provided")
@@ -239,10 +245,19 @@ class RedisPluginAutoUpgradeCoordinator:
             token=token,
             deadline=scheduled_at + CHECK_QUEUE_DEADLINE_SECONDS,
         )
-        reserved = self._reserve(
-            keys=[_reservation_key(reservation)], args=[reservation.token, int(reservation.deadline * 1000)]
+        deadline_ms = int(reservation.deadline * 1000)
+        reserved_deadline_ms = int(
+            self._reserve(keys=[_reservation_key(reservation)], args=[reservation.token, deadline_ms])
         )
-        return reservation if int(reserved) == 1 else None
+        if not reserved_deadline_ms:
+            return None
+        if reserved_deadline_ms != deadline_ms:
+            recovered_deadline = reserved_deadline_ms / 1000
+            # Acquire compares integer milliseconds, including on older workers.
+            if int(recovered_deadline * 1000) < reserved_deadline_ms:
+                recovered_deadline = math.nextafter(recovered_deadline, math.inf)
+            return reservation.model_copy(update={"deadline": recovered_deadline})
+        return reservation
 
     def mark_queued(self, reservation: CheckReservation) -> None:
         """Mark only this producer's pending reservation published, preserving running or completed work."""
@@ -262,7 +277,7 @@ class RedisPluginAutoUpgradeCoordinator:
         up to one check interval before their configured time or delayed after
         it; select that occurrence instead of incorrectly reserving tomorrow.
         """
-        if not 0 <= upgrade_time_of_day < CHECK_QUEUE_DEADLINE_SECONDS:
+        if not 0 <= upgrade_time_of_day < _SECONDS_PER_DAY:
             raise ValueError("upgrade_time_of_day must be within one UTC day")
         if not math.isfinite(now) or now <= 0:
             raise ValueError("now must be a positive finite Unix timestamp")

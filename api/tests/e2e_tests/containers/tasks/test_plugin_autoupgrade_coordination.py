@@ -1,5 +1,6 @@
 """Exercise the distributed admission protocol against actual Redis Lua scripts."""
 
+import math
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
@@ -8,6 +9,7 @@ import pytest
 from redis.exceptions import ConnectionError
 
 from extensions.ext_redis import RedisClientWrapper
+from tasks import plugin_autoupgrade_coordination
 from tasks.plugin_autoupgrade_coordination import (
     _SLOTS_KEY,
     CHECK_QUEUE_DEADLINE_SECONDS,
@@ -92,6 +94,48 @@ def test_producer_redelivery_keeps_the_original_window_anchor(application_redis:
     assert coordinator.schedule_anchor("other-parent-task", seconds + 16 * 60) == seconds + 16 * 60
 
 
+def test_producer_redelivery_cannot_create_a_reservation_after_three_hours(
+    application_redis: RedisClientWrapper,
+) -> None:
+    """A replay after its queue deadline uses the old window and cannot publish a new check."""
+    coordinator = RedisPluginAutoUpgradeCoordinator(application_redis)
+    seconds, _ = application_redis.time()
+    scheduled_at = seconds - 3 * 3600
+    time_of_day = scheduled_at % (24 * 3600)
+    coordinator.schedule_anchor("parent-task", scheduled_at)
+    anchor = coordinator.schedule_anchor("parent-task", seconds)
+
+    assert anchor == scheduled_at
+    assert coordinator.reserve("tenant", "tool", time_of_day, anchor, producer_id="parent-task") is None
+
+
+@pytest.mark.parametrize(
+    "fixed_scheduled_at",
+    [None, math.nextafter(2_147_483_648.002, math.inf) - 24 * 3600],
+    ids=["late-retry", "millisecond-round-trip"],
+)
+def test_producer_retry_recovers_a_pending_reservation_with_its_old_deadline(
+    application_redis: RedisClientWrapper, monkeypatch: pytest.MonkeyPatch, fixed_scheduled_at: float | None
+) -> None:
+    """A retry after rollout can publish a pending 24-hour reservation under its original deadline."""
+    coordinator = RedisPluginAutoUpgradeCoordinator(application_redis)
+    seconds, _ = application_redis.time()
+    scheduled_at = seconds - 4 * 3600 if fixed_scheduled_at is None else fixed_scheduled_at
+    time_of_day = int(scheduled_at % (24 * 3600))
+    with monkeypatch.context() as overrides:
+        overrides.setattr(plugin_autoupgrade_coordination, "CHECK_QUEUE_DEADLINE_SECONDS", 24 * 3600)
+        original = coordinator.reserve("tenant", "tool", time_of_day, scheduled_at, producer_id="parent-task")
+
+    assert original is not None
+    assert original.deadline == scheduled_at + 24 * 3600
+    assert coordinator.reserve("tenant", "tool", time_of_day, scheduled_at, producer_id="other-parent") is None
+    recovered = coordinator.reserve("tenant", "tool", time_of_day, scheduled_at, producer_id="parent-task")
+    assert recovered is not None
+    assert int(recovered.deadline * 1000) == int(original.deadline * 1000)
+    coordinator.mark_queued(recovered)
+    assert coordinator.acquire(recovered, "execution") == AcquireResult.ACQUIRED
+
+
 def test_legacy_reservation_recovers_a_lost_reply_with_its_task_identity(
     application_redis: RedisClientWrapper,
 ) -> None:
@@ -123,7 +167,7 @@ def test_successful_publication_is_not_repeated_after_queued_reply_is_lost(
     with pytest.raises(ConnectionError, match="reply was lost"):
         failed_marker.mark_queued(reservation)
 
-    scheduled_at = reservation.deadline - 24 * 3600
+    scheduled_at = reservation.deadline - CHECK_QUEUE_DEADLINE_SECONDS
     timestamp = datetime.fromtimestamp(scheduled_at, UTC)
     time_of_day = timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second
     assert coordinator.reserve("tenant", "tool", time_of_day, scheduled_at, producer_id="parent-task") is None
@@ -134,7 +178,7 @@ def test_same_producer_does_not_republish_running_or_completed_work(application_
     """Pending recovery never permits an existing execution or completed check to be published again."""
     coordinator = RedisPluginAutoUpgradeCoordinator(application_redis)
     reservation = _reserve(coordinator, application_redis, "tenant", producer_id="parent-task")
-    scheduled_at = reservation.deadline - 24 * 3600
+    scheduled_at = reservation.deadline - CHECK_QUEUE_DEADLINE_SECONDS
     timestamp = datetime.fromtimestamp(scheduled_at, UTC)
     time_of_day = timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second
 
@@ -153,8 +197,9 @@ def test_completion_discards_ownership_fields_and_restores_the_queue_deadline(
     coordinator = RedisPluginAutoUpgradeCoordinator(application_redis)
     seconds, _ = application_redis.time()
     deadline = seconds + 60
-    reservation = coordinator.reserve("tenant", "tool", 0, deadline - CHECK_QUEUE_DEADLINE_SECONDS)
+    reservation = coordinator.reserve("tenant", "tool", 0, deadline - 3 * 3600)
     assert reservation is not None
+    assert reservation.deadline == deadline
     key = _reservation_key(reservation)
     assert coordinator.acquire(reservation, "execution") == AcquireResult.ACQUIRED
     assert application_redis.pttl(key) > 60_000
@@ -279,7 +324,7 @@ def test_same_strategy_cannot_run_on_two_scheduled_days_at_once(application_redi
     """A previous day's still-running check blocks the next day's check until its owner finishes."""
     coordinator = RedisPluginAutoUpgradeCoordinator(application_redis)
     previous = _reserve(coordinator, application_redis, "tenant")
-    scheduled_at = previous.deadline - 24 * 3600
+    scheduled_at = previous.deadline - CHECK_QUEUE_DEADLINE_SECONDS
     timestamp = datetime.fromtimestamp(scheduled_at, UTC)
     time_of_day = timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second
     next_day = coordinator.reserve("tenant", "tool", time_of_day, scheduled_at + 24 * 3600)
@@ -298,7 +343,7 @@ def test_expired_previous_day_owner_cannot_release_next_days_running_mutex(
     """Stale cleanup from another daily marker does not release a newer cross-day execution."""
     coordinator = RedisPluginAutoUpgradeCoordinator(application_redis)
     previous = _reserve(coordinator, application_redis, "tenant")
-    scheduled_at = previous.deadline - 24 * 3600
+    scheduled_at = previous.deadline - CHECK_QUEUE_DEADLINE_SECONDS
     timestamp = datetime.fromtimestamp(scheduled_at, UTC)
     time_of_day = timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second
     next_day = coordinator.reserve("tenant", "tool", time_of_day, scheduled_at + 24 * 3600)
@@ -328,7 +373,7 @@ def test_cancelled_producer_cannot_delete_a_replacement_reservation(application_
 
     coordinator.cancel(previous)
     coordinator.mark_queued(previous)
-    scheduled_at = current.deadline - 24 * 3600
+    scheduled_at = current.deadline - CHECK_QUEUE_DEADLINE_SECONDS
     timestamp = datetime.fromtimestamp(scheduled_at, UTC)
     time_of_day = timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second
     assert coordinator.reserve("tenant", "tool", time_of_day, scheduled_at, producer_id="current-parent") == current
