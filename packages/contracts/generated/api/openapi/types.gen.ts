@@ -1644,7 +1644,13 @@ export type PluginParameterAutoGenerateType = 'prompt_instruction'
 export type PluginParameterOption = {
   icon?: string | null
   label: I18nObject
+  show_on?: Array<PluginParameterShowOnCondition>
   value: string
+}
+
+export type PluginParameterShowOnCondition = {
+  value: string
+  variable: string
 }
 
 export type PluginParameterTemplate = {
@@ -2044,6 +2050,7 @@ export type ToolParameter = {
   precision?: number | null
   required?: boolean
   scope?: string | null
+  show_on?: Array<PluginParameterShowOnCondition>
   template?: PluginParameterTemplate | null
   type: ToolParameterType
 }

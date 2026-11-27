@@ -5048,7 +5048,20 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | icon | string | The icon of the option, can be a url or a base64 encoded image | No |
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| show_on | [ [PluginParameterShowOnCondition](#pluginparametershowoncondition) ] | If non-empty, this option is visible only when sibling values match every condition | No |
 | value | string | The value of the option | Yes |
+
+#### PluginParameterShowOnCondition
+
+YAML ``show_on`` entry: AND-joined sibling parameter visibility.
+
+The field (or select option) is shown only when every listed sibling's
+configured value equals the given string literal.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| value | string | Expected value as a string (YAML literal) | Yes |
+| variable | string | Sibling parameter name to read for comparison | Yes |
 
 #### PluginParameterTemplate
 
@@ -5572,6 +5585,7 @@ Tool-specific parameter declaration and invocation-value normalization.
 | precision | integer |  | No |
 | required | boolean |  | No |
 | scope | string |  | No |
+| show_on | [ [PluginParameterShowOnCondition](#pluginparametershowoncondition) ] | If non-empty, this parameter is visible only when sibling values match every condition | No |
 | template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
 | type | [ToolParameterType](#toolparametertype) | The type of the parameter | Yes |
 

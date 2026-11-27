@@ -2336,8 +2336,11 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     finishSave()
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledOnce())
-    expect(name).toBeEnabled()
-    expect(name).toHaveValue('Saving camera specs')
+    await waitFor(() => {
+      const savedName = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+      expect(savedName).toBeEnabled()
+      expect(savedName).toHaveValue('Saving camera specs')
+    })
     expect(serviceMock.patchSpace).toHaveBeenCalledOnce()
   })
 

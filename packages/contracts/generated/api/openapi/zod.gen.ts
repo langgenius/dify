@@ -2202,11 +2202,25 @@ export const zPluginParameterAutoGenerate = z.object({
 })
 
 /**
+ * PluginParameterShowOnCondition
+ *
+ * YAML ``show_on`` entry: AND-joined sibling parameter visibility.
+ *
+ * The field (or select option) is shown only when every listed sibling's
+ * configured value equals the given string literal.
+ */
+export const zPluginParameterShowOnCondition = z.object({
+  value: z.string(),
+  variable: z.string(),
+})
+
+/**
  * PluginParameterOption
  */
 export const zPluginParameterOption = z.object({
   icon: z.string().nullish(),
   label: zI18nObject,
+  show_on: z.array(zPluginParameterShowOnCondition).optional(),
   value: z.string(),
 })
 
@@ -2831,6 +2845,7 @@ export const zToolParameter = z.object({
   precision: z.int().nullish(),
   required: z.boolean().optional().default(false),
   scope: z.string().nullish(),
+  show_on: z.array(zPluginParameterShowOnCondition).optional(),
   template: zPluginParameterTemplate.nullish(),
   type: zToolParameterType,
 })

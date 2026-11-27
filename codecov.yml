@@ -18,6 +18,8 @@ flag_management:
     - name: web
       paths:
         - "web/"
+      # Four unit shards and two browser shards upload under the web flag.
+      after_n_builds: 6
 
     - name: dify-ui
       paths:
@@ -26,6 +28,8 @@ flag_management:
     - name: api
       paths:
         - "api/"
+      # Two unit shards, controller tests, and integration tests upload under the api flag.
+      after_n_builds: 4
 
     - name: cli
       paths:
