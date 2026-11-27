@@ -19502,7 +19502,7 @@ creation failures propagate without returning an ID or credential secrets.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
-**Build a subscription instance for a trigger provider**
+**Build the admitted workspace draft; keep provider rejection details out of the response**
 
 #### Parameters
 

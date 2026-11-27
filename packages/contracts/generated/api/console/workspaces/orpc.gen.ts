@@ -5964,7 +5964,7 @@ export const oauth2 = {
 }
 
 /**
- * Build a subscription instance for a trigger provider
+ * Build the admitted workspace draft; keep provider rejection details out of the response
  */
 export const post86 = oc
   .route({
@@ -5973,7 +5973,8 @@ export const post86 = oc
     operationId:
       'postWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderId',
     path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}',
-    summary: 'Build a subscription instance for a trigger provider',
+    summary:
+      'Build the admitted workspace draft; keep provider rejection details out of the response',
     tags: ['console'],
   })
   .input(
