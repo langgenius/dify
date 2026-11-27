@@ -70,6 +70,15 @@ class AgentBackendConfig(BaseSettings):
         default=True,
     )
 
+    AGENT_BROWSER_ENABLED: bool = Field(
+        description=(
+            "Allow Agent runs to use the browser layer (sandbox-hosted Chromium) when the "
+            "Agent Soul enables it. Requires Dify Agent to have a deployment-selected "
+            "runtime backend with a browser-capable sandbox image."
+        ),
+        default=False,
+    )
+
     AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS: NonNegativeFloat = Field(
         description=(
             "Buffer Agent App assistant text deltas for up to this many seconds before "

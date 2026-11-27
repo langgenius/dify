@@ -19,6 +19,7 @@ from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLease
 from dify_agent.runtime.tool_call_limits import InMemoryToolCallLimitStore
 
 if TYPE_CHECKING:
+    from dify_agent.layers.browser.layer import BrowserSession
     from dify_agent.layers.knowledge_fs.session import KnowledgeFsSessionStore
     from dify_agent.layers.shell.layer import ShellSession
 
@@ -26,6 +27,28 @@ if TYPE_CHECKING:
 class LayerData(TypedDict):
     config: dict[str, JsonValue]
     state: dict[str, JsonValue]
+
+
+@dataclass
+class BrowserSessionSlots:
+    """Synchronous, fail-fast counter of live browser sessions per process.
+
+    One headless Chromium per session makes this a memory ceiling, so a
+    saturated counter fails the run immediately (retryable) instead of
+    queueing behind other runs.
+    """
+
+    limit: int
+    in_use: int = 0
+
+    def try_acquire(self) -> bool:
+        if self.in_use >= self.limit:
+            return False
+        self.in_use += 1
+        return True
+
+    def release(self) -> None:
+        self.in_use = max(0, self.in_use - 1)
 
 
 @dataclass
@@ -44,12 +67,16 @@ class Services:
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     knowledge_session_store: KnowledgeFsSessionStore | None = None
+    # Process-wide cap on live browser sessions (one headless Chromium each).
+    # Owned by the lifespan so every run shares one counter; None = uncapped.
+    browser_session_slots: BrowserSessionSlots | None = None
 
 
 @dataclass
 class RunResources:
     leases: dict[str, RuntimeLease] = field(default_factory=dict)
     shells: dict[str, ShellSession] = field(default_factory=dict)
+    browsers: dict[str, BrowserSession] = field(default_factory=dict)
 
 
 @dataclass

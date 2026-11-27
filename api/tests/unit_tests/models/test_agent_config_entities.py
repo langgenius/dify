@@ -488,3 +488,112 @@ def test_mixed_bindings_cannot_share_identity(overrides: dict[str, str]) -> None
                 ],
             }
         )
+
+
+def test_agent_soul_without_browser_section_applies_defaults() -> None:
+    """Snapshots persisted before the browser section exists keep working."""
+    soul = AgentSoulConfig.model_validate(
+        {
+            "schema_version": 1,
+            "prompt": {"system_prompt": "You are careful."},
+        }
+    )
+
+    assert soul.browser.enabled is True
+    assert soul.browser.max_steps == 30
+    assert soul.browser.session_scope == "call"
+    assert soul.browser.allowed_domains is None
+
+
+def test_agent_soul_browser_config_defaults_and_round_trip() -> None:
+    soul = AgentSoulConfig.model_validate(
+        {
+            "browser": {
+                "enabled": True,
+                "max_steps": 12,
+                "use_vision": True,
+                "allowed_domains": ["*.example.com"],
+                "block_ip_addresses": False,
+                "session_scope": "agent",
+                "step_timeout_seconds": 60,
+            }
+        }
+    )
+
+    assert soul.browser.model_validate(soul.browser.model_dump(mode="json")) == soul.browser
+
+
+def test_agent_soul_browser_config_rejects_empty_allowed_domains() -> None:
+    with pytest.raises(ValidationError, match="allowed_domains must be omitted or non-empty"):
+        AgentSoulConfig.model_validate({"browser": {"enabled": True, "allowed_domains": []}})
+
+
+def test_agent_soul_browser_config_defaults_for_p3_fields() -> None:
+    soul = AgentSoulConfig.model_validate({"browser": {"enabled": True}})
+
+    assert soul.browser.output_schema is None
+    assert soul.browser.sensitive_data is None
+    assert soul.browser.persist_login_state is True
+
+
+def test_agent_soul_browser_config_defaults_enabled() -> None:
+    soul = AgentSoulConfig.model_validate({})
+
+    assert soul.browser.enabled is True
+    assert soul.browser.persist_login_state is True
+
+
+def test_agent_soul_browser_config_accepts_valid_output_schema() -> None:
+    schema = {
+        "type": "object",
+        "properties": {"title": {"type": "string"}},
+        "required": ["title"],
+    }
+    soul = AgentSoulConfig.model_validate({"browser": {"enabled": True, "output_schema": schema}})
+
+    assert soul.browser.output_schema == schema
+
+
+def test_agent_soul_browser_config_rejects_unsupported_output_schema() -> None:
+    with pytest.raises(ValidationError, match="not supported"):
+        AgentSoulConfig.model_validate(
+            {
+                "browser": {
+                    "enabled": True,
+                    "output_schema": {"type": "object", "properties": {"a": {"$ref": "#"}}},
+                }
+            }
+        )
+
+
+def test_agent_soul_browser_config_flat_sensitive_data_requires_explicit_hosts() -> None:
+    with pytest.raises(ValidationError, match="explicit hostnames"):
+        AgentSoulConfig.model_validate({"browser": {"enabled": True, "sensitive_data": {"x_password": "s"}}})
+    with pytest.raises(ValidationError, match="explicit hostnames"):
+        AgentSoulConfig.model_validate(
+            {
+                "browser": {
+                    "enabled": True,
+                    "sensitive_data": {"x_password": "s"},
+                    "allowed_domains": ["*.example.com"],
+                }
+            }
+        )
+    soul = AgentSoulConfig.model_validate(
+        {
+            "browser": {
+                "enabled": True,
+                "sensitive_data": {"x_password": "s"},
+                "allowed_domains": ["https://shop.example.com"],
+            }
+        }
+    )
+    assert soul.browser.sensitive_data == {"x_password": "s"}
+
+
+def test_agent_soul_browser_config_nested_sensitive_data_needs_no_allowlist() -> None:
+    soul = AgentSoulConfig.model_validate(
+        {"browser": {"enabled": True, "sensitive_data": {"https://shop.example.com": {"x_password": "s"}}}}
+    )
+
+    assert soul.browser.sensitive_data == {"https://shop.example.com": {"x_password": "s"}}

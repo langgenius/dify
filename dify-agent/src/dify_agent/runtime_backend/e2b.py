@@ -33,6 +33,7 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
+    PortEntrypoint,
     RuntimeLayout,
     RuntimeLease,
 )
@@ -411,6 +412,17 @@ class E2BRuntimeLease:
     @property
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
+
+    def port_entrypoint(self, port: int) -> PortEntrypoint:
+        # The sandbox is created with allow_public_traffic=False, so every
+        # port route requires the same traffic access token as shellctl.
+        token = self.sandbox.traffic_access_token
+        if not isinstance(token, str) or not token:
+            raise BindingAcquireError("E2B sandbox did not provide a traffic access token")
+        return PortEntrypoint(
+            base_url=f"https://{self.sandbox.get_host(port)}",
+            headers={"e2b-traffic-access-token": token},
+        )
 
 
 async def _wait_for_shellctl_ready(client: ShellctlClientProtocol) -> None:

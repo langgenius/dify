@@ -868,6 +868,54 @@ class AgentSoulModelConfig(BaseModel):
     model_settings: AgentSoulModelSettings = Field(default_factory=AgentSoulModelSettings)
 
 
+class AgentSoulBrowserConfig(BaseModel):
+    """Product-level browser capability for Agent runs (sandbox-hosted Chromium)."""
+
+    enabled: bool = True
+    max_steps: int = Field(default=30, ge=1)
+    use_vision: bool | Literal["auto"] = "auto"
+    headless: bool = True
+    allowed_domains: list[str] | None = None
+    block_ip_addresses: bool = True
+    session_scope: Literal["call", "agent"] = "call"
+    use_judge: bool = False
+    step_timeout_seconds: int = Field(default=180, ge=1)
+    # JSON Schema the browse_web final result must conform to; omitted = prose.
+    output_schema: dict[str, Any] | None = None
+    # Secrets the browser sub-agent may type without any model seeing them;
+    # flat keys apply to every allowed domain, nested values scope one host.
+    sensitive_data: dict[str, str | dict[str, str]] | None = None
+    # Persist browser cookies in the sandbox home so the next run of this
+    # agent starts with the saved login state.
+    persist_login_state: bool = True
+
+    @model_validator(mode="after")
+    def _validate_against_layer_config(self) -> Self:
+        # The agent-backend layer config owns every browser rule (non-empty
+        # allowlist, output-schema subset, flat-secret scoping). Delegate so
+        # config-time and run-time validation can never drift apart.
+        from dify_agent.layers.browser import DifyBrowserLayerConfig
+        from pydantic import ValidationError as PydanticValidationError
+
+        try:
+            DifyBrowserLayerConfig(
+                max_steps=self.max_steps,
+                use_vision=self.use_vision,
+                headless=self.headless,
+                allowed_domains=self.allowed_domains,
+                block_ip_addresses=self.block_ip_addresses,
+                session_scope=self.session_scope,
+                use_judge=self.use_judge,
+                step_timeout_seconds=self.step_timeout_seconds,
+                output_schema=self.output_schema,
+                sensitive_data=self.sensitive_data,
+                persist_login_state=self.persist_login_state,
+            )
+        except PydanticValidationError as exc:
+            raise ValueError(f"Invalid browser config: {exc.errors()[0]['msg']}") from exc
+        return self
+
+
 class AppVariableConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=64)
@@ -890,6 +938,7 @@ class AgentSoulConfig(BaseModel):
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
     model: AgentSoulModelConfig | None = None
+    browser: AgentSoulBrowserConfig = Field(default_factory=AgentSoulBrowserConfig)
     app_features: AgentSoulAppFeaturesConfig = Field(default_factory=AgentSoulAppFeaturesConfig)
     app_variables: list[AppVariableConfig] = Field(default_factory=list)
     misc_legacy: AgentSoulAppFeaturesConfig = Field(default_factory=AgentSoulAppFeaturesConfig)

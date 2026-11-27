@@ -30,6 +30,13 @@ from dify_agent.protocol.schemas import CreateRunRequest
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.context import Deps, LayerData, Services
 
+# browser-use is an optional server extra. Environments that only build run
+# requests (e.g. the Dify API) import this registry without it installed, so
+# the browser module is registered only when its dependency is importable.
+try:
+    from dify_agent.layers.browser import layer as browser
+except ImportError:  # pragma: no cover - exercised only without the server extra
+    browser = None
 
 REGISTRY: dict[str, ModuleType] = {
     "agent_soul_prompt": prompt,
@@ -51,6 +58,8 @@ REGISTRY: dict[str, ModuleType] = {
     "output": output,
     "read_media": read_media,
 }
+if browser is not None:
+    REGISTRY["browser"] = browser
 
 _REFERENCES: dict[ModuleType, dict[str, ModuleType]] = {
     llm: {"execution_context": execution_context},
@@ -62,6 +71,8 @@ _REFERENCES: dict[ModuleType, dict[str, ModuleType]] = {
     config: {"shell": shell},
     read_media: {"execution_context": execution_context, "llm": llm, "shell": shell},
 }
+if browser is not None:
+    _REFERENCES[browser] = {"runtime": runtime}
 
 
 def load_modules(

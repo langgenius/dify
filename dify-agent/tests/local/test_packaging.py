@@ -16,6 +16,7 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
 }
 
 SERVER_RUNTIME_DEPENDENCIES = {
+    "browser-use>=0.13.6,<0.13.10",
     "e2b>=2.55.1,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.8.0",
@@ -26,6 +27,8 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "openshell>=0.1.3,<0.2.0",
     "pillow>=13.0.0,<14",
     "pydantic-ai-slim[anthropic,google,openai]==2.53.0",
+    "pydantic-ai-harness[browser-use]>=0.20.0,<0.21.0",
+    "pydantic-ai-slim[anthropic,google,openai]==2.31.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
     "referencing>=0.37.0,<0.38.0",

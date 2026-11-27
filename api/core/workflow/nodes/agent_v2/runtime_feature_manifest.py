@@ -16,6 +16,7 @@ SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
         "knowledge",
         "env",
         "sandbox",
+        "browser",
     }
 )
 
@@ -58,6 +59,7 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
     reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
     reserved_status["env"] = "supported_by_shell_bootstrap"
     reserved_status["sandbox"] = "forwarded_to_shell_layer_config"
+    reserved_status["browser"] = "forwarded_to_browser_layer_config"
 
     return {
         "supported": sorted(SUPPORTED_AGENT_BACKEND_FEATURES),

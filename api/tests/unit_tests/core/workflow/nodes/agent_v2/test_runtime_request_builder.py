@@ -20,7 +20,7 @@ from clients.agent_backend import (
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
 )
-from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from clients.agent_backend.request_builder import DIFY_BROWSER_LAYER_ID, DIFY_RUNTIME_LAYER_ID, DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.llm.model_access import ModelRuntimeProfile
 from core.tools.entities.common_entities import I18nObject, I18nObjectDict
@@ -31,6 +31,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
+    build_browser_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
@@ -831,6 +832,92 @@ def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest
         "dify_tool_names": [],
         "cli_tool_count": 1,
     }
+
+
+def test_build_maps_agent_soul_browser_settings_to_browser_layer(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False, AGENT_BROWSER_ENABLED=True)
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            prompt={"system_prompt": "You are careful."},
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="gpt-test",
+            ),
+            browser={"enabled": True, "max_steps": 12, "allowed_domains": ["*.example.com"]},
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    assert DIFY_BROWSER_LAYER_ID in layers
+    assert DIFY_RUNTIME_LAYER_ID in layers
+    browser_config = layers[DIFY_BROWSER_LAYER_ID]["config"]
+    assert browser_config["max_steps"] == 12
+    assert browser_config["allowed_domains"] == ["*.example.com"]
+    assert browser_config["session_scope"] == "call"
+    assert result.metadata["runtime_support"]["reserved_status"]["browser"] == "forwarded_to_browser_layer_config"
+
+
+def test_build_omits_browser_layer_when_global_switch_is_off(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False, AGENT_BROWSER_ENABLED=False)
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            prompt={"system_prompt": "You are careful."},
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="gpt-test",
+            ),
+            browser={"enabled": True},
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    names = {layer["name"] for layer in result.request.model_dump(mode="json")["composition"]["layers"]}
+    assert DIFY_BROWSER_LAYER_ID not in names
+
+
+def test_build_omits_browser_layer_when_soul_disabled(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False, AGENT_BROWSER_ENABLED=True)
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            prompt={"system_prompt": "You are careful."},
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="langgenius/openai/openai",
+                model="gpt-test",
+                model_settings={"temperature": 0},
+            ),
+            browser={"enabled": False},
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
+
+    names = {layer["name"] for layer in result.request.model_dump(mode="json")["composition"]["layers"]}
+    assert DIFY_BROWSER_LAYER_ID not in names
 
 
 def test_build_shell_layer_config_accepts_legacy_fallback_keys():
@@ -2166,6 +2253,79 @@ def test_feature_manifest_treats_empty_knowledge_sets_as_not_configured():
 
     manifest = build_runtime_feature_manifest(soul)
     assert manifest["reserved_status"]["knowledge"] == "not_configured"
+
+
+def test_feature_manifest_marks_browser_forwarded_when_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate({"browser": {"enabled": True}})
+
+    manifest = build_runtime_feature_manifest(soul)
+    assert "browser" in manifest["supported"]
+    assert "browser" not in manifest["reserved"]
+    assert manifest["reserved_status"]["browser"] == "forwarded_to_browser_layer_config"
+    assert all("browser" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+
+
+def test_build_browser_layer_config_maps_soul_fields():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "browser": {
+                "enabled": True,
+                "max_steps": 12,
+                "use_vision": True,
+                "headless": False,
+                "allowed_domains": ["*.example.com"],
+                "block_ip_addresses": False,
+                "session_scope": "agent",
+                "use_judge": True,
+                "step_timeout_seconds": 60,
+            }
+        }
+    )
+
+    config = build_browser_layer_config(agent_soul).model_dump(mode="json")
+    assert config == {
+        "runtime": "runtime",
+        "max_steps": 12,
+        "use_vision": True,
+        "headless": False,
+        "allowed_domains": ["*.example.com"],
+        "block_ip_addresses": False,
+        "session_scope": "agent",
+        "use_judge": True,
+        "step_timeout_seconds": 60,
+        "output_schema": None,
+        "sensitive_data": None,
+        "persist_login_state": True,
+    }
+
+
+def test_build_browser_layer_config_maps_p3_fields():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "browser": {
+                "enabled": True,
+                "allowed_domains": ["https://shop.example.com"],
+                "output_schema": {
+                    "type": "object",
+                    "properties": {"title": {"type": "string"}},
+                    "required": ["title"],
+                },
+                "sensitive_data": {"x_password": "secret"},
+                "persist_login_state": True,
+            }
+        }
+    )
+
+    config = build_browser_layer_config(agent_soul)
+    assert config.output_schema == {
+        "type": "object",
+        "properties": {"title": {"type": "string"}},
+        "required": ["title"],
+    }
+    assert config.sensitive_data == {"x_password": "secret"}
+    assert config.persist_login_state is True
 
 
 @pytest.mark.parametrize("custom", [False, True])

@@ -9,7 +9,7 @@ readonly DEFAULT_E2B_CLI_VERSION='2.13.3'
 readonly DEFAULT_WAIT_SECONDS='600'
 readonly DEFAULT_POLL_SECONDS='10'
 readonly DEFAULT_CPU_COUNT='2'
-readonly DEFAULT_MEMORY_MB='1024'
+readonly DEFAULT_MEMORY_MB='2048'
 readonly START_COMMAND='/usr/bin/env SHELLCTL_ENABLE_PATH_ISOLATION=false /usr/local/bin/shellctl serve --listen 0.0.0.0:5004'
 readonly READY_COMMAND='curl -fsS http://localhost:5004/healthz'
 

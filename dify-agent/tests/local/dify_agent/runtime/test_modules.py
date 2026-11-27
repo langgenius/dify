@@ -87,11 +87,37 @@ def test_state_requires_explicit_json_writeback(services):
         (RunLayerSpec(name="llm"), "unique"),
         (RunLayerSpec(name="tools", config={"execution_context": "missing"}), "reference execution_context"),
         (RunLayerSpec(name="shell", config={"runtime": "execution_context"}), "reference runtime"),
+        (RunLayerSpec(name="browser", config={"runtime": "execution_context"}), "reference runtime"),
     ],
 )
 def test_invalid_module_or_reference_is_rejected_before_io(spec, error, services):
     with pytest.raises(ValueError, match=error):
         load_modules(request(spec), services, "test")
+
+
+def test_browser_module_loads_with_default_runtime_reference():
+    from dify_agent.runtime_backend import RuntimeBackendProfile
+
+    services = Services(
+        httpx.AsyncClient(),
+        httpx.AsyncClient(),
+        runtime_backend_profile=RuntimeBackendProfile(  # pyright: ignore[reportArgumentType]
+            None,
+            object(),  # pyright: ignore[reportArgumentType]
+        ),
+    )
+    incoming = request(
+        RunLayerSpec(name="runtime", config={"backend_binding_ref": "ref"}),
+        RunLayerSpec(name="browser"),
+    )
+
+    deps = load_modules(incoming, services, "test")
+
+    assert deps.layers["browser"]["config"]["runtime"] == "runtime"
+    assert deps.layers["browser"]["state"] == {}
+    capability = create_modules(deps)["browser"]
+    assert isinstance(capability, AbstractCapability)
+    assert capability.name == "browser"
 
 
 def test_snapshot_uses_current_config_and_drops_removed_optional_slots(services):

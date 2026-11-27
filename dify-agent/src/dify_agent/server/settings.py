@@ -64,6 +64,10 @@ class ServerSettings(BaseSettings):
     )
     stream_text_delta_max_chars: int = Field(default=DEFAULT_TEXT_DELTA_MAX_CHARS, ge=1)
     run_timeout_seconds: float = Field(default=DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, gt=0)
+    # Process-wide cap on concurrent browser sessions (one headless Chromium
+    # each, 300-500 MB RSS) so a busy shared sandbox fails fast with a
+    # retryable error instead of OOM. 0 disables the cap.
+    browser_max_concurrent_sessions: int = Field(default=4, ge=0)
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"

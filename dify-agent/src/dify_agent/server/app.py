@@ -28,7 +28,7 @@ from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.runtime.context import Services
+from dify_agent.runtime.context import BrowserSessionSlots, Services
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.observability import (
@@ -125,6 +125,13 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         knowledge_store = RedisKnowledgeSessionStore(redis, prefix=resolved_settings.redis_prefix)
         state["knowledge_store"] = knowledge_store
         state["knowledge_http"] = dify_api_inner_http_client
+        # One counter for the whole process: every run's browser layer borrows
+        # the same slots so the cap is a true sandbox-wide ceiling.
+        browser_session_slots = (
+            BrowserSessionSlots(limit=resolved_settings.browser_max_concurrent_sessions)
+            if resolved_settings.browser_max_concurrent_sessions > 0
+            else None
+        )
         store = RedisRunStore(
             redis,
             prefix=resolved_settings.redis_prefix,
@@ -146,6 +153,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
                 agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
                 knowledge_session_store=knowledge_store,
+                browser_session_slots=browser_session_slots,
             ),
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,

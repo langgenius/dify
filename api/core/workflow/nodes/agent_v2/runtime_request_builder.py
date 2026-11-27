@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
+from dify_agent.layers.browser import DifyBrowserLayerConfig
 from dify_agent.layers.config import (
     DifyConfigFileConfig,
     DifyConfigLayerConfig,
@@ -311,6 +312,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=shell_config,
+                include_browser=dify_config.AGENT_BROWSER_ENABLED and agent_soul.browser.enabled,
+                browser_config=build_browser_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
@@ -849,6 +852,24 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
         ],
+    )
+
+
+def build_browser_layer_config(agent_soul: AgentSoulConfig) -> DifyBrowserLayerConfig:
+    """Map Agent Soul browser fields into the Agent backend browser config."""
+    browser = agent_soul.browser
+    return DifyBrowserLayerConfig(
+        max_steps=browser.max_steps,
+        use_vision=browser.use_vision,
+        headless=browser.headless,
+        allowed_domains=browser.allowed_domains,
+        block_ip_addresses=browser.block_ip_addresses,
+        session_scope=browser.session_scope,
+        use_judge=browser.use_judge,
+        step_timeout_seconds=browser.step_timeout_seconds,
+        output_schema=browser.output_schema,
+        sensitive_data=browser.sensitive_data,
+        persist_login_state=browser.persist_login_state,
     )
 
 

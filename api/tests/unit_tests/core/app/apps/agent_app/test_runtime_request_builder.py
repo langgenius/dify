@@ -28,7 +28,7 @@ from clients.agent_backend import (
     AgentBackendModelConfig,
     AgentBackendRunRequestBuilder,
 )
-from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from clients.agent_backend.request_builder import DIFY_BROWSER_LAYER_ID, DIFY_RUNTIME_LAYER_ID, DIFY_SHELL_LAYER_ID
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequestBuilder,
@@ -935,6 +935,53 @@ class TestAgentAppRuntimeRequestBuilder:
 
         with pytest.raises(TypeError, match="not JSON serializable"):
             builder.build(context)
+
+    def test_build_maps_agent_soul_browser_settings_to_browser_layer(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False, AGENT_BROWSER_ENABLED=True)
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "browser": {"enabled": True, "max_steps": 12, "allowed_domains": ["*.example.com"]},
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        dumped = result.request.model_dump(mode="json")
+        layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+        assert DIFY_BROWSER_LAYER_ID in layers
+        assert DIFY_RUNTIME_LAYER_ID in layers
+        browser_config = layers[DIFY_BROWSER_LAYER_ID]["config"]
+        assert browser_config["max_steps"] == 12
+        assert browser_config["allowed_domains"] == ["*.example.com"]
+
+    def test_build_omits_browser_layer_when_soul_disabled(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False, AGENT_BROWSER_ENABLED=True)
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "browser": {"enabled": False},
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        names = {layer["name"] for layer in result.request.model_dump(mode="json")["composition"]["layers"]}
+        assert DIFY_BROWSER_LAYER_ID not in names
 
 
 # ── Agent config layer declaration on the Agent App surface ──────────────────

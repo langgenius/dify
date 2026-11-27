@@ -32,6 +32,12 @@ def create_agent(
             output_type=output_type,
             toolsets=toolsets,
             capabilities=capabilities,
+            # Thinking-capable models occasionally answer a turn with reasoning
+            # content only (no text, no tool call), which the graph rejects as
+            # non-actionable. With the default budget of 1 such a double miss
+            # fails the whole run; give the retry prompt a few chances to elicit
+            # an actionable answer.
+            retries={"output": 3},
         ),
     )
     agent.instrument = False

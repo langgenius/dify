@@ -50,6 +50,7 @@ from core.workflow.nodes.agent_v2.dify_tools_builder import (
 )
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
+    build_browser_layer_config,
     build_config_aware_soul_mention_resolver,
     build_config_layer_config,
     build_knowledge_layer_config,
@@ -241,6 +242,8 @@ class AgentAppRuntimeRequestBuilder:
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=shell_config,
+                include_browser=dify_config.AGENT_BROWSER_ENABLED and agent_soul.browser.enabled,
+                browser_config=build_browser_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
