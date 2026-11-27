@@ -77,6 +77,9 @@ export const useConfigurations = (props: {
 
   const handleTypeChange = useCallback(
     (type: PipelineInputVarType) => {
+      if (type !== PipelineInputVarType.checkbox && typeof getFieldValue('default') === 'boolean')
+        setFieldValue('default', undefined)
+
       const fileInputTypes: readonly PipelineInputVarType[] = [
         PipelineInputVarType.singleFile,
         PipelineInputVarType.multiFiles,
@@ -95,7 +98,7 @@ export const useConfigurations = (props: {
           setFieldValue('maxLength', DEFAULT_FILE_UPLOAD_SETTING.max_length)
       }
     },
-    [setFieldValue],
+    [getFieldValue, setFieldValue],
   )
 
   const handleVariableNameBlur = useCallback(
