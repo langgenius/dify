@@ -19,7 +19,8 @@ from sqlalchemy.orm import Session
 import core.app.apps.agent_app.app_generator as module
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
-from clients.agent_backend.errors import AgentBackendRunFailedError
+from clients.agent_backend import AgentBackendRunFailedInternalEvent
+from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.agent_app import app_generator
 from core.app.apps.agent_app.app_config_manager import AgentAppConfig
@@ -28,6 +29,7 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
 )
+from core.app.apps.agent_app.app_runner import _agent_backend_failure_to_exception
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -607,17 +609,32 @@ class TestAppGeneratorCases:
             self._call(generator, mocker, queue_manager)
             queue_manager.publish_error.assert_not_called()
 
-        @pytest.mark.parametrize("failure", ["unexpected", "backend", "invoke"])
+        @pytest.mark.parametrize("failure", ["unexpected", "backend", "invoke", "binding_lost"])
         def test_unexpected_error_is_published(
             self, generator: AgentAppGenerator, mocker: MockerFixture, caplog: pytest.LogCaptureFixture, failure: str
         ) -> None:
             backend_error = AgentBackendRunFailedError("run-1", {}, reason="CredentialsValidateFailedError")
             error: Exception = ValueError("boom")
+            expected_reason = "None"
             if failure == "backend":
                 error = backend_error
+                expected_reason = "CredentialsValidateFailedError"
             elif failure == "invoke":
                 error = InvokeBadRequestError()
                 error.__cause__ = backend_error
+                expected_reason = "CredentialsValidateFailedError"
+            elif failure == "binding_lost":
+                error = _agent_backend_failure_to_exception(
+                    AgentBackendRunFailedInternalEvent(
+                        run_id="run-1",
+                        error="retained workspace binding missing",
+                        error_type=None,
+                        reason="binding_lost",
+                        source_event_id="evt-1",
+                    )
+                )
+                assert type(error) is AgentBackendError
+                expected_reason = "binding_lost"
             self._wire(generator, mocker, run_side_effect=error)
             queue_manager = mocker.MagicMock()
             self._call(generator, mocker, queue_manager)
@@ -626,7 +643,6 @@ class TestAppGeneratorCases:
             for field in ("agent_id=a", "app_id=app1", "conversation_id=conv", "message_id=msg", "task_id=task-1"):
                 assert field in record.message
             assert f"agent_run_id={'run-1' if failure != 'unexpected' else 'None'}" in record.message
-            expected_reason = "CredentialsValidateFailedError" if failure != "unexpected" else "None"
             assert f"agent_run_reason={expected_reason}" in record.message
             assert record.exc_info
             assert record.exc_info[1] is error
