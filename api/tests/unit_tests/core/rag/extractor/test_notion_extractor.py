@@ -498,6 +498,50 @@ class TestNotionExtractorCases:
 
             assert extractor._read_block("root") == ""
 
+        def test_get_notion_block_data_stops_after_page_limit(
+            self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            extractor = notion_extractor.NotionExtractor(
+                notion_workspace_id="ws",
+                notion_obj_id="obj",
+                notion_page_type="page",
+                tenant_id="tenant",
+                notion_access_token="token",
+                notion_token_loader=lambda: "token",
+            )
+            monkeypatch.setattr(notion_extractor, "_MAX_PAGINATION_PAGES", 2)
+            request = mocker.patch(
+                "httpx.request",
+                return_value=_notion_extractor_mock_response({"results": [], "next_cursor": "again"}),
+            )
+
+            with pytest.raises(ValueError, match="exceeded 2 pages"):
+                extractor._get_notion_block_data("page-1")
+
+            assert request.call_count == 2
+
+        def test_read_block_stops_after_page_limit(
+            self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            extractor = notion_extractor.NotionExtractor(
+                notion_workspace_id="ws",
+                notion_obj_id="obj",
+                notion_page_type="page",
+                tenant_id="tenant",
+                notion_access_token="token",
+                notion_token_loader=lambda: "token",
+            )
+            monkeypatch.setattr(notion_extractor, "_MAX_PAGINATION_PAGES", 2)
+            request = mocker.patch(
+                "httpx.request",
+                return_value=_notion_extractor_mock_response({"results": [], "next_cursor": "again"}),
+            )
+
+            with pytest.raises(ValueError, match="exceeded 2 pages"):
+                extractor._read_block("root")
+
+            assert request.call_count == 2
+
         def test_read_table_rows_formats_markdown_with_pagination(self, mocker: MockerFixture) -> None:
             extractor = notion_extractor.NotionExtractor(
                 notion_workspace_id="ws",
