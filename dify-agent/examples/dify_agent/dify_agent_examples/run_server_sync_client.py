@@ -6,7 +6,12 @@ that server, sync the server runtime dependencies with
 `dify-agent[server]`. ``create_run_sync`` does not retry ``POST /runs``; if a
 timeout occurs, inspect server state or create a new run explicitly rather than
 assuming the original request was not accepted.
+
+If the server requires authentication, set DIFY_AGENT_API_TOKEN in the client
+process environment to the same token as the server.
 """
+
+import os
 
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.client import Client
@@ -27,7 +32,9 @@ MODEL_NAME = "gpt-4o-mini"
 
 
 def main() -> None:
-    with Client(base_url=API_BASE_URL) as client:
+    token = os.environ.get("DIFY_AGENT_API_TOKEN", "").strip()
+    headers = {"Authorization": f"Bearer {token}"} if token else None
+    with Client(base_url=API_BASE_URL, headers=headers) as client:
         run = client.create_run_sync(
             CreateRunRequest(
                 composition=RunComposition(

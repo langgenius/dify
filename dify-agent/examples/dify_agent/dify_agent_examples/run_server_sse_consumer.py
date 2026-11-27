@@ -4,9 +4,13 @@ Create a run with ``run_server_consumer.py`` or any HTTP client, then set RUN_ID
 below and run this script while the server is available. The Python client parses
 SSE frames into typed protocol events and reconnects with the latest event id by
 default. Malformed frames and HTTP 4xx responses fail without reconnecting.
+
+If the server requires authentication, set DIFY_AGENT_API_TOKEN in the client
+process environment to the same token as the server.
 """
 
 import asyncio
+import os
 
 from dify_agent.client import Client
 
@@ -16,7 +20,9 @@ RUN_ID = "replace-with-run-id"
 
 
 async def main() -> None:
-    async with Client(base_url=API_BASE_URL, stream_timeout=None) as client:
+    token = os.environ.get("DIFY_AGENT_API_TOKEN", "").strip()
+    headers = {"Authorization": f"Bearer {token}"} if token else None
+    async with Client(base_url=API_BASE_URL, stream_timeout=None, headers=headers) as client:
         async for event in client.stream_events(RUN_ID):
             print(event)
 
