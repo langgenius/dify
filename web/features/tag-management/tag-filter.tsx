@@ -107,8 +107,10 @@ export function CompactTagFilter({
       label={placeholder}
       searchLabel={t(($) => $['tag.searchTags'], { ns: 'common' })}
       // Without loaded tags there is nothing to call empty; a failed load shows its own state.
+      // Reading `status` also re-renders this filter when the load fails, so the popup, which
+      // opens without re-rendering it, gets the failed result rather than an earlier one.
       emptyText={
-        tagsQuery.data === undefined ? undefined : t(($) => $['tag.noTag'], { ns: 'common' })
+        tagsQuery.status === 'success' ? t(($) => $['tag.noTag'], { ns: 'common' }) : undefined
       }
       loadError={<TagsLoadError query={tagsQuery} className="p-3" />}
       container={container}
