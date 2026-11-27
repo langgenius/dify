@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from contextlib import nullcontext
-from dataclasses import dataclass
+from collections.abc import Generator
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from yaml import YAMLError
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -90,11 +90,6 @@ class _FakeFlaskApp:
 class _FakeCurrentApp:
     def _get_current_object(self) -> _FakeFlaskApp:
         return _FakeFlaskApp()
-
-
-@dataclass(eq=False, repr=False)
-class _DatabaseWithSession:
-    session: scoped_session[Session]
 
 
 class _UnusedProviderManager(ProviderManager):
@@ -401,7 +396,6 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
 ):
     callback = _TestHitCallback()
     all_documents: list[RagDocument] = []
-    db_session = scoped_session(sqlite_session_factory)
     tool = DatasetMultiRetrieverTool(
         tenant_id="tenant-1",
         dataset_ids=["dataset-1"],
@@ -411,18 +405,15 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
         retriever_from="prod",
     )
 
-    try:
-        with patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)):
-            with patch.object(multi_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
-                result = tool._retriever(
-                    flask_app=_FakeFlaskApp(),
-                    dataset_id=str(uuid.uuid4()),
-                    query="hello",
-                    all_documents=all_documents,
-                    hit_callbacks=[callback],
-                )
-    finally:
-        db_session.remove()
+    with patch.object(multi_retriever_module.session_factory, "create_session", sqlite_session_factory):
+        with patch.object(multi_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
+            result = tool._retriever(
+                flask_app=_FakeFlaskApp(),  # type: ignore[arg-type]
+                dataset_id=str(uuid.uuid4()),
+                query="hello",
+                all_documents=all_documents,
+                hit_callbacks=[callback],
+            )
 
     assert result == []
     assert all_documents == []
@@ -449,7 +440,21 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
     callback = _TestHitCallback()
     documents = [RagDocument(page_content="retrieved", metadata={"doc_id": "node-1", "score": 0.4})]
     all_documents: list[RagDocument] = []
-    db_session = scoped_session(sqlite_session_factory)
+    events: list[str] = []
+
+    @contextmanager
+    def tracked_session() -> Generator[Session]:
+        events.append("session_open")
+        with sqlite_session_factory() as session:
+            try:
+                yield session
+            finally:
+                events.append("session_closed")
+
+    def fake_retrieve(**_kwargs) -> list[RagDocument]:
+        events.append("retrieve")
+        return documents
+
     tool = DatasetMultiRetrieverTool(
         tenant_id=dataset.tenant_id,
         dataset_ids=[dataset.id],
@@ -460,23 +465,21 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
         top_k=2,
     )
 
-    try:
-        with patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)):
-            with patch.object(
-                multi_retriever_module.RetrievalService, "retrieve", return_value=documents
-            ) as retrieve_mock:
-                tool._retriever(
-                    flask_app=_FakeFlaskApp(),
-                    dataset_id=dataset.id,
-                    query="hello",
-                    all_documents=all_documents,
-                    hit_callbacks=[callback],
-                )
-    finally:
-        db_session.remove()
+    with patch.object(multi_retriever_module.session_factory, "create_session", tracked_session):
+        with patch.object(
+            multi_retriever_module.RetrievalService, "retrieve", side_effect=fake_retrieve
+        ) as retrieve_mock:
+            tool._retriever(
+                flask_app=_FakeFlaskApp(),  # type: ignore[arg-type]
+                dataset_id=dataset.id,
+                query="hello",
+                all_documents=all_documents,
+                hit_callbacks=[callback],
+            )
 
     assert all_documents == documents
     assert callback.queries == [("hello", dataset.id)]
+    assert events == ["session_open", "session_closed", "retrieve"]
     retrieve_mock.assert_called_once_with(
         retrieval_method="semantic_search",
         dataset_id=dataset.id,
