@@ -241,7 +241,6 @@ class RunScheduler:
                         self.store,
                         run_id=record.run_id,
                         error=f"run cancellation observer failed: {exc}",
-                        reason="cancellation_observer",
                         session_snapshot=runner.terminal_session_snapshot,
                         usage=runner.terminal_usage,
                     )
@@ -372,7 +371,6 @@ class RunScheduler:
                 self.store,
                 run_id=run_id,
                 error=message,
-                reason="shutdown",
                 session_snapshot=session_snapshot,
                 usage=usage,
             )

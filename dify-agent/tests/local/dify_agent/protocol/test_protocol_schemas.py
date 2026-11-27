@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 import pytest
@@ -23,6 +24,18 @@ from dify_agent.protocol.schemas import (
 )
 
 
+_RUN_FAILURE_TYPE_WIRE_VALUES: list[tuple[RunFailureType | None, str | None]] = [
+    (None, None),
+    (RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, "agent_run_limit_exceeded"),
+    (RunFailureType.BINDING_LOST, "binding_lost"),
+    (RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR, "model_invoke_authorization_error"),
+    (RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR, "model_invoke_bad_request_error"),
+    (RunFailureType.MODEL_INVOKE_CONNECTION_ERROR, "model_invoke_connection_error"),
+    (RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR, "model_invoke_rate_limit_error"),
+    (RunFailureType.MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR, "model_invoke_server_unavailable_error"),
+]
+
+
 def test_run_event_adapter_round_trips_typed_variants() -> None:
     events = [
         RunStartedEvent(run_id="run-1"),
@@ -43,7 +56,6 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
             data=RunFailedEventData(
                 error="boom",
                 error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-                reason="shutdown",
             ),
         ),
         RunCancelledEvent(
@@ -62,29 +74,67 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
         assert decoded.run_id == event.run_id
 
 
-def test_run_failed_event_error_type_is_optional_and_round_trips() -> None:
-    legacy = RUN_EVENT_ADAPTER.validate_python(
+def test_run_failed_event_error_type_is_optional() -> None:
+    event = RUN_EVENT_ADAPTER.validate_python(
         {
-            "run_id": "legacy-run",
+            "run_id": "unclassified-run",
             "type": "run_failed",
-            "data": {"error": "legacy failure", "reason": None},
+            "data": {"error": "unclassified failure"},
         }
     )
+
+    assert isinstance(event, RunFailedEvent)
+    assert event.data.error_type is None
+
+
+def test_run_failure_type_wire_values_cover_public_enum() -> None:
+    assert {member for member, _ in _RUN_FAILURE_TYPE_WIRE_VALUES if member is not None} == set(RunFailureType)
+    assert protocol_exports.RunFailureType is RunFailureType
+
+
+@pytest.mark.parametrize(("error_type", "expected_wire_value"), _RUN_FAILURE_TYPE_WIRE_VALUES)
+def test_run_failed_event_error_type_round_trips(
+    error_type: RunFailureType | None, expected_wire_value: str | None
+) -> None:
     classified = RunFailedEvent(
         run_id="classified-run",
         data=RunFailedEventData(
-            error="run limit reached",
-            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            error="diagnostic failure text",
+            error_type=error_type,
         ),
     )
 
-    decoded = RUN_EVENT_ADAPTER.validate_json(RUN_EVENT_ADAPTER.dump_json(classified))
+    payload = json.loads(RUN_EVENT_ADAPTER.dump_json(classified))
+    assert payload["data"]["error_type"] == expected_wire_value
+    assert "reason" not in payload["data"]
 
-    assert isinstance(legacy, RunFailedEvent)
-    assert legacy.data.error_type is None
+    decoded = RUN_EVENT_ADAPTER.validate_python(
+        {
+            "run_id": "classified-run",
+            "type": "run_failed",
+            "data": {"error": "diagnostic failure text", "error_type": expected_wire_value},
+        }
+    )
+
     assert isinstance(decoded, RunFailedEvent)
-    assert decoded.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
-    assert protocol_exports.RunFailureType is RunFailureType
+    assert decoded.data.error_type is error_type
+    assert decoded.data.error == "diagnostic failure text"
+
+
+@pytest.mark.parametrize("reason", [None, "binding_lost"])
+def test_run_failed_event_rejects_removed_reason(reason: str | None) -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        RUN_EVENT_ADAPTER.validate_python(
+            {"run_id": "run-1", "type": "run_failed", "data": {"error": "boom", "reason": reason}}
+        )
+
+
+@pytest.mark.parametrize("error_type", ["InvokeRateLimitError", "knowledge_retrieve_failed"])
+def test_run_failed_event_rejects_unrecognized_error_type(error_type: str) -> None:
+    with pytest.raises(ValidationError, match="error_type"):
+        RUN_EVENT_ADAPTER.validate_python(
+            {"run_id": "run-1", "type": "run_failed", "data": {"error": "boom", "error_type": error_type}}
+        )
 
 
 @pytest.mark.parametrize("event_type", ["run_failed", "run_cancelled"])

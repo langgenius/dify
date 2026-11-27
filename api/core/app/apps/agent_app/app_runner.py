@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
+from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
 from clients.agent_backend import (
@@ -82,19 +83,26 @@ class _DefaultSessionScopeSnapshotId:
 
 _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
 
-_AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
-    "InvokeAuthorizationError": InvokeAuthorizationError,
-    "InvokeBadRequestError": InvokeBadRequestError,
-    "CredentialsValidateFailedError": InvokeBadRequestError,
-    "InvokeConnectionError": InvokeConnectionError,
-    "InvokeRateLimitError": InvokeRateLimitError,
-    "InvokeServerUnavailableError": InvokeServerUnavailableError,
+_AGENT_BACKEND_INVOKE_ERROR_BY_FAILURE_TYPE: Mapping[RunFailureType, type[InvokeError]] = {
+    RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR: InvokeAuthorizationError,
+    RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR: InvokeBadRequestError,
+    RunFailureType.MODEL_INVOKE_CONNECTION_ERROR: InvokeConnectionError,
+    RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR: InvokeRateLimitError,
+    RunFailureType.MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR: InvokeServerUnavailableError,
 }
 
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
-    if event.error_type is None:
-        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
+    """Translate a validated failed-run event without raising or performing I/O.
+
+    Binding loss uses sanitized text; model categories preserve the diagnostic
+    message in an invoke error. Other failures retain run context, with ``None``
+    denoting an unclassified failure. Diagnostic text never selects the type.
+    """
+    if event.error_type == RunFailureType.BINDING_LOST:
+        return AgentBackendError("The retained agent working environment is no longer available.")
+    if event.error_type is not None:
+        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_FAILURE_TYPE.get(event.error_type)
         if err_cls is not None:
             return err_cls(event.error)
     message = event.error or "Agent backend run did not complete successfully."
@@ -102,12 +110,11 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
         event.run_id,
         {
             "error": event.error,
-            "reason": event.reason,
+            "error_type": event.error_type,
             "source_event_id": event.source_event_id,
         },
         message=message,
         error_type=event.error_type,
-        reason=event.reason,
         source_event_id=event.source_event_id,
     )
 
@@ -663,6 +670,12 @@ class AgentAppRunner:
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
     ) -> None:
+        """Execute a turn for the supplied admitted context and Agent version.
+
+        Save available terminal session state and usage before translating
+        failed runs by their stable type. Successful turns publish the answer;
+        stopped turns and failures raise their corresponding exception.
+        """
         scope = self._build_session_scope(
             dify_context=dify_context,
             agent_id=agent_id,
@@ -727,9 +740,6 @@ class AgentAppRunner:
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
-                reason = terminal.reason
-                if terminal.error_type is None and reason == "binding_lost":
-                    raise AgentBackendError("The retained agent working environment is no longer available.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")
 

@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+import pytest
 from dify_agent.protocol import (
     AgentRunUsage,
     PydanticAIStreamRunEvent,
@@ -13,6 +14,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
 
 from clients.agent_backend import (
@@ -127,15 +129,17 @@ def test_event_adapter_maps_run_succeeded_to_final_output() -> None:
     ]
 
 
-def test_event_adapter_maps_run_failed_to_failed_result() -> None:
+@pytest.mark.parametrize("error_type", [None, *RunFailureType])
+def test_event_adapter_maps_run_failed_to_failed_result(error_type: RunFailureType | None) -> None:
+    snapshot = SessionSnapshot(layers={})
     adapted = AgentBackendRunEventAdapter().adapt(
         RunFailedEvent(
             id="4-0",
             run_id="run-1",
             data=RunFailedEventData(
                 error="boom",
-                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-                reason="runtime",
+                error_type=error_type,
+                session_snapshot=snapshot,
                 usage=AgentRunUsage(prompt_tokens=13, completion_tokens=8),
             ),
         )
@@ -146,8 +150,8 @@ def test_event_adapter_maps_run_failed_to_failed_result() -> None:
             run_id="run-1",
             source_event_id="4-0",
             error="boom",
-            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-            reason="runtime",
+            error_type=error_type,
+            session_snapshot=snapshot,
             usage={
                 "prompt_tokens": 13,
                 "completion_tokens": 8,
@@ -166,6 +170,14 @@ def test_event_adapter_maps_run_failed_to_failed_result() -> None:
             },
         )
     ]
+    assert "reason" not in adapted[0].model_dump()
+
+
+def test_internal_failed_event_rejects_removed_reason() -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        AgentBackendRunFailedInternalEvent.model_validate(
+            {"run_id": "run-1", "error": "boom", "reason": "InvokeRateLimitError"}
+        )
 
 
 def test_event_adapter_maps_run_cancelled_to_terminal_cancelled() -> None:

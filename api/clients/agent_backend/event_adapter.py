@@ -79,12 +79,11 @@ class AgentBackendRunSucceededInternalEvent(AgentBackendInternalEventBase):
 
 
 class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
-    """API-internal terminal failure event carrying the backend-safe error text."""
+    """Terminal failure text and classification; ``None`` means unclassified."""
 
     type: Literal[AgentBackendInternalEventType.RUN_FAILED] = AgentBackendInternalEventType.RUN_FAILED
     error: str
     error_type: RunFailureType | None = None
-    reason: str | None = None
     session_snapshot: SessionSnapshot | None = None
     usage: dict[str, JsonValue] | None = None
 
@@ -114,7 +113,11 @@ class AgentBackendRunEventAdapter:
     """Maps public ``dify-agent`` event variants to API-internal event variants."""
 
     def adapt(self, event: RunEvent) -> list[AgentBackendInternalEvent]:
-        """Return zero or more API-internal events derived from one public run event."""
+        """Accept a validated public event and return its API-internal events.
+
+        Failed runs preserve diagnostic text and optional stable classification;
+        only cancellation events carry a reason. The input is not mutated.
+        """
         match event:
             case RunStartedEvent():
                 return [
@@ -159,7 +162,6 @@ class AgentBackendRunEventAdapter:
                         source_event_id=event.id,
                         error=event.data.error,
                         error_type=event.data.error_type,
-                        reason=event.data.reason,
                         session_snapshot=event.data.session_snapshot,
                         usage=_agent_run_usage(event.data.usage),
                     )
