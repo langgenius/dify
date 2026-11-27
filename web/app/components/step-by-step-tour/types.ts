@@ -10,6 +10,7 @@ type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'disabled'
 export type StepByStepTourGuideGroup =
   | 'homeNoCreate'
   | 'studioEmpty'
+  | 'studioEmptyLegacy'
   | 'studioWithApps'
   | 'studioNoCreateEmpty'
   | 'studioNoCreateWithApps'

@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "Hoặc bắt đầu với Learn Dify",
   "stepByStepTour.guides.studio.empty.template.description": "Duyệt các mẫu của Dify và chọn một mẫu phù hợp với thứ bạn muốn xây dựng. Cách tuyệt vời để bắt đầu mà không cần viết bất cứ thứ gì từ đầu.",
   "stepByStepTour.guides.studio.empty.template.title": "Tạo từ mẫu",
+  "stepByStepTour.guides.studio.empty.workflow.description": "Bắt đầu với quy trình chạy một lần rồi kết thúc.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "Tạo quy trình",
   "stepByStepTour.guides.studio.noCreate.empty.description": "Ban co the xem ung dung trong workspace nay, nhung hien chua co ung dung nao. De tao hoac chinh sua ung dung, hay doi workspace hoac yeu cau quyen truy cap tu Workspace Owner hoac Admin.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "Chua co ung dung nao de xem",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "Ban co the duyet va mo ung dung trong workspace nay, nhung viec tao hoac chinh sua ung dung can quyen. Hay chuyen sang workspace ban co quyen, hoac lien he Workspace Owner hoac Admin.",

@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "Или начните с Learn Dify",
   "stepByStepTour.guides.studio.empty.template.description": "Просмотрите шаблоны Dify и выберите тот, который соответствует тому, что вы хотите создать. Отличный способ начать, не создавая ничего с нуля.",
   "stepByStepTour.guides.studio.empty.template.title": "Создать из шаблона",
+  "stepByStepTour.guides.studio.empty.workflow.description": "Начните с рабочего процесса, который запускается один раз и завершается.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "Создать рабочий процесс",
   "stepByStepTour.guides.studio.noCreate.empty.description": "Вы можете просматривать приложения в этом рабочем пространстве, но здесь пока нет приложений. Чтобы создавать или редактировать приложения, переключитесь на другое рабочее пространство или попросите доступ у Workspace Owner или Admin.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "Пока нет приложений для просмотра",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "Вы можете просматривать и открывать приложения в этом рабочем пространстве, но создание или редактирование требует разрешения. Переключитесь на рабочее пространство с доступом или обратитесь к Workspace Owner или Admin.",

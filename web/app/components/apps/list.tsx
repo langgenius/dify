@@ -4,7 +4,6 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
-import type { BuilderCreationMode } from '@/features/dify-builder/creation/pending-prompt'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
@@ -48,6 +47,7 @@ type Props = Readonly<{
 
 export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isBuilderEnabled = useDifyBuilderEnabled()
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
   const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
@@ -58,14 +58,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
   const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
   // DSL import has no URL; it holds the file dropped on the list, if any.
-  const [builderMode, setBuilderMode] = useState<BuilderCreationMode | null>(null)
-  const builderEnabled = useDifyBuilderEnabled()
   const [dslImport, setDSLImport] = useState<{ droppedFile?: File } | null>(null)
   const creationDialog: AppListCreationDialog = dslImport
     ? { type: 'dsl', ...dslImport }
-    : builderEnabled && builderMode
-      ? { type: 'builder', mode: builderMode }
-      : creationQuery.create && { type: creationQuery.create }
+    : creationQuery.create && { type: creationQuery.create }
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const hasActiveFilters =
     category !== 'all' ||
@@ -126,14 +122,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     void setUrlQuery({ sort_by: nextSortBy })
   }
 
-  // Opening pushes a history entry and switching between blank and template replaces it,
-  // so closing (or Back) returns to the list in one step. Blank creation defaults to the
-  // selected category; `mode` is only for links from elsewhere.
   const openCreationDialog = useCallback(
     async (create: 'blank' | 'template') => {
       if (!canCreateApp) return
       const switching = creationQuery.create !== null
-      // Replacing the entry drops its state, so carry the mark over when switching.
       const pushed = !switching || isPushedCreationEntry()
       await setCreationQuery({ create, mode: null }, { history: switching ? 'replace' : 'push' })
       if (pushed) markPushedCreationEntry()
@@ -151,15 +143,13 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const closeCreationDialog = useCallback(() => {
     if (dslImport) {
       setDSLImport(null)
-    } else if (builderMode) {
-      setBuilderMode(null)
     } else if (isPushedCreationEntry()) {
       window.history.back()
     } else {
       // Opened from a link or a reload: clear the query without leaving the page.
       void setCreationQuery(null, { history: 'replace' })
     }
-  }, [builderMode, dslImport, setCreationQuery])
+  }, [dslImport, setCreationQuery])
   const openCreateFromDSLModal = useCallback(() => {
     if (canCreateApp) setDSLImport({})
   }, [canCreateApp])
@@ -193,12 +183,12 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             keywords={keywords}
             creatorIDs={creatorIDs}
             sortBy={sortBy}
+            isBuilderEnabled={isBuilderEnabled}
             onCategoryChange={changeCategory}
             onTagIDsChange={changeTagIDs}
             onKeywordsChange={changeKeywords}
             onCreatorIDsChange={changeCreatorIDs}
             onSortByChange={changeSortBy}
-            onCreateBuilderApp={builderEnabled ? setBuilderMode : undefined}
             onCreateBlank={openCreateBlankModal}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}
@@ -210,6 +200,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             canCreateApp={canCreateApp}
             dragging={dragging}
             hasActiveFilters={hasActiveFilters}
+            isBuilderEnabled={isBuilderEnabled}
             onCreateBlank={openCreateBlankModal}
             onCreateLearnDify={onCreateLearnDify}
             onCreateTemplate={openCreateTemplateDialog}
@@ -230,8 +221,9 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
-        defaultMode={creationQuery.mode ?? category}
+        defaultMode={creationQuery.mode ?? (category === 'all' ? 'advanced-chat' : category)}
         dialog={creationDialog}
+        isBuilderEnabled={isBuilderEnabled}
         onClose={closeCreationDialog}
         onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}
