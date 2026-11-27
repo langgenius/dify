@@ -1,7 +1,9 @@
+import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
+from importlib.util import module_from_spec
 from pathlib import Path
 from typing import Protocol
 from unittest.mock import create_autospec, patch
@@ -1365,6 +1367,12 @@ def test_summary_commit_retries_use_fresh_sessions_and_persist_outcome(
     monkeypatch: pytest.MonkeyPatch,
     failed_commits: int,
 ) -> None:
+    """Require fresh retry sessions while leaving unrelated background sleeps intact.
+
+    Pre: failed commits are controlled by this test's session listener. Post:
+    only the summary adapter uses the captured retry clock; global time.sleep
+    stays unchanged and all transaction/backoff/outcome assertions still apply.
+    """
     from models.dataset import DocumentSegmentSummary
     from services.knowledge.summaries import adapters as summary_module
 
@@ -1389,7 +1397,14 @@ def test_summary_commit_retries_use_fresh_sessions_and_persist_outcome(
         assert not probe.active_transactions
         delays.append(seconds)
 
-    monkeypatch.setattr(summary_module.time, "sleep", wait)
+    global_sleep = time.sleep
+    # Patch an independent stdlib module, leaving background workers untouched.
+    assert time.__spec__ is not None
+    summary_time = module_from_spec(time.__spec__)
+    assert summary_time is not time
+    monkeypatch.setattr(summary_time, "sleep", wait)
+    monkeypatch.setattr(summary_module, "time", summary_time)
+    assert time.sleep is global_sleep
     event.listen(sqlite_session_factory.class_, "before_commit", fail_summary_commit)
     try:
         updated = app.update_segment(

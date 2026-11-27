@@ -12,6 +12,8 @@ from models.account import Tenant
 from models.agent import Agent, AgentKind, AgentScope, AgentStatus
 from models.dataset import Dataset
 from models.enums import TagType
+from models.external_agent import ExternalAgentHead
+from models.external_agent_trace import ExternalAgentDataTombstone
 from models.model import App, Tag, TagBinding
 from models.skill import Skill
 from models.snippet import CustomizedSnippet
@@ -284,8 +286,10 @@ class TagRepository(TagStore):
     def _ensure_target_exists(session: Session, workspace_id: str, binding: TagBindingInput) -> None:
         """Require a target in this workspace and pool before mutating bindings.
 
-        Agent targets are active Dify roster identities, independent of publication
-        and their backing App ids. Missing, archived and workflow-only Agents raise
+        Agent targets are active Native or External roster identities, independent
+        of publication and their backing App ids. External targets additionally
+        need an owned, saved, non-deleted head and a non-retired workspace; being
+        disabled does not prevent classification. Missing, archived and workflow-only Agents raise
         TagBindingTargetNotFoundError without changing any tags or bindings. The
         Agent row is locked through the binding write so archival can coordinate
         its cleanup before changing the same identity's lifecycle.
@@ -300,7 +304,27 @@ class TagRepository(TagStore):
                 .where(
                     Agent.tenant_id == workspace_id,
                     Agent.id == binding.target_id,
-                    Agent.agent_kind == AgentKind.DIFY_AGENT,
+                    sa.or_(
+                        Agent.agent_kind == AgentKind.DIFY_AGENT,
+                        sa.and_(
+                            Agent.agent_kind == AgentKind.EXTERNAL_A2A,
+                            select(ExternalAgentHead.agent_id)
+                            .where(
+                                ExternalAgentHead.tenant_id == workspace_id,
+                                ExternalAgentHead.agent_id == Agent.id,
+                                ExternalAgentHead.deleted_at.is_(None),
+                                ExternalAgentHead.active_connection_revision_id.is_not(None),
+                            )
+                            .exists(),
+                            ~select(ExternalAgentDataTombstone.id)
+                            .where(
+                                ExternalAgentDataTombstone.tenant_id == workspace_id,
+                                ExternalAgentDataTombstone.owner_kind == "tenant",
+                                ExternalAgentDataTombstone.owner_id == workspace_id,
+                            )
+                            .exists(),
+                        ),
+                    ),
                     Agent.scope == AgentScope.ROSTER,
                     Agent.status == AgentStatus.ACTIVE,
                 )

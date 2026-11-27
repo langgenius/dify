@@ -79,8 +79,8 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 [tool.uv.sources]
 dify-agent = { path = "../dify-agent", editable = true }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "e44a2861b854" }
-# shortcut: pin the 0.8.0 container-type fix until a release includes graphon#344.
-graphon = { git = "https://github.com/langgenius/graphon", rev = "4fa22141774dff80e90e4dfa98ea3e6fbf0421bb" }
+# Use the upstream 0.8 compatibility commit until Dify adopts a release with external waits.
+graphon = { git = "https://github.com/langgenius/graphon", rev = "7ca07f52b603ea0bfd2170bb52d240f8829a40bf" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }

@@ -5,6 +5,7 @@ that publishing child tasks means their physical cleanup has completed.
 """
 
 import logging
+from collections.abc import Callable
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -33,6 +34,7 @@ class WorkspaceResourceCleanupService:
         apps: ConsoleAppRepository,
         datasets: SQLAlchemyDatasetRepository,
         agent_resources: WorkspaceResourceCleanupRepository,
+        external_cleanup: Callable[[str], None] | None = None,
     ) -> None:
         # The session factory only serves existing services that require a
         # caller-owned session; drop it once they own their persistence.
@@ -40,9 +42,12 @@ class WorkspaceResourceCleanupService:
         self._apps = apps
         self._datasets = datasets
         self._agent_resources = agent_resources
+        self._external_cleanup = external_cleanup
 
     def cleanup(self, workspace_id: str) -> None:
         """Attempt all resource groups; propagate failures to the caller."""
+        if self._external_cleanup is not None:
+            self._external_cleanup(workspace_id)
         failures: list[str] = []
         app_ids = self._apps.list_workspace_app_ids(workspace_id)
         dataset_ids = self._datasets.list_workspace_dataset_ids(workspace_id)

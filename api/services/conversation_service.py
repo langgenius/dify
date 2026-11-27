@@ -7,6 +7,7 @@ from models import Account
 from models.model import App, Conversation, EndUser
 from repositories.conversation_lifecycle import retire_superseded_debug_conversations
 from services.errors.conversation import ConversationNotExistsError
+from services.external_agents.retention import ExternalDeletionKind
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data
 
@@ -66,6 +67,9 @@ class ConversationService:
     @staticmethod
     def enqueue_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
         """Dispatch resource collection only after the lifecycle transaction commits."""
+        from extensions.application_services.external_agent_lifecycle import fence_external_parent
+
+        fence_external_parent(tenant_id, ExternalDeletionKind.CONVERSATION, conversation_id)
         if retired_workspace_ids:
             enqueue_agent_resource_collection(
                 tenant_id=tenant_id,

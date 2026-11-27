@@ -58,6 +58,11 @@ class TagStore(TagTargetQuery, Protocol):
     concurrent Agent-pool mutations; deleting a tag cannot leave new bindings.
     Callers provide a persisted workspace admitted by the Console boundary.
     Other pools retain their existing transaction behavior.
+
+    Agent targets are canonical, active roster identities. External identities
+    additionally require a tenant-owned saved non-deleted head and no workspace
+    lifecycle tombstone. Disabled identities remain classifiable. Unavailable
+    targets fail without writes; tags never change Agent or connection state.
     """
 
     def list_tags(self, workspace_id: str, tag_type: str, keyword: str | None) -> Sequence[TagSummary]: ...

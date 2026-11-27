@@ -1,0 +1,332 @@
+# External Agents (BYOA) backend
+
+Implementation of [DIFY-3025](https://linear.app/dify/issue/DIFY-3025/byoa-后端), following the
+[frozen backend design](https://langgenius.feishu.cn/wiki/Wu0swoWfriGEoQkPyDTcN3Sfnyf).
+This document describes the code and operational contract. Deployment and end-to-end acceptance must be recorded
+separately for the image actually tested.
+
+Execution supports Workflow, Chatflow, Loop and Iteration frames. Cross-App Workflow-as-Tool delegation returns
+`unsupported_profile` before dispatch; it requires a separate trusted root-App/source-Workflow ownership contract.
+
+## Layers and persistence
+
+`services/external_agents` contains application services, typed records and ports. It does not import ORM models,
+Flask, Celery, deployment configuration or provider implementations. `repositories/external_agents` implements SQL
+ownership, transactions, leases and fences; `providers/a2a` implements the A2A transport. Controllers validate Console
+requests and present response models. `extensions/application_services/external_agents.py` is the composition root.
+
+The feature migration creates 17 tables. These are independent records with explicit owner checks; deleting an asset
+does not cascade into historical App runs.
+
+| Tables | Responsibility |
+| --- | --- |
+| `external_agent_heads`, `external_agent_connection_revisions` | Mutable asset head and immutable, verified connection identity; encrypted credentials are reclaimable independently of history. |
+| `external_agent_verifications`, `external_agent_operations` | Short-lived Verify evidence and idempotent management operation receipts. |
+| `external_agent_invocations`, `external_agent_commands` | One row per business dispatch attempt and durable, fenced send/query/cancel/wake intents. Polling does not create Calls. |
+| `external_agent_context_slots`, `external_workflow_budgets` | Scoped Busy/Unresolved identity and durable logical run deadlines. Log expiration alone does not unlock a remote task. |
+| `external_agent_file_leases` | Temporary-copy ownership, shared references, upload write intents and retryable storage cleanup. |
+| `external_agent_trace_records`, `external_agent_trace_receipts`, `external_agent_trace_steps` | Nullable internal Trace read model, bounded deduplication receipts and sanitized steps. |
+| `external_agent_trace_usage_summaries` | Proven call-level usage and its revision; zero is known usage, null is unreported. |
+| `external_agent_tracing_configs`, `external_agent_trace_targets`, `external_agent_trace_deliveries` | Asset-owned provider configuration, dispatch-time target/policy snapshots and immutable payload-revision export intents. |
+| `external_agent_data_tombstones` | Parent deletion fences preventing late callbacks, materialization and export from reviving removed data. |
+
+Existing `workflow_agent_node_bindings` gains `binding_epoch`, `external_job_config` and `original_reference`.
+The native workflow log and App permission structures remain the source of caller identity and visibility.
+
+## Protocol, runtime and recovery
+
+The initial profile is A2A 1.0 HTTP+JSON with None/Bearer authentication. Verify reads the Card and permitted
+capability evidence; it never sends a business request. Initial SSE consumption is bounded; known Tasks subsequently
+use GetTask. There is no generic automatic business POST retry. A message-only response is a valid call result.
+Cancel-and-retry creates a new Invocation only after an authoritative canceled state; command redelivery cannot
+replay a previously admitted business send.
+
+`local_wait_state`, remote task state, cancel outcome, Trace, usage and exporter acknowledgement are separate facts.
+An unknown submission without a Task ID stays unknown. A stopped local wait does not establish remote completion.
+Context reservation includes tenant, App, conversation, logical node, binding epoch, asset, connection revision and
+execution frame. Rebinding creates a new epoch, including A → B → A. Overview tests use a separate context.
+
+The Caller node pauses with an identity-only external wait reason. Its durable wake command completes only after the
+exact Caller node execution or its run is terminal. Publishing uses a 120-second publication lease and is retried from
+SQL; a wake arriving before the checkpoint is visible remains recoverable. The existing native resume path claims a
+run with a SQL CAS before execution and has no general resume lease. If a process disappears after that claim, this
+implementation does not replay the old checkpoint and its native side effects. It checks until the original logical
+deadline, then fails the Run/Caller and requests stop. Invocation history remains available. This is a safe failure
+path, not an exactly-once guarantee for the complete workflow graph.
+
+## Queues and feature flag
+
+`EXTERNAL_AGENTS_ENABLED` defaults to `false` and controls admission. Disabling it rejects new starts, new business
+Send operations and retry dispatches. Already admitted poll/cancel/deadline/wake/reconcile operations, trace exports
+and cleanup continue, so a feature switch cannot freeze the logical deadline or strand existing work.
+
+| Work | Queue and recovery |
+| --- | --- |
+| Durable command scan | Scheduled on `EXTERNAL_AGENTS_QUEUE` (default `external_agents`); once per second while enabled, every five seconds while disabled. It publishes admitted commands to that same dedicated queue. |
+| Send/GetTask/Cancel/Wake | Dedicated prefork external-agent workers, default concurrency 4 and prefetch 1; SQL command and query leases fence redelivery. |
+| Maintenance | Dedicated `EXTERNAL_AGENTS_QUEUE`, every 60 seconds by default, including when the feature is disabled. Runs bounded GC before scheduling exports. |
+| Third-party trace delivery | Existing `OPS_TRACE_QUEUE` (default `ops_trace_v2`), separate from runtime and GC. Soft/hard task limits are 40/45 seconds. |
+
+Trace publication also has a 120-second SQL lease. A worker can claim a published intent immediately; publication
+does not count as an export attempt. A stale `exporting` intent becomes `uncertain`, not an automatic resend. Unknown
+transport outcomes require an explicit acknowledgement of possible duplicates before a user-triggered retry.
+
+Setting the flag to false closes new admission; it does not cancel remote Tasks. To drain safely, close admission and
+retain beat, the external-agent worker and the tracing worker until admitted operations and exports settle or reach
+their fixed deadlines. Preserve unresolved Task/context identities for diagnosis and deliberate recovery. Stopping
+those workers as part of disabling the feature can strand old work. GC remains scheduled independently.
+
+## Configuration and Docker enablement
+
+Configuration lives in `configs/feature/external_agents.py`; deployment may tighten the limits of the frozen profile.
+
+| Controls | Defaults |
+| --- | --- |
+| HTTP connect / request / initial SSE | 5 / 30 / 30 seconds |
+| Logical run / cancel window | 3,600 / 30 seconds; the Caller wait is 600 seconds unless configured otherwise within the design bounds. |
+| Post-wait tracking | At most 86,400 seconds from local wait end; background query delay 60 → 300 seconds, at most 300 attempts. |
+| Background query concurrency | Workspace 20; workspace plus endpoint 5. |
+| Worker batch / maintenance | 100 rows / 60 seconds. |
+| Files per direction / raw total | 5 / 30 MiB. Document 15 MiB, image 10 MiB; PDF, TXT, MD, PNG and JPEG input profile. |
+
+Build the API image from the repository root. The image installs Graphon from the Git revision in `api/uv.lock`.
+Use a Compose override to point `api`,
+`worker`, `worker_beat` and `worker_external_agents` at the same built image. With the existing database, Redis,
+storage and SSRF proxy configured:
+
+```bash
+cd docker
+# Set EXTERNAL_AGENTS_ENABLED=true in envs/core-services/api-worker.env after migration.
+docker compose --profile external-agents up -d api worker worker_beat worker_external_agents
+```
+
+The `external-agents` profile starts the dedicated runtime and control worker. Keep an existing consumer for
+`OPS_TRACE_QUEUE`; BYOA does not require adding `retention` or other unrelated queues to a worker. Preserve the
+deployment's existing worker queue lists and replica counts. All these processes need the same
+database, Redis namespace, encryption setup and shared storage. Existing provider network egress policy applies to
+tracing. Never put credentials, signed URLs or private deployment access details into this README or task messages.
+
+Put `EXTERNAL_AGENTS_ENABLED` and a custom `EXTERNAL_AGENTS_QUEUE` in the common
+`docker/envs/core-services/api-worker.env`, or use the deployment's root `.env` override. API, Beat and both workers
+read the same merged container environment. The dedicated service uses `MODE=external_agent_worker`; its entrypoint
+selects `EXTERNAL_AGENTS_QUEUE` at container startup and then enters the ordinary worker path with prefork and
+prefetch 1. It does not resolve the queue or override the admission flag through Compose interpolation. Generic
+`CELERY_QUEUES`/`CELERY_WORKER_QUEUES` settings do not redirect this dedicated worker away from the producer queue.
+
+## Console API overview
+
+Routes below are relative to the existing Console API prefix (`/console/api`). They use workspace membership, asset
+visibility and current App permissions. Owner/Admin manage connections, display information and tracing; eligible
+Editors can use Overview/Test. Normal members receive only the permitted aggregate monitoring view.
+
+| Route family | Purpose |
+| --- | --- |
+| `GET/POST /external-agents`, `POST /external-agents/verify` | List/create assets and obtain Verify evidence. |
+| `/external-agents/{id}`, `/{id}/info`, `/{id}/connection`, `/{id}/enabled`, `/{id}/tracing` | Detail/delete and versioned management mutations. |
+| `GET /external-agent-operations/{id}` | Idempotent operation receipt. |
+| `GET /external-agents/capabilities` | Backend profile and file capability envelope. |
+| `/external-agents/{id}/tests`, `/tests/{invocation}`, `/tests/{invocation}/cancel` | Start, read and cancel an Overview test. |
+| `/external-agents/{id}/test-files`, `/test-files/paste-link`, `/test-files/{lease}` | Owned test input creation and lease access. |
+| `POST /external-agent-tests/leave-page` | Revoke the leaving page's display and temporary-file ownership; closing a panel is not page leave. |
+| `POST /apps/{id}/workflows/draft/external-agent-bindings/{node}/rebind` | Explicit binding epoch and context boundary. |
+| `GET /external-agents/{id}/monitoring` | Calls, Avg Duration, Reported Tokens and token-reporting Coverage over one authorized App scope. |
+| `GET /external-agent-invocations/{id}/trace`, `/trace/steps/{key}` | Owned internal Trace and sanitized Raw Data, with revision-pinned pagination. |
+| `/external-agents/{id}/tracing-config/{provider}` | Asset-owned existing-provider configuration, without a hidden App. |
+| `/external-agent-invocations/{id}/trace-deliveries`, `/{delivery}/retry` | Separate export acknowledgement and explicit retry. |
+
+Detail exposes `connection.saved_by: {id, name}` and `connection.saved_at` from the active immutable connection
+revision. The stored author ID always remains; the current Account name is null if unavailable, and removing
+workspace membership does not erase the historical saver. `saved_at` is the revision's actual save time,
+independent of `verified_at` and asset creation/profile/availability/Tracing edit times. A no-op connection save
+keeps the same revision and save metadata.
+
+Editing clients must handle HTTP 409 from both `POST /external-agents/verify` and
+`PUT /external-agents/{id}/connection`. The conflict response is an error envelope,
+not a latest-configuration snapshot. Reload `GET /external-agents/{id}` and show its
+current connection, saver and save time beside the caller's non-credential edits.
+Treat the transport status as authoritative; a typed client may expose `CONFLICT`
+instead of the wire error code `conflict`.
+
+- **Use latest configuration** adopts that detail revision and its endpoint/authentication settings.
+- **Keep my edits** retains the edited endpoint/authentication settings and explicitly rebases them on that revision.
+
+Both choices invalidate the old Verify result and clear any replacement credential.
+Credentials are write-only: `has_credential` is only a compatibility hint, never a
+replacement token. Require a new credential if the chosen authentication cannot
+keep the latest saved one. A subsequent save requires Verify against the selected
+current revision and an explicit save action; conflict recovery never auto-saves.
+If the latest detail cannot be loaded, keep edits and offer a read retry without
+enabling either recovery action. Another concurrent save repeats the same conflict
+flow rather than bypassing the revision fence.
+
+Terminal Workflow node and standalone Last Run results expose `inputs.agent_task` from the persisted Invocation's
+resolved text parts. When files are present, `inputs.file_refs` retains their order and includes only `file_id` and
+`kind`; file contents, remote URLs and credentials are excluded. Resumption does not rerender the current variable
+pool. `execution_metadata.total_tokens` uses the complete owned retry chain through the selected attempt: only
+actual dispatched calls count, and every such attempt must have a trustworthy retained usage summary. A known zero
+is included; missing, expired, deleted or incomplete usage stays unknown and clears a stale projected total.
+Terminal replay replaces this metadata without another business Send and preserves recognized node metadata.
+Unsupported legacy metadata keys keep their previous omission behavior with a value-free diagnostic; they cannot
+block a terminal result or widen the graph runtime's closed metadata contract.
+Usage is committed before the runtime publishes the terminal wake; a usage-query failure affects statistics only.
+
+Trace exports include root inputs/outputs only when the dispatch-frozen destination permits content and pinned
+credential-redaction facts remain available. App and asset content permissions retain their intersection. No-auth
+is a known empty secret set; an unavailable Bearer secret produces metadata-only export. Inputs use this
+Invocation's frozen admitted parts, and outputs use its validated successful result. Files are summaries without
+bytes, storage or download authority. Content, including keys, is redacted before string truncation; the complete
+canonical Trace must fit its byte budget or falls back to metadata-only. Missing values stay null; zero, false and
+empty JSON values remain present. Child input uses only specified tool parameters or agent requests (including the
+supported Python-sample fields); Traceability v1 does not define child output, so none is invented. Existing frozen
+deliveries and retry payloads are never backfilled or re-exported just to add content.
+
+An App can authorize content capture independently of its own tracing destination:
+`POST /apps/{id}/trace` accepts `enabled=false`, `tracing_provider=null` and
+`capture_content=true`. App-origin External Agent calls still require the asset
+destination's content permission. Granting App consent neither activates an App
+provider nor changes already dispatched calls.
+
+`GET /apps/{app_id}/external-agent-invocations/{invocation_id}/trace-capture`
+reports the invocation's frozen target policy and actual prepared-payload status
+under the same App/run read permission and retention fences. Payload content and
+provider delivery state are separate facts. Source/target denial, unreadable
+redaction facts and budget suppression have bounded reason codes. Historical
+targets have nullable gate snapshots; missing evidence is never reconstructed
+from current settings. These reads select metadata rather than credentials or
+retained request/response bodies.
+Known credentials in raw observation keys are masked before the ingestion key bound. Already-retained keys exactly
+at that old bound are ambiguous and exported with a de-identified key rather than exposing a possible token prefix.
+
+Traceability recognizes the exact declared A2A Traceability carrier. The v1 specification and Python sample dialect
+are normalized explicitly, including their different timestamp representations; neither is accepted as the private
+AgentTraceBatch or native OTLP. Parseable incomplete steps remain visible. Raw data is bounded and redacted before
+persistence. Call-level usage requires a trusted profile proof and is never inferred by summing arbitrary steps.
+The composed Dify profile `dify.metadata-usage-total-tokens.v1` accepts a remote-reported, final call total from
+`Task.metadata.usage.totalTokens`, a correlated terminal `StatusUpdate.metadata.usage.totalTokens`, or a direct
+`ROLE_AGENT` Message's same root path. This is a supported reporting convention, not an A2A standard or a Dify
+billing measurement. Only strict integers from zero through signed 64-bit maximum are accepted; absent, invalid
+or ambiguous totals remain null. Optional `usage.scope` must be `call`, `invocation`, or match `task`/`message`;
+explicit context, session, step and other scopes are unsupported. `total_tokens` aliases are unsupported and
+cannot coexist with `totalTokens`. Input/output components are not summed or used to infer a missing total.
+Working Task counters are ignored. For SSE, only the current correlated terminal status event supplies final
+usage; its missing usage clears the carrier, so an initial Task's partial counter cannot become a final total.
+Artifact, history, status-message, Trace and HTTP-wrapper metadata are not searched. Carrier provenance is
+transient and does not change the assembled business payload or Trace metadata. Each Invocation records one
+final cumulative total at revision 1, with canonical carrier-relative source path `metadata.usage.totalTokens`:
+repeated observations (including SSE followed by the same final GetTask total) are idempotent, while changed final totals retain
+the existing revision-conflict fence. Retry attempts have separate usage rows; test totals stay null unless
+every dispatched attempt has reported usage, and then sum those attempts once each. Usage works with Trace off.
+Monitoring uses SQL additive daily aggregates and the same permission range for all four metrics. A known zero
+contributes to coverage; all-unreported tokens stay null. Failed, canceled and unknown dispatched attempts count as
+Calls, including each confirmed cancel-and-retry dispatch. Polls and blocked pre-dispatch work do not.
+
+Targets and content policy freeze before dispatch. App and asset targets receive distinct payloads and delivery keys;
+their effective content policy is the intersection of source and destination policy. Late Trace or usage produces a
+new immutable payload revision without rewriting an already queued delivery. A provider's accepted state is separate
+from the business result and from internal Trace availability.
+
+## Retention and deletion
+
+Production Invocation bodies, Trace, files and monitoring facts follow the source App/run/message retention and
+archive ownership. The existing exporter seven-day buffer is not the Console history TTL. Hot-log archival alone
+does not delete BYOA history; permanent archive deletion fences its manifest-validated run identities first.
+
+| Resource | Boundary |
+| --- | --- |
+| Post-wait remote observation | Fixed local wait end + 24 hours, clamped by parent deletion/retention and bounded query budget. No Task ID means no guessed query or business resend. |
+| Unsubmitted test input | Page leave or original upload + 1 hour. |
+| Submitted test input | Authoritative remote end or original upload + 24 hours, whichever applies first. Reuse does not renew upload age. |
+| Test output | Page leave or original output creation + 24 hours, also clamped by test/parent expiry. |
+| Test body/result/Trace | Local test end + 24 hours; late data does not extend the deadline. No test-history UI. |
+| Old connection secrets | Reclaim only after legitimate dispatch/query/cancel/file leases have drained and references are terminal or the fixed tracking window has ended. Active connection credentials are not subject to a blanket 24-hour TTL. |
+| Verify credentials | Consumed evidence is cleared; expired or consumed proof rows are reclaimed in bounded maintenance batches. |
+| Unresolved context | Minimal nonsecret identity/state survives log expiration while the conversation/binding scope exists. Tracking exhaustion does not release Busy. |
+
+App, run, message, conversation and workspace deletion write tombstones before destructive effects. Pending exports,
+new Trace/usage ingestion and file materialization recheck the owner chain. Retention clears business content from
+both dedicated columns and the durable runtime snapshot. Necessary audit metadata follows the existing audit policy.
+Asset deletion does not cascade historical App facts. No automatic remote Task or third-party provider deletion is
+claimed by this cleanup.
+
+File cleanup deletes only owned temporary copies. It checks every active lease referencing the same stored file
+before deleting bytes, so one completed test cannot remove a shared input of another in-flight test. Storage writes
+are preceded by a server-reserved file ID and storage-key intent. A crash while a write is `planned` keeps a minimal
+revoked cleanup intent: GC repeatedly removes that exact key, even if the upload row was never committed or bytes
+arrive after a prior delete. Time alone does not prove the writer drained. Completed/aborted writes can release their
+lease after cleanup; unfinished planned intents remain auditable. `cleanup_after` postpones attempted cleanup by
+60 seconds to avoid starving later expired leases.
+
+## Migration, validation and rollback
+
+The first public BYOA revision is `c3025byoa1124`, a single child of the upstream main head `f8b6e2c4a901`.
+It creates the complete 17-table schema, including nullable `external_agent_trace_targets.capture_policy`, and adds
+the three external binding columns. Upgrade uses explicit DDL rather than mutable application model imports.
+Existing Native bindings keep their original values and receive an empty external job configuration; the portable
+`('{}')` server default is retained from the initial ADD through NOT NULL so rolling and rolled-back Native writers
+can omit the new fields. Unknown capture evidence remains SQL NULL and has no synthesized default or backfill.
+
+The unreleased development chain was consolidated before this PR merged: the historical base, default repair,
+capture-policy addition and four no-op branch merges do not enter the public migration graph. Existing upstream
+migrations are unchanged. SQLite exercises upgrade, legacy raw INSERTs, downgrade and re-upgrade with Native row,
+index and constraint preservation. PostgreSQL/MySQL DDL compilation covers the complete final schema and defaults.
+
+Private dev databases that already applied the old chain require a separately reviewed adoption plan; do not copy
+this cleaned versions directory over their deployed history. See [development revision adoption](#development-revision-adoption).
+
+Run targeted checks from the repository root with the installed API environment:
+
+```bash
+uv run --project api --no-sync python -m pytest -c api/pytest.ini -o addopts='' \
+  api/tests/unit_tests/services/external_agents \
+  api/tests/unit_tests/repositories/external_agents \
+  api/tests/unit_tests/migrations/test_external_agent_backend.py \
+  api/tests/unit_tests/extensions/test_external_agents_celery.py
+uv run --project api --no-sync python -m ruff check \
+  api/services/external_agents api/repositories/external_agents api/providers/a2a
+```
+
+Provider and workflow E2E tests live in `api/tests/e2e_tests/external_agents`. They must be run against the actual
+deployment and its explicit test provider; passing local unit tests does not establish dev acceptance.
+
+Schema downgrade deletes all BYOA records. Before rolling back, close admission, keep beat and the external-agent,
+tracing and cleanup workers running long enough to drain legitimate work, and preserve a restricted operational
+inventory of unresolved remote Task identity and state. Stop workers before downgrading. Retaining a remote Task
+inventory does not authorize business replay.
+Prefer a forward fix while nonterminal tasks exist; never downgrade and infer that remote work was canceled. Back up
+the database according to the deployment's normal procedure, then run the reviewed downgrade only when destructive
+loss is acceptable. The three added native binding columns are also removed by downgrade.
+
+### Development revision adoption
+
+The removed development revision IDs are `c3025a2a1109`, `c3025dflt1112`, `c3025merge1112`, `c3046merge1115`,
+`c3051merge1117`, `c3056cap1120` and `c3056merge1120`. They are historical identities, not aliases of
+`c3025byoa1124`; none is reused with new parents or DDL. Historical acceptance reports retain the IDs actually tested.
+Private descendants such as `c3056dev1120`, `b3025merge1119` and `c1120oauthfix` are not public main parents.
+
+Keep the existing private revision graph and database version unchanged until all of these conditions hold:
+
+1. Inventory and back up the exact applied private heads, their ancestry and the existing schema/data under the
+   deployment's normal maintenance procedure. Unknown revisions stop adoption.
+2. In an isolated clone, account for every private/upstream migration and compare the full desired schema. BYOA
+   parity includes all 17 tables, columns and nullability, 18 indexes, 17 primary keys, 10 unique constraints, the
+   three binding columns, the NOT NULL JSON expression default and nullable/default-free capture evidence.
+3. Verify that every public predecessor migration is represented, and that the final schema and existing Native
+   and BYOA row values are equivalent. A missing column/default requires an explicit data-preserving repair first;
+   version stamping must not conceal unapplied DDL.
+4. Review an explicit mapping from only those verified private heads to the consolidated public revision, with a
+   bounded maintenance lock and recorded before/after version state. Execute that deployment-specific operation
+   separately; the application and this public migration do not auto-stamp, skip existing tables or rewrite history.
+
+This consolidation does not itself deploy to, stamp or alter an existing dev database.
+
+## Graphon dependency
+
+Graphon owns the identity-only `ExternalWaitReason` used by paused Workflow executions. Dify owns external task
+submission, persistence, deadlines and resume policy. The API pins a 0.8-compatible commit in
+[langgenius/graphon](https://github.com/langgenius/graphon) that provides the wait reason and Boolean defaults.
+Local installs, CI and API images use the same commit from `api/uv.lock`.
+
+Replace the compatibility pin with a Graphon release that includes the [upstream wait reason](https://github.com/langgenius/graphon/pull/446)
+when Dify adopts Graphon 0.9 through [#45356](https://github.com/langgenius/dify/pull/45356). Verify pause and resume
+after streamed Loop and Iteration replies as part of that upgrade. The [nested reply checkpoint work](https://github.com/langgenius/graphon/issues/356)
+is tracked upstream.

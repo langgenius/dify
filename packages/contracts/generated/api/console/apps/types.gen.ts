@@ -662,6 +662,12 @@ export type RosterAgentPackageExportFailedError = ErrorResponse & {
   status: 500
 }
 
+export type ExternalTraceCaptureResponse = {
+  invocation_id: string
+  targets: Array<ExternalTraceTargetCaptureResponse>
+  targets_frozen: boolean
+}
+
 export type AppMessageFeedbackPayload = {
   content?: string | null
   message_id: string
@@ -1393,6 +1399,21 @@ export type EnvironmentVariableUpdatePayload = {
   patch?: boolean
 }
 
+export type ExternalWorkflowRebindPayload = {
+  expected_hash: string
+  include_matching?: boolean
+  target_agent_id: string
+}
+
+export type ExternalWorkflowRebindResponse = {
+  binding_epochs: {
+    [key: string]: string | null
+  }
+  hash: string
+  node_ids: Array<string>
+  workflow_id: string
+}
+
 export type WorkflowFeaturesPayload = {
   features: WorkflowFeaturesConfigPayload
 }
@@ -2090,6 +2111,19 @@ export type ConversationVariableResponse = {
   updated_at?: number | null
   value?: string | null
   value_type: string
+}
+
+export type ExternalTraceTargetCaptureResponse = {
+  capture_content: boolean
+  capture_policy: ExternalTraceCapturePolicy | null
+  config_revision: string
+  delivery_state: string | null
+  payload_revision: number | null
+  provider: string
+  reasons: Array<ExternalTraceCaptureReason>
+  status: ExternalTraceCaptureStatus
+  target_id: string
+  target_kind: ExternalTraceTargetKind
 }
 
 export type AgentThought = {
@@ -3201,6 +3235,28 @@ export type SimpleMessageDetail = {
   message: string
   query: string
 }
+
+export type ExternalTraceCapturePolicy = {
+  source_app_capture_content: boolean | null
+  target_capture_content: boolean
+  version: 1
+}
+
+export type ExternalTraceCaptureReason =
+  | 'content_not_available'
+  | 'legacy_snapshot_unavailable'
+  | 'payload_budget_exceeded'
+  | 'redaction_unavailable'
+  | 'source_app_disabled'
+  | 'target_content_disabled'
+
+export type ExternalTraceCaptureStatus =
+  | 'content_included'
+  | 'metadata_only'
+  | 'pending'
+  | 'unknown'
+
+export type ExternalTraceTargetKind = 'app' | 'asset'
 
 export type SimpleAccount = {
   email: string
@@ -6771,6 +6827,30 @@ export type GetAppsByAppIdExportResponses = {
 export type GetAppsByAppIdExportResponse =
   GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
 
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureData = {
+  body?: never
+  path: {
+    app_id: string
+    invocation_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/external-agent-invocations/{invocation_id}/trace-capture'
+}
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureError =
+  GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureErrors[keyof GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureErrors]
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponses = {
+  200: ExternalTraceCaptureResponse
+}
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponse =
+  GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponses[keyof GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponses]
+
 export type PostAppsByAppIdFeedbacksData = {
   body: AppMessageFeedbackPayload
   path: {
@@ -8745,6 +8825,30 @@ export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
 
 export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse =
   PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses[keyof PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses]
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindData = {
+  body: ExternalWorkflowRebindPayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/external-agent-bindings/{node_id}/rebind'
+}
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindError =
+  PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindErrors[keyof PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindErrors]
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponses = {
+  200: ExternalWorkflowRebindResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponse =
+  PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponses[keyof PostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponses]
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesData = {
   body: WorkflowFeaturesPayload

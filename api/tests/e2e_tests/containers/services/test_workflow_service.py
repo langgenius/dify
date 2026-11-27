@@ -16,6 +16,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from events.app_event import app_draft_workflow_was_synced
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.enums import CreatorUserRole
@@ -35,6 +36,13 @@ class _ExecutedNode:
     title: str
     error_strategy: ErrorStrategy | None
     default_value_dict: dict[str, object]
+
+    @property
+    def node_data(self) -> BaseNodeData:
+        """Expose validated node metadata for the normal Native result path."""
+        return BaseNodeData.model_validate(
+            {"type": self.node_type, "title": self.title, "error_strategy": self.error_strategy}
+        )
 
 
 class TestWorkflowService:

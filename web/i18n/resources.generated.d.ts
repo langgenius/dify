@@ -850,6 +850,9 @@ export default interface Resources {
     'tracing.agentTracingUnavailable': "Agent tracing isn't available, so traces won't include Agent internals or run links."
     'tracing.aliyun.description': 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.'
     'tracing.aliyun.title': 'Cloud Monitor'
+    'tracing.appAgentTracingUnavailable': 'Dify Agent internal-step tracing is unavailable. App content authorization can still apply to configured external Agent destinations.'
+    'tracing.appContentAuthorization': 'Authorize App content capture'
+    'tracing.appContentAuthorizationDescription': "Allow this App's Agent calls to export inputs and outputs. External Agent destinations must also authorize content. Applies only to future calls and does not enable the App's tracing provider."
     'tracing.arize.description': 'Enterprise-grade LLM observability, online & offline evaluation, monitoring, and experimentation—powered by OpenTelemetry. Purpose-built for LLM & agent-driven applications.'
     'tracing.arize.title': 'Arize'
     'tracing.capabilities': 'Provider capabilities'
@@ -866,6 +869,22 @@ export default interface Resources {
     'tracing.captureAgentDescription': "Send the Agent's internal model and tool calls"
     'tracing.captureContent': 'Capture content'
     'tracing.captureContentDescription': "Send each run's inputs and outputs"
+    'tracing.captureRun.content_included': 'Export payload includes content'
+    'tracing.captureRun.delivery': 'Delivery: {{state}}'
+    'tracing.captureRun.deliveryUnknown': 'Status unavailable'
+    'tracing.captureRun.loadFailed': 'Unable to load content capture status.'
+    'tracing.captureRun.metadata_only': 'Metadata only'
+    'tracing.captureRun.notConfigured': 'No enabled export destination'
+    'tracing.captureRun.pending': 'Preparing export payload'
+    'tracing.captureRun.reason.content_not_available': 'No content was available for this export payload.'
+    'tracing.captureRun.reason.legacy_snapshot_unavailable': 'This historical invocation has no capture policy snapshot.'
+    'tracing.captureRun.reason.payload_budget_exceeded': 'Content omitted because the export payload limit was exceeded.'
+    'tracing.captureRun.reason.redaction_unavailable': 'Content omitted because safe redaction was unavailable.'
+    'tracing.captureRun.reason.source_app_disabled': 'The App did not authorize content capture for this invocation.'
+    'tracing.captureRun.reason.target_content_disabled': 'This destination did not authorize content capture.'
+    'tracing.captureRun.refresh': 'Refresh'
+    'tracing.captureRun.title': 'Content export for this invocation'
+    'tracing.captureRun.unknown': 'Historical content status unavailable'
     'tracing.captureTitle': 'Agent data capture'
     'tracing.config': 'Config'
     'tracing.configProvider.clientId': 'OAuth Client ID'

@@ -23,6 +23,7 @@ from core.entities.provider_entities import (
     SystemConfiguration,
 )
 from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
+from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -187,6 +188,7 @@ def test_datasource_media_uses_upload_file_preview_and_storage(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     send_format: str,
+    account_application_services: ApplicationServices,
 ) -> None:
     """Given an authorized datasource file, rendering uses its signed UploadFile preview or stored bytes."""
     import base64
@@ -237,7 +239,9 @@ def test_datasource_media_uses_upload_file_preview_and_storage(
         assert parsed.path == f"/files/{record.id}/file-preview"
         query = parse_qs(parsed.query)
         delivery = UploadFileDeliveryService(
-            files=UploadFileDeliveryQueryRepository(session_factory=sqlite_session_factory), storage=storage
+            files=UploadFileDeliveryQueryRepository(session_factory=sqlite_session_factory),
+            storage=storage,
+            access=account_application_services.external_agents.test_file_access,
         ).get_signed_file_preview(
             file_id=record.id, timestamp=query["timestamp"][0], nonce=query["nonce"][0], sign=query["sign"][0]
         )

@@ -35,6 +35,20 @@ export const contractLoaders = {
     import('./email-register/orpc.gen.ts').then(({ emailRegister }) => ({ emailRegister })),
   evaluation: () => import('./evaluation/orpc.gen.ts').then(({ evaluation }) => ({ evaluation })),
   explore: () => import('./explore/orpc.gen.ts').then(({ explore }) => ({ explore })),
+  externalAgentInvocations: () =>
+    import('./external-agent-invocations/orpc.gen.ts').then(({ externalAgentInvocations }) => ({
+      externalAgentInvocations,
+    })),
+  externalAgentOperations: () =>
+    import('./external-agent-operations/orpc.gen.ts').then(({ externalAgentOperations }) => ({
+      externalAgentOperations,
+    })),
+  externalAgentTests: () =>
+    import('./external-agent-tests/orpc.gen.ts').then(({ externalAgentTests }) => ({
+      externalAgentTests,
+    })),
+  externalAgents: () =>
+    import('./external-agents/orpc.gen.ts').then(({ externalAgents }) => ({ externalAgents })),
   features: () => import('./features/orpc.gen.ts').then(({ features }) => ({ features })),
   fileScan: () => import('./file-scan/orpc.gen.ts').then(({ fileScan }) => ({ fileScan })),
   files: () => import('./files/orpc.gen.ts').then(({ files }) => ({ files })),

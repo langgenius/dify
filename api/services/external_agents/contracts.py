@@ -1,0 +1,439 @@
+"""Wire-independent values shared by the External Agent control plane.
+
+Credentials in records are encrypted opaque values. Only an injected secret codec
+and the bounded outbound adapter may materialize plaintext for a single request.
+"""
+
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import StrEnum
+from typing import Any, Protocol
+
+from machinery.context import RequestContext
+
+
+class ExternalAgentError(Exception):
+    code = "external_agent_error"
+
+
+class ExternalAgentNotFoundError(ExternalAgentError):
+    code = "agent_not_found"
+
+
+class ExternalAgentForbiddenError(ExternalAgentError):
+    code = "permission_denied"
+
+
+class ExternalAgentConflictError(ExternalAgentError):
+    code = "stale_revision"
+
+
+class ExternalAgentInvalidInputError(ExternalAgentError):
+    code = "invalid_external_agent_configuration"
+
+
+class VerificationFailureReason(StrEnum):
+    CONNECTION_FAILED = "connection_failed"
+    AUTHENTICATION_FAILED = "authentication_failed"
+    UNSUPPORTED_PROTOCOL = "unsupported_protocol"
+    INVALID_AGENT_CARD = "invalid_agent_card"
+
+
+class VerificationFailureSubreason(StrEnum):
+    """Evidence-backed refinements; unknown/missing refinements keep the reason fallback."""
+
+    INVALID_A2A_ENDPOINT = "invalid_a2a_endpoint"
+    AUTHENTICATION_REQUIRED = "authentication_required"
+    TOKEN_INVALID_OR_EXPIRED = "token_invalid_or_expired"
+    ACCESS_DENIED = "access_denied"
+    UNSUPPORTED_AUTHENTICATION = "unsupported_authentication"
+    AGENT_CARD_FIELD_INVALID = "agent_card_field_invalid"
+    UNSUPPORTED_PROTOCOL_VERSION = "unsupported_protocol_version"
+    UNSUPPORTED_TRANSPORT = "unsupported_transport"
+    UNSUPPORTED_REQUIRED_EXTENSION = "unsupported_required_extension"
+    CONNECTION_TIMEOUT = "connection_timeout"
+    TLS_ERROR = "tls_error"
+    RATE_LIMITED = "rate_limited"
+    REMOTE_SERVICE_ERROR = "remote_service_error"
+
+
+class AgentCardFieldErrorCode(StrEnum):
+    MISSING = "missing"
+    INVALID = "invalid"
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCardFieldError:
+    """Only fixed schema paths and safe codes; never remote values or arbitrary keys."""
+
+    path: str
+    code: AgentCardFieldErrorCode
+
+
+class ExternalAgentVerificationFailedError(ExternalAgentError):
+    code = "verification_failed"
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: VerificationFailureReason,
+        subreason: VerificationFailureSubreason | None = None,
+        card_errors: tuple[AgentCardFieldError, ...] = (),
+    ) -> None:
+        """Carry a safe reason and optional diagnostics, never raw peer content.
+
+        Pre: refinements and field paths are validated by the gateway boundary.
+        Post: absent refinements preserve the existing reason-only fallback.
+        """
+        super().__init__(message)
+        self.reason = reason
+        self.subreason = subreason
+        self.card_errors = card_errors
+
+
+class ExternalAgentIdempotencyConflictError(ExternalAgentConflictError):
+    code = "idempotency_conflict"
+
+
+class ExternalAuthType(StrEnum):
+    NONE = "none"
+    BEARER = "bearer"
+
+
+class ExternalCredentialAction(StrEnum):
+    KEEP = "keep"
+    REPLACE = "replace"
+    REMOVE = "remove"
+
+
+class ExternalAssetSortBy(StrEnum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+
+
+class ExternalAssetSortOrder(StrEnum):
+    ASC = "asc"
+    DESC = "desc"
+
+
+class ExternalOrigin(StrEnum):
+    PRODUCTION = "production"
+    NODE_DEBUG = "node_debug"
+    WORKFLOW_DEBUG = "workflow_debug"
+    OVERVIEW_TEST = "overview_test"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAgentLimits:
+    node_wait_default_seconds: int = 600
+    node_wait_max_seconds: int = 3600
+    logical_budget_seconds: int = 3600
+    connect_timeout_seconds: int = 5
+    request_timeout_seconds: int = 30
+    sse_window_seconds: int = 30
+    poll_interval_seconds: int = 5
+    cancellation_window_seconds: int = 30
+    default_retries: int = 1
+    max_retries: int = 2
+    retry_interval_seconds: int = 5
+    max_files: int = 5
+    document_bytes: int = 15 * 1024 * 1024
+    image_bytes: int = 10 * 1024 * 1024
+    total_file_bytes: int = 30 * 1024 * 1024
+    verification_seconds: int = 600
+    tracking_seconds: int = 86400
+    max_background_queries: int = 300
+    workspace_query_concurrency: int = 20
+    endpoint_query_concurrency: int = 5
+    unsubmitted_file_seconds: int = 3600
+    test_data_seconds: int = 86400
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ConnectionSaver:
+    """Stored connection author; a missing current display name remains unknown."""
+
+    id: str
+    name: str | None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ConnectionRevision:
+    id: str
+    tenant_id: str
+    agent_id: str
+    endpoint: str
+    interface_url: str
+    auth_type: str
+    credential_ciphertext: str | None = field(repr=False)
+    card: dict[str, Any]
+    capabilities: dict[str, Any]
+    auth_check: str
+    verified_at: datetime
+    saved_by: ConnectionSaver
+    saved_at: datetime
+    profile: str = "a2a-1.0-http-json.v1"
+    secret_cleared_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAssetTag:
+    """One current label from the shared workspace Agent tag pool."""
+
+    id: str
+    name: str
+    type: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAsset:
+    id: str
+    tenant_id: str
+    name: str
+    description: str
+    role: str
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+    enabled: bool
+    tracing_enabled: bool
+    active_connection_revision_id: str
+    metadata_revision: int
+    row_version: int
+    test_display_generation: int
+    overrides: tuple[str, ...]
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None = None
+    # Derived for this admitted read; never persisted as an asset setting.
+    icon_url: str | None = None
+    # Computed on list rows; None withholds App reference details, including for Normal members.
+    reference_count: int | None = None
+    # Current classification/ACL projection; neither changes connection or test state.
+    tags: tuple[ExternalAssetTag, ...] = ()
+    permission_keys: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class VerificationEvidence:
+    id: str
+    tenant_id: str
+    actor_id: str
+    agent_id: str | None
+    endpoint: str
+    interface_url: str
+    auth_type: str
+    credential_ciphertext: str | None = field(repr=False)
+    auth_check: str
+    card: dict[str, Any]
+    capabilities: dict[str, Any]
+    fingerprint: str
+    expected_connection_revision_id: str | None
+    created_at: datetime
+    expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AssetPage:
+    items: tuple[ExternalAsset, ...]
+    total: int
+    page: int
+    limit: int
+    enabled_count: int
+    disabled_count: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAssetAppReference:
+    """One readable current App with its live icon, never historical usage.
+
+    Nullable icon metadata follows the existing App protocol; None means unset.
+    icon_url is a fresh image capability, or None for non-image/unavailable files.
+    Repository reads return no capability; the application admits files first.
+    """
+
+    app_id: str
+    name: str
+    mode: str
+    node_ids: tuple[str, ...]
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+    icon_url: str | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAssetReferences:
+    """Advisory deletion preflight: scoped App rows plus a coarse asset-wide warning.
+
+    The warning includes unresolved remote work outside the visible App list;
+    it never exposes hidden App identities, counts or Invocation contents.
+    Neither false nor a prior read proves that remote work cannot start later.
+    """
+
+    apps: tuple[ExternalAssetAppReference, ...]
+    may_have_in_flight: bool
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class OperationResult:
+    id: str
+    tenant_id: str
+    actor_id: str
+    kind: str
+    resource_id: str
+    result: dict[str, Any]
+
+
+class ExternalSecretCodec(Protocol):
+    def encrypt(self, tenant_id: str, plaintext: str) -> str: ...
+
+    def decrypt(self, tenant_id: str, ciphertext: str) -> str: ...
+
+    def matches(self, tenant_id: str, ciphertext: str, plaintext: str) -> bool: ...
+
+
+class ExternalAssetAccess(Protocol):
+    def role(self, context: RequestContext) -> str | None: ...
+
+    def visible_agent_ids(self, context: RequestContext) -> frozenset[str] | None: ...
+
+
+class ExternalAssetPermissions(Protocol):
+    def permission_keys(
+        self, context: RequestContext, assets: Sequence[ExternalAsset]
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Project effective Agent ACLs for an already tenant-scoped visible batch.
+
+        Use the Native Agent permission snapshot and overrides, plus its existing
+        creator bypass only when RBAC is enabled. These keys do not replace the
+        External control-plane's separate role gates. Empty input performs no I/O.
+        """
+        ...
+
+
+class ExternalReferenceAccess(Protocol):
+    def reference_list_app_ids(self, context: RequestContext) -> frozenset[str] | None:
+        """Return Monitoring's readable App set once for a list; None withholds details."""
+        ...
+
+    def reference_app_ids(self, context: RequestContext, agent_id: str) -> frozenset[str]:
+        """Return the same trusted readable-App scope used by asset Monitoring.
+
+        Reject Normal and inaccessible/foreign assets; an empty set admits no
+        App details. Implementations translate denials to ExternalAgentError.
+        """
+        ...
+
+
+class ExternalIconURLs(Protocol):
+    def image_urls(self, file_ids: Sequence[str]) -> Mapping[str, str]:
+        """Sign only the server-admitted tenant-owned image references, without file I/O."""
+        ...
+
+
+class ExternalAssetStore(Protocol):
+    """Atomic persistence contract, scoped by tenant on every operation.
+
+    Writes compare the relevant revision under a head lock/CAS. Creation and
+    connection saves commit their operation receipt in the same transaction.
+    Verification consumption, encrypted credentials and owner chain are checked
+    inside that bounded transaction; no network I/O is performed there.
+    """
+
+    def list_assets(
+        self,
+        *,
+        tenant_id: str,
+        page: int,
+        limit: int,
+        keyword: str | None,
+        enabled: bool | None,
+        created_by: str | None,
+        visible_ids: frozenset[str] | None,
+        reference_app_ids: frozenset[str] | None,
+        sort_by: ExternalAssetSortBy,
+        sort_order: ExternalAssetSortOrder,
+        tag_ids: tuple[str, ...] = (),
+    ) -> AssetPage:
+        """Read a visible cohort with all shared Agent tags before count/pagination.
+
+        Empty tags preserve the existing cohort. Search, creator and visibility
+        constrain status counts; status selection does not constrain the two
+        counters. Every supplied tag must exist in this tenant's Agent pool.
+        """
+        ...
+
+    def tags_for_assets(
+        self, *, tenant_id: str, agent_ids: Sequence[str]
+    ) -> Mapping[str, tuple[ExternalAssetTag, ...]]:
+        """Batch-load shared Agent labels for previously admitted asset IDs.
+
+        Scope both tags and bindings by tenant and type=agent. Empty input makes
+        no query. No Agent, connection, context or test revision is changed.
+        """
+        ...
+
+    def owned_icon_file_ids(self, *, tenant_id: str, file_ids: Sequence[str]) -> frozenset[str]:
+        """Admit ordinary tenant-owned image uploads; temporary BYOA files cannot become icons."""
+        ...
+
+    def get_asset(self, *, tenant_id: str, agent_id: str) -> ExternalAsset: ...
+
+    def get_connection(self, *, tenant_id: str, agent_id: str, revision_id: str) -> ConnectionRevision: ...
+
+    def save_verification(self, evidence: VerificationEvidence) -> None: ...
+
+    def get_verification(self, *, tenant_id: str, actor_id: str, evidence_id: str) -> VerificationEvidence: ...
+
+    def create_asset(
+        self,
+        *,
+        context: RequestContext,
+        evidence_id: str,
+        metadata: dict[str, Any],
+        operation_key: str,
+        fingerprint: str,
+    ) -> OperationResult: ...
+
+    def update_connection(
+        self,
+        *,
+        context: RequestContext,
+        agent_id: str,
+        evidence_id: str,
+        expected_revision_id: str,
+        operation_key: str,
+        fingerprint: str,
+    ) -> OperationResult: ...
+
+    def update_info(
+        self,
+        *,
+        context: RequestContext,
+        agent_id: str,
+        expected_revision: int,
+        changes: dict[str, Any],
+    ) -> ExternalAsset: ...
+
+    def set_enabled(self, *, context: RequestContext, agent_id: str, enabled: bool) -> ExternalAsset: ...
+
+    def set_tracing(self, *, context: RequestContext, agent_id: str, enabled: bool) -> ExternalAsset: ...
+
+    def archive(self, *, context: RequestContext, agent_id: str) -> None: ...
+
+    def operation(self, *, context: RequestContext, operation_id: str) -> OperationResult: ...
+
+    def references(self, *, tenant_id: str, agent_id: str, app_ids: frozenset[str] | None) -> ExternalAssetReferences:
+        """Read current draft/published references and possible in-flight work.
+
+        Scope every query to the tenant and asset; filter App rows by app_ids.
+        Include current App icon metadata in that same query, never signed URLs.
+        The aggregate boolean may include hidden Apps but must not reveal their
+        identifiers or counts. Include unresolved ContextSlots whose Invocation
+        bodies expired. This is an advisory read, never a lease or delete lock.
+        """
+        ...

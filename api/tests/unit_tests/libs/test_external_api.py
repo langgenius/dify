@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from enum import StrEnum
 from functools import wraps
 from typing import Literal
 
@@ -319,6 +320,8 @@ class _Schema(BaseModel):
 
     ref: str | None = Field(default=None, alias="$ref")
     any_of: list["_Schema"] = Field(default_factory=list, alias="anyOf")
+    properties: dict[str, "_Schema"] = Field(default_factory=dict)
+    enum: list[str | int] = Field(default_factory=list)
 
 
 class _MediaType(BaseModel):
@@ -708,6 +711,33 @@ class _EnumConflictError(BaseHTTPException):
     error_code = "enum_conflict"
     code = 409
     details_model = _EnumConflictDetails
+
+
+class _StringConflictState(StrEnum):
+    RETRY = "retry"
+    CONFIGURE = "configure"
+
+
+class _StringEnumConflictDetails(BaseModel):
+    state: _StringConflictState
+
+
+class _StringEnumConflictError(BaseHTTPException):
+    error_code = "string_enum_conflict"
+    code = 409
+    details_model = _StringEnumConflictDetails
+
+
+def test_details_added_by_document_finisher_have_deterministic_enum_order() -> None:
+    """Finalized typed error details expose the same stable enum order as exported specs."""
+    document = _documented_operation(ExternalApi(Blueprint("enum_details", __name__)), _StringEnumConflictError)
+
+    details = _Schema.model_validate(document.components.schemas["_StringEnumConflictDetails"])
+    state = details.properties["state"]
+    assert state.ref is not None
+    state_schema = _Schema.model_validate(document.components.schemas[state.ref.rsplit("/", 1)[-1]])
+    assert state_schema.enum == ["configure", "retry"]
+    assert _error_options(document, "409") == ["StringEnumConflictError"]
 
 
 def test_details_model_reuses_registered_schema_with_reordered_enum_values() -> None:

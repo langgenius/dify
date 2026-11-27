@@ -18,6 +18,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models import (
     AgentDebugConversation,
+    App,
     Conversation,
     ConversationVariable,
     HumanInputForm,
@@ -35,6 +36,7 @@ from models import (
 from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient
 from models.tools import ToolConversationVariables, ToolFile
+from services.external_agents.retention import ExternalDeletionKind
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
@@ -71,8 +73,22 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
     retains the durable ``file_key`` needed by the next retry. Retired Workspaces
     are rediscovered on retry even if the Conversation removal already committed.
     An active Conversation returns False and leaves its resources untouched.
+    External attempts are fenced using the trusted soft-deleted parent before
+    the destructive transaction; Workspace collection follows its commit.
     """
 
+    # The soft-deleted row is the broker-outage recovery marker. Resolve its
+    # trusted tenant before opening the destructive/storage transaction.
+    with session_factory.create_session() as lookup:
+        tenant_id = lookup.scalar(
+            select(App.tenant_id)
+            .join(Conversation, Conversation.app_id == App.id)
+            .where(Conversation.id == conversation_id, Conversation.is_deleted.is_(True))
+        )
+    if tenant_id is not None:
+        from extensions.application_services.external_agent_lifecycle import fence_external_parent
+
+        fence_external_parent(tenant_id, ExternalDeletionKind.CONVERSATION, conversation_id)
     with session_factory.create_session() as session:
         conversation = session.scalar(select(Conversation).where(Conversation.id == conversation_id).with_for_update())
         if conversation is not None and not conversation.is_deleted:

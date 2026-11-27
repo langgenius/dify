@@ -38,6 +38,7 @@ from extensions.application_services.data_sources import (
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
+from extensions.application_services.external_agents import ExternalAgentServices, build_external_agent_services
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import (
     KnowledgeServices,
@@ -398,6 +399,7 @@ class ApplicationServices:
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
     tracing: TracingServices
+    external_agents: ExternalAgentServices
 
 
 def _build_oauth_server_service(
@@ -666,6 +668,9 @@ def build_application_services(
         repository=messages,
     )
 
+    external_agents = build_external_agent_services(
+        sessions=database_client, workspaces=workspace_repository, rbac=rbac, tracing=tracing, files=file_service
+    )
     return ApplicationServices(
         moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
@@ -860,6 +865,7 @@ def build_application_services(
         upload_file_delivery=UploadFileDeliveryService(
             files=UploadFileDeliveryQueryRepository(session_factory=database_client),
             storage=storage,
+            access=external_agents.test_file_access,
         ),
         oauth_server=oauth_server,
         oauth_device=_build_oauth_device_service(
@@ -951,6 +957,7 @@ def build_application_services(
             ),
         ),
         tracing=tracing,
+        external_agents=external_agents,
     )
 
 

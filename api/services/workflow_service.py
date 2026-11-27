@@ -65,9 +65,16 @@ from events.app_event import app_draft_workflow_was_synced, app_published_workfl
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
-from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
+from graphon.engine_events import (
+    NodeEvent,
+    NodeRunFailedEvent,
+    NodeRunPauseRequestedEvent,
+    NodeRunStartedEvent,
+    NodeRunSucceededEvent,
+)
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.pause_reason import ExternalWaitReason
 from graphon.enums import (
     ErrorStrategy,
     NodeType,
@@ -119,6 +126,7 @@ from services.errors.evaluation import (
     EvaluationEntitlementUnavailableError,
     EvaluationPlanRequiredError,
 )
+from services.external_agents.workflow_runtime import is_external_node
 from services.feature_service import FeatureService
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
@@ -534,12 +542,32 @@ class WorkflowService:
         rechecks the draft under the Redis lease before inserting and committing.
         Other callers retain the existing save behavior. Collaborative saves
         preserve independently persisted fields and merge a per-ID patch.
+        External Agent permission RPCs run before either the creation lease or
+        the draft row lock; binding synchronization stays in the save transaction.
 
         :raises WorkflowHashNotEqualError: The draft state differs from the request.
         :raises WorkflowDraftInitializationBusyError: Initialization could not acquire its lease.
         """
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
+
+        # Permission RPCs must precede both draft locks and the atomic save.
+        if sync_agent_bindings:
+            from core.rbac import RBACPermission, RBACResourceScope
+            from services.enterprise.rbac_service import RBACService
+            from services.external_agents.workflow_portability import iter_external_nodes
+
+            for _node_id, data in iter_external_nodes(graph):
+                binding = data.get("agent_binding") or {}
+                identifier = binding.get("agent_id") if isinstance(binding, Mapping) else None
+                if identifier and not RBACService.CheckAccess.check(
+                    app_model.tenant_id,
+                    account.id,
+                    scene=RBACPermission.AGENT_PREVIEW,
+                    resource_type=RBACResourceScope.AGENT,
+                    resource_id=identifier,
+                ):
+                    raise ValueError("The selected External Agent is not accessible.")
 
         initializing = serialize_creation and unique_hash is None
         if initializing:
@@ -1490,7 +1518,8 @@ class WorkflowService:
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config["data"]
-        is_agent_preview = is_dify_agent_node_data(node_data)
+        is_external_preview = is_external_node(node_data if isinstance(node_data, Mapping) else node_data.model_dump())
+        is_agent_preview = is_dify_agent_node_data(node_data) or is_external_preview
         if is_agent_preview and (
             draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id
         ):
@@ -1632,17 +1661,23 @@ class WorkflowService:
 
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:
-            node_execution.id = started_event.id
+            node_execution.id = (
+                started_execution.id if is_external_preview and started_execution is not None else started_event.id
+            )
             node_execution.node_execution_id = started_event.id
             node_execution.created_at = started_event.start_at
             node_execution.predecessor_node_id = started_event.predecessor_node_id
         repository.save_synchronously(node_execution)
         # LogStore needs its terminal append in addition to the synchronous SQL caller row.
-        repository.save(node_execution)
+        if not (is_external_preview and node_execution.status == WorkflowNodeExecutionStatus.PAUSED):
+            repository.save(node_execution)
 
         workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
         if workflow_node_execution is None:
             raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
+
+        if is_external_preview and node_execution.status == WorkflowNodeExecutionStatus.PAUSED:
+            return workflow_node_execution
 
         with sessionmaker(db.engine).begin() as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
@@ -2091,14 +2126,31 @@ class WorkflowService:
         """
         try:
             node, node_events = invoke_node_fn()
-            node_run_result = next(
+            outcome = next(
                 (
-                    event.node_run_result
+                    event
                     for event in node_events
                     if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent))
+                    or isinstance(event, NodeRunPauseRequestedEvent)
+                    and isinstance(event.reason, ExternalWaitReason)
                 ),
                 None,
             )
+            if isinstance(outcome, NodeRunPauseRequestedEvent) and isinstance(outcome.reason, ExternalWaitReason):
+                node_run_result = NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.PAUSED,
+                    outputs={},
+                    process_data={"external_invocation_id": outcome.reason.wait_id},
+                    metadata={
+                        WorkflowNodeExecutionMetadataKey.AGENT_LOG: {
+                            "invocation_id": outcome.reason.wait_id,
+                            "external_wait": True,
+                            "frame_id": outcome.reason.frame_id,
+                        }
+                    },
+                )
+            else:
+                node_run_result = outcome.node_run_result if outcome is not None else None
 
             if not node_run_result:
                 raise ValueError("Node execution failed - no result returned")
@@ -2110,6 +2162,7 @@ class WorkflowService:
             run_succeeded = node_run_result.status in (
                 WorkflowNodeExecutionStatus.SUCCEEDED,
                 WorkflowNodeExecutionStatus.EXCEPTION,
+                WorkflowNodeExecutionStatus.PAUSED,
             )
             error = node_run_result.error if not run_succeeded else None
             return node, node_run_result, run_succeeded, error
@@ -2121,7 +2174,13 @@ class WorkflowService:
             return node, node_run_result, run_succeeded, error
 
     def _apply_error_strategy(self, node: Node, node_run_result: NodeRunResult) -> NodeRunResult:
-        """Apply error strategy when node execution fails."""
+        """Apply configured failure outputs, retaining External execution facts.
+
+        Preconditions: node_run_result is the failed result of this node.
+        Postconditions: explicit External nodes retain their frozen inputs and
+        reported-usage metadata while selecting error handling. Other node
+        profiles keep their existing metadata behavior; no execution is retried.
+        """
         # TODO(Novice): Maybe we should apply error strategy to node level?
         error_outputs = {
             "error_message": node_run_result.error,
@@ -2132,11 +2191,14 @@ class WorkflowService:
         if node.error_strategy is ErrorStrategy.DEFAULT_VALUE:
             error_outputs.update(node.default_value_dict)
 
+        metadata = {WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node.error_strategy}
+        if is_external_node(node.node_data.model_dump()):
+            metadata = {**node_run_result.metadata, **metadata}
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.EXCEPTION,
             error=node_run_result.error,
             inputs=node_run_result.inputs,
-            metadata={WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node.error_strategy},
+            metadata=metadata,
             outputs=error_outputs,
         )
 
@@ -2162,6 +2224,8 @@ class WorkflowService:
 
             # Set status and error based on result
             node_execution.status = node_run_result.status
+            if node_run_result.status == WorkflowNodeExecutionStatus.PAUSED:
+                node_execution.finished_at = None
             if node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
                 node_execution.error = node_run_result.error
         else:

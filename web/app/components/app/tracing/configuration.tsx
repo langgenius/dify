@@ -171,7 +171,13 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
     )
   }
 
-  if (resource.kind === 'app' && readOnly && !hasConfiguredTracing) return null
+  if (
+    resource.kind === 'app' &&
+    readOnly &&
+    !hasConfiguredTracing &&
+    !usesAgentTracePipeline(resource)
+  )
+    return null
 
   return (
     <Popover
