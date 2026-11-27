@@ -58,6 +58,22 @@
 
 Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage directory. To manage it explicitly, generate a value with `openssl rand -base64 42` and set `SECRET_KEY` in `api/.env`.
 
+### Hosted AI credits (Cloud)
+
+`HOSTED_<PROVIDER>_TRIAL_MODELS` and `HOSTED_<PROVIDER>_PAID_MODELS` accept comma-separated model IDs. A workspace uses only its plan's list. `HOSTED_MODEL_CREDIT_CONFIG` sets prices by the same IDs (default: 1 credit); a price does not grant access.
+
+For example, with OpenAI hosting credentials configured:
+
+```dotenv
+HOSTED_OPENAI_TRIAL_ENABLED=true
+HOSTED_OPENAI_TRIAL_MODELS=gpt-4o-mini
+HOSTED_OPENAI_PAID_ENABLED=true
+HOSTED_OPENAI_PAID_MODELS=gpt-4o
+HOSTED_MODEL_CREDIT_CONFIG=gpt-4o:0
+```
+
+A paid workspace can use hosted `gpt-4o` even with no remaining credits. A trial workspace cannot use it on hosted credentials, regardless of balance. To offer a model to both plans, include its ID in both lists. An empty list means **no name restriction** on the provider's hosted models; to close a bucket, turn off its `*_ENABLED` flag.
+
 ### Timezones and local-time conversion
 
 The backend uses `zoneinfo` with the system IANA timezone database, falling back to the explicitly required `tzdata` package. `LOG_TZ` is validated when configuration loads. Valid names and aliases are accepted, and differently cased names such as `utc` and `asia/shanghai` are resolved to their canonical spelling when needed. Unknown nonempty values are rejected; they never silently fall back to UTC. Explicit `None` and empty-string values retain their existing unset behavior.

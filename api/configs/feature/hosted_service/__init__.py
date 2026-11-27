@@ -1,10 +1,26 @@
+from functools import lru_cache
+
 from pydantic import Field, NonNegativeInt, PositiveInt
 from pydantic_settings import BaseSettings
 
 
+@lru_cache(maxsize=1)
+def _hosted_credit_rates(config: str) -> dict[str, str]:
+    """Parse the deployment-wide price table once per configuration, not once per catalog entry."""
+    entries = dict(item.strip().split(":", 1) for item in config.split(",") if ":" in item)
+    rates: dict[str, str] = {}
+    for name, rate in entries.items():
+        # Preserve the first normalized match after resolving exact duplicate keys.
+        rates.setdefault(name.strip(), rate)
+    return rates
+
+
 class HostedCreditConfig(BaseSettings):
     HOSTED_MODEL_CREDIT_CONFIG: str = Field(
-        description="Model credit configuration in format 'model:credits,model:credits', e.g., 'gpt-4:20,gpt-4o:10'",
+        description=(
+            "Deployment-wide prices by exact model ID, e.g. 'gpt-4o-mini:1,gpt-4o:0'. "
+            "A zero price skips charging; it does not add the model to any provider's trial or paid list."
+        ),
         default="",
     )
 
@@ -20,15 +36,7 @@ class HostedCreditConfig(BaseSettings):
             return 1
 
         try:
-            credit_map = dict(
-                item.strip().split(":", 1) for item in self.HOSTED_MODEL_CREDIT_CONFIG.split(",") if ":" in item
-            )
-
-            # Search for matching model pattern
-            for pattern, credit in credit_map.items():
-                if pattern.strip() == model_name:
-                    return int(credit)
-            return 1  # Default quota if no match found
+            return int(_hosted_credit_rates(self.HOSTED_MODEL_CREDIT_CONFIG).get(model_name, "1"))
         except (ValueError, AttributeError):
             return 1  # Return default quota if parsing fails
 
