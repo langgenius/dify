@@ -11,7 +11,7 @@ from typing import Any, Protocol
 from uuid import uuid4
 
 import httpx
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 from redis.exceptions import RedisError
 from werkzeug import Request
 from werkzeug.test import EnvironBuilder
@@ -121,7 +121,7 @@ class RedisConnectionOAuthAttempts:
             ):
                 raise ConnectionOAuthError()
             return attempt
-        except (ValueError, KeyError, TypeError, ValidationError):
+        except (ValueError, KeyError, TypeError):
             raise ConnectionOAuthError() from None
 
 
