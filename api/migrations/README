@@ -1,2 +1,36 @@
 Single-database configuration for Flask.
 
+End User authentication: online PostgreSQL rollout
+==================================================
+
+Use one migration runner and retain the PR's revision IDs if any environment
+has stamped them. The PostgreSQL migrations commit nullable-column changes
+before data scans. An independently committed index build or drop can finish
+before Alembic records its revision. Rerun the upgrade/downgrade to reconcile a
+matching healthy index or an already completed drop. Inspect conflicting indexes
+and abandoned invalid builds before retrying; never drop a healthy index as
+routine recovery. Offline SQL assumes the declared starting schema and must
+be executed with its transaction boundaries intact.
+
+Builder origin (revision b43e8c1d9a72) is backfilled in 1,000-account batches.
+In an online rollout the first pass can run with the legacy release serving.
+A legacy write can land behind a batch cursor or after the first pass finishes.
+Before enabling the new Account/Workspace writers:
+
+1. Complete the schema upgrade and initial backfill with the new image.
+2. Drain legacy writes that create accounts or change account initialization or
+   workspace ownership, including in-flight requests and jobs. Keep new writers
+   that depend on the origin column stopped until the next step succeeds;
+   otherwise NULL may be either legacy data or a legitimate new value.
+3. Run the cutover pass once using the new image and the migration database role:
+
+       flask finalize-builder-origin-backfill --confirm-before-cutover
+
+4. Start the new writers only after the cutover pass succeeds.
+
+Retry step 3 with writers still drained if interrupted. Committed origins are
+not overwritten, and accounts with no legacy origin remain NULL. Do not run the
+legacy pass after the new onboarding flow has started writing. For a stopped
+upgrade with no overlapping legacy writes, the initial pass is sufficient.
+MySQL retains its existing DDL and portable backfill path.
+

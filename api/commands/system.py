@@ -133,16 +133,21 @@ def convert_to_agent_apps():
     click.echo(click.style(f"Conversion complete. Converted {len(proceeded_app_ids)} agent apps.", fg="green"))
 
 
-@click.command("upgrade-db", help="Upgrade the database")
-def upgrade_db():
-    click.echo("Preparing database migration...")
-    lock = DbMigrationAutoRenewLock(
+def _db_upgrade_lock() -> DbMigrationAutoRenewLock:
+    """Use the same lock for schema upgrades and their cutover passes."""
+    return DbMigrationAutoRenewLock(
         redis_client=redis_client,
         name="db_upgrade_lock",
         ttl_seconds=DB_UPGRADE_LOCK_TTL_SECONDS,
         logger=logger,
         log_context="db_migration",
     )
+
+
+@click.command("upgrade-db", help="Upgrade the database")
+def upgrade_db():
+    click.echo("Preparing database migration...")
+    lock = _db_upgrade_lock()
     if lock.acquire(blocking=False):
         migration_succeeded = False
         try:
@@ -165,6 +170,32 @@ def upgrade_db():
             lock.release_safely(status=status)
     else:
         click.echo("Database migration skipped")
+
+
+@click.command("finalize-builder-origin-backfill", help="Catch up legacy Builder origins before writer cutover.")
+@click.option(
+    "--confirm-before-cutover",
+    is_flag=True,
+    help="Confirm that all legacy account/workspace writers have stopped and new writers have not started.",
+)
+def finalize_builder_origin_backfill(confirm_before_cutover: bool) -> None:
+    """Run only between writer versions, after the schema upgrade; commit bounded batches."""
+    from migrations.builder_workspace_origin_v1 import backfill_at_cutover
+
+    if not confirm_before_cutover:
+        raise click.UsageError("Drain legacy writers before cutover and pass --confirm-before-cutover.")
+
+    lock = _db_upgrade_lock()
+    if not lock.acquire(blocking=False):
+        raise click.ClickException("A database migration is already running. Retry before writer cutover.")
+    completed = False
+    try:
+        with db.engine.connect() as connection:
+            backfill_at_cutover(connection)
+        completed = True
+    finally:
+        lock.release_safely(status="successful" if completed else "failed")
+    click.echo("Builder origin backfill complete.")
 
 
 @click.command("fix-app-site-missing", help="Fix app related site missing issue.")
