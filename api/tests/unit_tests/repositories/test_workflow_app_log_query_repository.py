@@ -1,8 +1,13 @@
+import csv
 import json
 from datetime import UTC, datetime, timedelta
+from io import StringIO
 
 import pytest
-from sqlalchemy import Engine
+from psycopg2 import OperationalError as PostgresOperationalError
+from psycopg2 import errors as postgres_errors
+from sqlalchemy import Connection, Engine, event
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -19,12 +24,14 @@ from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunSta
 from models.model import EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
-from repositories import workflow_app_log_query_repository
+from repositories import log_export_queries, workflow_app_log_query_repository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from services.retention.workflow_run.log_export_csv import WorkflowLogCsvWriter
 from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
 from services.workflow_app_log_query_service import (
     WorkflowAppLogAccount,
     WorkflowAppLogEndUser,
+    WorkflowAppLogQueryService,
 )
 
 
@@ -162,6 +169,82 @@ def test_export_counts_and_reads_live_runs_once_across_batches(
         )
         == 0
     )
+
+
+@pytest.mark.parametrize("standby_disconnect", [False, True], ids=["recovery-conflict", "standby-disconnect"])
+def test_workflow_csv_retries_the_same_page_without_rewriting_rows(
+    standby_disconnect: bool,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Recover the failed page on a new connection and keep exactly one CSV row per run."""
+    monkeypatch.setattr(workflow_app_log_query_repository, "_LOG_EXPORT_BATCH_SIZE", 1)
+    timestamp = datetime(2026, 1, 1)
+    logs = [
+        _log(log_id, created_by="actor-1", created_by_role=CreatorUserRole.ACCOUNT, created_at=timestamp)
+        for log_id in ("a", "b", "c")
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all([*reversed(logs), *(_run(log.workflow_run_id) for log in logs)])
+
+    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    writer = WorkflowLogCsvWriter(logs=WorkflowAppLogQueryService(logs=repository))
+    scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
+    filters = WorkflowLogExportFilters()
+    baseline = StringIO(newline="")
+    assert writer.write_scoped_csv(scope=scope, filters=filters, output=baseline) == 3
+    reader = csv.DictReader(StringIO(baseline.getvalue().removeprefix("\ufeff")))
+    assert [row["run_id"] for row in reader] == [log.workflow_run_id for log in logs]
+
+    progress: list[int] = []
+    attempts: list[tuple[str, tuple[object, ...], int]] = []
+    connections: list[object] = []
+    connections_held_during_retry: list[int] = []
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    monkeypatch.setattr(
+        log_export_queries, "sleep", lambda _delay: connections_held_during_retry.append(pool.checkedout())
+    )
+    monkeypatch.setattr(log_export_queries, "_log_export_requires_standby", lambda _session: standby_disconnect)
+
+    def interrupt_second_page(
+        connection: Connection,
+        _cursor: object,
+        statement: str,
+        parameters: tuple[object, ...],
+        _context: object,
+        _executemany: object,
+    ) -> None:
+        if "FROM workflow_app_logs JOIN workflow_runs" not in statement:
+            return
+        attempts.append((statement, parameters, len(progress)))
+        connections.append(connection.connection.dbapi_connection)
+        if len(attempts) == 2:
+            error: PostgresOperationalError
+            if standby_disconnect:
+                error = PostgresOperationalError("connection reset by peer")
+            else:
+                error = postgres_errors.SerializationFailure("canceling statement due to conflict with recovery")
+                error.__setstate__({"pgcode": "40001"})
+            raise OperationalError(statement, parameters, error, connection_invalidated=standby_disconnect)
+
+    output = StringIO(newline="")
+    event.listen(sqlite_engine, "before_cursor_execute", interrupt_second_page)
+    try:
+        assert writer.write_scoped_csv(scope=scope, filters=filters, output=output, report_rows=progress.append) == 3
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", interrupt_second_page)
+
+    assert attempts[1] == attempts[2]
+    assert attempts[1][2] == 1
+    assert connections[1] is not connections[2]
+    assert connections_held_during_retry == [0]
+    assert progress == [1, 2, 3]
+    assert output.getvalue() == baseline.getvalue()
+    reason = "standby disconnect" if standby_disconnect else "recovery conflict"
+    assert f"Retrying workflow log export page after PostgreSQL {reason}: app=app-1 page=run" in caplog.text
 
 
 def test_get_paginated_returns_detached_actor_records_by_role_when_ids_overlap(

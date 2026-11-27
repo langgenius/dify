@@ -29,7 +29,7 @@ from models.enums import (
 )
 from models.model import AppMode, EndUser, MessageFeedback
 from models.workflow import WorkflowRun, WorkflowType
-from repositories import conversation_repository
+from repositories import conversation_repository, log_export_queries
 from repositories.conversation_repository import ConversationRepository
 from services.entities.conversation_entities import ConsoleConversationLogFilters, ConsoleConversationScope
 from services.retention import log_export_adapters
@@ -501,8 +501,8 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
             rollback_failed = True
             raise InterfaceError(None, None, PostgresInterfaceError("rollback failed"))
 
-    monkeypatch.setattr(conversation_repository, "_log_export_requires_standby", lambda _session: confirmed_standby)
-    monkeypatch.setattr(conversation_repository, "sleep", record_sleep)
+    monkeypatch.setattr(log_export_queries, "_log_export_requires_standby", lambda _session: confirmed_standby)
+    monkeypatch.setattr(log_export_queries, "sleep", record_sleep)
     event.listen(sqlite_engine, "before_cursor_execute", interrupt_page)
     event.listen(sqlite_engine, "rollback", interrupt_rollback)
     try:
@@ -582,8 +582,8 @@ def test_chatflow_csv_propagates_unretryable_or_exhausted_page_errors(
             errors.append(wrapped)
             raise wrapped
 
-    monkeypatch.setattr(conversation_repository, "_log_export_requires_standby", lambda _session: confirmed_standby)
-    monkeypatch.setattr(conversation_repository, "sleep", retry_delays.append)
+    monkeypatch.setattr(log_export_queries, "_log_export_requires_standby", lambda _session: confirmed_standby)
+    monkeypatch.setattr(log_export_queries, "sleep", retry_delays.append)
     event.listen(sqlite_engine, "before_cursor_execute", interrupt_page)
     try:
         with pytest.raises(OperationalError, match=message) as failure:
