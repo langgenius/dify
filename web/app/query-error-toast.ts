@@ -78,6 +78,19 @@ function pruneExpiredQueryToasts(now: number) {
   }
 }
 
+const isAbortError = (error: unknown) =>
+  error instanceof DOMException && error.name === 'AbortError'
+
+/**
+ * A request that got no response: the network failed (`fetch` rejects with a `TypeError`) or it
+ * timed out. A cancellation is not one.
+ */
+function isTransportFailure(error: unknown): error is Error {
+  if (isAbortError(error) || isErrorHandled(error)) return false
+  if (error instanceof Error && error.name === 'TimeoutError') return true
+  return error instanceof TypeError
+}
+
 /**
  * Waits until React has rendered the observers' update: the cache reports a failure before it
  * notifies them, and their notification is itself scheduled on a macrotask.
@@ -98,18 +111,25 @@ function afterObserversRender(callback: () => void) {
 function reportQueryError(error: unknown, query: AnyQuery) {
   if (query.meta?.errorToast === false) return
   const requestError = getReportableRequestError(error)
-  if (!requestError) return
+  const transportFailure = !requestError && isTransportFailure(error) ? error : undefined
+  const reported = requestError ?? transportFailure
+  if (!reported) return
   const errorMessage = query.meta?.errorMessage
   // A read nothing explains stays with its owner's error state, and with a caller that rethrows
-  // it, such as a mutation awaiting this query, which reports it with its own text.
-  if (!errorMessage && !isExplainedRequestError(requestError)) return
+  // it, such as a mutation awaiting this query, which reports it with its own text. A network
+  // failure or a timeout always explains itself with text for its kind.
+  if (requestError && !errorMessage && !isExplainedRequestError(requestError)) return
   const report = () => {
     // A claimed error is on screen; a caller that rethrew it has already reported it.
-    if (isErrorHandled(requestError)) return
+    if (isErrorHandled(reported)) return
     // Once reported, a caller that rethrows the error must not report it again.
-    markErrorHandled(requestError)
+    markErrorHandled(reported)
     withRequestErrorTranslator((t) => {
-      const { message } = requestErrorMessage(requestError, t, errorMessage)
+      const message = requestError
+        ? requestErrorMessage(requestError, t, errorMessage).message
+        : t
+          ? describeRequestError(reported, { t })
+          : actionFailedMessage()
 
       const now = Date.now()
       pruneExpiredQueryToasts(now)
@@ -131,9 +151,6 @@ function toastReportableRequestError(requestError: ORPCError<string, unknown>, f
     toast.error(requestErrorMessage(requestError, t, fallback).message),
   )
 }
-
-const isAbortError = (error: unknown) =>
-  error instanceof DOMException && error.name === 'AbortError'
 
 /**
  * Reports a failure of a user action that no mutation reports, such as a request awaited outside

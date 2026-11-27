@@ -211,6 +211,64 @@ describe('query cache error toasts', () => {
   })
 
   it.each([
+    ['network failure', () => new TypeError('Failed to fetch'), 'requestErrors.generic.network'],
+    [
+      'timeout',
+      () => new DOMException('The operation timed out.', 'TimeoutError'),
+      'requestErrors.generic.timeout',
+    ],
+  ])(
+    'reports a background refetch that fails with a %s with text for its kind',
+    async (_kind, error, text) => {
+      await loadThenFail(error())
+
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith(text)
+    },
+  )
+
+  it('reports a poll that keeps failing offline once per window', async () => {
+    const queryKey = nextKey()
+    const queryFn = vi
+      .fn()
+      .mockResolvedValueOnce('cached')
+      .mockImplementation(() => Promise.reject(new TypeError('Failed to fetch')))
+    await queryClient.query({ queryKey, queryFn })
+    await queryClient.refetchQueries({ queryKey })
+    await afterReport()
+    vi.setSystemTime(Date.now() + 1000)
+    await queryClient.refetchQueries({ queryKey })
+    await afterReport()
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.network')
+  })
+
+  it('reports an unclaimed first load that cannot reach the server after its observers render', async () => {
+    await expect(
+      queryClient.query({
+        queryKey: nextKey(),
+        queryFn: () => Promise.reject(new TypeError('Failed to fetch')),
+      }),
+    ).rejects.toBeInstanceOf(TypeError)
+
+    expect(toast.error).not.toHaveBeenCalled()
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.network'),
+    )
+  })
+
+  it('does not report a network failure on a first load its owner claimed', async () => {
+    const error = new TypeError('Failed to fetch')
+    await expect(
+      queryClient.query({ queryKey: nextKey(), queryFn: () => Promise.reject(error) }),
+    ).rejects.toBe(error)
+    markErrorHandled(error)
+
+    await afterReport()
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['the request was aborted', new DOMException('Aborted', 'AbortError'), undefined],
     ['meta opts out', httpError(500, { message: 'Unavailable' }), { errorToast: false as const }],
     ['the session expired', httpError(401, { message: 'Unauthorized' }), undefined],
     ['the body has no message', httpError(502), undefined],
