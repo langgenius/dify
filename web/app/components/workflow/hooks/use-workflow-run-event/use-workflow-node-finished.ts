@@ -6,16 +6,18 @@ import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/compo
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowNodeFinished = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowNodeFinished = useCallback(
     (params: NodeFinishedResponse) => {
       const { data } = params
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
+      const { getNodes, edges } = store.getState()
       const nodes = getNodes()
       setWorkflowRunningData(
         produce(workflowRunningData!, (draft) => {
@@ -50,7 +52,7 @@ export const useWorkflowNodeFinished = () => {
             currentNode.data._runningBranchId = data?.outputs?.__action_id
         }
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       const newEdges = produce(edges, (draft) => {
         const incomeEdges = draft.filter((edge) => {
           return edge.target === data.node_id
@@ -62,9 +64,9 @@ export const useWorkflowNodeFinished = () => {
           }
         })
       })
-      setEdges(newEdges)
+      collaborativeWorkflow.setEdges(newEdges, false)
     },
-    [store, workflowStore],
+    [collaborativeWorkflow, store, workflowStore],
   )
 
   return {

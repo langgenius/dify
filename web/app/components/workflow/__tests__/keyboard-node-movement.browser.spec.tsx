@@ -11,10 +11,6 @@ import { createWorkflowStore } from '../store/workflow'
 import 'reactflow/dist/style.css'
 import '../style.css'
 
-// boundary: draft sync ends in a network save.
-vi.mock('../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
-}))
 // boundary: collaboration broadcasts over a realtime connection.
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {

@@ -46,7 +46,7 @@ const VarPanel: FC<Props> = ({ varList, message_files }) => {
                 <span className="truncate">{label}</span>
                 <span className="shrink-0 opacity-60">{'}}'}</span>
               </div>
-              <div className="pl-2.5 whitespace-pre-wrap text-text-secondary">{value}</div>
+              <div className="ps-2.5 whitespace-pre-wrap text-text-secondary">{value}</div>
             </div>
           ))}
 
@@ -59,7 +59,7 @@ const VarPanel: FC<Props> = ({ varList, message_files }) => {
                 {message_files.map((url, index) => (
                   <div
                     key={index}
-                    className="ml-2.5 size-16 cursor-pointer rounded-lg bg-cover bg-center bg-no-repeat"
+                    className="ms-2.5 size-16 cursor-pointer rounded-lg bg-cover bg-center bg-no-repeat"
                     style={{ backgroundImage: `url(${url})` }}
                     onClick={() => setImagePreviewUrl(url)}
                   />

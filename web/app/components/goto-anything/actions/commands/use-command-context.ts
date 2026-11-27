@@ -1,7 +1,9 @@
 import type { CommandContext } from './types'
 import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { canConfigureModelsAtom } from '@/app/components/header/account-setting/model-provider-page/atoms'
 import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
@@ -25,13 +27,13 @@ export function useCommandContext(
   const { setPreference: setThemePreference } = useThemePreference()
   const { push, refresh } = useRouter()
   const getDocsHomeUrl = useDocLink()
+  const canConfigureModels = useAtomValue(canConfigureModelsAtom)
   const { appId: routeAppId } = useParams<{ appId?: string }>()
   // Only the app workflow page has an app id param that names an app; other routes reuse the
   // `appId` segment for different resources (for example installed apps).
   const { data: appDetail } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
-      input: routeAppId ? { params: { app_id: routeAppId } } : skipToken,
-      enabled: isWorkflowPage,
+      input: isWorkflowPage && routeAppId ? { params: { app_id: routeAppId } } : skipToken,
     }),
   )
   const appId = appDetail?.id
@@ -42,6 +44,7 @@ export function useCommandContext(
       t,
       locale: i18n.language,
       agentsAvailable,
+      canConfigureModels,
       skillsAvailable,
       currentApp:
         isWorkflowPage && appId && (appMode === 'workflow' || appMode === 'advanced-chat')
@@ -65,6 +68,7 @@ export function useCommandContext(
       t,
       i18n.language,
       agentsAvailable,
+      canConfigureModels,
       skillsAvailable,
       isWorkflowPage,
       appId,

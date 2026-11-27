@@ -117,7 +117,7 @@ const Editor: FC<Props> = ({
           <div
             className={cn(
               'absolute z-10',
-              insertVarTipToLeft ? 'top-1.5 -left-3' : '-top-2.25 right-1',
+              insertVarTipToLeft ? '-inset-s-3 top-1.5' : 'inset-e-1 -top-2.25',
             )}
           >
             <Tooltip>

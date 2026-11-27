@@ -35,8 +35,8 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: vi.fn() }),
+vi.mock('@/service/common-queries', () => ({
+  logoutMutationOptions: () => ({ mutationFn: vi.fn() }),
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -115,10 +115,9 @@ describe('EducationApplyPage billing boundary', () => {
     await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
     await waitFor(() => {
-      expect(mockGetSubscription).toHaveBeenCalledWith(
-        { query: { plan: 'professional', interval: 'year' } },
-        { context: { silent: true } },
-      )
+      expect(mockGetSubscription).toHaveBeenCalledWith({
+        query: { plan: 'professional', interval: 'year' },
+      })
     })
   })
 

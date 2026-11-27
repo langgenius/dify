@@ -28,6 +28,7 @@ import {
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -533,7 +534,6 @@ function RunEvaluationForm({
   const { t } = useTranslation(['knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
-  const queryClient = useQueryClient()
   const [mode, setMode] = useState<RetrievalMode>('fast')
   const activeCountQuery = useActiveGoldenQuestionCount(knowledgeSpaceId)
   // A retry after an unknown outcome must replay the same operation, so the key stays bound to
@@ -541,7 +541,7 @@ function RunEvaluationForm({
   const submissionRef = useRef<{ idempotencyKey: string; mode: RetrievalMode }>(undefined)
   const createMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -549,7 +549,7 @@ function RunEvaluationForm({
     const submission =
       submissionRef.current?.mode === mode
         ? submissionRef.current
-        : { idempotencyKey: crypto.randomUUID(), mode }
+        : { idempotencyKey: uuid4(), mode }
     submissionRef.current = submission
     try {
       const run = await createMutation.mutateAsync({
@@ -561,21 +561,6 @@ function RunEvaluationForm({
         params: { control_space_id: knowledgeSpaceId },
       })
       submissionRef.current = undefined
-      const detailOptions =
-        consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions(
-          {
-            context: { silent: true },
-            input: { params: { control_space_id: knowledgeSpaceId, run_id: run.id } },
-          },
-        )
-      queryClient.setQueryData(detailOptions.queryKey, (current) => keepLatestReplay(current, run))
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
-        refetchType: 'none',
-      })
       onClose()
       onRunStarted(run.id)
       toast.success(t(($) => $['qualityPage.evaluation.startedToast'], { ns: 'knowledgeQuality' }))

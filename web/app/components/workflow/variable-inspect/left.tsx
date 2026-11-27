@@ -46,7 +46,7 @@ const Left = ({ currentNodeVar, handleVarSelect }: Props) => {
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
-      <div className="flex shrink-0 items-center justify-between gap-1 pt-2 pr-1 pl-4">
+      <div className="flex shrink-0 items-center justify-between gap-1 ps-4 pe-1 pt-2">
         <div className="truncate system-sm-semibold-uppercase text-text-primary">
           {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
         </div>

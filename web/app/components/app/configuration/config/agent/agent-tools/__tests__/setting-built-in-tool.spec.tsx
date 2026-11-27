@@ -22,7 +22,7 @@ const api = vi.hoisted(() => ({
       typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.tools.get
     >(),
   credentials: vi.fn<
-    (url: string) => Promise<{
+    (input: { params: { provider: string } }) => Promise<{
       supported_credential_types: string[]
       credentials: Credential[]
       is_oauth_custom_client_enabled: boolean
@@ -31,21 +31,17 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': api.credentials,
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtin,
       'workspaces.current.toolProvider.api.tools.get': api.custom,
       'workspaces.current.toolProvider.workflow.tools.get': api.workflow,
     }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: api.credentials,
-}))
-
 const tool = zToolApiEntity.parse({
   name: 'search',
   author: 'Team',
@@ -96,9 +92,9 @@ beforeEach(() => {
   api.builtin.mockReset().mockResolvedValue([tool])
   api.custom.mockReset().mockResolvedValue([tool])
   api.workflow.mockReset().mockResolvedValue([tool])
-  api.credentials.mockReset().mockImplementation(async (url) => {
-    if (url !== '/workspaces/current/tool-provider/builtin/vendor/provider/credential/info')
-      throw new Error(`Unexpected credential request: ${url}`)
+  api.credentials.mockReset().mockImplementation(async ({ params }) => {
+    if (params.provider !== 'vendor/provider')
+      throw new Error(`Unexpected credential provider: ${params.provider}`)
     return {
       supported_credential_types: ['api-key'],
       is_oauth_custom_client_enabled: false,

@@ -13,10 +13,12 @@ import pytest
 from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import Engine as _workflow_agent_preview_identity_Engine
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, update
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine as _workflow_service_Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql.elements import ClauseElement
+from typing_extensions import TypedDict
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -33,8 +35,9 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
+from extensions.ext_redis import RedisClientWrapper
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
@@ -79,7 +82,12 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services import workflow_service as workflow_service_module
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
-from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.errors.workflow_service import (
+    DraftWorkflowDeletionError,
+    WorkflowDraftInitializationBusyError,
+    WorkflowInUseError,
+)
+from services.workflow import draft_creation_lock
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
@@ -88,9 +96,8 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
-from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """
@@ -103,6 +110,224 @@ This test suite covers:
 - Version management
 - Execution triggering
 """
+
+
+class _SessionPolicyGraph(TypedDict):
+    nodes: list[dict[str, object]]
+    edges: list[dict[str, object]]
+
+
+def test_publish_locks_and_refreshes_the_latest_draft_graph(
+    sqlite_session: Session, sqlite_engine: _workflow_service_Engine, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    service = WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    app = make_app(mode=AppMode.ADVANCED_CHAT)
+    account = make_account()
+    old_graph: _SessionPolicyGraph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "Before policy save"}}],
+        "edges": [],
+    }
+    new_graph: _SessionPolicyGraph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "After policy save"}}],
+        "edges": [],
+    }
+    draft = make_workflow(workflow_id="draft-locked", graph=old_graph)
+    sqlite_session.add_all([app, account, draft])
+    sqlite_session.commit()
+    assert draft.graph_dict == old_graph
+    sqlite_session.execute(
+        update(Workflow)
+        .where(Workflow.id == draft.id)
+        .values(graph=json.dumps(new_graph))
+        .execution_options(synchronize_session=False)
+    )
+    assert draft.graph_dict == old_graph
+    locking_reads: list[str] = []
+
+    def record_workflow_lock(state: ORMExecuteState) -> None:
+        if state.is_select and isinstance(state.statement, ClauseElement):
+            statement = str(state.statement.compile(dialect=postgresql.dialect()))
+            if "FROM workflows" in statement and "FOR UPDATE" in statement:
+                locking_reads.append(statement)
+
+    event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
+    try:
+        # This test owns the publication transaction, not process-global signal
+        # subscribers that other suites may import with their own Flask bindings.
+        with workflow_service_module.app_published_workflow_was_updated.muted():
+            published = service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+    finally:
+        event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
+    assert published.graph_dict == new_graph
+    assert draft.graph_dict == new_graph
+    assert len(locking_reads) == 1
+
+
+def test_restore_locks_both_the_source_and_destination_draft(
+    sqlite_session: Session, sqlite_engine: _workflow_service_Engine
+) -> None:
+    service = WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    app = make_app(mode=AppMode.ADVANCED_CHAT)
+    account = make_account()
+    source = make_workflow(workflow_id="restore-source", version="published", graph={"nodes": [], "edges": []})
+    draft = make_workflow(workflow_id="restore-draft")
+    sqlite_session.add_all([app, account, source, draft])
+    sqlite_session.commit()
+    locking_reads: list[str] = []
+
+    def record_workflow_lock(state: ORMExecuteState) -> None:
+        if state.is_select and isinstance(state.statement, ClauseElement):
+            statement = str(state.statement.compile(dialect=postgresql.dialect()))
+            if "FROM workflows" in statement and "FOR UPDATE" in statement:
+                locking_reads.append(statement)
+
+    event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
+    try:
+        with workflow_service_module.app_draft_workflow_was_synced.muted():
+            restored = service.restore_published_workflow_to_draft(
+                app_model=app, workflow_id=source.id, account=account, session=sqlite_session
+            )
+    finally:
+        event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
+    assert restored.id == draft.id
+    assert restored.graph_dict == source.graph_dict
+    assert len(locking_reads) == 2
+
+
+def test_draft_sync_rejects_a_hash_when_the_draft_is_missing(sqlite_session_factory: sessionmaker[Session]) -> None:
+    """An update request cannot recreate a missing draft from its old snapshot."""
+    service = WorkflowService(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        app = make_app(mode=AppMode.WORKFLOW)
+        session.add(app)
+        session.flush()
+        with pytest.raises(WorkflowHashNotEqualError):
+            service.sync_draft_workflow(
+                app_model=app,
+                graph={"nodes": [], "edges": []},
+                features={},
+                unique_hash="old-hash",
+                account=make_account(),
+                environment_variables=[],
+                conversation_variables=[],
+                session=session,
+                serialize_creation=True,
+                commit=False,
+                sync_agent_bindings=False,
+            )
+        assert service.get_draft_workflow(app, session=session) is None
+
+
+def test_first_draft_save_aborts_when_redis_lock_times_out(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    """An expired wait returns a retryable failure and leaves the draft absent."""
+    service = WorkflowService(sqlite_session_factory)
+    redis, commands = redis_transport
+    monkeypatch.setattr(draft_creation_lock, "redis_client", redis)
+    monkeypatch.setattr(draft_creation_lock, "_DRAFT_CREATION_WAIT_SECONDS", 0)
+    with sqlite_session_factory.begin() as session:
+        app = make_app(mode=AppMode.WORKFLOW)
+        session.add(app)
+        session.flush()
+        with pytest.raises(WorkflowDraftInitializationBusyError):
+            service.sync_draft_workflow(
+                app_model=app,
+                graph={"nodes": [], "edges": []},
+                features={},
+                unique_hash=None,
+                account=make_account(),
+                environment_variables=[],
+                conversation_variables=[],
+                session=session,
+                serialize_creation=True,
+            )
+        assert service.get_draft_workflow(app, session=session) is None
+        commands.assert_called_once()
+        command, key, *_token_and_options = commands.call_args.args
+        assert command == "SET"
+        assert key == f"workflow:draft-create:{app.tenant_id}:{app.id}"
+        assert "NX" in _token_and_options
+        assert 60_000 in _token_and_options
+
+
+def test_draft_sync_checks_the_hash_against_the_refreshed_draft(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """A cached workflow from before another writer committed cannot authorize an update."""
+    app = make_app(mode=AppMode.WORKFLOW)
+    draft = make_workflow()
+    with sqlite_session_factory.begin() as seed_session:
+        seed_session.add_all([app, draft])
+
+    service = WorkflowService(sqlite_session_factory)
+    latest_graph = {"nodes": [{"id": "latest", "data": {"type": "start"}}], "edges": []}
+    with sqlite_session_factory() as stale_session:
+        cached_draft = stale_session.get(Workflow, draft.id)
+        assert cached_draft is not None
+        stale_hash = cached_draft.unique_hash
+
+        with sqlite_session_factory.begin() as other_writer:
+            other_writer.execute(update(Workflow).where(Workflow.id == draft.id).values(graph=json.dumps(latest_graph)))
+
+        with pytest.raises(WorkflowHashNotEqualError):
+            service.sync_draft_workflow(
+                app_model=app,
+                graph={"nodes": [], "edges": []},
+                features={},
+                unique_hash=stale_hash,
+                account=make_account(),
+                environment_variables=[],
+                conversation_variables=[],
+                session=stale_session,
+                serialize_creation=True,
+                commit=False,
+                sync_agent_bindings=False,
+            )
+        assert cached_draft.graph_dict == latest_graph
+        assert not stale_session.is_modified(cached_draft)
+
+
+def test_first_draft_save_rechecks_after_taking_the_redis_lock(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    """A draft committed while this request was waiting wins the first save."""
+    service = WorkflowService(sqlite_session_factory)
+    app = make_app(mode=AppMode.WORKFLOW)
+    winner = make_workflow(workflow_id="winner", app_id=app.id, tenant_id=app.tenant_id)
+    with sqlite_session_factory.begin() as seed_session:
+        seed_session.add(app)
+
+    redis, commands = redis_transport
+    monkeypatch.setattr(draft_creation_lock, "redis_client", redis)
+
+    def dispatch_redis(command: str, *_args: object, **_kwargs: object) -> int:
+        if command == "SET":
+            with sqlite_session_factory.begin() as other_writer:
+                other_writer.add(winner)
+        return 1
+
+    commands.side_effect = dispatch_redis
+    with sqlite_session_factory() as session, pytest.raises(WorkflowHashNotEqualError):
+        service.sync_draft_workflow(
+            app_model=app,
+            graph={"nodes": [], "edges": []},
+            features={},
+            unique_hash=None,
+            account=make_account(),
+            environment_variables=[],
+            conversation_variables=[],
+            session=session,
+            serialize_creation=True,
+        )
+    with sqlite_session_factory() as reader:
+        assert list(reader.scalars(select(Workflow.id))) == [winner.id]
+    assert [call.args[0] for call in commands.call_args_list] == ["SET", "EVALSHA"]
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -1477,30 +1702,29 @@ class TestWorkflowServiceCases:
             ):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
-        def test_publish_workflow_trigger_limit_exceeded(
+        @pytest.mark.parametrize(
+            ("trigger_types", "exceeds_limit"),
+            [
+                (["trigger-webhook", "trigger-schedule"], False),
+                (["trigger-webhook", "trigger-schedule", "trigger-plugin"], True),
+            ],
+        )
+        def test_publish_workflow_enforces_sandbox_trigger_limit(
             self,
             workflow_service: WorkflowService,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
+            trigger_types: list[str],
+            exceeds_limit: bool,
         ):
+            """Cloud Sandbox may publish up to two trigger nodes; a third one is rejected."""
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-            """
-            Test publish_workflow raises error when trigger node limit exceeded in SANDBOX plan.
-
-            Free/sandbox tier users have limits on the number of trigger nodes.
-            This prevents resource abuse while allowing users to test the feature.
-            The limit is enforced at publish time, not during draft editing.
-            """
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
-            # Create graph with 3 trigger nodes (exceeds SANDBOX limit of 2)
-            # Trigger nodes enable event-driven automation which consumes resources
             graph = {
                 "nodes": [
-                    {"id": "trigger-1", "data": {"type": "trigger-webhook"}},
-                    {"id": "trigger-2", "data": {"type": "trigger-schedule"}},
-                    {"id": "trigger-3", "data": {"type": "trigger-plugin"}},
+                    {"id": f"trigger-{index}", "data": {"type": trigger_type}}
+                    for index, trigger_type in enumerate(trigger_types)
                 ],
                 "edges": [],
             }
@@ -1509,12 +1733,16 @@ class TestWorkflowServiceCases:
             sqlite_session.commit()
 
             with (
-                patch("services.workflow_service.BillingService") as mock_billing_service,
+                patch("services.workflow_service.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+                patch("services.workflow_service.app_published_workflow_was_updated"),
             ):
-                mock_billing_service.get_info.return_value = builders.subscription_info("sandbox")
-
-                with pytest.raises(TriggerNodeLimitExceededError):
-                    workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                if exceeds_limit:
+                    with pytest.raises(TriggerNodeLimitExceededError) as exc_info:
+                        workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert (exc_info.value.count, exc_info.value.limit) == (3, 2)
+                else:
+                    workflow = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert workflow.version != Workflow.VERSION_DRAFT
 
         # ==================== Version Management Tests ====================
         # These tests verify listing and managing published workflow versions

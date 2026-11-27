@@ -236,7 +236,7 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
       </div>
       {/* Preview */}
       <div className="h-full min-w-0 flex-1">
-        <div className="flex h-full flex-col pt-2 pl-2">
+        <div className="flex h-full flex-col ps-2 pt-2">
           <ChunkPreview
             dataSourceType={lastRunData!.datasource_type}
             localFiles={files}

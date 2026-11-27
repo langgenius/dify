@@ -26,12 +26,15 @@ const requests = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.autoUpgrade.fetch.get': requests.getAutoUpgrade,
       'workspaces.current.plugin.permission.fetch.get': requests.getPermission,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.autoUpgrade.change.post': requests.autoUpgrade,
       'workspaces.current.plugin.permission.change.post': requests.permission,
     }),

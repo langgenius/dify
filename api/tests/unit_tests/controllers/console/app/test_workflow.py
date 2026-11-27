@@ -7,20 +7,22 @@ from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import NoReturn
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
+from werkzeug.exceptions import HTTPException, NotFound, ServiceUnavailable, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
-from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync, TriggerNodeLimitExceededError
 from controllers.console.app.workflow import (
     ConvertToWorkflowApi,
     EvaluationPublishedWorkflowApi,
@@ -28,6 +30,7 @@ from controllers.console.app.workflow import (
 )
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
@@ -44,6 +47,7 @@ from models.model import AppMode, IconType
 from models.workflow import Workflow, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
+from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_app
@@ -268,6 +272,38 @@ class TestWorkflowCases:
         assert persisted_app.workflow_id is None
 
     @staticmethod
+    def test_publish_workflow_reports_the_trigger_node_limit(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+
+        class OverLimitWorkflowService:
+            def publish_workflow(self, **_kwargs: object) -> NoReturn:
+                raise TriggerNodeLimitExceededServiceError(count=3, limit=2)
+
+        monkeypatch.setattr(workflow_module, "WorkflowService", OverLimitWorkflowService)
+        current_user = _workflow_Account(name="Test", email="test@example.com")
+        current_user.id = "account-1"
+        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+            with pytest.raises(TriggerNodeLimitExceededError) as exc_info:
+                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                    workflow_module.PublishedWorkflowApi(),
+                    workflow_module.PublishWorkflowPayload.model_validate({}),
+                    current_user,
+                    app_model,
+                )
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.data == {
+            "code": "trigger_node_limit_exceeded",
+            "message": TriggerNodeLimitExceededError.description,
+            "status": 403,
+            "details": {"count": 3, "limit": 2},
+        }
+
+    @staticmethod
     @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
     def test_delete_workflow_retires_candidates_only_after_transaction_exit(
         app: Flask,
@@ -413,6 +449,7 @@ class TestWorkflowCases:
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+        assert sync_draft_workflow.call_args.kwargs["serialize_creation"] is True
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
@@ -620,9 +657,23 @@ class TestWorkflowCases:
             )
 
     @staticmethod
-    def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _raise(*_args, **_kwargs):
-            raise workflow_module.WorkflowHashNotEqualError()
+    @pytest.mark.parametrize(
+        ("draft_hash", "service_error", "http_error"),
+        [
+            ("stale", workflow_module.WorkflowHashNotEqualError(), DraftWorkflowNotSync),
+            (None, workflow_module.WorkflowDraftInitializationBusyError(), ServiceUnavailable),
+        ],
+        ids=["stale-hash", "initialization-busy"],
+    )
+    def test_sync_draft_workflow_reports_save_conflicts(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        draft_hash: str | None,
+        service_error: Exception,
+        http_error: type[HTTPException],
+    ) -> None:
+        def _raise(*_args: object, **_kwargs: object) -> NoReturn:
+            raise service_error
 
         service = SimpleNamespace(sync_draft_workflow=_raise)
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
@@ -633,9 +684,9 @@ class TestWorkflowCases:
         with app.test_request_context(
             "/apps/app/workflows/draft",
             method="POST",
-            json={"graph": {}, "features": {}, "hash": "h"},
+            json={"graph": {}, "features": {}, "hash": draft_hash},
         ):
-            with pytest.raises(DraftWorkflowNotSync):
+            with pytest.raises(http_error):
                 handler(api, _account(), app_model=_workflow_app())
 
     @staticmethod
@@ -1170,18 +1221,25 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_workflow_online_users_filters_inaccessible_workflow(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        unbound_session: Session,
+        account_application_services: ApplicationServices,
     ) -> None:
         app_id_1 = "11111111-1111-1111-1111-111111111111"
         app_id_2 = "22222222-2222-2222-2222-222222222222"
-        signed_avatar_url = "https://files.example.com/signed/avatar-1"
-        signed_ids: list[str] = []
+        current_avatar_urls = {
+            "u-1": "https://console.example.com/accounts/u-1/avatar-1",
+            "u-2": "https://console.example.com/accounts/u-2/avatar-2",
+        }
+        resolve_current_avatars = mocker.patch.object(
+            account_application_services.accounts.avatar,
+            "resolve_current_for_accounts",
+            return_value=current_avatar_urls,
+        )
         queries: list[tuple[list[str], str, Session]] = []
         actors: list[tuple[str, str]] = []
-
-        def sign_avatar(file_id: str) -> str:
-            signed_ids.append(file_id)
-            return signed_avatar_url
 
         class WorkflowQueries:
             def get_tenant_app_maintainers(
@@ -1197,7 +1255,7 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
         monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
+        monkeypatch.setattr(workflow_module, "application_services", lambda: account_application_services)
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
 
         redis_result = [
@@ -1273,12 +1331,12 @@ class TestWorkflowCases:
                         {
                             "user_id": "u-1",
                             "username": "Alice",
-                            "avatar": signed_avatar_url,
+                            "avatar": current_avatar_urls["u-1"],
                         },
                         {
                             "user_id": "u-2",
                             "username": "Bob",
-                            "avatar": None,
+                            "avatar": current_avatar_urls["u-2"],
                         },
                     ],
                 }
@@ -1287,7 +1345,7 @@ class TestWorkflowCases:
         assert pipeline_transactions == [False]
         assert redis_keys == [f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"]
         assert executions == [True]
-        assert signed_ids == ["avatar-file-id"]
+        resolve_current_avatars.assert_called_once_with(account_ids=("u-1", "u-2"))
         assert queries == [([app_id_1, app_id_2], "tenant-1", unbound_session)]
         assert actors == [("tenant-1", "account-1")]
 
@@ -1328,6 +1386,68 @@ class TestWorkflowCases:
         assert redis_pipeline_factory.call_count == 2
         assert first_pipeline.hgetall.call_count == workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
         assert second_pipeline.hgetall.call_count == 1
+
+    @staticmethod
+    def test_workflow_online_users_keeps_all_users_after_avatar_resolution_failure(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        unbound_session: Session,
+        account_application_services: ApplicationServices,
+    ) -> None:
+        app_id = "11111111-1111-1111-1111-111111111111"
+        resolve_current_avatars = mocker.patch.object(
+            account_application_services.accounts.avatar,
+            "resolve_current_for_accounts",
+            side_effect=RuntimeError("avatar lookup failed"),
+        )
+        monkeypatch.setattr(workflow_module, "application_services", lambda: account_application_services)
+
+        class WorkflowQueries:
+            def get_tenant_app_maintainers(
+                self, app_ids: list[str], tenant_id: str, *, session: Session
+            ) -> dict[str, str | None]:
+                assert tenant_id == "tenant-1"
+                assert session is unbound_session
+                return dict.fromkeys(app_ids)
+
+        monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+        monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
+
+        pipeline_factory = mocker.patch.object(workflow_module.redis_client, "pipeline")
+        pipeline_factory.return_value.execute.return_value = [
+            {
+                b"sid-1": json.dumps({"user_id": "user-1", "username": "Alice", "avatar": "avatar-file-id-1"}),
+                b"sid-2": json.dumps({"user_id": "user-2", "username": "Bob", "avatar": "avatar-file-id-2"}),
+            }
+        ]
+
+        api = workflow_module.WorkflowOnlineUsersApi()
+        handler = inspect.unwrap(api.post)
+        with app.test_request_context(
+            "/apps/workflows/online-users",
+            method="POST",
+            json={"app_ids": [app_id]},
+        ):
+            args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": [app_id]})
+            actor = _account()
+            actor.id = "account-1"
+            response = handler(api, args, "tenant-1", actor)
+
+        assert response == {
+            "data": [
+                {
+                    "app_id": app_id,
+                    "users": [
+                        {"user_id": "user-1", "username": "Alice", "avatar": None},
+                        {"user_id": "user-2", "username": "Bob", "avatar": None},
+                    ],
+                }
+            ]
+        }
+        resolve_current_avatars.assert_called_once_with(account_ids=("user-1", "user-2"))
+        pipeline_factory.assert_called_once_with(transaction=False)
 
     @staticmethod
     def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

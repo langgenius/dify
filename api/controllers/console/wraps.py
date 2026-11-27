@@ -27,7 +27,6 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.billing_service import BillingService
 from services.entities.feature_entities import LicenseStatus
 from services.errors.billing import BillingError
 from services.feature_service import FeatureService
@@ -170,12 +169,15 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
     """
 
     try:
-        return BillingService.is_cloud_paid_plan(tenant_id)
+        plan = FeatureService.get_workspace_plan(tenant_id)
     except BillingError as exc:
         raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+    return plan is not None and plan.is_paid
 
 
 def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Run the view only when Evaluation is available on this deployment, or return 404."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if not FeatureService.is_evaluation_supported():
@@ -274,8 +276,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
             if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or resource != "add_segment":
                 return view(*args, **kwargs)
 
-            features = FeatureService.get_features(current_tenant_id, exclude_vector_space=True)
-            if features.billing.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(current_tenant_id) == CloudPlan.SANDBOX:
                 abort(
                     403,
                     "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",

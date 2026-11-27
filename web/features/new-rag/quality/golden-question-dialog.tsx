@@ -25,7 +25,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 
 type DialogMode = 'create' | 'edit' | 'promote'
 type MatchPolicy = GoldenQuestionDraft['matchPolicy']
@@ -63,7 +63,15 @@ export function GoldenQuestionDialog({
   sessionKey,
 }: GoldenQuestionDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      // A pending save keeps the dialog open, so its failure has somewhere to show.
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && pending) return
+        onOpenChange(nextOpen)
+      }}
+      disablePointerDismissal
+    >
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
         <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
@@ -106,7 +114,7 @@ function GoldenQuestionDialogSession({
   const [matchPolicy, setMatchPolicy] = useState(initialValue.matchPolicy)
   const [tags, setTags] = useState(initialValue.tags.join(', '))
   const [questionInvalid, setQuestionInvalid] = useState(false)
-  const [matchError, setMatchError] = useState<'unavailable' | 'unknown'>()
+  const [matchError, setMatchError] = useState<string>()
   const mergeEvidenceOptions = (options: readonly GoldenQuestionEvidenceOption[]) => {
     setMatchedEvidenceByNodeId((current) => {
       const next = new Map(current)
@@ -119,7 +127,12 @@ function GoldenQuestionDialogSession({
   )
   for (const [nodeId, option] of matchedEvidenceByNodeId) evidenceByNodeId.set(nodeId, option)
   const matchMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches.post.mutationOptions(
+      {
+        // The evidence search field shows the failure itself.
+        meta: { errorToast: false },
+      },
+    ),
   )
   const title =
     mode === 'create'
@@ -159,7 +172,11 @@ function GoldenQuestionDialogSession({
       mergeEvidenceOptions(result.candidates)
       setEvidenceQuery('')
     } catch (error) {
-      setMatchError(getHttpErrorStatus(error) === 503 ? 'unavailable' : 'unknown')
+      setMatchError(
+        getHttpErrorStatus(error) === 503
+          ? t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })
+          : (getRequestErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' })),
+      )
     }
   }
 
@@ -177,6 +194,7 @@ function GoldenQuestionDialogSession({
       <div className="relative z-1 flex shrink-0 items-center justify-between bg-components-panel-bg px-6 pt-6 pb-5">
         <DialogTitle>{title}</DialogTitle>
         <DialogClose
+          disabled={pending}
           render={
             <IconButton
               size="lg"
@@ -319,13 +337,7 @@ function GoldenQuestionDialogSession({
                 {t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
               </Button>
             </div>
-            {matchError && (
-              <FieldError match>
-                {matchError === 'unavailable'
-                  ? t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })
-                  : t(($) => $.unknownError, { ns: 'dataset' })}
-              </FieldError>
-            )}
+            {matchError && <FieldError match>{matchError}</FieldError>}
             {matchMutation.isSuccess && searchCandidates.length === 0 && (
               <p className="mt-2 body-xs-regular text-text-tertiary">
                 {t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })}

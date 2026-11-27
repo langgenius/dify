@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from extensions.application_services.agent import build_agent_app_services
+from extensions.application_services.agent import build_agent_app_repository, build_agent_app_services
 from machinery.context import RequestContext
 from models.agent import (
     Agent,
@@ -64,7 +64,9 @@ def test_access_only_lists_current_published_workflow_references(
         )
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        rbac_members=rbac_domain.rbac.members,
+        apps=build_agent_app_repository(database_client=sqlite_session_factory),
     ).access
     context = RequestContext("request", None, "account", "tenant-1")
     [reference] = service.list_referencing_workflows(context, "agent")
@@ -101,7 +103,9 @@ def test_access_requires_public_agent_app(
     sqlite_session.add_all([make_app(app_id="agent-app", mode=AppMode.AGENT), agent])
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        rbac_members=rbac_domain.rbac.members,
+        apps=build_agent_app_repository(database_client=sqlite_session_factory),
     ).access
     with pytest.raises(AgentAppNotFoundError):
         service.list_referencing_workflows(RequestContext("request", None, "account", "tenant-1"), "agent")

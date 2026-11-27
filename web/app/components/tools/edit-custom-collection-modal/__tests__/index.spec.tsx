@@ -1,11 +1,5 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-  act,
-  fireEvent,
-  render as renderWithoutPricing,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -13,6 +7,7 @@ import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-dat
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EditCustomCollectionModal from '../index'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
@@ -30,9 +25,9 @@ vi.mock('@/context/i18n', async () => {
   }
 })
 
-function render(...args: Parameters<typeof renderWithoutPricing>) {
+function render(...args: Parameters<typeof renderWithConsoleQuery>) {
   args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
-  return renderWithoutPricing(...args)
+  return renderWithConsoleQuery(...args)
 }
 
 describe('EditCustomCollectionModal', () => {
@@ -365,9 +360,8 @@ describe('EditCustomCollectionModal', () => {
       const client = new QueryClient()
       client.setQueryData(emojiCatalogOptions.queryKey, [])
       render(
-        <QueryClientProvider client={client}>
-          <EditCustomCollectionModal payload={undefined} onHide={mockOnHide} onAdd={mockOnAdd} />
-        </QueryClientProvider>,
+        <EditCustomCollectionModal payload={undefined} onHide={mockOnHide} onAdd={mockOnAdd} />,
+        { queryClient: client },
       )
       await user.type(
         screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'),

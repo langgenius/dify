@@ -3,6 +3,8 @@ import { act, waitFor } from '@testing-library/react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { createRagPipelineSliceSlice } from '../../store'
 import { usePipelineRefreshDraft } from '../use-pipeline-refresh-draft'
@@ -17,7 +19,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
+  fetchPipelineWorkflowDraft: (pipelineId: string) => mockFetchWorkflowDraft(pipelineId),
 }))
 
 const createDraft = (overrides: Record<string, unknown> = {}) => ({
@@ -40,6 +42,8 @@ const renderRefreshDraft = () =>
   })
 
 describe('usePipelineRefreshDraft', () => {
+  afterEach(() => vi.restoreAllMocks())
+
   it('marks the draft as syncing until the server draft replaces the canvas and pipeline state', async () => {
     const draft = createDraft({
       rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
@@ -50,9 +54,7 @@ describe('usePipelineRefreshDraft', () => {
 
     act(() => result.current.handleRefreshWorkflowDraft())
 
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
-      '/rag/pipelines/test-pipeline-id/workflows/draft',
-    )
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith('test-pipeline-id')
     expect(store.getState().isSyncingWorkflowDraft).toBe(true)
     expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
 
@@ -105,5 +107,25 @@ describe('usePipelineRefreshDraft', () => {
 
     await waitFor(() => expect(store.getState().isSyncingWorkflowDraft).toBe(false))
     expect(store.getState()).toMatchObject({ envSecrets: {}, environmentVariables: [] })
+  })
+
+  it('reports a failed refresh and keeps the current canvas', async () => {
+    const toastError = vi.spyOn(toast, 'error')
+    mockFetchWorkflowDraft.mockRejectedValue(
+      createHttpError(
+        { status: 500, statusText: '', headers: new Headers() },
+        { message: 'Draft unavailable' },
+      ),
+    )
+    const { result, store } = renderRefreshDraft()
+
+    act(() => result.current.handleRefreshWorkflowDraft())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(store.getState()).toMatchObject({
+      isSyncingWorkflowDraft: false,
+      syncWorkflowDraftHash: 'old-hash',
+    })
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
   })
 })
