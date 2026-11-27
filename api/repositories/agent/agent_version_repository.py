@@ -15,7 +15,7 @@ from models.agent import (
     AgentScope,
 )
 from models.agent_config_entities import AgentSoulConfig
-from repositories.agent_version_queries import visible_version_ids
+from repositories.agent.agent_version_queries import visible_version_ids
 from services.agent.version_store import (
     AgentVersionDetail,
     AgentVersionRestored,

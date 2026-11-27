@@ -13,7 +13,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
 from models.agent import AgentHomeSnapshot, AgentWorkingResourceStatus
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 
 logger = logging.getLogger(__name__)
 

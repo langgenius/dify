@@ -35,7 +35,7 @@ from models.evaluation import (
 )
 from models.model import App, AppMode, Tag, TagBinding
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from services.app.agent_app_service import AgentAppDeletionService
 from services.entities.app_entities import AppDeletion, AppEvent
 from services.evaluation_service import EvaluationService

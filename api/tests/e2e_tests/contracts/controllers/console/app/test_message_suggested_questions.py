@@ -41,7 +41,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, DifySetup, Message
 from models.provider import Provider, TenantDefaultModel
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.message_repository import MessageRepository

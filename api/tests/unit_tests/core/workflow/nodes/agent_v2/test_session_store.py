@@ -36,7 +36,7 @@ from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTri
 from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.agent.agent_sandbox_repository import AgentSandboxRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )

@@ -33,8 +33,8 @@ from models.workflow import (
     WorkflowRunTriggeredFrom,
     WorkflowType,
 )
-from repositories import agent_observability_repository as observability_repository_module
-from repositories.agent_observability_repository import (
+from repositories.agent import agent_observability_repository as observability_repository_module
+from repositories.agent.agent_observability_repository import (
     AgentLogQueryParams,
     AgentObservabilityQueries,
     AgentStatisticsQueryParams,

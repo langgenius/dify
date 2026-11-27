@@ -23,25 +23,25 @@ from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import agent_soul_has_model
 from models.enums import ConversationFromSource
 from models.model import App, Conversation
-from repositories.agent_roster_queries import (
-    build_roster_agents_stmt,
-    load_published_workflows_by_agent_id,
-    load_reference_counts_by_agent_id,
-)
-from repositories.agent_version_queries import visible_version_ids, visible_version_operations
-from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
-from repositories.app.agent_debug_conversations import (
+from repositories.agent.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.agent.agent_debug_conversations import (
     count_agent_debug_conversation_messages,
     create_agent_debug_conversation,
     get_or_create_agent_debug_conversation,
 )
-from repositories.app.agent_runtime_app import (
+from repositories.agent.agent_roster_queries import (
+    build_roster_agents_stmt,
+    load_published_workflows_by_agent_id,
+    load_reference_counts_by_agent_id,
+)
+from repositories.agent.agent_runtime_app import (
     create_backing_agent_for_app,
     create_hidden_backing_app,
     ensure_workflow_agent_backing_app,
     find_runtime_resolvable_agent,
     resolve_agent_runtime_app,
 )
+from repositories.agent.agent_version_queries import visible_version_ids, visible_version_operations
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,

@@ -26,7 +26,7 @@ from models.account import Account
 from models.agent import AgentIconType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from repositories.app.agent_runtime_app import create_backing_agent_for_app
+from repositories.agent.agent_runtime_app import create_backing_agent_for_app
 from repositories.app.console_repository import (
     ConsoleAppRepository,
     StageTargetEvaluationCleanup,

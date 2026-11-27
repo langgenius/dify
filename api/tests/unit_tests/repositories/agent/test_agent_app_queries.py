@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode
-from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.agent.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 
 
 def _add_app_and_agent(session: Session, *, source: AgentSource = AgentSource.AGENT_APP) -> tuple[App, Agent]:

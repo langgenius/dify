@@ -123,7 +123,7 @@ from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, U
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowType
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from services.agent.app_composer import AgentAppComposer
 from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.console_runtime import AgentConsoleRuntime
@@ -1604,6 +1604,27 @@ def test_agent_build_finalize_reuses_build_conversation_and_drains_message(
     assert agent_generator.closed_streams == closed_streams + 1
     with harness.sessions() as session:
         assert session.get_one(Conversation, conversation_id).name == "Generation 2"
+
+
+@pytest.mark.parametrize("foreign_agent", [False, True], ids=["missing-agent", "foreign-workspace"])
+def test_agent_chat_validates_payload_before_resolving_unavailable_agent(harness: Harness, foreign_agent: bool) -> None:
+    """After Console admission, reject invalid chat input before resolving an unavailable Agent."""
+    agent_id = harness.create_agent(tenant_id=str(uuid4()))[0] if foreign_agent else str(uuid4())
+    url = f"/console/api/agent/{agent_id}/chat-messages"
+    inputs: dict[str, object] = {}
+    for payload, status, code in (
+        ({"inputs": inputs}, HTTPStatus.BAD_REQUEST, "invalid_param"),
+        ({"inputs": inputs, "query": "Hello", "response_mode": "blocking"}, HTTPStatus.BAD_REQUEST, "bad_request"),
+        (
+            {"inputs": inputs, "query": "Hello", "response_mode": "streaming"},
+            HTTPStatus.NOT_FOUND,
+            "agent_not_found_error",
+        ),
+    ):
+        response = harness.client.post(url, headers=harness.headers, json=payload)
+
+        assert response.status_code == status, response.get_json()
+        assert response.get_json()["code"] == code
 
 
 def test_agent_chat_checks_conversation_ownership_before_invoking_generation(harness: Harness) -> None:

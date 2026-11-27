@@ -38,8 +38,8 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from repositories.app.agent_app_repository import AgentAppRepository
-from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_sandbox_repository import AgentSandboxRepository
 from services.agent.sandbox_contracts import (
     AgentSandboxBindingNotFoundError,
     AgentSandboxCaller,
