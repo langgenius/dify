@@ -135,7 +135,8 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                 consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryKey({
                   input,
                 })
-              await client.cancelQueries({ queryKey: siteKey, exact: true })
+              if (client.isFetching({ queryKey: siteKey, exact: true }))
+                await client.cancelQueries({ queryKey: siteKey, exact: true })
               client.setQueryData(siteKey, site)
               // The site comes from the response; waits for the subjects the save may replace.
               return client.invalidateQueries({
@@ -156,7 +157,8 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                     params: { app_id: params.app_id, environment_id: params.environment_id },
                   },
                 })
-              await client.cancelQueries({ queryKey: siteKey, exact: true })
+              if (client.isFetching({ queryKey: siteKey, exact: true }))
+                await client.cancelQueries({ queryKey: siteKey, exact: true })
               client.setQueryData(siteKey, site)
             },
           },
@@ -169,7 +171,8 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                 consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
                   input: { params: variables.params },
                 })
-              await context.client.cancelQueries({ queryKey: listKey })
+              if (context.client.isFetching({ queryKey: listKey }))
+                await context.client.cancelQueries({ queryKey: listKey })
               addCreatedKeyToLists(context.client, listKey, created)
             },
           },

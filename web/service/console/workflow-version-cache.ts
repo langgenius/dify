@@ -121,10 +121,14 @@ export async function syncAppWorkflowVersionCaches(
     input: { params: { app_id: appId } },
   })
 
-  await Promise.all([
-    queryClient.cancelQueries({ queryKey: publishedWorkflowQuery.queryKey, exact: true }),
-    queryClient.cancelQueries({ queryKey: versionListKey }),
-  ])
+  if (
+    queryClient.isFetching({ queryKey: publishedWorkflowQuery.queryKey, exact: true }) ||
+    queryClient.isFetching({ queryKey: versionListKey })
+  )
+    await Promise.all([
+      queryClient.cancelQueries({ queryKey: publishedWorkflowQuery.queryKey, exact: true }),
+      queryClient.cancelQueries({ queryKey: versionListKey }),
+    ])
   queryClient.setQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey, (workflow) =>
     workflow?.id === updatedWorkflow.id ? updatedWorkflow : workflow,
   )
@@ -156,10 +160,14 @@ export async function syncWorkflowDeploymentCaches(
       input: { params: { app_id: appId } },
     })
 
-  await Promise.all([
-    queryClient.cancelQueries({ queryKey: environmentDeploymentsQuery.queryKey, exact: true }),
-    queryClient.cancelQueries({ queryKey: deploymentDetailKey }),
-  ])
+  if (
+    queryClient.isFetching({ queryKey: environmentDeploymentsQuery.queryKey, exact: true }) ||
+    queryClient.isFetching({ queryKey: deploymentDetailKey })
+  )
+    await Promise.all([
+      queryClient.cancelQueries({ queryKey: environmentDeploymentsQuery.queryKey, exact: true }),
+      queryClient.cancelQueries({ queryKey: deploymentDetailKey }),
+    ])
   queryClient.setQueryData<ListEnvironmentDeploymentsResponse>(
     environmentDeploymentsQuery.queryKey,
     (data) => syncEnvironmentDeployments(data, updatedWorkflow),

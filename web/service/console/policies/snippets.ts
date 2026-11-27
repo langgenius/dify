@@ -33,7 +33,8 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                   consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryKey({
                     input: { params: { snippet_id: variables.params.snippet_id } },
                   })
-                await context.client.cancelQueries({ queryKey: snippetKey, exact: true })
+                if (context.client.isFetching({ queryKey: snippetKey, exact: true }))
+                  await context.client.cancelQueries({ queryKey: snippetKey, exact: true })
                 context.client.setQueryData(snippetKey, (snippet) =>
                   snippet ? { ...snippet, is_published: true } : snippet,
                 )
@@ -100,7 +101,8 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                         consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
                           { input: { params: variables.params } },
                         )
-                      await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                      if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
                       context.client.setQueryData(composerKey, composerState)
                     },
                   },
@@ -113,7 +115,8 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                           consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
                             { input: { params: variables.params } },
                           )
-                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                          await context.client.cancelQueries({ queryKey: composerKey, exact: true })
                         context.client.setQueryData(composerKey, composerState)
                       },
                     },
@@ -130,7 +133,8 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                           consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
                             { input: { params: variables.params } },
                           )
-                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                          await context.client.cancelQueries({ queryKey: composerKey, exact: true })
                         context.client.setQueryData(composerKey, composerState)
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'

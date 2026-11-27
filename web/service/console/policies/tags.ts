@@ -16,7 +16,8 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
         meta: { alsoInvalidate: ['workspaces.current.skills'] },
         onSuccess: async (tag, { body: { type } }, _result, { client, meta }) => {
           const queryKey = consoleQuery.tags.get.queryKey({ input: { query: { type } } })
-          await client.cancelQueries({ queryKey, exact: true })
+          if (client.isFetching({ queryKey, exact: true }))
+            await client.cancelQueries({ queryKey, exact: true })
 
           client.setQueryData(
             queryKey,
@@ -39,7 +40,8 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
           onSuccess: async (updatedTag, variables, _onMutateResult, context) => {
             const queryKey = consoleQuery.tags.get.key({ type: 'query' })
             // A catalog read started before the rename must not overwrite it.
-            await context.client.cancelQueries({ queryKey })
+            if (context.client.isFetching({ queryKey }))
+              await context.client.cancelQueries({ queryKey })
             context.client.setQueriesData({ queryKey }, (oldTags: Tag[] | undefined) => {
               if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
               return oldTags.map((tag) => (tag.id === variables.params.tag_id ? updatedTag : tag))
@@ -53,7 +55,8 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
           onSuccess: async (_data, variables, _onMutateResult, context) => {
             const queryKey = consoleQuery.tags.get.key({ type: 'query' })
             // A catalog read started before the delete must not bring the tag back.
-            await context.client.cancelQueries({ queryKey })
+            if (context.client.isFetching({ queryKey }))
+              await context.client.cancelQueries({ queryKey })
             context.client.setQueriesData({ queryKey }, (oldTags: Tag[] | undefined) => {
               if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
               return oldTags.filter((tag) => tag.id !== variables.params.tag_id)

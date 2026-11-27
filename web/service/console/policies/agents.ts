@@ -26,7 +26,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const queryKey = consoleQuery.agent.byAgentId.trace.get.queryKey({
                 input: { params: variables.params },
               })
-              await context.client.cancelQueries({ queryKey, exact: true })
+              if (context.client.isFetching({ queryKey, exact: true }))
+                await context.client.cancelQueries({ queryKey, exact: true })
               context.client.setQueryData(queryKey, data)
             },
             // A conflict means another save landed first: reloads what it changed.
@@ -115,7 +116,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const listKey = consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
                 input: { params: { agent_id: variables.params.agent_id } },
               })
-              await context.client.cancelQueries({ queryKey: listKey })
+              if (context.client.isFetching({ queryKey: listKey }))
+                await context.client.cancelQueries({ queryKey: listKey })
               addCreatedKeyToLists(context.client, listKey, created)
             },
           },
@@ -152,7 +154,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
                 input: { params: { agent_id: copiedAgent.id } },
               })
-              await context.client.cancelQueries({ queryKey: detailKey, exact: true })
+              if (context.client.isFetching({ queryKey: detailKey, exact: true }))
+                await context.client.cancelQueries({ queryKey: detailKey, exact: true })
               context.client.setQueryData(detailKey, copiedAgent)
               return invalidateQueryKeys(context.client, [consoleQuery.agent.get.key()])
             },
@@ -166,15 +169,24 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               input: { params: { agent_id: variables.params.agent_id } },
             })
             // Reads started before the save must not overwrite what it writes.
-            await Promise.all([
-              context.client.cancelQueries({
+            if (
+              context.client.isFetching({
                 queryKey: consoleQuery.agent.get.key({ type: 'query' }),
-              }),
-              context.client.cancelQueries({
+              }) ||
+              context.client.isFetching({
                 queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
-              }),
-              context.client.cancelQueries({ queryKey: detailKey, exact: true }),
-            ])
+              }) ||
+              context.client.isFetching({ queryKey: detailKey, exact: true })
+            )
+              await Promise.all([
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                }),
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                }),
+                context.client.cancelQueries({ queryKey: detailKey, exact: true }),
+              ])
             context.client.setQueriesData(
               {
                 queryKey: consoleQuery.agent.get.key({ type: 'query' }),
@@ -243,7 +255,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const queryKey = consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
                 input: { params: { agent_id: params.agent_id } },
               })
-              await client.cancelQueries({ queryKey, exact: true })
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
               client.setQueryData(queryKey, buildDraft)
             },
           },
@@ -255,7 +268,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 const queryKey = consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
                   input: { params: { agent_id: params.agent_id } },
                 })
-                await client.cancelQueries({ queryKey, exact: true })
+                if (client.isFetching({ queryKey, exact: true }))
+                  await client.cancelQueries({ queryKey, exact: true })
                 client.setQueryData(queryKey, buildDraft)
               },
             },
@@ -298,7 +312,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
                   input: { params: { agent_id: params.agent_id } },
                 })
-                await client.cancelQueries({ queryKey: detailKey, exact: true })
+                if (client.isFetching({ queryKey: detailKey, exact: true }))
+                  await client.cancelQueries({ queryKey: detailKey, exact: true })
                 client.setQueryData(
                   detailKey,
                   (agentDetail) =>
@@ -323,10 +338,14 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const input = { params: { agent_id: params.agent_id } }
               const apiAccessKey = consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input })
               const detailKey = consoleQuery.agent.byAgentId.get.queryKey({ input })
-              await Promise.all([
-                client.cancelQueries({ queryKey: apiAccessKey, exact: true }),
-                client.cancelQueries({ queryKey: detailKey, exact: true }),
-              ])
+              if (
+                client.isFetching({ queryKey: apiAccessKey, exact: true }) ||
+                client.isFetching({ queryKey: detailKey, exact: true })
+              )
+                await Promise.all([
+                  client.cancelQueries({ queryKey: apiAccessKey, exact: true }),
+                  client.cancelQueries({ queryKey: detailKey, exact: true }),
+                ])
               client.setQueryData(apiAccessKey, apiAccess)
               client.setQueryData(
                 detailKey,
@@ -343,7 +362,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const composerKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
                 input: { params: { agent_id: variables.params.agent_id } },
               })
-              await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+              if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                await context.client.cancelQueries({ queryKey: composerKey, exact: true })
               context.client.setQueryData(composerKey, composerState)
               context.client.invalidateQueries({
                 queryKey: consoleQuery.agent.get.key(),
@@ -367,7 +387,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const composerKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
                 input: { params: { agent_id: variables.params.agent_id } },
               })
-              await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+              if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                await context.client.cancelQueries({ queryKey: composerKey, exact: true })
               context.client.setQueryData<AgentAppComposerResponse>(
                 composerKey,
                 (composerState) => {
@@ -416,14 +437,22 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               }),
             })
             // A list read started before the delete must not bring the agent back.
-            await Promise.all([
-              context.client.cancelQueries({
+            if (
+              context.client.isFetching({
                 queryKey: consoleQuery.agent.get.key({ type: 'query' }),
-              }),
-              context.client.cancelQueries({
+              }) ||
+              context.client.isFetching({
                 queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
-              }),
-            ])
+              })
+            )
+              await Promise.all([
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                }),
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                }),
+              ])
             context.client.setQueriesData(
               {
                 queryKey: consoleQuery.agent.get.key({ type: 'query' }),

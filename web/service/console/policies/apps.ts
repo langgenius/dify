@@ -185,7 +185,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               const queryKey = consoleQuery.apps.byAppId.trace.get.queryKey({
                 input: { params: variables.params },
               })
-              await context.client.cancelQueries({ queryKey, exact: true })
+              if (context.client.isFetching({ queryKey, exact: true }))
+                await context.client.cancelQueries({ queryKey, exact: true })
               context.client.setQueryData(queryKey, {
                 ...variables.body,
                 capture_content: variables.body.capture_content ?? false,
@@ -305,7 +306,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                 const queryKey = consoleQuery.apps.byAppId.server.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 })
-                await client.cancelQueries({ queryKey, exact: true })
+                if (client.isFetching({ queryKey, exact: true }))
+                  await client.cancelQueries({ queryKey, exact: true })
                 client.setQueryData(queryKey, (previous) =>
                   previous?.id === server.id
                     ? { ...previous, server_code: server.server_code }
@@ -338,7 +340,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               const queryKey = consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
                 input: { params: { app_id: params.app_id } },
               })
-              await client.cancelQueries({ queryKey, exact: true })
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
               client.setQueryData(queryKey, (current) =>
                 current ? { ...current, ...data } : current,
               )
@@ -367,12 +370,20 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             onSettled: async (data, error, variables, _onMutateResult, context) => {
               if (error || !data) return
 
-              await context.client.cancelQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({
-                  input: { params: variables.params },
-                }),
-                exact: true,
-              })
+              if (
+                context.client.isFetching({
+                  queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                    input: { params: variables.params },
+                  }),
+                  exact: true,
+                })
+              )
+                await context.client.cancelQueries({
+                  queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                    input: { params: variables.params },
+                  }),
+                  exact: true,
+                })
               context.client.setQueryData<AppDetailWithSite>(
                 consoleQuery.apps.byAppId.get.queryKey({ input: { params: variables.params } }),
                 (detail) =>
@@ -412,7 +423,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             const detailKey = consoleQuery.apps.byAppId.get.queryKey({
               input: { params: variables.params },
             })
-            await context.client.cancelQueries({ queryKey: detailKey, exact: true })
+            if (context.client.isFetching({ queryKey: detailKey, exact: true }))
+              await context.client.cancelQueries({ queryKey: detailKey, exact: true })
             context.client.setQueryData(detailKey, data)
             // The detail is written above; waits for the app lists it edits.
             return invalidateQueryKeys(context.client, [
@@ -430,12 +442,20 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             onSettled: async (data, error, variables, _onMutateResult, context) => {
               if (error || !data) return
 
-              await context.client.cancelQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({
-                  input: { params: variables.params },
-                }),
-                exact: true,
-              })
+              if (
+                context.client.isFetching({
+                  queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                    input: { params: variables.params },
+                  }),
+                  exact: true,
+                })
+              )
+                await context.client.cancelQueries({
+                  queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                    input: { params: variables.params },
+                  }),
+                  exact: true,
+                })
               await updateAgentsOfApp(
                 consoleQuery,
                 context.client,
@@ -488,12 +508,20 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               onSettled: async (data, error, variables, _onMutateResult, context) => {
                 if (error || !data) return
 
-                await context.client.cancelQueries({
-                  queryKey: consoleQuery.apps.byAppId.get.queryKey({
-                    input: { params: variables.params },
-                  }),
-                  exact: true,
-                })
+                if (
+                  context.client.isFetching({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    exact: true,
+                  })
+                )
+                  await context.client.cancelQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    exact: true,
+                  })
                 await updateAgentsOfApp(
                   consoleQuery,
                   context.client,
@@ -699,7 +727,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                         consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
                           { input: { params: variables.params } },
                         )
-                      await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                      if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
                       context.client.setQueryData(composerKey, composerState)
                     },
                   },
@@ -712,7 +741,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                           consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
                             { input: { params: variables.params } },
                           )
-                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                          await context.client.cancelQueries({ queryKey: composerKey, exact: true })
                         context.client.setQueryData(composerKey, composerState)
                       },
                     },
@@ -729,7 +759,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                           consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
                             { input: { params: variables.params } },
                           )
-                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                          await context.client.cancelQueries({ queryKey: composerKey, exact: true })
                         context.client.setQueryData(composerKey, composerState)
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'
@@ -764,7 +795,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               const listKey = consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                 input: { params: { resource_id: variables.params.resource_id } },
               })
-              await context.client.cancelQueries({ queryKey: listKey })
+              if (context.client.isFetching({ queryKey: listKey }))
+                await context.client.cancelQueries({ queryKey: listKey })
               addCreatedKeyToLists(context.client, listKey, created)
             },
           },
@@ -801,10 +833,14 @@ async function setCommentResolved(
   const listKey = query.apps.byAppId.workflow.comments.get.queryKey({
     input: { params: { app_id: params.app_id } },
   })
-  await Promise.all([
-    client.cancelQueries({ queryKey: detailKey, exact: true }),
-    client.cancelQueries({ queryKey: listKey, exact: true }),
-  ])
+  if (
+    client.isFetching({ queryKey: detailKey, exact: true }) ||
+    client.isFetching({ queryKey: listKey, exact: true })
+  )
+    await Promise.all([
+      client.cancelQueries({ queryKey: detailKey, exact: true }),
+      client.cancelQueries({ queryKey: listKey, exact: true }),
+    ])
   client.setQueryData(detailKey, (detail) => (detail ? { ...detail, ...fields } : detail))
   client.setQueryData(listKey, (list) =>
     list
@@ -826,7 +862,8 @@ async function updateAgentsOfApp(
   appId: string,
   update: (agent: AgentAppDetailWithSite) => AgentAppDetailWithSite,
 ) {
-  await client.cancelQueries({ queryKey: query.agent.byAgentId.get.key() })
+  if (client.isFetching({ queryKey: query.agent.byAgentId.get.key() }))
+    await client.cancelQueries({ queryKey: query.agent.byAgentId.get.key() })
   client.setQueriesData<AgentAppDetailWithSite>(
     { queryKey: query.agent.byAgentId.get.key() },
     (agent) => (agent?.app_id === appId ? update(agent) : agent),
