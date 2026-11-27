@@ -233,6 +233,7 @@ const settings = {
 const externalAccess = {
   agent_enabled: true,
   mcp_enabled: true,
+  personal_agent_enabled: true,
   revision: 2,
   service_api_enabled: true,
   workflow_enabled: true,
@@ -457,7 +458,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     serviceMock.patchExternalAccess.mockImplementation(
       async ({ body }: { body: KnowledgeFsExternalAccessPayload }) => {
         const current = knowledgeQueryMock.externalAccess!
-        const saved = { ...current, ...body, revision: current.revision + 1 }
+        const saved = {
+          ...current,
+          ...body,
+          personal_agent_enabled: body.personal_agent_enabled ?? current.personal_agent_enabled,
+          revision: current.revision + 1,
+        }
         knowledgeQueryMock.externalAccess = saved
         return saved
       },
@@ -627,11 +633,14 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(pageSaveButton()).toBeEnabled()
     })
 
-    it('shows the server message when the scan policy save fails', async () => {
+    it('shows the translated error code when the scan policy save fails', async () => {
       const user = userEvent.setup()
       const enable = await renderFormWithFileScan()
       serviceMock.putFileScanPolicy.mockRejectedValue(
-        createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_input',
+          message: 'Server says why',
+        }),
       )
 
       await user.click(enable)
@@ -639,7 +648,9 @@ describe('KnowledgeSettingsPage workflows', () => {
       await user.click(await screen.findByRole('option', { name: /Office scanner/ }))
       await user.click(pageSaveButton())
 
-      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
     })
 
     it('drops the scan policy changes on Cancel', async () => {
@@ -884,6 +895,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: false,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -940,6 +952,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: false,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -979,6 +992,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: true,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -988,6 +1002,35 @@ describe('KnowledgeSettingsPage workflows', () => {
       })
     })
     await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
+  })
+
+  it('blocks personal agents for this knowledge base without touching the other channels', async () => {
+    const user = userEvent.setup()
+    await renderForm()
+
+    const personalAgentSwitch = screen.getByRole('switch', {
+      name: 'knowledgeSettings.settings.personalAgentLabel',
+    })
+    expect(personalAgentSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(personalAgentSwitch).toHaveAccessibleDescription(
+      'knowledgeSettings.settings.personalAgentDescription',
+    )
+    await user.click(personalAgentSwitch)
+    expectNoWrites()
+    await saveChanges(user)
+
+    await waitFor(() => {
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
+        body: {
+          agent_enabled: true,
+          mcp_enabled: true,
+          personal_agent_enabled: false,
+          service_api_enabled: true,
+          workflow_enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
+      })
+    })
   })
 
   it('shows a partially enabled API channel as on and disables both channels directly', async () => {
@@ -1012,6 +1055,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith({
         body: {
+          personal_agent_enabled: true,
           agent_enabled: false,
           mcp_enabled: true,
           service_api_enabled: false,
@@ -1139,17 +1183,22 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(serviceMock.deleteSpace).toHaveBeenCalledTimes(2)
   })
 
-  it('shows the server message when deletion fails', async () => {
+  it('shows the translated error code when deletion fails', async () => {
     const user = userEvent.setup()
     serviceMock.deleteSpace.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      }),
     )
     await renderForm()
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.invalid_input',
+    )
   })
 
   it('keeps the deletion dialog modal until the pending deletion settles', async () => {
@@ -2125,6 +2174,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     expect(serviceMock.patchExternalAccess).toHaveBeenCalledExactlyOnceWith({
       body: {
+        personal_agent_enabled: true,
         agent_enabled: false,
         service_api_enabled: false,
         workflow_enabled: false,

@@ -1937,7 +1937,7 @@ export type StringSource = {
   value?: string
 }
 
-export type SubjectType = 'account' | 'external_sso' | 'resource_access'
+export type SubjectType = 'account' | 'external_sso' | 'knowledge_agent' | 'resource_access'
 
 export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
 

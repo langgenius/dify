@@ -188,7 +188,7 @@ describe('HitTestingPage', () => {
   )
 
   it.each(['vendor', 'external'])(
-    'announces the server reason for a failed %s retrieval once, without a toast',
+    'announces the translated reason for a failed %s retrieval once, without a toast',
     async (provider) => {
       const errorToast = vi.spyOn(toast, 'error')
       mockDataset.provider = provider
@@ -196,6 +196,7 @@ describe('HitTestingPage', () => {
         provider === 'external' ? mockExternalHitTestingMutateAsync : mockHitTestingMutateAsync
       request.mockRejectedValueOnce(
         createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_input',
           message: 'The embedding model is not configured',
         }),
       )
@@ -205,9 +206,7 @@ describe('HitTestingPage', () => {
       await user.click(screen.getByRole('button', { name: /input.testing/ }))
 
       await waitFor(() =>
-        expect(screen.getByRole('status')).toHaveTextContent(
-          'The embedding model is not configured',
-        ),
+        expect(screen.getByRole('status')).toHaveTextContent('requestErrors.code.invalid_input'),
       )
       expect(errorToast).not.toHaveBeenCalled()
     },

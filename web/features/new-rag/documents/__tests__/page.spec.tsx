@@ -25,6 +25,28 @@ import {
   logicalDocumentsInfiniteOptions,
 } from '../queries'
 
+// Confirming a reindex has its own spec; here every request to reindex is confirmed at once.
+vi.mock('../reindex-confirm-dialog', async () => {
+  const { useEffect } = await import('react')
+  return {
+    ReindexConfirmDialog: ({
+      onConfirm,
+      onOpenChange,
+      open,
+    }: {
+      onConfirm: () => void
+      onOpenChange: (open: boolean) => void
+      open: boolean
+    }) => {
+      useEffect(() => {
+        if (!open) return
+        onOpenChange(false)
+        onConfirm()
+      }, [onConfirm, onOpenChange, open])
+      return null
+    },
+  }
+})
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -5599,11 +5621,13 @@ describe('DocumentsPage', () => {
     expect(within(panel).queryByText('knowledgeTasks.noBackgroundTasks')).not.toBeInTheDocument()
   })
 
-  it('shows a failed interrupt once, with the server reason in the task panel', async () => {
+  it('shows a failed interrupt once, with the translated reason in the task panel', async () => {
     const user = userEvent.setup()
-    const message = 'The task has already finished'
     cancelMutation.mutateAsync.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 409 }), { message }),
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'document_already_finished',
+        message: 'The task has already finished',
+      }),
     )
     documentsQuery.data = { pages: [{ items: [document({})] }] }
     tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
@@ -5617,7 +5641,9 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeTasks.interruptTask' }))
 
     const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
-    expect(await within(panel).findByRole('alert')).toHaveTextContent(message)
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.document_already_finished',
+    )
     expect(toastMock.error).not.toHaveBeenCalled()
   })
 
@@ -5641,7 +5667,10 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
-    expect(await within(panel).findByRole('alert')).toHaveTextContent(message)
+    // A message without a cataloged code gives way to the action's own text.
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      'knowledgeSpace.taskActionFailed',
+    )
     expect(
       within(panel).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
     ).toBeVisible()
@@ -9557,11 +9586,14 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeInTheDocument()
   })
 
-  describe('server error messages', () => {
+  describe('request error messages', () => {
     const serverError = () =>
-      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' })
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      })
 
-    it('shows the server message when the metadata fields fail to load', async () => {
+    it('shows the translated error code when the metadata fields fail to load', async () => {
       const user = userEvent.setup()
       documentsQuery.data = { pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }] }
       metadataFieldsQuery.error = serverError()
@@ -9569,10 +9601,10 @@ describe('DocumentsPage', () => {
       await render(<DocumentsPage knowledgeSpaceId="space-1" />)
       await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
 
-      expect(await screen.findByText('Server says why')).toBeInTheDocument()
+      expect(await screen.findByText('requestErrors.code.invalid_input')).toBeInTheDocument()
     })
 
-    it('shows the server message when a row re-index fails', async () => {
+    it('shows the translated error code when a row re-index fails', async () => {
       const user = userEvent.setup()
       documentsQuery.data = { pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }] }
       reindexMutation.mutateAsync.mockRejectedValueOnce(serverError())
@@ -9583,10 +9615,12 @@ describe('DocumentsPage', () => {
         await screen.findByRole('menuitem', { name: 'knowledgeDocuments.reindexDocument' }),
       )
 
-      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
     })
 
-    it('shows the server message when a bulk re-index fails', async () => {
+    it('shows the translated error code when a bulk re-index fails', async () => {
       const user = userEvent.setup()
       documentsQuery.data = {
         pages: [
@@ -9605,10 +9639,12 @@ describe('DocumentsPage', () => {
       await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
       await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
 
-      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
     })
 
-    it('shows the server message when retrying a document row fails', async () => {
+    it('shows the translated error code when retrying a document row fails', async () => {
       const user = userEvent.setup()
       const failedTask = task({ documentId: 'one', id: 'failed-task', state: 'failed' })
       documentsQuery.data = {
@@ -9621,10 +9657,12 @@ describe('DocumentsPage', () => {
       await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
       await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.retryTask' }))
 
-      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
     })
 
-    it('shows the server message when retrying a task in the panel fails', async () => {
+    it('shows the translated error code when retrying a task in the panel fails', async () => {
       const user = userEvent.setup()
       retryMutation.mutateAsync.mockRejectedValueOnce(serverError())
       documentsQuery.data = {
@@ -9640,20 +9678,22 @@ describe('DocumentsPage', () => {
       )
       await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+      expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
     })
 
-    it('shows the server message when staging a file fails', async () => {
+    it('shows the translated error code when staging a file fails', async () => {
       stageUploadMutation.mockRejectedValueOnce(serverError())
       await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
       fireEvent.change(screen.getByLabelText('knowledgeCreate.uploadDocuments'), {
         target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
       })
 
-      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
     })
 
-    it('shows the server message when adding staged files fails', async () => {
+    it('shows the translated error code when adding staged files fails', async () => {
       const user = userEvent.setup()
       uploadMutation.mutateAsync.mockRejectedValueOnce(serverError())
       await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
@@ -9664,7 +9704,9 @@ describe('DocumentsPage', () => {
       await waitForDocumentFilesStaged()
       await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
-      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
     })
   })
 })

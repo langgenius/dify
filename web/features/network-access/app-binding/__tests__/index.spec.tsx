@@ -13,6 +13,8 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import appOverviewTranslations from '@/i18n/locales/en-US/app-overview.json'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
 import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
@@ -292,6 +294,42 @@ describe('AccessControlEntry', () => {
     expect(
       vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'access_control_entry_click'),
     ).toHaveLength(2)
+  })
+
+  it('reports a binding that fails to load instead of hiding the entry silently', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
+    seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
+    const fallback = vi.mocked(globalThis.fetch).getMockImplementation()!
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/apps/app-1/network-access-group'))
+        return Response.json({ message: 'Access control unavailable' }, { status: 503 })
+      return fallback(input, init)
+    })
+    const { wrapper: UrlState } = createNuqsTestWrapper({ searchParams: initialSearchParams })
+    renderWithConsoleQuery(
+      <UrlState>
+        <AccessControlEntry
+          appMode="chat"
+          appId="app-1"
+          appIcon={null}
+          isPublished={false}
+          canEditBinding
+        />
+      </UrlState>,
+      {
+        queryClient,
+        currentWorkspace: { role: 'owner' },
+        systemFeatures: { deployment_edition: 'CLOUD' },
+        features: { billing: { subscription: { interval: 'month', plan: 'professional' } } },
+      },
+    )
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Access control unavailable'),
+    )
+    expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
   })
 
   it('does not render on community edition', () => {
@@ -1663,7 +1701,9 @@ describe('trusted IP checks before saving', () => {
     const dialog = await screen.findByRole('alertdialog')
     server.checkStatus = 503
     await user.click(within(dialog).getByRole('button', { name: 'Save anyway' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('IP unavailable')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Unable to check your IP address. Please try again.',
+    )
     expect(server.writes).toHaveLength(0)
   })
 
@@ -1691,7 +1731,9 @@ describe('trusted IP checks before saving', () => {
     server.checkStatus = 503
     renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
     await openSelectedConfig(user)
-    expect(await screen.findByText('IP unavailable')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(server.writes).toHaveLength(0)
     server.checkStatus = 200
@@ -1711,7 +1753,9 @@ describe('trusted IP checks before saving', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     server.checkStatus = 503
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    expect(await screen.findByText('IP unavailable')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
     expect(server.writes).toHaveLength(0)
   })
 })

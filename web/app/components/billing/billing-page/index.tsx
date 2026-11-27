@@ -8,11 +8,13 @@ import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getBillingErrorMessage } from '../billing-error'
 import PlanComp, { PlanLoading } from '../plan'
 
 const Billing: FC = () => {
   const { t } = useTranslation(['billing'])
+  const describeRequestError = useRequestErrorDescriber()
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   usePrefetchQuery(
@@ -50,7 +52,7 @@ const Billing: FC = () => {
             </div>
             <div className="system-sm-regular text-text-secondary">
               {!billingUrl && billingQuery.isError
-                ? getBillingErrorMessage(billingQuery.error, t)
+                ? getBillingErrorMessage(billingQuery.error, t, describeRequestError)
                 : t(($) => $.viewBillingDescription, { ns: 'billing' })}
             </div>
           </div>

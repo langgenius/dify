@@ -1,5 +1,6 @@
 import type { ChatItem, WorkflowAgentToolActivity, WorkflowAgentToolActivityStatus } from './types'
 import type { AgentLogStreamData } from '@/types/workflow'
+import { zToolCallLimitMetadata } from '@dify/contracts/api/console/agent/zod.gen'
 
 const WORKFLOW_TOOL_ACTIVITY_STATUSES = new Set<WorkflowAgentToolActivityStatus>([
   'started',
@@ -7,6 +8,7 @@ const WORKFLOW_TOOL_ACTIVITY_STATUSES = new Set<WorkflowAgentToolActivityStatus>
   'succeeded',
   'failed',
   'cancelled',
+  'not_executed',
 ])
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
@@ -36,6 +38,7 @@ export function upsertWorkflowToolActivity(item: ChatItem, event: AgentLogStream
   const toolName = asString(data?.tool_name)
   if (!toolCallId || !toolName) return
 
+  const callLimit = zToolCallLimitMetadata.safeParse(data?.call_limit)
   const activity: WorkflowAgentToolActivity = {
     id,
     node_id: asString(event.node_id),
@@ -49,6 +52,7 @@ export function upsertWorkflowToolActivity(item: ChatItem, event: AgentLogStream
       tool_input: asString(data?.tool_input),
       tool_output: asString(data?.tool_output),
       node_title: asString(data?.node_title),
+      call_limit: callLimit.success ? callLimit.data : null,
     },
   }
 

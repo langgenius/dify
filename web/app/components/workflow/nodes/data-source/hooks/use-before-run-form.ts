@@ -9,7 +9,7 @@ import {
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { selectDatasourceSingleRun } from '@/app/components/rag-pipeline/utils/query-select'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import { fetchNodeInspectVars } from '@/service/workflow'
@@ -108,7 +108,7 @@ const useBeforeRunForm = ({
     try {
       vars = await fetchNodeInspectVars(resource, nodeId)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     const { getNodes } = store.getState()

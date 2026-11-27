@@ -16,6 +16,8 @@
   "settings.membersRequired": "Seleziona almeno un membro del team.",
   "settings.nameRequired": "Il nome della base di conoscenza Agent è obbligatorio.",
   "settings.pageDescription": "Gestisci le informazioni di base, l’accesso API e il recupero.",
+  "settings.personalAgentDescription": "I membri possono far leggere questa knowledge base ai propri agenti (Claude Code, Codex, client MCP) con i loro permessi.",
+  "settings.personalAgentLabel": "Agenti personali",
   "settings.reloadLatest": "Ricarica le impostazioni",
   "settings.rerankModelRequired": "Seleziona un modello di reranking.",
   "settings.retrievalDepth": "Profondità di recupero",

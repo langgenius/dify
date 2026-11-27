@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
@@ -75,7 +75,7 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
     try {
       await webAppLogout(address)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     if (accountAuthenticated && address?.kind === 'default') window.location.reload()

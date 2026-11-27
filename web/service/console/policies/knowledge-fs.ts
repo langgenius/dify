@@ -53,6 +53,36 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
             },
           },
         },
+        tidy: {
+          settings: {
+            patch: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _result, { client }) =>
+                  invalidateTidyQueries(consoleQuery, client),
+              },
+            },
+          },
+          retry: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _result, { client }) =>
+                  invalidateTidyQueries(consoleQuery, client),
+              },
+            },
+          },
+          findings: {
+            byFindingId: {
+              actions: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _result, { client }) =>
+                      invalidateTidyQueries(consoleQuery, client),
+                  },
+                },
+              },
+            },
+          },
+        },
         settings: {
           patch: {
             mutationOptions: {
@@ -290,5 +320,14 @@ function invalidateGoldenQuestionList(
     query.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
       input: { params: { control_space_id: controlSpaceId } },
     }),
+  ])
+}
+
+/** A review action can disable a document, so document lists and the overview follow. */
+function invalidateTidyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+  return invalidateQueryKeys(client, [
+    query.knowledgeFs.spaces.byControlSpaceId.tidy.key(),
+    query.knowledgeFs.spaces.byControlSpaceId.documents.key(),
+    query.knowledgeFs.spaces.byControlSpaceId.overview.key(),
   ])
 }

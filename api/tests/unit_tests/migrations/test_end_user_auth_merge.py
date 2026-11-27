@@ -95,3 +95,21 @@ def test_onboarding_merge_preserves_both_histories_under_one_head() -> None:
     assert reachable == {revision.revision for revision in scripts.walk_revisions()}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
+
+
+def test_knowledge_agent_merge_preserves_both_histories_under_one_head() -> None:
+    """Verify upgrades have one head and preserve both published revision IDs."""
+    migration = import_module(
+        "migrations.versions.2026_11_27_1534-d6f48fa54d9b_merge_end_user_auth_and_knowledge_agent"
+    )
+    configuration = Config()
+    configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
+    scripts = ScriptDirectory.from_config(configuration)
+
+    assert set(migration.down_revision) == {"151fcf64f8b2", "6b1d2f4e8a90"}
+    head = scripts.get_current_head()
+    assert head is not None
+    reachable = {revision.revision for revision in scripts.iterate_revisions(head, "base")}
+    assert {migration.revision, *migration.down_revision} <= reachable
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None

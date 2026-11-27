@@ -7,7 +7,7 @@ import { renderEditorHook as renderHook } from '@/app/components/workflow/editor
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
-import { httpErrorFromResponse } from '@/service/http-error'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useDSLByCanEdit } from '../use-DSL'
@@ -159,6 +159,29 @@ describe('useDSLByCanEdit', () => {
     expect(mockDownloadBlob).not.toHaveBeenCalled()
     expect(toastMocks.call).toHaveBeenCalledTimes(1)
     expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+  })
+
+  it('shows the translated reason when the draft sync before export fails', async () => {
+    mockDoSyncWorkflowDraft.mockImplementation(async (_options, callback) => {
+      callback.onError(
+        createHttpError(
+          { status: 409, statusText: '', headers: new Headers() },
+          { code: 'draft_workflow_not_sync', message: 'Draft is invalid' },
+        ),
+      )
+      return null
+    })
+    const { result } = renderHook(() => useDSLByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      wrapper,
+    })
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+    })
+    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
+      type: 'error',
+      message: 'requestErrors.code.draft_workflow_not_sync',
+    })
   })
 
   it('allows export when draft synchronization is skipped for read-only access', async () => {

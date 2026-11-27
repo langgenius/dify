@@ -135,10 +135,10 @@ describe('SkillDetailPage uploads', () => {
     })
   })
 
-  it('shows the server message when the upload check fails', async () => {
+  it('shows the check failure when the upload check fails with an unknown code', async () => {
     mocks.checkDraftFilesMutationFn.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'unknown_failure',
         message: 'Server says why',
       }),
     )
@@ -152,7 +152,11 @@ describe('SkillDetailPage uploads', () => {
       dataTransfer: createDataTransfer([upload]).dataTransfer,
     })
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Server says why'))
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        'skill.skillManagement.detail.uploadCheckFailed',
+      ),
+    )
     expect(mocks.uploadSkillFile).not.toHaveBeenCalled()
   })
 

@@ -11,10 +11,9 @@ from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from configs import dify_config
-from core.db.session_factory import session_factory
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity, DefaultModelSetting
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
@@ -99,7 +98,7 @@ class _CacheEntry(Protocol):
 class _ProviderConfigurationCacheSourceSpec[T: _CacheEntry]:
     name: ProviderConfigurationCacheSource
     entry_cls: type[T]
-    load_records: Callable[[str], list[T]]
+    load_records: Callable[[sessionmaker[Session], str], list[T]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -421,6 +420,7 @@ def _get_cached_or_load_records[T: _CacheEntry](
     *,
     tenant_id: str,
     cache_source: _ProviderConfigurationCacheSourceSpec[T],
+    session_maker: sessionmaker[Session],
 ) -> list[T]:
     cached_records, cache_version = _ProviderConfigurationSourceCache.get_records(
         tenant_id=tenant_id,
@@ -430,7 +430,7 @@ def _get_cached_or_load_records[T: _CacheEntry](
     if cached_records is not None:
         return cached_records
 
-    records = cache_source.load_records(tenant_id)
+    records = cache_source.load_records(session_maker, tenant_id)
     _ProviderConfigurationSourceCache.set_records(
         tenant_id=tenant_id,
         source=cache_source.name,
@@ -460,8 +460,10 @@ def _load_provider_model_credentials(
     return {credential.id: credential for credential in credentials}
 
 
-def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
-    with session_factory.create_session() as session:
+def _load_provider_model_cache_entries(
+    session_maker: sessionmaker[Session], tenant_id: str
+) -> list[_ProviderModelCacheEntry]:
+    with session_maker() as session:
         stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
         credentials = _load_provider_model_credentials(session=session, provider_models=provider_models)
@@ -474,8 +476,10 @@ def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCac
         ]
 
 
-def _load_preferred_model_provider_cache_entries(tenant_id: str) -> list[_TenantPreferredModelProviderCacheEntry]:
-    with session_factory.create_session() as session:
+def _load_preferred_model_provider_cache_entries(
+    session_maker: sessionmaker[Session], tenant_id: str
+) -> list[_TenantPreferredModelProviderCacheEntry]:
+    with session_maker() as session:
         stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
         return [
             _TenantPreferredModelProviderCacheEntry.from_record(preferred_model_provider)
@@ -483,8 +487,10 @@ def _load_preferred_model_provider_cache_entries(tenant_id: str) -> list[_Tenant
         ]
 
 
-def _load_provider_model_setting_cache_entries(tenant_id: str) -> list[_ProviderModelSettingCacheEntry]:
-    with session_factory.create_session() as session:
+def _load_provider_model_setting_cache_entries(
+    session_maker: sessionmaker[Session], tenant_id: str
+) -> list[_ProviderModelSettingCacheEntry]:
+    with session_maker() as session:
         stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
         return [
             _ProviderModelSettingCacheEntry.from_record(provider_model_setting)
@@ -492,8 +498,10 @@ def _load_provider_model_setting_cache_entries(tenant_id: str) -> list[_Provider
         ]
 
 
-def _load_provider_model_credential_cache_entries(tenant_id: str) -> list[_ProviderModelCredentialCacheEntry]:
-    with session_factory.create_session() as session:
+def _load_provider_model_credential_cache_entries(
+    session_maker: sessionmaker[Session], tenant_id: str
+) -> list[_ProviderModelCredentialCacheEntry]:
+    with session_maker() as session:
         stmt = (
             select(ProviderModelCredential)
             .where(ProviderModelCredential.tenant_id == tenant_id)
@@ -505,8 +513,10 @@ def _load_provider_model_credential_cache_entries(tenant_id: str) -> list[_Provi
         ]
 
 
-def _load_provider_credential_cache_entries(tenant_id: str) -> list[_ProviderCredentialCacheEntry]:
-    with session_factory.create_session() as session:
+def _load_provider_credential_cache_entries(
+    session_maker: sessionmaker[Session], tenant_id: str
+) -> list[_ProviderCredentialCacheEntry]:
+    with session_maker() as session:
         stmt = (
             select(ProviderCredential)
             .where(ProviderCredential.tenant_id == tenant_id)
@@ -518,8 +528,10 @@ def _load_provider_credential_cache_entries(tenant_id: str) -> list[_ProviderCre
         ]
 
 
-def _load_provider_load_balancing_config_cache_entries(tenant_id: str) -> list[_LoadBalancingModelConfigCacheEntry]:
-    with session_factory.create_session() as session:
+def _load_provider_load_balancing_config_cache_entries(
+    session_maker: sessionmaker[Session], tenant_id: str
+) -> list[_LoadBalancingModelConfigCacheEntry]:
+    with session_maker() as session:
         stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
         return [
             _LoadBalancingModelConfigCacheEntry.from_record(load_balancing_model_config)
@@ -632,11 +644,19 @@ class ProviderManager:
     # their own tenant_id), so this cache must not collapse to a single shared value.
     _decoding_contexts: dict[str, Any]
     _model_runtime: ModelRuntime
+    _session_maker: sessionmaker[Session]
     _configurations_cache: dict[str, ProviderConfigurations]
 
-    def __init__(self, model_runtime: ModelRuntime):
+    def __init__(self, model_runtime: ModelRuntime, *, session_maker: sessionmaker[Session]):
+        """Create a manager that reads and writes provider records through ``session_maker``.
+
+        Precondition: ``session_maker`` is bound to the database that holds the provider tables.
+        Postcondition: every read and write of this manager runs in a short-lived session created
+        from ``session_maker``; no caller-owned session is used or committed.
+        """
         self._decoding_contexts = {}
         self._model_runtime = model_runtime
+        self._session_maker = session_maker
         self._configurations_cache = {}
 
     def _get_decoding_context(self, tenant_id: str) -> Any:
@@ -913,7 +933,7 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        with session_factory.create_session() as session:
+        with self._session_maker() as session:
             default_model = session.scalar(stmt)
             if not default_model:
                 return None
@@ -970,7 +990,7 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        with session_factory.create_session() as session, session.begin():
+        with self._session_maker.begin() as session:
             default_model = session.scalar(stmt)
 
             # create or update TenantDefaultModel record
@@ -1001,7 +1021,7 @@ class ProviderManager:
                 )
 
         settings_by_type = {setting.model_type: setting for setting in model_settings}
-        with session_factory.create_session() as session, session.begin():
+        with self._session_maker.begin() as session:
             default_models = session.scalars(
                 select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == tenant_id)
             )
@@ -1034,10 +1054,9 @@ class ProviderManager:
         if model not in [available_model.model for available_model in available_models]:
             raise ValueError(f"Model {model} does not exist.")
 
-    @staticmethod
-    def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
+    def _get_all_providers(self, tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
-        with session_factory.create_session() as session:
+        with self._session_maker() as session:
             stmt = (
                 select(Provider)
                 .where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
@@ -1049,8 +1068,7 @@ class ProviderManager:
                 provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
         return provider_name_to_provider_records_dict
 
-    @staticmethod
-    def _get_all_provider_models(tenant_id: str) -> dict[str, list[_ProviderModelCacheEntry]]:
+    def _get_all_provider_models(self, tenant_id: str) -> dict[str, list[_ProviderModelCacheEntry]]:
         """
         Get all provider model records of the workspace.
 
@@ -1060,6 +1078,7 @@ class ProviderManager:
         provider_models = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_MODELS_CACHE_SOURCE,
+            session_maker=self._session_maker,
         )
 
         provider_name_to_provider_model_records_dict = defaultdict(list)
@@ -1067,8 +1086,7 @@ class ProviderManager:
             provider_name_to_provider_model_records_dict[provider_model.provider_name].append(provider_model)
         return provider_name_to_provider_model_records_dict
 
-    @staticmethod
-    def _get_all_preferred_model_providers(tenant_id: str) -> dict[str, _TenantPreferredModelProviderCacheEntry]:
+    def _get_all_preferred_model_providers(self, tenant_id: str) -> dict[str, _TenantPreferredModelProviderCacheEntry]:
         """
         Get All preferred provider types of the workspace.
 
@@ -1078,6 +1096,7 @@ class ProviderManager:
         preferred_provider_types = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE,
+            session_maker=self._session_maker,
         )
 
         return {
@@ -1085,8 +1104,7 @@ class ProviderManager:
             for preferred_provider_type in preferred_provider_types
         }
 
-    @staticmethod
-    def _get_all_provider_model_settings(tenant_id: str) -> dict[str, list[_ProviderModelSettingCacheEntry]]:
+    def _get_all_provider_model_settings(self, tenant_id: str) -> dict[str, list[_ProviderModelSettingCacheEntry]]:
         """
         Get All provider model settings of the workspace.
 
@@ -1096,6 +1114,7 @@ class ProviderManager:
         provider_model_settings = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE,
+            session_maker=self._session_maker,
         )
 
         provider_name_to_provider_model_settings_dict = defaultdict(list)
@@ -1105,8 +1124,9 @@ class ProviderManager:
             )
         return provider_name_to_provider_model_settings_dict
 
-    @staticmethod
-    def _get_all_provider_model_credentials(tenant_id: str) -> dict[str, list[_ProviderModelCredentialCacheEntry]]:
+    def _get_all_provider_model_credentials(
+        self, tenant_id: str
+    ) -> dict[str, list[_ProviderModelCredentialCacheEntry]]:
         """
         Get All provider model credentials of the workspace.
 
@@ -1116,6 +1136,7 @@ class ProviderManager:
         provider_model_credentials = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE,
+            session_maker=self._session_maker,
         )
 
         provider_name_to_provider_model_credentials_dict = defaultdict(list)
@@ -1125,8 +1146,7 @@ class ProviderManager:
             )
         return provider_name_to_provider_model_credentials_dict
 
-    @staticmethod
-    def _get_all_provider_credentials(tenant_id: str) -> dict[str, list[_ProviderCredentialCacheEntry]]:
+    def _get_all_provider_credentials(self, tenant_id: str) -> dict[str, list[_ProviderCredentialCacheEntry]]:
         """
         Get All provider credentials of the workspace.
 
@@ -1136,6 +1156,7 @@ class ProviderManager:
         provider_credentials = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_CREDENTIALS_CACHE_SOURCE,
+            session_maker=self._session_maker,
         )
 
         provider_name_to_provider_credentials_dict = defaultdict(list)
@@ -1143,8 +1164,8 @@ class ProviderManager:
             provider_name_to_provider_credentials_dict[provider_credential.provider_name].append(provider_credential)
         return provider_name_to_provider_credentials_dict
 
-    @staticmethod
     def _get_all_provider_load_balancing_configs(
+        self,
         billing: ProviderCatalogBilling,
     ) -> dict[str, list[_LoadBalancingModelConfigCacheEntry]]:
         """Return entitled load balancing configs; never persist an outage as a negative entitlement."""
@@ -1166,6 +1187,7 @@ class ProviderManager:
         provider_load_balancing_configs = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE,
+            session_maker=self._session_maker,
         )
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
@@ -1191,9 +1213,8 @@ class ProviderManager:
                 provider_names.append(str(model_provider_id))
         return provider_names
 
-    @staticmethod
     def get_provider_model_available_credentials(
-        tenant_id: str, provider_name: str, model_name: str, model_type: str
+        self, tenant_id: str, provider_name: str, model_name: str, model_type: str
     ) -> list[CredentialConfiguration]:
         """
         Get provider custom model all credentials.
@@ -1204,7 +1225,7 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        with session_factory.create_session() as session:
+        with self._session_maker() as session:
             stmt = (
                 select(ProviderModelCredential)
                 .where(

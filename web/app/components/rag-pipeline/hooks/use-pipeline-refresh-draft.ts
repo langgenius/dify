@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { reportRequestError } from '@/app/query-error-toast'
 import { fetchPipelineWorkflowDraft } from '@/service/workflow'
 import { processNodesWithoutDataSource } from '../utils'
 
@@ -51,6 +52,8 @@ export const usePipelineRefreshDraft = () => {
         )
         setRagPipelineVariables?.(response.rag_pipeline_variables || [])
       })
+      // The canvas keeps its current graph, so the failed reload is reported here.
+      .catch(reportRequestError)
       .finally(() => setIsSyncingWorkflowDraft(false))
   }, [handleUpdateWorkflowCanvas, workflowStore, pipelineId])
 

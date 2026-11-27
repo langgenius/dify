@@ -4,6 +4,7 @@ import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
@@ -15,9 +16,21 @@ const mockRequest = vi.hoisted(() => vi.fn<typeof import('@/service/base').reque
 vi.mock('@/service/base', () => ({
   request: mockRequest,
 }))
-vi.mock('@/service/workflow', () => ({
-  fetchPipelineWorkflowDraft: (pipelineId: string) => mockFetchWorkflowDraft(pipelineId),
-}))
+// Validate rejections against the contract, as the console link does.
+vi.mock('@/service/workflow', async () => {
+  const { rag } = await import('@dify/contracts/api/console/rag/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ rag })
+  return {
+    fetchPipelineWorkflowDraft: (pipelineId: string) =>
+      validate({
+        context: {},
+        input: { params: { pipeline_id: pipelineId } },
+        path: ['rag', 'pipelines', 'byPipelineId', 'workflows', 'draft', 'get'],
+        next: () => mockFetchWorkflowDraft(pipelineId),
+      }),
+  }
+})
 
 // Default block/publish/upload config queries are covered by use-pipeline-config.spec.
 vi.mock('../use-pipeline-config', () => ({
@@ -33,6 +46,19 @@ const createDraft = (overrides: Record<string, unknown> = {}) => ({
   rag_pipeline_variables: [],
   ...overrides,
 })
+
+const notExistError = () =>
+  createHttpError(new Response(null, { status: 404 }), {
+    code: 'draft_workflow_not_exist',
+    message: 'Draft workflow not exist.',
+    status: 404,
+  })
+const draftUnavailableError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
+  )
+const toastError = vi.spyOn(toast, 'error')
 
 const knowledgeDataset = {
   name: 'Test Knowledge',
@@ -125,13 +151,7 @@ describe('usePipelineInit', () => {
   })
 
   it('creates the knowledge base template draft when the pipeline has no draft yet', async () => {
-    mockFetchWorkflowDraft.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 404 }), {
-        code: 'draft_workflow_not_exist',
-        message: 'Draft workflow not exist.',
-        status: 404,
-      }),
-    )
+    mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
     mockFetchWorkflowDraft.mockResolvedValueOnce(createDraft({ hash: 'new-hash' }))
     mockRequest.mockResolvedValue(Response.json({ updated_at: 1_704_153_600 }))
     const { result, store } = renderPipelineInit()
@@ -155,5 +175,41 @@ describe('usePipelineInit', () => {
       },
       environment_variables: [],
     })
+  })
+
+  it('reports a missing-draft code the contract does not document for that status', async () => {
+    mockFetchWorkflowDraft.mockRejectedValue(
+      createHttpError(new Response(null, { status: 500 }), {
+        code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 500,
+      }),
+    )
+    const { result } = renderPipelineInit()
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledOnce())
+    expect(result.current.isLoading).toBe(true)
+    expect(mockRequest).not.toHaveBeenCalled()
+  })
+
+  it('shows the server message when the draft fails to load', async () => {
+    mockFetchWorkflowDraft.mockRejectedValue(draftUnavailableError())
+    const { result } = renderPipelineInit()
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+    expect(mockRequest).not.toHaveBeenCalled()
+  })
+
+  it('shows the server message when creating the template draft fails', async () => {
+    mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
+    // The transport rejects a failed response with the decoded backend envelope.
+    mockRequest.mockRejectedValue(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Draft unavailable' }),
+    )
+    const { result } = renderPipelineInit()
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
   })
 })

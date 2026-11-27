@@ -16,10 +16,10 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob } from '../../client'
@@ -148,6 +148,7 @@ export function SkillFileEditor({
   skillId: string
 }) {
   const { t } = useTranslation(['skill'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const initialContent =
@@ -452,13 +453,17 @@ export function SkillFileEditor({
 
         setSaveStatus('error')
         toast.error(
-          getRequestErrorMessage(error) ?? t(($) => $['skillManagement.detail.saveFailed']),
+          describeRequestError(
+            error,
+            t(($) => $['skillManagement.detail.saveFailed']),
+          ),
         )
         return false
       }
     },
     [
       canEdit,
+      describeRequestError,
       draftMutationCoordinator,
       isSavingDraft,
       onDraftDetailChange,
@@ -1030,7 +1035,7 @@ export function SkillFileEditor({
   ])
 
   const handlePublishAction = useCallback(() => {
-    void handlePublish().catch((error: unknown) => toastRequestError(error))
+    void handlePublish().catch((error: unknown) => reportRequestError(error))
   }, [handlePublish])
 
   useEffect(() => {

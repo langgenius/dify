@@ -50,10 +50,11 @@ import { selectToolsWithProvider } from '@/app/components/tools/utils/query-sele
 import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { fetchAllInspectVars } from '@/service/workflow'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
@@ -153,6 +154,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     onlineUsers,
   }) => {
     const { t } = useTranslation(['common', 'workflow', 'workflowHistory', 'workflowComments'])
+    const describeRequestError = useRequestErrorDescriber()
     const workflowContainerRef = useRef<HTMLDivElement>(null)
     useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
@@ -314,9 +316,12 @@ export const Workflow: FC<WorkflowProps> = memo(
       if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
 
       handleSyncWorkflowDraft(true, true, {
-        onError: () => {
+        onError: (error) => {
           toast.error(
-            t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
+            describeRequestError(
+              error,
+              t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
+            ),
             {
               timeout: 0,
             },
@@ -509,7 +514,7 @@ export const Workflow: FC<WorkflowProps> = memo(
           setVars(data)
           setIsLoadedVars(true)
         } catch (error) {
-          toastRequestError(error)
+          reportRequestError(error)
         }
       })()
     }, [resource])

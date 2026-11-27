@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getRawInputsFromUrlParams } from '@/app/components/base/chat/utils'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -101,10 +101,15 @@ export const useTextGenerationAppState = ({
   const fetchSavedMessages = useCallback(
     async (targetAppId = appId) => {
       if (!targetAppId) return
-      const res = (await doFetchSavedMessage(appSourceType, targetAppId)) as {
-        data: SavedMessage[]
+      try {
+        const res = (await doFetchSavedMessage(appSourceType, targetAppId)) as {
+          data: SavedMessage[]
+        }
+        setSavedMessages(res.data)
+      } catch (error) {
+        // The saved list keeps what it showed, so the failed load is reported here.
+        reportRequestError(error)
       }
-      setSavedMessages(res.data)
     },
     [appId, appSourceType],
   )
@@ -114,7 +119,7 @@ export const useTextGenerationAppState = ({
       try {
         await saveMessage(messageId, appSourceType, appId)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         return
       }
       toast.success(t(($) => $['api.saved'], { ns: 'common' }))
@@ -128,7 +133,7 @@ export const useTextGenerationAppState = ({
       try {
         await removeMessage(messageId, appSourceType, appId)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         return
       }
       toast.success(t(($) => $['api.remove'], { ns: 'common' }))

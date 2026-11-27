@@ -47,6 +47,8 @@
   "noMatchingDocuments": "この検索に一致するドキュメントはありません。",
   "parentChildChunkCount": "親チャンク {{parentCount}} 件 / 子チャンク {{childCount}} 件",
   "partialDocumentResults": "一致するドキュメントがほかにもある可能性があります。検索を続けるにはさらに読み込んでください。",
+  "reindexConfirmDescription": "再インデックスでは、ソースファイルからすべてのチャンクとインデックスを作り直します。ナレッジベース内でチャンクに加えた変更（競合の解決時に別のドキュメントの記述を採用した場合など）は、ソースファイルの内容で上書きされます。再インデックスが完了するまで、検索には現在のインデックスが引き続き使用されます。",
+  "reindexConfirmTitle": "ソースファイルから再インデックスしますか？",
   "reindexDocument": "再インデックス",
   "retrievalCountValue": "過去7日間で{{value}}回",
   "retryReindexDocument": "もう一度再インデックス",

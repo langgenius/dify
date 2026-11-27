@@ -46,7 +46,7 @@ import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -135,7 +135,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
       // A failed load keeps the editor hidden, so it never opens with an empty payload to save.
       setIsDetailLoading(false)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
   }, [canManageTools, collection.labels, collection.name])
 
@@ -145,7 +145,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     try {
       await updateCustomCollection(data)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     // Schema edits change the actions the settings drawer reads from this query.
@@ -182,7 +182,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
       // A failed load keeps the drawer hidden, so it never opens with an empty payload to save.
       setIsDetailLoading(false)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
   }, [collection.id])
   const updateWorkflowToolProvider = async (
@@ -197,7 +197,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     try {
       await saveWorkflowToolProvider(data)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     queryClient.invalidateQueries({
@@ -252,7 +252,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         setToolList(list)
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
     setIsDetailLoading(false)
   }, [collection.name, collection.type])

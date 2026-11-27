@@ -32,7 +32,7 @@ import ErrorBoundary from '@/app/components/base/error-boundary'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -180,7 +180,7 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
       setAllChatItems((items) => mergeUniqueChatItems(items, newItems))
     } catch (error) {
       console.error(error)
-      toastRequestError(error)
+      reportRequestError(error)
       setHasMore(false)
     } finally {
       setIsLoading(false)

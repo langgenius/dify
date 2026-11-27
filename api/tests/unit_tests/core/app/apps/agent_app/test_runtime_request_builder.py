@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, replace
-from types import SimpleNamespace
 
 import pytest
 from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
@@ -37,13 +36,14 @@ from core.app.apps.agent_app.runtime_request_builder import (
 )
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.llm.model_access import ModelRuntimeProfile
+from core.tools.entities.common_entities import I18nObject
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder, WorkflowAgentToolLayers
 from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature
-from models.agent_config_entities import AgentSoulConfig, AppVariableConfig
+from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulConfig, AppVariableConfig
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
@@ -174,17 +174,22 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
 
 
 class _NoToolsBuilder:
-    def __init__(self):
-        self.knowledge_fs_spaces = ()
+    def __init__(self) -> None:
+        self.knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = ()
 
-    def build_layers(self, **kwargs):
-        self.knowledge_fs_spaces = kwargs["knowledge_fs_spaces"]
-        return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
+    def build_layers(
+        self, *, knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (), **_kwargs: object
+    ) -> WorkflowAgentToolLayers:
+        self.knowledge_fs_spaces = knowledge_fs_spaces
+        return WorkflowAgentToolLayers()
 
 
 class _PluginLayerBuilder:
-    def build_layers(self, **kwargs):
-        return SimpleNamespace(
+    def __init__(self) -> None:
+        self.tool_labels = {"current_time": I18nObject(en_US="Current Time", zh_Hans="当前时间").to_dict()}
+
+    def build_layers(self, **_kwargs: object) -> WorkflowAgentToolLayers:
+        return WorkflowAgentToolLayers(
             plugin_tools=DifyPluginToolsLayerConfig(
                 tools=[
                     DifyPluginToolConfig(
@@ -202,14 +207,13 @@ class _PluginLayerBuilder:
                 ]
             ),
             core_tools=None,
-            exposed_tool_names=lambda: ["current_time"],
+            tool_labels=self.tool_labels,
         )
 
 
 class _CoreLayerBuilder:
-    def build_layers(self, **kwargs):
-        del kwargs
-        return SimpleNamespace(
+    def build_layers(self, **_kwargs: object) -> WorkflowAgentToolLayers:
+        return WorkflowAgentToolLayers(
             plugin_tools=None,
             core_tools=DifyCoreToolsLayerConfig(
                 tools=[
@@ -225,7 +229,7 @@ class _CoreLayerBuilder:
                     )
                 ]
             ),
-            exposed_tool_names=lambda: ["transcribe"],
+            tool_labels={"transcribe": I18nObject(en_US="Speech To Text", zh_Hans="语音转文字").to_dict()},
         )
 
 
@@ -668,7 +672,13 @@ class TestAgentAppRuntimeRequestBuilder:
             tool for tool in result.available_tools if tool.tool_ref == "plugin:langgenius/time/time/current_time"
         )
         assert plugin_tool.name == "current_time"
+        assert plugin_tool.display_name == "Current Time"
         assert plugin_tool.input_schema == {"type": "object", "properties": {}, "required": []}
+        assert result.tool_labels["current_time"]["zh_Hans"] == "当前时间"
+        tools_builder.tool_labels["current_time"]["en_US"] = "Renamed"
+        assert result.tool_labels["current_time"]["en_US"] == "Current Time"
+        assert "Current Time" not in result.request.model_dump_json()
+        assert "tool_labels" not in result.request.model_dump_json()
 
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_snapshot(self):
         soul = _soul_with_model()
@@ -690,6 +700,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
         assert DIFY_CORE_TOOLS_LAYER_ID not in names
         assert result.available_tools == ()
+        assert result.tool_labels["current_time"]["en_US"] == "Current Time"
 
     def test_build_includes_core_tools_layer_returned_by_injected_builder(self):
         soul = _soul_with_model()
@@ -711,6 +722,8 @@ class TestAgentAppRuntimeRequestBuilder:
         assert DIFY_PLUGIN_TOOLS_LAYER_ID not in names
         assert result.available_tools[0].tool_ref == "core:builtin/audio/transcribe"
         assert result.available_tools[0].name == "transcribe"
+        assert result.available_tools[0].display_name == "Speech To Text"
+        assert result.tool_labels["transcribe"]["zh_Hans"] == "语音转文字"
 
     def test_build_normalizes_marketplace_model_plugin_id(self):
         soul = _soul_with_model()

@@ -8,7 +8,7 @@ import { useMutation } from '@tanstack/react-query'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import { AssignRolesContent } from './assign-roles-content'
 import { TransferOwnershipContent } from './transfer-ownership-content'
@@ -30,6 +30,7 @@ export const MemberMenu = memo(
     allowMultipleRoles = true,
   }: MemberMenuProps) => {
     const { t } = useTranslation(['common', 'workspaceMembers'])
+    const describeRequestError = useRequestErrorDescriber()
     const searchInputRef = useRef<HTMLInputElement>(null)
     const [transferOpen, setTransferOpen] = useState(false)
     const [assignModalOpen, setAssignModalOpen] = useState(false)
@@ -61,7 +62,10 @@ export const MemberMenu = memo(
     )
 
     const roleSaveErrorMessage = roleSaveFailed
-      ? (getRequestErrorMessage(roleSaveError) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
+      ? describeRequestError(
+          roleSaveError,
+          t(($) => $['api.actionFailed'], { ns: 'common' }),
+        )
       : undefined
 
     const handleOpenAssignRoles = () => {

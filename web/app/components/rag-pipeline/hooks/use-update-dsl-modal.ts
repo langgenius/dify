@@ -8,6 +8,7 @@ import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
@@ -95,7 +96,8 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         notifyError()
         return
       }
-      updateWorkflow(pipelineId)
+      // The import is saved; a failed canvas reload leaves the old graph on screen.
+      void updateWorkflow(pipelineId).catch(reportRequestError)
       onImport?.()
       const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
       toast(

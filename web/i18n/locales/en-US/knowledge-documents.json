@@ -47,6 +47,8 @@
   "noMatchingDocuments": "No documents match this search.",
   "parentChildChunkCount": "{{parentCount}} parents / {{childCount}} children",
   "partialDocumentResults": "More documents may match. Load more to continue searching.",
+  "reindexConfirmDescription": "Reindexing rebuilds every chunk and index entry from the source file. Edits made to chunks in the knowledge base, such as adopting another document's statement when resolving a conflict, will be overwritten by the source file's content. Search keeps using the current index until reindexing finishes.",
+  "reindexConfirmTitle": "Reindex from the source file?",
   "reindexDocument": "Re-index",
   "retrievalCountValue": "{{value}} in last 7 days",
   "retryReindexDocument": "Re-index again",
