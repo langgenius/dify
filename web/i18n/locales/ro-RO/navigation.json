@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Toate instrumentele disponibile în workspace — instrumente integrate și integrări instalate din Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "Creează un spațiu de lucru",
+  "workspaceUnavailable.createWorkspaceDescription": "Creează-ți aplicațiile în Dify Studio. Creează un spațiu de lucru pentru a începe.",
+  "workspaceUnavailable.createWorkspaceTitle": "Creează un spațiu de lucru",
   "workspaceUnavailable.description": "Nu ai acces la <workspace>{{workspaceName}}</workspace>. Dacă ai nevoie de acces, contactează proprietarul sau un administrator al spațiului de lucru.",
   "workspaceUnavailable.descriptionWithoutName": "Dacă ai nevoie de acces, contactează proprietarul sau un administrator al spațiului de lucru.",
   "workspaceUnavailable.switchWorkspace": "Schimbă spațiul de lucru",
-  "workspaceUnavailable.title": "Nu poți accesa acest spațiu de lucru"
+  "workspaceUnavailable.title": "Nu poți accesa acest spațiu de lucru",
+  "workspaceUnavailable.workspaceName": "Numele spațiului de lucru",
+  "workspaceUnavailable.workspaceNamePlaceholder": "De ex.: Spațiul meu de lucru"
 }

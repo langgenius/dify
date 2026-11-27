@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Semua alat yang tersedia di workspace Anda — alat bawaan dan integrasi yang diinstal dari Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "Buat workspace",
+  "workspaceUnavailable.createWorkspaceDescription": "Bangun aplikasi Anda di Dify Studio. Buat workspace untuk memulai.",
+  "workspaceUnavailable.createWorkspaceTitle": "Buat workspace",
   "workspaceUnavailable.description": "Anda tidak memiliki akses ke <workspace>{{workspaceName}}</workspace>. Hubungi pemilik atau admin workspace jika Anda memerlukan akses.",
   "workspaceUnavailable.descriptionWithoutName": "Hubungi pemilik atau admin workspace jika Anda memerlukan akses.",
   "workspaceUnavailable.switchWorkspace": "Ganti workspace",
-  "workspaceUnavailable.title": "Anda tidak dapat mengakses workspace ini"
+  "workspaceUnavailable.title": "Anda tidak dapat mengakses workspace ini",
+  "workspaceUnavailable.workspaceName": "Nama workspace",
+  "workspaceUnavailable.workspaceNamePlaceholder": "cth. Workspace saya"
 }

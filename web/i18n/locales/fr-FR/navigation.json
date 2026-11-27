@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Tous les outils disponibles dans votre espace de travail — outils intégrés et intégrations installés depuis Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "Créer un espace de travail",
+  "workspaceUnavailable.createWorkspaceDescription": "Créez vos applications dans Dify Studio. Créez un espace de travail pour commencer.",
+  "workspaceUnavailable.createWorkspaceTitle": "Créer un espace de travail",
   "workspaceUnavailable.description": "Vous n’avez pas accès à <workspace>{{workspaceName}}</workspace>. Si vous avez besoin d’y accéder, contactez le propriétaire ou un administrateur de l’espace de travail.",
   "workspaceUnavailable.descriptionWithoutName": "Si vous avez besoin d’y accéder, contactez le propriétaire ou un administrateur de l’espace de travail.",
   "workspaceUnavailable.switchWorkspace": "Changer d’espace de travail",
-  "workspaceUnavailable.title": "Vous ne pouvez pas accéder à cet espace de travail"
+  "workspaceUnavailable.title": "Vous ne pouvez pas accéder à cet espace de travail",
+  "workspaceUnavailable.workspaceName": "Nom de l’espace de travail",
+  "workspaceUnavailable.workspaceNamePlaceholder": "Ex. : Mon espace de travail"
 }

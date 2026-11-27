@@ -4744,10 +4744,15 @@ export default interface Resources {
     'settings.workspace': 'WORKSPACE'
     'toolsPage.description': 'All tools available in your workspace — both built-in and installed from the Marketplace.'
     'toolsPage.toolPlugin': 'Tool Plugin'
+    'workspaceUnavailable.createWorkspace': 'Create workspace'
+    'workspaceUnavailable.createWorkspaceDescription': 'Build your apps in Dify Studio. Create a workspace to get started.'
+    'workspaceUnavailable.createWorkspaceTitle': 'Create a workspace'
     'workspaceUnavailable.description': 'You don’t have access to <workspace>{{workspaceName}}</workspace>. Contact a workspace owner or admin if you need access.'
     'workspaceUnavailable.descriptionWithoutName': 'Contact a workspace owner or admin if you need access.'
     'workspaceUnavailable.switchWorkspace': 'Switch workspace'
     'workspaceUnavailable.title': 'You can’t access this workspace'
+    'workspaceUnavailable.workspaceName': 'Workspace name'
+    'workspaceUnavailable.workspaceNamePlaceholder': 'e.g. My workspace'
   }
   oauth: {
     'callback.error': 'Authorization failed'

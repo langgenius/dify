@@ -49,8 +49,13 @@
   "settings.workspace": "工作空间",
   "toolsPage.description": "工作区中所有可用的工具 —— 包括内置工具和从 Marketplace 安装的工具。",
   "toolsPage.toolPlugin": "工具插件",
+  "workspaceUnavailable.createWorkspace": "创建工作空间",
+  "workspaceUnavailable.createWorkspaceDescription": "在 Dify Studio 中构建应用。创建工作空间即可开始。",
+  "workspaceUnavailable.createWorkspaceTitle": "创建工作空间",
   "workspaceUnavailable.description": "你没有访问<workspace>{{workspaceName}}</workspace>的权限。如需访问，请联系工作空间的所有者或管理员。",
   "workspaceUnavailable.descriptionWithoutName": "如需访问，请联系工作空间的所有者或管理员。",
   "workspaceUnavailable.switchWorkspace": "切换工作空间",
-  "workspaceUnavailable.title": "你无法访问此工作空间"
+  "workspaceUnavailable.title": "你无法访问此工作空间",
+  "workspaceUnavailable.workspaceName": "工作空间名称",
+  "workspaceUnavailable.workspaceNamePlaceholder": "例如：我的工作空间"
 }

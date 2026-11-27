@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "เครื่องมือทั้งหมดที่มีใน workspace ของคุณ — เครื่องมือในตัวและ integration ที่ติดตั้งจาก Marketplace",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "สร้างพื้นที่ทำงาน",
+  "workspaceUnavailable.createWorkspaceDescription": "สร้างแอปของคุณใน Dify Studio สร้างพื้นที่ทำงานเพื่อเริ่มต้น",
+  "workspaceUnavailable.createWorkspaceTitle": "สร้างพื้นที่ทำงาน",
   "workspaceUnavailable.description": "คุณไม่มีสิทธิ์เข้าถึง <workspace>{{workspaceName}}</workspace> หากต้องการสิทธิ์เข้าถึง โปรดติดต่อเจ้าของหรือผู้ดูแลระบบของพื้นที่ทำงาน",
   "workspaceUnavailable.descriptionWithoutName": "หากต้องการสิทธิ์เข้าถึง โปรดติดต่อเจ้าของหรือผู้ดูแลระบบของพื้นที่ทำงาน",
   "workspaceUnavailable.switchWorkspace": "สลับพื้นที่ทำงาน",
-  "workspaceUnavailable.title": "คุณไม่สามารถเข้าถึงพื้นที่ทำงานนี้ได้"
+  "workspaceUnavailable.title": "คุณไม่สามารถเข้าถึงพื้นที่ทำงานนี้ได้",
+  "workspaceUnavailable.workspaceName": "ชื่อพื้นที่ทำงาน",
+  "workspaceUnavailable.workspaceNamePlaceholder": "เช่น พื้นที่ทำงานของฉัน"
 }

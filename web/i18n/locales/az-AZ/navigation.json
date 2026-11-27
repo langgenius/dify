@@ -49,8 +49,13 @@
   "settings.workspace": "İş sahəsi",
   "toolsPage.description": "İş sahənizdə əlçatan olan bütün alətlər: həm daxili, həm də mağazadan quraşdırılmış alətlər.",
   "toolsPage.toolPlugin": "Alət plagini",
+  "workspaceUnavailable.createWorkspace": "İş sahəsi yarat",
+  "workspaceUnavailable.createWorkspaceDescription": "Tətbiqlərinizi Dify Studio-da yaradın. Başlamaq üçün iş sahəsi yaradın.",
+  "workspaceUnavailable.createWorkspaceTitle": "İş sahəsi yaradın",
   "workspaceUnavailable.description": "<workspace>{{workspaceName}}</workspace> iş sahəsinə girişiniz yoxdur. Girişə ehtiyacınız varsa, iş sahəsinin sahibi və ya administratoru ilə əlaqə saxlayın.",
   "workspaceUnavailable.descriptionWithoutName": "Girişə ehtiyacınız varsa, iş sahəsinin sahibi və ya administratoru ilə əlaqə saxlayın.",
   "workspaceUnavailable.switchWorkspace": "İş sahəsini dəyiş",
-  "workspaceUnavailable.title": "Bu iş sahəsinə girişiniz yoxdur"
+  "workspaceUnavailable.title": "Bu iş sahəsinə girişiniz yoxdur",
+  "workspaceUnavailable.workspaceName": "İş sahəsinin adı",
+  "workspaceUnavailable.workspaceNamePlaceholder": "Məsələn, mənim iş sahəm"
 }

@@ -11,6 +11,7 @@ import { WorkplaceSelectorContent } from '@/app/components/header/account-menu/w
 import { consoleQuery } from '@/service/console'
 import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { basePath } from '@/utils/var'
+import { WorkspaceCreationMenu } from './workspace-creation-menu'
 
 const selectWorkspaces = ({ workspaces }: GetWorkspacesResponse) =>
   [...workspaces].sort((a, b) => Number(b.current) - Number(a.current))
@@ -32,6 +33,7 @@ export function WorkspaceAccessRecovery() {
   )
   const workspaces = workspacesQuery.data ?? []
   const currentWorkspace = workspaces.find((workspace) => workspace.current)
+  const canSwitchWorkspace = workspaces.some((workspace) => !workspace.current)
   const error = useRequestErrorMessage(
     switchWorkspace.error ?? (workspacesQuery.isLoadingError ? workspacesQuery.error : null),
   )
@@ -59,33 +61,37 @@ export function WorkspaceAccessRecovery() {
         </div>
       </div>
       <div className="flex min-w-0 flex-col items-center gap-2">
-        <Select<string>
-          value={currentWorkspace?.id ?? null}
-          onValueChange={(workspaceId) => {
-            if (workspaceId && workspaceId !== currentWorkspace?.id && !switchWorkspace.isPending)
-              switchWorkspace.mutate({ body: { tenant_id: workspaceId } })
-          }}
-        >
-          <SelectTrigger
-            size="large"
-            disabled={!workspaces.length || switchWorkspace.isPending}
-            aria-labelledby={switchLabelId}
-            className="w-fit bg-components-button-tertiary-bg ps-4 pe-2 system-md-medium text-components-button-tertiary-text data-placeholder:text-components-button-tertiary-text"
+        {workspacesQuery.data !== undefined && !canSwitchWorkspace ? (
+          <WorkspaceCreationMenu currentWorkspace={currentWorkspace} />
+        ) : (
+          <Select<string>
+            value={currentWorkspace?.id ?? null}
+            onValueChange={(workspaceId) => {
+              if (workspaceId && workspaceId !== currentWorkspace?.id && !switchWorkspace.isPending)
+                switchWorkspace.mutate({ body: { tenant_id: workspaceId } })
+            }}
           >
-            <span id={switchLabelId}>{t(($) => $['workspaceUnavailable.switchWorkspace'])}</span>
-          </SelectTrigger>
-          <WorkplaceSelectorContent
-            workspaces={workspaces}
-            unavailableWorkspace={
-              currentWorkspace && {
-                id: currentWorkspace.id,
-                label: t(($) => $['plansCommon.unavailable'], { ns: 'billing' }),
+            <SelectTrigger
+              size="large"
+              disabled={!canSwitchWorkspace || switchWorkspace.isPending}
+              aria-labelledby={switchLabelId}
+              className="w-fit bg-components-button-tertiary-bg ps-4 pe-2 system-md-medium text-components-button-tertiary-text data-placeholder:text-components-button-tertiary-text"
+            >
+              <span id={switchLabelId}>{t(($) => $['workspaceUnavailable.switchWorkspace'])}</span>
+            </SelectTrigger>
+            <WorkplaceSelectorContent
+              workspaces={workspaces}
+              unavailableWorkspace={
+                currentWorkspace && {
+                  id: currentWorkspace.id,
+                  label: t(($) => $['plansCommon.unavailable'], { ns: 'billing' }),
+                }
               }
-            }
-            align="center"
-            popupClassName="w-[min(20rem,var(--available-width))]"
-          />
-        </Select>
+              align="center"
+              popupClassName="w-[min(20rem,var(--available-width))]"
+            />
+          </Select>
+        )}
         {error && (
           <p role="alert" className="system-sm-regular text-text-destructive">
             {error}
@@ -95,11 +101,6 @@ export function WorkspaceAccessRecovery() {
           <Button variant="ghost" onClick={() => void workspacesQuery.refetch()}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>
-        )}
-        {workspacesQuery.isSuccess && !workspaces.length && (
-          <p role="status" className="system-sm-regular text-text-tertiary">
-            {t(($) => $['mainNav.workspace.noResults'])}
-          </p>
         )}
       </div>
     </main>

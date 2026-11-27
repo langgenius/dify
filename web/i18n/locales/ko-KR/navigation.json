@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "워크스페이스에서 사용할 수 있는 모든 도구 — 내장 도구와 Marketplace에서 설치한 통합입니다.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "워크스페이스 만들기",
+  "workspaceUnavailable.createWorkspaceDescription": "Dify Studio에서 앱을 만들어 보세요. 시작하려면 워크스페이스를 만드세요.",
+  "workspaceUnavailable.createWorkspaceTitle": "워크스페이스 만들기",
   "workspaceUnavailable.description": "<workspace>{{workspaceName}}</workspace>에 액세스할 권한이 없습니다. 액세스 권한이 필요하면 워크스페이스 소유자나 관리자에게 문의하세요.",
   "workspaceUnavailable.descriptionWithoutName": "액세스 권한이 필요하면 워크스페이스 소유자나 관리자에게 문의하세요.",
   "workspaceUnavailable.switchWorkspace": "워크스페이스 전환",
-  "workspaceUnavailable.title": "이 워크스페이스에 액세스할 수 없습니다"
+  "workspaceUnavailable.title": "이 워크스페이스에 액세스할 수 없습니다",
+  "workspaceUnavailable.workspaceName": "워크스페이스 이름",
+  "workspaceUnavailable.workspaceNamePlaceholder": "예: 내 워크스페이스"
 }

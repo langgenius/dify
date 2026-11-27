@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Усі інструменти, доступні у вашому workspace — вбудовані інструменти та інтеграція-и, встановлені з Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "Створити робочий простір",
+  "workspaceUnavailable.createWorkspaceDescription": "Створюйте застосунки в Dify Studio. Щоб почати, створіть робочий простір.",
+  "workspaceUnavailable.createWorkspaceTitle": "Створення робочого простору",
   "workspaceUnavailable.description": "Ви не маєте доступу до робочого простору <workspace>{{workspaceName}}</workspace>. Якщо вам потрібен доступ, зверніться до власника або адміністратора робочого простору.",
   "workspaceUnavailable.descriptionWithoutName": "Якщо вам потрібен доступ, зверніться до власника або адміністратора робочого простору.",
   "workspaceUnavailable.switchWorkspace": "Змінити робочий простір",
-  "workspaceUnavailable.title": "Ви не маєте доступу до цього робочого простору"
+  "workspaceUnavailable.title": "Ви не маєте доступу до цього робочого простору",
+  "workspaceUnavailable.workspaceName": "Назва робочого простору",
+  "workspaceUnavailable.workspaceNamePlaceholder": "Наприклад, Мій робочий простір"
 }

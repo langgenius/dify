@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Alle in deinem Arbeitsbereich verfügbaren Tools — integrierte Tools und aus dem Marketplace installierte Integrationen.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "Arbeitsbereich erstellen",
+  "workspaceUnavailable.createWorkspaceDescription": "Erstellen Sie Ihre Apps in Dify Studio. Legen Sie einen Arbeitsbereich an, um loszulegen.",
+  "workspaceUnavailable.createWorkspaceTitle": "Arbeitsbereich erstellen",
   "workspaceUnavailable.description": "Sie haben keinen Zugriff auf <workspace>{{workspaceName}}</workspace>. Wenn Sie Zugriff benötigen, wenden Sie sich an den Eigentümer oder einen Administrator des Arbeitsbereichs.",
   "workspaceUnavailable.descriptionWithoutName": "Wenn Sie Zugriff benötigen, wenden Sie sich an den Eigentümer oder einen Administrator des Arbeitsbereichs.",
   "workspaceUnavailable.switchWorkspace": "Arbeitsbereich wechseln",
-  "workspaceUnavailable.title": "Sie haben keinen Zugriff auf diesen Arbeitsbereich"
+  "workspaceUnavailable.title": "Sie haben keinen Zugriff auf diesen Arbeitsbereich",
+  "workspaceUnavailable.workspaceName": "Name des Arbeitsbereichs",
+  "workspaceUnavailable.workspaceNamePlaceholder": "z. B. Mein Arbeitsbereich"
 }

@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Alle tools die beschikbaar zijn in je workspace — ingebouwde tools en integraties die zijn geïnstalleerd vanuit Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "Werkruimte maken",
+  "workspaceUnavailable.createWorkspaceDescription": "Bouw je apps in Dify Studio. Maak een werkruimte om aan de slag te gaan.",
+  "workspaceUnavailable.createWorkspaceTitle": "Een werkruimte maken",
   "workspaceUnavailable.description": "Je hebt geen toegang tot <workspace>{{workspaceName}}</workspace>. Neem contact op met de eigenaar of een beheerder van de werkruimte als je toegang nodig hebt.",
   "workspaceUnavailable.descriptionWithoutName": "Neem contact op met de eigenaar of een beheerder van de werkruimte als je toegang nodig hebt.",
   "workspaceUnavailable.switchWorkspace": "Van werkruimte wisselen",
-  "workspaceUnavailable.title": "Je hebt geen toegang tot deze werkruimte"
+  "workspaceUnavailable.title": "Je hebt geen toegang tot deze werkruimte",
+  "workspaceUnavailable.workspaceName": "Naam van de werkruimte",
+  "workspaceUnavailable.workspaceNamePlaceholder": "Bijv. Mijn werkruimte"
 }

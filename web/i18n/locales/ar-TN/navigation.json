@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "كل الأدوات المتاحة في مساحة عملك — الأدوات المضمنة والإضافات المثبتة من Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "إنشاء مساحة عمل",
+  "workspaceUnavailable.createWorkspaceDescription": "أنشئ تطبيقاتك في Dify Studio. أنشئ مساحة عمل للبدء.",
+  "workspaceUnavailable.createWorkspaceTitle": "إنشاء مساحة عمل",
   "workspaceUnavailable.description": "ليس لديك إذن بالوصول إلى <workspace>{{workspaceName}}</workspace>. إذا كنت بحاجة إلى الوصول، فتواصل مع مالك مساحة العمل أو أحد مسؤوليها.",
   "workspaceUnavailable.descriptionWithoutName": "إذا كنت بحاجة إلى الوصول، فتواصل مع مالك مساحة العمل أو أحد مسؤوليها.",
   "workspaceUnavailable.switchWorkspace": "تبديل مساحة العمل",
-  "workspaceUnavailable.title": "لا يمكنك الوصول إلى مساحة العمل هذه"
+  "workspaceUnavailable.title": "لا يمكنك الوصول إلى مساحة العمل هذه",
+  "workspaceUnavailable.workspaceName": "اسم مساحة العمل",
+  "workspaceUnavailable.workspaceNamePlaceholder": "مثال: مساحة عملي"
 }

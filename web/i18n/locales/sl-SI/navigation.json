@@ -49,8 +49,13 @@
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Vsa orodja, ki so na voljo v vašem workspaceu — vgrajena orodja in integracija-i, nameščeni iz Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "Ustvari delovni prostor",
+  "workspaceUnavailable.createWorkspaceDescription": "Ustvarjajte aplikacije v Dify Studio. Za začetek ustvarite delovni prostor.",
+  "workspaceUnavailable.createWorkspaceTitle": "Ustvarite delovni prostor",
   "workspaceUnavailable.description": "Nimate dostopa do delovnega prostora <workspace>{{workspaceName}}</workspace>. Če potrebujete dostop, se obrnite na lastnika ali skrbnika delovnega prostora.",
   "workspaceUnavailable.descriptionWithoutName": "Če potrebujete dostop, se obrnite na lastnika ali skrbnika delovnega prostora.",
   "workspaceUnavailable.switchWorkspace": "Zamenjaj delovni prostor",
-  "workspaceUnavailable.title": "Nimate dostopa do tega delovnega prostora"
+  "workspaceUnavailable.title": "Nimate dostopa do tega delovnega prostora",
+  "workspaceUnavailable.workspaceName": "Ime delovnega prostora",
+  "workspaceUnavailable.workspaceNamePlaceholder": "Npr. Moj delovni prostor"
 }

@@ -49,8 +49,13 @@
   "settings.workspace": "ÇALIŞMA ALANI",
   "toolsPage.description": "Workspace’inizde kullanılabilen tüm araçlar — yerleşik araçlar ve Marketplace’ten yüklenen entegrasyonler.",
   "toolsPage.toolPlugin": "Araç Eklentisi",
+  "workspaceUnavailable.createWorkspace": "Çalışma alanı oluştur",
+  "workspaceUnavailable.createWorkspaceDescription": "Uygulamalarınızı Dify Studio’da geliştirin. Başlamak için bir çalışma alanı oluşturun.",
+  "workspaceUnavailable.createWorkspaceTitle": "Bir çalışma alanı oluşturun",
   "workspaceUnavailable.description": "<workspace>{{workspaceName}}</workspace> adlı çalışma alanına erişiminiz yok. Erişime ihtiyacınız varsa çalışma alanının sahibi veya bir yöneticisiyle iletişime geçin.",
   "workspaceUnavailable.descriptionWithoutName": "Erişime ihtiyacınız varsa çalışma alanının sahibi veya bir yöneticisiyle iletişime geçin.",
   "workspaceUnavailable.switchWorkspace": "Çalışma alanını değiştir",
-  "workspaceUnavailable.title": "Bu çalışma alanına erişemezsiniz"
+  "workspaceUnavailable.title": "Bu çalışma alanına erişemezsiniz",
+  "workspaceUnavailable.workspaceName": "Çalışma alanı adı",
+  "workspaceUnavailable.workspaceNamePlaceholder": "ör. Çalışma alanım"
 }

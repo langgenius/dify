@@ -49,8 +49,13 @@
   "settings.workspace": "工作區",
   "toolsPage.description": "工作區中所有可用工具，包括內建工具和從 Marketplace 安裝的整合。",
   "toolsPage.toolPlugin": "Tool Plugin",
+  "workspaceUnavailable.createWorkspace": "建立工作區",
+  "workspaceUnavailable.createWorkspaceDescription": "在 Dify Studio 中建置應用程式。建立工作區即可開始。",
+  "workspaceUnavailable.createWorkspaceTitle": "建立工作區",
   "workspaceUnavailable.description": "你沒有存取<workspace>{{workspaceName}}</workspace>的權限。如需存取，請聯絡工作區的擁有者或管理員。",
   "workspaceUnavailable.descriptionWithoutName": "如需存取，請聯絡工作區的擁有者或管理員。",
   "workspaceUnavailable.switchWorkspace": "切換工作區",
-  "workspaceUnavailable.title": "你無法存取此工作區"
+  "workspaceUnavailable.title": "你無法存取此工作區",
+  "workspaceUnavailable.workspaceName": "工作區名稱",
+  "workspaceUnavailable.workspaceNamePlaceholder": "例如：我的工作區"
 }
