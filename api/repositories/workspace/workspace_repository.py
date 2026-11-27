@@ -24,6 +24,7 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App
 from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
@@ -120,8 +121,6 @@ class WorkspaceRepository(
             session.add(tenant)
             if owner_id is not None:
                 session.add(TenantAccountJoin(tenant_id=tenant.id, account_id=owner_id, role=TenantAccountRole.OWNER))
-                if account is None:
-                    SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(owner_id))
             for category, setting in creation.plugin_upgrade_settings.items():
                 session.add(
                     TenantPluginAutoUpgradeStrategy(
@@ -486,8 +485,6 @@ class WorkspaceRepository(
                 session.add(TenantAccountJoin(tenant_id=workspace_id, account_id=account_id, role=role))
             else:
                 membership.role = role
-            # Membership writes repair missing Contact identities for existing accounts.
-            SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account_id))
             if previous_role is not role:
                 from services.knowledge_fs.membership_changes import (
                     KnowledgeFSWorkspaceMembershipChange,
@@ -519,7 +516,7 @@ class WorkspaceRepository(
     ) -> WorkspaceMemberRemoval:
         """Remove a membership and transfer its resources to ``owner_id`` without deleting the account.
 
-        Retention requires an active account and reuses its stable Contact identity.
+        Retention requires an active account with an existing Contact in this workspace.
         Otherwise any Platform entry in this workspace is removed. The Platform entry
         change, membership deletion, and resource transfers commit or roll back together.
         """
@@ -532,6 +529,14 @@ class WorkspaceRepository(
             )
             if account is None or membership is None:
                 raise MemberNotInTenantError("Member not in tenant.")
+            contacts = SQLAlchemyContactRepository(session)
+            if keep_as_platform_contact:
+                contact = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(account_id))
+                if contact is None:
+                    raise ContactError(ContactErrorCode.NOT_FOUND, "Workspace member has no Contact to retain")
+                contacts.create_platform_entry(TenantId(workspace_id), contact.id, AccountId(actor_account_id))
+            else:
+                contacts.delete_platform_entry_for_account(TenantId(workspace_id), AccountId(account_id))
             session.execute(
                 update(App)
                 .where(App.tenant_id == workspace_id, App.maintainer == account_id)
@@ -556,12 +561,6 @@ class WorkspaceRepository(
                 removed_account_id=account_id,
                 replacement_owner_account_id=owner_id,
             )
-            contacts = SQLAlchemyContactRepository(session)
-            if keep_as_platform_contact:
-                contact_id = contacts.provision_account_backed_contact(AccountId(account_id))
-                contacts.create_platform_entry(TenantId(workspace_id), contact_id, AccountId(actor_account_id))
-            else:
-                contacts.delete_platform_entry_for_account(TenantId(workspace_id), AccountId(account_id))
             session.delete(membership)
             return WorkspaceMemberRemoval(account_id, account.email)
 

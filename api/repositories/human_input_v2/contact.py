@@ -113,7 +113,9 @@ class ContactRepository(Protocol):
 
     def delete_external_contact(self, tenant_id: TenantId, external_contact: ExternalContact) -> None: ...
 
-    def provision_account_backed_contact(self, account_id: AccountId) -> ContactId: ...
+    def provision_account_backed_contact(self, account_id: AccountId) -> ContactId:
+        """Allocate the stable Contact ID in the Account creation transaction."""
+        ...
 
     def query_contacts_by_email(
         self,

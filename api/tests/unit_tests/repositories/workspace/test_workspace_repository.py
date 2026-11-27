@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
+from models.human_input_v2 import HumanInputContactIdentity
 from models.knowledge_fs import (
     KnowledgeFSAuthorizationRevision,
     KnowledgeFSCapabilityIssuanceAudit,
@@ -431,35 +431,20 @@ class TestWorkspaceRepositoryCases:
         return WorkspaceRepository(sqlite_session_factory)
 
     @staticmethod
-    def test_provision_existing_account_creates_and_reuses_contact_identity(
+    def test_creating_workspace_for_existing_account_does_not_provision_contact_identity(
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         with sqlite_session_factory.begin() as session:
             session.add(make_account("owner", status=AccountStatus.ACTIVE, created_at=datetime(2026, 1, 1)))
 
         repository = WorkspaceRepository(sqlite_session_factory)
-        contact_ids: list[str] = []
-        for workspace_id in ("first", "second"):
-            prepare = partial(WorkspaceCreation, workspace_id, "Workspace", "public-key", 0, {})
+        prepare = partial(WorkspaceCreation, "workspace", "Workspace", "public-key", 0, {})
+        created = repository.provision(prepare, owner_id="owner")
 
-            created = repository.provision(prepare, owner_id="owner")
-
-            assert created is not None
-            assert created.id == workspace_id
-            with sqlite_session_factory() as session:
-                membership = session.scalar(
-                    select(TenantAccountJoin).where(
-                        TenantAccountJoin.tenant_id == workspace_id,
-                        TenantAccountJoin.account_id == "owner",
-                    )
-                )
-                assert membership is not None
-                assert membership.role == TenantAccountRole.OWNER
-                identity = session.scalars(select(HumanInputContactIdentity)).one()
-                assert identity.subject_type == ContactSubjectType.ACCOUNT
-                assert identity.account_id == "owner"
-                contact_ids.append(identity.id)
-        assert contact_ids[0] == contact_ids[1]
+        assert created is not None
+        assert repository.owner_id(created.id) == "owner"
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(HumanInputContactIdentity.id)) is None
 
     @staticmethod
     def test_names_by_ids_returns_only_existing_requested_workspaces(seeded: WorkspaceRepository) -> None:

@@ -21,7 +21,7 @@ from models.dataset import Dataset
 from models.human_input_v2 import HumanInputContactIdentity
 from models.model import App, AppMode
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
-from repositories.human_input_v2.contact import ContactType
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode, ContactType
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.adapters import (
     BillingAccountActivationEligibility,
@@ -187,7 +187,9 @@ class TestMemberServiceCases:
         other_workspace = Tenant(name="Other workspace")
         sqlite_session.add(other_workspace)
         contacts = SQLAlchemyContactRepository(sqlite_session)
-        contact_id = contacts.provision_account_backed_contact(AccountId(member_id))
+        current = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(member_id))
+        assert current is not None
+        contact_id = current.id
         sqlite_session.commit()
         account_domain.access.platform_contacts_enabled = True
         account_domain.access.rbac_enabled = True
@@ -237,6 +239,25 @@ class TestMemberServiceCases:
         other_contact = contacts.get_contacts_by_id(TenantId(other_workspace.id), retained.id)
         assert other_contact is not None
         assert other_contact.type is ContactType.PLATFORM
+
+    @staticmethod
+    def test_retaining_a_missing_contact_fails_without_removing_member(
+        account_domain: AccountDomain, sqlite_session: Session, members_without_contact: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, member_id = members_without_contact
+        account_domain.access.platform_contacts_enabled = True
+
+        with pytest.raises(ContactError) as exc:
+            account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=True)
+
+        assert exc.value.code is ContactErrorCode.NOT_FOUND
+        assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+        assert (
+            sqlite_session.scalar(
+                select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
+            )
+            is None
+        )
 
     @staticmethod
     @pytest.mark.parametrize("platform_contacts_enabled", [False, True])
@@ -1627,13 +1648,13 @@ class TestWorkspaceMemberQueryServiceCases:
 
 
 @pytest.mark.parametrize("existing_member", [True, False])
-def test_membership_write_repairs_missing_contact_identity_without_replacing_it(
+def test_membership_write_does_not_provision_missing_contact_identity(
     account_domain: AccountDomain,
-    members: tuple[str, str, str],
+    members_without_contact: tuple[str, str, str],
     sqlite_session: Session,
     existing_member: bool,
 ) -> None:
-    workspace_id, _, member_id = members
+    workspace_id, _, member_id = members_without_contact
     if not existing_member:
         membership = sqlite_session.scalars(
             select(TenantAccountJoin).where(
@@ -1644,33 +1665,25 @@ def test_membership_write_repairs_missing_contact_identity_without_replacing_it(
         sqlite_session.delete(membership)
         sqlite_session.commit()
 
-    assert sqlite_session.scalar(select(HumanInputContactIdentity.id)) is None
-    account_domain.workspaces.upsert_member(
-        workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.NORMAL
-    )
-    contact_id = sqlite_session.scalars(
-        select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
-    ).one()
     account_domain.workspaces.upsert_member(
         workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.EDITOR
     )
+    assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.EDITOR
     assert (
-        sqlite_session.scalars(
+        sqlite_session.scalar(
             select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
-        ).one()
-        == contact_id
+        )
+        is None
     )
 
 
 @pytest.fixture
-def members(sqlite_session: Session) -> tuple[str, str, str]:
-    owner = Account(name="Owner", email="owner@example.com")
-    member = Account(name="Member", email="member@example.com")
+def members(account_domain: AccountDomain, sqlite_session: Session) -> tuple[str, str, str]:
+    owner = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
+    member = account_domain.accounts.create_account("member@example.com", "Member", "en-US")
     tenant = Tenant(name="Workspace")
     sqlite_session.add_all(
         [
-            owner,
-            member,
             tenant,
             TenantAccountJoin(
                 account_id=owner.id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.OWNER, current=True
@@ -1680,3 +1693,14 @@ def members(sqlite_session: Session) -> tuple[str, str, str]:
     )
     sqlite_session.commit()
     return tenant.id, owner.id, member.id
+
+
+@pytest.fixture
+def members_without_contact(sqlite_session: Session, members: tuple[str, str, str]) -> tuple[str, str, str]:
+    _, _, member_id = members
+    identity = sqlite_session.scalars(
+        select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == member_id)
+    ).one()
+    sqlite_session.delete(identity)
+    sqlite_session.commit()
+    return members
