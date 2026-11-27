@@ -597,8 +597,8 @@ class TestWorkflowControlPersistenceCases:
             assert run.status == WorkflowExecutionStatus.STOPPED
             assert run.stop_requested_at is not None
         if backend == "logstore":
-            # LogStore implements the configured run-control subset of the history protocol.
-            api = LogstoreAPIWorkflowRunRepository(sqlite_session_factory)  # pyrefly: ignore[bad-instantiation]
+            # A task-bound run is read from its SQL control row, so LogStore is not queried.
+            api = LogstoreAPIWorkflowRunRepository(sqlite_session_factory)
             api._enable_dual_read = False
             found = api.get_workflow_run_by_id("tenant-1", "app-1", "run-1")
             assert found is not None
@@ -635,7 +635,7 @@ class TestWorkflowControlPersistenceCases:
                 started_at=naive_utc_now(),
             )
         )
-        api = LogstoreAPIWorkflowRunRepository(sqlite_session_factory)  # pyrefly: ignore[bad-instantiation]
+        api = LogstoreAPIWorkflowRunRepository(sqlite_session_factory)
         api.bind_workflow_task(tenant_id="tenant-1", app_id="app-1", workflow_run_id="run-1", task_id="task-1")
         pause = api.create_workflow_pause("run-1", "account-1", "{}", [])
         persisted_pause = api.get_workflow_pause("run-1")
