@@ -677,6 +677,9 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         byWorkflowId: {
           patch: {
             mutationOptions: {
+              // The environment deployments show the version's name; reads of them the cache
+              // sync cancels are refreshed with the rest of the domain.
+              meta: { alsoInvalidate: ['enterprise.appDeploy'] },
               onSuccess: async (data, variables, _result, context) => {
                 await syncAppWorkflowVersionCaches(
                   context.client,

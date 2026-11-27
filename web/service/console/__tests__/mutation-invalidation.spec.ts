@@ -619,4 +619,45 @@ describe('mutation invalidation with console policies', () => {
     await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual({ data: [] }))
     expect(search).toHaveBeenCalledTimes(2)
   })
+
+  it('refetches an environment deployment read the version rename cancelled', async () => {
+    const client = createClient()
+    const firstLoad = createDeferred<unknown>()
+    const detail = vi
+      .fn()
+      .mockReturnValueOnce(firstLoad.promise)
+      .mockResolvedValue({ environment_deployment: { id: 'env-1' } })
+    const observer = new QueryObserver(client, {
+      queryKey:
+        consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey({
+          input: { params: { app_id: 'app-1', environment_id: 'env-1' } },
+        }),
+      queryFn: detail as never,
+    })
+    cleanups.push(observer.subscribe(() => undefined))
+    tick()
+
+    // The editor closes right after Save; nothing else would restart the cancelled read.
+    await new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({
+        mutationFn: async () => ({ id: 'workflow-1', marked_name: 'Renamed' }) as never,
+      }),
+    ).mutate({
+      params: { app_id: 'app-1', workflow_id: 'workflow-1' },
+      body: { marked_name: 'Renamed' },
+    } as never)
+
+    await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+    expect(detail).toHaveBeenCalledTimes(2)
+  })
+
+  it('declares the snippet detail a snippet publish writes into', () => {
+    // The publish cancels reads of the snippet detail before writing it; the fallback refetches
+    // the ones it cancelled.
+    expect(
+      consoleQuery.snippets.bySnippetId.workflows.publish.post.mutationOptions().meta
+        ?.alsoInvalidate,
+    ).toContain('workspaces.current.customizedSnippets')
+  })
 })

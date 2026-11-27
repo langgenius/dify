@@ -28,6 +28,8 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
         publish: {
           post: {
             mutationOptions: {
+              // The snippet's detail is written below; reads of it the write cancels refresh too.
+              meta: { alsoInvalidate: ['workspaces.current.customizedSnippets'] },
               onSuccess: async (_data, variables, _onMutateResult, context) => {
                 const snippetKey =
                   consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryKey({
