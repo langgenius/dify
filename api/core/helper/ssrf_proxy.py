@@ -217,21 +217,18 @@ def make_request(
     url: str,
     max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
     stream_response: bool = False,
-    sensitive_request: bool = False,
     **kwargs: Any,
 ) -> httpx.Response:
     """Send one SSRF-protected request with optional streaming.
 
     Cookies set by responses are sent only on the redirect hops of the same attempt, never on later requests;
-    callers that need a cookie pass it explicitly. Retry warnings omit URLs and exception text.
+    callers that need a cookie pass it explicitly.
 
     Args:
         method: HTTP method sent through the configured SSRF client.
         url: Absolute request URL.
         max_retries: Number of retry attempts after the initial request.
         stream_response: Return an open streaming response that the caller must close.
-        sensitive_request: Use fixed warnings without exception types for sensitive requests.
-            Lower HTTPX/telemetry redaction remains the observability owner's responsibility.
         **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
 
     Returns:
@@ -337,18 +334,16 @@ def make_request(
             if response.status_code not in STATUS_FORCELIST or max_retries == 0:
                 return response
             else:
-                if sensitive_request:
-                    logger.warning("Sensitive HTTP request received retryable status code %s", response.status_code)
-                else:
-                    logger.warning("HTTP request received retryable status code %s", response.status_code)
+                logger.warning(
+                    "Received status code %s for URL %s which is in the force list",
+                    response.status_code,
+                    url,
+                )
                 response.close()
 
         except httpx.RequestError as e:
             last_request_error = e
-            if sensitive_request:
-                logger.warning("Sensitive HTTP request failed on attempt %s", retries + 1)
-            else:
-                logger.warning("HTTP request failed on attempt %s: %s", retries + 1, type(e).__name__)
+            logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
             if max_retries == 0:
                 raise
 

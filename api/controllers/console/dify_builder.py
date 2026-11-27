@@ -205,7 +205,6 @@ def _create(body, actor: Actor) -> dict | tuple[dict, int]:
                 actor=actor,
                 goal_text=payload.goal_text,
                 model_config=model_config,
-                derive_app_name=payload.derive_app_name,
                 **attachment_arguments,
             )
         elif isinstance(payload, DifyBuilderCreateEditSessionPayload):

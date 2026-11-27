@@ -110,11 +110,6 @@ class PlaceholderAgent:
             },
         }
 
-    def propose_app_name(self, goal_text: str, requirements: dict[str, Any]) -> str:
-        # No model, so nothing better than what the create path already cut out
-        # of the prompt. Returning "" leaves that derived name in place.
-        return ""
-
     def propose_plan_v1(
         self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
     ) -> WorkflowPlan:

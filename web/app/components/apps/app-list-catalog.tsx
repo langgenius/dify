@@ -61,7 +61,6 @@ type AppListCatalogProps = Readonly<{
   canCreateApp: boolean
   dragging: boolean
   hasActiveFilters: boolean
-  isBuilderEnabled: boolean
   onCreateBlank: () => void
   onCreateLearnDify?: (app: RecommendedAppResponse) => void
   onCreateTemplate: () => void
@@ -110,7 +109,6 @@ function AppListCatalogContent({
   isFetchingNextPage,
   isPlaceholderData,
   isCollaborationEnabled,
-  isBuilderEnabled,
   onCreateBlank,
   onCreateLearnDify,
   onCreateTemplate,
@@ -176,7 +174,6 @@ function AppListCatalogContent({
       hasAnyApp,
       hasResolvedFirstPage,
       hasStarredApps: starredApps.length > 0,
-      isBuilderEnabled,
       showFirstEmptyState,
       showNoCreateEmptyState,
     })
@@ -188,7 +185,6 @@ function AppListCatalogContent({
       </span>
       {showFirstEmptyState ? (
         <FirstEmptyState
-          isBuilderEnabled={isBuilderEnabled}
           onCreateBlank={onCreateBlank}
           onCreateLearnDify={onCreateLearnDify}
           onCreateTemplate={onCreateTemplate}
@@ -388,7 +384,6 @@ export function AppListCatalog(props: AppListCatalogProps) {
     canCreateApp,
     dragging,
     hasActiveFilters,
-    isBuilderEnabled,
     onCreateBlank,
     onCreateLearnDify,
     onCreateTemplate,
@@ -449,7 +444,6 @@ export function AppListCatalog(props: AppListCatalogProps) {
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}
       isCollaborationEnabled={isCollaborationEnabled}
-      isBuilderEnabled={isBuilderEnabled}
       onCreateBlank={onCreateBlank}
       onCreateLearnDify={onCreateLearnDify}
       onCreateTemplate={onCreateTemplate}

@@ -1,1 +1,3 @@
-"""Shared workflow file-runtime utilities; application assembly lives in services."""
+from core.workflow.node_factory import DifyNodeFactory
+
+__all__ = ["DifyNodeFactory"]

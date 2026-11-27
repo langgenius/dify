@@ -31,9 +31,7 @@ import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -76,7 +74,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const isWorkflowDataLoaded = useStore((state) => state.isWorkflowDataLoaded)
   const builderEnabled = useWorkflowDifyBuilderEnabled()
   const showBuilder =
     useWorkflowAppSelector((state) => state.showDifyBuilderPanel) && builderEnabled
@@ -249,11 +246,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
     appACLCapabilities.canEdit,
   )
-  const [builderDraftReady, setBuilderDraftReady] = useState(false)
-  useEffect(() => {
-    // The shared save hook enables initial empty-draft saves after mounting.
-    setBuilderDraftReady(true)
-  }, [])
   const varsUpdateGenerationRef = useRef(0)
   const varsUpdateAppliedGenerationRef = useRef(0)
   const varsUpdateFailedGenerationRef = useRef(0)
@@ -501,44 +493,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
 
-  useEffect(() => {
-    if (!builderEnabled || !isCollaborationEnabled) return
-
-    const unsubscribeRequest = collaborationManager.onServerDraftRequest(
-      ({ change, acknowledge }) => {
-        const localStartPlaceholderNodes = collaborationManager
-          .getNodes()
-          .filter((node) => node.data.type === BlockEnum.StartPlaceholder)
-        const normalize = (graph: typeof change.graph) => {
-          const hydrated = getWorkflowDraftGraphForCanvas(graph, { localStartPlaceholderNodes })
-          return {
-            nodes: initialNodes(hydrated.nodes, hydrated.edges),
-            edges: initialEdges(hydrated.edges, hydrated.nodes),
-          }
-        }
-        acknowledge(
-          collaborationManager.createServerDraftUpdate(
-            change,
-            normalize(change.graph),
-            change.previous_graph ? normalize(change.previous_graph) : null,
-          ),
-        )
-      },
-    )
-    const unsubscribeApplied = collaborationManager.onServerDraftApplied(({ hash, updated_at }) => {
-      const state = workflowStore.getState()
-      state.setSyncWorkflowDraftHash(hash, {
-        nodes: collaborationManager.getNodes(),
-        edges: collaborationManager.getEdges(),
-      })
-      state.setDraftUpdatedAt(updated_at)
-    })
-    return () => {
-      unsubscribeRequest()
-      unsubscribeApplied()
-    }
-  }, [builderEnabled, getWorkflowDraftGraphForCanvas, isCollaborationEnabled, workflowStore])
-
   const hooksStore = useMemo(() => {
     return {
       onViewportInteraction,
@@ -652,30 +606,26 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   )
   const refreshBuilderCanvas = useCallback(
     async (shouldApply: () => boolean) => {
+      const previousHash = workflowStore.getState().syncWorkflowDraftHash
       const refreshed = await handleRefreshWorkflowDraft(false, {
         shouldApply,
         preserveViewport: true,
       })
       if (!shouldApply()) return 'superseded'
       if (!refreshed) return 'failed'
-      workflowStore.getState().setWorkflowDraftSyncPhase('idle')
+      const state = workflowStore.getState()
+      if (isCollaborationEnabled && state.syncWorkflowDraftHash !== previousHash)
+        collaborationManager.emitWorkflowUpdate(appId)
+      state.setWorkflowDraftSyncPhase('idle')
       return 'refreshed'
     },
-    [handleRefreshWorkflowDraft, workflowStore],
+    [appId, handleRefreshWorkflowDraft, isCollaborationEnabled, workflowStore],
   )
 
   return (
     <DifyBuilderProvider
       appId={appId}
       canEdit={appACLCapabilities.canEdit}
-      canStartCreation={
-        builderDraftReady &&
-        isWorkflowDataLoaded &&
-        (!isCollaborationEnabled ||
-          (collaborationGraphState.appId === appId &&
-            collaborationGraphState.isReady &&
-            collaborationManager.canPersistLocalGraph()))
-      }
       getCanvasSnapshot={getCanvasSnapshot}
       onSyncDraft={prepareBuilderDraft}
       onRefreshCanvas={refreshBuilderCanvas}

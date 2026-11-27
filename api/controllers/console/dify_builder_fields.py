@@ -98,7 +98,6 @@ class DifyBuilderCreateBuildSessionPayload(DifyBuilderGoalPayload):
     # True when the app was created from this same prompt and still carries the
     # name cut from it, so Builder may rewrite it once it understands the goal.
     # False is create-from-blank: the user named the app, Builder inherits it.
-    derive_app_name: bool = False
     model_config_data: SessionModel | None = Field(default=None, alias="model_config")
 
 

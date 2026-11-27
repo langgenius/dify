@@ -84,7 +84,7 @@ vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: MarkdownProps) => <div>{content}</div>,
 }))
 
-vi.mock('@/app/components/base/build-grid-texture', () => ({
+vi.mock('../panel/build-grid-texture', () => ({
   BuildGridTexture: () => null,
 }))
 
@@ -1240,7 +1240,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
         body: {
           app_id: 'app-1',
           goal_text: 'Build a support workflow',
-          derive_app_name: false,
           model_config: builderModel,
           scenario: 'build',
         },

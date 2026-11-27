@@ -137,32 +137,6 @@ __all__ = [
 ]
 
 
-def _refine_app_name(env: Env, fc: DifyBuilderContext) -> None:
-    """Replace the prompt-derived app name with a model-written one, once (spec N1).
-
-    Creation named the app by cutting the prompt's opening clause -- mechanical,
-    and English-shaped where it has to judge. The goal has just been understood
-    here and a model is in hand, so the name can be rewritten properly, in
-    whatever language the user wrote. Plan approval then freezes it (spec N3).
-
-    The flag is cleared whether or not the proposal was usable, so a session
-    never renames twice and never retries a model that gave nothing. It is
-    committed with the transition while the rename commits on its own, so an
-    advance that fails after this point proposes again next attempt and
-    overwrites with an equivalent title.
-    """
-    if not fc.app_name_auto:
-        return
-    fc.app_name_auto = False
-    if env.rename_app is None:
-        return
-    proposed = env.agent.propose_app_name(fc.goal_text, fc.requirements)
-    if proposed and proposed.strip():
-        stored = env.rename_app(proposed)
-        if stored:
-            fc.app_name = stored
-
-
 def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """Automatic entry step for the goal persisted during session creation."""
     if not fc.goal_text:
@@ -186,7 +160,6 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     fc.confirmed_requirement_keys = []
     fc.confirmed_requirement_sources = {}
     record_source_intent(fc, analysis.get("knowledge_source_intent"))
-    _refine_app_name(env, fc)
 
     progress.activate("build-prepare-requirements")
     if not fc.form_fields:
@@ -1175,10 +1148,6 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
-    if env.describe_app is not None:
-        env.describe_app(
-            "\n".join(value for value in (fc.plan_title, fc.plan_input_summary, fc.plan_output_summary) if value)[:1024]
-        )
     fc.built_node_ids = [
         intent.args["node_id"]
         for intent in intents

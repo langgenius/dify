@@ -1377,7 +1377,6 @@ class DifyBuilderService:
         actor: Actor,
         goal_text: str,
         model_config: dict | None = None,
-        derive_app_name: bool = False,
         attachments: list[str] | None = None,
     ) -> tuple[str, Action]:
         """Shared setup for ``create_build_session``/``create_build_session_stream``:
@@ -1395,7 +1394,6 @@ class DifyBuilderService:
             model_config=model_config,
             last_snapshot_hash=app_revision,
             app_name=self._get_app_name(app_id, actor),
-            app_name_auto=derive_app_name,
         )
         s = Session(
             app_id=app_id,
@@ -1419,7 +1417,6 @@ class DifyBuilderService:
         actor: Actor,
         goal_text: str,
         model_config: dict | None = None,
-        derive_app_name: bool = False,
         attachments: list[str] | None = None,
     ) -> SessionView:
         """Start a Build session at build.capability_check and dispatch the
@@ -1427,7 +1424,7 @@ class DifyBuilderService:
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
         session_id, action = self.prepare_build_session(
-            app_id, actor, goal_text, model_config, derive_app_name, attachments
+            app_id, actor, goal_text, model_config, attachments=attachments
         )
         if action is not None:
             self.dispatch(session_id, action, actor)
@@ -1439,7 +1436,6 @@ class DifyBuilderService:
         actor: Actor,
         goal_text: str,
         model_config: dict | None = None,
-        derive_app_name: bool = False,
         attachments: list[str] | None = None,
     ) -> Iterator[str]:
         """Streaming counterpart of ``create_build_session``: subscribes BEFORE
@@ -1447,7 +1443,7 @@ class DifyBuilderService:
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self.prepare_build_session(
-            app_id, actor, goal_text, model_config, derive_app_name, attachments
+            app_id, actor, goal_text, model_config, attachments=attachments
         )
         initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
