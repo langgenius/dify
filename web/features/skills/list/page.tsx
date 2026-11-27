@@ -38,7 +38,7 @@ export default function SkillsPage() {
   const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { canDelete, canEdit } = useSkillPermissions()
+  const { canDeleteSkill, canEdit } = useSkillPermissions()
   const [importOpen, setImportOpen] = useState(false)
   const listViewportRef = useRef<HTMLDivElement>(null)
   const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
@@ -224,7 +224,7 @@ export default function SkillsPage() {
                       }
                     : { status: 'none' },
                   cardActions: {
-                    canDelete,
+                    canDeleteSkill,
                     canEdit,
                     onOpenTagManagement: () => setShowTagManagementDialog(true),
                   },

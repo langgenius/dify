@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import io
+from uuid import UUID
 
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.common.errors import NoFileUploadedError
 from controllers.common.fields import BinaryFileResponse
-from controllers.common.rbac import RBACCheck, Workspace
+from controllers.common.rbac import RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -21,6 +23,7 @@ from controllers.console.wraps import (
     RBACPermission,
     edit_permission_required,
 )
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs import helper
 from libs.exception import RelayedHTTPError
@@ -291,6 +294,32 @@ register_response_schema_models(
 )
 
 
+def _authorize_skill_delete(ctx: RequestContext, skill_id: str) -> str:
+    """Admit a workspace member's deletion before parsing the body; return a canonical UUID.
+
+    RBAC creators bypass the workspace grant. Other callers retain that grant check,
+    including malformed IDs, which cannot reach UUID columns and yield 404 after authorization.
+    Legacy role admission remains the caller's responsibility. No resource is mutated here.
+    """
+    try:
+        target = str(UUID(skill_id))
+    except ValueError:
+        target = None
+    if dify_config.RBAC_ENABLED and (
+        target is None
+        or not ctx.account_id
+        or application_services().rbac.queries.get_skill_creator(ctx.active_workspace_id, target) != ctx.account_id
+    ):
+        enforce_rbac_checks(
+            tenant_id=ctx.active_workspace_id,
+            account_id=ctx.account_id,
+            checks=[RBACCheck(RBACPermission.SKILL_DELETE, Workspace())],
+        )
+    if target is None:
+        raise RelayedHTTPError(status=404, error_code="skill_not_found", message="skill not found")
+    return target
+
+
 def _relayed_error(exc: SkillManagementServiceError) -> RelayedHTTPError:
     return RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message, details=exc.details)
 
@@ -463,13 +492,12 @@ class WorkspaceSkillApi(Resource):
     @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
-    @console_account_admission(
-        rbac_checks=[RBACCheck(RBACPermission.SKILL_DELETE, Workspace())],
-    )
+    @console_account_admission()
     @edit_permission_required
     @with_session
     def delete(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
+            skill_id = _authorize_skill_delete(request_context, skill_id)
             payload = SkillDeletePayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).delete_skill(
                 tenant_id=request_context.active_workspace_id,

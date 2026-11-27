@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from inspect import signature
 from inspect import unwrap as inspect_unwrap
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -52,6 +52,11 @@ from services.skill_management_service import (
     SkillVersionUpdatePayload,
 )
 from tests.helpers.unit.controllers.error_body import raised_error
+
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
+
+    from extensions.ext_application_services import ApplicationServices
 
 
 @dataclass(frozen=True)
@@ -481,7 +486,9 @@ def test_update_skill_metadata_maps_service_errors(
 def test_delete_skill_passes_confirmation_name(app: Flask, request_context: RequestContext) -> None:
     api = WorkspaceSkillApi()
     method = unwrap(api.delete)
-    service, delete_skill = _recording_service("delete_skill", result={"id": "skill-1", "deleted": True})
+    service, delete_skill = _recording_service(
+        "delete_skill", result={"id": "11111111-1111-4111-8111-111111111111", "deleted": True}
+    )
 
     with (
         app.test_request_context("/", method="DELETE"),
@@ -493,13 +500,17 @@ def test_delete_skill_passes_confirmation_name(app: Flask, request_context: Requ
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload = method(api, request_context, "skill-1")
+        payload = method(api, request_context, "11111111-1111-4111-8111-111111111111")
 
-    assert payload == {"id": "skill-1", "deleted": True}
+    assert payload == {"id": "11111111-1111-4111-8111-111111111111", "deleted": True}
     assert delete_skill.calls == [
         RecordedCall(
             args=(),
-            kwargs={"tenant_id": "tenant-1", "skill_id": "skill-1", "confirmation_name": "finance-sop"},
+            kwargs={
+                "tenant_id": "tenant-1",
+                "skill_id": "11111111-1111-4111-8111-111111111111",
+                "confirmation_name": "finance-sop",
+            },
         )
     ]
 
@@ -521,7 +532,7 @@ def test_delete_skill_maps_service_error(app: Flask, request_context: RequestCon
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
+        payload, status = raised_error(lambda: method(api, request_context, "11111111-1111-4111-8111-111111111111"))
 
     assert status == 409
     assert payload == {"code": "skill_referenced", "message": "skill is referenced"}
@@ -1510,3 +1521,103 @@ def test_skill_import_documents_required_multipart_file() -> None:
     assert schema["required"] == ["file"]
     assert schema["properties"]["file"]["type"] == "string"
     assert schema["properties"]["file"]["format"] == "binary"
+
+
+@pytest.mark.parametrize(
+    ("rbac", "role", "creator", "foreign", "grant", "bad_id", "bad_body", "expected"),
+    [
+        (True, "normal", "user-1", False, False, False, False, 200),
+        (True, "normal", "other", False, False, False, False, 403),
+        (True, "normal", None, False, False, False, False, 403),
+        (True, "normal", "other", False, True, False, False, 200),
+        (True, "normal", "user-1", True, False, False, False, 403),
+        (True, "normal", "user-1", True, True, False, False, 404),
+        (True, "normal", "user-1", False, False, True, False, 403),
+        (True, "normal", "user-1", False, True, True, False, 404),
+        (True, "normal", "other", False, False, False, True, 403),
+        (True, "normal", "user-1", False, False, False, True, 400),
+        (False, "normal", "user-1", False, False, False, False, 403),
+        (False, "editor", "other", False, False, False, False, 200),
+    ],
+)
+def test_creator_delete_through_admission(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    account_application_services: ApplicationServices,
+    sqlite_engine: Engine,
+    rbac: bool,
+    role: str,
+    creator: str | None,
+    foreign: bool,
+    grant: bool,
+    bad_id: bool,
+    bad_body: bool,
+    expected: int,
+) -> None:
+    """Creator exemption is tenant-scoped, follows admission, and precedes body validation."""
+    from sqlalchemy import event
+
+    from controllers.console import wraps
+    from core.db.session_factory import session_factory
+    from core.rbac import RBACPermission
+    from libs import login
+    from libs.external_api import ExternalApi
+    from models.account import Account, AccountStatus, Tenant, TenantAccountRole
+    from models.skill import Skill
+    from services.enterprise.rbac_service import RBACService
+
+    config_overrides(RBAC_ENABLED=rbac, LOGIN_DISABLED=False, INIT_PASSWORD="")
+    app.extensions["application_services"] = account_application_services
+    account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+    account.id = "user-1"
+    account.role = TenantAccountRole(role)
+    account._current_tenant = Tenant(name="Workspace")
+    account._current_tenant.id = "tenant-1"
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    monkeypatch.setattr(login, "_resolve_current_user", lambda: account)
+    monkeypatch.setattr(login, "check_csrf_token", lambda _request, _user_id: None)
+    skill_id = "11111111-1111-4111-8111-111111111111"
+    with session_factory.create_session() as session, session.begin():
+        session.add(
+            Skill(
+                id=skill_id,
+                tenant_id="other-tenant" if foreign else "tenant-1",
+                name="sample",
+                display_name="Sample",
+                created_by=creator,
+            )
+        )
+    remote = CallRecorder(result=grant)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", remote)
+    target = "not-a-uuid" if bad_id else skill_id
+    queries: list[str] = []
+
+    def record(
+        _conn: object, _cursor: object, statement: str, _parameters: object, _context: object, _executemany: bool
+    ) -> None:
+        queries.append(statement)
+
+    ExternalApi(app).add_resource(WorkspaceSkillApi, "/skills/<string:skill_id>")
+    event.listen(sqlite_engine, "before_cursor_execute", record)
+    try:
+        response = app.test_client().delete(f"/skills/{target}", json={"unexpected": True} if bad_body else {})
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record)
+    assert response.status_code == expected
+    if bad_id:
+        assert not queries
+    if expected == 404:
+        assert response.json is not None
+        assert response.json["code"] == "skill_not_found"
+    if rbac and (creator != account.id or foreign or bad_id):
+        assert remote.calls == [
+            RecordedCall(
+                args=("tenant-1", "user-1"),
+                kwargs={"scene": RBACPermission.SKILL_DELETE, "resource_type": None, "resource_id": None},
+            )
+        ]
+    else:
+        assert remote.calls == []
+    with session_factory.create_session() as session:
+        assert (session.get(Skill, skill_id) is None) == (expected == 200)

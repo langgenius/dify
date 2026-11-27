@@ -29,7 +29,7 @@ export type SkillGridState =
             pagination: { status: 'none' } | { status: 'loading' } | SkillGridRetryState
             refresh: { status: 'none' } | SkillGridRetryState
             cardActions: {
-              canDelete: boolean
+              canDeleteSkill: (createdBy: SkillResponse['created_by']) => boolean
               canEdit: boolean
               onOpenTagManagement: () => void
             }
@@ -126,7 +126,7 @@ export function SkillGrid({ state }: SkillGridProps) {
             {readyContent.skills.map((skill) => (
               <SkillCard
                 key={skill.id}
-                canDelete={readyContent.cardActions.canDelete}
+                canDelete={readyContent.cardActions.canDeleteSkill(skill.created_by)}
                 canEdit={readyContent.cardActions.canEdit}
                 skill={skill}
                 onOpenTagManagement={readyContent.cardActions.onOpenTagManagement}

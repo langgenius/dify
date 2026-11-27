@@ -33,7 +33,7 @@ import { SkillVersionPanel } from './versions/panel'
 export function SkillDetailPage({ skillId }: { skillId: string }) {
   const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
-  const { canEdit, canPublish, canDelete } = useSkillPermissions()
+  const { canEdit, canPublish, canDeleteSkill } = useSkillPermissions()
   const [selectedPath, setSelectedPath] = useState<string>()
   const [openFilePaths, setOpenFilePaths] = useState<string[]>([])
   const [previewFilePath, setPreviewFilePath] = useState<string>()
@@ -288,7 +288,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
       <div className="flex min-h-0 min-w-0 flex-1">
         <SkillFileTree
-          canDelete={canDelete}
+          canDelete={!activeVersionId && canDeleteSkill(detail?.created_by)}
           canEdit={canEdit}
           collapsed={sidebarCollapsed}
           detail={detail}

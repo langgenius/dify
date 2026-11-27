@@ -522,3 +522,30 @@ def test_skills_off_is_503_before_membership_and_permission_checks(
             session=sqlite_session,
             call=never_reached,
         )
+
+
+def test_import_and_overwrite_keep_creator_identity() -> None:
+    """Creation attributes the actor; replacing an existing draft preserves its original creator."""
+    from core.db.session_factory import session_factory
+    from models.skill import Skill
+
+    response, status = _import({"SKILL.md": b"---\nname: expense-sop\ndescription: Expenses\n---\n"})
+    assert status == 201
+    with session_factory.create_session() as session, session.begin():
+        skill = session.get(Skill, response.id)
+        assert skill is not None
+        assert skill.created_by == _context().account_id
+        skill.created_by = "original-creator"
+    updated, status = _import(
+        {"SKILL.md": b"---\nname: expense-sop\ndescription: Updated expenses\n---\n"},
+        skill_id=response.id,
+        draft_hash=response.draft_hash,
+    )
+    assert status == 200
+    assert updated.id == response.id
+    with session_factory.create_session() as session:
+        skill = session.get(Skill, response.id)
+        assert skill is not None
+        assert skill.created_by == "original-creator"
+        assert skill.updated_by == _context().account_id
+        assert skill.description == "Updated expenses"
