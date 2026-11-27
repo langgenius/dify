@@ -113,13 +113,11 @@ logger = logging.getLogger(__name__)
 register_schema_models(
     console_ns,
     DifyBuilderCreateSessionPayload,
-    DifyBuilderConversationListQuery,
     DifyBuilderSubmitActionPayload,
     DifyBuilderSubmitMessagePayload,
     DifyBuilderTaskControlPayload,
     DifyBuilderConversationLifecyclePayload,
     DifyBuilderClearConversationPayload,
-    DifyBuilderFixControlQuery,
     DifyBuilderFixIntentPayload,
 )
 register_response_schema_models(

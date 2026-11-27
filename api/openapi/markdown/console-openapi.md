@@ -27313,14 +27313,6 @@ Lifecycle control uses Session CAS, never a graph revision.
 | task_status | string |  | Yes |
 | version | integer |  | Yes |
 
-#### DifyBuilderConversationListQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| after_seq | integer | Load groups after this sequence | No |
-| before_seq | integer | Load groups before this sequence | No |
-| limit | integer, <br>**Default:** 20 | Number of conversation groups to return | No |
-
 #### DifyBuilderConversationPageResponse
 
 | Name | Type | Description | Required |
@@ -27460,16 +27452,6 @@ Builder is not enabled for the workspace (the shared ``dify_builder_required`` g
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | code | string |  | Yes |
-
-#### DifyBuilderFixControlQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| base_version | integer |  | Yes |
-| client_action_id | string |  | Yes |
-| expected_task_id | string |  | No |
-| fix_intent_id | string |  | No |
-| operation | string, <br>**Available values:** "dismiss_fix", "fix", "stop_and_switch_fix" | *Enum:* `"dismiss_fix"`, `"fix"`, `"stop_and_switch_fix"` | Yes |
 
 #### DifyBuilderFixControlResponse
 
