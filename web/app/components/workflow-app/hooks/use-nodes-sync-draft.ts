@@ -17,7 +17,6 @@ import {
   editorCollaborationEnabledAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
   useNodesReadOnlyByCanEdit,
@@ -29,7 +28,9 @@ import {
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
+import { reportRequestError } from '@/app/query-error-toast'
 import { API_PREFIX } from '@/config'
+import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
@@ -206,17 +207,16 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         // CRDT updates do not carry the persisted revision from another collaborator's save.
         const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
         const [error, draft] = await safe(
-          consoleClient.apps.byAppId.workflows.draft.get(
-            { params: { app_id: baseParams.appId } },
-            { context: { silent: true } },
-          ),
+          consoleClient.apps.byAppId.workflows.draft.get({ params: { app_id: baseParams.appId } }),
         )
         if (!canSaveEmptyGraph()) {
           callback?.onSettled?.()
           return null
         }
         if (error || !Array.isArray(draft.graph.nodes) || !Array.isArray(draft.graph.edges)) {
-          callback?.onError?.()
+          // A caller that passes `onError` presents the failure; an autosave has no other owner.
+          if (error && !callback?.onError) reportRequestError(error)
+          callback?.onError?.(error ?? undefined)
           callback?.onSettled?.()
           return null
         }
@@ -283,18 +283,20 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         }
 
         const [error, res, isDefined] = await safe(
-          consoleClient.apps.byAppId.workflows.draft.post(
-            { params: { app_id: baseParams.appId }, body },
-            { context: { silent: true } },
-          ),
+          consoleClient.apps.byAppId.workflows.draft.post({
+            params: { app_id: baseParams.appId },
+            body,
+          }),
         )
         if (error) {
           const { isWorkflowDataLoaded } = workflowStore.getState()
           if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
-          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-            handleRefreshWorkflowDraft(true)
-          callback?.onError?.()
+          const isDraftNotSync = isDefined && error.code === 'draft_workflow_not_sync'
+          if (isDraftNotSync && !notRefreshWhenSyncError) handleRefreshWorkflowDraft(true)
+          // A conflict reloads the draft; a caller that passes `onError` presents other failures.
+          if (!isDraftNotSync && !callback?.onError) reportRequestError(error)
+          callback?.onError?.(error)
           return null
         }
 
@@ -378,9 +380,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         setDraftUpdatedAt(result.updatedAt)
         callback?.onSuccess?.()
         return result
-      } catch {
+      } catch (error) {
         const { isWorkflowDataLoaded } = workflowStore.getState()
-        if (!shouldSkipDraftSync(appId, isWorkflowDataLoaded)) callback?.onError?.()
+        if (!shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+          // The collaboration leader saved nothing; an autosave has no other owner.
+          if (!callback?.onError) reportRequestError(error)
+          callback?.onError?.(error)
+        }
         return null
       } finally {
         callback?.onSettled?.()

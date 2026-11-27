@@ -19,13 +19,14 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useSelector } from '@tanstack/react-form'
+import { useQuery } from '@tanstack/react-query'
 import { isValidElement, memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import { triggerPluginDynamicOptionsQueryOptions } from '@/service/trigger-queries'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -238,15 +239,17 @@ const BaseField = ({
     data: dynamicOptionsData,
     isLoading: isDynamicOptionsLoading,
     error: dynamicOptionsError,
-  } = useTriggerPluginDynamicOptions(
-    dynamicSelectParams || {
-      plugin_id: '',
-      provider: '',
-      action: '',
-      parameter: '',
-      credential_id: '',
-    },
-    formItemType === FormTypeEnum.dynamicSelect,
+  } = useQuery(
+    triggerPluginDynamicOptionsQueryOptions(
+      dynamicSelectParams || {
+        plugin_id: '',
+        provider: '',
+        action: '',
+        parameter: '',
+        credential_id: '',
+      },
+      formItemType === FormTypeEnum.dynamicSelect,
+    ),
   )
 
   const dynamicOptions = useMemo(() => {
@@ -314,13 +317,13 @@ const BaseField = ({
             </span>
           )}
           {required && !hasCustomLabel && (
-            <span aria-hidden="true" className="ml-1 text-text-destructive-secondary">
+            <span aria-hidden="true" className="ms-1 text-text-destructive-secondary">
               *
             </span>
           )}
           {translatedTooltip && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+              <InfotipTrigger aria-labelledby={labelId} className="ms-0.5" />
               <InfotipContent aria-labelledby={labelId} className="w-50">
                 {translatedTooltip}
               </InfotipContent>
@@ -480,7 +483,7 @@ const BaseField = ({
                       )}
                     >
                       {formSchema.showRadioUI && (
-                        <Radio className="mr-2" value={option.value} disabled={disabled} />
+                        <Radio className="me-2" value={option.value} disabled={disabled} />
                       )}
                       {!formSchema.showRadioUI && (
                         <Radio className="sr-only" value={option.value} disabled={disabled} />
@@ -548,7 +551,7 @@ const BaseField = ({
           target="_blank"
         >
           <span className="break-all">{translatedHelp}</span>
-          <div className="ml-1 i-ri-external-link-line size-3 shrink-0" />
+          <div className="ms-1 i-ri-external-link-line size-3 shrink-0" />
         </a>
       )}
     </>

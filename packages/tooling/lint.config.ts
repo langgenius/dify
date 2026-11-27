@@ -244,6 +244,17 @@ const defaultRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+// `crypto.randomUUID` exists only in secure contexts, so it is undefined on
+// self-hosted consoles opened over plain HTTP. Matching the property alone also
+// catches `globalThis.crypto.randomUUID` and optional-call forms.
+const insecureContextRestrictedProperties = [
+  {
+    property: 'randomUUID',
+    message:
+      'crypto.randomUUID is unavailable over plain HTTP (non-secure contexts). Use `v4` from `uuid` instead.',
+  },
+]
+
 const storageRestrictedProperties = [
   'error',
   {
@@ -283,6 +294,49 @@ export const stylingContractRules = {
       allow: ['*'],
       contracts: [
         {
+          pattern: '^SegmentedControl$',
+          allow: [
+            'layout',
+            'spacing',
+            'rounded',
+            'border-w',
+            'border-divider-subtle',
+            'bg-background-section-burn',
+          ],
+          message:
+            '"{{className}}" changes the shared segmented control. Adjust its placement or width here. Use RadioGroup with RadioItem for a custom single-choice surface.',
+        },
+        {
+          pattern: '^SegmentedControlDivider$',
+          allow: [],
+          message:
+            '"{{className}}" changes the segmented divider. Use Separator for a divider outside the control.',
+        },
+        {
+          pattern: '^SegmentedControlItem$',
+          allow: [
+            'layout',
+            'spacing',
+            'typography',
+            'system-*',
+            'text-color',
+            'rounded',
+            'border-0',
+            'bg-components-segmented-control-item-active-*',
+            'border-components-segmented-control-item-active-*',
+            'data-checked:bg-components-panel-bg',
+            'not-data-checked:hover:bg-transparent',
+            'focus-visible:ring-inset',
+            'shadow-xs',
+            'shadow-sm',
+            'shadow-black/5',
+            'shadow-black/10',
+          ],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" changes the segmented item appearance. The primitive owns its surface, focus and selection motion. Use RadioItem for a custom single-choice design.',
+        },
+        {
           pattern: '^(ScrollArea|ScrollAreaViewport)$',
           allow: ['*'],
           deny: [...focusIndicatorOverrides, 'ring-*', 'inset-ring-*'],
@@ -305,6 +359,19 @@ export const stylingContractRules = {
             '"{{className}}" duplicates or overrides the {{component}} focus indicator. The visible field owns focus; an input inside a styled group stays bare. Use ring-inset for clipped edges. A custom composite that moves the indicator needs a documented local exception.',
         },
         {
+          pattern: '^(TabsTab|TabsPanel)$',
+          allow: ['*'],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" duplicates or overrides the {{component}} focus indicator. Keep its width and color; callers may use ring-inset to avoid clipping. A different focus owner requires a documented local exception.',
+        },
+        {
+          pattern: '^TabsIndicator$',
+          allow: [],
+          message:
+            '"{{className}}" changes the tab indicator. TabsIndicator owns the active underline, its position and its motion. A different active-tab surface requires a documented local exception.',
+        },
+        {
           pattern: '^TooltipContent$',
           allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
           // `flex` also names a shadcn class group; allow display flex without flex sizing.
@@ -317,6 +384,41 @@ export const stylingContractRules = {
           allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
           message:
             '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+        {
+          pattern: '^InfotipTrigger$',
+          allow: ['layout', 'text-color', 'opacity'],
+          deny: [
+            'size',
+            'w',
+            'h',
+            'min-w',
+            'max-w',
+            'min-h',
+            'max-h',
+            'inline-size',
+            'min-inline-size',
+            'max-inline-size',
+            'block-size',
+            'min-block-size',
+            'max-block-size',
+            'basis',
+            'flex',
+            'grow',
+            'shrink',
+            'aspect',
+            'scale',
+            'overflow',
+            'static',
+            '*-stretch',
+            'before:*',
+            '[width:*]',
+            '[height:*]',
+            '[inline-size:*]',
+            '[block-size:*]',
+          ],
+          message:
+            '"{{className}}" is outside the InfotipTrigger styling contract. Use its size prop for the icon and box; callers may place it, colour the icon, or fade it in.',
         },
         {
           pattern: '^Alert$',
@@ -593,6 +695,8 @@ export const lintConfig = {
     'e2e/.auth/**',
     'e2e/cucumber-report/**',
     'packages/contracts/**',
+    // Its content mapper composes the console OpenAPI from the Python API; `type-check:contracts` covers it.
+    'packages/openapi-content-mapper/examples/repository/**',
     'web/next/**',
     'web/next-env.d.ts',
     'web/public/**',
@@ -635,7 +739,7 @@ export const lintConfig = {
     reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
-    typeCheck: false,
+    typeCheck: true,
   },
   settings: {
     'better-tailwindcss': {
@@ -1776,7 +1880,11 @@ export const lintConfig = {
       ...handwrittenApiScope,
       rules: {
         'no-restricted-globals': [...defaultRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...defaultRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...defaultRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
         'no-restricted-imports': [
           'error',
           {
@@ -1797,7 +1905,11 @@ export const lintConfig = {
       ],
       rules: {
         'no-restricted-globals': [...storageRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...storageRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
       },
     },
     {
@@ -1831,6 +1943,26 @@ export const lintConfig = {
       excludeFiles: [...handwrittenApiScope.excludeFiles, ...marketplaceBoundaryFiles],
       rules: {
         'dify/marketplace-boundary': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      rules: {
+        'dify/no-module-scope-clock': 'error',
+        'dify/no-mutation-policy-bypass': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      files: ['web/app/components/{workflow,workflow-app}/**/*.{ts,tsx}'],
+      excludeFiles: [
+        ...handwrittenApiScope.excludeFiles,
+        'web/app/components/workflow/collaboration/**',
+        'web/app/components/workflow/hooks/use-collaborative-workflow.ts',
+        'web/app/components/workflow/workflow-preview/**',
+      ],
+      rules: {
+        'dify/no-raw-reactflow-graph-write': 'error',
       },
     },
   ],

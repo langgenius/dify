@@ -60,6 +60,8 @@ export type AppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppImportPayload = {
@@ -469,6 +471,8 @@ export type AppDetail = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AudioTranscriptResponse = {
@@ -1302,6 +1306,14 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
+export type WorkflowKindConvertResponse = {
+  kind: string
+  result: string
+  type: string
+  updated_at: number
+  workflow_id: string
+}
+
 export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type DefaultBlockConfigResponse = {
@@ -1618,6 +1630,12 @@ export type WorkflowPublishResponse = {
   warning?: string | null
 }
 
+export type TriggerNodeLimitExceededError = ErrorResponse & {
+  code: 'trigger_node_limit_exceeded'
+  details?: TriggerNodeLimitDetails
+  status: 403
+}
+
 export type WebhookTriggerResponse = {
   created_at?: string | null
   id: string
@@ -1694,6 +1712,8 @@ export type AppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type IconType = 'emoji' | 'image' | 'link'
@@ -1793,6 +1813,8 @@ export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
   id: string
+  kind?: string | null
+  type: string
   updated_at?: number | null
   updated_by?: string | null
 }
@@ -2081,6 +2103,7 @@ export type AgentThought = {
   position: number
   thought?: string | null
   tool?: string | null
+  tool_activity?: AgentToolActivity | null
   tool_input?: string | null
   tool_labels: AnyJsonValue
 }
@@ -2435,6 +2458,7 @@ export type WorkflowAppLogPartialResponse = {
   created_by_role?: string | null
   created_from?: string | null
   details?: unknown
+  evaluation?: Array<WorkflowAppLogEvaluationItemResponse>
   id: string
   workflow_run?: WorkflowRunForLogResponse | null
 }
@@ -2752,6 +2776,7 @@ export type DeclaredOutputConfig = {
 }
 
 export type WorkflowNodeJobConfig = {
+  continue_agent_session?: boolean
   declared_outputs?: Array<DeclaredOutputConfig>
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
@@ -2759,6 +2784,7 @@ export type WorkflowNodeJobConfig = {
   output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
+  readonly session_generation?: string
   workflow_prompt?: string
 }
 
@@ -2893,6 +2919,11 @@ export type RecursiveJsonValue =
   | Array<RecursiveJsonValue>
   | null
 
+export type TriggerNodeLimitDetails = {
+  count: number
+  limit: number
+}
+
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -2996,8 +3027,8 @@ export type AppModelSelectionResponse = {
     [key: string]: JsonValue
   }
   mode?: LlmMode | ''
-  name?: string
-  provider?: string
+  name?: string | null
+  provider?: string | null
   [key: string]: unknown
 }
 
@@ -3170,6 +3201,16 @@ export type SimpleMessageDetail = {
   }
   message: string
   query: string
+}
+
+export type AgentToolActivity = {
+  call_limit?: ToolCallLimitMetadata | null
+  error?: string | null
+  id: string
+  run_id: string
+  status: 'cancelled' | 'failed' | 'not_executed' | 'running' | 'started' | 'succeeded'
+  tool_call_id: string
+  tool_name: string
 }
 
 export type SimpleAccount = {
@@ -3444,6 +3485,15 @@ export type AppCheckboxInputPayload = {
 
 export type AppExternalDataInputPayload = {
   external_data_tool: AppInputFieldPayload
+}
+
+export type WorkflowAppLogEvaluationItemResponse = {
+  details?: {
+    [key: string]: unknown
+  }
+  name: string
+  node_info?: WorkflowAppLogEvaluationNodeInfoResponse | null
+  value?: unknown
 }
 
 export type WorkflowRunForLogResponse = {
@@ -3899,6 +3949,14 @@ export type StringListSource = {
   value?: Array<string>
 }
 
+export type ToolCallLimitMetadata = {
+  execution_status: 'executed' | 'not_executed' | 'unconfirmed'
+  limit: number
+  reason?: 'call_limit_reached' | 'duplicate_tool_call' | null
+  tool_identity: string
+  used: number
+}
+
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
   enabled?: boolean | null
@@ -4129,6 +4187,12 @@ export type AppSelectFieldPayload = {
     | undefined
 }
 
+export type WorkflowAppLogEvaluationNodeInfoResponse = {
+  node_id: string
+  title: string
+  type: string
+}
+
 export type WorkflowFileUploadTransferPayload = {
   enabled?: boolean | null
   number_limits?: number | null
@@ -4296,6 +4360,8 @@ export type AgentSoulDifyToolConfig = {
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
   description?: string | null
   enabled?: boolean
+  last_max_calls_per_run?: number | null
+  max_calls_per_run?: number | null
   name?: string | null
   plugin_id?: string | null
   provider?: string | null
@@ -4623,6 +4689,8 @@ export type AppDetailWithSiteWritable = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type RecentAppListResponseWritable = {
@@ -4660,6 +4728,47 @@ export type WorkflowCommentDetailWritable = {
   updated_at?: number | null
 }
 
+export type WorkflowAgentComposerResponseWritable = {
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
+  agent?: AgentComposerAgentResponse | null
+  agent_soul: AgentSoulConfig
+  app_id?: string | null
+  backing_app_id?: string | null
+  binding?: AgentComposerBindingResponse | null
+  chat_endpoint?: string | null
+  debug_conversation_has_messages?: boolean
+  debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
+  effective_declared_outputs?: Array<DeclaredOutputConfig>
+  hidden_app_backed?: boolean
+  impact_summary?: AgentComposerImpactResponse | null
+  node_id?: string | null
+  node_job: WorkflowNodeJobConfigWritable
+  save_options: Array<ComposerSaveStrategy>
+  soul_lock: AgentComposerSoulLockResponse
+  validation?: ComposerValidationFindingsResponse | null
+  variant: 'workflow'
+  workflow_id?: string | null
+}
+
+export type ComposerSavePayloadWritable = {
+  agent_soul?: AgentSoulConfig | null
+  binding?: ComposerBindingPayload | null
+  client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  idempotency_key?: string | null
+  new_agent_name?: string | null
+  node_job?: WorkflowNodeJobConfigWritable | null
+  role?: string | null
+  save_strategy: ComposerSaveStrategy
+  soul_lock?: ComposerSoulLockPayload
+  variant: ComposerVariant
+  version_note?: string | null
+}
+
 export type AppPartialWritable = {
   access_mode?: WebAppAccessMode | null
   app_id?: string | null
@@ -4686,6 +4795,8 @@ export type AppPartialWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppDetailSiteResponseWritable = {
@@ -4777,6 +4888,18 @@ export type WorkflowCommentReplyWritable = {
   created_by: string
   created_by_account?: WorkflowCommentAccountWritable | null
   id: string
+}
+
+export type WorkflowNodeJobConfigWritable = {
+  continue_agent_session?: boolean
+  declared_outputs?: Array<DeclaredOutputConfig>
+  human_contacts?: Array<AgentHumanContactConfig>
+  metadata?: WorkflowNodeJobMetadata
+  mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
+  previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
+  schema_version?: number
+  workflow_prompt?: string
 }
 
 export type RecursiveJsonValueWritable =
@@ -5150,6 +5273,32 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses = {
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponse =
   GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses[keyof GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses]
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/advanced-chat/workflows/draft/conversations/workspaces/retire'
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireErrors]
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponses = {
+  204: void
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData = {
   body: HumanInputFormPreviewPayload
@@ -5966,7 +6115,9 @@ export type PostAppsByAppIdAnnotationsResponse =
   PostAppsByAppIdAnnotationsResponses[keyof PostAppsByAppIdAnnotationsResponses]
 
 export type PostAppsByAppIdAnnotationsBatchImportData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
@@ -8391,6 +8542,33 @@ export type GetAppsByAppIdWorkflowsResponses = {
 export type GetAppsByAppIdWorkflowsResponse =
   GetAppsByAppIdWorkflowsResponses[keyof GetAppsByAppIdWorkflowsResponses]
 
+export type PostAppsByAppIdWorkflowsConvertTypeData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    target_type: 'evaluation' | 'workflow'
+  }
+  url: '/apps/{app_id}/workflows/convert-type'
+}
+
+export type PostAppsByAppIdWorkflowsConvertTypeErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsConvertTypeError =
+  PostAppsByAppIdWorkflowsConvertTypeErrors[keyof PostAppsByAppIdWorkflowsConvertTypeErrors]
+
+export type PostAppsByAppIdWorkflowsConvertTypeResponses = {
+  200: WorkflowKindConvertResponse
+}
+
+export type PostAppsByAppIdWorkflowsConvertTypeResponse =
+  PostAppsByAppIdWorkflowsConvertTypeResponses[keyof PostAppsByAppIdWorkflowsConvertTypeResponses]
+
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
   body?: never
   path: {
@@ -8793,7 +8971,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse =
   GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
 
 export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     app_id: string
     node_id: string
@@ -8876,7 +9054,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoste
   PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     app_id: string
     node_id: string
@@ -8901,7 +9079,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactRespons
   PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     app_id: string
     node_id: string
@@ -8932,7 +9110,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterR
   PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     app_id: string
     node_id: string
@@ -9492,6 +9670,7 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishErrors = {
+  403: PaidPlanRequiredError | TriggerNodeLimitExceededError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -9505,6 +9684,31 @@ export type PostAppsByAppIdWorkflowsPublishResponses = {
 
 export type PostAppsByAppIdWorkflowsPublishResponse =
   PostAppsByAppIdWorkflowsPublishResponses[keyof PostAppsByAppIdWorkflowsPublishResponses]
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationData = {
+  body: PublishWorkflowPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/publish/evaluation'
+}
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationError =
+  PostAppsByAppIdWorkflowsPublishEvaluationErrors[keyof PostAppsByAppIdWorkflowsPublishEvaluationErrors]
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationResponses = {
+  200: WorkflowPublishResponse
+}
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationResponse =
+  PostAppsByAppIdWorkflowsPublishEvaluationResponses[keyof PostAppsByAppIdWorkflowsPublishEvaluationResponses]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
   body?: never

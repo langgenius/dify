@@ -36,13 +36,13 @@ const LeftHeader = ({ steps, title, currentStep }: LeftHeaderProps) => {
           replace
           className={cn(
             iconButtonVariants({ variant: 'secondary-accent', size: 'xl' }),
-            'absolute top-3.5 -left-11 rounded-full',
+            'absolute -inset-s-11 top-3.5 rounded-full',
           )}
         >
           <RiArrowLeftLine aria-hidden className="size-5" />
         </Link>
       )}
-      <Effect className="-top-8.5 left-8 opacity-20" />
+      <Effect className="inset-s-8 -top-8.5 opacity-20" />
     </div>
   )
 }

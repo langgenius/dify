@@ -1,17 +1,17 @@
 import json
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
 import numpy as np
 import pytest
-import pytz
 
 import core.tools.utils.message_transformer as mt
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_dict, safe_json_value
 from models.tools import ToolFile
 
@@ -70,13 +70,14 @@ class TestMessageTransformerCases:
         _FakeToolFileManager.last_call = None
 
     @staticmethod
-    def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
-        # Arrange: a BLOB message whose meta contains a mime_type key set to None
+    @pytest.mark.parametrize("mime_type", [None, ""], ids=["none", "empty"])
+    def test_transform_tool_invoke_messages_with_empty_mimetype_can_be_extracted(mime_type: str | None) -> None:
+        """An empty BLOB MIME survives transformation and extracts as an octet-stream attachment."""
         blob = b"hello"
         msg = ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BLOB,
             message=ToolInvokeMessage.BlobMessage(blob=blob),
-            meta={"mime_type": None, "filename": "greeting"},
+            meta={"mime_type": mime_type, "filename": "greeting"},
         )
 
         # Act
@@ -89,7 +90,7 @@ class TestMessageTransformerCases:
             )
         )
 
-        # Assert: default to application/octet-stream when mime_type is present but None
+        # The file manager receives a usable MIME type for either empty value.
         assert _FakeToolFileManager.last_call is not None
         assert _FakeToolFileManager.last_call["mimetype"] == "application/octet-stream"
 
@@ -99,10 +100,16 @@ class TestMessageTransformerCases:
         assert o.type == ToolInvokeMessage.MessageType.BINARY_LINK
         assert isinstance(o.message, ToolInvokeMessage.TextMessage)
         assert o.message.text.endswith(".bin")
-        # meta is preserved (still contains mime_type: None)
-        assert "mime_type" in (o.meta or {})
-        assert o.meta["mime_type"] is None
+        # The transformer preserves the original MIME metadata.
+        assert o.meta is not None
+        assert o.meta["mime_type"] == mime_type
         assert o.meta["tool_file_id"] == "fake-tool-file-id"
+
+        binaries = list(ToolEngine._extract_tool_response_binary_and_text(out))
+
+        assert len(binaries) == 1
+        assert binaries[0].mimetype == "application/octet-stream"
+        assert binaries[0].url == o.message.text
 
     @staticmethod
     def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype():
@@ -184,7 +191,7 @@ class TestToolEngineSerializationCases:
         def test_datetime_conversion(self):
             """Test datetime conversion with timezone handling"""
             # Test datetime with UTC timezone
-            dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+            dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
             result = safe_json_value(dt)
             assert isinstance(result, str)
             assert "2024-01-01T12:00:00+00:00" in result
@@ -277,7 +284,7 @@ class TestToolEngineSerializationCases:
                 True,
                 [1, 2, 3],
                 {"key": "value"},
-                datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+                datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
                 Decimal("123.456"),
                 uuid4(),
             ]
@@ -320,8 +327,8 @@ class TestToolEngineSerializationCases:
             complex_data = {
                 "dates": [date(2024, 1, 1), date(2024, 1, 2)],
                 "timestamps": [
-                    datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
-                    datetime(2024, 1, 2, 12, 0, 0, tzinfo=pytz.UTC),
+                    datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+                    datetime(2024, 1, 2, 12, 0, 0, tzinfo=UTC),
                 ],
                 "numbers": [Decimal("123.456"), Decimal("789.012")],
                 "identifiers": [uuid4(), uuid4()],
@@ -356,7 +363,7 @@ class TestToolEngineSerializationCases:
             test_dict = {
                 "string": "value",
                 "number": 42,
-                "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+                "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
                 "decimal": Decimal("123.456"),
             }
             result = safe_json_dict(test_dict)
@@ -387,7 +394,7 @@ class TestToolEngineSerializationCases:
             test_dict = {
                 "level1": {
                     "level2": {
-                        "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+                        "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
                         "decimal": Decimal("123.456"),
                     }
                 }
@@ -402,7 +409,7 @@ class TestToolEngineSerializationCases:
         def test_json_message_serialization(self):
             """Test JSON message serialization with complex data"""
             complex_data = {
-                "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+                "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
                 "amount": Decimal("123.45"),
                 "id": uuid4(),
                 "binary": b"test data",
@@ -439,7 +446,7 @@ class TestToolEngineSerializationCases:
                     "level2": {
                         "level3": {
                             "dates": [date(2024, 1, 1), date(2024, 1, 2)],
-                            "timestamps": [datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)],
+                            "timestamps": [datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)],
                             "numbers": [Decimal("1.1"), Decimal("2.2")],
                             "arrays": [np.array([1, 2]), np.array([3, 4])],
                         }
@@ -472,7 +479,7 @@ class TestToolEngineSerializationCases:
             """Test integration with ToolFileMessageTransformer for JSON messages"""
             complex_data = {
                 "metadata": {
-                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
                     "version": Decimal("1.0"),
                     "tags": ["tag1", "tag2"],
                 },
@@ -561,8 +568,8 @@ class TestToolEngineSerializationCases:
                     "id": uuid4(),
                     "name": "John Doe",
                     "email": "john@example.com",
-                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
-                    "last_login": datetime(2024, 1, 15, 14, 30, 0, tzinfo=pytz.UTC),
+                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+                    "last_login": datetime(2024, 1, 15, 14, 30, 0, tzinfo=UTC),
                     "preferences": {"theme": "dark", "language": "en", "timezone": "UTC"},
                 },
                 "analytics": {
@@ -571,12 +578,12 @@ class TestToolEngineSerializationCases:
                     "metrics": np.array([1.1, 2.2, 3.3, 4.4, 5.5]),
                     "events": [
                         {
-                            "timestamp": datetime(2024, 1, 1, 10, 0, 0, tzinfo=pytz.UTC),
+                            "timestamp": datetime(2024, 1, 1, 10, 0, 0, tzinfo=UTC),
                             "action": "login",
                             "duration": Decimal("5.67"),
                         },
                         {
-                            "timestamp": datetime(2024, 1, 1, 11, 0, 0, tzinfo=pytz.UTC),
+                            "timestamp": datetime(2024, 1, 1, 11, 0, 0, tzinfo=UTC),
                             "action": "logout",
                             "duration": Decimal("3600.0"),
                         },
@@ -587,7 +594,7 @@ class TestToolEngineSerializationCases:
                         "id": uuid4(),
                         "name": "document.pdf",
                         "size": 1024,
-                        "uploaded_at": datetime(2024, 1, 1, 9, 0, 0, tzinfo=pytz.UTC),
+                        "uploaded_at": datetime(2024, 1, 1, 9, 0, 0, tzinfo=UTC),
                         "checksum": b"abc123def456",
                     }
                 ],

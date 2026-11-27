@@ -44,11 +44,13 @@ import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-syn
 import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { syncHumanInputDraft } from '../../human-input/shared/sync-draft'
 import { isOutput } from '../../human-input/utils'
 import { getRequestURLCount } from '../message-template-utils'
 import useConfiguredChannels from '../use-configured-channels'
 import MessageTemplateBody from './message-template-body'
+import MessageTemplateSubject from './message-template-subject'
 
 const getTemplateVariableType = (selector: ValueSelector, availableVars: NodeOutPutVar[]) => {
   const vars = availableVars.find((item) => item.nodeId === selector[0])?.vars
@@ -90,6 +92,7 @@ const MessageTemplateSession = ({
   mutationKey: MutationKey
 }) => {
   const { t } = useTranslation(['workflow', 'common', 'workflowAgent', 'contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const [draft, setDraft] = useState(value)
   const [errors, setErrors] = useState({ subject: false, body: false })
   const [showTest, setShowTest] = useState(initialShowTest)
@@ -117,6 +120,7 @@ const MessageTemplateSession = ({
   }, [canTest, testContext])
   const testMutation = useMutation({
     mutationKey,
+    meta: { errorToast: false },
     retry: false,
     mutationFn: async ({
       inputs,
@@ -142,30 +146,22 @@ const MessageTemplateSession = ({
             .messageTemplate.test.post
         : consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test
             .post
-      await operation(
-        { params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } },
-        { context: { silent: true } },
-      )
+      await operation({ params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } })
       return true
     },
   })
   const pending = testMutation.isPending
-  const mutationError = testMutation.error
-    ? t(
-        ($) =>
-          $[
-            testMutation.error instanceof Error &&
-            testMutation.error.message === 'template-draft-not-saved'
-              ? 'nodes.humanInputV2.template.testSaveFailed'
-              : typeof testMutation.error === 'object' &&
-                  'status' in testMutation.error &&
-                  testMutation.error.status === 501
-                ? 'nodes.humanInputV2.template.testUnavailable'
-                : 'nodes.humanInputV2.template.testFailed'
-          ],
-        { ns: 'workflow' },
-      )
-    : undefined
+  const testError = testMutation.error
+  const mutationError = !testError
+    ? undefined
+    : testError instanceof Error && testError.message === 'template-draft-not-saved'
+      ? t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' })
+      : typeof testError === 'object' && 'status' in testError && testError.status === 501
+        ? t(($) => $['nodes.humanInputV2.template.testUnavailable'], { ns: 'workflow' })
+        : describeRequestError(
+            testError,
+            t(($) => $['nodes.humanInputV2.template.testFailed'], { ns: 'workflow' }),
+          )
 
   const variables = Array.from(
     new Map(
@@ -243,7 +239,8 @@ const MessageTemplateSession = ({
           (!Array.isArray(value) || !value.every((item) => typeof item === 'string'))
         )
           throw new Error('invalid-array')
-        if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('invalid-number')
+        if (typeof value === 'number' && !Number.isFinite(value))
+          throw new TypeError('invalid-number')
         inputs[variable.key] = value
       } catch {
         setTestInputError({
@@ -287,14 +284,22 @@ const MessageTemplateSession = ({
       <DialogBody className="min-h-65 space-y-5">
         <Field name="subject" invalid={errors.subject && !draft.subject.trim()}>
           <FieldLabel
+            id={`${nodeId}-message-subject-label`}
             htmlFor={`${nodeId}-message-subject`}
+            onClick={() => {
+              if (!readonly && !pending)
+                document.getElementById(`${nodeId}-message-subject`)?.focus()
+            }}
             className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
           >
             {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
           </FieldLabel>
-          <Input
+          <MessageTemplateSubject
             id={`${nodeId}-message-subject`}
             value={draft.subject}
+            availableVars={availableVars}
+            availableNodes={availableNodes}
+            aria-labelledby={`${nodeId}-message-subject-label`}
             disabled={readonly || pending}
             aria-invalid={errors.subject && !draft.subject.trim()}
             aria-describedby={
@@ -302,9 +307,9 @@ const MessageTemplateSession = ({
                 ? `${nodeId}-message-subject-error`
                 : undefined
             }
-            onChange={(event) => {
+            onValueChange={(subject) => {
               resetTestResult()
-              setDraft((current) => ({ ...current, subject: event.target.value }))
+              setDraft((current) => ({ ...current, subject }))
             }}
             placeholder={t(($) => $['nodes.humanInputV2.template.subjectPlaceholder'], {
               ns: 'workflow',

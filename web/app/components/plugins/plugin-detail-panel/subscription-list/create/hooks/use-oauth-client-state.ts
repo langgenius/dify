@@ -5,17 +5,18 @@ import type {
   TriggerOAuthConfig,
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
-import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
+import type { ConfigureTriggerOAuthPayload } from '@/service/trigger-queries'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
-  useConfigureTriggerOAuth,
-  useDeleteTriggerOAuth,
-  useInitiateTriggerOAuth,
-  useVerifyAndUpdateTriggerSubscriptionBuilder,
-} from '@/service/use-triggers'
+  configureTriggerOAuthMutationOptions,
+  deleteTriggerOAuthMutationOptions,
+  initiateTriggerOAuthMutationOptions,
+  verifyAndUpdateTriggerSubscriptionBuilderMutationOptions,
+} from '@/service/trigger-queries'
 import { getErrorMessage } from '@/utils/error-message'
 
 const AuthorizationStatusEnum = {
@@ -82,10 +83,15 @@ export const useOAuthClientState = ({
   const clientFormRef = useRef<FormRefObject>(null)
 
   // Mutations
-  const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
-  const { mutate: verifyBuilder } = useVerifyAndUpdateTriggerSubscriptionBuilder()
-  const { mutate: configureOAuth } = useConfigureTriggerOAuth()
-  const { mutate: deleteOAuth } = useDeleteTriggerOAuth({ silent: true })
+  const { mutate: initiateOAuth } = useMutation(initiateTriggerOAuthMutationOptions())
+  const { mutate: verifyBuilder } = useMutation(
+    verifyAndUpdateTriggerSubscriptionBuilderMutationOptions(),
+  )
+  const { mutate: configureOAuth } = useMutation(configureTriggerOAuthMutationOptions())
+  const { mutate: deleteOAuth } = useMutation({
+    ...deleteTriggerOAuthMutationOptions(),
+    meta: { errorToast: false },
+  })
 
   // Compute OAuth client schema with default values
   const oauthClientSchema = useMemo(() => {

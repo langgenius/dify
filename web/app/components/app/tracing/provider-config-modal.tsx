@@ -35,7 +35,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { consoleQuery } from '@/service/console'
-import { tracingProviders } from './providers'
+import { normalizeDestination, tracingProviders } from './providers'
 
 type ProviderConfigModalProps = {
   resource: TracingResource
@@ -51,11 +51,6 @@ type ProviderConfigModalProps = {
 
 const I18N_PREFIX = 'tracing.configProvider'
 
-/** A destination as the API compares it: trimmed, without trailing slashes. */
-function comparableDestination(value: string | null) {
-  return value === null ? null : value.trim().replace(/\/+$/, '')
-}
-
 export function ProviderConfigModal({
   resource,
   type,
@@ -67,22 +62,34 @@ export function ProviderConfigModal({
 }: ProviderConfigModalProps) {
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const createAppConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const createAgentConfig = useMutation(
-    consoleQuery.agent.byAgentId.traceConfig.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.traceConfig.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const updateAppConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const updateAgentConfig = useMutation(
-    consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const removeAppConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const removeAgentConfig = useMutation(
-    consoleQuery.agent.byAgentId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.traceConfig.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const createConfig = resource.kind === 'agent' ? createAgentConfig : createAppConfig
   const updateConfig = resource.kind === 'agent' ? updateAgentConfig : updateAppConfig
@@ -104,8 +111,10 @@ export function ProviderConfigModal({
   const destinationChanged = fields.some(
     (field) =>
       field.destination &&
-      comparableDestination(submittedValue(field.name, destinationDrafts[field.name] ?? '')) !==
-        comparableDestination(savedValues?.[field.name] ?? null),
+      normalizeDestination(
+        type,
+        submittedValue(field.name, destinationDrafts[field.name] ?? ''),
+      ) !== normalizeDestination(type, savedValues?.[field.name] ?? null),
   )
   const isEdit = !!config
   const saveError = createConfig.error ?? updateConfig.error
@@ -197,7 +206,9 @@ export function ProviderConfigModal({
                     pattern={field.pattern}
                     maxLength={field.maxLength}
                     required={required}
-                    defaultValue={field.secret ? '' : (savedValues?.[field.name] ?? '')}
+                    defaultValue={
+                      field.secret ? '' : (savedValues?.[field.name] ?? field.defaultValue ?? '')
+                    }
                     onValueChange={
                       field.destination
                         ? (value) =>

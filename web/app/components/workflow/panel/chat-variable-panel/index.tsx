@@ -17,6 +17,7 @@ import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/co
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { updateConversationVariables } from '@/service/workflow'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -76,10 +77,7 @@ const ChatVariablePanel = () => {
 
       // Use new dedicated conversation variables API instead of workflow draft sync
       try {
-        await updateConversationVariables({
-          appId,
-          conversationVariables: newVarList,
-        })
+        await updateConversationVariables({ appId, conversationVariables: newVarList })
 
         // Emit update event to other connected clients
         const socket = webSocketClient.getSocket(appId)
@@ -92,6 +90,7 @@ const ChatVariablePanel = () => {
         invalidateConversationVarValues()
       } catch (error) {
         console.error('Failed to update conversation variables:', error)
+        reportRequestError(error)
         // Revert local state on error
         updateChatVarList(varList)
       }
@@ -123,10 +122,7 @@ const ChatVariablePanel = () => {
 
         // Use new dedicated conversation variables API
         try {
-          await updateConversationVariables({
-            appId,
-            conversationVariables: newList,
-          })
+          await updateConversationVariables({ appId, conversationVariables: newList })
 
           const socket = webSocketClient.getSocket(appId)
           if (socket) {
@@ -138,6 +134,7 @@ const ChatVariablePanel = () => {
           invalidateConversationVarValues()
         } catch (error) {
           console.error('Failed to update conversation variables:', error)
+          reportRequestError(error)
           // Revert local state on error
           updateChatVarList(varList)
         }
@@ -168,10 +165,7 @@ const ChatVariablePanel = () => {
 
       // Use new dedicated conversation variables API
       try {
-        await updateConversationVariables({
-          appId,
-          conversationVariables: newList,
-        })
+        await updateConversationVariables({ appId, conversationVariables: newList })
 
         const socket = webSocketClient.getSocket(appId)
         if (socket) {
@@ -183,6 +177,7 @@ const ChatVariablePanel = () => {
         invalidateConversationVarValues()
       } catch (error) {
         console.error('Failed to update conversation variables:', error)
+        reportRequestError(error)
         // Revert local state on error
         updateChatVarList(varList)
       }
@@ -206,7 +201,7 @@ const ChatVariablePanel = () => {
       render={
         <div
           className={cn(
-            'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+            'relative flex h-full w-105 flex-col rounded-s-2xl border border-components-panel-border bg-components-panel-bg-alt',
           )}
         />
       }
@@ -276,7 +271,7 @@ const ChatVariablePanel = () => {
               </div>
             </div>
           </div>
-          <div className="absolute -top-1 right-9.5 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
+          <div className="absolute inset-e-9.5 -top-1 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
         </div>
       </CollapsiblePanel>
       <div className="shrink-0 px-4 pt-2 pb-3">

@@ -7,9 +7,10 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createQueryTestWrapper } from '@/test/query-state-testing'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
@@ -99,6 +100,7 @@ const server = vi.hoisted(() => ({ inflight: 0, reads: new Map<string, number>()
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const forever = () => new Promise<never>(() => {})
@@ -147,20 +149,21 @@ vi.mock('@/service/console', async (importOriginal) => {
           : current
       })
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
+    [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
+    [`${space}.goldenQuestions.post`]: (input: never) => apiMock.createGolden(input),
+    [`${space}.quality.badCases.post`]: apiMock.createBadCase,
+    [`${space}.queries.admission.post`]: apiMock.queryAdmission,
+    [`${space}.researchTasks.byTaskId.delete`]: apiMock.cancelResearch,
+    [`${space}.researchTasks.plan.post`]: apiMock.planResearch,
+    [`${space}.researchTasks.post`]: apiMock.createResearch,
+    [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
-      [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
-      [`${space}.goldenQuestions.post`]: apiMock.createGolden,
-      [`${space}.quality.badCases.post`]: apiMock.createBadCase,
-      [`${space}.queries.admission.post`]: apiMock.queryAdmission,
-      [`${space}.researchTasks.byTaskId.delete`]: apiMock.cancelResearch,
-      [`${space}.researchTasks.plan.post`]: apiMock.planResearch,
-      [`${space}.researchTasks.post`]: apiMock.createResearch,
-      [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'files.upload.post': apiMock.uploadFile,
       [`${space}.goldenQuestions.evidenceMatches.post`]: apiMock.matchEvidence,
       [`${space}.researchTasks.byTaskId.get`]: (input: { params: { task_id: string } }) => {
@@ -255,7 +258,10 @@ async function refetchQueries() {
   })
 }
 
-async function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
+async function renderPage({
+  errorToasts = false,
+  searchParams = '',
+}: { errorToasts?: boolean; searchParams?: string } = {}) {
   const { onUrlUpdate, wrapper: QueryWrapper } = createQueryTestWrapper({ searchParams })
   const view = renderWithConsoleQuery(
     <QueryWrapper>
@@ -265,6 +271,10 @@ async function renderPage({ searchParams = '' }: { searchParams?: string } = {})
         <RetrievalTestPage knowledgeSpaceId="space-1" />
       </KnowledgeSpaceTestProvider>
     </QueryWrapper>,
+    // Mirror the app's cache-level error toasts for specs that count the failure's messages.
+    errorToasts
+      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
+      : undefined,
   )
   currentQueryClient = view.queryClient
   await settle()
@@ -390,13 +400,10 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith(
-        {
-          body: { mode: 'research', query: 'Compare the refund policies' },
-          params: { control_space_id: 'space-1' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(apiMock.planResearch).toHaveBeenCalledWith({
+        body: { mode: 'research', query: 'Compare the refund policies' },
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
       {
@@ -408,7 +415,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -767,7 +774,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -794,17 +801,14 @@ describe('RetrievalTestPage', () => {
     )
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith(
-        {
-          body: {
-            mode: 'research',
-            query: '',
-            queryImages: [{ uploadFileId: 'historical-image-1' }],
-          },
-          params: { control_space_id: 'space-1' },
+      expect(apiMock.planResearch).toHaveBeenCalledWith({
+        body: {
+          mode: 'research',
+          query: '',
+          queryImages: [{ uploadFileId: 'historical-image-1' }],
         },
-        { context: { silent: true } },
-      ),
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
       {
@@ -817,7 +821,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -2084,7 +2088,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.any(Object) },
       ),
     )
     await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
@@ -2215,6 +2219,118 @@ describe('RetrievalTestPage', () => {
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
   })
 
+  it('shows a failed golden promotion once, with the translated reason in the dialog', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const message = 'This workspace cannot save more golden questions'
+    apiMock.createGolden.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { code: 'limit_exceeded', message }),
+    )
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'What is useEffect?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: { score: 0.9, text: 'useEffect synchronizes a component.' },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+    await renderPage({ errorToasts: true, searchParams: '?trace=trace-1' })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'knowledgeQuality.qualityPage.promoteTitle',
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }),
+    )
+
+    expect(await within(dialog).findByText('requestErrors.code.limit_exceeded')).toBeVisible()
+    expect(errorToast).not.toHaveBeenCalled()
+  })
+
+  it('keeps the promotion dialog open while its save is pending, so its failure is still shown', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const message = 'This workspace cannot save more golden questions'
+    let rejectCreate!: (reason: unknown) => void
+    apiMock.createGolden.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectCreate = reject
+      }),
+    )
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'What is useEffect?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: { score: 0.9, text: 'useEffect synchronizes a component.' },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+    await renderPage({ errorToasts: true, searchParams: '?trace=trace-1' })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'knowledgeQuality.qualityPage.promoteTitle',
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }),
+    )
+    await waitFor(() => expect(apiMock.createGolden).toHaveBeenCalledOnce())
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.closeDialog' }),
+    )
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+
+    await act(async () =>
+      rejectCreate(
+        createHttpError(new Response(null, { status: 403 }), { code: 'limit_exceeded', message }),
+      ),
+    )
+    expect(await within(dialog).findByText('requestErrors.code.limit_exceeded')).toBeVisible()
+    expect(errorToast).not.toHaveBeenCalled()
+  })
+
   it('loads a deep-linked trace detail when it is not present in the first list page', async () => {
     apiMock.traceDetail = {
       completed: true,
@@ -2255,7 +2371,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.any(Object) },
       ),
     )
   })
@@ -2340,7 +2456,7 @@ describe('RetrievalTestPage', () => {
           body: { reason: 'low-score', tags: ['retrieval-test'], trace_id: 'trace-image' },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.any(Object) },
       ),
     )
   })
@@ -2550,16 +2666,13 @@ describe('RetrievalTestPage', () => {
       ),
     )
     expect(apiMock.resolveDocumentReference).toHaveBeenCalledOnce()
-    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1' },
-        query: {
-          document_asset_id: 'asset-1',
-          document_asset_version: 1,
-        },
+    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: {
+        document_asset_id: 'asset-1',
+        document_asset_version: 1,
       },
-      { context: { silent: true } },
-    )
+    })
   })
 
   it('preserves the server reason when opening asset-only evidence fails', async () => {

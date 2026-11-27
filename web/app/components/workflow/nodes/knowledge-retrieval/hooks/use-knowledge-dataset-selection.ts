@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { reportRequestError } from '@/app/query-error-toast'
 import { fetchDatasets } from '@/service/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '../utils'
@@ -39,17 +40,22 @@ const useKnowledgeDatasetSelection = ({
     void (async () => {
       const currentInputs = inputRef.current
       const datasetIds = currentInputs.dataset_ids
-      if (datasetIds.length > 0) {
-        const { data: dataSetsWithDetail } = await fetchDatasets({
-          params: {
-            page: 1,
-            ids: datasetIds,
-          },
-        })
-        setSelectedDatasets(dataSetsWithDetail)
+      try {
+        if (datasetIds.length > 0) {
+          const { data: dataSetsWithDetail } = await fetchDatasets({
+            params: {
+              page: 1,
+              ids: datasetIds,
+            },
+          })
+          setSelectedDatasets(dataSetsWithDetail)
+        }
+        // Only a completed lookup is authoritative: metadata cleanup reads this flag and would
+        // otherwise remove saved conditions after a failed load.
+        setSelectedDatasetsLoaded(true)
+      } catch (error) {
+        reportRequestError(error)
       }
-
-      setSelectedDatasetsLoaded(true)
     })()
   }, [inputRef])
 

@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getRawInputsFromUrlParams } from '@/app/components/base/chat/utils'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -100,17 +101,27 @@ export const useTextGenerationAppState = ({
   const fetchSavedMessages = useCallback(
     async (targetAppId = appId) => {
       if (!targetAppId) return
-      const res = (await doFetchSavedMessage(appSourceType, targetAppId)) as {
-        data: SavedMessage[]
+      try {
+        const res = (await doFetchSavedMessage(appSourceType, targetAppId)) as {
+          data: SavedMessage[]
+        }
+        setSavedMessages(res.data)
+      } catch (error) {
+        // The saved list keeps what it showed, so the failed load is reported here.
+        reportRequestError(error)
       }
-      setSavedMessages(res.data)
     },
     [appId, appSourceType],
   )
   const handleSaveMessage = useCallback(
     async (messageId: string) => {
       if (!appId) return
-      await saveMessage(messageId, appSourceType, appId)
+      try {
+        await saveMessage(messageId, appSourceType, appId)
+      } catch (error) {
+        reportRequestError(error)
+        return
+      }
       toast.success(t(($) => $['api.saved'], { ns: 'common' }))
       await fetchSavedMessages(appId)
     },
@@ -119,7 +130,12 @@ export const useTextGenerationAppState = ({
   const handleRemoveSavedMessage = useCallback(
     async (messageId: string) => {
       if (!appId) return
-      await removeMessage(messageId, appSourceType, appId)
+      try {
+        await removeMessage(messageId, appSourceType, appId)
+      } catch (error) {
+        reportRequestError(error)
+        return
+      }
       toast.success(t(($) => $['api.remove'], { ns: 'common' }))
       await fetchSavedMessages(appId)
     },

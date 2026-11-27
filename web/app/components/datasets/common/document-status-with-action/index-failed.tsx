@@ -5,6 +5,7 @@ import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { retryErrorDocs } from '@/service/datasets'
 import StatusWithAction from './status-with-action'
@@ -54,7 +55,8 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
       await retryErrorDocs({ datasetId, document_ids })
       refetchErrorDocs()
       dispatch({ type: 'success' })
-    } catch {
+    } catch (error) {
+      reportRequestError(error)
       dispatch({ type: 'error' })
     }
   }

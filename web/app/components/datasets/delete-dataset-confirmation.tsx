@@ -11,6 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 export function DeleteDatasetConfirmation({
   datasetId,
@@ -20,16 +21,17 @@ export function DeleteDatasetConfirmation({
 }: {
   datasetId: string
   isPending: boolean
-  error?: string
+  error?: unknown
   onConfirm: () => void
 }) {
   const { t } = useTranslation(['common', 'dataset'])
+  const describeRequestError = useRequestErrorDescriber()
   const usage = useQuery(
     consoleQuery.datasets.byDatasetId.useCheck.get.queryOptions({
       input: { params: { dataset_id: datasetId } },
-      staleTime: 0,
       retry: false,
-      context: { silent: true },
+      // A failed check is shown inline with a retry button.
+      meta: { errorToast: false },
     }),
   )
 
@@ -45,10 +47,13 @@ export function DeleteDatasetConfirmation({
           })}
         </AlertDialogDescription>
       </AlertDialogHeader>
-      {(error || usage.isError) && (
+      {(error != null || usage.isError) && (
         <AlertDialogBody className="flex flex-col items-start gap-2">
           <p role="alert" className="text-text-destructive">
-            {error ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+            {describeRequestError(
+              error ?? usage.error,
+              t(($) => $['api.actionFailed'], { ns: 'common' }),
+            )}
           </p>
           {usage.isError && (
             <Button size="small" loading={usage.isFetching} onClick={() => void usage.refetch()}>

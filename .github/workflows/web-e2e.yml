@@ -33,13 +33,13 @@ jobs:
         shell: bash
         run: |
           # Hash tracked build inputs, excluding generated files and backend-only changes.
-          source_hash=$(git ls-tree -r HEAD -- web packages e2e/scripts e2e/package.json e2e/test-env.ts package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .github/actions/setup-web .github/workflows/web-e2e.yml | sha256sum | cut -d ' ' -f 1)
+          source_hash=$(git ls-tree -r HEAD -- web packages patches e2e/scripts e2e/package.json e2e/test-env.ts package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .github/actions/setup-web .github/workflows/web-e2e.yml | sha256sum | cut -d ' ' -f 1)
           echo "hash=$source_hash" >> "$GITHUB_OUTPUT"
 
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
         with:
-          # Browser jobs already save this dependency cache; avoid duplicate uploads.
+          # Web test and style jobs already save this pnpm store; avoid duplicate uploads.
           cache-save: 'false'
 
       - name: Restore Next.js build cache
@@ -50,6 +50,10 @@ jobs:
           key: e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-${{ steps.build-source.outputs.hash }}
           restore-keys: |
             e2e-next-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}-
+
+      - name: Validate all active Cucumber scenarios
+        working-directory: ./e2e
+        run: vp run check:scenarios
 
       - name: Run E2E support unit tests
         working-directory: ./e2e
@@ -162,11 +166,10 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-logs-chromium-${{ matrix.shard }}
+          name: e2e-logs-chromium-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
           path: e2e/.logs/*.log
           if-no-files-found: ignore
           include-hidden-files: true
-          overwrite: true
           retention-days: 7
 
   webkit-smoke:
@@ -240,11 +243,10 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-logs-webkit
+          name: e2e-logs-webkit-attempt-${{ github.run_attempt }}
           path: e2e/.logs/*.log
           if-no-files-found: ignore
           include-hidden-files: true
-          overwrite: true
           retention-days: 7
 
   external-runtime:

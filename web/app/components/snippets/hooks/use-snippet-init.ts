@@ -1,14 +1,16 @@
 import type { SnippetWorkflow } from '@/types/snippet'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { reportRequestError } from '@/app/query-error-toast'
+import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import {
   fetchSnippetDraftWorkflow,
-  useSnippetDefaultBlockConfigs,
-  useSnippetPublishedWorkflow,
-} from '@/service/use-snippet-workflows'
-import { buildSnippetDetailPayload, useSnippetApiDetail } from '@/service/use-snippets'
+  snippetPublishedWorkflowQueryOptions,
+} from '@/service/snippet-queries'
+import { buildSnippetDetailPayload } from '../utils/snippet-detail-payload'
 
 const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
   if (!nodesDefaultConfigs || typeof nodesDefaultConfigs !== 'object') return {}
@@ -48,19 +50,44 @@ type DraftWorkflowState = {
 
 export const useSnippetInit = (snippetId: string) => {
   const workflowStore = useWorkflowStore()
-  const snippetApiDetail = useSnippetApiDetail(snippetId)
+  const snippetApiDetail = useQuery(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryOptions({
+      input: { params: { snippet_id: snippetId } },
+      enabled: !!snippetId,
+    }),
+  )
   const [draftWorkflowState, setDraftWorkflowState] = useState<DraftWorkflowState>({
     snippetId: '',
     isLoaded: false,
   })
-  useSnippetDefaultBlockConfigs(snippetId, (nodesDefaultConfigs) => {
-    workflowStore.setState({
-      nodesDefaultConfigs: normalizeNodesDefaultConfigs(nodesDefaultConfigs),
+  const defaultBlockConfigsOptions =
+    consoleQuery.snippets.bySnippetId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
+      input: { params: { snippet_id: snippetId } },
+      enabled: !!snippetId,
     })
-  })
-  const publishedWorkflowQuery = useSnippetPublishedWorkflow(snippetId, (publishedWorkflow) => {
-    workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-  })
+  useQuery(
+    queryOptions({
+      ...defaultBlockConfigsOptions,
+      queryFn: async (context) => {
+        const nodesDefaultConfigs = await defaultBlockConfigsOptions.queryFn(context)
+        workflowStore.setState({
+          nodesDefaultConfigs: normalizeNodesDefaultConfigs(nodesDefaultConfigs),
+        })
+        return nodesDefaultConfigs
+      },
+    }),
+  )
+  const publishedWorkflowOptions = snippetPublishedWorkflowQueryOptions(snippetId)
+  const publishedWorkflowQuery = useQuery(
+    queryOptions({
+      ...publishedWorkflowOptions,
+      queryFn: async (context) => {
+        const publishedWorkflow = await publishedWorkflowOptions.queryFn(context)
+        if (publishedWorkflow) workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
+        return publishedWorkflow
+      },
+    }),
+  )
 
   useEffect(() => {
     if (publishedWorkflowQuery.isLoading) return
@@ -91,10 +118,11 @@ export const useSnippetInit = (snippetId: string) => {
           isLoaded: true,
         })
       })
-      .catch(() => {
-        // Keep the canvas gated on unexpected draft fetch failures.
+      .catch((error: unknown) => {
+        // Keep the canvas gated on unexpected draft fetch failures and report them.
         // `fetchSnippetDraftWorkflow` resolves with undefined for 404, so this
         // branch represents a real initialization failure rather than "no draft".
+        if (!ignore) reportRequestError(error)
       })
 
     return () => {

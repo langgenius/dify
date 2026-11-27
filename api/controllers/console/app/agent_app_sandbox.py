@@ -38,9 +38,9 @@ from libs.exception import RelayedHTTPError
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.agent.errors import AgentNotFoundError
-from services.app.agent_app_contracts import (
-    AgentAppNotFoundError,
+from services.agent.sandbox_contracts import (
     AgentSandboxBindingNotFoundError,
     AgentSandboxCaller,
     AgentSandboxDownloadUnavailableError,

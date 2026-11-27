@@ -22,6 +22,7 @@ import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 
 export type KnowledgeFsApiAccessStatus = 'active' | 'inactive' | 'loading' | 'unavailable'
@@ -40,13 +41,15 @@ export function KnowledgeFsApiAccessDialog({
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tAppApi } = useTranslation(['appApi'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const docLink = useDocLink()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const apiKeyMutations = useDatasetApiKeyMutations()
-  const { data: apiBaseInfo } = useQuery(
-    consoleQuery.datasets.apiBaseInfo.get.queryOptions({ context: { silent: true } }),
+  // A failure is shown in the endpoint field.
+  const { data: apiBaseInfo, error: apiBaseInfoError } = useQuery(
+    consoleQuery.datasets.apiBaseInfo.get.queryOptions({ meta: { errorToast: false } }),
   )
   // The shared prefix of every KnowledgeFS service API route for this space; the operation
   // path (queries/admission, documents, sources, …) is appended by the caller.
@@ -76,7 +79,13 @@ export function KnowledgeFsApiAccessDialog({
               </p>
               <div className="mt-1 flex min-h-8 items-center gap-1 rounded-lg bg-components-input-bg-normal py-1 ps-3 pe-1">
                 <code className="min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
-                  {endpoint || tAppApi(($) => $.loading)}
+                  {endpoint ||
+                    (apiBaseInfoError
+                      ? describeRequestError(
+                          apiBaseInfoError,
+                          t(($) => $.unavailable, { ns: 'dataset' }),
+                        )
+                      : tAppApi(($) => $.loading))}
                 </code>
                 {endpoint && <CopyFeedback content={endpoint} />}
               </div>

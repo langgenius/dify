@@ -978,24 +978,6 @@ export const zInstalledAppListResponse = z.object({
 })
 
 /**
- * AgentThought
- */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zAnyJsonValue,
-})
-
-/**
  * SimpleFeedback
  */
 export const zSimpleFeedback = z.object({
@@ -1097,6 +1079,58 @@ export const zRetrieverResource = z.object({
   summary: z.string().nullish(),
   title: z.string().nullish(),
   word_count: z.int().nullish(),
+})
+
+/**
+ * ToolCallLimitMetadata
+ *
+ * Usage at this call's dispatch boundary and its authoritative disposition.
+ */
+export const zToolCallLimitMetadata = z.object({
+  execution_status: z.enum(['executed', 'not_executed', 'unconfirmed']),
+  limit: z.int().gt(0),
+  reason: z.enum(['call_limit_reached', 'duplicate_tool_call']).nullish(),
+  tool_identity: z.string().min(1),
+  used: z.int().gte(0),
+})
+
+/**
+ * AgentToolActivity
+ *
+ * One native tool call's application-owned, persistable display metadata.
+ *
+ * Native call identity is independent of its display name and the SQL thought
+ * row. Tool inputs, credentials and successful observations remain outside
+ * this sidecar; ``error`` is a bounded failure description for display.
+ * Missing metadata on older thoughts conveys no execution or quota claim.
+ */
+export const zAgentToolActivity = z.object({
+  call_limit: zToolCallLimitMetadata.nullish(),
+  error: z.string().nullish(),
+  id: z.string().min(1),
+  run_id: z.string().min(1),
+  status: z.enum(['cancelled', 'failed', 'not_executed', 'running', 'started', 'succeeded']),
+  tool_call_id: z.string().min(1),
+  tool_name: z.string().min(1),
+})
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_activity: zAgentToolActivity.nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
 })
 
 export const zJsonValue = z.unknown()
@@ -1398,6 +1432,10 @@ export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
  * Success
  */
 export const zPatchInstalledAppsByInstalledAppIdResponse = zSimpleResultMessageResponse
+
+export const zPostInstalledAppsByInstalledAppIdAudioToTextBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
 
 export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
   installed_app_id: z.uuid(),

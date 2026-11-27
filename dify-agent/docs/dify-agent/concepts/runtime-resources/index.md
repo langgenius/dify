@@ -45,6 +45,10 @@ The Shell module consumes `RuntimeLease.commands` and `RuntimeLease.layout`. It
 tracks only request-local shell job ids and offsets.
 Closing a run clears that job state; it does not retire the Binding.
 
+Transient commands share one timeout budget across execution and paginated
+output replay. A replay that exhausts the budget returns incomplete output with
+reason `timeout`; a still-running job is interrupted before its final cleanup.
+
 ## State ownership
 
 Dify API is the lifecycle ledger. It stores three resource records:
@@ -77,10 +81,15 @@ snapshot ref.
 
 Build Draft Apply uses `POST /home-snapshots/from-binding`: Dify Agent acquires
 the exact source Binding, snapshots its materialized Home through the
-backend-native operation, releases the lease, and returns a new opaque snapshot
-ref. Dify API then stores a new immutable `agent_home_snapshots` row and records
-its logical id on the resulting config version. There is no replay or fallback
-when the source Binding is unavailable.
+backend-native operation, releases the lease, and returns an opaque snapshot
+ref — or explicit `snapshot_ref: null` when the selected backend cannot
+snapshot at all. A null result means no snapshot exists: Dify API applies the
+config without persisting an `agent_home_snapshots` row, records no snapshot
+id on the resulting config version, and the next Binding is materialized
+image-fresh. On a snapshot-capable backend, Dify API stores a new immutable
+`agent_home_snapshots` row and records its logical id on the resulting config
+version. There is no replay or fallback when the source Binding is
+unavailable.
 
 Before an Agent request, Dify API loads the specific product context. If it has
 no associated Binding, Dify API materializes one and saves the Binding id in the
@@ -90,8 +99,10 @@ fail fast; Dify API does not search by Agent, Workspace, candidate count, or
 recency, and it does not create a replacement implicitly.
 
 `POST /execution-bindings` accepts either an exact `home_snapshot_ref` or
-`null`. An exact ref must be materialized without fallback; `null` selects the
-backend's deployment-default Home. It returns opaque Binding and Workspace
+`null`. On snapshot-capable backends an exact ref must be materialized without
+fallback; a backend that cannot snapshot ignores the ref and materializes
+image-fresh. `null` selects the backend's deployment-default Home. It returns
+opaque Binding and Workspace
 refs. Every create request represents a new participant, even when the Agent,
 Snapshot, config generation, and Workspace match another Binding. The request
 composition contains:
@@ -119,10 +130,11 @@ transaction commits, one Celery task asks Dify Agent to destroy the physical
 resources. A successful collector deletes the corresponding ledger row. If a
 collector raises, the task logs the tenant, resource type, and resource ID and
 continues with the other independent resources in the batch. After all resources
-have been attempted, any failure makes the Celery task fail and prevents Agent
-aggregate deletion. Failed RETIRED rows remain available for a later retry. A
-failure to publish the Celery task is also propagated to the product caller. No
-automatic retry or reconciliation is performed.
+have been attempted, any failure defers Agent aggregate deletion and retries
+the batch with exponential backoff, up to five retries. Failed RETIRED rows
+remain available for collection. A failure to publish the task propagates
+to the product caller. The conversation cleanup sweeper rediscovers retired
+conversation Workspaces even after the Conversation row has been deleted.
 
 The unified `collect_agent_resources` task is registered on normal Celery
 workers and explicitly uses the existing `retention` queue. Standard workers
@@ -186,6 +198,10 @@ directly from the runtime to Dify's existing ToolFile endpoint. Dify Agent
 returns only the canonical ToolFile reference and releases the lease before
 Dify API signs a browser URL.
 
+File previews accept regular files only. The inspection script opens paths in
+nonblocking mode before checking their type, so a FIFO without a writer returns
+`400 invalid_binding_path` instead of waiting for the browse timeout.
+
 The default Binding-download deadline chain leaves each caller time to receive
 and normalize the lower layer's result: the sandbox CLI upload is 180 seconds,
 `DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` is 210 seconds,
@@ -207,8 +223,8 @@ Home plus the shared Workspace.
 | --- | --- | --- | --- |
 | Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
-| Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
-| OpenShell | Supported via directory copies on an operator-provided shared volume | Supported with image-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name; snapshots live under `home-snapshots/<tenant-digest>/` on the shared volume. Production deployments must use one workspace and one dedicated volume per tenant. |
+| Enterprise | Supported when Gateway Home Snapshot storage is enabled | Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs share a logical Gateway sandbox across suspension and resume. |
+| OpenShell | Unsupported: `create_from_runtime` reports `snapshot_ref: null` and `delete` is a no-op; new Bindings ignore `home_snapshot_ref` | Supported with image-fresh default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same OpenShell sandbox, addressed by its stable name. OpenShell has no native snapshot capability, so every new Binding is materialized from the deployment image. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
 the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B
@@ -217,6 +233,11 @@ its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
 OpenShell shares the E2B shape: one sandbox per Binding, no
 `existing_workspace_ref`, no binding-only destroy. Neither path creates a
 fallback Workspace or switches backends.
+
+An Enterprise lease wakes the Gateway sandbox through the shellctl health
+endpoint before checking the Home and Workspace. It renews the inactivity
+timer every minute until release, using the configured proxy timeout for each
+health request.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
 resource to one hour. The limit covers the complete Agent run held by one

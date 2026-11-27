@@ -17,13 +17,14 @@ import {
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
+import { webAppLogout } from '@/service/common'
 import { resolveWebAppAddress } from '@/service/webapp-address'
-import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
 type Props = Readonly<
@@ -40,7 +41,12 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
   const { t } = useTranslation(['common', 'share'])
 
   const handleLogout = async () => {
-    await webAppLogout(resolveWebAppAddress())
+    try {
+      await webAppLogout(resolveWebAppAddress())
+    } catch (error) {
+      reportRequestError(error)
+      return
+    }
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }
 

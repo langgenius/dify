@@ -27,24 +27,6 @@ export const zAccessTokenResultResponse = z.object({
 export const zAnyJsonValue = z.unknown()
 
 /**
- * AgentThought
- */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zAnyJsonValue,
-})
-
-/**
  * AppAccessModeQuery
  */
 export const zAppAccessModeQuery = z.object({
@@ -477,19 +459,6 @@ export const zFileTransferMethod = z.enum([
 export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
 
 /**
- * FileInput
- *
- * Resolved single-file input constraints.
- */
-export const zFileInput = z.object({
-  allowed_file_extensions: z.array(z.string()),
-  allowed_file_types: z.array(zFileType),
-  allowed_file_upload_methods: z.array(zFileTransferMethod),
-  output_variable_name: z.string(),
-  type: z.literal('file_input').optional().default('file_input'),
-})
-
-/**
  * FileInputConfig
  */
 export const zFileInputConfig = z.object({
@@ -498,20 +467,6 @@ export const zFileInputConfig = z.object({
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   output_variable_name: z.string(),
   type: z.literal('file').optional().default('file'),
-})
-
-/**
- * FileListInput
- *
- * Resolved multi-file input constraints and effective number limit.
- */
-export const zFileListInput = z.object({
-  allowed_file_extensions: z.array(z.string()),
-  allowed_file_types: z.array(zFileType),
-  allowed_file_upload_methods: z.array(zFileTransferMethod),
-  number_limits: z.int(),
-  output_variable_name: z.string(),
-  type: z.literal('file_list_input').optional().default('file_list_input'),
 })
 
 /**
@@ -625,6 +580,15 @@ export const zHumanInputAccessRateLimitExceededError = zErrorResponse.and(
     status: z.literal(429),
   }),
 )
+
+/**
+ * HumanInputActionResponse
+ */
+export const zHumanInputActionResponse = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
 
 /**
  * HumanInputChallengeExpiredError
@@ -899,16 +863,6 @@ export const zMalformedUploadTokenError = zErrorResponse.and(
 )
 
 /**
- * MarkdownFragment
- *
- * One source-ordered Markdown fragment in a resolved form.
- */
-export const zMarkdownFragment = z.object({
-  text: z.string(),
-  type: z.literal('markdown_fragment').optional().default('markdown_fragment'),
-})
-
-/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
@@ -1030,17 +984,6 @@ export const zNotWorkflowAppError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
-
-/**
- * ParagraphInput
- *
- * Resolved multiline text input.
- */
-export const zParagraphInput = z.object({
-  default_value: z.string().nullable(),
-  output_variable_name: z.string(),
-  type: z.literal('paragraph_input').optional().default('paragraph_input'),
-})
 
 /**
  * PassportAccessTokenResponse
@@ -1234,6 +1177,76 @@ export const zRemoteFileUrlBlockedError = zErrorResponse.and(
 )
 
 /**
+ * ResolvedFileListResponse
+ */
+export const zResolvedFileListResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file_list_input'),
+})
+
+/**
+ * ResolvedFileResponse
+ */
+export const zResolvedFileResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file_input'),
+})
+
+/**
+ * ResolvedMarkdownResponse
+ */
+export const zResolvedMarkdownResponse = z.object({
+  text: z.string(),
+  type: z.literal('markdown_fragment'),
+})
+
+/**
+ * ResolvedParagraphResponse
+ */
+export const zResolvedParagraphResponse = z.object({
+  default_value: z.string().nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph_input'),
+})
+
+/**
+ * ResolvedSelectResponse
+ */
+export const zResolvedSelectResponse = z.object({
+  default_value: z.string().nullable(),
+  options: z.array(z.string()),
+  output_variable_name: z.string(),
+  type: z.literal('select_input'),
+})
+
+export const zResolvedPartResponse = z.discriminatedUnion('type', [
+  zResolvedMarkdownResponse,
+  zResolvedParagraphResponse,
+  zResolvedSelectResponse,
+  zResolvedFileResponse,
+  zResolvedFileListResponse,
+])
+
+/**
+ * ResolvedForm
+ *
+ * Keep the existing resolved-form wire shape without exposing storage metadata.
+ */
+export const zResolvedForm = z.object({
+  actions: z.array(zHumanInputActionResponse),
+  legacy_form_content: z.string(),
+  parts: z.array(zResolvedPartResponse),
+  title: z.string(),
+})
+
+/**
  * ResultResponse
  */
 export const zResultResponse = z.object({
@@ -1291,26 +1304,6 @@ export const zSavedMessageListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
-
-/**
- * SelectInput
- *
- * Resolved single-choice input with immutable concrete options.
- */
-export const zSelectInput = z.object({
-  default_value: z.string().nullable(),
-  options: z.array(z.string()),
-  output_variable_name: z.string(),
-  type: z.literal('select_input').optional().default('select_input'),
-})
-
-export const zFormPart = z.discriminatedUnion('type', [
-  zMarkdownFragment,
-  zParagraphInput,
-  zSelectInput,
-  zFileInput,
-  zFileListInput,
-])
 
 export const zShallowJsonValue = z
   .union([
@@ -1794,6 +1787,58 @@ export const zTooManyFilesError = zErrorResponse.and(
 )
 
 /**
+ * ToolCallLimitMetadata
+ *
+ * Usage at this call's dispatch boundary and its authoritative disposition.
+ */
+export const zToolCallLimitMetadata = z.object({
+  execution_status: z.enum(['executed', 'not_executed', 'unconfirmed']),
+  limit: z.int().gt(0),
+  reason: z.enum(['call_limit_reached', 'duplicate_tool_call']).nullish(),
+  tool_identity: z.string().min(1),
+  used: z.int().gte(0),
+})
+
+/**
+ * AgentToolActivity
+ *
+ * One native tool call's application-owned, persistable display metadata.
+ *
+ * Native call identity is independent of its display name and the SQL thought
+ * row. Tool inputs, credentials and successful observations remain outside
+ * this sidecar; ``error`` is a bounded failure description for display.
+ * Missing metadata on older thoughts conveys no execution or quota claim.
+ */
+export const zAgentToolActivity = z.object({
+  call_limit: zToolCallLimitMetadata.nullish(),
+  error: z.string().nullish(),
+  id: z.string().min(1),
+  run_id: z.string().min(1),
+  status: z.enum(['cancelled', 'failed', 'not_executed', 'running', 'started', 'succeeded']),
+  tool_call_id: z.string().min(1),
+  tool_name: z.string().min(1),
+})
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_activity: zAgentToolActivity.nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
+/**
  * TriggerWorkflowServiceModeUnavailableError
  *
  * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
@@ -1840,29 +1885,6 @@ export const zUploadTokenRequiredError = zErrorResponse.and(
     status: z.literal(401),
   }),
 )
-
-/**
- * UserAction
- *
- * Resolved action values required for presentation and submission validation.
- */
-export const zUserAction = z.object({
-  button_style: zButtonStyle,
-  id: z.string(),
-  title: z.string(),
-})
-
-/**
- * ResolvedForm
- *
- * Immutable authoritative presentation snapshot for one v2 form.
- */
-export const zResolvedForm = z.object({
-  actions: z.array(zUserAction),
-  legacy_form_content: z.string(),
-  parts: z.array(zFormPart),
-  title: z.string(),
-})
 
 /**
  * UserActionConfig
@@ -2293,6 +2315,10 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   limit: z.int(),
 })
 
+export const zPostAudioToTextBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Success
  */
@@ -2401,6 +2427,10 @@ export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginVerifyPayload
  * Email code verified and login successful
  */
 export const zPostEmailCodeLoginValidityResponse = zAccessTokenResultResponse
+
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
 
 /**
  * File uploaded successfully
@@ -2515,6 +2545,11 @@ export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
  * Upload token issued successfully
  */
 export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUploadTokenResponse
+
+export const zPostHumanInputFormsFilesBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
+  url: z.string().optional(),
+})
 
 /**
  * File uploaded successfully
@@ -2663,10 +2698,6 @@ export const zGetSavedMessagesQuery = z.object({
 export const zGetSavedMessagesResponse = zSavedMessageInfiniteScrollPagination
 
 export const zPostSavedMessagesBody = zSavedMessageCreatePayload
-
-export const zPostSavedMessagesQuery = z.object({
-  message_id: z.string(),
-})
 
 /**
  * Message saved successfully

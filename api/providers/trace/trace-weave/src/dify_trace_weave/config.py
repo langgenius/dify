@@ -16,7 +16,7 @@ def _base_url(value: str, allowed_schemes: tuple[str, ...]) -> str:
         _ = urlsplit(url).port
     except ValueError:
         raise ValueError("URL port is invalid") from None
-    return url
+    return url.rstrip("/")
 
 
 class WeaveConfig(ProviderConfig):

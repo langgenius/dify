@@ -11,15 +11,20 @@ can persist the run record. Request-shaped execution failures are left to
 ``AgentRunRunner`` so bad compositions, prompts,
 structured-output schemas, or session snapshots become asynchronous
 ``run_failed`` outcomes instead of synchronous HTTP rejections.
+Keyed admission delegates atomic claim/replay to storage across processes;
+only newly created runs start a local task. Replays return the retained status.
 """
 
 import asyncio
+import hashlib
+import json
 import logging
 from collections.abc import Callable
 from typing import Protocol
 
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from dify_agent.runtime.context import Services
 from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
 from dify_agent.runtime.cancellation import RunCancellationIntent
@@ -50,6 +55,16 @@ class RunStore(RunEventSink, Protocol):
         """Persist a new run record and return it with status ``running``."""
         ...
 
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        """Atomically return ``(record, created)`` across clients sharing storage.
+
+        A retained matching request replays its current record without extending
+        retention. A different fingerprint raises ``IdempotencyConflictError``
+        from the storage adapter. Persist only digests and run metadata; active
+        writes refresh absent or same-run claims without overwriting a new owner.
+        """
+        ...
+
     async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
         """Persist the first cancellation intent and return the current status."""
         ...
@@ -69,6 +84,7 @@ class RunStore(RunEventSink, Protocol):
         *,
         session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
+        tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
     ) -> RunFinalizationResult:
         """Publish cancellation after the owner runner has exited."""
         ...
@@ -85,6 +101,15 @@ class RunnableRun(Protocol):
     @property
     def terminal_usage(self) -> AgentRunUsage | None:
         """Return usage accumulated before this run exited, if available."""
+        ...
+
+    @property
+    def terminal_tool_call_limits(self) -> dict[str, ToolCallLimitSnapshot]:
+        """Return detached reservations sealed after native cleanup."""
+        ...
+
+    def close_tool_admission(self) -> None:
+        """Close reservations as soon as this owner observes cancellation."""
         ...
 
     async def run(self) -> None:
@@ -150,17 +175,29 @@ class RunScheduler:
         self._lifecycle_lock = asyncio.Lock()
 
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
-        """Persist and schedule one run in the current process.
+        """Admit a new run or replay a retained run with its current status.
 
-        The returned record is already ``running``. The background task is removed
-        from ``active_tasks`` when it finishes, regardless of success or failure.
+        New records are ``running`` and scheduled locally. Their background task
+        is removed from ``active_tasks`` on completion, regardless of outcome.
         Request-shaped runtime failures are intentionally deferred to the runner so
-        callers can observe them through the normal event/status stream.
+        callers can observe them through the normal event/status stream. A request
+        with an idempotency key reuses the original record without scheduling a
+        second task or refreshing retention; a normalized payload mismatch raises
+        the store's ``IdempotencyConflictError``.
         """
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
-            record = await self.store.create_run()
+            if request.idempotency_key is None:
+                record = await self.store.create_run()
+            else:
+                fingerprint = _create_run_fingerprint(request)
+                record, created = await self.store.create_run_idempotent(
+                    idempotency_key=request.idempotency_key,
+                    request_fingerprint=fingerprint,
+                )
+                if not created:
+                    return record
             task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
             self.active_tasks[record.run_id] = task
             task.add_done_callback(lambda _task, run_id=record.run_id: self._discard_active_run(run_id))
@@ -199,6 +236,7 @@ class RunScheduler:
         )
 
         async def cancel_runner_and_wait() -> None:
+            runner.close_tool_admission()
             if not cancel_requested.is_set() and not runner_task.done():
                 cancel_requested.set()
                 _ = runner_task.cancel()
@@ -218,6 +256,7 @@ class RunScheduler:
                         reason="cancellation_observer",
                         session_snapshot=runner.terminal_session_snapshot,
                         usage=runner.terminal_usage,
+                        tool_call_limits=runner.terminal_tool_call_limits,
                     )
                     if not finalization.applied and finalization.status == "running":
                         intent = await self.store.get_cancellation_intent(record.run_id)
@@ -227,6 +266,7 @@ class RunScheduler:
                                 intent,
                                 session_snapshot=runner.terminal_session_snapshot,
                                 usage=runner.terminal_usage,
+                                tool_call_limits=runner.terminal_tool_call_limits,
                             )
                     raise
 
@@ -236,6 +276,7 @@ class RunScheduler:
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
                     usage=runner.terminal_usage,
+                    tool_call_limits=runner.terminal_tool_call_limits,
                 )
             else:
                 runner_error: Exception | None = None
@@ -251,10 +292,12 @@ class RunScheduler:
                         intent,
                         session_snapshot=runner.terminal_session_snapshot,
                         usage=runner.terminal_usage,
+                        tool_call_limits=runner.terminal_tool_call_limits,
                     )
                 if runner_error is not None:
                     raise runner_error
         except asyncio.CancelledError:
+            runner.close_tool_admission()
             await self._cancel_and_wait(observer_task)
             await cancel_runner_and_wait()
             intent = await self.store.get_cancellation_intent(record.run_id)
@@ -264,12 +307,14 @@ class RunScheduler:
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
                     usage=runner.terminal_usage,
+                    tool_call_limits=runner.terminal_tool_call_limits,
                 )
             else:
                 finalization = await self._mark_cancelled_run_failed(
                     record.run_id,
                     session_snapshot=runner.terminal_session_snapshot,
                     usage=runner.terminal_usage,
+                    tool_call_limits=runner.terminal_tool_call_limits,
                 )
                 if finalization is not None and not finalization.applied and finalization.status == "running":
                     intent = await self.store.get_cancellation_intent(record.run_id)
@@ -279,11 +324,13 @@ class RunScheduler:
                             intent,
                             session_snapshot=runner.terminal_session_snapshot,
                             usage=runner.terminal_usage,
+                            tool_call_limits=runner.terminal_tool_call_limits,
                         )
             raise
         except Exception:
             logger.exception("scheduled run failed", extra={"run_id": record.run_id})
         finally:
+            runner.close_tool_admission()
             await self._cancel_and_wait(observer_task)
             if not runner_task.done():
                 await cancel_runner_and_wait()
@@ -295,7 +342,7 @@ class RunScheduler:
         *,
         is_cancelled: Callable[[], bool],
     ) -> RunnableRun:
-        """Create a runner while keeping injected test runners source-compatible."""
+        """Create the native runner or an injected implementation of its owner contract."""
         if self.runner_factory is not None:
             return self.runner_factory(record, request)
         return self._default_runner_factory(record, request, is_cancelled=is_cancelled)
@@ -338,6 +385,7 @@ class RunScheduler:
         *,
         session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
+        tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
     ) -> RunFinalizationResult | None:
         """Best-effort failure event/status for shutdown-cancelled runs."""
         message = "run cancelled during server shutdown"
@@ -349,10 +397,18 @@ class RunScheduler:
                 reason="shutdown",
                 session_snapshot=session_snapshot,
                 usage=usage,
+                tool_call_limits=tool_call_limits,
             )
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
             return None
+
+
+def _create_run_fingerprint(request: CreateRunRequest) -> str:
+    """Hash the normalized request body without its idempotency key."""
+    payload = request.model_dump(mode="json", exclude={"idempotency_key"})
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 __all__ = ["RunCancellationConflictError", "RunScheduler", "SchedulerStoppingError"]

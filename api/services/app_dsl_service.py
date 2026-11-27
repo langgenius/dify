@@ -18,6 +18,11 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from constants.trigger import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
 from core.app.app_config.features.suggested_questions_after_answer.manager import (
     SuggestedQuestionsAfterAnswerConfigManager,
 )
@@ -25,11 +30,6 @@ from core.app.app_config.features.text_to_speech.manager import TextToSpeechConf
 from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.rbac import RBACPermission, RBACResourceScope
-from core.trigger.constants import (
-    TRIGGER_PLUGIN_NODE_TYPE,
-    TRIGGER_SCHEDULE_NODE_TYPE,
-    TRIGGER_WEBHOOK_NODE_TYPE,
-)
 from core.workflow.llm_environment_variable import (
     LLMEnvironmentVariable,
     parse_llm_model_selector,
@@ -60,6 +60,10 @@ from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, ma
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.session_policy import (
+    apply_workflow_agent_session_policy_to_node_data,
+    merge_workflow_agent_session_policy,
+)
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
@@ -920,7 +924,13 @@ class AppDslService:
         )
 
     def _sync_copied_workflow_bindings(self, *, workflow: Workflow, account_id: str) -> set[str]:
-        """Reuse roster Agents while retaining node-owned inline materialization and complete node jobs."""
+        """Retain copied jobs while assigning destination-owned session generations.
+
+        Preconditions: workflow is the admitted destination draft in the caller's
+        transaction. Postconditions: copied modes and complete jobs are preserved,
+        source generation values are discarded, and graph session fields match
+        the destination bindings. No source session resource is reused or changed.
+        """
         retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
             session=self._session, draft_workflow=workflow, account_id=account_id
         )
@@ -932,7 +942,16 @@ class AppDslService:
                 continue
             node_job = node_data.pop(AGENT_NODE_JOB_DSL_KEY, None)
             if node_job is not None:
-                binding.node_job_config = WorkflowNodeJobConfig.model_validate(node_job)
+                imported_job = WorkflowNodeJobConfig.model_validate(node_job)
+                binding.node_job_config = merge_workflow_agent_session_policy(
+                    previous=None,
+                    node_job=imported_job,
+                    requested_enabled=imported_job.continue_agent_session,
+                )
+            apply_workflow_agent_session_policy_to_node_data(
+                node_data=node_data,
+                node_job=WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
+            )
         workflow.graph = json.dumps(graph)
         return retirement_candidates
 

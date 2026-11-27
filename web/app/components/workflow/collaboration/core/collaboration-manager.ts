@@ -21,6 +21,7 @@ import type {
 import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
+import { v4 as uuid4 } from 'uuid'
 import { EventEmitter } from './event-emitter'
 import {
   emitWithAuthGuard,
@@ -187,6 +188,8 @@ export class CollaborationManager {
   private joinFailure: JoinFailure | null = null
   private joinPending = false
   private hasJoinedRoom = false
+  // Keep the identity in this page's manager across reconnects and editor remounts.
+  private pageSessionId: string | null = null
   private joinAttempt = 0
   private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
@@ -263,10 +266,14 @@ export class CollaborationManager {
     this.joinPending = true
     const attempt = ++this.joinAttempt
     const sid = socket.id
+    this.pageSessionId ??= uuid4()
     emitWithAuthGuard(
       socket,
       'user_connect',
-      { workflow_id: this.currentAppId },
+      {
+        workflow_id: this.currentAppId,
+        resume: { page_id: this.pageSessionId, sequence: attempt },
+      },
       {
         onAck: (...args) => {
           if (
@@ -838,6 +845,18 @@ export class CollaborationManager {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
   }
 
+  async getOnlineUserAvatars(appId: string): Promise<Record<string, string>> {
+    const socket = this.getActiveSocket()
+    if (this.currentAppId !== appId || !socket?.connected) return {}
+
+    const sid = socket.id
+    const avatars = (await socket.timeout(5000).emitWithAck('get_online_user_avatars')) as Record<
+      string,
+      string
+    >
+    return this.getActiveSocket() === socket && socket.id === sid ? avatars : {}
+  }
+
   canUseLocalDraftFallback(): boolean {
     // A graph from a previously connected session must recover through collaboration before saving.
     return (
@@ -994,9 +1013,7 @@ export class CollaborationManager {
     if (!this.doc || !this.canPersistLocalGraph())
       return Promise.reject(new Error('Collaborative graph is not ready to save.'))
 
-    const requestId =
-      globalThis.crypto?.randomUUID?.() ??
-      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    const requestId = uuid4()
     const graphSnapshot = this.doc.export({ mode: 'snapshot' })
 
     return new Promise<WorkflowSyncResult>((resolve, reject) => {
@@ -1925,7 +1942,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: { isLeader: boolean }) => {
+    socket.on('status', (data: { isLeader: boolean; requiresGraphReload?: boolean }) => {
       try {
         if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
@@ -1939,10 +1956,14 @@ export class CollaborationManager {
         const wasLeader = this.isLeader
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
+        if (this.isLeader && data.requiresGraphReload) this.crdtTrusted = false
 
         if (
           this.isLeader &&
-          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
+          (data.requiresGraphReload ||
+            this.reconnectedWithFreshDoc ||
+            this.awaitingSnapshotImport ||
+            this.graphReloadRequired)
         ) {
           this.clearInitialSyncRetry()
           this.pendingInitialSync = false

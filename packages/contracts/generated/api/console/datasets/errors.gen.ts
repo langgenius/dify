@@ -122,11 +122,57 @@ const zChildChunkDeleteIndexError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zEvaluationConfigInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_config_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zEvaluationDatasetInvalidError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_dataset_invalid'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zEvaluationFrameworkNotConfiguredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_framework_not_configured'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zCompletionRequestError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('completion_request_error'),
       status: z.literal(400),
+    }),
+  ))()
+
+const zEvaluationMaxConcurrentRunsDetails = /* @__PURE__ */ (() =>
+  z.object({
+    limit: z.int(),
+  }))()
+
+const zEvaluationMaxConcurrentRunsError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('evaluation_max_concurrent_runs'),
+      details: zEvaluationMaxConcurrentRunsDetails.optional(),
+      status: z.literal(429),
     }),
   ))()
 
@@ -274,30 +320,71 @@ export const post15Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
+export const get27Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get28Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get29Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
 export const post16Errors = {
+  evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+  evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+  evaluation_framework_not_configured: {
+    status: 400,
+    data: zEvaluationFrameworkNotConfiguredError,
+  },
+  evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
+export const post17Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post18Errors = {
+  evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+  evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+  evaluation_framework_not_configured: {
+    status: 400,
+    data: zEvaluationFrameworkNotConfiguredError,
+  },
+  evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
+export const get30Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const post19Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get31Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const put2Errors = {
+  evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
+export const post20Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }
 
-export const post17Errors = {
+export const post21Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post19Errors = {
+export const post23Errors = {
   knowledge_fs_upgrade_models_unavailable: {
     status: 422,
     data: zKnowledgeFsUpgradeModelsUnavailableError,
   },
 }
 
-export const get31Errors = {
+export const get37Errors = {
   dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
 }
 
-export const post23Errors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }
+export const post27Errors = { max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } }
 
-export const post24Errors = {
+export const post28Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }

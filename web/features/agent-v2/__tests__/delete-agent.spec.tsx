@@ -1,6 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
@@ -26,6 +27,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.delete': service.deleteAgent,
+      'tags.get': () => [],
     }),
   }
 })
@@ -50,6 +52,7 @@ describe('roster agent deletion', () => {
         <h1 id="agent-roster-title">Agents</h1>
         <AgentRosterList
           aria-labelledby="agent-roster-title"
+          onOpenTagManagement={vi.fn()}
           state={{
             status: 'ready',
             agents: [agent],
@@ -123,6 +126,20 @@ describe('roster agent deletion', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(service.deleteAgent).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the deletion failure over an uncataloged server message', async () => {
+    const user = userEvent.setup()
+    service.deleteAgent.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'agent_in_use',
+        message: 'Server says why',
+      }),
+    )
+    await openDeletion(user)
+    await user.click(screen.getByRole('button', { name: 'Autofill' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to delete agent.')
   })
 
   it('starts a fresh confirmation session after cancelling a failed deletion', async () => {

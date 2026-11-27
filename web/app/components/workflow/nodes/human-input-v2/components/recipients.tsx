@@ -23,7 +23,7 @@ import {
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -42,6 +42,7 @@ import {
 } from '@/context/workspace-state'
 import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getContactRecipientQueryOptions } from '../contact-queries'
 import {
   addRecipient,
@@ -59,6 +60,7 @@ type RecipientsProps = {
   value: HumanInputV2Recipient[]
   onChange: (value: HumanInputV2Recipient[]) => void
   readonly: boolean
+  isTriggerMode: boolean
   availableNodes?: Node[]
 }
 type SourceFilter = 'all' | 'workspace' | 'organization' | 'external'
@@ -77,6 +79,7 @@ const RecipientsContent = ({
   value,
   onChange,
   readonly,
+  isTriggerMode,
   availableNodes = [],
   workspaceId,
   workspace,
@@ -85,6 +88,7 @@ const RecipientsContent = ({
   workspace: { name: string; contactCount?: number }
 }) => {
   const { t } = useTranslation(['workflow', 'contacts', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const keyword = useDebounce(query.trim(), { wait: 300 })
@@ -118,7 +122,7 @@ const RecipientsContent = ({
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
       enabled: open,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -221,6 +225,13 @@ const RecipientsContent = ({
   ])
   const selectedContacts = selectedItems.flatMap((item) => (item.contact ? [item.contact] : []))
   const selectedKeys = selectedItems.map((item) => item.key)
+  const isUnavailableInitiator = (recipient: HumanInputV2Recipient) =>
+    isTriggerMode && recipient.type === 'initiator'
+  const initiatorUnavailableMessage = t(
+    ($) => $['nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow'],
+    { ns: 'workflow' },
+  )
+  const initiatorUnavailableId = `${nodeId}-initiator-unavailable`
   const previewConflict =
     previewContact &&
     findConflictingContact(
@@ -312,6 +323,10 @@ const RecipientsContent = ({
           if (added) {
             const item = itemMap.get(added)
             if (!item) return
+            if (isUnavailableInitiator(item.recipient)) {
+              details.cancel()
+              return
+            }
             if (
               item.contact &&
               findConflictingContact(
@@ -342,7 +357,9 @@ const RecipientsContent = ({
               >
                 {selectedItems.map((item, index) => {
                   const recipient = item.recipient
+                  const initiatorUnavailable = isUnavailableInitiator(recipient)
                   const invalid =
+                    initiatorUnavailable ||
                     !!getRecipientValidationError(recipient) ||
                     value.findIndex(
                       (other) =>
@@ -353,6 +370,24 @@ const RecipientsContent = ({
                       !(resolved.data?.data ?? []).some(
                         (contact) => contact.id === recipient.contact_id,
                       ))
+                  const recipientDetails =
+                    recipient.type === 'onetime_email'
+                      ? {
+                          title: t(($) => $['nodes.humanInputV2.recipients.emailLabel'], {
+                            ns: 'workflow',
+                          }),
+                          description: recipient.email,
+                        }
+                      : recipient.type === 'all_workspace_contacts'
+                        ? {
+                            title: item.label,
+                            description: t(
+                              ($) =>
+                                $['nodes.humanInputV2.recipients.allWorkspaceContactsDescription'],
+                              { ns: 'workflow' },
+                            ),
+                          }
+                        : undefined
                   return (
                     <ComboboxChip
                       key={item.key}
@@ -375,7 +410,11 @@ const RecipientsContent = ({
                       aria-invalid={invalid || undefined}
                       aria-describedby={
                         [
-                          invalid ? `${nodeId}-invalid-${index}` : undefined,
+                          initiatorUnavailable
+                            ? initiatorUnavailableId
+                            : invalid
+                              ? `${nodeId}-invalid-${index}`
+                              : undefined,
                           recipient.type === 'contact' && !item.contact
                             ? `${nodeId}-contact-${index}`
                             : undefined,
@@ -438,7 +477,7 @@ const RecipientsContent = ({
                         workspace.contactCount !== undefined && (
                           <span>{workspace.contactCount}</span>
                         )}
-                      {invalid && (
+                      {invalid && !initiatorUnavailable && (
                         <span id={`${nodeId}-invalid-${index}`} className="sr-only">
                           {invalidMessage}
                         </span>
@@ -454,6 +493,22 @@ const RecipientsContent = ({
                             <span className="i-ri-information-line size-3" aria-hidden />
                           </IconButton>
                         </RecipientContactPreview>
+                      )}
+                      {!invalid && recipientDetails && (
+                        <Infotip>
+                          <InfotipTrigger
+                            aria-label={infoName(item.label)}
+                            iconVariant="information"
+                            size="sm"
+                            className="m-0.5"
+                          />
+                          <InfotipContent side="left" align="start">
+                            <InfotipTitle className="wrap-anywhere">
+                              {recipientDetails.title}
+                            </InfotipTitle>
+                            <p className="wrap-anywhere">{recipientDetails.description}</p>
+                          </InfotipContent>
+                        </Infotip>
                       )}
                       {!readonly && (
                         <ComboboxChipRemove
@@ -513,6 +568,7 @@ const RecipientsContent = ({
                                 item.contact?.email?.toLocaleLowerCase() ===
                                   query.trim().toLocaleLowerCase()),
                           )
+                        if (candidate && isUnavailableInitiator(candidate.recipient)) return
                         if (
                           candidate &&
                           (!candidate.contact ||
@@ -537,6 +593,11 @@ const RecipientsContent = ({
           <p id={`${nodeId}-selection-hint`} className="sr-only">
             {inputHint}
           </p>
+          {value.some(isUnavailableInitiator) && (
+            <p id={initiatorUnavailableId} className="px-1 system-xs-regular text-text-destructive">
+              {initiatorUnavailableMessage}
+            </p>
+          )}
           {emailError && (
             <p
               id={`${nodeId}-recipient-email-error`}
@@ -715,7 +776,10 @@ const RecipientsContent = ({
                 {isDebouncing || search.isPending
                   ? t(($) => $['nodes.humanInputV2.recipients.loading'], { ns: 'workflow' })
                   : search.isError
-                    ? t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' })
+                    ? describeRequestError(
+                        search.error,
+                        t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' }),
+                      )
                     : t(($) => $['nodes.humanInputV2.recipients.resultCount'], {
                         ns: 'workflow',
                         count: results.length,
@@ -723,6 +787,7 @@ const RecipientsContent = ({
               </ComboboxStatus>
               <ComboboxList<RecipientItem>>
                 {(item) => {
+                  const initiatorUnavailable = isUnavailableInitiator(item.recipient)
                   const added = value.some(
                     (recipient) =>
                       getRecipientCanonicalKey(recipient) ===
@@ -742,8 +807,16 @@ const RecipientsContent = ({
                     <ComboboxItem<string>
                       key={item.key}
                       value={item.key}
-                      disabled={added || !!conflict}
-                      className="min-w-0 grow"
+                      disabled={initiatorUnavailable || added || !!conflict}
+                      aria-label={initiatorUnavailable ? item.label : undefined}
+                      aria-describedby={
+                        initiatorUnavailable ? `${initiatorUnavailableId}-option` : undefined
+                      }
+                      className={
+                        initiatorUnavailable
+                          ? 'min-w-0 grow data-disabled:opacity-100'
+                          : 'min-w-0 grow'
+                      }
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         {item.contact && (
@@ -755,9 +828,23 @@ const RecipientsContent = ({
                           />
                         )}
                         <span className="min-w-0">
-                          <span className="block truncate system-sm-medium">
+                          <span
+                            className={
+                              initiatorUnavailable
+                                ? 'block truncate system-sm-medium text-text-disabled'
+                                : 'block truncate system-sm-medium'
+                            }
+                          >
                             {item.contact?.name ?? item.label}
                           </span>
+                          {initiatorUnavailable && (
+                            <span
+                              id={`${initiatorUnavailableId}-option`}
+                              className="block system-xs-regular wrap-break-word text-text-tertiary"
+                            >
+                              {initiatorUnavailableMessage}
+                            </span>
+                          )}
                           {item.contact?.email && (
                             <span className="block truncate system-xs-regular text-text-tertiary">
                               {item.contact.email}
@@ -822,7 +909,8 @@ const Recipients = (props: RecipientsProps) => {
       input,
       queryKey: [...operation.queryKey({ input }), { workspaceId }],
       select: (response) => response.total,
-      context: { silent: true },
+      // Optional count badge; it is hidden when the count cannot load.
+      meta: { errorToast: false },
       retry: false,
     }),
   )

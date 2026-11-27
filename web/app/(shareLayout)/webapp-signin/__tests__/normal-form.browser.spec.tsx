@@ -1,12 +1,12 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import NormalForm from '../normalForm'
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: () => ({
+async function renderForm() {
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    systemFeatures: {
       deployment_edition: 'CLOUD',
       sso_enforced_for_signin: false,
       sso_enforced_for_signin_protocol: null,
@@ -16,30 +16,39 @@ vi.mock('@/features/system-features/client', () => ({
       is_email_setup: true,
       branding: { enabled: true },
       license: { status: 'active' },
-    }),
-  }),
-}))
-vi.mock('../components/mail-and-code-auth', () => ({ default: () => <p>code form</p> }))
-vi.mock('../components/mail-and-password-auth', () => ({ default: () => <p>password form</p> }))
-vi.mock('../components/sso-auth', () => ({ default: () => null }))
-
-it('switches between password and verification code from the keyboard without losing focus', async () => {
-  const screen = await render(
-    <QueryClientProvider client={new QueryClient()}>
-      <NormalForm />
-    </QueryClientProvider>,
+    },
+  })
+  const { NavigationProvider } = createTestNavigation({
+    url: '/webapp-signin?redirect_url=%2Fchatbot%2Fshare-app',
+  })
+  return render(
+    <NavigationProvider>
+      <ConsoleProvider>
+        <NormalForm />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
+}
 
-  await expect.element(screen.getByText('password form')).toBeVisible()
+it('switches the real password and verification-code forms without losing trigger focus', async () => {
+  const screen = await renderForm()
+  const switchToCode = screen.getByRole('button', { name: 'login.useVerificationCode' })
 
-  await userEvent.tab()
+  await expect.element(screen.getByLabelText('login.email')).toBeVisible()
+  await expect.element(screen.getByLabelText('login.password')).toBeVisible()
+
+  await userEvent.click(switchToCode)
+  const switchToPassword = screen.getByRole('button', { name: 'login.usePassword' })
+  await expect.element(switchToPassword).toHaveFocus()
   await expect
-    .element(screen.getByRole('button', { name: 'login.useVerificationCode' }))
-    .toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByText('code form')).toBeVisible()
+    .element(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
+    .toBeVisible()
+  await expect.element(screen.getByLabelText('login.password')).not.toBeInTheDocument()
 
-  await expect.element(screen.getByRole('button', { name: 'login.usePassword' })).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByText('password form')).toBeVisible()
+  await expect.element(switchToCode).toHaveFocus()
+  await expect.element(screen.getByLabelText('login.password')).toBeVisible()
+  await expect
+    .element(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
+    .not.toBeInTheDocument()
 })

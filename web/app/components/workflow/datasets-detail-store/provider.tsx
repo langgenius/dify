@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { CommonNodeType, Node } from '../types'
 import { createContext, useCallback, useEffect, useState } from 'react'
+import { reportRequestError } from '@/app/query-error-toast'
 import { fetchDatasets } from '@/service/datasets'
 import { BlockEnum } from '../types'
 import { createDatasetsDetailStore } from './store'
@@ -41,7 +42,7 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, childr
       )
     }, [])
     if (allDatasetIds.length === 0) return
-    updateDatasetsDetail(allDatasetIds)
+    updateDatasetsDetail(allDatasetIds).catch((error) => reportRequestError(error))
   }, [])
 
   return <DatasetsDetailContext.Provider value={store}>{children}</DatasetsDetailContext.Provider>

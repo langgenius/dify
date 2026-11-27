@@ -11,6 +11,8 @@ import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
+import { leaveCompletedSetup } from '../leave-completed-setup'
 
 type InitPasswordFormValues = {
   password: string
@@ -29,7 +31,9 @@ const InitPasswordPopup = () => {
   const initStatus = useQuery(consoleQuery.init.get.queryOptions({ retry: false }))
   const isInitFinished = initStatus.data?.status === 'finished'
   const validatePassword = useMutation(
-    consoleQuery.init.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.init.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const isSubmitting = validatePassword.isPending || validatePassword.isSuccess
   const fieldErrors = useMemo(
@@ -40,6 +44,10 @@ const InitPasswordPopup = () => {
     [validatePassword.error, t],
   )
   const hasFormError = validatePassword.isError && !fieldErrors
+  const formErrorMessage = useRequestErrorMessage(
+    validatePassword.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
 
   const handleSubmit = ({ password }: InitPasswordFormValues) => {
     if (isSubmitting) return
@@ -50,6 +58,7 @@ const InitPasswordPopup = () => {
           queryClient.setQueryData(consoleQuery.init.get.queryKey(), { status: 'finished' })
           router.replace('/install')
         },
+        onError: (error) => leaveCompletedSetup(error, router.replace),
       },
     )
   }
@@ -83,7 +92,7 @@ const InitPasswordPopup = () => {
       </Field>
       {hasFormError && (
         <p role="alert" className="mb-4 system-sm-regular text-text-destructive">
-          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          {formErrorMessage}
         </p>
       )}
       <Button type="submit" variant="primary" loading={isSubmitting} className="w-full">

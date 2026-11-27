@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import Never
 
 import pytest
 
@@ -23,7 +24,7 @@ class _SampleNode(Node[_SampleNodeData]):
     def version(cls) -> str:
         return "1"
 
-    def _run(self):
+    def _run(self) -> Never:
         raise NotImplementedError
 
 
@@ -59,7 +60,7 @@ def _build_node_data() -> _SampleNodeData:
     return _build_node_config()["data"]  # type: ignore[return-value]
 
 
-def test_node_hydrates_data_during_initialization():
+def test_node_hydrates_data_during_initialization() -> None:
     graph_config: dict[str, object] = {}
     init_params, runtime_state = _build_context(graph_config)
 
@@ -77,7 +78,7 @@ def test_node_hydrates_data_during_initialization():
     assert dify_ctx.invoke_from == "debugger"
 
 
-def test_node_accepts_invoke_from_enum():
+def test_node_accepts_invoke_from_enum() -> None:
     graph_config: dict[str, object] = {}
     init_params = build_test_graph_init_params(
         graph_config=graph_config,
@@ -108,7 +109,7 @@ def test_node_accepts_invoke_from_enum():
         node.require_run_context_value("missing")
 
 
-def test_missing_generic_argument_raises_type_error():
+def test_missing_generic_argument_raises_type_error() -> None:
     with pytest.raises(TypeError):
 
         class _InvalidNode(Node):  # type: ignore[type-abstract]
@@ -118,11 +119,11 @@ def test_missing_generic_argument_raises_type_error():
             def version(cls) -> str:
                 return "1"
 
-            def _run(self):
+            def _run(self) -> Never:
                 raise NotImplementedError
 
 
-def test_base_node_data_keeps_dict_style_access_compatibility():
+def test_base_node_data_keeps_dict_style_access_compatibility() -> None:
     node_data = _SampleNodeData(type=BuiltinNodeTypes.ANSWER, title="Sample", foo="bar")
 
     assert node_data["foo"] == "bar"
@@ -130,7 +131,7 @@ def test_base_node_data_keeps_dict_style_access_compatibility():
     assert node_data.get("missing", "fallback") == "fallback"
 
 
-def test_node_hydration_preserves_compatibility_extra_fields():
+def test_node_hydration_preserves_compatibility_extra_fields() -> None:
     graph_config: dict[str, object] = {}
     init_params, runtime_state = _build_context(graph_config)
     node_config = {

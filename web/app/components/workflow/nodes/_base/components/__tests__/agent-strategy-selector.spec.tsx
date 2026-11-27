@@ -12,27 +12,31 @@ import { AgentStrategySelector } from '../agent-strategy-selector'
 
 const MARKETPLACE_SEARCH_DEBOUNCE_MS = 500
 
-const { request, marketplace, install, manifest } = vi.hoisted(() => ({
+const { request, marketplace, marketplaceLookup, install, manifest } = vi.hoisted(() => ({
   request: vi.fn(),
   marketplace: vi.fn(),
+  marketplaceLookup: vi.fn(),
   install: vi.fn(),
   manifest: vi.fn(),
 }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
-  postMarketplace: marketplace,
 }))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: marketplaceLookup,
+    searchAdvanced: marketplace,
+  })
+})
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.list.installations.ids.post': manifest,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.install.marketplace.post': install,
     }),
   }
@@ -41,6 +45,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 beforeEach(() => {
   request.mockReset()
   marketplace.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
+  marketplaceLookup.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
   manifest.mockReset().mockResolvedValue({ plugins: [] })
   install.mockReset()
 })
@@ -217,10 +222,11 @@ it('keeps marketplace search and its category link alongside the installed catal
   })
   expect(await screen.findByText('Marketplace strategy')).toBeInTheDocument()
   expect(marketplace).toHaveBeenCalledWith(
-    '/plugins/search/advanced',
     expect.objectContaining({
+      params: { kind: 'plugins' },
       body: expect.objectContaining({ query: 'react', category: PluginCategoryEnum.agent }),
     }),
+    expect.anything(),
   )
 })
 
@@ -291,6 +297,7 @@ it('installs a missing saved strategy and refreshes its availability', async () 
   const user = userEvent.setup()
   const installation = createDeferred<{ all_installed: boolean; task_id: string }>()
   marketplace.mockResolvedValue({ data: { plugins: [createPlugin()], total: 1 } })
+  marketplaceLookup.mockResolvedValue({ data: { plugins: [createPlugin()], total: 1 } })
   let installed = false
   const provider = createProvider()
   request.mockImplementation((url: string) => {

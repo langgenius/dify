@@ -1,8 +1,10 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { setLocaleOnClient } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import InviteSettingsPage from '../page'
@@ -39,11 +41,20 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
+  const { activate } = await import('@dify/contracts/api/console/activate/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ activate })
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, { 'activate.check.get': mocks.check }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'activate.post': mocks.activate,
+      'activate.post': (input: never, options?: unknown) =>
+        validate({
+          context: {},
+          input,
+          path: ['activate', 'post'],
+          next: () => mocks.activate(input, options),
+        }),
     }),
   }
 })
@@ -122,14 +133,17 @@ describe('Invitation activation', () => {
       setup({ data: invitation({ account_status: 'active', requires_setup: true }) })
       await user.type(screen.getByLabelText('login.name'), 'Invitee{Enter}')
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
-      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({
-        body: {
-          token: 'invite-token',
-          name: 'Invitee',
-          interface_language: expected,
-          timezone: 'Asia/Shanghai',
+      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
+        {
+          body: {
+            token: 'invite-token',
+            name: 'Invitee',
+            interface_language: expected,
+            timezone: 'Asia/Shanghai',
+          },
         },
-      })
+        undefined,
+      )
       expect(mocks.profile).toHaveBeenCalled()
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
@@ -144,7 +158,10 @@ describe('Invitation activation', () => {
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
-      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({ body: { token: 'invite-token' } })
+      expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
+        { body: { token: 'invite-token' } },
+        undefined,
+      )
       expect(setLocaleOnClient).not.toHaveBeenCalled()
     },
   )
@@ -167,6 +184,60 @@ describe('Invitation activation', () => {
     await user.click(submit)
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
     expect(mocks.activate).toHaveBeenCalledTimes(2)
+  })
+
+  it('explains a full workspace in place and lets the invitee retry with the same link', async () => {
+    const user = userEvent.setup()
+    mocks.activate.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'workspace_member_limit_reached',
+        message: 'Backend message',
+        status: 400,
+      }),
+    )
+    setup()
+    await user.type(screen.getByLabelText('login.name'), 'Invitee')
+    const submit = screen.getByRole('button', { name: 'Rejoindre Acme' })
+    await user.click(submit)
+    expect(await screen.findByText('login.invitationWorkspaceFull')).toBeInTheDocument()
+    expect(mocks.replace).not.toHaveBeenCalled()
+    await waitFor(() => expect(submit).toBeEnabled())
+    await user.click(submit)
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
+    expect(screen.queryByText('login.invitationWorkspaceFull')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      name: 'its translated code',
+      error: createHttpError(new Response(null, { status: 403 }), {
+        code: 'already_activate',
+        message: 'Server says why',
+        status: 403,
+      }),
+      expected: 'requestErrors.code.already_activate',
+    },
+    {
+      name: 'the action failure for an unknown code',
+      error: createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_token',
+        message: 'Server says why',
+      }),
+      expected: 'common.api.actionFailed',
+    },
+    {
+      name: 'a generic message',
+      error: new TypeError('Failed to fetch'),
+      expected: 'common.api.actionFailed',
+    },
+  ])('reports an activation failure with $name', async ({ error, expected }) => {
+    const toastError = vi.spyOn(toast, 'error')
+    const user = userEvent.setup()
+    mocks.activate.mockRejectedValueOnce(error)
+    setup()
+    await user.type(screen.getByLabelText('login.name'), 'Invitee{Enter}')
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(expected))
+    expect(mocks.replace).not.toHaveBeenCalled()
   })
 
   it('falls back to console home for an external redirect', async () => {

@@ -2,7 +2,7 @@ import type { AppIconProps } from '../../base/app-icon'
 import type { Operation } from './app-operations'
 import { cn } from '@langgenius/dify-ui/cn'
 import AppIcon from '../../base/app-icon'
-import AppOperations from './app-operations'
+import { AppOperations } from './app-operations'
 
 type AppInfoHeaderProps = {
   icon: AppIconProps['icon']
@@ -12,7 +12,7 @@ type AppInfoHeaderProps = {
   operationGroups: Operation[][]
 }
 
-export default function AppInfoHeader({
+export function AppInfoHeader({
   expand,
   appName,
   modeLabel,
@@ -31,7 +31,7 @@ export default function AppInfoHeader({
       </div>
       {expand && (
         <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
-          <div className="flex w-full min-w-0 items-center gap-2 pr-1">
+          <div className="flex w-full min-w-0 items-center gap-2 pe-1">
             <div
               className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary"
               title={appName}

@@ -34,7 +34,6 @@ vi.mock('@/service/base', () => ({
     return mocks.request(url, ...args)
   },
   post: vi.fn(),
-  sseGeneratorPost: vi.fn(),
 }))
 
 function renderPage() {

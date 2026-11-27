@@ -19,6 +19,7 @@ import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,
 } from '@/service/marketplace-templates'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 type ImportFromMarketplaceTemplateModalProps = {
   templateId: string
@@ -32,6 +33,7 @@ const ImportFromMarketplaceTemplateModal = ({
   onConfirm,
 }: ImportFromMarketplaceTemplateModalProps) => {
   const { t } = useTranslation(['app', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
   const template = data?.data
   const [importing, setImporting] = useState(false)
@@ -64,13 +66,18 @@ const ImportFromMarketplaceTemplateModal = ({
     try {
       const dsl = await fetchMarketplaceTemplateDSL(templateId)
       onConfirm(dsl)
-    } catch {
-      toast.error(t(($) => $['marketplace.template.importFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['marketplace.template.importFailed'], { ns: 'app' }),
+        ),
+      )
     } finally {
       setImporting(false)
       isImportingRef.current = false
     }
-  }, [templateId, onConfirm, t])
+  }, [templateId, onConfirm, t, describeRequestError])
 
   return (
     <Dialog

@@ -6,8 +6,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { TagSelector } from '@/features/tag-management/components/tag-selector'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 export function KnowledgeSpaceCardTags({
   knowledgeSpace,
@@ -17,6 +18,7 @@ export function KnowledgeSpaceCardTags({
   onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
   // The latest submitted selection stays authoritative until every queued replacement and the
@@ -41,7 +43,7 @@ export function KnowledgeSpaceCardTags({
   const { mutateAsync: replaceTags } = useMutation(
     // The tag trigger stays in place, so a failed replacement needs its own message.
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.tags.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -57,8 +59,13 @@ export function KnowledgeSpaceCardTags({
           params: { control_space_id: knowledgeSpace.control_space_id },
           body: { tag_ids: currentTagIds },
         })
-      } catch {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      } catch (error) {
+        toast.error(
+          describeRequestError(
+            error,
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          ),
+        )
       }
       nextTagIds = queue.next
     }

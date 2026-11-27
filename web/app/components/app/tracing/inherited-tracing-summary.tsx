@@ -15,7 +15,7 @@ import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { hasProviderForm } from './providers'
-import { tracingQueryParamName } from './query-params'
+import { serializeTracingSearchParams } from './query-params'
 
 function useAppTracingAccess(appId: string) {
   const { data: appDetail } = useQuery(
@@ -132,7 +132,9 @@ export function InheritedTracingSummary({
           <span aria-hidden className="h-2.5 w-24 rounded-xs bg-text-quaternary/20" />
         ) : canMonitor && canConfigureTracing ? (
           <Link
-            href={`/app/${appId}/overview?${tracingQueryParamName}=configure`}
+            href={serializeTracingSearchParams(`/app/${appId}/overview`, {
+              tracing: 'configure',
+            })}
             target="_blank"
             rel="noopener noreferrer"
             aria-describedby={settingsHintId}

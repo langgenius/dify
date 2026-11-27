@@ -30,9 +30,8 @@ export const ShortcutKbd = ({
   const shortcutDisplayKey =
     hotkey ?? (shortcut ? getWorkflowCanvasShortcutDisplayKey(shortcut) : undefined)
 
-  const displayOptions = platform ? { platform } : undefined
   const displayKeys = displayKey
-    ? [formatForDisplay(displayKey, displayOptions)]
+    ? [displayKey]
     : shortcutDisplayKey
       ? formatForDisplay(shortcutDisplayKey, { platform, parts: true })
       : []

@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -11,6 +12,7 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.helper import escape_like_pattern
 from models import Account, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
+from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus, EvaluationTargetType
 from models.trigger import WorkflowTriggerLog
 from services.workflow_app_log_query_service import (
     WorkflowAppLogAccount,
@@ -23,8 +25,10 @@ from services.workflow_app_log_query_service import (
 
 
 class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(self, *, session_factory: sessionmaker[Session], include_evaluation: bool = False) -> None:
+        """Configure the log reader and whether it loads completed Evaluation metrics."""
         self._session_factory = session_factory
+        self._include_evaluation = include_evaluation
 
     @override
     def get_paginated(
@@ -42,6 +46,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
         created_by_end_user_session_id: str | None = None,
         created_by_account: str | None = None,
     ) -> WorkflowAppLogPage:
+        """Return the requested tenant and app's log page, enriching it with metrics when enabled."""
         with self._session_factory() as session:
             workflow_run = aliased(WorkflowRun)
             stmt = (
@@ -180,17 +185,39 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                 .limit(limit)
             )
             rows = session.execute(paginated_stmt).mappings().all()
+            evaluation_by_run_id = (
+                self._batch_query_evaluation_metrics(
+                    session=session,
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    workflow_run_ids=[str(row["run_id"]) for row in rows if row["run_id"] is not None],
+                )
+                if self._include_evaluation
+                else {}
+            )
 
             return WorkflowAppLogPage(
                 page=page,
                 limit=limit,
                 total=total,
                 has_more=total > page * limit,
-                data=tuple(self._to_item(row=row, detail=detail) for row in rows),
+                data=tuple(
+                    self._to_item(
+                        row=row,
+                        detail=detail,
+                        evaluation=evaluation_by_run_id.get(str(row["run_id"]), ()),
+                    )
+                    for row in rows
+                ),
             )
 
     @staticmethod
-    def _to_item(*, row: RowMapping, detail: bool) -> WorkflowAppLogItem:
+    def _to_item(
+        *,
+        row: RowMapping,
+        detail: bool,
+        evaluation: tuple[dict[str, object], ...] = (),
+    ) -> WorkflowAppLogItem:
         run_id = row["run_id"]
         workflow_run = (
             WorkflowAppLogRunSummary(
@@ -241,7 +268,45 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             created_by_account=account,
             created_by_end_user=end_user,
             created_at=row["log_created_at"],
+            evaluation=evaluation,
         )
+
+    @staticmethod
+    def _batch_query_evaluation_metrics(
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_ids: list[str],
+    ) -> dict[str, tuple[dict[str, object], ...]]:
+        """Return completed evaluation metrics for the workflow runs on this page."""
+        if not workflow_run_ids:
+            return {}
+
+        rows = session.execute(
+            select(EvaluationRunItem.workflow_run_id, EvaluationRunItem.metrics)
+            .join(EvaluationRun, EvaluationRun.id == EvaluationRunItem.evaluation_run_id)
+            .where(
+                EvaluationRun.tenant_id == tenant_id,
+                EvaluationRun.target_type == EvaluationTargetType.APPS,
+                EvaluationRun.target_id == app_id,
+                EvaluationRun.status == EvaluationRunStatus.COMPLETED,
+                EvaluationRunItem.workflow_run_id.in_(workflow_run_ids),
+            )
+        ).all()
+
+        result: dict[str, list[dict[str, object]]] = {}
+        for workflow_run_id, metrics_json in rows:
+            if workflow_run_id is None or not metrics_json:
+                continue
+            try:
+                metrics = json.loads(metrics_json)
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if not isinstance(metrics, list):
+                continue
+            result.setdefault(str(workflow_run_id), []).extend(metric for metric in metrics if isinstance(metric, dict))
+        return {workflow_run_id: tuple(metrics) for workflow_run_id, metrics in result.items()}
 
     @staticmethod
     def _enum_value(value: Enum | str | None) -> str:

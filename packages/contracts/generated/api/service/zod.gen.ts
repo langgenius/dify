@@ -70,24 +70,6 @@ export const zAnnotationReplyActionPayload = z.object({
 export const zAnyJsonValue = z.unknown()
 
 /**
- * AgentThought
- */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zAnyJsonValue,
-})
-
-/**
  * AppFeedbackResponse
  */
 export const zAppFeedbackResponse = z.object({
@@ -1374,6 +1356,38 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
+ * HumanInputActionResponse
+ */
+export const zHumanInputActionResponse = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
+
+/**
+ * HumanInputFileListResponse
+ */
+export const zHumanInputFileListResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file-list'),
+})
+
+/**
+ * HumanInputFileResponse
+ */
+export const zHumanInputFileResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file'),
+})
+
+/**
  * HumanInputFormExpiredError
  */
 export const zHumanInputFormExpiredError = zErrorResponse.and(
@@ -1386,7 +1400,7 @@ export const zHumanInputFormExpiredError = zErrorResponse.and(
 /**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
  * HumanInputFormSubmittedError
@@ -2106,6 +2120,8 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -2616,6 +2632,8 @@ export const zKnowledgeFsDocumentProcessingTaskResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -2949,6 +2967,8 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -3191,6 +3211,8 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -3339,6 +3361,7 @@ export const zKnowledgeFsSourceImportResponse = z.object({
  * KnowledgeFSSourcePageResponse
  */
 export const zKnowledgeFsSourcePageResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   page_id: z.string(),
   page_name: z.string(),
@@ -3352,6 +3375,8 @@ export const zKnowledgeFsSourcePageResponse = z.object({
 export const zKnowledgeFsSourcePagesQuery = z.object({
   cursor: z.string().min(1).max(4096).nullish(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).nullish(),
+  view: z.literal('tree').nullish(),
 })
 
 /**
@@ -3492,6 +3517,8 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -5361,6 +5388,58 @@ export const zTooManyFilesError = zErrorResponse.and(
 )
 
 /**
+ * ToolCallLimitMetadata
+ *
+ * Usage at this call's dispatch boundary and its authoritative disposition.
+ */
+export const zToolCallLimitMetadata = z.object({
+  execution_status: z.enum(['executed', 'not_executed', 'unconfirmed']),
+  limit: z.int().gt(0),
+  reason: z.enum(['call_limit_reached', 'duplicate_tool_call']).nullish(),
+  tool_identity: z.string().min(1),
+  used: z.int().gte(0),
+})
+
+/**
+ * AgentToolActivity
+ *
+ * One native tool call's application-owned, persistable display metadata.
+ *
+ * Native call identity is independent of its display name and the SQL thought
+ * row. Tool inputs, credentials and successful observations remain outside
+ * this sidecar; ``error`` is a bounded failure description for display.
+ * Missing metadata on older thoughts conveys no execution or quota claim.
+ */
+export const zAgentToolActivity = z.object({
+  call_limit: zToolCallLimitMetadata.nullish(),
+  error: z.string().nullish(),
+  id: z.string().min(1),
+  run_id: z.string().min(1),
+  status: z.enum(['cancelled', 'failed', 'not_executed', 'running', 'started', 'succeeded']),
+  tool_call_id: z.string().min(1),
+  tool_name: z.string().min(1),
+})
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_activity: zAgentToolActivity.nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
+/**
  * ToolIcon
  */
 export const zToolIcon = z.object({
@@ -5441,6 +5520,60 @@ export const zUserActionConfig = z.object({
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
 /**
+ * HumanInputStringListSourceResponse
+ */
+export const zHumanInputStringListSourceResponse = z.object({
+  selector: z.array(z.string()),
+  type: zValueSourceType,
+  value: z.array(z.string()),
+})
+
+/**
+ * HumanInputSelectResponse
+ */
+export const zHumanInputSelectResponse = z.object({
+  option_source: zHumanInputStringListSourceResponse,
+  output_variable_name: z.string(),
+  type: z.literal('select'),
+})
+
+/**
+ * HumanInputStringSourceResponse
+ */
+export const zHumanInputStringSourceResponse = z.object({
+  selector: z.array(z.string()),
+  type: zValueSourceType,
+  value: z.string(),
+})
+
+/**
+ * HumanInputParagraphResponse
+ */
+export const zHumanInputParagraphResponse = z.object({
+  default: zHumanInputStringSourceResponse.nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph'),
+})
+
+export const zHumanInputResponse = z.discriminatedUnion('type', [
+  zHumanInputParagraphResponse,
+  zHumanInputSelectResponse,
+  zHumanInputFileResponse,
+  zHumanInputFileListResponse,
+])
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(zHumanInputResponse),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(zHumanInputActionResponse),
+})
+
+/**
  * StringListSource
  */
 export const zStringListSource = z.object({
@@ -5513,17 +5646,6 @@ export const zHumanInputContent = z.object({
   submitted: z.boolean(),
   type: zExecutionContentType.optional().default('human_input'),
   workflow_run_id: z.string(),
-})
-
-/**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  inputs: z.array(zFormInputConfig),
-  resolved_default_values: z.record(z.string(), z.string()),
-  user_actions: z.array(zUserActionConfig),
 })
 
 /**
@@ -5718,7 +5840,7 @@ export const zDocumentTextUpdate = z.intersection(
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
@@ -6054,7 +6176,7 @@ export const zWorkspaceNotFoundError = zErrorResponse.and(
 /**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
  * MessageListItem
@@ -7788,6 +7910,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesPath = z
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = z.object({
   cursor: z.string().min(1).max(4096).optional(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).optional(),
+  view: z.string().optional(),
 })
 
 /**

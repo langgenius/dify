@@ -14,10 +14,20 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, WithJsonSchema, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    TypeAdapter,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 from pydantic_ai.messages import AgentStreamEvent
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
@@ -67,10 +77,13 @@ class RunComposition(BaseModel):
 class CreateRunRequest(BaseModel):
     """Create a run using current Config and an optional state-only snapshot.
 
-    The model slot is named llm, history and output are optional reserved slots.
-    Product
-    binding/workspace lifecycle and state storage are owned by the API caller.
+    The model slot is named llm; history and output are optional reserved slots.
+    Product binding/workspace lifecycle and state storage are owned by the API caller.
     Native capabilities always release operation resources at run exit.
+
+    An optional nonblank idempotency key is preserved verbatim. Within run
+    retention, the same key and normalized request (excluding the key) replay
+    the original run and its current status; a different request conflicts.
     """
 
     composition: RunComposition
@@ -78,6 +91,14 @@ class CreateRunRequest(BaseModel):
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: SessionSnapshot | None = None
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @field_validator("idempotency_key")
+    @classmethod
+    def idempotency_key_must_not_be_blank(cls, value: str | None) -> str | None:
+        """Reject blank keys without changing nonblank caller-provided keys."""
+        if value is not None and not value.strip():
+            raise ValueError("idempotency_key must not be blank")
+        return value
 
 
 class CancelRunRequest(BaseModel):
@@ -95,7 +116,7 @@ class CancelRunRequest(BaseModel):
 
 
 class CreateRunResponse(BaseModel):
-    """Response returned after a run has been persisted and scheduled locally."""
+    """Accepted run id and current status, including completed idempotent replays."""
 
     run_id: str
     status: RunStatus
@@ -227,6 +248,8 @@ class RunSucceededEvent(BaseRunEvent):
 
     type: Literal["run_succeeded"] = "run_succeeded"
     data: RunSucceededEventData
+    # Empty summaries are omitted so legacy terminal event bytes remain unchanged.
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict, exclude_if=lambda value: not value)
 
 
 class RunFailedEvent(BaseRunEvent):
@@ -234,6 +257,8 @@ class RunFailedEvent(BaseRunEvent):
 
     type: Literal["run_failed"] = "run_failed"
     data: RunFailedEventData
+    # Empty summaries are omitted so legacy terminal event bytes remain unchanged.
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict, exclude_if=lambda value: not value)
 
 
 class RunCancelledEvent(BaseRunEvent):
@@ -241,6 +266,8 @@ class RunCancelledEvent(BaseRunEvent):
 
     type: Literal["run_cancelled"] = "run_cancelled"
     data: RunCancelledEventData = Field(default_factory=RunCancelledEventData)
+    # Empty summaries are omitted so legacy terminal event bytes remain unchanged.
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict, exclude_if=lambda value: not value)
 
 
 RunEvent: TypeAlias = Annotated[

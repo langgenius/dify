@@ -1176,7 +1176,8 @@
       "dify.enterprise.api.appdeploy.v1.EnvironmentDeployment": {
         "required": [
           "environment",
-          "access"
+          "access",
+          "deployment_id"
         ],
         "type": "object",
         "properties": {
@@ -1188,6 +1189,9 @@
           },
           "access": {
             "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentAccess"
+          },
+          "deployment_id": {
+            "type": "string"
           }
         }
       },

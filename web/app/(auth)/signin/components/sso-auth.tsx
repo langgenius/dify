@@ -8,6 +8,7 @@ import { ORPCError } from '@orpc/client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 
@@ -15,8 +16,8 @@ type SSOAuthProps = {
   protocol: SsoProtocol
 }
 
-// The request layer already toasts HTTP errors whose JSON body carries a message.
-const hasNotifiedRequestError = (error: unknown) =>
+// A server message is more specific than the generic SSO failure.
+const hasServerErrorMessage = (error: unknown) =>
   error instanceof ORPCError &&
   error.status !== 401 &&
   ((typeof error.data?.message === 'string' && !!error.data.message) ||
@@ -31,7 +32,10 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSSOError = (error: unknown) => {
-    if (hasNotifiedRequestError(error)) return
+    if (hasServerErrorMessage(error)) {
+      reportRequestError(error)
+      return
+    }
     toast.error(t(($) => $['error.ssoFailed'], { ns: 'login' }))
   }
 

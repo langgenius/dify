@@ -23,6 +23,7 @@ import {
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import {
   appWorkflowQueryOptions,
@@ -290,6 +291,7 @@ function environmentDeployment({
 }): EnvironmentDeployment {
   return {
     access,
+    deployment_id: `deployment-${id}`,
     deployment: {
       current_version: currentVersion,
       deployed_at: currentVersion ? ACTIVITY_AT : undefined,
@@ -416,6 +418,7 @@ const ACTION_MATRIX_CASES: Array<{
     ],
     name: 'undeployed',
     row: {
+      deployment_id: 'deployment-undeployed',
       access: { enable_api: false, enable_site: false },
       environment: {
         description: '',
@@ -707,15 +710,19 @@ function render(
     publishedWorkflowVersions = PUBLISHED_WORKFLOW_VERSIONS,
     seedAppEnvironments = true,
     seedLatestPublishedWorkflow = true,
+    errorToasts = false,
   }: {
     appEnvironments?: AppEnvironment[]
     environmentDeployments?: EnvironmentDeployment[]
     publishedWorkflowVersions?: WorkflowResponse[]
     seedAppEnvironments?: boolean
     seedLatestPublishedWorkflow?: boolean
+    errorToasts?: boolean
   } = {},
 ) {
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createConsoleQueryClient({
+    caches: errorToasts ? createErrorToastCaches() : undefined,
+  })
   queryClient.setQueryDefaults(appEnvironmentsQueryOptions.queryKey, {
     staleTime: Infinity,
   })
@@ -1848,7 +1855,7 @@ describe('AppDeploy', () => {
     ).toHaveLength(1)
   })
 
-  it('shows deploy API failures through the fetch toast without an inline configuration error', async () => {
+  it('shows deploy API failures through the mutation toast without an inline configuration error', async () => {
     const user = userEvent.setup()
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = input instanceof Request ? input : new Request(input, init)
@@ -1862,7 +1869,7 @@ describe('AppDeploy', () => {
 
       throw new Error(`Unexpected request: ${request.method} ${request.url}`)
     })
-    render(<AppDeploy />)
+    render(<AppDeploy />, { errorToasts: true })
 
     await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
     await user.click(screen.getByRole('menuitem', { name: /Dev/ }))

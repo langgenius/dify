@@ -5,16 +5,8 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { ChunkingMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { createTestNavigation } from '@/test/next-navigation'
 import TemplateCard from '../index'
-
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
-  usePluginDependencies: () => ({ handleCheckPluginDependencies: vi.fn() }),
-}))
-vi.mock('@/app/components/workflow/workflow-preview', () => ({
-  default: () => <div>Workflow preview</div>,
-}))
 
 const pipeline: PipelineTemplate = {
   id: 'template-1',
@@ -40,7 +32,7 @@ function TemplateCardFixture({ queryClient }: { queryClient: QueryClient }) {
     <QueryClientProvider client={queryClient}>
       <Button>Before template</Button>
       <div className="w-80">
-        <TemplateCard pipeline={pipeline} type="built-in" showMoreOperations={false} />
+        <TemplateCard pipeline={pipeline} type="built-in" />
       </div>
     </QueryClientProvider>
   )
@@ -65,7 +57,12 @@ describe('Template card focus', () => {
       }),
       templateInfo,
     )
-    const screen = await render(<TemplateCardFixture queryClient={queryClient} />)
+    const { NavigationProvider } = createTestNavigation({ url: '/datasets/create-from-pipeline' })
+    const screen = await render(
+      <NavigationProvider>
+        <TemplateCardFixture queryClient={queryClient} />
+      </NavigationProvider>,
+    )
     await screen.getByRole('button', { name: 'Before template' }).click()
     await userEvent.tab()
     const choose = screen.getByRole('button', { name: 'datasetPipeline.operations.choose' })
@@ -77,6 +74,7 @@ describe('Template card focus', () => {
     await userEvent.keyboard('{Enter}')
     const dialog = screen.getByRole('dialog', { name: 'Document pipeline' })
     await expect.element(dialog).toBeVisible()
+    expect(dialog.element().querySelector('#workflow-container')).not.toBeNull()
     await dialog.getByRole('button', { name: 'common.operation.close' }).click()
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(details).toHaveFocus()

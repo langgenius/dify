@@ -18,7 +18,8 @@ import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
-import { billingErrorMessageKey } from '../../../billing-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { getBillingErrorMessage } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import Professional from '../../assets/professional'
@@ -49,6 +50,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const currentPlan = billing?.currentPlan
   const isEducationDiscountEligible = billing?.isEducationDiscountEligible
   const { t } = useTranslation(['billing', 'common', 'education'])
+  const describeRequestError = useRequestErrorDescriber()
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
   const isYearly = billingInterval === 'year'
@@ -105,15 +107,13 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
 
         await openAsyncWindow(
           async () => {
-            const { url } = await consoleClient.billing.invoices.get(undefined, {
-              context: { silent: true },
-            })
+            const { url } = await consoleClient.billing.invoices.get()
             if (url) return url
             throw new Error('Failed to open billing page')
           },
           {
             onError: (error) => {
-              toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+              toast.error(getBillingErrorMessage(error, t, describeRequestError))
             },
           },
         )
@@ -132,14 +132,13 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
         return
       }
 
-      const { url } = await consoleClient.billing.subscription.get(
-        { query: { plan, interval: billingInterval } },
-        { context: { silent: true } },
-      )
+      const { url } = await consoleClient.billing.subscription.get({
+        query: { plan, interval: billingInterval },
+      })
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
     } catch (error) {
-      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+      toast.error(getBillingErrorMessage(error, t, describeRequestError))
     } finally {
       setIsPlanActionPending(false)
     }

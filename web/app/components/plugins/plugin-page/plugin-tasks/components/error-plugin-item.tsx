@@ -9,6 +9,7 @@ import useWorkspacePluginInstallPermission from '@/app/components/plugins/instal
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { toPluginText } from '@/app/components/plugins/install-plugin/utils'
 import { PluginSource } from '@/app/components/plugins/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import PluginItem from './plugin-item'
 
@@ -63,8 +64,8 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       }
       setInstallPayload({ uniqueIdentifier: info.latest_package_identifier, manifest })
       setShowInstallModal(true)
-    } catch {
-      // silently fail
+    } catch (error) {
+      reportRequestError(error)
     } finally {
       setIsFetching(false)
     }

@@ -1,26 +1,25 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent } from 'react'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
-const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
   const { t } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { data: canReplaceLogo } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => data.can_replace_logo,
     }),
   )
-  const queryClient = useQueryClient()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
@@ -44,9 +43,6 @@ const useWebAppBrand = () => {
   const persistWorkspaceBrand = async (body: WorkspaceCustomConfigPayload) => {
     if (isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand) return
     await updateCustomConfigMutation.mutateAsync({ body })
-    await queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.customConfig.get.key(),
-    })
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (uploadDisabled || uploading) return
@@ -58,29 +54,31 @@ const useWebAppBrand = () => {
     }
     setUploadProgress(0)
     setUploading(true)
-    imageUpload(
-      {
-        file,
-        onProgressCallback: setUploadProgress,
-        onSuccessCallback: (res) => {
-          setUploadProgress(100)
-          setFileId(res.id)
-          setUploading(false)
+    consoleClient.workspaces.customConfig.webappLogo.upload
+      .post(
+        { body: { file } },
+        {
+          context: {
+            onUploadProgress: ({ loaded, total }) => {
+              setUploadProgress(Math.floor((loaded / total) * 100))
+            },
+          },
         },
-        onErrorCallback: (error) => {
-          const errorMessage = getImageUploadErrorMessage(
-            error,
-            t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-            t,
-          )
-          toast.error(errorMessage)
-          setUploadProgress(-1)
-          setUploading(false)
-        },
-      },
-      false,
-      WEB_APP_LOGO_UPLOAD_URL,
-    )
+      )
+      .then((res) => {
+        setUploadProgress(100)
+        setFileId(res.id)
+        setUploading(false)
+      })
+      .catch((error: unknown) => {
+        const errorMessage = describeRequestError(
+          error,
+          t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+        )
+        toast.error(errorMessage)
+        setUploadProgress(-1)
+        setUploading(false)
+      })
   }
   const handleApply = async () => {
     await persistWorkspaceBrand({

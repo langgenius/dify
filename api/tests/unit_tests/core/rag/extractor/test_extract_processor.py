@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 import core.rag.extractor.extract_processor as processor_module
+from core.db.session_factory import get_session_maker
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.extractor.extract_processor import ExtractProcessor
@@ -121,6 +122,35 @@ class TestExtractProcessorLoaders:
                 "",
             ),
             ("https://example.com/no_suffix", {}, ""),
+            # Query strings and fragments are not part of the file name and must
+            # not leak into the derived suffix (see issue #43333).
+            (
+                "https://example.com/file.pdf?token=abc",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/file.pdf#page=2",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/file.pdf?token=abc#page=2",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            # A misleading extension inside the query string or fragment must
+            # not win over the response headers either.
+            (
+                "https://example.com/no_suffix?filename=report.txt",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/no_suffix#report.txt",
+                {"Content-Disposition": 'attachment; filename="report.md"'},
+                ".md",
+            ),
         ],
     )
     def test_load_from_url_builds_temp_file_with_correct_suffix(
@@ -139,10 +169,10 @@ class TestExtractProcessorLoaders:
         monkeypatch.setattr(ExtractProcessor, "extract", fake_extract)
 
         docs = ExtractProcessor.load_from_url(url, return_text=False)
-        assert captured["file_path_docs"].endswith(expected_suffix)
+        assert Path(captured["file_path_docs"]).suffix == expected_suffix
 
         text = ExtractProcessor.load_from_url(url, return_text=True)
-        assert captured["file_path_text"].endswith(expected_suffix)
+        assert Path(captured["file_path_text"]).suffix == expected_suffix
 
         assert len(docs) == 2
         assert text == "u1\nu2"
@@ -284,15 +314,17 @@ class TestExtractProcessorFileRouting:
         assert args[1:] == ("tenant-1", "user-1", "upload-file-1")
         assert kwargs == {}
 
+    @pytest.mark.parametrize("etl_type", ["SelfHosted", "Unstructured"])
     @pytest.mark.parametrize("extension", [".pdf", ".docx"])
-    def test_extract_passes_session_to_database_backed_file_extractors(
-        self, monkeypatch: pytest.MonkeyPatch, extension: str, unbound_session: Session
-    ):
+    def test_extract_passes_session_and_session_maker_to_database_backed_file_extractors(
+        self, monkeypatch: pytest.MonkeyPatch, extension: str, etl_type: str, unbound_session: Session
+    ) -> None:
         _, _, kwargs = self._run_extract_for_extension(
-            monkeypatch, extension, etl_type="SelfHosted", session=unbound_session
+            monkeypatch, extension, etl_type=etl_type, session=unbound_session
         )
 
         assert kwargs["session"] is unbound_session
+        assert kwargs["session_maker"] is get_session_maker()
 
     def test_extract_requires_upload_file_when_file_path_not_provided(self):
         setting = ExtractSetting(datasource_type=DatasourceType.FILE, upload_file=None)

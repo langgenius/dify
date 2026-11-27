@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
   fetchMembersOAuth2SSOUrl,
@@ -46,6 +47,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(reportRequestError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -54,6 +56,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(reportRequestError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -62,6 +65,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(reportRequestError)
         .finally(() => {
           setIsLoading(false)
         })

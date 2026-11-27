@@ -8,7 +8,7 @@ import pytest
 import zstandard
 from pydantic import TypeAdapter
 from redis import RedisError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
@@ -24,6 +24,7 @@ from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
 from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
+from services.feature_service import ProviderCatalogBilling
 from tests.unit_tests.services.plugin.conftest import mock_features as mock_features  # noqa: PLC0414
 from tests.unit_tests.services.plugin.conftest import mock_installer as mock_installer  # noqa: PLC0414
 
@@ -274,7 +275,9 @@ class TestPluginModelProviderCache:
         redis_client.get.assert_called_once_with(generation_key)
         redis_client.mget.assert_called_once_with([cache_key])
 
-    def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(self) -> None:
+    def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """A cached package source remains available to the system configuration guard."""
         cached_provider = _build_provider_entity(installation_source=PluginInstallationSource.Package)
         cached_payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json([cached_provider])
@@ -292,7 +295,7 @@ class TestPluginModelProviderCache:
 
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
         assert result[0].installation_source == PluginInstallationSource.Package
-        provider_manager = ProviderManager(model_runtime=Mock())
+        provider_manager = ProviderManager(model_runtime=Mock(), session_maker=sqlite_session_factory)
         with (
             patch(
                 "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
@@ -300,7 +303,9 @@ class TestPluginModelProviderCache:
             ),
             patch("core.plugin.plugin_service.PluginService.is_plugin_verified") as is_plugin_verified,
         ):
-            system_configuration = provider_manager._to_system_configuration("tenant-1", result[0], [])
+            system_configuration = provider_manager._to_system_configuration(
+                ProviderCatalogBilling("tenant-1"), result[0], []
+            )
 
         assert system_configuration.enabled is False
         is_plugin_verified.assert_not_called()
@@ -1527,3 +1532,71 @@ class TestPluginModelProviderCacheInvalidation:
         assert persisted_other_provider is not None
         assert persisted_other_provider.credential_id == other_credential_id
         assert sqlite_session.get(TenantPreferredModelProvider, other_preferred_provider_id) is not None
+
+
+class TestEnterpriseRetainsReplacedPluginVersion:
+    """Upgrades tell the enterprise plugin manager about the version they replace, like uninstalls do.
+
+    Without the call the plugin daemon drops the replaced version once no tenant uses it, and its
+    runtime (DifyPlugin and pods on Kubernetes) is left behind where the enterprise console cannot
+    list or remove it.
+    """
+
+    @staticmethod
+    def _upgrade(source: str) -> list[object]:
+        """Run one upgrade and return what reached the plugin manager hook and the daemon, in order."""
+        calls: list[object] = []
+
+        def record_pre_uninstall(body: object) -> None:
+            calls.append(body)
+
+        def record_upgrade(*_args: object) -> str:
+            calls.append("upgrade_plugin")
+            return "task-id"
+
+        with (
+            patch(f"{MODULE}.SystemFeatureService") as feature_service,
+            patch(f"{MODULE}.PluginService._check_marketplace_only_permission"),
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.marketplace"),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache"),
+            patch(f"{MODULE}.PluginManagerService.try_pre_uninstall_plugin", side_effect=record_pre_uninstall),
+        ):
+            feature_service.get_plugin_installation_permission.return_value = PluginInstallationPermissionModel(
+                restrict_to_marketplace_only=False,
+                plugin_installation_scope=PluginInstallationScope.ALL,
+            )
+            installer = installer_cls.return_value
+            installer.decode_plugin_from_identifier.return_value.verification = None
+            installer.upgrade_plugin.side_effect = record_upgrade
+
+            from core.plugin.plugin_service import PluginService
+
+            if source == "marketplace":
+                result = PluginService.upgrade_plugin_with_marketplace(TENANT_ID, "old-uid", "new-uid")
+            else:
+                result = PluginService.upgrade_plugin_with_github(
+                    TENANT_ID, "old-uid", "new-uid", "langgenius/openai", "1.0.0", "openai.difypkg"
+                )
+
+        assert result == "task-id"
+        return calls
+
+    @pytest.mark.parametrize("source", ["marketplace", "github"])
+    def test_enterprise_upgrade_keeps_replaced_version_before_upgrading(
+        self, source: str, config_overrides: Callable[..., None]
+    ) -> None:
+        from services.enterprise.plugin_manager_service import PreUninstallPluginRequest
+
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+
+        calls = self._upgrade(source)
+
+        assert calls == [
+            PreUninstallPluginRequest(tenant_id=TENANT_ID, plugin_unique_identifier="old-uid"),
+            "upgrade_plugin",
+        ]
+
+    @pytest.mark.parametrize("source", ["marketplace", "github"])
+    def test_community_upgrade_does_not_call_enterprise_plugin_manager(self, source: str) -> None:
+        assert self._upgrade(source) == ["upgrade_plugin"]

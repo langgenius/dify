@@ -47,20 +47,32 @@ const {
   fetchAppMeta,
   fetchAppParams,
   fetchChatList,
+  textToAudioStream,
+  fetchWebSAMLSSOUrl,
+  fetchWebOIDCSSOUrl,
+  fetchWebOAuth2SSOUrl,
+  fetchMembersSAMLSSOUrl,
+  fetchMembersOIDCSSOUrl,
+  fetchMembersOAuth2SSOUrl,
 } = await import('./share')
+
+const publicRequestCalls = () =>
+  request.mock.calls
+    .filter(([, , options]) => options?.isPublicAPI)
+    .map(([url, , options]) => [url, options?.request?.method])
 
 describe('fetchAccessToken', () => {
   const originalUrl = window.location.href
   beforeEach(() => {
-    getMock.mockReset()
+    request.mockReset()
   })
 
   afterEach(() => window.history.replaceState({}, '', originalUrl))
 
   it('shares an in-flight passport request for the same environment', async () => {
     window.history.replaceState({}, '', '/environment/workflow/environment-app')
-    let resolveRequest: (value: { access_token: string }) => void = () => {}
-    getMock.mockReturnValue(
+    let resolveRequest: (value: Response) => void = () => {}
+    request.mockReturnValue(
       new Promise((resolve) => {
         resolveRequest = resolve
       }),
@@ -69,51 +81,61 @@ describe('fetchAccessToken', () => {
     const firstRequest = fetchAccessToken({ appCode: 'environment-app' })
     const secondRequest = fetchAccessToken({ appCode: 'environment-app' })
 
-    expect(getMock).toHaveBeenCalledTimes(1)
-    expect(getMock).toHaveBeenCalledWith('/passport?user_id=webapp-session-1', expect.anything())
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(1))
+    expect(publicRequestCalls()).toEqual([['/passport?user_id=webapp-session-1', 'GET']])
+    expect(request.mock.calls[0]?.[2]?.request?.headers.get('X-App-Code')).toBe('environment-app')
 
-    resolveRequest({ access_token: 'passport' })
+    resolveRequest(Response.json({ access_token: 'passport' }))
     await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([
       { access_token: 'passport' },
       { access_token: 'passport' },
     ])
 
+    request.mockResolvedValue(Response.json({ access_token: 'passport' }))
     await fetchAccessToken({ appCode: 'environment-app' })
-    expect(getMock).toHaveBeenCalledTimes(2)
+    expect(request).toHaveBeenCalledTimes(2)
   })
 
   it('does not coalesce ordinary Web App passport requests', async () => {
     window.history.replaceState({}, '', '/workflow/ordinary-app')
-    getMock.mockResolvedValue({ access_token: 'passport' })
+    request.mockImplementation(async () => Response.json({ access_token: 'passport' }))
 
     await Promise.all([
       fetchAccessToken({ appCode: 'ordinary-app' }),
       fetchAccessToken({ appCode: 'ordinary-app' }),
     ])
 
-    expect(getMock).toHaveBeenCalledTimes(2)
+    expect(publicRequestCalls()).toEqual([
+      ['/passport', 'GET'],
+      ['/passport', 'GET'],
+    ])
   })
 
   it('passes an embedded user id to the environment passport', async () => {
     window.history.replaceState({}, '', '/environment/workflow/environment-app')
-    getMock.mockResolvedValue({ access_token: 'passport' })
+    request.mockResolvedValue(Response.json({ access_token: 'passport' }))
 
     await fetchAccessToken({ appCode: 'environment-app', userId: 'iframe-user-123' })
 
-    expect(getMock).toHaveBeenCalledWith('/passport?user_id=iframe-user-123', expect.anything())
+    expect(publicRequestCalls()).toEqual([['/passport?user_id=iframe-user-123', 'GET']])
+    expect(new URL(request.mock.calls[0]![2]!.request!.url).pathname).toBe(
+      '/api/environment/environment-app/passport',
+    )
   })
 
   it('starts a new environment passport request after a failure', async () => {
     window.history.replaceState({}, '', '/environment/workflow/environment-app')
     const error = createHttpError(new Response(null, { status: 401 }))
-    getMock.mockRejectedValueOnce(error).mockResolvedValueOnce({ access_token: 'passport' })
+    request
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce(Response.json({ access_token: 'passport' }))
 
     await expect(fetchAccessToken({ appCode: 'environment-app' })).rejects.toBe(error)
     await expect(fetchAccessToken({ appCode: 'environment-app' })).resolves.toEqual({
       access_token: 'passport',
     })
 
-    expect(getMock).toHaveBeenCalledTimes(2)
+    expect(request).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -134,10 +156,10 @@ describe('getUserCanAccess', () => {
   })
 
   it('keeps public app access checks on the public transport', async () => {
-    getMock.mockResolvedValueOnce({ result: false })
+    request.mockResolvedValueOnce(Response.json({ result: false }))
     await expect(getUserCanAccess('shared-app', false)).resolves.toEqual({ result: false })
-    expect(getMock).toHaveBeenCalledWith('/webapp/permission?appId=shared-app')
-    expect(request).not.toHaveBeenCalled()
+    expect(publicRequestCalls()).toEqual([['/webapp/permission?appId=shared-app', 'GET']])
+    expect(getMock).not.toHaveBeenCalled()
   })
 })
 
@@ -174,11 +196,12 @@ describe('console commands shared with public apps', () => {
     await stopChatMessageResponding('app', 'chat-task', AppSourceType.webApp)
     await stopWorkflowMessage('app', 'workflow-task', AppSourceType.webApp)
     await stopWorkflowMessage('app', '', AppSourceType.installedApp, 'installed')
-    expect(publicPost.mock.calls).toEqual([
-      ['chat-messages/chat-task/stop', {}, undefined],
-      ['workflows/tasks/workflow-task/stop', {}, undefined],
+    expect(publicRequestCalls()).toEqual([
+      ['/chat-messages/chat-task/stop', 'POST'],
+      ['/workflows/tasks/workflow-task/stop', 'POST'],
     ])
-    expect(request).not.toHaveBeenCalled()
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(publicPost).not.toHaveBeenCalled()
   })
 
   it('uses the installed app identity for conversation commands and preserves the rename input', async () => {
@@ -248,7 +271,7 @@ describe('console message queries and feedback', () => {
     expect(getMock).not.toHaveBeenCalled()
   })
 
-  it('keeps saved-message errors silent and requests more-like-this in blocking mode', async () => {
+  it('reads saved messages and requests more-like-this in blocking mode', async () => {
     request.mockResolvedValueOnce(Response.json({ data: [] }))
     await expect(fetchSavedMessage(AppSourceType.installedApp, 'installed-1')).resolves.toEqual({
       data: [],
@@ -256,7 +279,6 @@ describe('console message queries and feedback', () => {
     expect(new URL(request.mock.calls[0]![0]).pathname).toBe(
       '/console/api/installed-apps/installed-1/saved-messages',
     )
-    expect(request.mock.calls[0]?.[2]?.silent).toBe(true)
     request.mockResolvedValueOnce(Response.json({ answer: 'Another answer' }))
     await expect(
       fetchMoreLikeThis('message-1', AppSourceType.installedApp, 'installed-1'),
@@ -283,14 +305,18 @@ describe('console message queries and feedback', () => {
   })
 
   it('keeps suggested questions and feedback for public apps on the public transport', async () => {
-    getMock.mockResolvedValueOnce({ data: [] })
+    request
+      .mockResolvedValueOnce(Response.json({ data: [] }))
+      .mockResolvedValueOnce(Response.json({ result: 'success' }))
     await fetchSuggestedQuestions('message-1', AppSourceType.webApp)
     await updateFeedback({ messageId: 'message-1', body: { rating: 'like' } }, AppSourceType.webApp)
-    expect(getMock).toHaveBeenCalledWith('/messages/message-1/suggested-questions')
-    expect(publicPost).toHaveBeenCalledWith('/messages/message-1/feedbacks', {
-      body: { rating: 'like' },
-    })
-    expect(request).not.toHaveBeenCalled()
+    expect(publicRequestCalls()).toEqual([
+      ['/messages/message-1/suggested-questions', 'GET'],
+      ['/messages/message-1/feedbacks', 'POST'],
+    ])
+    expect(await request.mock.calls[1]?.[2]?.request?.json()).toEqual({ rating: 'like' })
+    expect(getMock).not.toHaveBeenCalled()
+    expect(publicPost).not.toHaveBeenCalled()
   })
 })
 
@@ -470,4 +496,161 @@ it.each([
       .filter((variable) => variable.type === 'file' || variable.type === 'file-list')
       .map((variable) => variable.default),
   ).toEqual([fileDefault, fileListDefault])
+})
+
+describe('public app requests through the generated WebApp client', () => {
+  beforeEach(() => {
+    request
+      .mockReset()
+      .mockImplementation(async (_url, _init, options) =>
+        options?.request?.method === 'DELETE'
+          ? new Response(null, { status: 204 })
+          : Response.json({ data: [], has_more: false, limit: 20 }),
+      )
+    getMock.mockReset()
+    publicPost.mockReset()
+  })
+
+  it('sends conversation commands and history reads on the public transport', async () => {
+    await fetchConversations(AppSourceType.webApp, '', 'cursor-1', true, 50)
+    await pinConversation(AppSourceType.webApp, '', 'conversation-1')
+    await unpinConversation(AppSourceType.webApp, '', 'conversation-1')
+    await renameConversation(AppSourceType.webApp, '', 'conversation-1', 'Renamed')
+    await generationConversationName(AppSourceType.webApp, '', 'conversation-1')
+    await delConversation(AppSourceType.webApp, '', 'conversation-1')
+    await fetchChatList('conversation-1', AppSourceType.webApp)
+    await fetchMoreLikeThis('message-1', AppSourceType.webApp)
+    await removeMessage('message-1', AppSourceType.webApp)
+
+    expect(publicRequestCalls()).toEqual([
+      ['/conversations?limit=50&last_id=cursor-1&pinned=true', 'GET'],
+      ['/conversations/conversation-1/pin', 'PATCH'],
+      ['/conversations/conversation-1/unpin', 'PATCH'],
+      ['/conversations/conversation-1/name', 'POST'],
+      ['/conversations/conversation-1/name', 'POST'],
+      ['/conversations/conversation-1', 'DELETE'],
+      ['/messages?conversation_id=conversation-1&limit=20', 'GET'],
+      ['/messages/message-1/more-like-this?response_mode=blocking', 'GET'],
+      ['/saved-messages/message-1', 'DELETE'],
+    ])
+    expect(await request.mock.calls[3]?.[2]?.request?.json()).toEqual({ name: 'Renamed' })
+    expect(await request.mock.calls[4]?.[2]?.request?.json()).toEqual({ auto_generate: true })
+    expect(getMock).not.toHaveBeenCalled()
+  })
+
+  it('reads saved messages and resolves empty deletes as success', async () => {
+    await fetchSavedMessage(AppSourceType.webApp)
+    expect(publicRequestCalls()).toEqual([['/saved-messages', 'GET']])
+  })
+
+  it('reads app metadata from the current Web App address', async () => {
+    window.history.replaceState({}, '', '/environment/chat/environment-app')
+    request.mockImplementation(async () => Response.json({ tool_icons: {} }))
+    await fetchAppMeta(AppSourceType.webApp)
+    await fetchAppParams(AppSourceType.webApp)
+    expect(publicRequestCalls()).toEqual([
+      ['/meta', 'GET'],
+      ['/parameters', 'GET'],
+    ])
+    expect(
+      request.mock.calls.map(([, , options]) => new URL(options!.request!.url).pathname),
+    ).toEqual([
+      '/api/environment/environment-app/meta',
+      '/api/environment/environment-app/parameters',
+    ])
+    window.history.replaceState({}, '', '/')
+  })
+})
+
+describe('web app saved messages and trial app limits', () => {
+  beforeEach(() => {
+    request.mockReset().mockImplementation(async () => Response.json({ result: 'success' }))
+  })
+
+  it('saves a web app message through the public contract', async () => {
+    await saveMessage('message-1', AppSourceType.webApp)
+
+    expect(publicRequestCalls()).toEqual([['/saved-messages', 'POST']])
+    expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({ message_id: 'message-1' })
+    expect(publicPost).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['fetchConversations', () => fetchConversations(AppSourceType.tryApp, 'trial-1')],
+    ['pinConversation', () => pinConversation(AppSourceType.tryApp, 'trial-1', 'c-1')],
+    ['unpinConversation', () => unpinConversation(AppSourceType.tryApp, 'trial-1', 'c-1')],
+    ['delConversation', () => delConversation(AppSourceType.tryApp, 'trial-1', 'c-1')],
+    ['renameConversation', () => renameConversation(AppSourceType.tryApp, 'trial-1', 'c-1', 'n')],
+    [
+      'generationConversationName',
+      () => generationConversationName(AppSourceType.tryApp, 'trial-1', 'c-1'),
+    ],
+    ['fetchChatList', () => fetchChatList('c-1', AppSourceType.tryApp, 'trial-1')],
+    ['fetchAppMeta', () => fetchAppMeta(AppSourceType.tryApp, 'trial-1')],
+    [
+      'updateFeedback',
+      () =>
+        updateFeedback(
+          { messageId: 'm-1', body: { rating: 'like' } },
+          AppSourceType.tryApp,
+          'trial-1',
+        ),
+    ],
+    ['fetchMoreLikeThis', () => fetchMoreLikeThis('m-1', AppSourceType.tryApp, 'trial-1')],
+    ['saveMessage', () => saveMessage('m-1', AppSourceType.tryApp, 'trial-1')],
+    ['fetchSavedMessage', () => fetchSavedMessage(AppSourceType.tryApp, 'trial-1')],
+    ['removeMessage', () => removeMessage('m-1', AppSourceType.tryApp, 'trial-1')],
+  ])('rejects %s for trial apps without a request', async (_name, call) => {
+    await expect(call()).rejects.toThrow('not available for trial apps')
+    expect(request).not.toHaveBeenCalled()
+  })
+})
+
+describe('textToAudioStream', () => {
+  beforeEach(() => request.mockReset())
+
+  it.each([
+    { source: AppSourceType.webApp, url: '/text-to-audio', isPublicAPI: true },
+    {
+      source: AppSourceType.installedApp,
+      url: '/installed-apps/installed-1/text-to-audio',
+      isPublicAPI: false,
+    },
+  ])('returns the streamed $source audio response as is', async ({ source, url, isPublicAPI }) => {
+    const audio = new Response(new Blob(['audio']), { headers: { 'content-type': 'audio/mpeg' } })
+    request.mockResolvedValueOnce(audio)
+    const body = { streaming: true, message_id: 'message-1' }
+
+    await expect(textToAudioStream(url, source, body)).resolves.toBe(audio)
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+      url,
+      { body, method: 'POST' },
+      { isPublicAPI, needAllResponseContent: true },
+    )
+  })
+})
+
+describe('web app SSO login URLs', () => {
+  beforeEach(() => {
+    request.mockReset().mockImplementation(async () => Response.json({ url: 'https://idp' }))
+  })
+
+  it.each([
+    ['SAML', fetchWebSAMLSSOUrl, '/enterprise/sso/saml/login'],
+    ['OIDC', fetchWebOIDCSSOUrl, '/enterprise/sso/oidc/login'],
+    ['OAuth2', fetchWebOAuth2SSOUrl, '/enterprise/sso/oauth2/login'],
+    ['member SAML', fetchMembersSAMLSSOUrl, '/enterprise/sso/members/saml/login'],
+    ['member OIDC', fetchMembersOIDCSSOUrl, '/enterprise/sso/members/oidc/login'],
+    ['member OAuth2', fetchMembersOAuth2SSOUrl, '/enterprise/sso/members/oauth2/login'],
+  ])('requests the %s login URL on the public API', async (_name, fetchUrl, path) => {
+    await expect(fetchUrl('app-code', 'https://dify.test/chat/app?x=1')).resolves.toEqual({
+      url: 'https://idp',
+    })
+
+    const query = new URLSearchParams({
+      app_code: 'app-code',
+      redirect_url: 'https://dify.test/chat/app?x=1',
+    })
+    expect(publicRequestCalls()).toEqual([[`${path}?${query}`, 'GET']])
+  })
 })

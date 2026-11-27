@@ -20,8 +20,19 @@ export type AgentThought = {
   position: number
   thought?: string | null
   tool?: string | null
+  tool_activity?: AgentToolActivity | null
   tool_input?: string | null
   tool_labels: AnyJsonValue
+}
+
+export type AgentToolActivity = {
+  call_limit?: ToolCallLimitMetadata | null
+  error?: string | null
+  id: string
+  run_id: string
+  status: 'cancelled' | 'failed' | 'not_executed' | 'running' | 'started' | 'succeeded'
+  tool_call_id: string
+  tool_name: string
 }
 
 export type AgentVersionNotFoundError = ErrorResponse & {
@@ -1327,12 +1338,35 @@ export type HitTestingSegment = {
   word_count: number
 }
 
+export type HumanInputActionResponse = {
+  button_style: ButtonStyle
+  id: string
+  title: string
+}
+
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
   form_submission_data?: HumanInputFormSubmissionData | null
   submitted: boolean
   type?: ExecutionContentType
   workflow_run_id: string
+}
+
+export type HumanInputFileListResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  number_limits: number
+  output_variable_name: string
+  type: 'file-list'
+}
+
+export type HumanInputFileResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  output_variable_name: string
+  type: 'file'
 }
 
 export type HumanInputFormDefinition = {
@@ -1354,11 +1388,11 @@ export type HumanInputFormDefinition = {
 export type HumanInputFormDefinitionResponse = {
   expiration_time?: number | null
   form_content: string
-  inputs: Array<FormInputConfig>
+  inputs: Array<HumanInputResponse>
   resolved_default_values: {
     [key: string]: string
   }
-  user_actions: Array<UserActionConfig>
+  user_actions: Array<HumanInputActionResponse>
 }
 
 export type HumanInputFormExpiredError = ErrorResponse & {
@@ -1393,12 +1427,50 @@ export type HumanInputFormSubmitPayloadWithUser = {
 }
 
 export type HumanInputFormSubmitResponse = {
-  [key: string]: never
+  [key: string]: unknown
 }
 
 export type HumanInputFormSubmittedError = ErrorResponse & {
   code: 'human_input_form_submitted'
   status: 412
+}
+
+export type HumanInputParagraphResponse = {
+  default: HumanInputStringSourceResponse | null
+  output_variable_name: string
+  type: 'paragraph'
+}
+
+export type HumanInputResponse =
+  | ({
+      type: 'paragraph'
+    } & HumanInputParagraphResponse)
+  | ({
+      type: 'select'
+    } & HumanInputSelectResponse)
+  | ({
+      type: 'file'
+    } & HumanInputFileResponse)
+  | ({
+      type: 'file-list'
+    } & HumanInputFileListResponse)
+
+export type HumanInputSelectResponse = {
+  option_source: HumanInputStringListSourceResponse
+  output_variable_name: string
+  type: 'select'
+}
+
+export type HumanInputStringListSourceResponse = {
+  selector: Array<string>
+  type: ValueSourceType
+  value: Array<string>
+}
+
+export type HumanInputStringSourceResponse = {
+  selector: Array<string>
+  type: ValueSourceType
+  value: string
 }
 
 export type IndexInfoResponse = {
@@ -1773,6 +1845,8 @@ export type KnowledgeFsDocumentProcessingTaskResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2150,6 +2224,8 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2574,6 +2650,8 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2750,6 +2828,8 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2881,6 +2961,7 @@ export type KnowledgeFsSourceListResponse = {
 }
 
 export type KnowledgeFsSourcePageResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   page_id: string
   page_name: string
@@ -2891,6 +2972,8 @@ export type KnowledgeFsSourcePageResponse = {
 export type KnowledgeFsSourcePagesQuery = {
   cursor?: string | null
   limit?: number
+  parentId?: string | null
+  view?: 'tree' | null
 }
 
 export type KnowledgeFsSourcePagesResponse = {
@@ -3040,6 +3123,8 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -4231,6 +4316,14 @@ export type TooManyFilesError = ErrorResponse & {
   status: 400
 }
 
+export type ToolCallLimitMetadata = {
+  execution_status: 'executed' | 'not_executed' | 'unconfirmed'
+  limit: number
+  reason?: 'call_limit_reached' | 'duplicate_tool_call' | null
+  tool_identity: string
+  used: number
+}
+
 export type ToolIcon = {
   background: string
   content: string
@@ -4529,7 +4622,7 @@ export type WorkspaceNotFoundError = ErrorResponse & {
 }
 
 export type HumanInputFormSubmitResponseWritable = {
-  [key: string]: never
+  [key: string]: unknown
 }
 
 export type MessageInfiniteScrollPaginationWritable = {
@@ -8622,6 +8715,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   query?: {
     cursor?: string
     limit?: number
+    parentId?: string
+    view?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }

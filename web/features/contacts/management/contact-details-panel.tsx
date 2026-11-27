@@ -38,13 +38,14 @@ import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/re
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
 import { useContactsFeatureContext } from './composition-context'
 import { ContactAvatar } from './contact-avatar'
 import { formatContactRelativeTime } from './relative-time'
 
-function imErrorKey(error: unknown, loading = false) {
+function imErrorKey(error: unknown) {
   const code =
     error instanceof ORPCError &&
     error.data &&
@@ -60,7 +61,7 @@ function imErrorKey(error: unknown, loading = false) {
     code === 'im_binding_not_found'
   )
     return 'imBinding.notFound'
-  return loading ? 'imBinding.loadFailed' : 'imBinding.failed'
+  return undefined
 }
 
 const imIdentityAvatarColors = [
@@ -163,6 +164,11 @@ function ImBindingEditor({
   onUnbind?: () => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
+  const imErrorMessage = (error: unknown, fallback: string) => {
+    const key = imErrorKey(error)
+    return key ? t(($) => $[key]) : describeRequestError(error, fallback)
+  }
   const { imCentrallyManaged: centrallyManaged } = useContactsFeatureContext()
   const providerLabel = getContactChannelLabel(provider)
   const boundIdentity = getBoundIMIdentity(contact, binding)
@@ -183,7 +189,7 @@ function ImBindingEditor({
       }),
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const options = [
@@ -364,7 +370,10 @@ function ImBindingEditor({
                     {identities.isError && (
                       <div className="px-3 py-2">
                         <p role="alert" className="system-xs-regular text-text-destructive">
-                          {t(($) => $[imErrorKey(identities.error, true)])}
+                          {imErrorMessage(
+                            identities.error,
+                            t(($) => $['imBinding.loadFailed']),
+                          )}
                         </p>
                         <Button
                           className="mt-2"
@@ -414,7 +423,10 @@ function ImBindingEditor({
         )}
         {Boolean(error) && (
           <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-            {t(($) => $[imErrorKey(error)])}
+            {imErrorMessage(
+              error,
+              t(($) => $['imBinding.failed']),
+            )}
           </p>
         )}
       </div>
@@ -458,22 +470,31 @@ function ContactIMChannels({
   removing: boolean
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const context = useContactsFeatureContext()
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const api = consoleQuery.workspaces.current.humanInput.v2
   const defaultSave = useMutation(
-    api.contacts.byContactId.imBindings.put.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imBindings.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const overrideSave = useMutation(
-    api.contacts.byContactId.imOverride.put.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imOverride.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const save = context.imCentrallyManaged ? overrideSave : defaultSave
   const remove = useMutation(
-    api.contacts.byContactId.imOverride.delete.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imOverride.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const unbind = useMutation(
-    api.contacts.byContactId.imBindings.delete.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imBindings.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const canBind =
     canManage && context.imCentrallyManaged !== undefined && contact.type !== 'external'
@@ -482,7 +503,7 @@ function ContactIMChannels({
       input: canBind && context.imCentrallyManaged === false ? undefined : skipToken,
       select: (response) => response.channels.filter((channel) => channel.kind === 'im'),
       retry: false,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const busy = save.isPending || remove.isPending || unbind.isPending || removing
@@ -600,7 +621,10 @@ function ContactIMChannels({
       {configured.isError && canBind && (
         <div className="mt-2">
           <p role="alert" className="system-xs-regular text-text-destructive">
-            {t(($) => $['imBinding.channelsLoadFailed'])}
+            {describeRequestError(
+              configured.error,
+              t(($) => $['imBinding.channelsLoadFailed']),
+            )}
           </p>
           <Button
             size="small"

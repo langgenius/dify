@@ -1,19 +1,23 @@
-"""GET /openapi/v1/apps and per-app reads."""
+"""GET /openapi/v1/apps, per-app reads, and app deletion."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any, Final
+from uuid import UUID
 
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from constants.oauth_bearer import Scope
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from constants.personal_access_token import PersonalAccessTokenPolicy
+from controllers.common.errors import ForbiddenError
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._app_response import app_list_row, build_app_describe_response
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse, Hint
 from controllers.openapi.app_info import (
     AdvancedChatAppInfoApi,
@@ -36,19 +40,23 @@ from controllers.openapi.app_webapp import (
     WorkflowWebAppApi,
 )
 from controllers.openapi.auth.requirements import (
+    EDITOR_ROLES,
     CheckAppApiEnabled,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWebAppAuthEnterprise,
     CheckWorkspaceMember,
+    CheckWorkspaceRole,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext, RequestContext
 from models.model import AppMode
+from services.app.console_service import ConsoleAppNotFoundError
 from services.app.query_service import AppDiscoveryQuery
 from services.errors.app import AppDiscoveryNotFoundError
+from services.errors.base import NoPermissionError
 
 _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
     AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
@@ -88,6 +96,7 @@ class AppDescribeApi(Resource):
     @endpoint(
         context="app",
         op="describe.console_app",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
         examples=(
@@ -116,12 +125,47 @@ class AppDescribeApi(Resource):
         response.hints = settings_hints(result.app.id, result.app.mode)
         return response
 
+    @endpoint(
+        context="workspace",
+        op="delete.console_app",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
+        kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
+        summary="Delete an app",
+        examples=(Example(title="Delete an app", input={"app_id": "<app_id>"}),),
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckWorkspaceMember(),
+            CheckScope(Scope.WORKSPACE_WRITE),
+            CheckRBACPermission(
+                RBACCheck(RBACPermission.APP_DELETE, PlainApp()),
+                RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp()),
+            ),
+            CheckWorkspaceRole(EDITOR_ROLES),
+        ),
+        returns=(HTTPStatus.OK, SimpleResultResponse, "App deleted"),
+    )
+    def delete(self, ctx: RequestContext, app_id: str):
+        """Delete the app.
+
+        Answers 404 when the app does not exist in the workspace and 403 when the
+        caller is not allowed to delete it.
+        """
+        try:
+            application_services().apps.console.delete(ctx, str(UUID(app_id)))
+        except ConsoleAppNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except NoPermissionError as exc:
+            raise ForbiddenError(str(exc)) from exc
+        return SimpleResultResponse(result="success")
+
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
         context="workspace",
         op="get.console_app",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_DISCOVERY,
         kind=Kind.LIST,
         summary="List apps in a workspace",
         examples=(

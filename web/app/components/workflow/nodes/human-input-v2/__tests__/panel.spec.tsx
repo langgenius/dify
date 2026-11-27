@@ -3,8 +3,11 @@ import type {
   ListContactsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { HumanInputV2NodeType } from '../types'
+import type { Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import { createNode, createTriggerNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -52,8 +55,8 @@ const createData = (overrides: Partial<HumanInputV2NodeType> = {}): HumanInputV2
   ...overrides,
 })
 
-const renderPanel = (data = createData()) => {
-  const queryClient = createChannelsQueryClient(['resend', 'slack'])
+const renderPanel = (data = createData(), entry?: Node) => {
+  const queryClient = createChannelsQueryClient(['email', 'slack'])
   seedToolProviders(queryClient, {
     builtInTools: [],
     customTools: [],
@@ -62,8 +65,17 @@ const renderPanel = (data = createData()) => {
   })
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
   seedAccountProfileQuery(queryClient, { email: 'reviewer@example.com' })
+  const nodes = entry ? [entry, createNode({ id: 'node', data })] : undefined
   return renderNodePanel(HumanInputV2Panel, data, {
     queryClient,
+    resource: {
+      kind: 'app',
+      appId: 'app-test-channels',
+      mode: 'workflow',
+      collaborationEnabled: false,
+    },
+    nodes,
+    initialStoreState: nodes ? { nodes } : undefined,
     hooksStoreProps: { doSyncWorkflowDraft: async () => null },
   })
 }
@@ -89,8 +101,7 @@ describe('Human Input v2 panel composition', () => {
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.configure' }))
     const subject = screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')
-    await user.clear(subject)
-    await user.type(subject, 'Updated subject')
+    await replacePromptEditorText(subject, 'Updated subject')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(data().message_template).toEqual({
       subject: 'Updated subject',
@@ -109,6 +120,19 @@ describe('Human Input v2 panel composition', () => {
       screen.getByRole('switch', { name: 'workflow.nodes.humanInputV2.debug.toggle' }),
     )
     expect(data().debug_mode).toEqual({ enabled: true, channels: ['email'] })
+  })
+
+  it('disables Initiator when the workflow starts from a Schedule trigger', async () => {
+    const user = userEvent.setup()
+    renderPanel(createData(), createTriggerNode(BlockEnum.TriggerSchedule))
+
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
+    )
+    const initiator = await screen.findByRole('option', {
+      name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+    })
+    expect(initiator).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('keeps stored v2 settings intact and unavailable while the feature is disabled', () => {

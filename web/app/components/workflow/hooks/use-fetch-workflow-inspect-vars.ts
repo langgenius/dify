@@ -1,19 +1,20 @@
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { Node, WorkflowPluginCatalogs } from '@/app/components/workflow/types'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
-import {
-  useInvalidateConversationVarValues,
-  useInvalidateSysVarValues,
-} from '@/service/use-workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
+import {
+  conversationVarValuesQueryOptions,
+  sysVarValuesQueryOptions,
+} from '@/service/workflow-queries'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
@@ -22,8 +23,18 @@ export const useSetWorkflowVarsWithValue = () => {
   const resource = useAtomValue(editorResourceAtom)
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(resource)
-  const invalidateSysVarValues = useInvalidateSysVarValues(resource)
+  const queryClient = useQueryClient()
+  const invalidateConversationVarValues = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: conversationVarValuesQueryOptions(resource).queryKey,
+      }),
+    [queryClient, resource],
+  )
+  const invalidateSysVarValues = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: sysVarValuesQueryOptions(resource).queryKey }),
+    [queryClient, resource],
+  )
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { schemaTypeDefinitions } = useMatchSchemaType()
   const { data: buildInTools } = useQuery(
@@ -133,7 +144,15 @@ export const useSetWorkflowVarsWithValue = () => {
       const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
       invalidateConversationVarValues()
       invalidateSysVarValues()
-      const data = passInVars ? vars! : await fetchAllInspectVars(resource)
+      let data: VarInInspect[]
+      try {
+        data = passInVars ? vars! : await fetchAllInspectVars(resource)
+      } catch (error) {
+        // Most callers refresh after a run without awaiting; the report marks the error handled,
+        // so a caller that reports it too shows nothing more.
+        reportRequestError(error)
+        throw error
+      }
       setInspectVarsToStore(data, passedInAllPluginInfoList, passedInSchemaTypeDefinitions)
       handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
     },

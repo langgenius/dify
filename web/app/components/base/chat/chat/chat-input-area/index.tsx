@@ -17,6 +17,7 @@ import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
 import VoiceInput from '@/app/components/base/voice-input'
 import { toast } from '@/app/notifications'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
@@ -92,6 +93,7 @@ const ChatInputArea = ({
   const textareaId = useId()
 
   const { t } = useTranslation(['appDebug', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const {
     wrapperRef,
     textareaRef,
@@ -241,9 +243,17 @@ const ChatInputArea = ({
     },
     [t],
   )
-  const handleVoiceInputError = useCallback(() => {
-    toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
-  }, [t])
+  const handleVoiceInputError = useCallback(
+    (error?: unknown) => {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['api.actionFailed'], { ns: 'common' }),
+        ),
+      )
+    },
+    [t, describeRequestError],
+  )
   const handleHideVoiceInput = useCallback(() => {
     setShowVoiceInput(false)
   }, [])
@@ -373,7 +383,7 @@ const ChatInputArea = ({
         {isMultipleLine && <div className="px-2.25">{operation}</div>}
       </div>
       {shouldShowFooterNotice && (
-        <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
+        <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-s border-e border-b border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
             <div
               id={footerNoticeLabelId}
@@ -385,7 +395,8 @@ const ChatInputArea = ({
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={footerNoticeLabelId}
-                  className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
+                  // oxlint-disable-next-line shadcn/no-restyle -- The footer notice keeps its 20px hover surface on the accent banner.
+                  className="ms-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
                   iconVariant="information"
                 />
                 <InfotipContent aria-labelledby={footerNoticeLabelId} className="max-w-80">

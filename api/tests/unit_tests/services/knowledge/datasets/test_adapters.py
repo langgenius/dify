@@ -1,4 +1,6 @@
+import json
 from collections.abc import Callable
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -21,6 +23,8 @@ from models.dataset import (
     DatasetPermissionEnum,
     DatasetQuery,
     DocumentSegment,
+    ExternalKnowledgeApis,
+    ExternalKnowledgeBindings,
 )
 from models.enums import (
     CreatorUserRole,
@@ -41,7 +45,7 @@ from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
 from services.rbac import contracts as rbac_contracts
-from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
+from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput, TagKind
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
@@ -205,10 +209,10 @@ def test_listing_filters_tags_within_workspace(
     with sqlite_session_factory.begin() as session:
         session.add(dataset(id="untagged", name="Untagged"))
     context = RequestContext("request", None, "actor", "other") if foreign_tag else CONTEXT
-    tag = application_tags.create_tag(context, CreateTagInput(name="Selected", type="knowledge"))
+    tag = application_tags.create_tag(context, CreateTagInput(name="Selected", type=TagKind.KNOWLEDGE))
     application_tags.create_bindings(
         context,
-        TagBindingInput(tag_ids=(tag.id,), target_id="foreign" if foreign_tag else "dataset", type="knowledge"),
+        TagBindingInput(tag_ids=(tag.id,), target_id="foreign" if foreign_tag else "dataset", type=TagKind.KNOWLEDGE),
     )
 
     result = operations.list_datasets(CONTEXT, DatasetListFilter(tag_ids=[tag.id]), None)
@@ -307,8 +311,14 @@ def test_created_dataset_initializes_rbac_access(
     apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
 
     def save_documents(
-        created_dataset: Dataset, _config: KnowledgeConfig, _account: Account, *, session: Session
+        created_dataset: Dataset,
+        _config: KnowledgeConfig,
+        _account: Account,
+        *,
+        created_from: str,
+        session: Session,
     ) -> tuple[list[Document], str, DocumentIndexingJobs]:
+        del created_from
         row = document(id="created-document", dataset_id=created_dataset.id, data_source_type="upload_file")
         session.add(row)
         session.flush()
@@ -379,6 +389,56 @@ def test_partial_members_update_and_clear_are_committed(
     assert result["partial_member_list"] == []
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(DatasetPermission)) == 0
+
+
+def _external_binding(session: Session) -> ExternalKnowledgeBindings | None:
+    return session.scalar(select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == "dataset"))
+
+
+def test_external_update_backfills_stored_binding(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    api = ExternalKnowledgeApis(
+        tenant_id="tenant", name="API", description="", settings="{}", created_by="actor", updated_by=None
+    )
+    with sqlite_session_factory.begin() as session:
+        stored = session.get(Dataset, "dataset")
+        assert stored is not None
+        stored.provider = "external"
+        session.add(api)
+        session.add(
+            ExternalKnowledgeBindings(
+                tenant_id="tenant",
+                external_knowledge_api_id=api.id,
+                dataset_id="dataset",
+                external_knowledge_id="knowledge-1",
+                created_by="actor",
+            )
+        )
+
+    renamed = operations.update_dataset(CONTEXT, REF, {"name": "Renamed"})
+    assert renamed["name"] == "Renamed"
+    with sqlite_session_factory() as session:
+        binding = _external_binding(session)
+        assert binding is not None
+        assert binding.external_knowledge_id == "knowledge-1"
+        assert binding.external_knowledge_api_id == api.id
+
+    operations.update_dataset(CONTEXT, REF, {"external_knowledge_id": "knowledge-2"})
+    with sqlite_session_factory() as session:
+        binding = _external_binding(session)
+        assert binding is not None
+        assert binding.external_knowledge_id == "knowledge-2"
+        assert binding.external_knowledge_api_id == api.id
+
+    operations.update_dataset(CONTEXT, REF, {"description": None})
+    with sqlite_session_factory() as session:
+        stored = session.get(Dataset, "dataset")
+        assert stored is not None
+        assert stored.description is None
+        binding = _external_binding(session)
+        assert binding is not None
+        assert binding.external_knowledge_id == "knowledge-2"
 
 
 def test_status_counts_and_errors_exclude_foreign_documents(
@@ -456,3 +516,39 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert related["total"] == 1
     assert related["data"][0]["id"] == "app"
     assert related["data"][0]["mode"] == "chat"
+
+
+def test_query_history_pagination_preserves_invalid_image_records(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    contents = [
+        "legacy text",
+        json.dumps(
+            [{"content_type": "text_query", "content": "example"}, {"content_type": "image_query", "content": ""}]
+        ),
+    ]
+    ids = []
+    with sqlite_session_factory.begin() as session:
+        for day, content in enumerate(contents, 1):
+            row = DatasetQuery(
+                dataset_id="dataset",
+                content=content,
+                source=DatasetQuerySource.HIT_TESTING,
+                source_app_id=None,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="actor",
+            )
+            row.created_at = datetime(2026, 1, day)
+            session.add(row)
+            session.flush()
+            ids.append(row.id)
+    first = DatasetQueryListResponse.model_validate(operations.queries(REF, page=1, limit=1))
+    second = DatasetQueryListResponse.model_validate(operations.queries(REF, page=2, limit=1))
+    assert (first.total, first.page, first.limit, first.has_more) == (2, 1, 1, True)
+    assert (second.total, second.page, second.limit, second.has_more) == (2, 2, 1, False)
+    assert [first.data[0].id, second.data[0].id] == list(reversed(ids))
+    assert [item.content for item in first.data[0].queries] == ["example", ""]
+    assert first.data[0].queries[1].file_info is None
+    assert second.data[0].queries[0].content == "legacy text"
+    with sqlite_session_factory() as session:
+        assert list(session.scalars(select(DatasetQuery.content).order_by(DatasetQuery.created_at))) == contents

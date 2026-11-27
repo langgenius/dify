@@ -17,6 +17,7 @@ import {
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { DocumentMetadataCreateForm } from './create-form'
 
 const metadataTypeIcon = {
@@ -29,7 +30,7 @@ type DocumentMetadataPickerProps = {
   allowedExistingName?: string
   creating: boolean
   disabled?: boolean
-  error: boolean
+  error?: unknown
   fields: DocumentMetadataField[]
   loading: boolean
   onCreate: (name: string, type: DocumentMetadataType) => Promise<void>
@@ -52,6 +53,8 @@ export function DocumentMetadataPicker({
 }: DocumentMetadataPickerProps) {
   const { t } = useTranslation(['knowledgeCitation', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
+  const failed = error != null
   const popoverActionsRef = useRef<PopoverActions>(null)
   const [view, setView] = useState<'create' | 'select'>('select')
 
@@ -108,7 +111,7 @@ export function DocumentMetadataPicker({
                 />
               </ComboboxInputGroup>
             </div>
-            {!loading && !error && (
+            {!loading && !failed && (
               <ComboboxList<DocumentMetadataField>>
                 {(field) => (
                   <ComboboxItem key={field.name} value={field}>
@@ -135,23 +138,26 @@ export function DocumentMetadataPicker({
                 {tCommon(($) => $.loading)}
               </div>
             )}
-            {error && !loading && (
+            {failed && !loading && (
               <div className="flex h-20 flex-col items-center justify-center gap-1 px-3 text-center">
                 <span role="status" className="system-xs-regular text-text-tertiary">
-                  {t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' })}
+                  {describeRequestError(
+                    error,
+                    t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }),
+                  )}
                 </span>
                 <Button onClick={onRetry} size="small" variant="ghost">
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               </div>
             )}
-            {!loading && !error && <ComboboxEmpty>{tCommon(($) => $.noData)}</ComboboxEmpty>}
+            {!loading && !failed && <ComboboxEmpty>{tCommon(($) => $.noData)}</ComboboxEmpty>}
             <ComboboxSeparator />
             <div className="flex items-center justify-between p-1">
               <Button
                 variant="ghost"
                 className="min-w-0 px-2"
-                disabled={loading || error}
+                disabled={loading || failed}
                 onClick={() => {
                   setView('create')
                 }}
