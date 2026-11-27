@@ -73,6 +73,10 @@
       "types": "./src/combobox/index.tsx",
       "import": "./src/combobox/index.tsx"
     },
+    "./coachmark": {
+      "types": "./src/coachmark/index.tsx",
+      "import": "./src/coachmark/index.tsx"
+    },
     "./collapsible": {
       "types": "./src/collapsible/index.tsx",
       "import": "./src/collapsible/index.tsx"
