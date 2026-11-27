@@ -12,6 +12,7 @@ import { webAppClient } from './index'
 export async function restoreWebAppAccountSession(
   address: Extract<WebAppAddress, { kind: 'default' }>,
   isActive: () => boolean,
+  { allowLegacyFallback = false }: { allowLegacyFallback?: boolean } = {},
 ) {
   const isSameSession = captureWebAppAuthSession()
   const canContinue = () => isActive() && isSameSession()
@@ -33,13 +34,13 @@ export async function restoreWebAppAccountSession(
         { context },
       )
       if (!canContinue()) return false
-      setWebAppPassport(address, access_token, 'authenticated')
+      setWebAppPassport(address, access_token, 'authenticated', 'end_user')
     }
     return true
   } catch (error) {
     if (!canContinue()) return false
     if (getHttpErrorStatus(error) === 401) {
-      expireWebAppAccountSession()
+      if (!allowLegacyFallback) expireWebAppAccountSession()
       return false
     }
     throw error

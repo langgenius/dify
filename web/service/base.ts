@@ -35,7 +35,7 @@ const recoverWebAppAuthorization = (
   const address = resolveWebAppAddress()
   if (
     !address ||
-    (address.kind !== 'environment' && getWebAppLoginMode() !== 'end_user') ||
+    (address.kind !== 'environment' && getWebAppLoginMode(address) !== 'end_user') ||
     (error.reason !== 'APPDEPLOY_UNAUTHORIZED' && error.code !== 'unauthorized') ||
     (url && isWebAppAuthorizationEndpoint(url))
   )
@@ -193,7 +193,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         isPublicAPI &&
         canRecoverWebAppAuthorization(requestGuard) &&
         address &&
-        (address.kind === 'environment' || getWebAppLoginMode() === 'end_user') &&
+        (address.kind === 'environment' || getWebAppLoginMode(address) === 'end_user') &&
         !isWebAppAuthorizationEndpoint(url)
       )
         completeWebAppAuthorizationRecovery(address)
@@ -243,7 +243,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (isPublicAPI && code === 'unauthorized') {
-        if (getWebAppLoginMode() !== 'end_user') {
+        if (getWebAppLoginMode(resolveWebAppAddress()) !== 'end_user') {
           markErrorHandled(err)
           requiredWebSSOLogin()
         }

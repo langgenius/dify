@@ -23,6 +23,7 @@ import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
+  getAuthenticatedWebAppPassport,
   getWebAppAccessToken,
   getWebAppLoginMode,
   setWebAppAccessToken,
@@ -130,9 +131,22 @@ export default function Splash({ children }: PropsWithChildren) {
 
     const initialize = async () => {
       try {
-        if (!isSigninRoute && address.kind === 'default' && getWebAppLoginMode() === 'end_user') {
-          if (await restoreWebAppAccountSession(address, canContinue)) redirectOrFinish()
-          return
+        if (!isSigninRoute && address.kind === 'default') {
+          const appUsesAccount = getWebAppLoginMode(address) === 'end_user'
+          const tryAccount =
+            getWebAppLoginMode() === 'end_user' &&
+            webAppAccessMode !== AccessMode.EXTERNAL_MEMBERS &&
+            !getAuthenticatedWebAppPassport(address)
+          if (appUsesAccount || tryAccount) {
+            const restored = await restoreWebAppAccountSession(address, canContinue, {
+              allowLegacyFallback: !appUsesAccount,
+            })
+            if (restored) {
+              redirectOrFinish()
+              return
+            }
+            if (!canContinue() || appUsesAccount || getWebAppLoginMode() !== 'end_user') return
+          }
         }
         // Public apps still need a valid app passport even when user login is not required.
         const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(

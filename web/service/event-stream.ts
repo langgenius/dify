@@ -216,7 +216,7 @@ const isWebAppAuthorizationError = (data: unknown) => {
   if (
     data.code === 'web_app_access_denied' ||
     data.code === 'web_sso_auth_required' ||
-    (data.code === 'unauthorized' && getWebAppLoginMode() !== 'end_user') ||
+    (data.code === 'unauthorized' && getWebAppLoginMode(resolveWebAppAddress()) !== 'end_user') ||
     data.reason === 'APPDEPLOY_WEB_APP_ACCESS_DENIED'
   )
     return true

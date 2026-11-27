@@ -141,7 +141,7 @@ export function completeWebAppAccountLogin(
       )
         throw new DOMException('The Web App login changed.', 'AbortError')
       startWebAppAccountSession()
-      setWebAppPassport(target.address, access_token, 'authenticated')
+      setWebAppPassport(target.address, access_token, 'authenticated', 'end_user')
       // Deduplicate remounts against the new session created by this exchange.
       isSameSession = captureWebAppAuthSession()
       removeTransaction(target.address.code)

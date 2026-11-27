@@ -16,6 +16,7 @@ const webAppAuthMocks = vi.hoisted(() => ({
   setWebAppPassport: vi.fn(),
   webAppLoginStatus: vi.fn(),
   webAppLogout: vi.fn(),
+  getAuthenticatedWebAppPassport: vi.fn(),
   getWebAppAccessToken: vi.fn(),
   getWebAppLoginMode: vi.fn(),
   expireWebAppAccountSession: vi.fn(),
@@ -124,6 +125,7 @@ describe('Splash', () => {
       { kind: 'default', code: 'share-app' },
       'account-passport',
       'authenticated',
+      'end_user',
     )
     expect(fetchAccessTokenMock).not.toHaveBeenCalled()
   })
@@ -177,6 +179,24 @@ describe('Splash', () => {
       'environment-app',
       'embedded-user',
     )
+    expect(accountClient.login.status.get).not.toHaveBeenCalled()
+  })
+
+  it('uses the enterprise sign-in flow for an external App while another App uses an account', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    useWebAppStore.setState({ webAppAccessMode: AccessMode.EXTERNAL_MEMBERS })
+    webAppAuthMocks.getWebAppLoginMode.mockImplementation((address) =>
+      address ? 'console' : 'end_user',
+    )
+    webAppAuthMocks.webAppLoginStatus.mockResolvedValue({ userLoggedIn: true, appLoggedIn: true })
+    render(
+      <Splash>
+        <div>Enterprise App</div>
+      </Splash>,
+    )
+
+    await screen.findByText('Enterprise App')
+    expect(webAppAuthMocks.webAppLoginStatus).toHaveBeenCalledWith('share-app', 'embedded-user')
     expect(accountClient.login.status.get).not.toHaveBeenCalled()
   })
 

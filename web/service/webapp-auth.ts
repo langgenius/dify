@@ -9,10 +9,12 @@ import { getWebAppPassportKey, getWebAppScopeKey, resolveWebAppAddress } from '.
 
 const WEB_APP_AUTHORIZATION_RECOVERY_KEY_PREFIX = 'webapp-authorization-recovery-'
 const WEB_APP_LOGIN_MODE_KEY = 'webapp_login_mode'
+const WEB_APP_LOGIN_MODE_PREFIX = `${WEB_APP_LOGIN_MODE_KEY}-`
 const sessionListeners = new Set<() => void>()
 let sessionRevision = 0
 
 export type WebAppPassportSource = 'anonymous' | 'authenticated'
+type WebAppLoginMode = 'end_user' | 'console'
 
 function getCredentialStorage() {
   // oxlint-disable-next-line no-restricted-globals -- Auth transport synchronously reads, invalidates, and enumerates legacy credential keys.
@@ -24,13 +26,13 @@ function notifySessionChanged() {
   for (const listener of sessionListeners) listener()
 }
 
-function clearPassports(prefix: string) {
-  const passportKeys = Object.keys(getCredentialStorage()).filter((key) => key.startsWith(prefix))
-  for (const key of passportKeys) getCredentialStorage().removeItem(key)
-}
-
 function clearAuthenticatedWebAppPassports() {
-  clearPassports(AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME(''))
+  const storage = getCredentialStorage()
+  const passportPrefix = AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('')
+  for (const key of Object.keys(storage)) {
+    if (key.startsWith(passportPrefix) || key.startsWith(WEB_APP_LOGIN_MODE_PREFIX))
+      storage.removeItem(key)
+  }
   const recoveryKeys = Object.keys(sessionStorage).filter((key) =>
     key.startsWith(WEB_APP_AUTHORIZATION_RECOVERY_KEY_PREFIX),
   )
@@ -84,13 +86,25 @@ function getWebAppAuthorizationRecoveryKey(address: WebAppAddress) {
   return `${WEB_APP_AUTHORIZATION_RECOVERY_KEY_PREFIX}${getWebAppScopeKey(address)}`
 }
 
-export function getWebAppLoginMode(): 'end_user' | 'console' {
-  return getCredentialStorage().getItem(WEB_APP_LOGIN_MODE_KEY) === 'end_user'
+function getWebAppLoginModeKey(address: WebAppAddress) {
+  return `${WEB_APP_LOGIN_MODE_PREFIX}${getWebAppScopeKey(address)}`
+}
+
+export function getWebAppLoginMode(address?: WebAppAddress | null): WebAppLoginMode {
+  const storage = getCredentialStorage()
+  const accountMode = storage.getItem(WEB_APP_LOGIN_MODE_KEY)
+  if (address === undefined) return accountMode === 'end_user' ? 'end_user' : 'console'
+  if (address?.kind !== 'default') return 'console'
+
+  const appMode = storage.getItem(getWebAppLoginModeKey(address))
+  if (appMode === 'end_user' || appMode === 'console') return appMode
+  // Existing account sessions can have an authenticated Passport from before app modes were stored.
+  return accountMode === 'end_user' && getAuthenticatedWebAppPassport(address)
     ? 'end_user'
     : 'console'
 }
 
-export function setWebAppAccessToken(token: string, mode: 'end_user' | 'console' = 'console') {
+export function setWebAppAccessToken(token: string, mode: WebAppLoginMode = 'console') {
   if (getWebAppAccessToken() === token && getWebAppLoginMode() === mode) return
   clearAuthenticatedWebAppPassports()
   getCredentialStorage().setItem(WEB_APP_LOGIN_MODE_KEY, mode)
@@ -120,7 +134,10 @@ export function setWebAppPassport(
   source: WebAppPassportSource = getWebAppLoginMode() === 'end_user' || getWebAppAccessToken()
     ? 'authenticated'
     : 'anonymous',
+  mode: WebAppLoginMode = 'console',
 ) {
+  if (source === 'authenticated' && address.kind === 'default')
+    getCredentialStorage().setItem(getWebAppLoginModeKey(address), mode)
   getCredentialStorage().setItem(getPassportStorageKey(address, source), token)
 }
 
