@@ -7,6 +7,7 @@ import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationRunDetailQuery } from '../../queries'
@@ -49,21 +50,18 @@ const PipelineResultsPreview = ({
   const totalPages = Math.ceil((runDetail?.items.total ?? 0) / PAGE_SIZE)
 
   // Only a failed first load replaces the results; a failed poll keeps them and is toasted.
+  const runDetailLoad = useOwnedQueryError(runDetailQuery)
   const loadErrorMessage = useRequestErrorMessage(
-    runDetail ? null : runDetailQuery.error,
+    runDetailLoad?.error,
     t(($) => $['results.loadFailed']),
   )
 
-  if (loadErrorMessage) {
+  if (runDetailLoad && loadErrorMessage) {
     return (
       <Alert type="error" className="my-4">
         <AlertTitle>{loadErrorMessage}</AlertTitle>
         <AlertActions>
-          <Button
-            size="small"
-            loading={runDetailQuery.isFetching}
-            onClick={() => runDetailQuery.refetch()}
-          >
+          <Button size="small" loading={runDetailLoad.retrying} onClick={runDetailLoad.retry}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>
         </AlertActions>

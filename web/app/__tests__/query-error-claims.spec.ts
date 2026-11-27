@@ -202,7 +202,20 @@ function unwrap(node: ts.Node) {
   return current
 }
 
-// Returned from its function, on its own or inside the returned object or array.
+// One of the values an expression evaluates to: a branch of `a ? b : c`, or a side of `a ?? b`
+// and `a || b`, such as `return isDataset ? datasetQuery : targetQuery`.
+function isBranchOf(parent: ts.Node, node: ts.Node) {
+  if (ts.isConditionalExpression(parent))
+    return parent.whenTrue === node || parent.whenFalse === node
+  return (
+    ts.isBinaryExpression(parent) &&
+    (parent.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+      parent.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+  )
+}
+
+// Returned from its function, on its own, as one of the values of the returned expression, or
+// inside the returned object or array.
 function isReturnedWhole(node: ts.Node): boolean {
   let current = unwrap(node)
   for (;;) {
@@ -210,6 +223,10 @@ function isReturnedWhole(node: ts.Node): boolean {
     if (!parent) return false
     if (ts.isReturnStatement(parent)) return true
     if (ts.isArrowFunction(parent) && parent.body === current) return true
+    if (isBranchOf(parent, current)) {
+      current = unwrap(parent)
+      continue
+    }
     if (
       ts.isSpreadAssignment(parent) ||
       ts.isPropertyAssignment(parent) ||
@@ -317,6 +334,11 @@ function identifierUse(name: ts.Identifier, fn: ts.Node | undefined): Use {
         return 'reads'
       continue
     }
+    // `return condition ? first : second` hands the result on whole.
+    if (isReturnedWhole(reference)) {
+      use = 'passes'
+      continue
+    }
     // `const query = condition ? first : second` hands the result on under another name.
     if (ts.isConditionalExpression(parent) && parent.condition !== reference) {
       const alias = unwrap(parent).parent
@@ -397,6 +419,10 @@ function carrierOf(node: ts.Node): string | undefined {
     if (!parent) return undefined
     if (ts.isReturnStatement(parent) || (ts.isArrowFunction(parent) && parent.body === current))
       return name
+    if (isBranchOf(parent, current)) {
+      current = unwrap(parent)
+      continue
+    }
     if (
       (ts.isPropertyAssignment(parent) || ts.isShorthandPropertyAssignment(parent)) &&
       ts.isIdentifier(parent.name)

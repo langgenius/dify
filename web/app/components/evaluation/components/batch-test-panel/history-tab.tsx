@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationActions, useEvaluationLogsQuery } from '../../queries'
@@ -103,7 +104,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   }
   const total = logsQuery.data?.total ?? 0
   const isInitialLoading = logsQuery.isLoading && !logsQuery.data
-  const isLoadFailed = logsQuery.isError && !logsQuery.data
+  const logsLoad = useOwnedQueryError(logsQuery)
 
   useEffect(() => {
     if (hasResultsPreview || resource.selectedRunId) return
@@ -331,21 +332,17 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
               ))}
           </tbody>
         </table>
-        {isLoadFailed && (
+        {logsLoad && (
           <Alert type="error" className="mx-3 mt-4">
-            <AlertTitle>{describeRequestError(logsQuery.error)}</AlertTitle>
+            <AlertTitle>{describeRequestError(logsLoad.error)}</AlertTitle>
             <AlertActions>
-              <Button
-                size="small"
-                loading={logsQuery.isFetching}
-                onClick={() => logsQuery.refetch()}
-              >
+              <Button size="small" loading={logsLoad.retrying} onClick={logsLoad.retry}>
                 {t(($) => $['operation.retry'], { ns: 'common' })}
               </Button>
             </AlertActions>
           </Alert>
         )}
-        {!isInitialLoading && !isLoadFailed && records.length === 0 && (
+        {!isInitialLoading && !logsLoad && records.length === 0 && (
           <div className="mt-4 rounded-2xl border border-dashed border-divider-subtle px-4 py-10 text-center system-sm-regular text-text-tertiary">
             {t(($) => $['history.empty'])}
           </div>
