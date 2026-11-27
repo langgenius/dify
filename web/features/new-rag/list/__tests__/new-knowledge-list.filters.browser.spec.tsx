@@ -184,7 +184,7 @@ describe('NewKnowledgeList filters', () => {
       expect(lastSpacesQuery()?.creator_ids).toHaveLength(100)
     })
 
-    it('retries a failed members request while keeping cached creators', async () => {
+    it('keeps cached creators over a failed members refresh, leaving the failure to the toast', async () => {
       const user = userEvent
       const { refresh } = await setup()
       await user.click(page.getByRole('combobox', { name: 'dataset.creatorFilter.creators' }))
@@ -195,9 +195,8 @@ describe('NewKnowledgeList filters', () => {
       )
       await refresh(consoleQuery.workspaces.current.members.get.key())
 
-      await expect.element(page.getByRole('alert')).toMatchTextContent(/common\.error/)
-      await expect.element(page.getByRole('option', { name: /Alice/ })).toBeInTheDocument()
-      await user.click(page.getByRole('button', { name: 'common.operation.retry' }))
+      // The filter shows only a failed first load; the query cache reports a failed refresh.
+      await expect.element(page.getByRole('option', { name: /Alice/ })).toBeVisible()
       await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
     })
   })
