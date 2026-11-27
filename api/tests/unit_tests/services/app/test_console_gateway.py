@@ -61,6 +61,7 @@ from services.entities.dsl_entities import (
 )
 from services.evaluation_service import EvaluationService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.rbac.contracts import RBACResourceType
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
@@ -466,6 +467,39 @@ def test_only_cloud_version_export_consults_workspace_plan(
     gateway = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
     assert gateway.can_export_version("workspace") is allowed
     assert calls == (["workspace"] if edition == DeploymentEdition.CLOUD else [])
+
+
+@pytest.mark.parametrize("rbac_enabled", [True, False])
+def test_initialize_created_app_access(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    rbac_domain: RBACDomain,
+    rbac_enabled: bool,
+) -> None:
+    config_overrides(RBAC_ENABLED=rbac_enabled)
+    context = RequestContext("request", None, "creator", "workspace")
+    app_id = "app"
+    creator_syncs: list[tuple[str, str, RBACResourceType, str]] = []
+
+    def sync_creator(tenant_id: str, account_id: str, resource_type: RBACResourceType, resource_id: str) -> None:
+        creator_syncs.append((tenant_id, account_id, resource_type, resource_id))
+
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync_creator)
+    gateway = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
+
+    gateway.initialize_created_app(context, app_id)
+
+    assert not rbac_domain.tasks.queued
+    if rbac_enabled:
+        request = rbac_domain.transport.only_request
+        assert (request.method, request.endpoint) == ("PUT", "/rbac/apps/whitelist")
+        assert (request.tenant_id, request.account_id) == (context.active_workspace_id, context.account_id)
+        assert request.params == {"app_id": app_id}
+        assert request.json == {"automatic_include_workspace_members": False}
+        assert creator_syncs == [(context.active_workspace_id, context.account_id, RBACResourceType.APP, app_id)]
+    else:
+        assert not rbac_domain.transport.requests
+        assert not creator_syncs
 
 
 def test_access_mode_batch_validates_completeness(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain) -> None:

@@ -84,7 +84,6 @@ from services.system_feature_service import SystemFeatureService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow_service import WorkflowService
 from services.workflow_tool_references import WorkflowToolTarget
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 # Positions as the console editor lays out its templates (START_INITIAL_POSITION and
 # NODE_WIDTH_X_OFFSET in web/app/components/workflow/constants.ts).
@@ -230,15 +229,25 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
 
     @override
     def initialize_created_app(self, context: RequestContext, app_id: str) -> None:
+        """Initialize RBAC access for a newly created app.
+
+        New apps do not automatically include workspace members, the same as datasets.
+        Other members can be added from Resource Access.
+        """
         if dify_config.RBAC_ENABLED:
             rbac_service.RBACService.AppAccess.replace_whitelist(
                 context.active_workspace_id,
                 context.account_id,
                 app_id,
-                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(
-                context.active_workspace_id, context.account_id, app_id=app_id
+            # Keep the creator's access. AppService syncs the creator for most modes, but
+            # agent apps only initialize the backing agent there.
+            rbac_service.try_sync_creator_access_policy_member_bindings(
+                context.active_workspace_id,
+                context.account_id,
+                rbac_contracts.RBACResourceType.APP,
+                app_id,
             )
 
     @override
