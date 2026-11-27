@@ -1,6 +1,7 @@
 """Unit tests for the tool catalogue helpers."""
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -493,7 +494,9 @@ class TestBuildToolCatalogue:
         assert time_entry["provider_type"] == "builtin"
         assert time_entry["plugin_id"] == ""
 
-    def test_skips_unknown_provider_classes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_skips_unknown_provider_classes(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         # If ToolManager ever yields a provider the catalogue doesn't know how
         # to label, we must continue (not raise) and leave it out of the
         # output rather than guessing at provider_type.
@@ -501,6 +504,7 @@ class TestBuildToolCatalogue:
             entity=ToolProviderEntity(identity=_provider_identity("mystery")),
             provider_id="provider-id",
             tenant_id="tenant-1",
+            session_maker=sqlite_session_factory,
         )
         hardcoded = _make_builtin_provider("time", [_make_tool("now")])
         monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: iter([unknown, hardcoded]))
