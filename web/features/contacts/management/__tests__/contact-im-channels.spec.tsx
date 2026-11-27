@@ -170,7 +170,12 @@ it('restores an override with the override delete operation instead of unbinding
 
 it.each([
   { name: 'a mapped code', code: 'im_binding_not_found', expected: 'contacts.imBinding.notFound' },
-  { name: 'an unmapped code', code: 'unbind_failed', expected: 'Server says why' },
+  { name: 'an unmapped code', code: 'unbind_failed', expected: 'contacts.imBinding.failed' },
+  {
+    name: 'a cataloged code',
+    code: 'access_denied',
+    expected: 'requestErrors.code.access_denied',
+  },
 ])('explains an unbind failure with $name', async ({ code, expected }) => {
   api.unbind.mockRejectedValueOnce(
     createHttpError(new Response(null, { status: 400 }), { code, message: 'Server says why' }),
@@ -183,7 +188,7 @@ it.each([
   expect(await within(dialog).findByRole('alert')).toHaveTextContent(expected)
 })
 
-it('explains why the configured channels could not load', async () => {
+it('reports that the configured channels could not load', async () => {
   api.channels.mockRejectedValue(
     createHttpError(new Response(null, { status: 503 }), {
       code: 'service_unavailable',
@@ -191,5 +196,7 @@ it('explains why the configured channels could not load', async () => {
     }),
   )
   setup()
-  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'contacts.imBinding.channelsLoadFailed',
+  )
 })

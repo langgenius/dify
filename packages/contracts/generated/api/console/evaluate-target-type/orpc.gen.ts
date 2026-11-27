@@ -2,7 +2,13 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zPaidPlanRequiredError } from './zod.gen.ts'
+import {
+  zEvaluationConfigInvalidError,
+  zEvaluationDatasetInvalidError,
+  zEvaluationFrameworkNotConfiguredError,
+  zEvaluationMaxConcurrentRunsError,
+  zPaidPlanRequiredError,
+} from './zod.gen.ts'
 import {
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsPath,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsQuery,
@@ -56,7 +62,10 @@ export const post = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const download = {
   post,
@@ -187,7 +196,16 @@ export const post3 = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+    evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+    evaluation_framework_not_configured: {
+      status: 400,
+      data: zEvaluationFrameworkNotConfiguredError,
+    },
+    evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const run = {
   post: post3,
@@ -229,7 +247,16 @@ export const post5 = oc
     z.object({ params: zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryPath }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+    evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+    evaluation_framework_not_configured: {
+      status: 400,
+      data: zEvaluationFrameworkNotConfiguredError,
+    },
+    evaluation_max_concurrent_runs: { status: 429, data: zEvaluationMaxConcurrentRunsError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const retry = {
   post: post5,
@@ -277,7 +304,10 @@ export const post6 = oc
     }),
   )
   .output(zPostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_dataset_invalid: { status: 400, data: zEvaluationDatasetInvalidError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const templateColumns = {
   post: post6,
@@ -310,7 +340,10 @@ export const put = oc
     }),
   )
   .output(zPutByEvaluateTargetTypeByEvaluateTargetIdEvaluationResponse)
-  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
+  .errors({
+    evaluation_config_invalid: { status: 400, data: zEvaluationConfigInvalidError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const evaluation = {
   get: get6,

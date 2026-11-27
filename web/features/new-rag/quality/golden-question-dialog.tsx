@@ -25,7 +25,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 type DialogMode = 'create' | 'edit' | 'promote'
 type MatchPolicy = GoldenQuestionDraft['matchPolicy']
@@ -104,6 +105,7 @@ function GoldenQuestionDialogSession({
 }: Omit<GoldenQuestionDialogProps, 'open' | 'sessionKey'>) {
   const { i18n, t } = useTranslation(['dataset', 'knowledgeQuality', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const [question, setQuestion] = useState(initialValue.question)
   const [annotation, setAnnotation] = useState(initialValue.annotation)
   const [evidenceQuery, setEvidenceQuery] = useState('')
@@ -114,7 +116,7 @@ function GoldenQuestionDialogSession({
   const [matchPolicy, setMatchPolicy] = useState(initialValue.matchPolicy)
   const [tags, setTags] = useState(initialValue.tags.join(', '))
   const [questionInvalid, setQuestionInvalid] = useState(false)
-  const [matchError, setMatchError] = useState<string>()
+  const [matchError, setMatchError] = useState<{ error: unknown }>()
   const mergeEvidenceOptions = (options: readonly GoldenQuestionEvidenceOption[]) => {
     setMatchedEvidenceByNodeId((current) => {
       const next = new Map(current)
@@ -172,11 +174,7 @@ function GoldenQuestionDialogSession({
       mergeEvidenceOptions(result.candidates)
       setEvidenceQuery('')
     } catch (error) {
-      setMatchError(
-        getHttpErrorStatus(error) === 503
-          ? t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })
-          : (getRequestErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' })),
-      )
+      setMatchError({ error })
     }
   }
 
@@ -337,7 +335,16 @@ function GoldenQuestionDialogSession({
                 {t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
               </Button>
             </div>
-            {matchError && <FieldError match>{matchError}</FieldError>}
+            {matchError && (
+              <FieldError match>
+                {getHttpErrorStatus(matchError.error) === 503
+                  ? t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })
+                  : describeRequestError(
+                      matchError.error,
+                      t(($) => $.unknownError, { ns: 'dataset' }),
+                    )}
+              </FieldError>
+            )}
             {matchMutation.isSuccess && searchCandidates.length === 0 && (
               <p className="mt-2 body-xs-regular text-text-tertiary">
                 {t(($) => $['qualityPage.noEvidenceMatch'], { ns: 'knowledgeQuality' })}

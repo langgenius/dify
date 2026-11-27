@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import ClassVar
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from dify_agent.protocol import schemas as _protocol_schemas
 
@@ -27,7 +27,8 @@ class RunRecord(BaseModel):
     without digests remain valid. The digests let active writes refresh only
     their own idempotency claim and are excluded from public status responses.
     Raw keys and create-run requests can contain sensitive data and remain in
-    scheduler memory rather than Redis.
+    scheduler memory rather than Redis. Live tool counters belong only to the
+    native run; their sealed summary is persisted in its terminal event.
     """
 
     run_id: str
@@ -40,6 +41,19 @@ class RunRecord(BaseModel):
     idempotency_fingerprint: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_legacy_live_tool_counters(cls, value: object) -> object:
+        """Read retained pre-memory records without restoring their live counters.
+
+        Idempotent admission only replays these records; it never restarts their
+        execution. The obsolete field is deliberately absent from new writes.
+        Historical terminal events keep their separate public snapshot contract.
+        """
+        if isinstance(value, dict) and "tool_call_limits" in value:
+            return {key: item for key, item in value.items() if key != "tool_call_limits"}
+        return value
 
     @field_validator("updated_at")
     @classmethod

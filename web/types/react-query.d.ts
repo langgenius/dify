@@ -4,7 +4,7 @@ import '@tanstack/react-query'
 type ErrorToastMeta = {
   /** `false` when the owner presents the failure itself, for example inline or in its own toast. */
   errorToast?: false
-  /** Replaces the server's message in the error toast. */
+  /** The toast's text for an error code the request error catalog does not translate. */
   errorMessage?: string
 }
 

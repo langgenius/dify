@@ -684,10 +684,10 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
-  it('should show the server message when workflow references cannot be loaded', async () => {
+  it('should show the translated reason when workflow references cannot be loaded', async () => {
     const user = userEvent.setup()
     workflowReferences.failure = createHttpError(new Response(null, { status: 503 }), {
-      code: 'service_unavailable',
+      code: 'agent_model_not_configured',
       message: 'Server says why',
     })
     renderPublishBar({
@@ -705,7 +705,7 @@ describe('AgentConfigurePublishBar', () => {
     )
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('Server says why')
+      expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.agent_model_not_configured')
     })
   })
 

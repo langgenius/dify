@@ -16,9 +16,21 @@ const mockRequest = vi.hoisted(() => vi.fn<typeof import('@/service/base').reque
 vi.mock('@/service/base', () => ({
   request: mockRequest,
 }))
-vi.mock('@/service/workflow', () => ({
-  fetchPipelineWorkflowDraft: (pipelineId: string) => mockFetchWorkflowDraft(pipelineId),
-}))
+// Validate rejections against the contract, as the console link does.
+vi.mock('@/service/workflow', async () => {
+  const { rag } = await import('@dify/contracts/api/console/rag/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ rag })
+  return {
+    fetchPipelineWorkflowDraft: (pipelineId: string) =>
+      validate({
+        context: {},
+        input: { params: { pipeline_id: pipelineId } },
+        path: ['rag', 'pipelines', 'byPipelineId', 'workflows', 'draft', 'get'],
+        next: () => mockFetchWorkflowDraft(pipelineId),
+      }),
+  }
+})
 
 // Default block/publish/upload config queries are covered by use-pipeline-config.spec.
 vi.mock('../use-pipeline-config', () => ({
@@ -165,6 +177,21 @@ describe('usePipelineInit', () => {
     })
   })
 
+  it('reports a missing-draft code the contract does not document for that status', async () => {
+    mockFetchWorkflowDraft.mockRejectedValue(
+      createHttpError(new Response(null, { status: 500 }), {
+        code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 500,
+      }),
+    )
+    const { result } = renderPipelineInit()
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledOnce())
+    expect(result.current.isLoading).toBe(true)
+    expect(mockRequest).not.toHaveBeenCalled()
+  })
+
   it('shows the server message when the draft fails to load', async () => {
     mockFetchWorkflowDraft.mockRejectedValue(draftUnavailableError())
     const { result } = renderPipelineInit()
@@ -176,7 +203,10 @@ describe('usePipelineInit', () => {
 
   it('shows the server message when creating the template draft fails', async () => {
     mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
-    mockRequest.mockResolvedValue(Response.json({ message: 'Draft unavailable' }, { status: 500 }))
+    // The transport rejects a failed response with the decoded backend envelope.
+    mockRequest.mockRejectedValue(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Draft unavailable' }),
+    )
     const { result } = renderPipelineInit()
 
     await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
