@@ -93,6 +93,41 @@ describe('useModalState', () => {
     expect(result.current.fullScreen).toBe(false)
   })
 
+  it('does not close a newly opened segment when an earlier save finishes', () => {
+    const { result } = renderModalState()
+
+    act(() => {
+      result.current.onClickCard(segment)
+      result.current.onClickCard({ ...segment, id: 'segment-2' })
+      result.current.onCloseSegmentDetailIfCurrent(segment.id)
+    })
+
+    expect(result.current.currSegment.showModal).toBe(true)
+    expect(result.current.currSegment.segInfo?.id).toBe('segment-2')
+  })
+
+  it('closes the current segment when its save finishes', () => {
+    const { result } = renderModalState()
+
+    act(() => {
+      result.current.onClickCard(segment)
+      result.current.onCloseSegmentDetailIfCurrent(segment.id)
+    })
+
+    expect(result.current.currSegment.showModal).toBe(false)
+  })
+
+  it('closes the segment when the UI callback supplies a click event', () => {
+    const { result } = renderModalState()
+
+    act(() => {
+      result.current.onClickCard(segment)
+      Reflect.apply(result.current.onCloseSegmentDetail, undefined, [{ type: 'click' }])
+    })
+
+    expect(result.current.currSegment.showModal).toBe(false)
+  })
+
   it('should close segment detail when opening child detail', () => {
     const { result } = renderModalState()
     const segmentDetail = segment

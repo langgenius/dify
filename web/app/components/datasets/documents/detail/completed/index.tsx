@@ -72,7 +72,7 @@ const Completed: FC<ICompletedProps> = ({
     importStatus,
     currentPage,
     limit,
-    onCloseSegmentDetail: modalState.onCloseSegmentDetail,
+    onCloseSegmentDetailIfCurrent: modalState.onCloseSegmentDetailIfCurrent,
     clearSelection: selectionState.clearSelection,
   })
 

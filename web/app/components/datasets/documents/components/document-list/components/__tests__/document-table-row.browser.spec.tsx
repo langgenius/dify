@@ -123,6 +123,14 @@ describe('DocumentTableRow', () => {
     })
   })
 
+  it('shows summary generation progress without hovering over the document', async () => {
+    const doc = createMockDoc({ summary_index_status: 'SUMMARIZING' })
+    await render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
+
+    const progress = page.getByText('datasetDocuments.list.summary.generating', { exact: true })
+    await expect.element(progress).toBeVisible()
+  })
+
   it('explains why a document failed from the list, without opening the document', async () => {
     const reason =
       '"test-document.txt" was blocked by the malware scan: Evil.A detected. The original file was deleted.'
