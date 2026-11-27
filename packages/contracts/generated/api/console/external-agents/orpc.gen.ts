@@ -491,21 +491,12 @@ export const byAgentId = {
   tracingConfig,
 }
 
-/**
- * Read admitted assets using repeat-encoded UUID tags before pagination
- *
- * The shared parser preserves every tag_ids value; all selected tags must
- * match. Invalid IDs fail before the service and do not start a task.
- */
 export const get10 = oc
   .route({
-    description:
-      'The shared parser preserves every tag_ids value; all selected tags must\nmatch. Invalid IDs fail before the service and do not start a task.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getExternalAgents',
     path: '/external-agents',
-    summary: 'Read admitted assets using repeat-encoded UUID tags before pagination',
     tags: ['console'],
   })
   .input(z.object({ query: zGetExternalAgentsQuery.optional() }).optional())

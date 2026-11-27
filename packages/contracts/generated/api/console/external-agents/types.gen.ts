@@ -54,9 +54,9 @@ export type ExternalAgentCapabilitiesResponse = {
 
 export type ExternalAgentVerifyPayload = {
   agent_id?: string | null
-  auth_type: ExternalAuthType
+  auth_type: 'bearer' | 'none'
   credential?: string | null
-  credential_action?: ExternalCredentialAction
+  credential_action?: 'keep' | 'remove' | 'replace'
   endpoint: string
   expected_connection_revision_id?: string | null
 }
@@ -83,7 +83,9 @@ export type VerificationFailedError = ErrorResponse & {
 
 export type ExternalAgentDetailResponse = {
   asset: ExternalAgentAssetResponse
-  connection: ExternalAgentConnectionResponse
+  connection: {
+    [key: string]: unknown
+  }
 }
 
 export type ExternalAgentConnectionPayload = {
@@ -111,11 +113,9 @@ export type ExternalAgentAssetResponse = {
   metadata_revision: number
   name: string
   overrides: Array<string>
-  permission_keys: Array<string>
   reference_count: number | null
   role: string
   row_version: number
-  tags: Array<ExternalAgentTagResponse>
   tenant_id: string
   test_display_generation: number
   tracing_enabled: boolean
@@ -228,44 +228,13 @@ export type ExternalInputFileTypeResponse = {
   media_type: string
 }
 
-export type ExternalAuthType = 'bearer' | 'none'
-
-export type ExternalCredentialAction = 'keep' | 'remove' | 'replace'
-
 export type ExternalAgentConnectionWarningsResponse = {
   business: Array<string>
   technical: Array<string>
 }
 
 export type ExternalAgentVerificationFailureDetailsResponse = {
-  card_errors?: Array<ExternalAgentCardFieldErrorResponse> | null
   reason: VerificationFailureReason
-  subreason?: string | null
-}
-
-export type ExternalAgentConnectionResponse = {
-  auth_check: string
-  auth_type: string
-  capabilities: {
-    [key: string]: unknown
-  }
-  card: {
-    [key: string]: unknown
-  }
-  endpoint: string
-  has_credential: boolean
-  interface_url: string
-  profile: string
-  revision_id: string
-  saved_at: string
-  saved_by: ExternalConnectionSaverResponse
-  verified_at: string
-}
-
-export type ExternalAgentTagResponse = {
-  id: string
-  name: string
-  type: string
 }
 
 export type ExternalMetricDayResponse = {
@@ -284,10 +253,6 @@ export type ExternalMetricValuesResponse = {
 
 export type ExternalAgentAppReferenceResponse = {
   app_id: string
-  icon: string | null
-  icon_background: string | null
-  icon_type: string | null
-  icon_url: string | null
   mode: string
   name: string
   node_ids: Array<string>
@@ -298,7 +263,7 @@ export type ExternalTestOutputField = {
   default?: ExternalAgentJsonValue
   has_default?: boolean
   item?: ExternalTestOutputField | null
-  kind: ExternalOutputType
+  kind: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
   name: string
   required?: boolean
 }
@@ -325,21 +290,11 @@ export type ExternalTracingProviderStateResponse = {
   revision: number
 }
 
-export type ExternalAgentCardFieldErrorResponse = {
-  code: string
-  path: string
-}
-
 export type VerificationFailureReason =
   | 'authentication_failed'
   | 'connection_failed'
   | 'invalid_agent_card'
   | 'unsupported_protocol'
-
-export type ExternalConnectionSaverResponse = {
-  id: string
-  name: string | null
-}
 
 export type ExternalAgentJsonValue =
   | boolean
@@ -351,8 +306,6 @@ export type ExternalAgentJsonValue =
       [key: string]: ExternalAgentJsonValue
     }
   | null
-
-export type ExternalOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type ExternalAgentTimeoutPolicy = 'cancel_and_retry' | 'end_waiting' | 'request_cancellation'
 
@@ -367,7 +320,6 @@ export type GetExternalAgentsData = {
     page?: number
     sort_by?: 'created_at' | 'updated_at'
     sort_order?: 'asc' | 'desc'
-    tag_ids?: Array<string>
   }
   url: '/external-agents'
 }

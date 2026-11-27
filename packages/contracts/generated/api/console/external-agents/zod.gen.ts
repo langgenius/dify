@@ -38,6 +38,18 @@ export const zExternalAgentOperationResponse = z.object({
 })
 
 /**
+ * ExternalAgentVerifyPayload
+ */
+export const zExternalAgentVerifyPayload = z.object({
+  agent_id: z.uuid().nullish(),
+  auth_type: z.enum(['bearer', 'none']),
+  credential: z.string().max(8192).nullish(),
+  credential_action: z.enum(['keep', 'remove', 'replace']).optional().default('remove'),
+  endpoint: z.string().min(1).max(4096),
+  expected_connection_revision_id: z.uuid().nullish(),
+})
+
+/**
  * ExternalAgentConnectionPayload
  */
 export const zExternalAgentConnectionPayload = z.object({
@@ -51,6 +63,53 @@ export const zExternalAgentConnectionPayload = z.object({
  */
 export const zExternalAgentSwitchPayload = z.object({
   enabled: z.boolean(),
+})
+
+/**
+ * ExternalAgentAssetResponse
+ */
+export const zExternalAgentAssetResponse = z.object({
+  active_connection_revision_id: z.string(),
+  created_at: z.iso.datetime(),
+  created_by: z.string(),
+  deleted_at: z.iso.datetime().nullable(),
+  description: z.string(),
+  enabled: z.boolean(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: z.string().nullable(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  metadata_revision: z.int(),
+  name: z.string(),
+  overrides: z.array(z.string()),
+  reference_count: z.int().nullable(),
+  role: z.string(),
+  row_version: z.int(),
+  tenant_id: z.string(),
+  test_display_generation: z.int(),
+  tracing_enabled: z.boolean(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * ExternalAgentListResponse
+ */
+export const zExternalAgentListResponse = z.object({
+  disabled_count: z.int(),
+  enabled_count: z.int(),
+  items: z.array(zExternalAgentAssetResponse),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * ExternalAgentDetailResponse
+ */
+export const zExternalAgentDetailResponse = z.object({
+  asset: zExternalAgentAssetResponse,
+  connection: z.record(z.string(), z.unknown()),
 })
 
 /**
@@ -152,28 +211,6 @@ export const zExternalAgentCapabilitiesResponse = z.object({
 })
 
 /**
- * ExternalAuthType
- */
-export const zExternalAuthType = z.enum(['bearer', 'none'])
-
-/**
- * ExternalCredentialAction
- */
-export const zExternalCredentialAction = z.enum(['keep', 'remove', 'replace'])
-
-/**
- * ExternalAgentVerifyPayload
- */
-export const zExternalAgentVerifyPayload = z.object({
-  agent_id: z.uuid().nullish(),
-  auth_type: zExternalAuthType,
-  credential: z.string().max(8192).nullish(),
-  credential_action: zExternalCredentialAction.optional().default('remove'),
-  endpoint: z.string().min(1).max(4096),
-  expected_connection_revision_id: z.uuid().nullish(),
-})
-
-/**
  * ExternalAgentConnectionWarningsResponse
  */
 export const zExternalAgentConnectionWarningsResponse = z.object({
@@ -192,56 +229,6 @@ export const zExternalAgentVerificationResponse = z.object({
   interface_url: z.string(),
   verification_id: z.string(),
   warnings: zExternalAgentConnectionWarningsResponse,
-})
-
-/**
- * ExternalAgentTagResponse
- */
-export const zExternalAgentTagResponse = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.string(),
-})
-
-/**
- * ExternalAgentAssetResponse
- */
-export const zExternalAgentAssetResponse = z.object({
-  active_connection_revision_id: z.string(),
-  created_at: z.iso.datetime(),
-  created_by: z.string(),
-  deleted_at: z.iso.datetime().nullable(),
-  description: z.string(),
-  enabled: z.boolean(),
-  icon: z.string().nullable(),
-  icon_background: z.string().nullable(),
-  icon_type: z.string().nullable(),
-  icon_url: z.string().nullable(),
-  id: z.string(),
-  metadata_revision: z.int(),
-  name: z.string(),
-  overrides: z.array(z.string()),
-  permission_keys: z.array(z.string()),
-  reference_count: z.int().nullable(),
-  role: z.string(),
-  row_version: z.int(),
-  tags: z.array(zExternalAgentTagResponse),
-  tenant_id: z.string(),
-  test_display_generation: z.int(),
-  tracing_enabled: z.boolean(),
-  updated_at: z.iso.datetime(),
-})
-
-/**
- * ExternalAgentListResponse
- */
-export const zExternalAgentListResponse = z.object({
-  disabled_count: z.int(),
-  enabled_count: z.int(),
-  items: z.array(zExternalAgentAssetResponse),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
 })
 
 /**
@@ -278,10 +265,6 @@ export const zExternalMonitoringResponse = z.object({
  */
 export const zExternalAgentAppReferenceResponse = z.object({
   app_id: z.string(),
-  icon: z.string().nullable(),
-  icon_background: z.string().nullable(),
-  icon_type: z.string().nullable(),
-  icon_url: z.string().nullable(),
   mode: z.string(),
   name: z.string(),
   node_ids: z.array(z.string()),
@@ -337,17 +320,6 @@ export const zExternalTracingProviderOverviewResponse = z.object({
   providers: z.array(zExternalTracingProviderStateResponse),
 })
 
-/**
- * ExternalAgentCardFieldErrorResponse
- */
-export const zExternalAgentCardFieldErrorResponse = z.object({
-  code: z.string(),
-  path: z.string(),
-})
-
-/**
- * VerificationFailureReason
- */
 export const zVerificationFailureReason = z.enum([
   'authentication_failed',
   'connection_failed',
@@ -359,9 +331,7 @@ export const zVerificationFailureReason = z.enum([
  * ExternalAgentVerificationFailureDetailsResponse
  */
 export const zExternalAgentVerificationFailureDetailsResponse = z.object({
-  card_errors: z.array(zExternalAgentCardFieldErrorResponse).nullish(),
   reason: zVerificationFailureReason,
-  subreason: z.string().nullish(),
 })
 
 /**
@@ -376,40 +346,6 @@ export const zVerificationFailedError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
-
-/**
- * ExternalConnectionSaverResponse
- */
-export const zExternalConnectionSaverResponse = z.object({
-  id: z.string(),
-  name: z.string().nullable(),
-})
-
-/**
- * ExternalAgentConnectionResponse
- */
-export const zExternalAgentConnectionResponse = z.object({
-  auth_check: z.string(),
-  auth_type: z.string(),
-  capabilities: z.record(z.string(), z.unknown()),
-  card: z.record(z.string(), z.unknown()),
-  endpoint: z.string(),
-  has_credential: z.boolean(),
-  interface_url: z.string(),
-  profile: z.string(),
-  revision_id: z.string(),
-  saved_at: z.iso.datetime(),
-  saved_by: zExternalConnectionSaverResponse,
-  verified_at: z.iso.datetime(),
-})
-
-/**
- * ExternalAgentDetailResponse
- */
-export const zExternalAgentDetailResponse = z.object({
-  asset: zExternalAgentAssetResponse,
-  connection: zExternalAgentConnectionResponse,
-})
 
 export const zExternalAgentJsonValue = z
   .union([
@@ -426,20 +362,6 @@ export const zExternalAgentJsonValue = z
   .nullable()
 
 /**
- * ExternalOutputType
- *
- * Frozen public output types deliberately exclude the internal integer alias.
- */
-export const zExternalOutputType = z.enum([
-  'array',
-  'boolean',
-  'file',
-  'number',
-  'object',
-  'string',
-])
-
-/**
  * ExternalTestOutputField
  *
  * Public six-type profile; internal JSON-schema aliases are not wire types.
@@ -452,7 +374,7 @@ export const zExternalTestOutputField = z.object({
   default: zExternalAgentJsonValue.optional(),
   has_default: z.boolean().optional().default(false),
   item: z.lazy((): any => zExternalTestOutputField).nullish(),
-  kind: zExternalOutputType,
+  kind: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
   name: z.string().min(1).max(255),
   required: z.boolean().optional().default(true),
 })
@@ -515,7 +437,6 @@ export const zGetExternalAgentsQuery = z.object({
   page: z.int().gte(1).optional().default(1),
   sort_by: z.enum(['created_at', 'updated_at']).optional().default('updated_at'),
   sort_order: z.enum(['asc', 'desc']).optional().default('desc'),
-  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**
