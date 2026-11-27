@@ -5,9 +5,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useId, useState } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
 import { isHumanInputV2DebugChannel } from '../types'
@@ -23,6 +31,7 @@ type DebugModeProps = {
 const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
   const { t } = useTranslation(['workflow', 'contacts', 'common'])
   const errorId = useId()
+  const cardRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const configured = useConfiguredChannels()
   const channels = value.channels as string[]
@@ -30,14 +39,13 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
   const selected = channels
     .filter(isHumanInputV2DebugChannel)
     .filter((channel) => configured.channels.includes(channel))
+  const lastSelectedChannel = selected.length === 1 ? selected[0] : undefined
   const missingSelection = configured.isSuccess && value.enabled && !selected.length
+  const keepChannelHint = t(($) => $['nodes.humanInputV2.debug.keepOneChannel'], { ns: 'workflow' })
+  const keepChannelHintId = `${errorId}-keep-channel`
 
   const toggleChannel = (channel: HumanInputV2DebugChannel) => {
-    if (
-      readonly ||
-      !configured.channels.includes(channel) ||
-      (selected.length === 1 && selected[0] === channel)
-    )
+    if (readonly || !configured.channels.includes(channel) || lastSelectedChannel === channel)
       return
     const nextChannels = channels.includes(channel)
       ? channels.filter((item) => item !== channel)
@@ -51,6 +59,7 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
       aria-describedby={missingSelection || unsupported.length ? errorId : undefined}
     >
       <div
+        ref={cardRef}
         data-readonly={readonly || undefined}
         className="relative flex h-9 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg bg-[repeating-linear-gradient(135deg,rgba(16,24,40,0.02)_0_5px,transparent_5px_9.875px)] ps-2 pe-2.5 shadow-xs data-readonly:opacity-70"
       >
@@ -77,7 +86,7 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
                 aria-describedby={selected.length ? `${errorId}-selected` : undefined}
                 disabled={readonly}
                 aria-label={t(($) => $['nodes.humanInputV2.debug.configure'], { ns: 'workflow' })}
-                className="relative h-6 w-auto shrink-0 gap-1 px-1"
+                className="relative h-6 w-auto shrink-0 gap-1 rounded-lg px-1 data-popup-open:bg-state-base-hover"
               >
                 <span className="flex items-center gap-1">
                   {!!selected.length && (
@@ -99,75 +108,84 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
               )
               .join(', ')}
           </span>
-          <PopoverContent
-            side="bottom"
-            align="end"
-            sideOffset={4}
-            className="w-60 bg-components-panel-bg-blur p-1 backdrop-blur-xs"
-          >
-            <div className="px-2 pt-1 pb-0.5 system-xs-medium text-text-tertiary">
-              {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
-            </div>
-            {configured.isPending && (
-              <p role="status" className="px-2 py-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['imPlatform.loading'], { ns: 'contacts' })}
-              </p>
-            )}
-            {configured.isError && (
-              <div role="alert" className="px-2 py-1 system-xs-regular text-text-destructive">
-                {t(($) => $['imPlatform.loadError.title'], { ns: 'contacts' })}
-                <Button size="small" onClick={() => void configured.refetch()}>
-                  {t(($) => $['operation.retry'], { ns: 'common' })}
-                </Button>
-              </div>
-            )}
-            {configured.isSuccess && !configured.channels.length && (
-              <p role="status" className="px-2 py-1 system-xs-regular text-text-tertiary">
-                {t(($) => $['nodes.humanInputV2.template.notConfigured'], { ns: 'workflow' })}
-              </p>
-            )}
-            {configured.channels.map((channel) => {
-              const isLastChannel = selected.length === 1 && selected[0] === channel
-              const label = t(($) => $[`nodes.humanInputV2.debug.channel.${channel}`], {
-                ns: 'workflow',
-              })
-              return (
-                <label
-                  key={channel}
-                  className="flex min-h-8 items-center gap-1 rounded-lg px-2 hover:bg-state-base-hover"
-                >
-                  <Checkbox
-                    aria-labelledby={`${errorId}-${channel}-label`}
-                    aria-describedby={isLastChannel ? `${errorId}-keep-channel` : undefined}
-                    checked={channels.includes(channel)}
-                    disabled={readonly}
-                    aria-disabled={isLastChannel || undefined}
-                    onCheckedChange={() => toggleChannel(channel)}
-                  />
-                  <ContactChannelIcon provider={channel} className="ms-1 size-4 shrink-0" />
-                  <span
-                    id={`${errorId}-${channel}-label`}
-                    className="shrink-0 system-md-regular text-text-secondary"
-                  >
-                    {label}
+          <PopoverPortal>
+            <PopoverPositioner anchor={cardRef} side="bottom" align="end" sideOffset={0}>
+              <PopoverPopup className="w-60 max-w-(--available-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
+                <PopoverTitle className="px-2 pt-1 pb-0.5 system-xs-medium text-text-tertiary">
+                  {t(($) => $['nodes.humanInputV2.debug.sendVia'], { ns: 'workflow' })}
+                </PopoverTitle>
+                {configured.isPending && (
+                  <p role="status" className="px-2 py-1 system-xs-regular text-text-tertiary">
+                    {t(($) => $['imPlatform.loading'], { ns: 'contacts' })}
+                  </p>
+                )}
+                {configured.isError && (
+                  <div role="alert" className="px-2 py-1 system-xs-regular text-text-destructive">
+                    {t(($) => $['imPlatform.loadError.title'], { ns: 'contacts' })}
+                    <Button size="small" onClick={() => void configured.refetch()}>
+                      {t(($) => $['operation.retry'], { ns: 'common' })}
+                    </Button>
+                  </div>
+                )}
+                {configured.isSuccess && !configured.channels.length && (
+                  <p role="status" className="px-2 py-1 system-xs-regular text-text-tertiary">
+                    {t(($) => $['nodes.humanInputV2.template.notConfigured'], { ns: 'workflow' })}
+                  </p>
+                )}
+                {configured.channels.map((channel) => {
+                  const isLastChannel = lastSelectedChannel === channel
+                  const label = t(($) => $[`nodes.humanInputV2.debug.channel.${channel}`], {
+                    ns: 'workflow',
+                  })
+                  return (
+                    <label
+                      key={channel}
+                      className="flex min-h-8 items-center gap-1 rounded-lg px-2 hover:bg-state-base-hover has-aria-disabled:cursor-not-allowed has-aria-disabled:hover:bg-transparent"
+                    >
+                      <Tooltip disabled={!isLastChannel}>
+                        <TooltipTrigger
+                          render={
+                            <Checkbox
+                              aria-labelledby={`${errorId}-${channel}-label`}
+                              aria-describedby={isLastChannel ? keepChannelHintId : undefined}
+                              checked={channels.includes(channel)}
+                              disabled={readonly}
+                              aria-disabled={isLastChannel || undefined}
+                              onCheckedChange={() => toggleChannel(channel)}
+                              className="aria-disabled:shadow-none aria-disabled:data-checked:bg-components-checkbox-bg-disabled-checked aria-disabled:data-checked:text-components-checkbox-icon-disabled aria-disabled:data-checked:hover:bg-components-checkbox-bg-disabled-checked"
+                            />
+                          }
+                        />
+                        <TooltipContent side="top" sideOffset={6} role="tooltip">
+                          {keepChannelHint}
+                        </TooltipContent>
+                      </Tooltip>
+                      <ContactChannelIcon provider={channel} className="ms-1 size-4 shrink-0" />
+                      <span
+                        id={`${errorId}-${channel}-label`}
+                        className="shrink-0 system-md-regular text-text-secondary"
+                      >
+                        {label}
+                      </span>
+                      {channel === 'email' && email && (
+                        <span
+                          className="truncate system-xs-regular text-text-tertiary"
+                          title={email}
+                        >
+                          {email}
+                        </span>
+                      )}
+                    </label>
+                  )
+                })}
+                {lastSelectedChannel && (
+                  <span id={keepChannelHintId} hidden>
+                    {keepChannelHint}
                   </span>
-                  {channel === 'email' && email && (
-                    <span className="truncate system-xs-regular text-text-tertiary" title={email}>
-                      {email}
-                    </span>
-                  )}
-                </label>
-              )
-            })}
-            {selected.length === 1 && (
-              <p
-                id={`${errorId}-keep-channel`}
-                className="px-2 py-1 system-xs-regular text-text-tertiary"
-              >
-                {t(($) => $['nodes.humanInputV2.debug.keepOneChannel'], { ns: 'workflow' })}
-              </p>
-            )}
-          </PopoverContent>
+                )}
+              </PopoverPopup>
+            </PopoverPositioner>
+          </PopoverPortal>
         </Popover>
         <div className="relative h-3 w-1.25 shrink-0 border-s border-divider-regular" />
         <Switch

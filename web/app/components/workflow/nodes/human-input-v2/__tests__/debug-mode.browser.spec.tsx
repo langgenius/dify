@@ -80,7 +80,8 @@ async function renderOwner(
   )
 }
 const label = (channel: string) =>
-  ({ email: 'Email', slack: 'Slack', lark: 'Lark', feishu: 'Feishu' })[channel] ?? channel
+  ({ email: 'Email', slack: 'Slack', lark: 'Lark', feishu: 'Feishu', we_com: 'WeCom' })[channel] ??
+  channel
 const channel = (name: string) => page.getByRole('checkbox', { name: label(name) })
 const configure = () => page.getByRole('button', { name: 'Configure Debug Mode' })
 const toggle = () => page.getByRole('switch', { name: 'Enable Debug Mode' })
@@ -122,28 +123,52 @@ it('reuses fresh workspace channels when another app editor opens', async () => 
   expect(fake.console.workspaces.current.humanInput.v2.testChannels.get).toHaveBeenCalledTimes(1)
 })
 
-it('explains the final channel guard and keeps its selection after pointer and keyboard activation', async () => {
-  await renderOwner({
-    initial: { enabled: true, channels: ['email'] },
-    email: 'reviewer@example.com',
-  })
+it('explains and locks the last selected channel until another is selected', async () => {
+  await renderOwner(
+    {
+      initial: { enabled: true, channels: ['email'] },
+      email: 'reviewer@example.com',
+    },
+    ['email', 'we_com'],
+  )
+  const email = channel('email')
+  const weCom = channel('we_com')
+  const explanation = 'Keep at least one channel on'
+  const tooltip = page.getByRole('tooltip')
+
   await configure().click()
   await expect.element(page.getByText('reviewer@example.com')).toBeVisible()
-  await expect.element(channel('email')).toBeChecked()
-  await expect.element(channel('email')).toHaveAttribute('aria-disabled', 'true')
-  await expect.element(channel('email')).toHaveAccessibleDescription('Keep at least one channel on')
-  // Its label is clickable and the checkbox intentionally remains focusable to explain the guard.
+  await expect.element(email).toBeChecked()
+  await expect.element(email).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(email).toHaveAccessibleDescription(explanation)
+  await expect.element(page.getByText(explanation)).not.toBeVisible()
+
+  await email.hover()
+  await expect.element(tooltip).toHaveTextContent(explanation)
+  await weCom.hover()
+  await expect.element(tooltip).not.toBeInTheDocument()
+
   await page.getByRole('dialog').getByText(label('email'), { exact: true }).click()
-  await expect.element(channel('email')).toBeChecked()
-  await expect.element(channel('email')).toHaveFocus()
+  await expect.element(email).toBeChecked()
+  await expect.element(email).toHaveFocus()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(weCom).toHaveFocus()
+  await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+  await expect.element(email).toHaveFocus()
+  await expect.element(tooltip).toBeVisible()
   await userEvent.keyboard(' ')
-  await expect.element(channel('email')).toBeChecked()
+  await expect.element(email).toBeChecked()
   await expect.element(settings()).toHaveTextContent('{"enabled":true,"channels":["email"]}')
-  await channel('slack').click()
-  await expect.element(channel('slack')).toBeChecked()
-  await expect
-    .element(settings())
-    .toHaveTextContent('{"enabled":true,"channels":["email","slack"]}')
+
+  await userEvent.keyboard('{Tab}')
+  await expect.element(weCom).toHaveFocus()
+  await userEvent.keyboard(' ')
+  await expect.element(weCom).toBeChecked()
+  await expect.element(email).not.toHaveAttribute('aria-disabled')
+  await email.click()
+  await expect.element(email).not.toBeChecked()
+  await expect.element(weCom).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(settings()).toHaveTextContent('{"enabled":true,"channels":["we_com"]}')
 })
 
 it('protects the last configured selection when imported data retains an unconfigured channel', async () => {
