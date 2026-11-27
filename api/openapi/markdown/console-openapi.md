@@ -22171,6 +22171,7 @@ concrete operation; provider-wide entries cannot define a call limit.
 | credential_type | string, <br>**Available values:** "api-key", "oauth2", "unauthorized", <br>**Default:** api-key | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
 | description | string |  | No |
 | enabled | boolean, <br>**Default:** true |  | No |
+| last_max_calls_per_run | integer | Last enabled limit retained by the editor; does not enforce a runtime quota. | No |
 | max_calls_per_run | integer | Maximum dispatches of this operation per logical run; null or omitted means unlimited. | No |
 | name | string |  | No |
 | plugin_id | string |  | No |

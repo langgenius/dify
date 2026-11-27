@@ -14,7 +14,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.workflow import Workflow
-from repositories.agent_roster_queries import (
+from repositories.agent.agent_roster_queries import (
     build_roster_agents_stmt,
     load_published_workflows_by_agent_id,
     load_reference_counts_by_agent_id,

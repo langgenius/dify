@@ -10,10 +10,10 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.agent import AgentConfigDraftType
 from models.model import App
-from repositories.app.agent_runtime_app import resolve_agent_runtime_app
+from repositories.agent.agent_runtime_app import resolve_agent_runtime_app
 from repositories.app.console_repository import console_app_actor
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.agent.roster_service import AgentRosterService
-from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
 class AgentConsoleConversationMissingError(Exception):

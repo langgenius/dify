@@ -16,7 +16,7 @@ from models.agent import (
 )
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppMode
-from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from tests.helpers.unit.model_factories import make_app
 from tests.helpers.unit.rbac_fakes import RBACDomain
 

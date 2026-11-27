@@ -10,7 +10,7 @@ from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorksp
 from models.enums import ConversationFromSource, InvokeFrom
 from models.installed_app_connection import InstalledAppConnectionConfiguration
 from models.model import App, Conversation
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 
 logger = logging.getLogger(__name__)
 

@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from machinery.context import RequestContext
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.agent.roster_service import AgentRosterService
-from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.entities.app_entities import AppListParams
 from services.evaluation_service import EvaluationService
 from tests.helpers.unit.model_factories import make_app

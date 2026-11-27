@@ -38,42 +38,42 @@ from models.dataset import Dataset
 from models.enums import ApiTokenType, AppStatus, MessageStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation, Message
 from models.workflow import Workflow
-from repositories.agent_app_composer_queries import (
+from repositories.agent.agent_app_composer_queries import (
     composer_snapshot,
     publication_source,
     read_composer_state,
     require_composer_agent,
 )
-from repositories.agent_drafts import (
+from repositories.agent.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.agent.agent_debug_conversations import (
+    count_agent_debug_conversation_messages,
+    create_agent_debug_conversation,
+    get_or_create_agent_debug_conversation,
+)
+from repositories.agent.agent_drafts import (
     agent_soul_matches_active_config,
     create_composer_snapshot,
     find_agent_snapshot,
     get_or_create_agent_draft,
     save_agent_draft,
 )
-from repositories.agent_roster_queries import (
+from repositories.agent.agent_roster_queries import (
     find_agent_draft,
     load_reference_counts_by_agent_id,
     project_agent_draft_summary,
 )
-from repositories.agent_roster_repository import load_published_references_by_agent_id
-from repositories.agent_skill_bindings import copy_agent_bindings, publish_agent_bindings
-from repositories.agent_workspace_repository import (
-    AgentWorkspaceRepository,
-    has_owned_home_snapshot,
-    validate_binding_generation,
-)
-from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
-from repositories.app.agent_debug_conversations import (
-    count_agent_debug_conversation_messages,
-    create_agent_debug_conversation,
-    get_or_create_agent_debug_conversation,
-)
-from repositories.app.agent_runtime_app import (
+from repositories.agent.agent_roster_repository import load_published_references_by_agent_id
+from repositories.agent.agent_runtime_app import (
     create_backing_agent_for_app,
     ensure_workflow_agent_backing_app,
     find_existing_agent_runtime_app,
     resolve_agent_runtime_app,
+)
+from repositories.agent.agent_skill_bindings import copy_agent_bindings, publish_agent_bindings
+from repositories.agent.agent_workspace_repository import (
+    AgentWorkspaceRepository,
+    has_owned_home_snapshot,
+    validate_binding_generation,
 )
 from repositories.app.console_repository import (
     ConsoleAppRepository,
@@ -84,6 +84,29 @@ from repositories.app.console_repository import (
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from repositories.tag_repository import TagRepository
+from services.agent.agent_app_contracts import (
+    AgentApiAccess,
+    AgentApiAccessChange,
+    AgentAppAccessNotReadyError,
+    AgentAppCopied,
+    AgentAppCopy,
+    AgentAppDetail,
+    AgentAppListItem,
+    AgentAppListPage,
+    AgentAppNameConflictError,
+    AgentAppNotFoundError,
+    AgentReferencingWorkflow,
+)
+from services.agent.agent_config_contracts import (
+    AgentConfigNodeUnboundError,
+    AgentConfigRuntimeMissingError,
+    AgentConfigSelection,
+    AgentConfigVersionMissingError,
+    AgentConfigWorkflowMissingError,
+)
+from services.agent.agent_config_contracts import (
+    AgentConfigVersionKind as ConfigSelectionKind,
+)
 from services.agent.app_composer_store import (
     AgentComposerAgentMissingError,
     AgentComposerCandidateSource,
@@ -113,29 +136,6 @@ from services.agent.build_session_store import (
 )
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
-from services.agent_config_contracts import (
-    AgentConfigNodeUnboundError,
-    AgentConfigRuntimeMissingError,
-    AgentConfigSelection,
-    AgentConfigVersionMissingError,
-    AgentConfigWorkflowMissingError,
-)
-from services.agent_config_contracts import (
-    AgentConfigVersionKind as ConfigSelectionKind,
-)
-from services.app.agent_app_contracts import (
-    AgentApiAccess,
-    AgentApiAccessChange,
-    AgentAppAccessNotReadyError,
-    AgentAppCopied,
-    AgentAppCopy,
-    AgentAppDetail,
-    AgentAppListItem,
-    AgentAppListPage,
-    AgentAppNameConflictError,
-    AgentAppNotFoundError,
-    AgentReferencingWorkflow,
-)
 from services.app_audio_service import AgentTextToSpeechSource
 from services.audio_types import AudioAppRef
 from services.entities.app_entities import (

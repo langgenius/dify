@@ -9,12 +9,21 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
-from repositories.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
-from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
-from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
-from repositories.app.agent_app_repository import AgentAppRepository
-from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
+from repositories.agent.agent_roster_repository import SQLAlchemyAgentRosterRepository
+from repositories.agent.agent_sandbox_repository import AgentSandboxRepository
+from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.knowledge_fs_app_bindings import stage_published_agent_knowledge_bindings
+from services.agent.agent_app_feature_gateway import AgentAppFeatureValidator
+from services.agent.agent_app_service import (
+    AgentApiAccessService,
+    AgentAppAccessService,
+    AgentAppCollectionService,
+    AgentAppDeletionService,
+    AgentAppDetailService,
+    AgentAppFeatureConfigService,
+)
 from services.agent.app_composer import AgentAppComposer
 from services.agent.build_config_gateway import AgentBuildConfigGateway
 from services.agent.build_session_service import AgentBuildSessionService
@@ -32,15 +41,6 @@ from services.agent.observability_contracts import AgentObservability
 from services.agent.sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.agent.sandbox_service import AgentAppSandboxService
 from services.agent.version_service import AgentVersionService
-from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
-from services.app.agent_app_service import (
-    AgentApiAccessService,
-    AgentAppAccessService,
-    AgentAppCollectionService,
-    AgentAppDeletionService,
-    AgentAppDetailService,
-    AgentAppFeatureConfigService,
-)
 from services.app.console_gateway import (
     AgentAppDetailPresentationGateway,
     inherit_agent_webapp_access,

@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-from services.agent_tracing_config_service import AgentTracingConfigService
-from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_tracing_config_service import AgentTracingConfigService
 from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigService
 from services.evaluation_service import EvaluationService
 from tests.helpers.unit.services.tracing_ports import deployment_provider_configs

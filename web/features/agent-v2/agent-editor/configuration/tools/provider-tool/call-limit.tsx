@@ -31,8 +31,8 @@ export function ToolCallLimit({
   const setCallLimit = useSetAtom(setProviderToolCallLimitAtom)
   const limit = action.maxCallsPerRun
   const enabled = limit != null
-  const [lastValid, setLastValid] = useState(limit ?? 3)
-  const [draft, setDraft] = useState<number | null>(limit ?? 3)
+  const lastValid = limit ?? action.lastMaxCallsPerRun ?? 3
+  const [draft, setDraft] = useState<number | null>(lastValid)
   const [invalid, setInvalid] = useState(false)
   const titleId = useId()
 
@@ -40,7 +40,6 @@ export function ToolCallLimit({
   if (previousLimit !== limit) {
     setPreviousLimit(limit)
     if (limit != null) {
-      setLastValid(limit)
       setDraft(limit)
       setInvalid(false)
     }
@@ -61,7 +60,6 @@ export function ToolCallLimit({
       return
     }
     setInvalid(false)
-    setLastValid(value)
     if (value !== limit) save(value)
   }
 
@@ -72,16 +70,13 @@ export function ToolCallLimit({
       <PopoverTrigger
         aria-label={`${triggerText}: ${t(($) => $['toolCallLimit.label'], { toolName: action.name })}`}
         className={cn(
-          'shrink-0 rounded-md py-0.5 ps-1.5 pe-1 system-xs-regular text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
+          'inline-flex h-5 shrink-0 items-center gap-0.5 rounded-md py-0.5 ps-1.5 pe-1 system-xs-regular text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
           !enabled &&
             'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100',
         )}
       >
         {triggerText}
-        <span
-          aria-hidden
-          className="ms-0.5 i-ri-arrow-down-s-line inline-block size-3.5 align-middle"
-        />
+        <span aria-hidden className="i-ri-arrow-down-s-line size-3.5 shrink-0" />
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -110,7 +105,7 @@ export function ToolCallLimit({
             />
           </Field>
           <Field invalid={invalid} className="grid-cols-[1fr_5rem] items-center gap-y-0">
-            <FieldLabel className={cn('system-sm-regular', !enabled && 'text-text-disabled')}>
+            <FieldLabel className={cn('system-sm-medium', !enabled && 'text-text-disabled')}>
               {t(($) => $['toolCallLimit.maximum'])}
             </FieldLabel>
             <NumberField
@@ -123,14 +118,17 @@ export function ToolCallLimit({
               allowOutOfRange
               required
               disabled={!enabled}
-              value={draft}
+              value={enabled ? draft : lastValid}
               onValueChange={(value) => {
                 setDraft(value)
                 if (value != null && Number.isSafeInteger(value) && value > 0) setInvalid(false)
               }}
               onValueCommitted={(value) => commit(value)}
             >
-              <NumberFieldGroup className="w-20">
+              <NumberFieldGroup
+                // oxlint-disable-next-line shadcn/no-restyle -- The call-limit error design recolors the existing group focus ring without removing its indicator.
+                className="w-20 group-data-invalid/field:border-components-input-border-destructive group-data-invalid/field:bg-components-input-bg-destructive group-data-invalid/field:has-[input:focus]:ring-components-input-border-destructive"
+              >
                 <NumberFieldInput
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') {
@@ -150,7 +148,7 @@ export function ToolCallLimit({
               </NumberFieldGroup>
             </NumberField>
             <div className="col-span-2" aria-live="polite" aria-atomic="true">
-              <FieldError match={invalid} className="mt-1">
+              <FieldError match={invalid} className="mt-2 py-0">
                 {t(($) => $['toolCallLimit.invalid'])}
               </FieldError>
             </div>

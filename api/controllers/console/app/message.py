@@ -41,8 +41,8 @@ from libs.helper import dump_response, uuid_value
 from machinery.context import RequestContext
 from models.enums import FeedbackRating
 from models.model import AppMode
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
-from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount

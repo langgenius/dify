@@ -24,12 +24,12 @@ from fields.base import ResponseModel
 from libs.exception import RelayedHTTPError
 from libs.helper import dump_response
 from models.agent_config_entities import validate_config_name, validate_config_skill_name
+from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.config_service import (
     AgentConfigService,
     AgentConfigServiceError,
     ConfigPushPayload,
 )
-from services.agent_config_contracts import AgentConfigVersionKind
 
 
 class _ConfigTargetQuery(BaseModel):
