@@ -18,8 +18,8 @@ from libs.external_api import error_responses
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
+from services.agent.agent_app_contracts import AgentApiAccess, AgentAppAccessNotReadyError, AgentAppNotFoundError
 from services.agent.errors import AgentAccessNotReadyError, AgentNotFoundError
-from services.app.agent_app_contracts import AgentApiAccess, AgentAppAccessNotReadyError, AgentAppNotFoundError
 
 
 class AgentApiStatusPayload(BaseModel):

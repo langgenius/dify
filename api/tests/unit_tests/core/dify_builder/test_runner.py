@@ -837,8 +837,6 @@ def test_confirmed_action_runs_working_handler_without_waiting_transition_or_mod
     assert [turn.action for turn in seen] == [action]
 
 
-
-
 def test_terminal_failure_clears_pending_confirmed_reference() -> None:
     env, repo = _new_env()
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)

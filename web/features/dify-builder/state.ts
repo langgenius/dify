@@ -382,12 +382,6 @@ const startDifyBuilderPromptAtom = atom(
   },
 )
 
-export const difyBuilderStartPromptAtom = atom(
-  null,
-  (_get, set, input: { text: string; model: SessionModel }) =>
-    set(startDifyBuilderPromptAtom, input),
-)
-
 export const difyBuilderSendDraftAtom = atom(
   null,
   async (
@@ -606,7 +600,7 @@ export const difyBuilderRegisterChecklistErrorsAtom = atom(
   },
 )
 
-export const difyBuilderResetAtom = atom(null, (get, set) => {
+const difyBuilderResetAtom = atom(null, (get, set) => {
   get(difyBuilderRuntimeAtom)?.session.reset()
   set(difyBuilderSelectedModelAtom, null)
   set(difyBuilderDraftAtom, '')

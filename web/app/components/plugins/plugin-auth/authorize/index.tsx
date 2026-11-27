@@ -11,6 +11,8 @@ import AddOAuthButton from './add-oauth-button'
 
 type AuthorizeProps = {
   pluginPayload: PluginPayload
+  /** Label for the single-method authorization action. */
+  buttonText?: string
   theme?: 'primary' | 'secondary'
   showDivider?: boolean
   canOAuth?: boolean
@@ -27,6 +29,7 @@ type AuthorizeProps = {
 }
 const Authorize = ({
   pluginPayload,
+  buttonText,
   theme = 'primary',
   showDivider = true,
   canOAuth,
@@ -42,7 +45,7 @@ const Authorize = ({
     if (theme === 'secondary') {
       return {
         buttonText: !canApiKey
-          ? t(($) => $['auth.useOAuthAuth'], { ns: 'plugin' })
+          ? (buttonText ?? t(($) => $['auth.useOAuthAuth'], { ns: 'plugin' }))
           : t(($) => $['auth.addOAuth'], { ns: 'plugin' }),
         buttonVariant: 'secondary',
         className: 'hover:bg-components-button-secondary-bg',
@@ -55,11 +58,11 @@ const Authorize = ({
 
     return {
       buttonText: !canApiKey
-        ? t(($) => $['auth.useOAuthAuth'], { ns: 'plugin' })
+        ? (buttonText ?? t(($) => $['auth.useOAuthAuth'], { ns: 'plugin' }))
         : t(($) => $['auth.addOAuth'], { ns: 'plugin' }),
       pluginPayload,
     }
-  }, [canApiKey, theme, pluginPayload, t])
+  }, [buttonText, canApiKey, theme, pluginPayload, t])
 
   const apiKeyButtonProps: AddApiKeyButtonProps = useMemo(() => {
     if (theme === 'secondary') {
@@ -67,7 +70,7 @@ const Authorize = ({
         pluginPayload,
         buttonVariant: 'secondary',
         buttonText: !canOAuth
-          ? t(($) => $['auth.useApiAuth'], { ns: 'plugin' })
+          ? (buttonText ?? t(($) => $['auth.useApiAuth'], { ns: 'plugin' }))
           : t(($) => $['auth.addApi'], { ns: 'plugin' }),
         onClick: onApiKeyClick,
       }
@@ -75,12 +78,12 @@ const Authorize = ({
     return {
       pluginPayload,
       buttonText: !canOAuth
-        ? t(($) => $['auth.useApiAuth'], { ns: 'plugin' })
+        ? (buttonText ?? t(($) => $['auth.useApiAuth'], { ns: 'plugin' }))
         : t(($) => $['auth.addApi'], { ns: 'plugin' }),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
       onClick: onApiKeyClick,
     }
-  }, [canOAuth, theme, pluginPayload, t, onApiKeyClick])
+  }, [buttonText, canOAuth, theme, pluginPayload, t, onApiKeyClick])
 
   const OAuthButton = useMemo(() => {
     const Item = (

@@ -715,7 +715,7 @@ def test_catalog_public_version_matches_native_visible_history_with_hidden_revis
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, origin: str
 ) -> None:
     from models.agent import AgentConfigRevision, AgentConfigRevisionOperation, AgentSource
-    from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+    from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
     from services.dify_builder.agent import resources
     from services.dify_builder.agent_catalog import AgentCatalogService, project_published_agent
     from tests.builder_agent_fixtures import make_case
@@ -800,7 +800,7 @@ def test_catalog_without_native_visible_version_labels_only_the_snapshot_revisio
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from models.agent import AgentSource
-    from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+    from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
     from services.dify_builder.agent import resources
     from tests.builder_agent_fixtures import make_case
 

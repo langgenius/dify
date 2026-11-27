@@ -1,4 +1,3 @@
-import type { DifyBuilderTaskControlPayload } from '@dify/contracts/api/console/dify-builder/types.gen'
 import { act, waitFor } from '@testing-library/react'
 import { difyBuilderCanvasAppliedViewAtom, difyBuilderDraftAtom } from '../../state'
 import {

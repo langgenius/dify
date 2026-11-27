@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session, aliased
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
-from repositories.agent_roster_queries import build_roster_agents_stmt
-from repositories.agent_version_queries import visible_version_operations
+from repositories.agent.agent_roster_queries import build_roster_agents_stmt
+from repositories.agent.agent_version_queries import visible_version_operations
 from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.string_enum import BuilderStringEnum
 from services.dify_builder import agent_access as access_service

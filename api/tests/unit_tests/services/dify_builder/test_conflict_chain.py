@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import asdict
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -16,7 +16,6 @@ from core.dify_builder.models import (
     Diagnosis,
     DifyBuilderContext,
     EntryMode,
-    Inputs,
     MutationIntent,
     Run,
     Session,
@@ -47,13 +46,9 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session as DatabaseSession
     from sqlalchemy.orm import sessionmaker
 
-    from core.app.entities.app_invoke_entities import InvokeFrom
     from core.dify_builder.models import ConversationItem, Turn
-    from models.account import Account
     from models.model import App
-    from services.dify_builder.application.execution_policy import BuilderExecutionContext, JsonToolExecutionContext
     from services.dify_builder.application.ports import DifyPort
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort
 
     type Owned = tuple[sessionmaker[DatabaseSession], Actor, App, Workflow, str, str]
@@ -64,28 +59,6 @@ if TYPE_CHECKING:
         list[tuple[str, dict[str, object]]],
         list[tuple[str, str]],
     ]
-
-
-class _PrepareArguments(TypedDict):
-    session_id: str
-    test_input_id: str
-    app_id: str
-    actor: Actor
-    workflow: Workflow
-    submitted_inputs: Inputs
-    effective_inputs: Inputs
-
-
-class _GenerateArguments(TypedDict):
-    app_model: App
-    user: Account
-    args: Mapping[str, object]
-    invoke_from: InvokeFrom
-    session: DatabaseSession
-    streaming: bool
-    workflow_execution_mode: str
-    builder_execution: BuilderExecutionContext | JsonToolExecutionContext
-    builder_execution_admit: _BuilderExecutionLaunch
 
 
 _ACTOR = Actor(account_id=ACCOUNT_ID, tenant_id=TENANT_ID)

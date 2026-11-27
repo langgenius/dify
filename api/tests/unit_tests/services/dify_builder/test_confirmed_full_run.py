@@ -76,8 +76,6 @@ class FullRunCase:
     native_finish: Callable[[WorkflowServiceDifyPort, str, str, dict[str, object], str], tuple[Run, object]]
 
 
-
-
 def _actor() -> Actor:
     return Actor(account_id="acc-1", tenant_id="tenant-1")
 

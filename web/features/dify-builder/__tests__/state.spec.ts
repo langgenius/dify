@@ -20,12 +20,9 @@ import {
   difyBuilderCanvasRefreshingAtom,
   difyBuilderCheckMaterialAtom,
   difyBuilderDraftAtom,
-  difyBuilderModelReadonlyAtom,
-  difyBuilderResetAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
   difyBuilderStartChecklistFixAtom,
-  difyBuilderStartPromptAtom,
   difyBuilderStartRunFixAtom,
   difyBuilderSubmitActionAtom,
 } from '../state'
@@ -294,9 +291,9 @@ describe('Dify Builder store', () => {
     store.set(difyBuilderCanvasRefreshingAtom, true)
 
     expect(
-      await store.set(difyBuilderStartPromptAtom, {
+      await store.set(difyBuilderSendDraftAtom, builderModel, {
         text: 'Build a support bot',
-        model: builderModel,
+        attachments: [],
       }),
     ).toBe(false)
     expect(runtime.session.startBuild).not.toHaveBeenCalled()
@@ -379,7 +376,6 @@ it('creates a file-only Build with uploaded refs and restores its text on reject
     'app-1',
     '',
     builderModel,
-    false,
     attachments,
   )
   runtime.session.startBuild.mockResolvedValueOnce(false)

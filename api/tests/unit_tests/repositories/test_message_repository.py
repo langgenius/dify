@@ -6,10 +6,12 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from dify_agent.protocol.tool_call_limits import AGENT_TOOL_ACTIVITY_META_KEY
 from sqlalchemy import Connection, event, inspect, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.storage.storage_type import StorageType
+from fields.conversation_fields import AgentThought
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 from models import Account, EndUser
 from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, FeedbackFromSource, FeedbackRating
@@ -127,6 +129,21 @@ def _feedback(session: Session, message: Message, *, source: FeedbackFromSource)
 def test_page_keeps_cursor_order_and_detaches_complete_message_data(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
+    activity = {
+        "id": "run-1:search-4",
+        "run_id": "run-1",
+        "tool_call_id": "search-4",
+        "tool_name": "search",
+        "status": "not_executed",
+        "error": "Quota reached",
+        "call_limit": {
+            "tool_identity": "provider-operation",
+            "limit": 3,
+            "used": 3,
+            "execution_status": "not_executed",
+            "reason": "call_limit_reached",
+        },
+    }
     with sqlite_session_factory.begin() as session:
         conversation = _conversation(session, installation)
         old = _message(session, conversation, created_at=_TIME - timedelta(hours=1))
@@ -153,6 +170,7 @@ def test_page_keeps_cursor_order_and_detaches_complete_message_data(
             tool_input='{"query":"query"}',
             observation="Found",
             message_files='["file-id"]',
+            tool_meta_str=json.dumps({AGENT_TOOL_ACTIVITY_META_KEY: activity}),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=_ACCOUNT_ID,
         )
@@ -207,6 +225,10 @@ def test_page_keeps_cursor_order_and_detaches_complete_message_data(
     )
     assert [thought.position for thought in record.agent_thoughts] == [1, 2]
     thought = record.agent_thoughts[0]
+    assert thought.tool_activity is not None
+    assert thought.tool_activity.model_dump(mode="json") == activity
+    assert AgentThought.model_validate(thought).model_dump(mode="json")["tool_activity"] == activity
+    assert record.agent_thoughts[1].tool_activity is None
     assert inspect(thought, raiseerr=False) is None
     assert (thought.id, thought.message_chain_id, thought.message_id) == (
         earlier.id,

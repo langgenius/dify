@@ -1672,14 +1672,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/view-history.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks-store/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -2557,12 +2549,6 @@
     }
   },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }

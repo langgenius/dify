@@ -69,6 +69,13 @@ from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.model import IconType
+from services.agent.agent_app_contracts import (
+    AgentAppCopy,
+    AgentAppDetail,
+    AgentAppListPage,
+    AgentAppNameConflictError,
+    AgentAppNotFoundError,
+)
 from services.agent.app_composer_store import (
     AgentComposerAgentMissingError,
     AgentComposerSnapshotMissingError,
@@ -92,13 +99,6 @@ from services.agent.version_store import (
     AgentVersionPlanRequiredError,
     AgentVersionUnavailableError,
     VersionAgentNotFoundError,
-)
-from services.app.agent_app_contracts import (
-    AgentAppCopy,
-    AgentAppDetail,
-    AgentAppListPage,
-    AgentAppNameConflictError,
-    AgentAppNotFoundError,
 )
 from services.app_service import CreateAppParams
 from services.entities.agent_entities import RosterListQuery

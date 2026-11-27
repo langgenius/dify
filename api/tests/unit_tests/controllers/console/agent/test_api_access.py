@@ -73,6 +73,7 @@ from controllers.console.app.completion import (
     AgentChatMessageApi,
     AgentChatMessageStopApi,
 )
+from controllers.console.app.message import AgentChatMessageListApi
 from controllers.console.wraps import _is_setup_completed
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.impl import base as plugin_http
@@ -123,7 +124,7 @@ from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, U
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowType
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from services.agent.app_composer import AgentAppComposer
 from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.console_runtime import AgentConsoleRuntime
@@ -265,6 +266,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
+        api.add_resource(AgentChatMessageListApi, "/agent/<uuid:agent_id>/chat-messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
         api.add_resource(AgentAppCopyApi, "/agent/<uuid:agent_id>/copy")
@@ -1604,6 +1606,27 @@ def test_agent_build_finalize_reuses_build_conversation_and_drains_message(
     assert agent_generator.closed_streams == closed_streams + 1
     with harness.sessions() as session:
         assert session.get_one(Conversation, conversation_id).name == "Generation 2"
+
+
+@pytest.mark.parametrize("foreign_agent", [False, True], ids=["missing-agent", "foreign-workspace"])
+def test_agent_chat_validates_payload_before_resolving_unavailable_agent(harness: Harness, foreign_agent: bool) -> None:
+    """After Console admission, reject invalid chat input before resolving an unavailable Agent."""
+    agent_id = harness.create_agent(tenant_id=str(uuid4()))[0] if foreign_agent else str(uuid4())
+    url = f"/console/api/agent/{agent_id}/chat-messages"
+    inputs: dict[str, object] = {}
+    for payload, status, code in (
+        ({"inputs": inputs}, HTTPStatus.BAD_REQUEST, "invalid_param"),
+        ({"inputs": inputs, "query": "Hello", "response_mode": "blocking"}, HTTPStatus.BAD_REQUEST, "bad_request"),
+        (
+            {"inputs": inputs, "query": "Hello", "response_mode": "streaming"},
+            HTTPStatus.NOT_FOUND,
+            "agent_not_found_error",
+        ),
+    ):
+        response = harness.client.post(url, headers=harness.headers, json=payload)
+
+        assert response.status_code == status, response.get_json()
+        assert response.get_json()["code"] == code
 
 
 def test_agent_chat_checks_conversation_ownership_before_invoking_generation(harness: Harness) -> None:

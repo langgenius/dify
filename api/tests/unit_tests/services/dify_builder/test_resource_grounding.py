@@ -38,8 +38,10 @@ def test_catalogue_failure_is_distinct_from_successful_empty() -> None:
 
 
 def test_partial_tool_catalogue_retains_verified_entries_and_source_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    def partial(_tenant: object, *, on_source_error: Callable[[str], None] | None = None) -> list[ToolCatalogueEntry]:
-        assert on_source_error is not None
+    def partial(
+        _tenant: object, *, on_source_error: Callable[[str], None], complete_plugins: bool
+    ) -> list[ToolCatalogueEntry]:
+        assert complete_plugins
         on_source_error("plugin_inventory")
         return [
             {
