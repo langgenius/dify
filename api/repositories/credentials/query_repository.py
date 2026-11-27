@@ -5,10 +5,9 @@ from collections.abc import Sequence
 from copy import deepcopy
 from typing import override
 
-from sqlalchemy import and_, false, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
-from sqlalchemy.sql.elements import ColumnElement
 
 from libs.datetime_utils import naive_utc_now
 from models.credential_permission import CredentialPermission, CredentialType
@@ -41,9 +40,8 @@ def _workflow_tool_binding_graph(
     provider: str,
     action: str,
     credential_id: str,
-    lock: bool = False,
 ) -> str | None:
-    """Read an exact saved node binding; optionally lock it for a local SQL operation.
+    """Read an exact saved node binding.
 
     No credential values or external I/O are involved. Missing or changed node,
     provider, action, credential or workflow ownership returns None.
@@ -54,7 +52,7 @@ def _workflow_tool_binding_graph(
         Workflow.id == workflow_ref.workflow_id,
         Workflow.version == Workflow.VERSION_DRAFT,
     )
-    graph = session.scalar(statement.with_for_update() if lock else statement)
+    graph = session.scalar(statement)
     if graph is None:
         return None
     nodes = [node for node in json.loads(graph).get("nodes", []) if node.get("id") == node_id]
@@ -75,39 +73,6 @@ def _workflow_tool_binding_graph(
         return graph if str(ToolProviderID(stored_provider)) == provider else None
     except ValueError:
         return None
-
-
-def workflow_tool_credential_binding_condition(
-    session: Session, credential: WorkflowToolCredentialMetadata
-) -> ColumnElement[bool]:
-    """Recheck and lock only the saved binding inside the native read/write session.
-
-    Unrelated autosaves during external OAuth I/O are accepted. The caller closes
-    this short SQL transaction before decrypting or contacting a provider.
-    """
-    ref = credential.workflow_ref
-    graph = _workflow_tool_binding_graph(
-        session,
-        workflow_ref=ref,
-        node_id=credential.node_id,
-        provider=str(ToolProviderID(credential.provider)),
-        action=credential.action,
-        credential_id=credential.id,
-        lock=True,
-    )
-    if graph is None:
-        return false()
-    return (
-        select(Workflow.id)
-        .where(
-            Workflow.tenant_id == ref.tenant_id,
-            Workflow.app_id == ref.owner_id,
-            Workflow.id == ref.workflow_id,
-            Workflow.version == Workflow.VERSION_DRAFT,
-            Workflow.graph == graph,
-        )
-        .exists()
-    )
 
 
 def apply_credential_visibility_filter_for_actor(
