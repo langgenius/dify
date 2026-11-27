@@ -63,12 +63,12 @@ export function CreateAppMenu({
         })}
         className="w-70 p-0"
       >
-        {leadingItems && (
+        {leadingItems ? (
           <>
             <MenuGroup className="py-1">{leadingItems}</MenuGroup>
             <MenuSeparator className="my-0" />
           </>
-        )}
+        ) : null}
         {(onCreateBlank || onCreateTemplate) && (
           <MenuGroup className="py-1">
             {onCreateBlank && (
