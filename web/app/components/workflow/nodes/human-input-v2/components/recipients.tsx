@@ -17,6 +17,7 @@ import {
   ComboboxPopup,
   ComboboxPortal,
   ComboboxPositioner,
+  ComboboxRow,
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
@@ -24,7 +25,6 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -91,8 +91,8 @@ const RecipientsContent = ({
   const [source, setSource] = useState<SourceFilter>('all')
   const [emailError, setEmailError] = useState(false)
   const [highlighted, setHighlighted] = useState<string>()
-  const [previewContact, setPreviewContact] = useState<ContactOption>()
   const inputRef = useRef<HTMLInputElement>(null)
+  const activeSourceRef = useRef<HTMLButtonElement>(null)
   const variableTriggerRef = useRef<HTMLButtonElement>(null)
   const contactIds = value.flatMap((recipient) =>
     recipient.type === 'contact' ? [recipient.contact_id] : [],
@@ -227,13 +227,6 @@ const RecipientsContent = ({
     { ns: 'workflow' },
   )
   const initiatorUnavailableId = `${nodeId}-initiator-unavailable`
-  const previewConflict =
-    previewContact &&
-    findConflictingContact(
-      value,
-      { id: previewContact.id, email: previewContact.email ?? '' },
-      selectedContacts.map((contact) => ({ ...contact, email: contact.email ?? '' })),
-    )
   const commit = (next: HumanInputV2Recipient[]) => {
     if (readonly) return
     onChange(next)
@@ -286,6 +279,7 @@ const RecipientsContent = ({
       </div>
       <Combobox<string, true, RecipientItem>
         multiple
+        grid
         modal={false}
         readOnly={readonly}
         items={items}
@@ -300,15 +294,11 @@ const RecipientsContent = ({
             if (!next) setQuery('')
           }
         }}
-        onInputValueChange={(next, details) => {
-          if (details.reason === 'input-change') setPreviewContact(undefined)
+        onInputValueChange={(next) => {
           setQuery(next)
           setEmailError(false)
         }}
-        onItemHighlighted={(key) => {
-          setHighlighted(key)
-          if (key !== undefined) setPreviewContact(itemMap.get(key)?.contact)
-        }}
+        onItemHighlighted={setHighlighted}
         onValueChange={(next, details) => {
           if (readonly || details.reason === 'escape-key') {
             details.cancel()
@@ -390,9 +380,6 @@ const RecipientsContent = ({
                         // The chip owns keys only while the chip itself is focused. Its
                         // information button and portalled content own their own commands.
                         if (event.target !== event.currentTarget) event.preventBaseUIHandler()
-                      }}
-                      onFocus={() => {
-                        setPreviewContact(item.contact)
                       }}
                       aria-label={item.label}
                       aria-description={
@@ -540,6 +527,16 @@ const RecipientsContent = ({
                       if (event.nativeEvent.isComposing) return
                       // oxlint-disable-next-line typescript/no-deprecated -- Safari can report 229 without isComposing while confirming IME text.
                       if (event.nativeEvent.keyCode === 229) return
+                      if (
+                        event.key === 'Tab' &&
+                        !event.shiftKey &&
+                        open &&
+                        activeSourceRef.current
+                      ) {
+                        event.preventDefault()
+                        activeSourceRef.current.focus()
+                        return
+                      }
                       if (event.key === '/' && !query.trim()) {
                         event.preventDefault()
                         variableTriggerRef.current?.click()
@@ -616,6 +613,7 @@ const RecipientsContent = ({
           {!readonly && (
             <div className="flex items-center gap-1 pt-1">
               <ComboboxTrigger
+                aria-haspopup="grid"
                 render={
                   <Button
                     variant="ghost"
@@ -629,79 +627,6 @@ const RecipientsContent = ({
                   </Button>
                 }
               />
-              <Popover
-                onOpenChange={(next) => {
-                  if (next) setOpen(false)
-                }}
-              >
-                <PopoverTrigger
-                  render={
-                    <IconButton
-                      aria-label={t(($) => $['nodes.humanInputV2.recipients.contactSourceLabel'], {
-                        ns: 'workflow',
-                      })}
-                    >
-                      <span className="i-ri-filter-3-line size-4" aria-hidden />
-                    </IconButton>
-                  }
-                />
-                <PopoverContent>
-                  <SegmentedControl<SourceFilter>
-                    aria-label={t(($) => $['nodes.humanInputV2.recipients.contactSourceLabel'], {
-                      ns: 'workflow',
-                    })}
-                    value={activeSource}
-                    onValueChange={(next) => {
-                      setSource(next)
-                      setPreviewContact(undefined)
-                    }}
-                    className="m-1 shrink-0 overflow-x-auto"
-                  >
-                    {sourceFilters
-                      .filter((filter) => filter !== 'organization' || centrallyManaged)
-                      .map((filter) => (
-                        <SegmentedControlItem key={filter} value={filter}>
-                          {filter === 'organization'
-                            ? t(($) => $['type.platform'], { ns: 'contacts' })
-                            : t(($) => $[`nodes.humanInputV2.recipients.contactSource.${filter}`], {
-                                ns: 'workflow',
-                              })}
-                        </SegmentedControlItem>
-                      ))}
-                  </SegmentedControl>
-                </PopoverContent>
-              </Popover>
-              <RecipientContactPreview
-                contact={previewContact}
-                returnFocus={inputRef}
-                conflictingContact={
-                  previewConflict
-                    ? selectedContacts.find((contact) => contact.id === previewConflict.id)
-                    : undefined
-                }
-                onReplace={
-                  previewConflict && previewContact
-                    ? () => {
-                        commit(
-                          replaceContactRecipient(value, previewConflict.id, previewContact.id),
-                        )
-                        inputRef.current?.focus()
-                      }
-                    : undefined
-                }
-              >
-                <IconButton
-                  disabled={!previewContact}
-                  focusableWhenDisabled
-                  aria-label={t(($) => $['details.title'], { ns: 'contacts' })}
-                  aria-describedby={`${nodeId}-preview-contact`}
-                >
-                  <span className="i-ri-information-line size-4" aria-hidden />
-                </IconButton>
-              </RecipientContactPreview>
-              <span id={`${nodeId}-preview-contact`} className="sr-only">
-                {previewContact ? getContactLabel(previewContact) : inputHint}
-              </span>
               <VarReferencePicker
                 nodeId={nodeId}
                 readonly={readonly}
@@ -747,22 +672,34 @@ const RecipientsContent = ({
         </ComboboxInputGroup>
         <ComboboxPortal>
           <ComboboxPositioner align="start">
-            <ComboboxPopup>
+            <ComboboxPopup
+              className="nokey"
+              onFocus={(event) => {
+                if (event.target instanceof HTMLButtonElement) event.preventBaseUIHandler()
+              }}
+            >
               <SegmentedControl<SourceFilter>
                 aria-label={t(($) => $['nodes.humanInputV2.recipients.contactSourceLabel'], {
                   ns: 'workflow',
                 })}
                 value={activeSource}
-                onValueChange={(next) => {
-                  setSource(next)
-                  setPreviewContact(undefined)
+                onValueChange={setSource}
+                onKeyDown={(event) => {
+                  if (event.key === 'Tab' && event.shiftKey) {
+                    event.preventDefault()
+                    inputRef.current?.focus()
+                  }
                 }}
                 className="m-1 shrink-0 overflow-x-auto"
               >
                 {sourceFilters
                   .filter((filter) => filter !== 'organization' || centrallyManaged)
                   .map((filter) => (
-                    <SegmentedControlItem key={filter} value={filter}>
+                    <SegmentedControlItem
+                      key={filter}
+                      value={filter}
+                      ref={filter === activeSource ? activeSourceRef : undefined}
+                    >
                       {filter === 'organization'
                         ? t(($) => $['type.platform'], { ns: 'contacts' })
                         : t(($) => $[`nodes.humanInputV2.recipients.contactSource.${filter}`], {
@@ -781,8 +718,13 @@ const RecipientsContent = ({
                         count: results.length,
                       })}
               </ComboboxStatus>
-              <ComboboxList<RecipientItem>>
+              <ComboboxList<RecipientItem>
+                onKeyDown={(event) => {
+                  if (event.target instanceof HTMLButtonElement) event.preventBaseUIHandler()
+                }}
+              >
                 {(item) => {
+                  const { contact } = item
                   const initiatorUnavailable = isUnavailableInitiator(item.recipient)
                   const added = value.some(
                     (recipient) =>
@@ -790,73 +732,94 @@ const RecipientsContent = ({
                       getRecipientCanonicalKey(item.recipient),
                   )
                   const conflict =
-                    item.contact &&
+                    contact &&
                     findConflictingContact(
                       value,
-                      { id: item.contact.id, email: item.contact.email ?? '' },
+                      { id: contact.id, email: contact.email ?? '' },
                       selectedContacts.map((contact) => ({
                         ...contact,
                         email: contact.email ?? '',
                       })),
                     )
                   return (
-                    <ComboboxItem<string>
-                      key={item.key}
-                      value={item.key}
-                      disabled={initiatorUnavailable || added || !!conflict}
-                      aria-label={initiatorUnavailable ? item.label : undefined}
-                      aria-describedby={
-                        initiatorUnavailable ? `${initiatorUnavailableId}-option` : undefined
-                      }
-                      className={
-                        initiatorUnavailable
-                          ? 'min-w-0 grow data-disabled:opacity-100'
-                          : 'min-w-0 grow'
-                      }
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        {item.contact && (
-                          <RecipientAvatar
-                            identity={item.contact.id}
-                            name={item.contact.name}
-                            avatar={item.contact.avatar_url}
-                            size="sm"
-                          />
-                        )}
-                        <span className="min-w-0">
-                          <span
-                            className={
-                              initiatorUnavailable
-                                ? 'block truncate system-sm-medium text-text-disabled'
-                                : 'block truncate system-sm-medium'
-                            }
-                          >
-                            {item.contact?.name ?? item.label}
-                          </span>
-                          {initiatorUnavailable && (
-                            <span
-                              id={`${initiatorUnavailableId}-option`}
-                              className="block system-xs-regular wrap-break-word text-text-tertiary"
-                            >
-                              {initiatorUnavailableMessage}
-                            </span>
+                    <ComboboxRow key={item.key} className="flex items-center gap-1">
+                      <ComboboxItem<string>
+                        value={item.key}
+                        disabled={initiatorUnavailable || added || !!conflict}
+                        aria-label={initiatorUnavailable ? item.label : undefined}
+                        aria-describedby={
+                          initiatorUnavailable ? `${initiatorUnavailableId}-option` : undefined
+                        }
+                        className={
+                          initiatorUnavailable
+                            ? 'min-w-0 grow data-disabled:opacity-100'
+                            : 'min-w-0 grow'
+                        }
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          {contact && (
+                            <RecipientAvatar
+                              identity={contact.id}
+                              name={contact.name}
+                              avatar={contact.avatar_url}
+                              size="sm"
+                            />
                           )}
-                          {item.contact?.email && (
-                            <span className="block truncate system-xs-regular text-text-tertiary">
-                              {item.contact.email}
+                          <span className="min-w-0">
+                            <span
+                              className={
+                                initiatorUnavailable
+                                  ? 'block truncate system-sm-medium text-text-disabled'
+                                  : 'block truncate system-sm-medium'
+                              }
+                            >
+                              {contact?.name ?? item.label}
+                            </span>
+                            {initiatorUnavailable && (
+                              <span
+                                id={`${initiatorUnavailableId}-option`}
+                                className="block system-xs-regular wrap-break-word text-text-tertiary"
+                              >
+                                {initiatorUnavailableMessage}
+                              </span>
+                            )}
+                            {contact?.email && (
+                              <span className="block truncate system-xs-regular text-text-tertiary">
+                                {contact.email}
+                              </span>
+                            )}
+                          </span>
+                          {conflict && (
+                            <span className="sr-only">
+                              {t(($) => $['nodes.humanInputV2.recipients.emailAlreadySelected'], {
+                                ns: 'workflow',
+                              })}
                             </span>
                           )}
                         </span>
-                        {conflict && (
-                          <span className="sr-only">
-                            {t(($) => $['nodes.humanInputV2.recipients.emailAlreadySelected'], {
-                              ns: 'workflow',
-                            })}
-                          </span>
-                        )}
-                      </span>
-                      <ComboboxItemIndicator />
-                    </ComboboxItem>
+                        <ComboboxItemIndicator />
+                      </ComboboxItem>
+                      {contact && (
+                        <div role="gridcell" className="shrink-0 pe-1">
+                          <RecipientContactPreview
+                            contact={contact}
+                            conflictingContact={conflict}
+                            onReplace={
+                              conflict
+                                ? () => {
+                                    commit(replaceContactRecipient(value, conflict.id, contact.id))
+                                    inputRef.current?.focus()
+                                  }
+                                : undefined
+                            }
+                          >
+                            <IconButton aria-label={infoName(contact.name)}>
+                              <span className="i-ri-information-line size-4" aria-hidden />
+                            </IconButton>
+                          </RecipientContactPreview>
+                        </div>
+                      )}
+                    </ComboboxRow>
                   )
                 }}
               </ComboboxList>

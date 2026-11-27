@@ -159,7 +159,44 @@ it('preserves native contact-information activation against the canvas Space lis
   client.clear()
 })
 
-it('keeps footer details and the portalled replacement action operable with native Space', async () => {
+it('opens candidate details from the contact row without adding the contact', async () => {
+  const { client, observe } = await renderRecipients([])
+  const addContact = page.getByRole('button', {
+    name: 'workflow.nodes.humanInputV2.recipients.addContact',
+  })
+  await expect.element(addContact).toBeVisible()
+  await expect
+    .element(
+      page.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSourceLabel',
+      }),
+    )
+    .not.toBeInTheDocument()
+  await expect
+    .element(page.getByRole('button', { name: 'contacts.details.title' }))
+    .not.toBeInTheDocument()
+  await addContact.click()
+  const details = page.getByRole('button', { name: /recipients.contactInfo.*Amanda Lin/ })
+  await details.click()
+  const dialog = page.getByRole('dialog', { name: organizationContact.name })
+  await expect.element(dialog.getByText(organizationContact.email)).toBeVisible()
+  expect(observe).not.toHaveBeenCalled()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(details).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(dialog).toBeVisible()
+  expect(observe).not.toHaveBeenCalled()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await page.getByRole('gridcell', { name: /^Amanda Lin/ }).click()
+  expect(observe).toHaveBeenLastCalledWith([
+    { type: 'contact', contact_id: organizationContact.id },
+  ])
+  client.clear()
+})
+
+it('operates contact details and replacement with native Space', async () => {
   contactApi.options.mockResolvedValue({
     data: [contact, { ...organizationContact, email: contact.email }],
     total: 2,
@@ -170,26 +207,42 @@ it('keeps footer details and the portalled replacement action operable with nati
   await page
     .getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' })
     .click()
-  const conflictingOption = page.getByRole('option', { name: /Amanda Lin/ })
+  const conflictingOption = page.getByRole('gridcell', { name: /^Amanda Lin/ })
+  const combobox = page.getByRole('combobox')
   await expect.element(conflictingOption).toBeVisible()
+  await expect.element(conflictingOption).toBeDisabled()
   await userEvent.keyboard('{ArrowDown}')
   await expect
-    .element(page.getByRole('combobox'))
+    .element(combobox)
     .toHaveAttribute(
       'aria-activedescendant',
-      page.getByRole('option', { name: /Evan Zhang/ }).element().id,
+      page.getByRole('gridcell', { name: /^Evan Zhang/ }).element().id,
     )
   await userEvent.keyboard('{ArrowDown}')
   await expect
-    .element(page.getByRole('combobox'))
+    .element(combobox)
     .toHaveAttribute('aria-activedescendant', conflictingOption.element().id)
   await userEvent.tab()
+  const source = page.getByRole('radio', {
+    name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+  })
+  await expect.element(source).toHaveFocus()
+  await userEvent.tab({ shift: true })
+  await expect.element(combobox).toHaveFocus()
   await userEvent.tab()
-  const info = page.getByRole('button', { name: 'contacts.details.title' })
+  await expect.element(source).toHaveFocus()
+  await userEvent.tab()
+  const candidates = page.getByRole('grid')
+  await expect
+    .element(candidates.getByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ }))
+    .toHaveFocus()
+  await userEvent.tab()
+  const info = candidates.getByRole('button', { name: /recipients.contactInfo.*Amanda Lin/ })
   await expect.element(info).toHaveFocus()
   await userEvent.keyboard(' ')
   const dialog = page.getByRole('dialog', { name: organizationContact.name })
   await expect.element(dialog).toBeVisible()
+  expect(observe).not.toHaveBeenCalled()
   const replace = dialog.getByRole('button', {
     name: 'workflow.nodes.humanInputV2.recipients.useThisInstead',
   })
@@ -199,6 +252,6 @@ it('keeps footer details and the portalled replacement action operable with nati
     { type: 'contact', contact_id: organizationContact.id },
   ])
   await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(page.getByRole('combobox')).toHaveFocus()
+  await expect.element(combobox).toHaveFocus()
   client.clear()
 })

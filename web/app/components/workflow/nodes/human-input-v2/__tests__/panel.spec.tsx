@@ -129,7 +129,7 @@ describe('Human Input v2 panel composition', () => {
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
     )
-    const initiator = await screen.findByRole('option', {
+    const initiator = await screen.findByRole('gridcell', {
       name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
     })
     expect(initiator).toHaveAttribute('aria-disabled', 'true')
