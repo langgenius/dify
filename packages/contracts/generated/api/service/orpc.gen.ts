@@ -2434,12 +2434,12 @@ export const byDatasetId = {
 /**
  * List Knowledge Bases
  *
- * Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.
+ * Returns a paginated list of visible knowledge bases. A scoped knowledge API key only lists its authorized knowledge bases; workspace-wide keys retain their existing visibility. Supports filtering by keyword and tags within that scope.
  */
 export const get20 = oc
   .route({
     description:
-      'Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.',
+      'Returns a paginated list of visible knowledge bases. A scoped knowledge API key only lists its authorized knowledge bases; workspace-wide keys retain their existing visibility. Supports filtering by keyword and tags within that scope.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasets',
