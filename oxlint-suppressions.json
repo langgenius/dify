@@ -3024,7 +3024,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 14
+      "count": 13
     }
   },
   "web/utils/clipboard.ts": {

@@ -3,6 +3,7 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import type { CommonNodeType, Node } from '../types'
 import { Position } from 'reactflow'
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { CUSTOM_NODE, NESTED_ELEMENT_Z_INDEX } from '../constants'
 import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { isHumanInputV2NodeData } from '../nodes/human-input-v2/types'
@@ -11,6 +12,7 @@ import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import { BlockEnum } from '../types'
 
 export function getNodeCatalogType(data: CommonNodeType): BlockEnum {
+  if (isExternalAgentWorkflowPreviewData(data)) return BlockEnum.AgentV2
   if (isAgentV2NodeData(data)) return BlockEnum.AgentV2
   if (isHumanInputV2NodeData(data)) return BlockEnum.HumanInputV2
   return data.type

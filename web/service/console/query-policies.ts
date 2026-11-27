@@ -10,6 +10,7 @@ import { dataSourceAuthPolicies } from './policies/data-source-auth'
 import { datasetPolicies } from './policies/datasets'
 import { enterprisePolicies } from './policies/enterprise'
 import { evaluationPolicies } from './policies/evaluation'
+import { externalAgentPolicies } from './policies/external-agents'
 import { fileScanPolicies } from './policies/file-scan'
 import { freshnessPolicies } from './policies/freshness'
 import { installedAppPolicies } from './policies/installed-apps'
@@ -46,6 +47,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         installedApps: installedAppPolicies(query),
         onboarding: onboardingPolicies(query),
         agent: agentPolicies(query),
+        ...externalAgentPolicies(query),
         apiBasedExtension: apiBasedExtensionPolicies(query),
         fileScan: fileScanPolicies(query),
         resourceAccessTokens: resourceAccessTokenPolicies(query),

@@ -1,16 +1,24 @@
 import type { DefaultValueForm } from './types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
+import { getDeclaredOutputVarType } from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { externalAgentDefaultOutputs } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
+import { containsExternalFileOutput } from '@/features/agent-v2/external-agent/workflow-preview/validation'
 
 const getDefaultValueByType = (type: VarType) => {
   if (type === VarType.string) return ''
 
   if (type === VarType.number) return 0
 
+  if (type === VarType.boolean) return false
+
   if (type === VarType.object) return '{}'
 
   if (
+    type === VarType.array ||
+    type === VarType.arrayBoolean ||
     type === VarType.arrayObject ||
     type === VarType.arrayString ||
     type === VarType.arrayNumber ||
@@ -23,6 +31,24 @@ const getDefaultValueByType = (type: VarType) => {
 
 export const getDefaultValue = (data: CommonNodeType) => {
   const { type } = data
+
+  if (isExternalAgentWorkflowPreviewData(data)) {
+    return (
+      data.agent_declared_outputs?.length
+        ? data.agent_declared_outputs
+        : externalAgentDefaultOutputs
+    )
+      .filter((output) => !containsExternalFileOutput(output))
+      .map((output) => {
+        const type = getDeclaredOutputVarType(output)
+        return {
+          key: output.name,
+          type,
+          value: getDefaultValueByType(type),
+        }
+      })
+      .filter((output) => output.type !== VarType.file && output.type !== VarType.arrayFile)
+  }
 
   if (type === BlockEnum.LLM) {
     return [

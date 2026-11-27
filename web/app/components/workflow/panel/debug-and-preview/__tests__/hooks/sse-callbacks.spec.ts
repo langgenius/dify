@@ -552,6 +552,51 @@ describe('useChat – handleSend SSE callbacks', () => {
   })
 
   describe('onWorkflowFinished', () => {
+    it('updates the chat process and answer from an authoritative asynchronous external snapshot', () => {
+      const { result } = setupAndSend()
+      startWorkflow()
+      act(() => {
+        capturedCallbacks.onExternalWorkflowSnapshot(
+          { id: 'wfr-1', status: 'paused', inputs: {}, outputs: {}, graph: {} },
+          [
+            {
+              id: 'external-execution',
+              node_id: 'external',
+              status: 'paused',
+              process_data: { external_invocation_id: 'invocation-1' },
+            },
+          ],
+        )
+      })
+      expect(result.current.isResponding).toBe(true)
+      act(() => {
+        capturedCallbacks.onExternalWorkflowSnapshot(
+          {
+            id: 'wfr-1',
+            status: 'succeeded',
+            inputs: {},
+            outputs: { answer: 'Actual remote answer' },
+            graph: {},
+          },
+          [
+            {
+              id: 'external-execution',
+              node_id: 'external',
+              status: 'succeeded',
+              process_data: { external_invocation_id: 'invocation-1' },
+            },
+          ],
+        )
+      })
+      const answer = result.current.chatList.find(
+        (item) => item.isAnswer && !item.isOpeningStatement,
+      )
+      expect(answer?.workflowProcess?.status).toBe('succeeded')
+      expect(answer?.workflowProcess?.tracing[0]?.status).toBe('succeeded')
+      expect(answer?.content).toBe('Actual remote answer')
+      expect(result.current.isResponding).toBe(false)
+    })
+
     it('should update workflow process status', () => {
       const { result } = setupAndSend()
       startWorkflow()

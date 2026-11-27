@@ -1,3 +1,7 @@
+import type {
+  WorkflowRunDetailResponse,
+  WorkflowRunNodeExecutionResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { FileUpload } from '../../base/features/types'
 import type {
@@ -15,6 +19,13 @@ import { use } from 'react'
 import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
+
+export type WorkflowRunCallbacks = StreamCallbacks & {
+  onExternalWorkflowSnapshot?: (
+    run: WorkflowRunDetailResponse,
+    executions: WorkflowRunNodeExecutionResponse[],
+  ) => void
+}
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]
@@ -61,7 +72,7 @@ type CommonHooksFnMap = {
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (params: any, callback?: StreamCallbacks, options?: any) => void
+  handleRun: (params: any, callback?: WorkflowRunCallbacks, options?: any) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void

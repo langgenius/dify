@@ -22,6 +22,10 @@ import { emailRegister } from './email-register/orpc.gen.ts'
 import { byEvaluateTargetType } from './evaluate-target-type/orpc.gen.ts'
 import { evaluation } from './evaluation/orpc.gen.ts'
 import { explore } from './explore/orpc.gen.ts'
+import { externalAgentInvocations } from './external-agent-invocations/orpc.gen.ts'
+import { externalAgentOperations } from './external-agent-operations/orpc.gen.ts'
+import { externalAgentTests } from './external-agent-tests/orpc.gen.ts'
+import { externalAgents } from './external-agents/orpc.gen.ts'
 import { features } from './features/orpc.gen.ts'
 import { fileScan } from './file-scan/orpc.gen.ts'
 import { files } from './files/orpc.gen.ts'
@@ -83,6 +87,10 @@ const communityContract = {
   emailRegister,
   evaluation,
   explore,
+  externalAgentInvocations,
+  externalAgentOperations,
+  externalAgentTests,
+  externalAgents,
   features,
   fileScan,
   files,

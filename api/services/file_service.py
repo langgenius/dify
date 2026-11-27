@@ -82,6 +82,7 @@ class FileService:
         source: Literal["datasets", "knowledge_fs"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
+        reserved_file_id: str | None = None,
     ) -> UploadFile:
         """Persist a file with the given creator and resource tenant.
 
@@ -127,7 +128,7 @@ class FileService:
             raise FileTooLargeError
 
         # generate file key
-        file_uuid = str(uuid.uuid4())
+        file_uuid = str(uuid.UUID(reserved_file_id)) if reserved_file_id is not None else str(uuid.uuid4())
 
         if isinstance(user, FileUploadActor):
             resource_tenant_id = tenant_id
@@ -137,6 +138,28 @@ class FileService:
             creator_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         file_key = "upload_files/" + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
+
+        if reserved_file_id is not None:
+            with self._session_maker(expire_on_commit=False) as session:
+                existing = session.get(UploadFile, file_uuid)
+                if existing is not None:
+                    if (
+                        existing.tenant_id,
+                        existing.created_by,
+                        existing.created_by_role,
+                        existing.key,
+                        existing.hash,
+                        existing.mime_type,
+                    ) != (
+                        resource_tenant_id,
+                        user.id,
+                        creator_role,
+                        file_key,
+                        hashlib.sha3_256(content).hexdigest(),
+                        mimetype,
+                    ):
+                        raise ValueError("The reserved upload does not match its owned content.")
+                    return existing
 
         # save file to storage
         storage.save(file_key, content)
@@ -157,6 +180,8 @@ class FileService:
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
         )
+        if reserved_file_id is not None:
+            upload_file.id = file_uuid
 
         with self._session_maker(expire_on_commit=False) as session:
             session.add(upload_file)
@@ -178,6 +203,7 @@ class FileService:
         source: Literal["datasets"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
+        reserved_file_id: str | None = None,
     ) -> FileUploadResult:
         """Upload into the explicitly admitted tenant and return detached values.
 
@@ -194,6 +220,7 @@ class FileService:
             source=source,
             source_url=source_url,
             default_file_size_limit=default_file_size_limit,
+            reserved_file_id=reserved_file_id,
         )
         return FileUploadResult(
             id=upload_file.id,
@@ -206,6 +233,18 @@ class FileService:
             tenant_id=upload_file.tenant_id,
             source_url=upload_file.source_url,
         )
+
+    @staticmethod
+    def reserved_upload_key(*, tenant_id: str, file_id: str, filename: str) -> str:
+        """Plan an owned storage key before I/O so durable cleanup can precede upload.
+
+        Only trusted adapters allocate reserved IDs. Ordinary uploads retain
+        their existing independently generated DB and storage identifiers.
+        """
+        if any(char in filename for char in ("/", "\\", "\x00", "\r", "\n")):
+            raise ValueError("Filename contains invalid characters")
+        extension = os.path.splitext(filename)[1].lstrip(".").lower()
+        return f"upload_files/{tenant_id}/{uuid.UUID(file_id)}.{extension}"
 
     @staticmethod
     def is_file_size_within_limit(

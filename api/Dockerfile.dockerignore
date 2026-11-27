@@ -7,6 +7,9 @@
 !dify-agent/README.md
 !dify-agent/src/
 !dify-agent/src/**
+!packages/
+!packages/graphon/
+!packages/graphon/**
 **/node_modules/
 **/dist/
 **/.turbo/

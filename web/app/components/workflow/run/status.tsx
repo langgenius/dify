@@ -10,10 +10,12 @@ import { ENABLE_HITL_IM } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { resolveConsoleHumanInputFormURL } from '@/features/human-input/console/links'
 import { consoleQuery } from '@/service/console'
+import { formatNumber } from '@/utils/format'
 import { basePath } from '@/utils/var'
 
 type ResultProps = {
   status: string
+  displayStatus?: string
   time?: number
   tokens?: number
   error?: string
@@ -21,10 +23,14 @@ type ResultProps = {
   isListening?: boolean
   workflowRunId?: string
   onOpenTracingTab?: () => void
+  external_wait?: boolean
+  human_input_wait?: boolean
+  preserveUnknownTokens?: boolean
 }
 
 const StatusPanel: FC<ResultProps> = ({
   status,
+  displayStatus = status,
   time,
   tokens,
   error,
@@ -32,13 +38,23 @@ const StatusPanel: FC<ResultProps> = ({
   isListening = false,
   workflowRunId,
   onOpenTracingTab,
+  external_wait = false,
+  human_input_wait = false,
+  preserveUnknownTokens = false,
 }) => {
-  const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput', 'share'])
+  const { t } = useTranslation([
+    'runLog',
+    'workflow',
+    'appLog',
+    'workflowHumanInput',
+    'share',
+    'agentRoster',
+  ])
   const docLink = useDocLink()
   const { data: pausedDetails } = useQuery(
     consoleQuery.workflow.byWorkflowRunId.pauseDetails.get.queryOptions({
       input:
-        status === 'paused' && workflowRunId
+        status === 'paused' && workflowRunId && (!external_wait || human_input_wait)
           ? { params: { workflow_run_id: workflowRunId } }
           : skipToken,
     }),
@@ -105,7 +121,7 @@ const StatusPanel: FC<ResultProps> = ({
   ) : null
 
   return (
-    <StatusContainer status={status}>
+    <StatusContainer status={displayStatus}>
       <div className="flex">
         <div className={cn('max-w-30 flex-[33%]', status === 'partial-succeeded' && 'min-w-35')}>
           <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
@@ -114,22 +130,22 @@ const StatusPanel: FC<ResultProps> = ({
           <div
             className={cn(
               'flex items-center gap-1 system-xs-semibold-uppercase',
-              status === 'scheduled' && 'text-text-secondary',
-              status === 'succeeded' && 'text-util-colors-green-green-600',
-              status === 'partial-succeeded' && 'text-util-colors-green-green-600',
-              status === 'failed' && 'text-util-colors-red-red-600',
-              (status === 'stopped' || status === 'paused') &&
+              displayStatus === 'scheduled' && 'text-text-secondary',
+              displayStatus === 'succeeded' && 'text-util-colors-green-green-600',
+              displayStatus === 'partial-succeeded' && 'text-util-colors-green-green-600',
+              displayStatus === 'failed' && 'text-util-colors-red-red-600',
+              (displayStatus === 'stopped' || displayStatus === 'paused') &&
                 'text-util-colors-warning-warning-600',
-              status === 'running' && 'text-util-colors-blue-light-blue-light-600',
+              displayStatus === 'running' && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
-            {status === 'scheduled' && (
+            {displayStatus === 'scheduled' && (
               <>
                 <StatusDot status="disabled" />
                 <span>{t(($) => $['status.scheduled'], { ns: 'appLog' })}</span>
               </>
             )}
-            {status === 'running' && (
+            {displayStatus === 'running' && (
               <>
                 <StatusDot status="normal" />
                 <span>
@@ -139,37 +155,37 @@ const StatusPanel: FC<ResultProps> = ({
                 </span>
               </>
             )}
-            {status === 'succeeded' && (
+            {displayStatus === 'succeeded' && (
               <>
                 <StatusDot status="success" />
                 <span>{t(($) => $['status.succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
-            {status === 'partial-succeeded' && (
+            {displayStatus === 'partial-succeeded' && (
               <>
                 <StatusDot status="success" />
                 <span>{t(($) => $['status.partial-succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
-            {status === 'exception' && (
+            {displayStatus === 'exception' && (
               <>
                 <StatusDot status="warning" />
                 <span>{t(($) => $['tracing.status.exception'], { ns: 'workflow' })}</span>
               </>
             )}
-            {status === 'failed' && (
+            {displayStatus === 'failed' && (
               <>
                 <StatusDot status="error" />
                 <span>{t(($) => $['status.failed'], { ns: 'appLog' })}</span>
               </>
             )}
-            {status === 'stopped' && (
+            {displayStatus === 'stopped' && (
               <>
                 <StatusDot status="warning" />
                 <span>{t(($) => $['status.stopped'], { ns: 'appLog' })}</span>
               </>
             )}
-            {status === 'paused' && (
+            {displayStatus === 'paused' && (
               <>
                 <StatusDot status="warning" />
                 <span>{t(($) => $['status.paused'], { ns: 'appLog' })}</span>
@@ -198,7 +214,13 @@ const StatusPanel: FC<ResultProps> = ({
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
             )}
-            {status !== 'running' && status !== 'paused' && <span>{`${tokens || 0} Tokens`}</span>}
+            {status !== 'running' && status !== 'paused' && (
+              <span>
+                {preserveUnknownTokens && tokens == null
+                  ? t(($) => $['external.overview.testRun.notProvided'], { ns: 'agentRoster' })
+                  : `${formatNumber(tokens ?? 0)} Tokens`}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -236,7 +258,12 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </>
       )}
-      {status === 'paused' && (
+      {status === 'paused' && external_wait && (
+        <p className="relative mt-2 border-t border-divider-subtle pt-2 system-xs-regular text-text-tertiary">
+          {t(($) => $['external.workflow.waiting'], { ns: 'agentRoster' })}
+        </p>
+      )}
+      {status === 'paused' && (!external_wait || human_input_wait) && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-deep" />
           <div className="flex flex-col gap-y-2 system-xs-medium">

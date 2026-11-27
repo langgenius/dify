@@ -1,5 +1,6 @@
 import type { DefaultValueForm } from './types'
 import { Input } from '@langgenius/dify-ui/input'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -23,12 +24,22 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
       <div className="space-y-1">
         {forms.map((form, index) => {
           const isInput = form.type === VarType.string || form.type === VarType.number
+          const isBoolean = form.type === VarType.boolean
           const inputId = `${id}-${index}`
+          const labelId = `${inputId}-label`
           return (
-            <div key={index} className="py-1">
+            <div key={form.key} className="py-1">
               <div className="mb-1 flex items-center">
                 {isInput ? (
                   <label htmlFor={inputId} className="me-1 system-sm-medium text-text-primary">
+                    {form.key}
+                  </label>
+                ) : isBoolean ? (
+                  <label
+                    id={labelId}
+                    htmlFor={inputId}
+                    className="me-1 system-sm-medium text-text-primary"
+                  >
                     {form.key}
                   </label>
                 ) : (
@@ -45,7 +56,18 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
                   onValueChange={(value) => onFormChange({ key: form.key, type: form.type, value })}
                 />
               )}
+              {isBoolean && (
+                <Switch
+                  id={inputId}
+                  aria-labelledby={labelId}
+                  checked={form.value === true}
+                  onCheckedChange={(value) =>
+                    onFormChange({ key: form.key, type: form.type, value })
+                  }
+                />
+              )}
               {(form.type === VarType.array ||
+                form.type === VarType.arrayBoolean ||
                 form.type === VarType.arrayNumber ||
                 form.type === VarType.arrayString ||
                 form.type === VarType.arrayObject ||

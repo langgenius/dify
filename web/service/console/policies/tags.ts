@@ -90,6 +90,10 @@ export function invalidateTaggedResources(
       query.agent.byAgentId.get.key(
         targetId ? { input: { params: { agent_id: targetId } } } : undefined,
       ),
+      query.externalAgents.get.key(),
+      query.externalAgents.byAgentId.get.key(
+        targetId ? { input: { params: { agent_id: targetId } } } : undefined,
+      ),
     ])
   }
   if (type === 'app')

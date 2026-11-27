@@ -44,6 +44,7 @@ from models.model import App, AppModelConfig, UploadFile
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.tools import ToolFile
 from models.workflow import Workflow
+from repositories.external_agents.workflow_bindings import project_external_bindings
 from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
@@ -150,7 +151,9 @@ class AgentDslService:
         a portable package can be returned.
         """
 
-        portable_graph = copy.deepcopy(dict(graph))
+        portable_graph = project_external_bindings(
+            session=self.session, workflow=workflow, graph=copy.deepcopy(dict(graph)), portable=True
+        )
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(portable_graph))
         if not agent_nodes:
             return portable_graph, {}

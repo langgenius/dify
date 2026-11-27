@@ -43,6 +43,12 @@ import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response
 import { useWorkflowRun } from '../use-workflow-run'
 
 const api = vi.hoisted(() => ({
+  runDetail:
+    vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.get>(),
+  executions:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.get
+    >(),
   sync: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
   // Spies on the real stream consumer so the run callbacks can be driven directly.
   streamEvents: vi.fn<typeof import('@/service/event-stream').streamEvents>(),
@@ -81,6 +87,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': api.sync,
+      'apps.byAppId.workflowRuns.byRunId.get': api.runDetail,
+      'apps.byAppId.workflowRuns.byRunId.nodeExecutions.get': api.executions,
       'apps.byAppId.workflows.draft.run.post': api.run,
       'apps.byAppId.workflows.draft.trigger.run.post': api.triggerRun,
       'apps.byAppId.workflows.draft.trigger.runAll.post': api.triggerRunAll,
@@ -241,6 +249,8 @@ beforeEach(() => {
   api.sync
     .mockReset()
     .mockResolvedValue({ result: 'success', hash: 'saved', updated_at: 1700000000 })
+  api.runDetail.mockReset()
+  api.executions.mockReset()
   api.streamEvents.mockClear()
   api.run.mockReset().mockImplementation(never)
   api.triggerRun.mockReset()
@@ -603,6 +613,65 @@ it.each([false, true])(
     expect(onFinished).toHaveBeenCalledExactlyOnceWith(finished)
   },
 )
+
+it('observes an external wait to completion using reads without a new Run or a human resume stream', async () => {
+  const { result, store } = await setup()
+  const onSnapshot = vi.fn()
+  const onCompleted = vi.fn()
+  api.runDetail
+    .mockResolvedValueOnce({ id: 'run-1', status: 'paused', inputs: {}, outputs: {}, graph: {} })
+    .mockResolvedValue({
+      id: 'run-1',
+      status: 'succeeded',
+      inputs: {},
+      outputs: { result: 'Remote finished' },
+      graph: {},
+    })
+  api.executions.mockResolvedValue({
+    data: [
+      {
+        id: 'execution-1',
+        node_id: 'node-1',
+        node_type: 'agent',
+        status: 'succeeded',
+        process_data: { external_invocation_id: 'invocation-1' },
+      },
+    ],
+  })
+  await act(async () =>
+    result.current.run.handleRun(
+      { inputs: {} },
+      { onExternalWorkflowSnapshot: onSnapshot, onCompleted },
+    ),
+  )
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  const callbacks = streamCallbacks()
+  assert(callbacks?.onWorkflowStarted && callbacks.onWorkflowPaused)
+  await act(async () => {
+    callbacks.onWorkflowStarted?.(started)
+    callbacks.onWorkflowPaused?.({
+      ...paused,
+      data: { ...paused.data, reasons: [{ TYPE: 'external_wait', node_id: 'node-1' }] },
+    })
+    callbacks.onCompleted?.(false)
+  })
+  expect(store.getState().workflowRunningData?.result).toMatchObject({
+    status: 'paused',
+    external_wait: true,
+    human_input_wait: false,
+  })
+  expect(onCompleted).not.toHaveBeenCalled()
+  expect(api.events).not.toHaveBeenCalled()
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1500)
+  })
+  expect(store.getState().workflowRunningData?.result.status).toBe('succeeded')
+  expect(store.getState().workflowRunningData?.resultText).toBe('Remote finished')
+  expect(onSnapshot).toHaveBeenCalledTimes(2)
+  expect(onCompleted).toHaveBeenCalledOnce()
+  expect(api.run).toHaveBeenCalledOnce()
+  expect(api.events).not.toHaveBeenCalled()
+})
 
 it('honors the trigger retry interval before consuming the eventual run stream', async () => {
   const { result, store } = await setup()

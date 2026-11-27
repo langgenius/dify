@@ -1,6 +1,9 @@
 import { act, waitFor } from '@testing-library/react'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import { BlockEnum } from '../../types'
 import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 const mocks = vi.hoisted(() => ({
@@ -75,4 +78,64 @@ it('updates the local graph while stripping selection state from broadcasts', as
   expect(nextEdges).toMatchObject([{ id: 'new-edge', source: 'new-node', target: 'target' }])
   expect(previousEdges[0].data).not.toHaveProperty('_connectedNodeIsSelected')
   expect(nextEdges[0].data).not.toHaveProperty('_connectedNodeIsSelected')
+})
+
+it('broadcasts external agent configuration and its connections through edits', async () => {
+  mocks.canApplyLocalGraphMutation.mockReturnValue(true)
+  const { result } = setup()
+  await waitFor(() => expect(result.current.getState().nodes).toHaveLength(2))
+  const originalNodes = result.current.getState().nodes
+  const externalAgent = createNode({
+    id: 'external-agent',
+    data: {
+      type: BlockEnum.Agent,
+      ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
+      agent_task: 'Review {{#old-node.contract#}}.',
+    },
+  })
+  const connection = createEdge({
+    id: 'external-agent-connection',
+    source: oldNode.id,
+    target: externalAgent.id,
+  })
+  act(() => {
+    result.current.setNodes([...originalNodes, externalAgent])
+    result.current.setEdges([oldEdge, connection])
+  })
+  expect(mocks.setNodes).toHaveBeenLastCalledWith(
+    [expect.objectContaining({ id: oldNode.id }), expect.objectContaining({ id: 'target' })],
+    [
+      expect.objectContaining({ id: oldNode.id }),
+      expect.objectContaining({ id: 'target' }),
+      expect.objectContaining(externalAgent),
+    ],
+    expect.any(String),
+  )
+  expect(mocks.setEdges).toHaveBeenLastCalledWith(
+    [expect.objectContaining({ id: oldEdge.id })],
+    [expect.objectContaining({ id: oldEdge.id }), expect.objectContaining(connection)],
+  )
+
+  const editedAgent = {
+    ...externalAgent,
+    data: {
+      ...externalAgent.data,
+      agent_task: 'Summarize the contract risks.',
+      external_wait: {
+        enabled: true,
+        wait_seconds: 1200,
+        on_timeout: 'request_cancellation',
+        additional_retries: 2,
+        retry_interval_seconds: 30,
+      },
+    },
+  }
+  act(() => {
+    result.current.setNodes([...originalNodes, editedAgent])
+  })
+  expect(mocks.setNodes).toHaveBeenLastCalledWith(
+    expect.arrayContaining([expect.objectContaining(externalAgent)]),
+    expect.arrayContaining([expect.objectContaining(editedAgent)]),
+    expect.any(String),
+  )
 })

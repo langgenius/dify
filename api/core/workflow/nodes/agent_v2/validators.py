@@ -17,6 +17,7 @@ from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
+    AgentKind,
     AgentScope,
     AgentStatus,
     WorkflowAgentBindingType,
@@ -29,9 +30,11 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
     WorkflowPreviousNodeOutputRef,
 )
+from models.external_agent import ExternalAgentHead
 from models.model import UploadFile
 from models.workflow import Workflow
 from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
+from services.external_agents.workflow_runtime import ExternalGraphBinding, ExternalNodeJob, is_external_node
 
 from .entities import DifyAgentNodeData
 
@@ -104,6 +107,9 @@ class WorkflowAgentNodeValidator:
     ) -> None:
         graph = workflow.graph_dict
         topology = _WorkflowGraphTopology.from_graph(graph) if validate_previous_node_topology else None
+        cls._validate_external_nodes(
+            session=session, workflow=workflow, require_binding=require_binding, topology=topology
+        )
         for node_id, node_data in cls.iter_agent_v2_nodes(graph):
             cls._validate_node_schema(node_id=node_id, node_data=node_data)
             binding = cls._find_binding(
@@ -137,6 +143,71 @@ class WorkflowAgentNodeValidator:
         if require_binding:
             for node_id, node_data in cls.iter_tool_nodes(graph):
                 cls._validate_tool_node_agentic_mode(node_id=node_id, node_data=node_data)
+
+    @classmethod
+    def _validate_external_nodes(
+        cls, *, session: Session, workflow: Workflow, require_binding: bool, topology: _WorkflowGraphTopology | None
+    ) -> None:
+        from providers.a2a.workflow_node import ExternalAgentNodeData
+
+        nodes = workflow.graph_dict.get("nodes", [])
+        if not isinstance(nodes, list):
+            return
+        for node in nodes:
+            data = node.get("data") if isinstance(node, Mapping) else None
+            if isinstance(data, Mapping) and is_external_node(data):
+                node_id = node.get("id")
+                if not isinstance(node_id, str):
+                    raise WorkflowAgentNodeValidationError("External node identity is missing.")
+                ExternalAgentNodeData.model_validate(data)
+                job = ExternalNodeJob.parse_graph(data)
+                binding = cls._find_binding(
+                    session=session,
+                    tenant_id=workflow.tenant_id,
+                    app_id=workflow.app_id,
+                    workflow_id=workflow.id,
+                    node_id=node_id,
+                )
+                if binding is None:
+                    if require_binding:
+                        raise WorkflowAgentNodeValidationError(f"External node {node_id} requires an agent binding.")
+                else:
+                    graph_binding = ExternalGraphBinding(agent_id=binding.agent_id, binding_epoch=binding.binding_epoch)
+                    if require_binding:
+                        job.validate_for_publish(graph_binding)
+                    if binding.current_snapshot_id is not None or not binding.external_job_config:
+                        raise WorkflowAgentNodeValidationError("External nodes cannot use Native config snapshots.")
+                    if ExternalNodeJob.model_validate(binding.external_job_config) != job:
+                        raise WorkflowAgentNodeValidationError(
+                            "The persisted external node job does not match the graph."
+                        )
+                    agent = session.scalar(
+                        select(Agent.id).where(
+                            Agent.id == binding.agent_id,
+                            Agent.tenant_id == workflow.tenant_id,
+                            Agent.agent_kind == AgentKind.EXTERNAL_A2A,
+                            Agent.status == AgentStatus.ACTIVE,
+                        )
+                    )
+                    head = session.scalar(
+                        select(ExternalAgentHead).where(
+                            ExternalAgentHead.agent_id == binding.agent_id,
+                            ExternalAgentHead.tenant_id == workflow.tenant_id,
+                            ExternalAgentHead.deleted_at.is_(None),
+                        )
+                    )
+                    if require_binding and (
+                        agent is None or head is None or not head.enabled or not head.active_connection_revision_id
+                    ):
+                        raise WorkflowAgentNodeValidationError("The selected external agent is unavailable.")
+                if topology is not None:
+                    for selector in extract_workflow_node_output_selectors(job.agent_task):
+                        if not topology.has_node(selector[0]) or not topology.is_upstream(
+                            source_node_id=selector[0], target_node_id=node_id
+                        ):
+                            raise WorkflowAgentNodeValidationError(
+                                "An external Task references an unavailable upstream node."
+                            )
 
     @classmethod
     def validate_binding(

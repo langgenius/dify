@@ -42,10 +42,10 @@ export const useCollaborativeWorkflow = () => {
       source = 'use-collaborative-workflow:setNodes',
     ) => {
       const { getNodes, setNodes: reactFlowSetNodes } = store.getState()
+      const oldNodes = getNodes()
       if (shouldBroadcast) {
         if (!collaborationManager.canApplyLocalGraphMutation()) return false
 
-        const oldNodes = getNodes()
         collabSetNodes(
           oldNodes.map(sanitizeNodeForBroadcast),
           newNodes.map(sanitizeNodeForBroadcast),

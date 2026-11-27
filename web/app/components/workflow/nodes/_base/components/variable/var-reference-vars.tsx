@@ -22,6 +22,7 @@ import {
   getValueSelector,
   getVariableCategory,
   getVariableDisplayName,
+  normalizeSpecialVariableSelector,
 } from './var-reference-vars.helpers'
 
 const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
@@ -33,12 +34,14 @@ const resolveValueSelector = ({
   isSupportFileVar,
   nodeId,
   objPath,
+  filterVar,
 }: {
   itemData: Var
   isFlat?: boolean
   isSupportFileVar?: boolean
   nodeId: string
   objPath: string[]
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
 }) => {
   const isStructureOutput =
     itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
@@ -59,6 +62,7 @@ const resolveValueSelector = ({
     isRagVariable,
     nodeId,
     objPath,
+    filterVar,
   })
 }
 
@@ -79,6 +83,7 @@ type ItemProps = {
   preferSchemaType?: boolean
   isSelected?: boolean
   onActivate?: () => void
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
 }
 
 const Item: FC<ItemProps> = ({
@@ -97,6 +102,7 @@ const Item: FC<ItemProps> = ({
   preferSchemaType,
   isSelected,
   onActivate,
+  filterVar,
 }) => {
   const nestedVariableTypes: readonly VarType[] = [VarType.object, VarType.file]
 
@@ -203,6 +209,7 @@ const Item: FC<ItemProps> = ({
       isSupportFileVar,
       nodeId,
       objPath,
+      filterVar,
     })
 
     if (valueSelector) onChange(valueSelector, itemData)
@@ -314,7 +321,11 @@ const Item: FC<ItemProps> = ({
             payload={structuredOutput!}
             onHovering={setIsChildrenHovering}
             onSelect={(valueSelector) => {
-              onChange(valueSelector, itemData)
+              const selector = filterVar
+                ? normalizeSpecialVariableSelector(valueSelector)
+                : valueSelector
+              if (filterVar && !filterVar(itemData, selector)) return
+              onChange(selector, itemData)
             }}
           />
         )}
@@ -338,6 +349,7 @@ type Props = Readonly<{
   onManageInputField?: () => void
   searchInputRef?: RefObject<HTMLInputElement | null>
   preferSchemaType?: boolean
+  filterVar?: (payload: Var, selector: ValueSelector) => boolean
 }> &
   (
     | { hideSearch: true; keyboardTarget: HTMLElement | RefObject<HTMLElement | null> | null }
@@ -363,6 +375,7 @@ const VarReferenceVars: FC<Props> = ({
   onManageInputField,
   searchInputRef: externalSearchInputRef,
   preferSchemaType,
+  filterVar,
 }) => {
   const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const [internalSearchValue, setInternalSearchValue] = useState('')
@@ -426,11 +439,12 @@ const VarReferenceVars: FC<Props> = ({
         isSupportFileVar,
         nodeId,
         objPath: [],
+        filterVar,
       })
 
       if (valueSelector) onChange(valueSelector, itemData)
     },
-    [isSupportFileVar, onChange, selectableItems],
+    [isSupportFileVar, filterVar, onChange, selectableItems],
   )
 
   const handleKeyboardEvent = useCallback(
@@ -588,6 +602,7 @@ const VarReferenceVars: FC<Props> = ({
                   isFlat={item.isFlat}
                   isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                   preferSchemaType={preferSchemaType}
+                  filterVar={filterVar}
                   isSelected={effectiveSelectedIndex === optionIndex}
                   onActivate={() => setSelectedIndex(optionIndex)}
                 />

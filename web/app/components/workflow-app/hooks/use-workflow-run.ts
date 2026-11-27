@@ -1,7 +1,7 @@
 import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
+import type { WorkflowRunCallbacks } from '@/app/components/workflow/hooks-store'
 import type { Node } from '@/app/components/workflow/types'
-import type { StreamCallbacks } from '@/service/event-stream'
 import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
@@ -18,6 +18,7 @@ import {
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
@@ -31,7 +32,7 @@ import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { streamEvents } from '@/service/event-stream'
 import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
-import { useCollaborativeWorkflow } from '../../workflow/hooks/use-collaborative-workflow'
+import { useExternalWaitRun } from './use-external-wait-run'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
@@ -145,6 +146,23 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  const externalCallbacksRef = useRef<WorkflowRunCallbacks>({})
+  const updateExternalRunSnapshot = useCallback<
+    NonNullable<WorkflowRunCallbacks['onExternalWorkflowSnapshot']>
+  >((run, executions) => {
+    externalCallbacksRef.current.onExternalWorkflowSnapshot?.(run, executions)
+  }, [])
+  const completeExternalWaitRun = useCallback(() => {
+    void fetchInspectVars({})
+    invalidAllLastRun()
+    invalidateRunHistory()
+    externalCallbacksRef.current.onCompleted?.(false)
+  }, [fetchInspectVars, invalidAllLastRun, invalidateRunHistory])
+  const discardExternalWaitRun = useExternalWaitRun(
+    appId,
+    completeExternalWaitRun,
+    updateExternalRunSnapshot,
+  )
 
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -208,10 +226,12 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const handleRun = useCallback(
     async (
       params: WorkflowRunParams | null | undefined,
-      callback?: StreamCallbacks,
+      callback?: WorkflowRunCallbacks,
       options?: HandleRunOptions,
     ) => {
       const runMode = options?.mode ?? TriggerType.UserInput
+      discardExternalWaitRun()
+      externalCallbacksRef.current = callback ?? {}
       const resolvedParams: WorkflowRunParams = params ?? {}
       const { getNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft: Node[]) => {
@@ -483,6 +503,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       handleWorkflowNodeHumanInputRequired,
       handleWorkflowNodeHumanInputFormFilled,
       handleWorkflowNodeHumanInputFormTimeout,
+      discardExternalWaitRun,
     ],
   )
 

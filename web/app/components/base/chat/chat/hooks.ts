@@ -860,6 +860,7 @@ export const useChat = (
                 ...responseItem.workflowProcess,
                 status: WorkflowRunningStatus.Running,
                 error: undefined,
+                pauseReasons: undefined,
               }
             } else {
               taskIdRef.current = task_id
@@ -881,6 +882,7 @@ export const useChat = (
                 ...responseItem.workflowProcess,
                 status: workflowFinishedData.status as WorkflowRunningStatus,
                 error: workflowFinishedData.error,
+                pauseReasons: undefined,
               }
             }
           })
@@ -1045,6 +1047,7 @@ export const useChat = (
           ensureWorkflowEventsSubscription(workflowPausedData.workflow_run_id, otherOptions)
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
+            responseItem.workflowProcess!.pauseReasons = workflowPausedData.reasons
           })
         },
       }
@@ -1578,6 +1581,7 @@ export const useChat = (
               ...responseItem.workflowProcess,
               status: WorkflowRunningStatus.Running,
               error: undefined,
+              pauseReasons: undefined,
             }
           } else {
             taskIdRef.current = task_id
@@ -1602,6 +1606,7 @@ export const useChat = (
             ...responseItem.workflowProcess!,
             status: workflowFinishedData.status as WorkflowRunningStatus,
             error: workflowFinishedData.error,
+            pauseReasons: undefined,
           }
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -1798,6 +1803,7 @@ export const useChat = (
           handleResponding(false)
           ensureWorkflowEventsSubscription(workflowPausedData.workflow_run_id, otherOptions)
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
+          responseItem.workflowProcess!.pauseReasons = workflowPausedData.reasons
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

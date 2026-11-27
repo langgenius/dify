@@ -57,6 +57,7 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { consoleQuery } from '@/service/console'
 import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
@@ -101,7 +102,7 @@ type BasePanelProps = {
 }
 
 const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
-  const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowDebug', 'agentRoster'])
   const panelId = useId()
   const language = useLanguage()
   const appId = useAtomValue(editorAppIdAtom)
@@ -113,6 +114,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const { isConnected, nodePanelPresence } = useCollaboration(appId, canEdit)
   const messageLogItem = useStore((state) => state.messageLogItem)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+  const isExternalSingleWaiting =
+    isExternalAgentWorkflowPreviewData(data) &&
+    (isSingleRunning || data._singleRunningStatus === NodeRunningStatus.Paused)
 
   const currentUserPresence = useMemo(() => {
     const userId = userProfile?.id || ''
@@ -310,6 +314,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     runInputDataRef,
     runResult,
     setRunResult,
+    completeExternalRun,
     getInputVars,
     toVarInputs,
     tabType,
@@ -659,11 +664,13 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {isSupportSingleRun && canRun && !nodesReadOnly && (
-                <Tooltip disabled={isSingleRunning}>
+                <Tooltip disabled={isSingleRunning && !isExternalSingleWaiting}>
                   <TooltipTrigger
                     render={
                       <IconButton
                         aria-label={singleRunActionLabel}
+                        disabled={isExternalSingleWaiting}
+                        focusableWhenDisabled
                         className="me-1"
                         onClick={() => {
                           if (isSingleRunning) handleStop()
@@ -681,7 +688,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                       </IconButton>
                     }
                   />
-                  <TooltipContent>{runThisStepLabel}</TooltipContent>
+                  <TooltipContent>
+                    {isExternalSingleWaiting
+                      ? t(($) => $['external.workflow.waiting'], { ns: 'agentRoster' })
+                      : runThisStepLabel}
+                  </TooltipContent>
                 </Tooltip>
               )}
               <HelpLink nodeType={nodeMetaType} />
@@ -800,6 +811,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
               nodeInfo={nodeInfo!}
               singleRunResult={runResult!}
               isPaused={isPaused}
+              onExternalRunCompleted={completeExternalRun}
               {...passedLogParams}
             />
           </TabsPanel>

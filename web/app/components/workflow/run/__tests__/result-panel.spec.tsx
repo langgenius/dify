@@ -74,7 +74,7 @@ describe('ResultPanel', () => {
         status={NodeRunningStatus.Succeeded}
         error="boom"
         elapsed_time={2.5}
-        total_tokens={42}
+        total_tokens={40619}
         created_at={1710000000}
         created_by="Alice"
         steps={3}
@@ -105,7 +105,7 @@ describe('ResultPanel', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getAllByText('2.500s')).toHaveLength(2)
-    expect(screen.getAllByText('42 Tokens')).toHaveLength(2)
+    expect(screen.getAllByText('40,619 Tokens')).toHaveLength(2)
     expect(
       screen.getByRole('link', { name: 'workflowDebug.debug.variableInspect.export' }),
     ).toHaveAttribute('href', 'https://example.com/output.json')
@@ -231,5 +231,19 @@ describe('ResultPanel', () => {
     )
 
     expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
+  })
+
+  it('shows an external agent wait as running while preserving human-input pauses', () => {
+    const { rerender } = render(<ResultPanel status="paused" external_wait />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.running')
+    expect(screen.queryByText('appLog.status.paused')).not.toBeInTheDocument()
+    expect(screen.getByText('agentRoster.external.workflow.waiting')).toBeInTheDocument()
+    expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
+
+    rerender(<ResultPanel status="paused" external_wait human_input_wait />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.paused')
+    expect(screen.queryByText('appLog.status.running')).not.toBeInTheDocument()
   })
 })

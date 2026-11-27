@@ -15,6 +15,7 @@ import type {
   WorkflowVariableBlockType,
 } from '../../types'
 import type { PickerBlockMenuOption } from './menu'
+import type { Var } from '@/app/components/workflow/types'
 import { flip, offset, shift, useFloating } from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
@@ -27,6 +28,7 @@ import { GeneratorType } from '@/app/components/app/configuration/config/automat
 import VarReferenceVars, {
   VAR_REFERENCE_CHILD_POPUP_CLASS_NAME,
 } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { normalizeSpecialVariableSelector } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars.helpers'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { $splitNodeContainingQuery } from '../../utils'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../agent-output-block/commands'
@@ -170,8 +172,12 @@ const ComponentPicker = ({
     [editor],
   )
 
+  const filterWorkflowVar = workflowVariableBlock?.filterVar
   const handleSelectWorkflowVariable = useCallback(
-    (variables: string[]) => {
+    (variables: string[], variable: Var) => {
+      const selector = filterWorkflowVar ? normalizeSpecialVariableSelector(variables) : variables
+      if (filterWorkflowVar && !filterWorkflowVar(variable, selector)) return
+
       editor.update(() => {
         const currentTriggerMatch =
           triggerMatchRef.current ?? checkForTriggerMatch(triggerString, editor)
@@ -180,21 +186,24 @@ const ComponentPicker = ({
           : null
         if (needRemove) needRemove.remove()
       })
-      const isFlat = variables.length === 1
+      const isFlat = selector.length === 1
       if (isFlat) {
-        const varName = variables[0]
+        const varName = selector[0]
         if (varName === 'current') editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, undefined)
         else if (varName === 'error_message')
           editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, undefined)
         else if (varName === 'last_run')
           editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, undefined)
-      } else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
-        editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
+      } else if (
+        !filterWorkflowVar &&
+        (selector[1] === 'sys.query' || selector[1] === 'sys.files')
+      ) {
+        editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [selector[1]])
       } else {
-        editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
+        editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, selector)
       }
     },
-    [editor, checkForTriggerMatch, triggerString],
+    [editor, checkForTriggerMatch, triggerString, filterWorkflowVar],
   )
 
   const resetTypeaheadState = useCallback(() => {
@@ -248,9 +257,10 @@ const ComponentPicker = ({
                       searchText={triggerString === '/' ? effectiveQueryString || '' : undefined}
                       searchBoxClassName="mt-1"
                       vars={workflowVariableOptions}
-                      onChange={(variables: string[]) => {
-                        handleSelectWorkflowVariable(variables)
+                      onChange={(variables, variable) => {
+                        handleSelectWorkflowVariable(variables, variable)
                       }}
+                      filterVar={filterWorkflowVar}
                       maxHeightClass="max-h-[34vh]"
                       isSupportFileVar={isSupportFileVar}
                       onClose={handleClose}
@@ -343,6 +353,7 @@ const ComponentPicker = ({
       triggerString,
       workflowVariableBlock?.showManageInputField,
       workflowVariableBlock?.onManageInputField,
+      filterWorkflowVar,
       editor,
       checkForTriggerMatch,
       t,

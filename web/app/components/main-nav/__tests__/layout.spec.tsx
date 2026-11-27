@@ -167,7 +167,11 @@ describe('MainNavLayout', () => {
     expect(main).toHaveTextContent('content')
   })
 
-  it.each(['/datasets/dataset-1/documents', '/datasets/dataset-1/documents/document-1/settings'])(
+  it.each([
+    '/datasets/dataset-1/documents',
+    '/datasets/dataset-1/documents/document-1/settings',
+    '/external-agent/contract-review/overview',
+  ])(
     'renders the detail sidebar slot outside the single skip navigation target on route %s',
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)
@@ -297,6 +301,16 @@ describe('MainNavLayout', () => {
   it.each([
     { pathname: '/agents/agent-1/configure', datasetOperator: true, agentV2Enabled: true },
     { pathname: '/agents/agent-1/configure', datasetOperator: false, agentV2Enabled: false },
+    {
+      pathname: '/external-agent/contract-review/overview',
+      datasetOperator: true,
+      agentV2Enabled: true,
+    },
+    {
+      pathname: '/external-agent/contract-review/overview',
+      datasetOperator: false,
+      agentV2Enabled: false,
+    },
     {
       pathname: '/deployments/app-instance-1/overview',
       datasetOperator: false,

@@ -12,7 +12,6 @@ from core.app.entities.app_invoke_entities import (
     DifyRunContext,
     InvokeFrom,
     UserFrom,
-    build_dify_run_context,
 )
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -42,7 +41,7 @@ from graphon.nodes.variable_assigner.v1.node import (
 from graphon.nodes.variable_assigner.v2.node import (
     VariableAssignerNode as VariableAssignerV2,
 )
-from graphon.runtime import InitParams, RuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
@@ -107,20 +106,15 @@ class TestNodeFactoryCases:
             )
 
         def _factory(self):
-            run_context = build_dify_run_context(
-                tenant_id="tenant",
-                app_id="app",
-                user_id="user",
-                user_from=UserFrom.END_USER,
-                invoke_from=InvokeFrom.WEB_APP,
-            )
-
             return DifyNodeFactory(
-                init_params=InitParams(
+                init_params=build_test_graph_init_params(
                     workflow_id="workflow-1",
-                    run_context=run_context,
                     graph_config={"nodes": [], "edges": []},
-                    call_depth=0,
+                    tenant_id="tenant",
+                    app_id="app",
+                    user_id="user",
+                    user_from=UserFrom.END_USER,
+                    invoke_from=InvokeFrom.WEB_APP,
                 ),
                 runtime_state=SimpleNamespace(),
             )

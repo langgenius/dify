@@ -6,6 +6,7 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createExternalAgentCapabilities } from '@/test/console/external-agents'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
@@ -216,6 +217,46 @@ describe('consoleQuery transport context', () => {
     expect(uploaded.name).toBe(file.name)
     expect(uploaded.type).toBe(file.type)
     expect(await uploaded.text()).toBe('GIF89a')
+  })
+
+  it('uploads external agent test files with a page session as multipart data', async () => {
+    const file = new File(['test content'], 'notes.txt', { type: 'text/plain' })
+    const response = {
+      lease_id: 'lease-1',
+      filename: file.name,
+      media_type: file.type,
+      size: file.size,
+      expires_at: '2099-01-01T00:00:00Z',
+    }
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const mutation = new MutationObserver(
+      createQueryClient(),
+      consoleQuery.externalAgents.byAgentId.testFiles.post.mutationOptions(),
+    )
+    // The generated input omits the multipart body accepted by this existing endpoint.
+    await expect(
+      mutation.mutate({
+        params: { agent_id: 'agent-1' },
+        body: { file, page_session_id: 'page-1' },
+      } as Parameters<typeof mutation.mutate>[0]),
+    ).resolves.toEqual(response)
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(outgoing.url).toContain('/external-agents/agent-1/test-files')
+    expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
+    const form = await outgoing.formData()
+    expect(Array.from(form.keys()).sort()).toEqual(['file', 'page_session_id'])
+    expect(form.get('page_session_id')).toBe('page-1')
+    const uploaded = form.get('file')
+    if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded test file')
+    expect(uploaded.name).toBe(file.name)
+    expect(uploaded.type).toBe(file.type)
+    expect(await uploaded.text()).toBe('test content')
   })
 
   afterEach(() => {
@@ -429,6 +470,39 @@ describe('consoleQuery transport context', () => {
     expect(url.searchParams.has('tag_ids[1]')).toBe(false)
     expect(url.searchParams.get('app_id')).toBe('workflow-1')
     expect(url.searchParams.get('keyword')).toBe('Research')
+  })
+
+  it('sends every External Agent tag as a repeated key together with the existing roster filters', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        items: [],
+        total: 0,
+        enabled_count: 0,
+        disabled_count: 0,
+        limit: 20,
+        page: 1,
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const options = consoleQuery.externalAgents.get.queryOptions({
+      input: {
+        query: {
+          keyword: 'Review',
+          connected_by_me: true,
+          enabled: false,
+          tag_ids: ['research', 'finance'],
+        },
+      },
+    })
+    await options.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const url = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(url.pathname).toBe('/console/api/external-agents')
+    expect(url.searchParams.getAll('tag_ids')).toEqual(['research', 'finance'])
+    expect(url.searchParams.has('tag_ids[0]')).toBe(false)
+    expect(url.searchParams.get('keyword')).toBe('Review')
+    expect(url.searchParams.get('connected_by_me')).toBe('true')
+    expect(url.searchParams.get('enabled')).toBe('false')
   })
 
   it('should serialize KnowledgeFS creator ids as repeated query params', async () => {
@@ -650,6 +724,23 @@ describe('consoleQuery agent query retries', () => {
       ),
     ).rejects.toBe(error)
     expect(request).toHaveBeenCalledTimes(attempts)
+  })
+})
+
+describe('consoleQuery external agent capabilities', () => {
+  it('reads capabilities from the Console API', async () => {
+    const capabilities = createExternalAgentCapabilities({ enabled: false })
+    const request = vi.fn().mockResolvedValue(Response.json(capabilities))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryClient = createQueryClient()
+
+    await expect(
+      queryClient.query(consoleQuery.externalAgents.capabilities.get.queryOptions()),
+    ).resolves.toEqual(capabilities)
+    expect(request).toHaveBeenCalledTimes(1)
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(new URL(outgoing.url).pathname).toBe('/console/api/external-agents/capabilities')
+    expect(outgoing.method).toBe('GET')
   })
 })
 

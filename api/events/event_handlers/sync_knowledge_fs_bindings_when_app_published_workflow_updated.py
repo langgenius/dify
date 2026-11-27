@@ -13,12 +13,21 @@ from models.knowledge_fs import AppKnowledgeFSSpaceJoin, KnowledgeFSAppSpaceJoin
 from models.model import App
 from models.workflow import Workflow
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.knowledge_retrieval_v2.validation import collect_control_space_ids
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 
 @app_published_workflow_was_updated.connect
 def handle(sender: object, **kwargs: object) -> None:
+    """Reconcile an admitted publication only when KnowledgeFS is available.
+
+    Disabled deployments may not have KnowledgeFS tables. They leave binding
+    state unchanged and perform no KnowledgeFS reads or remote operations.
+    Enabled deployments retain exact synchronization in the publish transaction.
+    """
+    if not get_knowledge_fs_features().enabled:
+        return
     app = cast(App, sender)
     published_workflow = cast(Workflow, kwargs["published_workflow"])
     publish_session = cast(Session | None, kwargs.get("session"))

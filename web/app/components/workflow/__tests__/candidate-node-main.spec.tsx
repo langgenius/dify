@@ -7,6 +7,8 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStoreApi } from 'reactflow'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { createExternalAgentAsset, createExternalAgentDetail } from '@/test/console/external-agents'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
@@ -35,6 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflows.triggers.webhook.get': webhook,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': createBinding,
       'agent.byAgentId.get': async () => createAgentFixture({ id: 'agent-1' }),
+      'externalAgents.byAgentId.get': async () => createExternalAgentDetail(),
     }),
   }
 })
@@ -187,6 +190,33 @@ it('keeps a roster binding when placing an agent without creating an inline agen
     agent_binding: { binding_type: 'roster_agent', agent_id: 'agent-1' },
     _isCandidate: false,
   })
+  expect(sync).toHaveBeenCalledOnce()
+  expect(createBinding).not.toHaveBeenCalled()
+})
+
+it('saves a placed external agent without creating an inline agent binding', async () => {
+  const externalAgentData = createExternalAgentWorkflowPreviewData(createExternalAgentAsset())
+  const { store, place, nodes, sync } = setup(
+    createNode({
+      id: 'external-agent',
+      data: {
+        ...externalAgentData,
+        type: BlockEnum.Agent,
+        _isCandidate: true,
+      },
+    }),
+  )
+
+  await place()
+
+  expect(store.getState().candidateNode).toBeUndefined()
+  expect(nodes().map((node) => node.id)).toEqual(['existing-node', 'external-agent'])
+  const placedNode = nodes().find((node) => node.id === 'external-agent')!
+  expect(placedNode.data).toMatchObject({
+    ...externalAgentData,
+    _isCandidate: false,
+  })
+  expect(placedNode.data._isTempNode).toBeUndefined()
   expect(sync).toHaveBeenCalledOnce()
   expect(createBinding).not.toHaveBeenCalled()
 })

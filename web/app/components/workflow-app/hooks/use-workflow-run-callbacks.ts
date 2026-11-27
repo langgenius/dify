@@ -1,12 +1,29 @@
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { StreamCallbacks } from '@/service/event-stream'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import {
+  hasExternalWaitReason,
+  hasHumanInputWaitReason,
+} from '@/app/components/workflow/nodes/agent-v2/execution'
 import { streamEvents } from '@/service/event-stream'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 
 type ContainerSize = {
   clientWidth: number
   clientHeight: number
+}
+
+function isExternalRunWaiting(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || !('result' in value)) return false
+  const result = value.result
+  return Boolean(
+    result &&
+    typeof result === 'object' &&
+    'external_wait' in result &&
+    result.external_wait &&
+    'status' in result &&
+    result.status === 'paused',
+  )
 }
 
 type WorkflowRunEventHandlers = {
@@ -38,7 +55,7 @@ type WorkflowRunEventHandlers = {
   handleWorkflowTextChunk: NonNullable<StreamCallbacks['onTextChunk']>
   handleWorkflowTextReplace: NonNullable<StreamCallbacks['onTextReplace']>
   handleWorkflowReasoning: NonNullable<StreamCallbacks['onReasoning']>
-  handleWorkflowPaused: () => void
+  handleWorkflowPaused: NonNullable<StreamCallbacks['onWorkflowPaused']>
 }
 
 type UserCallbackHandlers = {
@@ -163,6 +180,7 @@ export const createBaseWorkflowRunCallbacks = ({
   const wrappedOnCompleted: StreamCallbacks['onCompleted'] = async (hasError, errorMessage) => {
     clearAbortController()
     clearListeningState()
+    if (!hasError && isExternalRunWaiting(getWorkflowRunningData())) return
     if (onCompleted) onCompleted(hasError, errorMessage)
   }
 
@@ -257,10 +275,14 @@ export const createBaseWorkflowRunCallbacks = ({
       if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
-      handleWorkflowPaused()
+      handleWorkflowPaused(params)
       invalidateRunHistory()
       if (onWorkflowPaused) onWorkflowPaused(params)
-      if (!hasStartedResumeStream) {
+      if (
+        (!hasExternalWaitReason(params.data.reasons) ||
+          hasHumanInputWaitReason(params.data.reasons)) &&
+        !hasStartedResumeStream
+      ) {
         hasStartedResumeStream = true
         streamEvents(workflowRunEventsRequest(params.workflow_run_id), baseSseOptions)
       }
@@ -436,10 +458,14 @@ export const createFinalWorkflowRunCallbacks = ({
       player?.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
-      handleWorkflowPaused()
+      handleWorkflowPaused(params)
       invalidateRunHistory()
       if (onWorkflowPaused) onWorkflowPaused(params)
-      if (!hasStartedResumeStream) {
+      if (
+        (!hasExternalWaitReason(params.data.reasons) ||
+          hasHumanInputWaitReason(params.data.reasons)) &&
+        !hasStartedResumeStream
+      ) {
         hasStartedResumeStream = true
         streamEvents(workflowRunEventsRequest(params.workflow_run_id), finalCallbacks)
       }

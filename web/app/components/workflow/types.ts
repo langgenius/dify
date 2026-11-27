@@ -477,6 +477,8 @@ export type WorkflowRunningData = {
       download_url: string
     }
     status: string
+    external_wait?: boolean
+    human_input_wait?: boolean
     error?: string
     elapsed_time?: number
     total_tokens?: number

@@ -3,6 +3,7 @@ import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { ReactNode } from 'react'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
+import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { InputGroupAddon } from '@langgenius/dify-ui/input-group'
@@ -19,6 +20,7 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -27,12 +29,16 @@ import { createContext, use, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorAppIdAtom,
+  editorResourceKindAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { CompactTagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
+import { WorkflowAgentSelectorContent } from './workflow-agent-selector'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
 
@@ -273,17 +279,22 @@ function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNod
 export function AgentBlockItem({
   block,
   onSelect,
+  onSelectExternal,
   onStartFromScratch,
 }: {
   block: NodeDefault
   onSelect: (agent: AgentRosterNodeData) => void
+  onSelectExternal?: (agent: ExternalAgentWorkflowPreviewAgent) => void
   onStartFromScratch: () => void
 }) {
   const { t } = useTranslation(['navigation'])
+  const { t: tAgentRoster } = useTranslation(['agentRoster'])
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const [open, setOpen] = useState(false)
 
   return (
-    <AgentSelectorMenu>
-      <AgentSelectorMenuTrigger
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
         openOnHover
         render={
           <Button
@@ -307,13 +318,22 @@ export function AgentBlockItem({
           aria-hidden
           className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-tertiary"
         />
-      </AgentSelectorMenuTrigger>
-      <AgentSelectorMenuContent
+      </PopoverTrigger>
+      <PopoverContent
         side="right"
         align="start"
-        onSelect={onSelect}
-        onStartFromScratch={onStartFromScratch}
-      />
-    </AgentSelectorMenu>
+        className="w-92 max-w-[calc(100vw-1rem)] overflow-visible"
+      >
+        <PopoverTitle className="sr-only">
+          {tAgentRoster(($) => $['roster.nodeSelector.dialogLabel'])}
+        </PopoverTitle>
+        <WorkflowAgentSelectorContent
+          onSelect={onSelect}
+          onSelectExternal={resourceKind === 'app' ? onSelectExternal : undefined}
+          onStartFromScratch={onStartFromScratch}
+          onRequestClose={() => setOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }

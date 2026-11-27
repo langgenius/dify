@@ -3,7 +3,12 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { AgentConfig } from '@/models/debug'
 import type { ModelConfig } from '@/types/app'
-import type { HumanInputFilledFormData, HumanInputFormData, NodeTracing } from '@/types/workflow'
+import type {
+  HumanInputFilledFormData,
+  HumanInputFormData,
+  NodeTracing,
+  WorkflowPausedResponse,
+} from '@/types/workflow'
 
 export type { Inputs } from '@/models/debug'
 
@@ -35,6 +40,7 @@ export type ChatConfig = Omit<ModelConfig, 'model' | 'system_parameters' | 'agen
 export type WorkflowProcess = {
   status: WorkflowRunningStatus
   tracing: NodeTracing[]
+  pauseReasons?: WorkflowPausedResponse['data']['reasons']
   error?: string
   expand?: boolean // for UI
   resultText?: string

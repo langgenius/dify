@@ -1,9 +1,10 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippets/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import { mutationOptions, skipToken } from '@tanstack/react-query'
+import { mutationOptions, queryOptions, skipToken } from '@tanstack/react-query'
+import { getExternalAgentInvocationId } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { isNotFoundError } from '@/service/http-error'
+import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 
 const WORKFLOW_VERSIONS_PAGE_SIZE = 10
 
@@ -156,15 +157,40 @@ function withMissingLastRunAsNull<TContext, TData, TOptions extends object>(
   }
 }
 
-export function lastRunQueryOptions(resource: EditorResource, nodeId: string) {
+export function lastRunQueryOptions(
+  resource: EditorResource,
+  nodeId: string,
+  expectedExecutionId?: string,
+) {
   switch (resource.kind) {
     case 'app':
-      return withMissingLastRunAsNull(
-        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
-          input: { params: { app_id: resource.appId, node_id: nodeId } },
-          retry: 0,
-        }),
-      )
+      return queryOptions({
+        ...withMissingLastRunAsNull(
+          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
+            input: { params: { app_id: resource.appId, node_id: nodeId } },
+            retry: 0,
+          }),
+        ),
+        select: (execution) =>
+          execution && expectedExecutionId && execution.id !== expectedExecutionId
+            ? undefined
+            : execution,
+        refetchInterval: (query) => {
+          const execution = query.state.data
+          if (query.state.error) {
+            if ([401, 403, 410].includes(getHttpErrorStatus(query.state.error) ?? 0)) return false
+            return expectedExecutionId || (execution && getExternalAgentInvocationId(execution))
+              ? 1_500
+              : false
+          }
+          if (expectedExecutionId && execution && execution.id !== expectedExecutionId) return 1_500
+          return execution &&
+            getExternalAgentInvocationId(execution) &&
+            ['paused', 'running'].includes(execution.status ?? '')
+            ? 1_500
+            : false
+        },
+      })
     case 'knowledge-pipeline':
       return withMissingLastRunAsNull(
         consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(

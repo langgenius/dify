@@ -29,6 +29,13 @@ it.each(['rename', 'delete'] as const)(
         input: { query: { tag_ids: [agentTag.id] } },
       }),
       consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      consoleQuery.externalAgents.get.key({
+        type: 'infinite',
+        input: { query: { tag_ids: [agentTag.id] } },
+      }),
+      consoleQuery.externalAgents.byAgentId.get.queryKey({
+        input: { params: { agent_id: 'agent-1' } },
+      }),
     ]
     const appResults = consoleQuery.apps.get.key({ type: 'infinite' })
     for (const key of [...agentResults, appResults]) client.setQueryData(key, {})
@@ -91,24 +98,31 @@ it('includes a newly created Agent tag when the first catalog read is still pend
   expect(observer.getCurrentResult().data).toEqual([createdTag, existingTag])
 })
 
-it('refreshes binding counts in Agent tag catalogs after deleting an Agent', async () => {
-  const client = createTestQueryClient()
-  const tag = { id: 'research', name: 'Research', type: 'agent', binding_count: '1' }
-  const unboundTag = { ...tag, binding_count: '0' }
-  const catalog = consoleQuery.tags.get.queryOptions({ input: { query: { type: 'agent' } } })
-  const search = consoleQuery.tags.get.queryKey({
-    input: { query: { type: 'agent', keyword: 'Re' } },
-  })
-  client.setQueryData(catalog.queryKey, [tag])
-  client.setQueryData(search, [tag])
-  const observer = new QueryObserver(client, { ...catalog, queryFn: async () => [unboundTag] })
-  onTestFinished(observer.subscribe(() => {}))
+it.each(['dify', 'external'] as const)(
+  'refreshes shared binding counts after deleting a %s Agent',
+  async (source) => {
+    const client = createTestQueryClient()
+    const tag = { id: 'research', name: 'Research', type: 'agent', binding_count: '1' }
+    const unboundTag = { ...tag, binding_count: '0' }
+    const catalog = consoleQuery.tags.get.queryOptions({ input: { query: { type: 'agent' } } })
+    const search = consoleQuery.tags.get.queryKey({
+      input: { query: { type: 'agent', keyword: 'Re' } },
+    })
+    client.setQueryData(catalog.queryKey, [tag])
+    client.setQueryData(search, [tag])
+    const observer = new QueryObserver(client, { ...catalog, queryFn: async () => [unboundTag] })
+    onTestFinished(observer.subscribe(() => {}))
 
-  call.mockResolvedValueOnce(undefined)
-  await new MutationObserver(client, consoleQuery.agent.byAgentId.delete.mutationOptions()).mutate({
-    params: { agent_id: 'agent-1' },
-  })
+    call.mockResolvedValueOnce(undefined)
+    const deletion =
+      source === 'dify'
+        ? consoleQuery.agent.byAgentId.delete.mutationOptions()
+        : consoleQuery.externalAgents.byAgentId.delete.mutationOptions()
+    await new MutationObserver(client, deletion).mutate({
+      params: { agent_id: 'agent-1' },
+    })
 
-  expect(observer.getCurrentResult().data).toEqual([unboundTag])
-  expect(client.getQueryState(search)?.isInvalidated).toBe(true)
-})
+    expect(observer.getCurrentResult().data).toEqual([unboundTag])
+    expect(client.getQueryState(search)?.isInvalidated).toBe(true)
+  },
+)

@@ -23,12 +23,17 @@ import { use, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
-import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
+import {
+  getExternalAgentInvocationId,
+  isBoundAgentV2Execution,
+  isExternalWaitExecution,
+} from '@/app/components/workflow/nodes/agent-v2/execution'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
+import { ExternalAgentInvocationTraceDetails } from '@/features/agent-v2/external-agent/invocation-trace'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
@@ -36,6 +41,7 @@ import { AgentLogTrigger } from './agent-log/agent-log-trigger'
 import { ExternalTraceRow } from './external-trace-row'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
+import { WorkflowPauseReasonsContext } from './pause-reasons-context'
 import { RetryLogTrigger } from './retry-log'
 import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
@@ -78,6 +84,13 @@ const NodePanel: FC<Props> = ({
   externalTraceRun,
 }) => {
   const workflowToolTracing = use(WorkflowToolTracingContext)
+  const externalInvocationId = getExternalAgentInvocationId(nodeInfo)
+  const pauseReasons = use(WorkflowPauseReasonsContext)
+  const externalWaiting =
+    nodeInfo.status === 'paused' &&
+    pauseReasons !== undefined &&
+    isExternalWaitExecution(pauseReasons, nodeInfo.id, nodeInfo.node_execution_id)
+  const displayStatus = externalWaiting ? 'running' : nodeInfo.status
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback(
     (state: boolean) => {
@@ -86,7 +99,13 @@ const NodePanel: FC<Props> = ({
     },
     [hideProcessDetail],
   )
-  const { t } = useTranslation(['workflow', 'workflowLogic', 'workflowHumanInput', 'runLog'])
+  const { t } = useTranslation([
+    'workflow',
+    'workflowLogic',
+    'workflowHumanInput',
+    'runLog',
+    'agentRoster',
+  ])
   const docLink = useDocLink()
   const detailsId = useId()
   const Header = hideProcessDetail ? 'div' : 'button'
@@ -183,30 +202,32 @@ const NodePanel: FC<Props> = ({
                 >
                   {nodeInfo.title}
                 </span>
-                {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
+                {!['running', 'paused'].includes(displayStatus) && !hideInfo && (
                   <div className="shrink-0 system-xs-regular text-text-tertiary">
                     {nodeInfo.execution_metadata?.total_tokens
                       ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · `
                       : ''}
-                    {`${getTime(nodeInfo.elapsed_time || 0)}`}
+                    {externalInvocationId && nodeInfo.elapsed_time == null
+                      ? t(($) => $['external.overview.testRun.notProvided'], { ns: 'agentRoster' })
+                      : getTime(nodeInfo.elapsed_time ?? 0)}
                   </div>
                 )}
-                {nodeInfo.status !== 'running' && statusLabels[nodeInfo.status] && (
-                  <span className="sr-only">{statusLabels[nodeInfo.status]}</span>
+                {displayStatus !== 'running' && statusLabels[displayStatus] && (
+                  <span className="sr-only">{statusLabels[displayStatus]}</span>
                 )}
-                {nodeInfo.status === 'succeeded' && (
+                {displayStatus === 'succeeded' && (
                   <RiCheckboxCircleFill
                     aria-hidden="true"
                     className="ms-2 size-3.5 shrink-0 text-text-success"
                   />
                 )}
-                {nodeInfo.status === 'failed' && (
+                {displayStatus === 'failed' && (
                   <RiErrorWarningFill
                     aria-hidden="true"
                     className="ms-2 size-3.5 shrink-0 text-text-destructive"
                   />
                 )}
-                {nodeInfo.status === 'stopped' && (
+                {displayStatus === 'stopped' && (
                   <RiAlertFill
                     aria-hidden="true"
                     className={cn(
@@ -215,7 +236,7 @@ const NodePanel: FC<Props> = ({
                     )}
                   />
                 )}
-                {nodeInfo.status === 'paused' && (
+                {displayStatus === 'paused' && (
                   <RiPauseCircleFill
                     aria-hidden="true"
                     className={cn(
@@ -224,7 +245,7 @@ const NodePanel: FC<Props> = ({
                     )}
                   />
                 )}
-                {nodeInfo.status === 'exception' && (
+                {displayStatus === 'exception' && (
                   <RiAlertFill
                     aria-hidden="true"
                     className={cn(
@@ -233,7 +254,7 @@ const NodePanel: FC<Props> = ({
                     )}
                   />
                 )}
-                {nodeInfo.status === 'running' && (
+                {displayStatus === 'running' && (
                   <div className="flex shrink-0 items-center text-[13px] leading-4 font-medium text-text-accent">
                     <span className="me-2 text-xs font-normal">{statusLabels.running}</span>
                     <RiLoader2Line aria-hidden="true" className="size-3.5 animate-spin" />
@@ -295,8 +316,14 @@ const NodePanel: FC<Props> = ({
                     />
                   </dl>
                 )}
+                {externalInvocationId && (
+                  <ExternalAgentInvocationTraceDetails
+                    key={externalInvocationId}
+                    invocationId={externalInvocationId}
+                  />
+                )}
                 <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
-                  {nodeInfo.status === 'stopped' && (
+                  {displayStatus === 'stopped' && (
                     <StatusContainer status="stopped">
                       {t(($) => $['tracing.stopBy'], {
                         ns: 'workflow',
@@ -304,7 +331,7 @@ const NodePanel: FC<Props> = ({
                       })}
                     </StatusContainer>
                   )}
-                  {nodeInfo.status === 'exception' && (
+                  {displayStatus === 'exception' && (
                     <StatusContainer status="stopped">
                       {localizedError}
                       <a
@@ -317,18 +344,20 @@ const NodePanel: FC<Props> = ({
                       </a>
                     </StatusContainer>
                   )}
-                  {nodeInfo.status === 'failed' && (
+                  {displayStatus === 'failed' && (
                     <StatusContainer status="failed">{localizedError}</StatusContainer>
                   )}
-                  {nodeInfo.status === 'retry' && (
+                  {displayStatus === 'retry' && (
                     <StatusContainer status="failed">{localizedError}</StatusContainer>
                   )}
-                  {nodeInfo.status === 'paused' && (
+                  {displayStatus === 'paused' && (
                     <StatusContainer status="paused">
                       <div className="system-xs-regular text-text-warning">
-                        {t(($) => $['nodes.humanInput.log.reasonContent'], {
-                          ns: 'workflowHumanInput',
-                        })}
+                        {externalInvocationId
+                          ? t(($) => $['external.workflow.waiting'], { ns: 'agentRoster' })
+                          : t(($) => $['nodes.humanInput.log.reasonContent'], {
+                              ns: 'workflowHumanInput',
+                            })}
                       </div>
                     </StatusContainer>
                   )}

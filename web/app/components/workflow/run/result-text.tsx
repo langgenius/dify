@@ -10,6 +10,7 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 type ResultTextProps = {
   isRunning?: boolean
   isPaused?: boolean
+  isExternalWaiting?: boolean
   outputs?: any
   error?: string
   onClick?: () => void
@@ -19,14 +20,20 @@ type ResultTextProps = {
 const ResultText: FC<ResultTextProps> = ({
   isRunning,
   isPaused,
+  isExternalWaiting,
   outputs,
   error,
   onClick,
   allFiles,
 }) => {
-  const { t } = useTranslation(['runLog'])
+  const { t } = useTranslation(['runLog', 'agentRoster'])
   return (
     <div className="bg-background-section-burn">
+      {isExternalWaiting && (
+        <p role="status" className="px-4 py-3 system-sm-regular text-text-tertiary">
+          {t(($) => $['external.workflow.waiting'], { ns: 'agentRoster' })}
+        </p>
+      )}
       {isRunning && !outputs && (
         <div className="ps-6.5 pt-4">
           <LoadingAnim type="text" />
@@ -37,7 +44,7 @@ const ResultText: FC<ResultTextProps> = ({
           <StatusContainer status="failed">{error}</StatusContainer>
         </div>
       )}
-      {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
+      {!isPaused && !isExternalWaiting && !isRunning && !outputs && !error && !allFiles?.length && (
         <div className="mt-30 flex flex-col items-center px-4 py-2 text-[13px] leading-4.5 text-gray-500">
           <span
             aria-hidden

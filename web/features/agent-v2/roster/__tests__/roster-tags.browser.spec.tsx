@@ -114,7 +114,7 @@ it('paginates filtered Agents, restarts for a second tag and clears only the tag
   await page.getByRole('option', { name: 'Finance' }).click()
   await userEvent.keyboard('{Escape}')
   await expect
-    .element(page.getByRole('status', { name: 'agentRoster.roster.emptySearch' }))
+    .element(page.getByRole('status', { name: 'agentRoster.external.emptySearch' }))
     .toBeVisible()
   expect(listAgents).toHaveBeenLastCalledWith({
     query: {
@@ -144,7 +144,7 @@ it('paginates filtered Agents, restarts for a second tag and clears only the tag
     .toBeVisible()
 })
 
-it('clears an unmatched search and all roster filters while preserving other URL state and restoring search focus', async () => {
+it('clears all roster filters, preserves sorting, and focuses the All status', async () => {
   const listAgents = fake.console.agent.get
   listAgents.mockImplementation((input) => {
     const query = input?.query
@@ -160,8 +160,9 @@ it('clears an unmatched search and all roster filters while preserving other URL
 
   const search = page.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' })
   await search.fill('kkkkk')
-  const clear = page.getByRole('button', { name: 'agentRoster.roster.clearFilters' })
+  const clear = page.getByRole('button', { name: 'agentRoster.external.clearFilters' })
   await expect.element(clear).toBeVisible()
+  await expect.element(page.getByText('agentRoster.external.emptySearchDescription')).toBeVisible()
 
   await page.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ }).click()
   await page.getByRole('checkbox', { name: 'agentRoster.roster.filters.createdByMe' }).click()
@@ -184,7 +185,9 @@ it('clears an unmatched search and all roster filters while preserving other URL
 
   listAgents.mockClear()
   await clear.click()
-  await expect.element(search).toHaveFocus()
+  const allStatus = page.getByRole('radio', { name: 'agentRoster.roster.filters.all', exact: true })
+  await expect.element(allStatus).toHaveFocus()
+  await expect.element(allStatus).toBeChecked()
   await expect.element(search).toHaveValue('')
   await expect.element(page.getByRole('listitem', { name: 'Analyst' })).toBeVisible()
   await expect.element(page.getByRole('listitem', { name: 'Reviewer' })).not.toBeInTheDocument()
@@ -371,7 +374,7 @@ it('reports a failed binding after the successful removal drops the Agent from t
   })
   await userEvent.keyboard('{Escape}')
   await expect
-    .element(page.getByRole('status', { name: 'agentRoster.roster.emptySearch' }))
+    .element(page.getByRole('status', { name: 'agentRoster.external.emptySearch' }))
     .toBeVisible()
   await expect.element(card).not.toBeInTheDocument()
   await catalogRefresh.arrived

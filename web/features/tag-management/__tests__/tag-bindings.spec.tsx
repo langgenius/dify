@@ -87,8 +87,23 @@ it('refreshes Agent tags, lists and the edited detail after both writes settle o
     consoleQuery.agent.get.key({ type: 'infinite' }),
     consoleQuery.agent.inviteOptions.get.key({ type: 'infinite' }),
     detailKey('agent-1'),
+    consoleQuery.externalAgents.get.key({ type: 'infinite' }),
+    consoleQuery.externalAgents.byAgentId.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    }),
   ]
-  const unaffected = [...appKeys(), tagKey('app'), tagKey('knowledge'), detailKey('agent-2')]
+  const unaffected = [
+    ...appKeys(),
+    tagKey('app'),
+    tagKey('knowledge'),
+    detailKey('agent-2'),
+    consoleQuery.externalAgents.byAgentId.get.queryKey({
+      input: { params: { agent_id: 'agent-2' } },
+    }),
+    consoleQuery.externalAgents.byAgentId.tests.byInvocationId.get.queryKey({
+      input: { params: { agent_id: 'agent-1', invocation_id: 'run-1' } },
+    }),
+  ]
   for (const key of [...affected, ...unaffected]) queryClient.setQueryData(key, [])
 
   const removal = createDeferred()

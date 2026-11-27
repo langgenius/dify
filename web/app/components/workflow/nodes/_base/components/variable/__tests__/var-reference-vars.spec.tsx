@@ -342,6 +342,50 @@ describe('VarReferenceVars', () => {
     expect(screen.queryByText('other_value')).not.toBeInTheDocument()
   })
 
+  it('keeps unsupported object containers navigable while guarding mouse, keyboard, and nested selection', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <VarReferenceVars
+        hideSearch
+        keyboardTarget={keyboardTarget}
+        vars={[
+          {
+            nodeId: 'source',
+            title: 'Source',
+            vars: [
+              {
+                variable: 'payload',
+                type: VarType.object,
+                children: [
+                  { variable: 'name', type: VarType.string },
+                  { variable: 'count', type: VarType.number },
+                ],
+              },
+            ],
+          },
+        ]}
+        filterVar={(_variable, selector) => selector.at(-1) === 'name'}
+        onChange={onChange}
+      />,
+    )
+
+    await user.click(keyboardTarget)
+    await user.keyboard('{Enter}')
+    const root = screen.getByText('payload')
+    await user.click(root)
+    expect(onChange).not.toHaveBeenCalled()
+
+    await user.hover(root)
+    await user.click(await screen.findByText('count'))
+    expect(onChange).not.toHaveBeenCalled()
+    await user.click(screen.getByText('name'))
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      ['source', 'payload', 'name'],
+      expect.objectContaining({ variable: 'payload' }),
+    )
+  })
+
   it('should ignore file vars when file support is disabled and notify when focus leaves the search group', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

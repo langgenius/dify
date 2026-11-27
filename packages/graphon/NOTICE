@@ -1,0 +1,6 @@
+Graphon
+Source: https://github.com/langgenius/graphon
+Pinned upstream revision: 4fa22141774dff80e90e4dfa98ea3e6fbf0421bb
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+Local modifications are documented in UPSTREAM.md.
+Modified: generic ExternalWaitReason and Boolean node default value types.
