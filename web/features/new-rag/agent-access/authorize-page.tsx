@@ -24,7 +24,7 @@ import { agentAccessErrorCode, isLoopbackHost, rejectedKnowledgeBaseIds } from '
 import { useKnowledgeBaseOptions } from './knowledge-base-options'
 import { KnowledgeBasePicker } from './knowledge-base-picker'
 
-export const KNOWLEDGE_AGENT_AUTHORIZE_PATH = '/account/knowledge-agent/authorize'
+const KNOWLEDGE_AGENT_AUTHORIZE_PATH = '/account/knowledge-agent/authorize'
 
 const AUTHORIZATION_PARAMS = [
   'response_type',

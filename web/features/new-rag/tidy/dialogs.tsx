@@ -127,7 +127,7 @@ function ConfirmationForm({
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
-      {(children || error) && (
+      {(Boolean(children) || Boolean(error)) && (
         <DialogBody>
           {children}
           {error && (

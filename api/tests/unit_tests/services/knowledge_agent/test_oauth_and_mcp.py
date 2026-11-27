@@ -5,8 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 from collections.abc import Iterable
-from types import SimpleNamespace
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from services.knowledge_agent.access_service import KnowledgeAgentPrincipal
 from services.knowledge_agent.mcp_server import TOOLS, KnowledgeAgentMcpServer
@@ -18,7 +17,9 @@ from services.knowledge_agent.oauth import (
     validate_redirect_uri,
     verify_pkce,
 )
-from services.knowledge_fs.retrieval_contracts import KnowledgeFSRetrievalTestPayload
+from services.knowledge_fs.product_dto import KnowledgeFSLogicalDocumentListResponse
+from services.knowledge_fs.retrieval_contracts import KnowledgeFSRetrievalTestPayload, KnowledgeFSRetrievalTestResponse
+from tests.helpers.unit.knowledge_agent import FakeKnowledgeFacade, SpaceListing, SpaceRow, SpaceSummary, json_rows
 
 
 def test_pkce_s256_only() -> None:
@@ -63,31 +64,69 @@ PRINCIPAL = KnowledgeAgentPrincipal(
 )
 
 
-class StubFacade:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, object]]] = []
+EVIDENCE = KnowledgeFSRetrievalTestResponse.model_validate(
+    {
+        "items": [
+            {
+                "nodeId": "node-1",
+                "projectionIds": [],
+                "score": 0.91234,
+                "sources": ["dense"],
+                "text": "14 days",
+                "citation": {
+                    "artifactHash": "hash",
+                    "documentAssetId": "asset-1",
+                    "documentTitle": "Refund policy",
+                    "documentVersion": 1,
+                    "logicalDocumentId": "doc-1",
+                    "logicalDocumentRevision": 2,
+                    "sectionPath": ["Refunds"],
+                    "pageNumber": 3,
+                },
+            }
+        ],
+        "metrics": {"totalMs": 12.5},
+        "mode": "fast",
+        "traceId": "trace-1",
+    }
+)
+DOCUMENTS = KnowledgeFSLogicalDocumentListResponse.model_validate(
+    {
+        "data": [
+            {
+                "active": {
+                    "contentHash": "hash",
+                    "createdAt": "2026-11-01T08:00:00Z",
+                    "documentAssetId": "asset-1",
+                    "documentAssetVersion": 1,
+                    "documentId": "doc-1",
+                    "knowledgeSpaceId": "space-1",
+                    "mimeType": "application/pdf",
+                    "revision": 2,
+                    "sizeBytes": 10,
+                    "state": "active",
+                },
+                "createdAt": "2026-10-01T08:00:00Z",
+                "id": "doc-1",
+                "knowledgeSpaceId": "space-1",
+                "rowVersion": 1,
+                "status": "ready",
+                "title": "Refund policy",
+                "updatedAt": "2026-11-01T00:00:00Z",
+                "userMetadata": {},
+            }
+        ],
+        "nextCursor": "c2",
+    }
+)
 
-    def retrieve_evidence(self, **kwargs: object) -> SimpleNamespace:
-        self.calls.append(("retrieve_evidence", kwargs))
-        citation = SimpleNamespace(
-            logical_document_id="doc-1",
-            document_title="Refund policy",
-            logical_document_revision=2,
-            document_version=1,
-            section_path=["Refunds"],
-            page_number=3,
-        )
-        return SimpleNamespace(
-            mode="fast", items=[SimpleNamespace(node_id="node-1", score=0.91234, text="14 days", citation=citation)]
-        )
 
-    def list_logical_documents(self, **kwargs: object) -> SimpleNamespace:
-        self.calls.append(("list_logical_documents", kwargs))
-        active = SimpleNamespace(revision=2, mime_type="application/pdf", size_bytes=10, document_asset_id="asset-1")
-        document = SimpleNamespace(
-            id="doc-1", title="Refund policy", status="ready", enabled=True, active=active, updated_at="2026-11-01"
-        )
-        return SimpleNamespace(data=[document], next_cursor="c2")
+def _facade() -> FakeKnowledgeFacade:
+    """The facade answering the two operations these tests reach, with the real response models."""
+    facade = FakeKnowledgeFacade()
+    facade.answers["retrieve_evidence"] = EVIDENCE
+    facade.answers["list_logical_documents"] = DOCUMENTS
+    return facade
 
 
 class StubSpaces:
@@ -111,38 +150,38 @@ class StubNames:
 
     def list_spaces(
         self, *, tenant_id: str, account_id: str, page: int, limit: int, control_space_ids: list[str] | None = None
-    ) -> SimpleNamespace:
+    ) -> SpaceListing:
         assert (tenant_id, account_id) == ("tenant", "acct")
         self.lookups.append({"page": page, "limit": limit, "control_space_ids": control_space_ids})
-        summary = SimpleNamespace(name="Handbook", description="Policies")
+        summary = SpaceSummary(name="Handbook", description="Policies")
         if control_space_ids is None:
             # The unfiltered listing: other bases only, page after page.
-            other = [SimpleNamespace(control_space_id=f"kb-other-{page}", technical_summary=summary)]
-            return SimpleNamespace(data=other, has_more=True)
+            return SpaceListing(data=[SpaceRow(control_space_id=f"kb-other-{page}", technical_summary=summary)])
         known = {"kb-1", "kb-9"}
-        return SimpleNamespace(
+        return SpaceListing(
             data=[
-                SimpleNamespace(control_space_id=space_id, technical_summary=summary)
+                SpaceRow(control_space_id=space_id, technical_summary=summary)
                 for space_id in control_space_ids
                 if space_id in known
-            ],
-            has_more=False,
+            ]
         )
 
 
-def _server(allowed: set[str] | None = None) -> tuple[KnowledgeAgentMcpServer, StubFacade, list[dict[str, object]]]:
+def _server(
+    allowed: set[str] | None = None,
+) -> tuple[KnowledgeAgentMcpServer, FakeKnowledgeFacade, list[dict[str, object]]]:
     return _wired(allowed)[:3]
 
 
 def _wired(
     allowed: set[str] | None = None,
-) -> tuple[KnowledgeAgentMcpServer, StubFacade, list[dict[str, object]], StubSpaces, StubNames]:
-    facade = StubFacade()
+) -> tuple[KnowledgeAgentMcpServer, FakeKnowledgeFacade, list[dict[str, object]], StubSpaces, StubNames]:
+    facade = _facade()
     events: list[dict[str, object]] = []
     spaces = StubSpaces(allowed if allowed is not None else {"kb-1"})
     names = StubNames()
     server = KnowledgeAgentMcpServer(
-        facade=facade,  # type: ignore[arg-type]
+        facade=facade,
         spaces=spaces,
         names=names,
         console_url="https://cloud.dify.test/",
@@ -254,7 +293,7 @@ def test_list_knowledge_bases_looks_its_bases_up_by_id_so_a_large_workspace_hide
     result = _call(server, "list_knowledge_bases", {})["structuredContent"]
     assert names.lookups == [{"page": 1, "limit": 100, "control_space_ids": ["kb-1", "kb-2"]}]
     # kb-2 is granted and allowed but the listing no longer has it: that one is really gone.
-    assert [base["id"] for base in cast(list[dict[str, str]], result["knowledgeBases"])] == ["kb-1"]
+    assert [base["id"] for base in json_rows(result["knowledgeBases"])] == ["kb-1"]
     assert "1 knowledge base" in str(result["note"])
 
     both, _, _, _, names = _wired({"kb-1"})
@@ -299,7 +338,7 @@ def test_document_listing_links_back_to_the_console() -> None:
             "revision": 2,
             "mimeType": "application/pdf",
             "sizeBytes": 10,
-            "updatedAt": "2026-11-01",
+            "updatedAt": "2026-11-01 00:00:00+00:00",
             "url": "https://cloud.dify.test/datasets/new/kb-1/documents/doc-1",
         }
     ]

@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -6,8 +8,17 @@ from services.knowledge_fs.tidy_dto import (
     KnowledgeFSTidyActionPayload,
     KnowledgeFSTidyFindingListResponse,
     KnowledgeFSTidyFindingQuery,
+    KnowledgeFSTidyFindingResponse,
+    KnowledgeFSTidyFurtherAction,
     KnowledgeFSTidyScanQuery,
     KnowledgeFSTidySettingsPayload,
+    KnowledgeFSTidySettingsResponse,
+    TidyActionName,
+    TidyFindingKind,
+    TidyFindingStatus,
+    TidyFurtherActionName,
+    TidyScanState,
+    TidySettingsError,
 )
 
 
@@ -127,3 +138,54 @@ def test_list_queries_refuse_unknown_keys_and_cursors_knowledge_fs_would_refuse(
     assert scan_schema["additionalProperties"] is False
     assert KnowledgeFSTidyFindingQuery.model_json_schema()["additionalProperties"] is False
     assert scan_schema["properties"]["cursor"]["anyOf"][0]["maxLength"] == 36
+
+
+def test_the_enumerated_values_stay_plain_strings_on_the_wire_and_in_the_schema() -> None:
+    query = KnowledgeFSTidyFindingQuery.model_validate({"status": "open", "kind": "conflict"})
+    assert (query.status, query.kind) == (TidyFindingStatus.OPEN, TidyFindingKind.CONFLICT)
+    # What the facade sends KnowledgeFS as query parameters and as a JSON body.
+    assert [(key, str(value)) for key, value in query.model_dump(exclude_none=True).items()] == [
+        ("status", "open"),
+        ("kind", "conflict"),
+    ]
+    payload = KnowledgeFSTidyActionPayload.model_validate(
+        {
+            "expectedRevision": 1,
+            "action": "disable_document",
+            "documentId": "doc-a",
+            "also": [{"findingId": "f" * 64, "expectedRevision": 2, "action": "review"}],
+        }
+    )
+    assert json.dumps(payload.model_dump(mode="json", exclude_none=True), sort_keys=True) == json.dumps(
+        {
+            "action": "disable_document",
+            "also": [{"action": "review", "expectedRevision": 2, "findingId": "f" * 64}],
+            "documentId": "doc-a",
+            "expectedRevision": 1,
+        },
+        sort_keys=True,
+    )
+    settings = KnowledgeFSTidySettingsResponse.model_validate(
+        {"enabled": True, "conflicts": False, "revision": 1, "lastError": "model_unavailable", "updatedAt": "now"}
+    )
+    assert settings.model_dump(mode="json")["lastError"] == "model_unavailable"
+
+    # The generated contract lists exactly these strings, each set under its own name.
+    assert KnowledgeFSTidyFindingResponse.model_json_schema()["$defs"]["TidyFindingStatus"]["enum"] == [
+        "open",
+        "dismissed",
+        "reviewed",
+        "disabled",
+        "outdated",
+    ]
+    assert [kind.value for kind in TidyFindingKind] == ["duplicate", "similar", "conflict"]
+    assert [state.value for state in TidyScanState] == ["pending", "scanning", "complete", "failed"]
+    assert [error.value for error in TidySettingsError] == ["scan_failed", "authorization_failed", "model_unavailable"]
+    assert [name.value for name in TidyActionName] == ["dismiss", "review", "disable_document", "undo", "adopt"]
+    # A further action is one of the first three: it can never undo or adopt.
+    assert [name.value for name in TidyFurtherActionName] == ["dismiss", "review", "disable_document"]
+    for unknown in ("undo", "adopt", "DISMISS"):
+        with pytest.raises(ValidationError):
+            KnowledgeFSTidyFurtherAction.model_validate(
+                {"findingId": "f" * 64, "expectedRevision": 2, "action": unknown}
+            )

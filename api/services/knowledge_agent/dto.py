@@ -3,11 +3,22 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from fields.base import ResponseModel
+
+
+# The enums carry no docstring on purpose: pydantic would publish it as the schema description.
+class KnowledgeAgentGrantKind(StrEnum):
+    OAUTH = "oauth"
+    PERSONAL = "personal"
+
+
+class KnowledgeAgentClientKind(StrEnum):
+    CIMD = "cimd"
+    DCR = "dcr"
 
 
 class KnowledgeAgentGrantAccountResponse(ResponseModel):
@@ -18,7 +29,7 @@ class KnowledgeAgentGrantAccountResponse(ResponseModel):
 
 class KnowledgeAgentGrantResponse(ResponseModel):
     id: str
-    kind: Literal["oauth", "personal"]
+    kind: KnowledgeAgentGrantKind
     name: str
     client_name: str | None = None
     scopes: list[str]
@@ -49,7 +60,7 @@ class KnowledgeAgentTokenCreatedResponse(ResponseModel):
 
 
 class KnowledgeAgentAuthorizationClientResponse(ResponseModel):
-    kind: Literal["cimd", "dcr"]
+    kind: KnowledgeAgentClientKind
     name: str
     redirect_host: str
 
