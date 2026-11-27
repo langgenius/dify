@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator
 from typing import NoReturn
 from unittest.mock import Mock
 
@@ -128,8 +128,13 @@ def _snippet(
     )
 
 
-def _workflow(*, graph: Mapping[str, object] | None = None) -> Workflow:
-    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", kind=WorkflowKind.SNIPPET, graph=graph)
+def _workflow(*, content: WorkflowContentDict | None = None) -> Workflow:
+    return make_workflow(
+        workflow_id="workflow-1",
+        app_id="snippet-1",
+        kind=WorkflowKind.SNIPPET,
+        graph=content["graph"] if content is not None else None,
+    )
 
 
 @pytest.mark.parametrize(
@@ -626,12 +631,12 @@ def test_check_dependencies_returns_empty_without_draft_workflow(service: Snippe
 def test_check_dependencies_returns_generated_dependencies(
     service: SnippetDslService, sqlite_session: Session, plugin_catalog: list[dict[str, object]]
 ) -> None:
-    workflow = _workflow(
-        graph={
-            "nodes": [{"data": {"type": BuiltinNodeTypes.LLM, "model": {"provider": "langgenius/openai/openai"}}}],
-            "edges": [],
-        }
-    )
+    workflow_content = _workflow().to_dict()
+    workflow_content["graph"] = {
+        "nodes": [{"data": {"type": BuiltinNodeTypes.LLM, "model": {"provider": "langgenius/openai/openai"}}}],
+        "edges": [],
+    }
+    workflow = _workflow(content=workflow_content)
     sqlite_session.add(workflow)
     sqlite_session.commit()
     plugin_catalog.append(
@@ -795,9 +800,13 @@ def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_sess
 def test_export_snippet_dsl_uses_requested_published_workflow(
     service: SnippetDslService, sqlite_session: Session
 ) -> None:
-    workflow = _workflow(graph={"nodes": [], "edges": []})
+    workflow_content: WorkflowContentDict = _workflow().to_dict()
+    workflow_content["graph"] = {"nodes": [], "edges": []}
+    workflow = _workflow(content=workflow_content)
     workflow.version = "published-1"
-    draft_workflow = _workflow(graph={"nodes": [], "edges": [], "draft_only": True})
+    draft_workflow_content: WorkflowContentDict = _workflow().to_dict()
+    draft_workflow_content["graph"] = {"nodes": [], "edges": [], "draft_only": True}
+    draft_workflow = _workflow(content=draft_workflow_content)
     draft_workflow.id = "draft-1"
     snippet = _snippet(name="Exported")
     sqlite_session.add_all([snippet, workflow, draft_workflow])
@@ -952,19 +961,18 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
 def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    workflow_dict = {
-        "graph": {
-            "nodes": [
-                {
-                    "data": {
-                        "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-                        "dataset_ids": ["dataset-1", "dataset-2"],
-                    }
+    workflow_content: WorkflowContentDict = _workflow().to_dict()
+    workflow_content["graph"] = {
+        "nodes": [
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "dataset_ids": ["dataset-1", "dataset-2"],
                 }
-            ]
-        },
+            }
+        ]
     }
-    workflow = _workflow(graph=workflow_dict["graph"])
+    workflow = _workflow(content=workflow_content)
     monkeypatch.setattr(
         service,
         "_encrypt_dataset_id",
