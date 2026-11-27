@@ -16,6 +16,8 @@ export function useDeployWorkflow({
   const queryClient = useQueryClient()
   return useMutation(
     consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions({
+      // The embedded deployment flow refreshes the environments once the deployment finishes.
+      ...(invalidateAppEnvironmentsOnSuccess ? {} : { meta: { invalidate: false } }),
       onSuccess: async (response) => {
         if (!appId) return
 

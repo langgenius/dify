@@ -3,12 +3,22 @@ import type { ConsoleQuery, WorkspaceCurrentPolicies } from './types'
 import { upsertStartedPluginTask } from '../plugin-task-cache'
 import { invalidateQueryKeys } from './shared'
 
+// MCP edits and deletes report a refused write in the body as `result: 'error'`.
+const isSuccessResult = (data: unknown) =>
+  typeof data === 'object' && data !== null && 'result' in data && data.result === 'success'
+
 export function workspacePluginPolicies(
   consoleQuery: ConsoleQuery,
 ): Pick<
   WorkspaceCurrentPolicies,
   'modelProviders' | 'defaultModel' | 'toolProvider' | 'plugin' | 'endpoints'
 > {
+  const refreshMCPLists = (client: QueryClient) =>
+    invalidateQueryKeys(client, [
+      consoleQuery.workspaces.current.toolProviders.get.key(),
+      consoleQuery.workspaces.current.tools.mcp.get.key(),
+    ])
+
   return {
     // Switching or re-prioritizing credentials changes the provider summaries. The
     // per-model-type lists depend on the provider's supported types, which callers own.
@@ -74,7 +84,24 @@ export function workspacePluginPolicies(
       },
     },
     toolProvider: {
+      // The MCP list opens the created or edited provider by its id, so writes wait for the
+      // catalogs that list it. Edits and deletes report a refused write as `result: 'error'`.
       mcp: {
+        post: {
+          mutationOptions: { onSuccess: (_d, _v, _r, { client }) => refreshMCPLists(client) },
+        },
+        put: {
+          mutationOptions: {
+            onSuccess: (data, _v, _r, { client }) =>
+              isSuccessResult(data) ? refreshMCPLists(client) : undefined,
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (data, _v, _r, { client }) =>
+              isSuccessResult(data) ? refreshMCPLists(client) : undefined,
+          },
+        },
         update: {
           byProviderId: {
             get: {

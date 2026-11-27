@@ -46,14 +46,11 @@ describe('skill metadata policy', () => {
 
     // The PATCH response has no files: the file tree must not be cleared.
     expect(client.getQueryData(detailKey)).toMatchObject({ display_name: 'Renamed', files })
-    expect(invalidatedKeys()).toEqual(
-      expect.arrayContaining([
-        detailKey,
-        skills.bySkillId.versions.get.key({ input: { params } }),
-        skills.get.key({ type: 'query' }),
-      ]),
-    )
-    expect(invalidatedKeys()).not.toContainEqual(skills.tags.get.key())
+    // Versions and skill lists refresh through the fallback; agents list the skills bound to them.
+    expect(invalidatedKeys()).toEqual([detailKey])
+    expect(skills.bySkillId.patch.mutationOptions().meta?.alsoInvalidate).toEqual([
+      'workspaces.current.agents',
+    ])
   })
 
   it('shows the refetched detail, not an older response that lands afterwards', async () => {
@@ -80,7 +77,7 @@ describe('skill metadata policy', () => {
     expect(client.getQueryData(detailKey)).toEqual(fresh)
   })
 
-  it('refreshes the tag catalog only when tags change', async () => {
+  it('leaves the tag catalog to the fallback when tags change', async () => {
     const { context, invalidatedKeys } = setup()
 
     await skills.bySkillId.patch.mutationOptions().onSuccess!(
@@ -90,7 +87,7 @@ describe('skill metadata policy', () => {
       context,
     )
 
-    expect(invalidatedKeys()).toContainEqual(skills.tags.get.key())
+    expect(invalidatedKeys()).not.toContainEqual(skills.tags.get.key())
   })
 })
 
@@ -140,13 +137,15 @@ describe('member invitation policies', () => {
 describe('workflow publish policies', () => {
   const workflows = consoleQuery.apps.byAppId.workflows
   const params = { app_id: 'app-1' }
-  const defaultMetricsKey =
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key({
-      type: 'query',
-      input: { params: { evaluate_target_id: 'app-1', evaluate_target_type: 'apps' } },
-    })
+  // Evaluation metrics and pickers, roster agents, and deployments read the published workflow.
+  const publishedWorkflowReaders = [
+    'byEvaluateTargetType',
+    'workspaces.current.availableEvaluationWorkflows',
+    'agent',
+    'enterprise.appDeploy',
+  ]
 
-  it('refreshes evaluation metrics after a standard publish', async () => {
+  it('waits for the published workflow and declares its readers after a standard publish', async () => {
     const { context, invalidatedKeys } = setup()
     const publish = workflows.publish.post.mutationOptions()
 
@@ -157,10 +156,11 @@ describe('workflow publish policies', () => {
       context,
     )
 
-    expect(invalidatedKeys()).toContainEqual(defaultMetricsKey)
+    expect(invalidatedKeys()).toEqual([workflows.publish.get.key({ input: { params } })])
+    expect(publish.meta?.alsoInvalidate).toEqual(publishedWorkflowReaders)
   })
 
-  it('refreshes the app, its workflow, and evaluation lists after an evaluation publish', async () => {
+  it('waits for the published workflow and declares its readers after an evaluation publish', async () => {
     const { context, invalidatedKeys } = setup()
     const publish = workflows.publish.evaluation.post.mutationOptions()
 
@@ -171,15 +171,9 @@ describe('workflow publish policies', () => {
       context,
     )
 
-    expect(invalidatedKeys()).toEqual(
-      expect.arrayContaining([
-        workflows.publish.get.key({ input: { params } }),
-        consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
-        consoleQuery.apps.byAppId.triggers.get.key({ input: { params } }),
-        consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
-        defaultMetricsKey,
-      ]),
-    )
+    // The app detail and triggers are in the apps domain and refresh through the fallback.
+    expect(invalidatedKeys()).toEqual([workflows.publish.get.key({ input: { params } })])
+    expect(publish.meta?.alsoInvalidate).toEqual(publishedWorkflowReaders)
   })
 
   it('awaits the app detail refresh after converting the workflow kind', async () => {
@@ -194,9 +188,10 @@ describe('workflow publish policies', () => {
     )
 
     expect(invalidatedKeys()).toEqual([
-      workflows.publish.get.key({ input: { params } }),
-      consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
       consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
+    ])
+    expect(convert.meta?.alsoInvalidate).toEqual([
+      'workspaces.current.availableEvaluationWorkflows',
     ])
   })
 })
