@@ -56,7 +56,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Guides users through elements that already exist on the page. The owner keeps the step and passes the current `target`, as an element or a selector that matches a single element; Coachmark waits until the target is visible and accessible, scrolls it into view, dims the rest of the page and points at it. It steps aside while another modal covers it and returns when the target is reachable again. Pass the step as `payload` so the previous content stays in place while the next target is pending. `onOpenChange` reports only Escape and the close part, and `onStepShown` runs once each step is shown. Elements matched by `highlightSelectors` are lit up but stay inert. Use `modal="allow-target"` for a step the user finishes by using the target; the rest of the page stays blocked. With the default `modal`, render a `CoachmarkClose` so focus stays in the popup.',
+          'Guides users through elements that already exist on the page. The owner keeps the step and passes the current `target`, as an element or a selector that matches a single element; Coachmark waits until the target is visible and accessible, scrolls it into view, dims the rest of the page and points at it. It steps aside while another modal covers it and returns when the target is reachable again. Pass the step as `payload` so the previous content stays in place while the next target is pending. `onOpenChange` reports only Escape and the close part, and `onStepShown` runs once each step is shown. Elements matched by `highlightSelectors` are lit up but stay inert. Use `modal="allow-target"` for a step the user finishes by using the target; the rest of the page stays blocked. With the default `modal`, render a `CoachmarkClose` so focus stays in the popup. Keep focus inside the popup on every step: point `initialFocus` at the primary action when the step has one, otherwise let the popup take focus so its title and description are announced before the user tabs to the target.',
       },
     },
   },
@@ -154,7 +154,7 @@ function SettingsTour() {
             <CoachmarkSpotlight />
             <CoachmarkPositioner side={shown.side}>
               <CoachmarkPopup
-                initialFocus={shown.action ? actionRef : () => targets[shown.id] ?? true}
+                initialFocus={shown.action ? actionRef : undefined}
                 className="min-h-39.5"
               >
                 <CoachmarkArrow />
@@ -203,9 +203,11 @@ export const Tour: Story = {
     await userEvent.click(body.getByRole('button', { name: 'Next' }))
 
     await body.findByRole('dialog', { name: 'Step 3 of 3 Turn on two-factor sign-in to finish' })
-    const twoFactor = body.getByRole('switch', { name: 'Two-factor sign-in' })
-    await waitFor(() => expect(twoFactor).toHaveFocus())
-    await userEvent.keyboard(' ')
+    const step = body.getByRole('dialog', {
+      name: 'Step 3 of 3 Turn on two-factor sign-in to finish',
+    })
+    await waitFor(() => expect(step).toHaveFocus())
+    await userEvent.click(body.getByRole('switch', { name: 'Two-factor sign-in' }))
     await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument())
     await expect(body.getByRole('switch', { name: 'Two-factor sign-in' })).toBeChecked()
   },
