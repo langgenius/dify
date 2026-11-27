@@ -41,12 +41,11 @@ beforeEach(() => vi.resetAllMocks())
 it('passes authorized upload references in create/message bodies without binding test inputs', async () => {
   const attachments = [{ upload_file_id: 'upload-1' }]
   const signal = new AbortController().signal
-  await createBuildSession('app-1', '', undefined, signal, false, attachments)
+  await createBuildSession('app-1', '', undefined, signal, attachments)
   expect(api.create.mock.calls[0]![0].body).toEqual({
     app_id: 'app-1',
     scenario: 'build',
     goal_text: '',
-    derive_app_name: false,
     attachments,
   })
   await createEditSession('app-1', 'Use the attached rules', undefined, signal, attachments)

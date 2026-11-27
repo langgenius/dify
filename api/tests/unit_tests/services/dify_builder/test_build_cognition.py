@@ -1373,7 +1373,7 @@ def test_business_clarification_hides_only_marked_internal_defaults_but_keeps_th
         entry_mode=EntryMode.BUILD,
         current_state=PcState.BUILD_CAPABILITY_CHECK,
     )
-    context = DifyBuilderContext(goal_text=goal, reply_language="zh-Hans", app_name_auto=False)
+    context = DifyBuilderContext(goal_text=goal, reply_language="zh-Hans")
 
     result = handle_capability_check(env, Turn(actor=actor), session, context)
 
@@ -1497,7 +1497,7 @@ def test_business_clarification_keeps_explicit_optional_json_editable_through_re
         entry_mode=EntryMode.BUILD,
         current_state=PcState.BUILD_CAPABILITY_CHECK,
     )
-    context = DifyBuilderContext(goal_text=goal, app_name_auto=False)
+    context = DifyBuilderContext(goal_text=goal)
 
     analyzed = handle_capability_check(env, Turn(actor=actor), session, context)
 

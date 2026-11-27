@@ -14,7 +14,7 @@ import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
@@ -375,7 +375,7 @@ const ChatWrapper = () => {
         if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
         else await submitHumanInputForm(formToken, submission, formVersion)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         throw error
       }
     },

@@ -189,7 +189,7 @@ def test_conversation_get_rejects_competing_cursors(
         (
             {"scenario": "build", "app_id": "a1", "goal_text": "Build it"},
             "prepare_build_session",
-            {"app_id": "a1", "goal_text": "Build it", "model_config": None, "derive_app_name": False},
+            {"app_id": "a1", "goal_text": "Build it", "model_config": None},
         ),
         (
             {"scenario": "edit", "app_id": "a1", "goal_text": "Tighten risk"},
@@ -982,9 +982,7 @@ class _RequestSqlWorld(NamedTuple):
 
 
 @pytest.fixture
-def request_sql_world(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mocker: pytest_mock.MockerFixture
-) -> Iterator[_RequestSqlWorld]:
+def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[_RequestSqlWorld]:
     """The task control routes and their authenticated request SQL boundaries.
 
     ``db`` of the console wraps, the controller and the wiring is one real ``scoped_session`` over

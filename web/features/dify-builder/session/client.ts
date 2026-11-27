@@ -86,7 +86,6 @@ export const createBuildSession = (
   goalText: string,
   modelConfig: SessionModel | undefined,
   signal: AbortSignal,
-  deriveAppName = false,
   attachments?: DifyBuilderAttachmentPayload[],
 ) =>
   consoleClient.difyBuilder.sessions.post(
@@ -95,7 +94,6 @@ export const createBuildSession = (
         app_id: appId,
         scenario: 'build',
         goal_text: goalText,
-        derive_app_name: deriveAppName,
         ...(attachments?.length ? { attachments } : {}),
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },

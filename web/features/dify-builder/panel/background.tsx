@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { BuildGridTexture } from '@/app/components/base/build-grid-texture'
+import { BuildGridTexture } from './build-grid-texture'
 
 export const DifyBuilderPanelBackground = memo(() => {
   return (

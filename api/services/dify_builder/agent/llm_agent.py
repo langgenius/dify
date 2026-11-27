@@ -200,15 +200,6 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
-    def propose_app_name(self, goal_text, requirements):
-        return build.propose_app_name(
-            self.model_or_none(),
-            goal_text,
-            requirements,
-            self._reasoning_for("propose-app-name"),
-        )
-
-    @diagnostics.cognition
     def propose_plan_v1(
         self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
     ) -> WorkflowPlan | BuildClarification | None:

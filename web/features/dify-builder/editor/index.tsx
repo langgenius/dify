@@ -21,7 +21,6 @@ import { getSessionStorageKey } from '../session/storage'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../state'
 import { DifyBuilderCanvasLockCleanup } from './canvas-lock-cleanup'
-import { DifyBuilderCreationStart } from './creation-start'
 import { useDifyBuilderCanvasEvents } from './use-canvas-events'
 import { useDifyBuilderCanvasRefresh } from './use-canvas-refresh'
 import { useWorkflowDifyBuilderEnabled } from './use-enabled'
@@ -30,7 +29,6 @@ import { useDifyBuilderRunEvents } from './use-run-events'
 type DifyBuilderProviderProps = {
   appId?: string
   canEdit: boolean
-  canStartCreation?: boolean
   children: ReactNode
   getCanvasSnapshot: () => DifyBuilderCanvasSnapshot
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
@@ -42,7 +40,6 @@ type DifyBuilderProviderProps = {
 const DifyBuilderProviderContent = ({
   appId,
   canEdit,
-  canStartCreation = false,
   children,
   getCanvasSnapshot,
   onRefreshCanvas,
@@ -161,19 +158,13 @@ const DifyBuilderProviderContent = ({
     <>
       <DifyBuilderCanvasLockCleanup enabled={enabled} />
       {children}
-      {/* Install canvas and panel handlers before restoring or starting a session. */}
+      {/* Install canvas and panel handlers before restoring a session. */}
       <DifyBuilderSessionPersistence
         appId={appId}
         enabled={enabled}
         restore={session.restore}
         tenantId={tenantId}
         userId={userId}
-      />
-      <DifyBuilderCreationStart
-        appId={appId}
-        canEdit={canEdit}
-        canStartCreation={canStartCreation}
-        enabled={enabled}
       />
     </>
   )

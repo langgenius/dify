@@ -1002,9 +1002,9 @@ describe('useAgentConfigureSync', () => {
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
-  it('should show the server message when an explicit save fails', async () => {
-    const error = createHttpError(new Response(null, { status: 400 }), {
-      code: 'invalid_param',
+  it('should show the translated reason when an explicit save fails', async () => {
+    const error = createHttpError(new Response(null, { status: 409 }), {
+      code: 'agent_version_conflict_error',
       message: 'Server says why',
     })
     composerPutMutationFn.mockRejectedValueOnce(error)
@@ -1018,7 +1018,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     await expect(result.current.saveDraft()).rejects.toBe(error)
-    expect(toastMock.error).toHaveBeenCalledWith('Server says why')
+    expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.agent_version_conflict_error')
   })
 
   it('should not save the draft immediately when the composer draft is unchanged', async () => {

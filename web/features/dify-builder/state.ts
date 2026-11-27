@@ -64,7 +64,6 @@ export const difyBuilderSelectedModelAtom = atom<SessionModel | null>(null)
 export const difyBuilderDraftAtom = atom('')
 export const difyBuilderLocalInteractionResponseAtom =
   atom<DifyBuilderLocalInteractionResponse | null>(null)
-export const difyBuilderDeriveAppNameAtom = atom(false)
 export const difyBuilderLocalErrorAtom = atom('')
 export const difyBuilderRunRestoreErrorAtom = atom('')
 export const difyBuilderChecklistErrorsAtom = atom<ChecklistErrorPayload[]>([])
@@ -85,7 +84,6 @@ export const difyBuilderScopedAtoms = [
   difyBuilderSelectedModelAtom,
   difyBuilderDraftAtom,
   difyBuilderLocalInteractionResponseAtom,
-  difyBuilderDeriveAppNameAtom,
   difyBuilderLocalErrorAtom,
   difyBuilderRunRestoreErrorAtom,
   difyBuilderChecklistErrorsAtom,
@@ -364,7 +362,6 @@ const startDifyBuilderPromptAtom = atom(
     if (!set(prepareDifyBuilderSessionAtom)) return false
 
     const startsBuild = shouldStartBuildSession(runtime.getCanvasSnapshot())
-    const deriveAppName = startsBuild && get(difyBuilderDeriveAppNameAtom)
     const localId = uuid4()
     set(difyBuilderLocalUserMessageAtom, {
       afterSequence: -1,
@@ -372,16 +369,10 @@ const startDifyBuilderPromptAtom = atom(
       sessionId: null,
       text: prompt,
     })
+    const start = startsBuild ? runtime.session.startBuild : runtime.session.startEdit
     const started = await (attachments?.length
-      ? startsBuild
-        ? runtime.session.startBuild(runtime.appId, prompt, model, deriveAppName, attachments)
-        : runtime.session.startEdit(runtime.appId, prompt, model, attachments)
-      : startsBuild
-        ? deriveAppName
-          ? runtime.session.startBuild(runtime.appId, prompt, model, true)
-          : runtime.session.startBuild(runtime.appId, prompt, model)
-        : runtime.session.startEdit(runtime.appId, prompt, model))
-    if (deriveAppName && get(difyBuilderSessionViewAtom)) set(difyBuilderDeriveAppNameAtom, false)
+      ? start(runtime.appId, prompt, model, attachments)
+      : start(runtime.appId, prompt, model))
     if (!started) {
       set(difyBuilderLocalUserMessageAtom, (current) =>
         current?.localId === localId ? null : current,
@@ -618,7 +609,6 @@ export const difyBuilderRegisterChecklistErrorsAtom = atom(
 export const difyBuilderResetAtom = atom(null, (get, set) => {
   get(difyBuilderRuntimeAtom)?.session.reset()
   set(difyBuilderSelectedModelAtom, null)
-  set(difyBuilderDeriveAppNameAtom, false)
   set(difyBuilderDraftAtom, '')
   set(difyBuilderLocalInteractionResponseAtom, null)
   set(difyBuilderLocalUserMessageAtom, null)

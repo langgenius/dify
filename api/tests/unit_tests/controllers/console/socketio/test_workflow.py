@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Iterator
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 import socketio
@@ -18,7 +19,9 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError
+from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowPageResume
+
+PAGE_ID = "97b8e908-8f47-4ad8-95d9-f8ebe3da8218"
 
 
 @pytest.fixture
@@ -149,6 +152,61 @@ def test_user_connect_distinguishes_plan_rejection_from_missing_access(
     assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "unauthorized"}, 401)
 
 
+@pytest.mark.parametrize("with_resume", [False, True])
+def test_user_connect_accepts_legacy_and_page_resume_payloads(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+    with_resume: bool,
+) -> None:
+    server, _, _ = collaboration_server
+    page_id = uuid4()
+    payload: dict[str, object] = {"workflow_id": "wf-1"}
+    if with_resume:
+        payload["resume"] = {"page_id": str(page_id), "sequence": 2}
+    expected_resume = WorkflowPageResume(page_id.hex, 2) if with_resume else None
+
+    def admit(workflow_id: str, sid: str, *, session: Session, resume: WorkflowPageResume | None) -> tuple[str, bool]:
+        assert isinstance(session, Session)
+        assert (workflow_id, sid, resume) == ("wf-1", "sid-1", expected_resume)
+        return "u-1", True
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", admit)
+
+    assert server.handlers["/"]["user_connect"]("sid-1", payload) == {
+        "msg": "connected",
+        "user_id": "u-1",
+        "sid": "sid-1",
+        "isLeader": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("page_id", "sequence"),
+    [
+        pytest.param("invalid", 1, id="invalid-page-id"),
+        pytest.param(PAGE_ID, 0, id="zero-sequence"),
+        pytest.param(PAGE_ID, "1", id="string-sequence"),
+        pytest.param(PAGE_ID, True, id="boolean-sequence"),
+    ],
+)
+def test_user_connect_rejects_invalid_page_resume_before_admission(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+    page_id: str,
+    sequence: object,
+) -> None:
+    server, _, _ = collaboration_server
+
+    def unexpected_session() -> Session:
+        pytest.fail("Malformed page resume reached database session creation")
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", unexpected_session)
+    payload = {"workflow_id": "wf-1", "resume": {"page_id": page_id, "sequence": sequence}}
+
+    assert server.handlers["/"]["user_connect"]("sid-1", payload) == ({"msg": "invalid resume"}, 400)
+
+
 def test_user_connect_does_not_hide_unrelated_errors(
     collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
     monkeypatch: pytest.MonkeyPatch,
@@ -184,31 +242,6 @@ def test_disconnect_with_reason_records_one_success(
     )
     assert not server.manager.is_connected(sid, "/")
     _assert_single_event(_read_metrics(reader), "disconnect", "success")
-
-
-@pytest.mark.parametrize("remaining_sessions", [[], ["another-session"]])
-def test_disconnect_clears_draft_only_after_the_last_session(
-    monkeypatch: pytest.MonkeyPatch, remaining_sessions: list[str]
-) -> None:
-    """A disconnect preserves shared draft state while another collaborator remains."""
-    disconnected: list[str] = []
-    cleared: list[str] = []
-
-    def disconnect(sid: str) -> str:
-        disconnected.append(sid)
-        return "workflow-1"
-
-    def clear(workflow_id: str) -> None:
-        cleared.append(workflow_id)
-
-    monkeypatch.setattr(workflow.collaboration_service, "disconnect_session", disconnect)
-    monkeypatch.setattr(workflow.repository, "get_session_sids", lambda _workflow_id: remaining_sessions)
-    monkeypatch.setattr(workflow.draft_sync_repository, "clear", clear)
-
-    workflow.handle_disconnect("session-1")
-
-    assert disconnected == ["session-1"]
-    assert cleared == ([] if remaining_sessions else ["workflow-1"])
 
 
 @pytest.mark.parametrize("otel_enabled", [True, False])

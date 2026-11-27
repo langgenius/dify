@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import dataclass
 from hashlib import sha256
+from time import sleep
 
 from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import select
@@ -364,7 +364,11 @@ class WorkflowAgentWorkspaceStore:
         node_id: str,
         node_execution_id: str,
     ) -> WorkflowNodeExecutionModel:
-        """Wait briefly for the already-emitted node-start event to persist its caller row."""
+        """Return the caller row after the node-start event persists it.
+
+        The caller must have emitted the node-start event before this lookup.
+        Raise AgentWorkspaceNotFoundError if the row stays absent through the retry window.
+        """
 
         stmt = select(WorkflowNodeExecutionModel).where(
             WorkflowNodeExecutionModel.id == node_execution_id,
@@ -379,7 +383,7 @@ class WorkflowAgentWorkspaceStore:
             if execution is not None:
                 return execution
             if attempt < _CALLER_VISIBILITY_ATTEMPTS - 1:
-                time.sleep(_CALLER_VISIBILITY_INTERVAL_SECONDS)
+                sleep(_CALLER_VISIBILITY_INTERVAL_SECONDS)
 
         raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
 

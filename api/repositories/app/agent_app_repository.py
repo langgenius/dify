@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import replace
 from typing import Any, Protocol, cast
+from uuid import UUID
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
-from core.dify_builder.naming import resolve_creation_name
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import filter_uuid_strings
@@ -35,8 +35,8 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import agent_soul_has_model, build_initial_agent_soul
 from models.dataset import Dataset
-from models.enums import ApiTokenType, AppStatus
-from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from models.enums import ApiTokenType, AppStatus, MessageStatus
+from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation, Message
 from models.workflow import Workflow
 from repositories.agent_app_composer_queries import (
     composer_snapshot,
@@ -72,6 +72,7 @@ from repositories.app.agent_debug_conversations import (
 from repositories.app.agent_runtime_app import (
     create_backing_agent_for_app,
     ensure_workflow_agent_backing_app,
+    find_existing_agent_runtime_app,
     resolve_agent_runtime_app,
 )
 from repositories.app.console_repository import (
@@ -135,6 +136,8 @@ from services.app.agent_app_contracts import (
     AgentAppNotFoundError,
     AgentReferencingWorkflow,
 )
+from services.app_audio_service import AgentTextToSpeechSource
+from services.audio_types import AudioAppRef
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
@@ -187,22 +190,14 @@ class AgentAppRepository:
         initial_soul = build_initial_agent_soul(tenant_id, default_model)
         with self._session_factory.begin() as session:
             account = console_app_actor(session, context)
-            name = resolve_creation_name(
-                name=params.name,
-                prompt=params.prompt,
-                timezone=account.timezone,
-                language=account.interface_language,
-            )
-            app = ConsoleAppRepository.insert_app_record(
-                tenant_id, params, account, settings, name=name, session=session
-            )
+            app = ConsoleAppRepository.insert_app_record(tenant_id, params, account, settings, session=session)
             try:
                 create_backing_agent_for_app(
                     session,
                     tenant_id=tenant_id,
                     account_id=context.account_id,
                     app_id=app.id,
-                    name=name,
+                    name=params.name,
                     description=params.description or "",
                     role=params.agent_role,
                     icon_type=AgentIconType(params.icon_type) if params.icon_type else None,
@@ -1332,25 +1327,86 @@ class AgentAppRepository:
             return self._resolve_roster_app(session, tenant_id=tenant_id, agent_id=agent_id).id
 
     def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Resolve the Agent runtime App and materialize a missing hidden App when permitted."""
         with self._session_factory() as session:
-            try:
-                return (
-                    AgentRosterService(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id).id
-                )
-            except AgentNotFoundError as exc:
-                raise AgentAppNotFoundError from exc
+            app = resolve_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            if app is None:
+                raise AgentAppNotFoundError
+            return app.id
 
     def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         """Read persisted runtime state without creating a hidden app during a GET."""
         with self._session_factory() as session:
-            try:
-                return (
-                    AgentRosterService(session)
-                    .get_existing_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-                    .id
+            return self._require_existing_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id).id
+
+    def get_agent_asr_enabled(self, *, app: AudioAppRef, agent_id: str, account_id: str, build: bool) -> bool:
+        """Read the admitted App and effective debug ASR setting without changing any rows."""
+        with self._session_factory() as session:
+            runtime_app = self._require_existing_runtime_app(session, tenant_id=app.tenant_id, agent_id=agent_id)
+            if runtime_app.id != app.app_id or runtime_app.mode != app.app_mode:
+                raise AgentAppNotFoundError
+
+            if build:
+                draft = find_agent_draft(
+                    session,
+                    tenant_id=app.tenant_id,
+                    agent_id=agent_id,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=account_id,
                 )
-            except AgentNotFoundError as exc:
-                raise AgentAppNotFoundError from exc
+                if draft is None:
+                    raise AgentConfigVersionMissingError
+                soul_data = draft.config_snapshot_dict
+            else:
+                try:
+                    agent = require_composer_agent(session, tenant_id=app.tenant_id, agent_id=agent_id)
+                    soul_data = read_composer_state(session, agent=agent).agent_soul
+                except AgentComposerAgentMissingError as exc:
+                    raise AgentAppNotFoundError from exc
+                except AgentComposerSnapshotMissingError as exc:
+                    raise AgentConfigVersionMissingError from exc
+
+            speech_to_text = AgentSoulConfig.model_validate(soul_data).app_features.speech_to_text
+            if speech_to_text is not None:
+                return speech_to_text.enabled
+            app_config = runtime_app.app_model_config_with_session(session=session)
+            return app_config is not None and bool(app_config.speech_to_text_dict.get("enabled"))
+
+    def get_agent_tts_source(
+        self, *, tenant_id: str, agent_id: str, account_id: str, message_id: str | None
+    ) -> AgentTextToSpeechSource:
+        """Return the existing App and an eligible answer scoped to the admitted account."""
+        with self._session_factory() as session:
+            app = self._require_existing_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            app_ref = AudioAppRef(app.id, app.tenant_id, app.mode.value)
+            if not message_id:
+                return AgentTextToSpeechSource(app_ref, None)
+            try:
+                UUID(message_id)
+            except ValueError:
+                return AgentTextToSpeechSource(app_ref, None)
+            message = session.execute(
+                select(Message.answer, Message.status)
+                .where(
+                    Message.id == message_id,
+                    Message.app_id == app.id,
+                    Message.from_account_id == account_id,
+                )
+                .limit(1)
+            ).one_or_none()
+            if message is None or (
+                message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}
+            ):
+                return AgentTextToSpeechSource(app_ref, None)
+            return AgentTextToSpeechSource(app_ref, message.answer)
+
+    @staticmethod
+    def _require_existing_runtime_app(session: Session, *, tenant_id: str, agent_id: str) -> App:
+        """Load a normal Agent App within its tenant without provisioning a missing App."""
+        app = find_existing_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
+        if app is None:
+            raise AgentAppNotFoundError
+        return app
 
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]:
         with self._session_factory() as session:

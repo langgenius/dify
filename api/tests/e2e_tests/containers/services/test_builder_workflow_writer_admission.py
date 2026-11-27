@@ -49,7 +49,6 @@ from models.dify_builder_native_tests import (
 )
 from models.model import App, AppMode
 from services.dify_builder import session_lock
-from services.dify_builder.app_metadata import NativeAppMetadata
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.task_controls import ExecutionFence, execution_scope, require_active
@@ -279,52 +278,6 @@ def test_lost_enqueue_ack_cannot_open_second_writer_after_worker_claim(harness: 
             session_lock.release(session_id, worker_owner)
 
 
-def test_replacement_writer_fences_late_sql_write_after_redis_lease_loss(harness: Harness) -> None:
-    tenant = harness.create_tenant()
-    first_actor, second_actor = harness.create_actor(tenant), harness.create_actor(tenant)
-    app_id = harness.create_app(first_actor)
-    first = harness.service.create_build_session(app_id, first_actor, "First synthetic goal")
-    old_owner = session_lock.activate(first.session_id, harness.queued[0][3])
-    assert old_owner is not None
-
-    # This is a disposable Redis container dedicated to the tests. Removing
-    # its leases simulates lease expiry or Redis loss while an old worker may
-    # still have a late result. It never touches the user's Local Redis.
-    harness.redis.flushdb()
-    # Expire the durable lease in this isolated database as well: Redis loss
-    # alone conservatively retains the writer until Stop or durable expiry.
-    with harness.factory.begin() as sql:
-        sql.execute(
-            update(DifyBuilderWorkflowWriter)
-            .where(
-                DifyBuilderWorkflowWriter.session_id == first.session_id,
-            )
-            .values(expires_at=datetime.now() - timedelta(days=1))
-        )
-    harness.service.create_build_session(app_id, second_actor, "Second synthetic goal")
-
-    fence = ExecutionFence(
-        session_id=first.session_id,
-        generation=0,
-        check=lambda: require_active(harness.repo, first.session_id, 0),
-        dsl={},
-    )
-    with execution_scope(fence):
-        # The real native metadata writer calls lock_execution inside its own
-        # transaction; its best-effort refusal may return an empty string.
-        NativeAppMetadata(harness.factory).describe_empty_app(
-            app_id=app_id,
-            tenant_id=tenant,
-            account_id=first_actor.account_id,
-            description="late result must not commit",
-        )
-
-    with harness.factory() as sql:
-        app = sql.get(App, app_id)
-        assert app is not None
-        assert app.description == ""
-
-
 def test_stop_and_old_owner_cannot_release_replacement_workflow_writer(harness: Harness) -> None:
     tenant = harness.create_tenant()
     first_actor, second_actor = harness.create_actor(tenant), harness.create_actor(tenant)
@@ -384,55 +337,6 @@ def test_replacement_between_redis_and_sql_activation_refuses_old_worker(harness
     assert harness.repo.is_task_active(replacement.session_id, 0, replacement_token)
     with pytest.raises((BusyError, ConflictError)):
         harness.service.create_build_session(app, owner, "Third goal")
-
-
-def test_expired_same_session_token_cannot_commit_late_native_write(harness: Harness) -> None:
-    from core.dify_builder.models import Action
-
-    tenant = harness.create_tenant()
-    owner = harness.create_actor(tenant)
-    app_id = harness.create_app(owner)
-    first = harness.service.create_build_session(app_id, owner, "First goal")
-    old_token = harness.queued[0][3]
-    harness.redis.flushdb()
-    with harness.factory.begin() as sql:
-        sql.execute(
-            update(DifyBuilderWorkflowWriter)
-            .where(
-                DifyBuilderWorkflowWriter.session_id == first.session_id,
-            )
-            .values(expires_at=datetime.now() - timedelta(days=1))
-        )
-    harness.service.dispatch(first.session_id, Action(kind="start_build", base_version=first.version), owner)
-    assert harness.queued[-1][3] != old_token
-    fence = ExecutionFence(first.session_id, 0, lambda: None, {}, writer_token=old_token)
-    with execution_scope(fence):
-        NativeAppMetadata(harness.factory).describe_empty_app(
-            app_id=app_id,
-            tenant_id=tenant,
-            account_id=owner.account_id,
-            description="stale same session result",
-        )
-    with harness.factory() as sql:
-        app = sql.get(App, app_id)
-        assert app is not None
-        assert app.description == ""
-    # Positive control: the same writer/DB fixture accepts the current owner.
-    current = ExecutionFence(first.session_id, 0, lambda: None, {}, writer_token=harness.queued[-1][3])
-    with execution_scope(current):
-        assert (
-            NativeAppMetadata(harness.factory).describe_empty_app(
-                app_id=app_id,
-                tenant_id=tenant,
-                account_id=owner.account_id,
-                description="current owner description",
-            )
-            == "current owner description"
-        )
-    with harness.factory() as sql:
-        app = sql.get(App, app_id)
-        assert app is not None
-        assert app.description == "current owner description"
 
 
 def test_workflow_writer_migration_upgrade_and_downgrade(infrastructure: Infrastructure) -> None:

@@ -250,7 +250,6 @@ def test_create_build_session_does_not_rename_by_default(
     view = service.create_build_session(APP_ID, _actor(), goal_text="Build it")
 
     _session, fc = repo.get_session(view.session_id)
-    assert fc.app_name_auto is False
 
 
 def test_create_fix_session_converts_valid_checklist_dicts_before_persisting(

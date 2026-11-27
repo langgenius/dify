@@ -4,11 +4,9 @@ import type { WorkflowDraftRefreshResult } from '@/features/dify-builder/editor/
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { StrictMode, useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DifyBuilderProvider } from '..'
 import { builderModel, createBuilderQueryClient } from '../../__tests__/model-fixtures'
-import { difyBuilderPendingCreationAtom } from '../../creation'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderSessionBusyAtom,
@@ -264,50 +262,6 @@ const renderProvider = (edgeCount = 0, difyBuilderEnabled = true, userId = 'user
     },
   )
 
-const CreationNavigation = ({
-  appId = 'created-app',
-  canEdit = true,
-}: {
-  appId?: string
-  canEdit?: boolean
-}) => {
-  const setPendingCreation = useSetAtom(difyBuilderPendingCreationAtom)
-  const [showEditor, setShowEditor] = useState(false)
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setPendingCreation({ appId: 'created-app', prompt: 'Build an expense workflow' })
-          setShowEditor(true)
-        }}
-      >
-        Create with Builder
-      </button>
-      <button type="button" onClick={() => setShowEditor(false)}>
-        Back to apps
-      </button>
-      <button type="button" onClick={() => setShowEditor(true)}>
-        Reopen app
-      </button>
-      {showEditor && (
-        <DifyBuilderProvider
-          appId={appId}
-          canEdit={canEdit}
-          canStartCreation
-          getCanvasSnapshot={() => ({ nodes: [], edges: [], isChatflow: false })}
-          onRefreshCanvas={mocks.refreshCanvas}
-          onSyncDraft={mocks.syncDraft}
-          tenantId="workspace-1"
-          userId="user-1"
-        >
-          <Probe />
-        </DifyBuilderProvider>
-      )}
-    </>
-  )
-}
-
 describe('DifyBuilderProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -321,123 +275,6 @@ describe('DifyBuilderProvider', () => {
     mocks.syncDraft.mockReset().mockResolvedValue(undefined)
     window.sessionStorage.clear()
   })
-
-  it('opens the panel and sends a creation prompt once across navigation and strict remounts', async () => {
-    let finishBuild: (started: boolean) => void = () => undefined
-    mocks.startBuild.mockImplementationOnce(
-      () =>
-        new Promise<boolean>((resolve) => {
-          finishBuild = resolve
-        }),
-    )
-    const user = userEvent.setup()
-    renderWithConsoleQuery(
-      <StrictMode>
-        <CreationNavigation />
-      </StrictMode>,
-      {
-        queryClient: createBuilderQueryClient(),
-        features: { dify_builder_enabled: true },
-      },
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
-
-    await waitFor(() =>
-      expect(mocks.startBuild).toHaveBeenCalledWith(
-        'created-app',
-        'Build an expense workflow',
-        builderModel,
-      ),
-    )
-    expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
-    expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue('')
-
-    await act(async () => finishBuild(true))
-
-    expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue('')
-
-    await user.click(screen.getByRole('button', { name: 'Back to apps' }))
-    await user.click(screen.getByRole('button', { name: 'Reopen app' }))
-    expect(mocks.startBuild).toHaveBeenCalledOnce()
-  })
-
-  it.each([
-    { error: new Error('Connection failed.'), reason: 'Connection failed.' },
-    { error: { data: { body: { message: 'Access denied.' } } }, reason: 'Access denied.' },
-    {
-      error: new Response('{"message":"Service unavailable."}', { status: 503 }),
-      reason: 'HTTP 503: Service unavailable.',
-    },
-    { error: {}, reason: '' },
-  ])(
-    'restores the creation prompt and formats the startup error: $reason',
-    async ({ error, reason }) => {
-      mocks.startBuild.mockRejectedValueOnce(error)
-      const user = userEvent.setup()
-      renderWithConsoleQuery(<CreationNavigation />, {
-        queryClient: createBuilderQueryClient(),
-        features: { dify_builder_enabled: true },
-      })
-
-      await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
-
-      expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue(
-        'Build an expense workflow',
-      )
-      const message = screen.getByRole('status', { name: 'Canvas refresh error' })
-      await waitFor(() => expect(message).toHaveTextContent('difyBuilder.creationStartFailed'))
-      if (reason) expect(message).toHaveTextContent(reason)
-      expect(message).not.toHaveTextContent('[object Object]')
-      expect(message).not.toHaveTextContent('Error:')
-    },
-  )
-
-  it.each([true, false])(
-    'preserves a newer draft after the creation request settles with %s',
-    async (started) => {
-      let finishBuild: (started: boolean) => void = () => undefined
-      mocks.startBuild.mockImplementationOnce(
-        () =>
-          new Promise<boolean>((resolve) => {
-            finishBuild = resolve
-          }),
-      )
-      const user = userEvent.setup()
-      renderWithConsoleQuery(<CreationNavigation />, {
-        queryClient: createBuilderQueryClient(),
-        features: { dify_builder_enabled: true },
-      })
-
-      await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
-      await waitFor(() => expect(mocks.startBuild).toHaveBeenCalledOnce())
-      const input = screen.getByRole('textbox', { name: 'Builder draft' })
-      await user.clear(input)
-      await user.type(input, 'Also handle invoice uploads')
-
-      await act(async () => finishBuild(started))
-
-      expect(input).toHaveValue('Also handle invoice uploads')
-    },
-  )
-
-  it.each([
-    { appId: 'another-app', canEdit: true, enabled: true },
-    { appId: 'created-app', canEdit: false, enabled: true },
-    { appId: 'created-app', canEdit: true, enabled: false },
-  ])(
-    'does not start a creation request in an unavailable editor: %j',
-    async ({ appId, canEdit, enabled }) => {
-      const user = userEvent.setup()
-      renderWithConsoleQuery(<CreationNavigation appId={appId} canEdit={canEdit} />, {
-        queryClient: createBuilderQueryClient(),
-        features: { dify_builder_enabled: enabled },
-      })
-      await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
-      expect(mocks.startBuild).not.toHaveBeenCalled()
-      expect(mocks.setShowPanel).not.toHaveBeenCalled()
-    },
-  )
 
   it('isolates saved session ids between collaborators on the same app', async () => {
     const userOneKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'

@@ -613,7 +613,6 @@ def test_repair_preserves_layout_committed_while_builder_was_planning(mock_sessi
     _installed_spy_5.side_effect = move_node
     with (
         patch("services.dify_builder.dify_port.WorkflowService") as service,
-        patch("services.dify_builder.dify_port.notify_workflow_draft_changed") as notify,
     ):
         service.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(
             Workflow, workflow.id
@@ -631,7 +630,6 @@ def test_repair_preserves_layout_committed_while_builder_was_planning(mock_sessi
             [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "AI edit"})],
             expected_revision=expected,
         )
-        assert notify.call_args.kwargs["previous_graph"]["nodes"][0]["position"] == {"x": 900, "y": 500}
 
     assert workflow.graph_dict["nodes"][0]["position"] == {"x": 900, "y": 500}
     assert workflow.graph_dict["nodes"][0]["data"]["code"] == "AI edit"

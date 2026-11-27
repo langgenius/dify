@@ -659,17 +659,11 @@ export default interface Resources {
     'exportSecret.title': 'Export app with secret values'
     'filterEmpty.noApps': 'No apps here'
     'firstEmpty.blankDescription': 'Start with an empty canvas and build your app step by step.'
-    'firstEmpty.builder.importDescription': 'Bring a .yml file exported from another Dify app.'
-    'firstEmpty.builder.templateDescription': 'Pick a ready-made app and change it.'
-    'firstEmpty.builder.title': 'Build your first app'
-    'firstEmpty.chatflowDescription': 'Chats back and forth'
     'firstEmpty.importDescription': 'Import an app package or DSL file to restore a shared or backed-up app.'
-    'firstEmpty.importTitle': 'Import a DSL file'
     'firstEmpty.learnDifyTitle': 'Learn Dify from Template'
     'firstEmpty.or': 'Or'
     'firstEmpty.templateDescription': 'Pick a ready-made app and customize it. The fastest way to see Dify in action.'
     'firstEmpty.title': 'Build your first App'
-    'firstEmpty.workflowDescription': 'Runs once and finishes'
     'gotoAnything.actions.accountDesc': 'Open account settings'
     'gotoAnything.actions.createAuto': 'Auto'
     'gotoAnything.actions.createAutoDesc': 'Let AI pick Workflow or Chatflow from your description'
@@ -803,36 +797,14 @@ export default interface Resources {
     'newApp.foundResult': '{{count}} Result'
     'newApp.foundResults': '{{count}} Results'
     'newApp.import': 'Import'
-    'newApp.menu.agentDescription': 'Chat where the model decides which tools to call, for research assistants, data lookups, or multi-step tasks.'
-    'newApp.menu.chatbotDescription': 'A chat app you write as a prompt, with no canvas, for customer support, writing help, or role-play.'
-    'newApp.menu.chatflowDescription': 'Holds a conversation, for a support bot, doc Q&A, or an onboarding assistant.'
-    'newApp.menu.completionDescription': 'A single-output app you write as a prompt, for copywriting, rewriting, or email drafts.'
-    'newApp.menu.importDSLHint': 'Or drag a DSL file onto the studio'
-    'newApp.menu.moreTypes': 'More app types'
-    'newApp.menu.startFromTemplate': 'Start from a template'
-    'newApp.menu.workflowDescription': 'Runs a task and finishes, for translating documents, summarizing tickets, or cleaning up spreadsheets.'
     'newApp.name': 'App name'
     'newApp.nameNotEmpty': 'Name cannot be empty'
     'newApp.noIdeaTip': 'No ideas? Check out our templates'
     'newApp.noTemplateFound': 'No templates found'
     'newApp.noTemplateFoundTip': 'Try searching using different keywords.'
-    'newApp.optimizeFailed': "Couldn't optimize the prompt. Try again."
-    'newApp.optimizeModelContactAdmin': 'Ask a workspace administrator to complete the setup.'
-    'newApp.optimizeModelRequired': 'Configure an available system default language model in Model Settings before optimizing the prompt.'
-    'newApp.optimizeNoChange': 'No changes were made to your prompt.'
-    'newApp.optimizeWithAI': 'Optimize with AI'
     'newApp.optional': 'Optional'
     'newApp.startFromBlank': 'Create from Blank'
     'newApp.startFromTemplate': 'Create from Template'
-    'newApp.starter.chatflowTitle': 'Build your next chatflow'
-    'newApp.starter.invoices': 'Invoices to spreadsheet'
-    'newApp.starter.openBlank': 'Open a blank canvas'
-    'newApp.starter.placeholder': 'Pull amounts from my receipts into a spreadsheet'
-    'newApp.starter.templateDescription': 'Start from a working app and reshape it'
-    'newApp.starter.tickets': 'Daily ticket summary'
-    'newApp.starter.translate': 'Translate documents'
-    'newApp.starter.workflowTitle': 'Build your next workflow'
-    'newApp.untitled': 'Untitled'
     'newApp.useTemplate': 'Use this template'
     'newApp.workflowShortDescription': 'Agentic flow for intelligent automations'
     'newApp.workflowUserDescription': 'Visually build autonomous AI workflows with drag-and-drop simplicity.'
@@ -1912,7 +1884,6 @@ export default interface Resources {
     'feedback.placeholder': 'Please describe what went wrong or how we can improve...'
     'feedback.subtitle': 'Please tell us what went wrong with this response'
     'feedback.title': 'Provide Feedback'
-    'fileUploader.fileExtensionBlocked': 'This file type is blocked for security reasons'
     'fileUploader.fileExtensionNotSupport': 'File extension not supported'
     'fileUploader.pasteFileLink': 'Paste file link'
     'fileUploader.pasteFileLinkInputPlaceholder': 'Enter URL...'
@@ -5215,8 +5186,6 @@ export default interface Resources {
     'stepByStepTour.guides.studio.empty.learnDify.title': 'Or start with Learn Dify'
     'stepByStepTour.guides.studio.empty.template.description': "Browse Dify's templates and pick one that matches what you want to build. Great way to start without writing anything from scratch."
     'stepByStepTour.guides.studio.empty.template.title': 'Create from a template'
-    'stepByStepTour.guides.studio.empty.workflow.description': 'Start a workflow that runs once and finishes.'
-    'stepByStepTour.guides.studio.empty.workflow.title': 'Create a workflow'
     'stepByStepTour.guides.studio.noCreate.empty.description': 'You can view apps in this workspace, but there are no apps here yet. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.'
     'stepByStepTour.guides.studio.noCreate.empty.title': 'No apps to view yet'
     'stepByStepTour.guides.studio.noCreate.withApps.description': 'You can browse apps in this workspace. To create or edit apps, switch to a workspace where you have permission, or contact your Workspace Owner or Admin.'
@@ -5866,6 +5835,208 @@ export default interface Resources {
     'subscription.subscriptionRemoved': 'Subscription removed'
   }
   register: {}
+  requestErrors: {
+    'code.access_denied': "You don't have access to this app."
+    'code.account_already_inited': 'The account has already been set up. Refresh the page.'
+    'code.account_banned': 'This account has been banned.'
+    'code.account_in_freeze': "This email belongs to an account deleted in the past 30 days and can't be used to register yet."
+    'code.account_not_found': 'The account was not found.'
+    'code.account_not_initialized': "The account hasn't been set up yet. Complete the setup first."
+    'code.account_not_link_tenant': "The account doesn't belong to any workspace."
+    'code.agent_build_sandbox_not_found': 'The build sandbox is no longer available.'
+    'code.agent_model_not_configured': "Configure the model for the Agent's Soul first."
+    'code.agent_name_conflict_error': 'An Agent with this name already exists.'
+    'code.agent_not_bound': 'No Agent is bound to this app or node.'
+    'code.agent_not_found_error': 'The Agent was not found.'
+    'code.agent_not_published': 'The Agent has not been published. Publish it and try again.'
+    'code.agent_preview_unavailable': "Agent preview isn't available in this edition."
+    'code.agent_version_conflict_error': 'The Agent configuration changed. Reload and try again.'
+    'code.agent_version_not_found_error': 'The Agent configuration version was not found.'
+    'code.already_activate': 'The activation link is invalid, or the account is already activated.'
+    'code.already_setup': 'Dify is already set up. Refresh the page or go to the dashboard.'
+    'code.already_submitted': 'This form has already been submitted.'
+    'code.annual_discount_active': 'You can switch to annual billing after your current discount ends.'
+    'code.app_more_like_this_disabled': 'The More like this feature is turned off. Refresh the page.'
+    'code.app_owner_unavailable': 'The owner of this app preview is unavailable.'
+    'code.app_site_unavailable': 'The site for this app preview is unavailable.'
+    'code.app_suggested_questions_after_answer_disabled': 'Suggested questions after answers are turned off. Refresh the page.'
+    'code.app_unavailable': 'The app is unavailable. Check its configuration.'
+    'code.archived_document_immutable': "Archived documents can't be edited."
+    'code.authentication_failed': 'The email or password is incorrect.'
+    'code.billing_operation_failed': "The request couldn't be completed. Try again, and contact support if the problem persists."
+    'code.billing_request_in_progress': 'A previous request is still being processed. Try again shortly.'
+    'code.billing_unavailable': 'This operation is temporarily unavailable. Try again later.'
+    'code.cannot_transfer_owner_to_self': "You can't transfer ownership to yourself."
+    'code.compliance_document_not_found': 'The compliance document was not found.'
+    'code.compliance_download_forbidden': "Your current plan doesn't allow downloading this compliance document."
+    'code.compliance_rate_limit': 'Too many compliance report downloads. Try again later.'
+    'code.conversation_completed': 'This conversation has ended. Start a new conversation.'
+    'code.conversation_cursor_not_found': 'The conversation list changed. Refresh it and try again.'
+    'code.conversation_first_message_not_found': 'The conversation has no message to generate a name from.'
+    'code.conversation_name_required': 'Enter a name, because automatic naming is turned off.'
+    'code.conversation_not_found': 'The conversation was not found.'
+    'code.current_password_incorrect': 'The current password is incorrect.'
+    'code.current_workspace_archived': 'The current workspace has been archived.'
+    'code.dataset_name_duplicate': 'A knowledge base with this name already exists. Choose another name.'
+    'code.dataset_not_initialized': 'The knowledge base is still being initialized or indexed. Wait a moment and try again.'
+    'code.document_already_finished': 'The document has already been processed. Refresh the page or open the document details.'
+    'code.draft_workflow_not_exist': 'The draft workflow has not been initialized yet.'
+    'code.draft_workflow_not_sync': 'The workflow was changed elsewhere. Refresh the page and submit again.'
+    'code.education_activate_failed': "The education discount couldn't be activated."
+    'code.education_activate_limit': 'Too many activation attempts. Try again later.'
+    'code.education_verify_failed': "Your education status couldn't be verified."
+    'code.education_verify_limit': 'Too many verification attempts. Try again later.'
+    'code.email_already_in_use': 'A user with this email already exists.'
+    'code.email_change_limit': 'Too many failed email change attempts. Try again in 24 hours.'
+    'code.email_code_error': 'The verification code is invalid or has expired.'
+    'code.email_code_login_limit': 'Too many incorrect attempts. Try again later.'
+    'code.email_code_login_service_unavailable': 'Email code verification is temporarily unavailable. Try again later.'
+    'code.email_domain_suspended': 'This email domain has been suspended.'
+    'code.email_or_password_mismatch': 'The email or password is incorrect.'
+    'code.email_password_reset_limit': 'Too many failed password reset attempts. Try again in 24 hours.'
+    'code.email_register_limit': 'Too many failed sign-up attempts. Try again in 24 hours.'
+    'code.email_send_ip_limit': 'Too many emails have been sent from this IP address. Try again later.'
+    'code.evaluation_max_concurrent_runs': '{{limit}} evaluation runs are already running, the most allowed at once. Wait for one to finish or cancel one, then try again.'
+    'code.expired': 'This form has expired.'
+    'code.file_extension_blocked': 'This file type is blocked for security reasons.'
+    'code.filename_missing': 'A file name is required.'
+    'code.filename_not_exists_error': "The file doesn't exist."
+    'code.forbidden': "You don't have permission to do this."
+    'code.human_input_access_delivery_failed': "The verification code couldn't be sent. Try again later."
+    'code.human_input_access_rate_limit_exceeded': 'Too many verification code requests. Try again later.'
+    'code.human_input_challenge_expired': 'The verification code has expired. Request a new one.'
+    'code.human_input_challenge_stale': 'This verification code is no longer valid. Request a new code.'
+    'code.human_input_invalid_otp': 'The verification code is incorrect.'
+    'code.human_input_v2_unavailable': 'Forms are temporarily unavailable. Try again later.'
+    'code.im_binding_read_only': "Centrally managed IM bindings can't be edited from a workspace."
+    'code.init_validate_failed': 'Initialization validation failed. Check the password and try again.'
+    'code.installed_app_not_found': 'The app was not found in this workspace.'
+    'code.installed_app_unavailable': 'The app is not available in this app library.'
+    'code.invalid_account_deletion_code': 'The account deletion code is invalid.'
+    'code.invalid_cursor': 'The app list changed. Refresh it and try again.'
+    'code.invalid_email': 'The email address is not valid.'
+    'code.invalid_input': 'Some of the submitted values are invalid. Check them and try again.'
+    'code.invalid_invitation_code': 'The invitation code is invalid.'
+    'code.invalid_metadata': 'The metadata is invalid. Check it and try again.'
+    'code.invalid_or_expired_token': 'The link is invalid or has expired.'
+    'code.invalid_role': 'The role is invalid.'
+    'code.invalid_tracing_config': 'The tracing configuration is invalid.'
+    'code.invalid_upload_token': 'The upload link is invalid or has expired.'
+    'code.invitation_account_mismatch': 'This invitation was sent to another account. Sign in with the invited account.'
+    'code.knowledge_fs_space_not_found': 'The Agent Knowledge Base was not found.'
+    'code.limit_exceeded': 'This would exceed the member, seat or workspace limit of your plan or license.'
+    'code.malformed_upload_token': 'The upload link is malformed.'
+    'code.member_not_in_tenant': 'The member is not in this workspace.'
+    'code.message_cursor_not_found': 'The message list changed. Refresh it and try again.'
+    'code.message_feedback_rating_required': 'Choose a rating.'
+    'code.message_not_found': 'The message was not found.'
+    'code.missing_invitation_code': 'An invitation code is required.'
+    'code.model_currently_not_support': "The hosted trial provider doesn't support this model. Add your own model provider credentials to use it."
+    'code.moderation_unavailable': "This message can't be processed right now. Try again later."
+    'code.need_add_ids': 'Select at least one item.'
+    'code.network_access_forbidden': 'IP policies are not available for this workspace.'
+    'code.network_access_group_bound': 'This IP policy is still used by one or more apps.'
+    'code.network_access_group_name_conflict': 'An IP policy with this name already exists.'
+    'code.network_access_group_not_found': 'The IP policy was not found.'
+    'code.network_access_invalid_input': 'The IP policy is invalid.'
+    'code.network_access_not_entitled': 'IP policies are not available for this workspace.'
+    'code.network_access_role_denied': "Your workspace role doesn't allow this IP policy operation."
+    'code.network_access_unsupported_access_points': 'Some access points are not supported for this app.'
+    'code.network_access_unsupported_app_mode': 'IP policies are not supported for this type of app.'
+    'code.network_access_version_conflict': 'The network access settings changed. Refresh and try again.'
+    'code.no_audio_uploaded': 'Upload an audio file.'
+    'code.no_file_uploaded': 'Upload a file.'
+    'code.normalized_email_already_in_use': 'An account with an equivalent email address already exists.'
+    'code.not_allowed_create_workspace': "You don't belong to a workspace. Ask an administrator to invite you."
+    'code.not_chat_app': 'This action is only available for chat apps.'
+    'code.not_completion_app': 'This action is only available for completion apps.'
+    'code.not_init_validated': 'Initialization validation has not been completed. Complete it first.'
+    'code.not_owner': 'Only the workspace owner can do this.'
+    'code.not_setup': 'Dify has not been set up yet. Complete the setup first.'
+    'code.not_workflow_app': 'This action is only available for workflow apps.'
+    'code.owner_transfer_limit': 'Too many failed ownership transfer attempts. Try again in 24 hours.'
+    'code.paid_plan_required': 'This feature requires a paid plan.'
+    'code.password_mismatch': "The passwords don't match."
+    'code.pending_invitation_not_found': 'There is no pending invitation for this email in the workspace.'
+    'code.pipeline_not_found': 'The pipeline was not found.'
+    'code.provider_configuration_updated': 'The channel configuration was updated. Refresh and try again.'
+    'code.provider_not_support_speech_to_text': "The model provider doesn't support speech to text."
+    'code.provider_not_support_text_to_speech': "The model provider doesn't support text to speech."
+    'code.provider_quota_exceeded': 'The quota for the hosted model provider is used up. Add your own credentials in Settings > Model Provider.'
+    'code.recommended_app_not_found': 'The recommended app was not found.'
+    'code.remote_file_access_denied': "The remote file can't be accessed without authorization."
+    'code.remote_file_invalid_response': 'The remote file server returned an invalid response.'
+    'code.remote_file_invalid_url': 'The remote file URL is invalid.'
+    'code.remote_file_not_found': 'The remote file was not found.'
+    'code.remote_file_url_blocked': 'The remote file URL is not allowed.'
+    'code.repeat_password_not_match': "The new passwords don't match."
+    'code.roster_agent_package_import_failed': "The Agent package couldn't be imported."
+    'code.roster_agent_package_resource_unavailable': "The Agent package's resources couldn't be stored. Try again later."
+    'code.speech_to_text_disabled': 'Speech to text is turned off.'
+    'code.trace_config_already_exists': 'A tracing configuration already exists for this provider.'
+    'code.trace_config_not_found': 'The tracing configuration was not found.'
+    'code.tracing_already_accepted': "An accepted trace can't be exported again."
+    'code.tracing_config_conflict': 'The tracing configuration changed. Refresh and try again.'
+    'code.tracing_config_processing_failed': "The tracing configuration couldn't be processed."
+    'code.tracing_config_verification_failed': "The tracing configuration couldn't be verified."
+    'code.tracing_duplicate_acknowledgement_required': 'Acknowledge possible duplicates before retrying this export.'
+    'code.tracing_node_not_found': "The Agent node call doesn't belong to this trace."
+    'code.tracing_provider_unavailable': "The tracing provider isn't available in this deployment."
+    'code.tracing_retry_not_allowed': "This trace can't be retried in its current state."
+    'code.tracing_run_not_found': 'No collected trace is available to retry.'
+    'code.tracing_source_not_found': "The tracing source doesn't exist in this app."
+    'code.trial_app_feature_disabled': 'Trial apps are not enabled.'
+    'code.trial_app_limit_exceeded': "You've reached the trial app limit."
+    'code.trial_app_not_allowed': "This app can't be tried."
+    'code.trigger_node_limit_exceeded': 'The workflow has more trigger nodes than the workspace plan allows.'
+    'code.trigger_workflow_service_mode_unavailable': "Workflows that start from a trigger can't be run from a web app, the API or MCP."
+    'code.turnstile_service_unavailable': 'Human verification is temporarily unavailable. Try again later.'
+    'code.turnstile_verification_failed': 'Human verification failed. Try again.'
+    'code.unsupported_audio_type': 'This audio type is not supported.'
+    'code.unsupported_file_type': 'This file type is not supported.'
+    'code.unsupported_tracing_provider': 'This tracing provider is not supported.'
+    'code.upload_token_required': 'An upload link is required.'
+    'code.web_app_access_unavailable': 'The app access service is unavailable. Try again later.'
+    'code.web_form_rate_limit_exceeded': 'Too many form requests. Try again later.'
+    'code.workflow_not_active': 'The workflow for this form is no longer running.'
+    'code.workflow_paused_in_blocking_mode': "The workflow paused for human input, which the blocking response mode doesn't support."
+    'code.workspace_im_override_not_allowed': 'Workspace IM overrides require centrally managed bindings.'
+    'code.workspace_member_limit_reached': "The workspace has reached its member limit, so this invitation can't be accepted right now."
+    'forbidden.executionDetails': "You don't have permission to view this tool's internal execution details."
+    'forbidden.invalidOAuthContext': 'The authorization session is invalid. Start the authorization again.'
+    'forbidden.invalidSignedRequest': 'The request link is invalid.'
+    'forbidden.licenseRequired': 'A valid license is required. Contact your administrator.'
+    'forbidden.memberInvitationPolicy': "The workspace policy doesn't allow inviting members."
+    'forbidden.oauthClientMissing': 'No OAuth client is configured for this tool provider.'
+    'forbidden.oauthContextMissing': 'The authorization session was not found. Start the authorization again.'
+    'forbidden.ownerTransferPlan': "Your current plan doesn't allow transferring workspace ownership."
+    'forbidden.ownerTransferPolicy': "The workspace policy doesn't allow transferring ownership."
+    'forbidden.personalAccessTokenExpired': 'The personal access token has expired.'
+    'generic.network': "Can't reach the server. Check your network connection and try again."
+    'generic.rateLimited': 'Too many requests. Wait a moment and try again.'
+    'generic.server': 'The server ran into a problem. Try again later.'
+    'generic.timeout': 'The request timed out. Try again.'
+    'generic.unknown': 'Something went wrong. Try again.'
+    'planLimit.annotation': 'The annotation quota of your plan has been reached. Upgrade your plan to add more.'
+    'planLimit.apps': "Your plan's app limit has been reached. Upgrade your plan to create more apps."
+    'planLimit.documents': "Your plan's document limit has been reached. Upgrade your plan to upload more documents."
+    'planLimit.knowledgeRateLimit': "Your plan's knowledge base request rate limit has been reached. Try again later or upgrade your plan."
+    'planLimit.members': "Your plan's member limit has been reached. Upgrade your plan to add more members."
+    'planLimit.paidPlan': 'This feature requires a paid plan. Upgrade your plan to use it.'
+    'planLimit.vectorSpace': "Your plan's knowledge storage space is full. Upgrade your plan or free up space."
+    'planLimit.workspaceCustom': "Customizing the workspace isn't included in your plan. Upgrade your plan to use it."
+    'template.dataset_name_duplicate': 'A knowledge base named “{{name}}” already exists. Choose another name.'
+    'template.email_change_rate_limit_exceeded': 'Too many email change emails have been sent. Try again in {{minutes}} min.'
+    'template.email_code_account_deletion_rate_limit_exceeded': 'Too many account deletion emails have been sent. Try again in {{minutes}} min.'
+    'template.email_code_login_rate_limit_exceeded': 'Too many sign-in emails have been sent. Try again in {{minutes}} min.'
+    'template.email_register_rate_limit_exceeded': 'Too many sign-up emails have been sent. Try again in {{minutes}} min.'
+    'template.file_extension_blocked': 'Files with the .{{extension}} extension are blocked for security reasons.'
+    'template.invalid_metadata': 'The metadata value {{value}} is invalid. Check it and try again.'
+    'template.network_access_unsupported_access_points': "These access points aren't supported for this app: {{accessPoints}}."
+    'template.network_access_unsupported_app_mode': "IP policies aren't supported for {{mode}} apps."
+    'template.owner_transfer_rate_limit_exceeded': 'Too many ownership transfer emails have been sent. Try again in {{minutes}} min.'
+    'template.password_reset_rate_limit_exceeded': 'Too many password reset emails have been sent. Try again in {{minutes}} min.'
+  }
   runLog: {
     circularInvocationTip: 'There is circular invocation of tools/nodes in the current workflow.'
     detail: 'DETAIL'

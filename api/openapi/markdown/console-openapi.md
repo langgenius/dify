@@ -643,6 +643,8 @@ name/pagination filters; the response contains detached Agent tags.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/audio-to-text
+**Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft**
+
 Transcribe audio using the current Agent debug configuration
 
 #### Parameters
@@ -669,6 +671,8 @@ Transcribe audio using the current Agent debug configuration
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-chat/finalize
+**Drain the admitted account's Build turn to the first message-end event**
+
 Run a build-draft Agent App turn that asks the agent to push config updates
 
 #### Parameters
@@ -833,6 +837,8 @@ Get suggested questions for an Agent App message
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
+**Stop a task owned by the admitted account after resolving the Agent's runtime App**
+
 Stop a running Agent App chat message generation
 
 #### Parameters
@@ -1581,6 +1587,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/text-to-audio
+**Synthesize an owned message or preview text using the existing runtime App**
+
 Preview an Agent TTS voice or read an Agent chat message
 
 #### Parameters
@@ -1606,6 +1614,8 @@ Preview an Agent TTS voice or read an Agent chat message
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/text-to-audio/voices
+**Require an existing runtime App, then discover provider voices without a DB session**
+
 Get available TTS voices for an Agent and language
 
 #### Parameters
@@ -2040,9 +2050,7 @@ Get list of applications with pagination and filtering
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps
-**Validate the admitted caller's request before creating the app under the active Builder setting**
-
-Create a new application. A name is required when App Builder is disabled.
+Create a new application
 
 #### Request Body
 
@@ -7467,6 +7475,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7537,7 +7546,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
@@ -7589,7 +7600,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/template/download
@@ -15071,23 +15084,6 @@ Generate a Dify workflow graph from natural language
 | 400 | Invalid request parameters | **application/json**: [WorkflowGenerateRejectedResponse](#workflowgeneraterejectedresponse)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /workflow-generate/improve
-Expand a workflow-generator instruction with the details it leaves unstated
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WorkflowInstructionImprovePayload](#workflowinstructionimprovepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Instruction returned successfully | **application/json**: [WorkflowInstructionImproveResponse](#workflowinstructionimproveresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /workflow-generate/stream
 Stream a Dify workflow graph (plan then result) via SSE
 
@@ -19969,6 +19965,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -20007,6 +20004,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -20120,7 +20118,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
@@ -20175,7 +20175,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
@@ -20197,6 +20199,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -25639,8 +25642,7 @@ The conversation was not found for this user and app.
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
-| name | string | App name; derived from prompt when omitted | No |
-| prompt | string | Goal prompt the app was created from; used to derive the name | No |
+| name | string | App name | Yes |
 
 #### CreateIMBindingRequest
 
@@ -26996,7 +26998,6 @@ Lifecycle control uses Session CAS, never a graph revision.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
 | attachments | [ [DifyBuilderAttachmentPayload](#difybuilderattachmentpayload) ] |  | No |
-| derive_app_name | boolean |  | No |
 | goal_text | string |  | No |
 | model_config | [SessionModel](#sessionmodel) |  | No |
 | scenario | string |  | Yes |
@@ -28458,6 +28459,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | metrics | [ string ] |  | Yes |
 
+#### EvaluationConfigInvalidError
+
+Evaluation configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationConfigInvalidError |  | Evaluation configuration is invalid. |  |
+
 #### EvaluationConfigPayload
 
 | Name | Type | Description | Required |
@@ -28480,6 +28489,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | evaluation_model_provider | string |  | No |
 | judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
 
+#### EvaluationDatasetInvalidError
+
+Evaluation dataset is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationDatasetInvalidError |  | Evaluation dataset is invalid. |  |
+
 #### EvaluationDefaultMetricsResponse
 
 | Name | Type | Description | Required |
@@ -28498,11 +28515,33 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | name | string |  | Yes |
 | size | integer |  | Yes |
 
+#### EvaluationFrameworkNotConfiguredError
+
+Selected evaluation framework is unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationFrameworkNotConfiguredError |  | Selected evaluation framework is unavailable. |  |
+
 #### EvaluationFrameworkQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+
+#### EvaluationMaxConcurrentRunsDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+
+#### EvaluationMaxConcurrentRunsError
+
+Maximum number of concurrent evaluation runs reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationMaxConcurrentRunsError |  | Maximum number of concurrent evaluation runs reached. |  |
 
 #### EvaluationMetric
 
@@ -41171,33 +41210,6 @@ request validation and response serialization.
 | x | number |  | Yes |
 | y | number |  | Yes |
 | zoom | number |  | Yes |
-
-#### WorkflowInstructionImprovePayload
-
-Payload for the workflow-generator instruction-improvement endpoint.
-
-Backs the composer's "Add missing details" action. It runs before an app
-exists and before the user picks a model, so the rewrite comes from the
-tenant's default model. The underlying generator never raises -- the
-original text with ``changed: false`` is a valid 200 (soft-fail).
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| instruction | string | The build instruction to expand | Yes |
-| language | string | Optional language to write the rewrite in | No |
-| mode | string, <br>**Available values:** "advanced-chat", "workflow", <br>**Default:** workflow | Target app mode the instruction is written for<br>*Enum:* `"advanced-chat"`, `"workflow"` | No |
-
-#### WorkflowInstructionImproveResponse
-
-``instruction`` is always usable: the rewrite, or the caller's own text.
-
-``changed`` is what distinguishes the two, so a client can tell an
-improvement from a soft failure without diffing the strings itself.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| changed | boolean |  | Yes |
-| instruction | string |  | Yes |
 
 #### WorkflowInstructionSuggestionsPayload
 

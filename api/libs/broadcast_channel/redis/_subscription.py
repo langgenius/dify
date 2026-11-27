@@ -91,6 +91,7 @@ class RedisSubscriptionBase(Subscription):
                 raise
 
     def _wait_for_subscription_ack(self) -> None:
+        """Read until Redis acknowledges this subscription or the activation timeout expires."""
         deadline = time.monotonic() + _SUBSCRIPTION_ACK_TIMEOUT_SECONDS
         ack_type = self._get_subscription_ack_type()
 
@@ -103,16 +104,12 @@ class RedisSubscriptionBase(Subscription):
                 )
 
             raw_message = self._get_subscription_message(timeout=timeout)
-            if raw_message is None:
-                continue
-
-            if raw_message.get("type") == ack_type and self._channel_name(raw_message.get("channel")) == self._topic:
-                return
-
-            # Redis sends the acknowledgement before messages published to a
-            # newly subscribed channel. Preserve a data message anyway if a
-            # client implementation or reconnect path delivers one first.
-            self._process_message(raw_message)
+            if raw_message is not None:
+                channel = self._channel_name(raw_message.get("channel"))
+                if raw_message.get("type") == ack_type and channel == self._topic:
+                    return
+                # Preserve data delivered ahead of the acknowledgement during reconnect.
+                self._process_message(raw_message)
 
     def _listen(self) -> None:
         """Main listener loop for processing messages."""

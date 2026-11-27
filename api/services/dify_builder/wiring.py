@@ -150,8 +150,6 @@ def _get_app_name(app_id: str, actor: Actor) -> str:
     return app_naming.current_app_name(app_id=app_id, tenant_id=actor.tenant_id)
 
 
-
-
 def build_service() -> DifyBuilderService:
     from services.dify_builder.fix_intent_repository import SqlFixIntentRepository
 
@@ -190,12 +188,6 @@ def build_attachment_intake(repo):
     return BuilderAttachmentIntake(repo, extract)
 
 
-def build_app_metadata():
-    from services.dify_builder.app_metadata import NativeAppMetadata
-
-    return NativeAppMetadata(sessionmaker(bind=db.engine, expire_on_commit=False))
-
-
 def dispatch_pending_builder_material(repo, session_id: str, actor: Actor) -> str:
     """Post-release handoff uses the ordinary advance queue, policy and App admission."""
     intake = build_attachment_intake(repo)
@@ -211,8 +203,6 @@ def dispatch_pending_builder_material(repo, session_id: str, actor: Actor) -> st
         attachment_intake=intake,
     )
     return service.dispatch_pending_material(session_id, actor)
-
-
 
 
 def _public_actions(actions: object) -> list[dict[str, object]]:

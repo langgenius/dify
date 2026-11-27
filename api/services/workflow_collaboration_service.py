@@ -34,7 +34,7 @@ class WorkflowCollaborationNotEntitledError(Exception):
 
 
 class WorkflowPageResume(NamedTuple):
-    """Validated page credential and join sequence supplied by the browser."""
+    """Browser page UUID and positive join sequence, validated at the transport boundary."""
 
     page_id: str
     sequence: int
@@ -120,11 +120,14 @@ class WorkflowCollaborationService:
         Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Missing access or an outdated join returns `None`; an ineligible workspace raises
-        `WorkflowCollaborationNotEntitledError`. An admitted resume supersedes only the prior SID for
-        this page in the authenticated workflow and account.
+        `App.id`. Missing access, an outdated join, or a closed socket returns `None`. An ineligible workspace
+        raises `WorkflowCollaborationNotEntitledError`. With no resume credential, the SID joins as an
+        independent editor. A resume can replace the prior SID only for this workflow, account, and page.
         """
-        socket_session = self._socketio.get_session(sid)
+        try:
+            socket_session = self._socketio.get_session(sid)
+        except KeyError:
+            return None
         user_id = socket_session.get("user_id")
         tenant_id = socket_session.get("tenant_id")
         if not user_id or not tenant_id:
@@ -160,6 +163,8 @@ class WorkflowCollaborationService:
         previous_sid = None
         replaced_sid = None
         with self._repository.room_state_lock(workflow_id):
+            if not self._is_socket_connected_locally(sid):
+                return None
             if resume is not None:
                 previous = self._repository.get_page_session(workflow_id, session_info["user_id"], resume.page_id)
                 if previous is not None:
@@ -191,7 +196,7 @@ class WorkflowCollaborationService:
             self.get_or_set_leader(workflow_id, sid)
             is_leader = self.broadcast_online_users(workflow_id, joining_sid=sid) == sid
             status = {"isLeader": is_leader}
-            if is_leader and replaced_sid is not None:
+            if is_leader and previous_sid is not None:
                 status["requiresGraphReload"] = True
             self._socketio.emit("status", status, room=sid)
 
@@ -226,27 +231,29 @@ class WorkflowCollaborationService:
             resource_id=app_id,
         )
 
-    def disconnect_session(self, sid: str) -> str | None:
-        """Remove a known session and return its workflow ID for final draft cleanup.
+    def disconnect_session(self, sid: str) -> None:
+        """Remove an admitted socket and update leadership and presence under the room lock.
 
-        Unknown and superseded sessions return None. Cleanup is serialized with joins,
-        so a late disconnect cannot act on the replacement session's room state.
+        Unknown and superseded SIDs leave room state untouched, including when a replacement
+        joins after cleanup reads the SID mapping.
         """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
-            return None
+            return
 
         workflow_id = mapping["workflow_id"]
         with self._repository.room_state_lock(workflow_id):
             if self._repository.get_sid_mapping(sid) != mapping:
-                return None
+                return
             self._repository.delete_session(workflow_id, sid)
             self.handle_leader_disconnect(workflow_id, sid)
             self.broadcast_online_users(workflow_id)
-        return workflow_id
 
     def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, object], int]:
-        """Route collaboration control events, directing save and graph-resync requests to the active leader."""
+        """Require current room admission to route collaboration control events.
+
+        Select leaders for save and graph resync under the same lock that updates room membership.
+        """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return {"msg": "unauthorized"}, 401
@@ -427,7 +434,7 @@ class WorkflowCollaborationService:
     def handle_leader_disconnect(
         self, workflow_id: str, disconnected_sid: str, *, joining_sid: str | None = None
     ) -> None:
-        """Transfer leadership to a remaining editor, leaving a new join to recover separately."""
+        """Transfer leadership if the removed SID was leader. A joining SID is chosen later, if needed."""
         current_leader = self._repository.get_current_leader(workflow_id)
         if not current_leader:
             return
@@ -604,6 +611,7 @@ class WorkflowCollaborationService:
         self.broadcast_leader_change(workflow_id, new_leader)
 
     def is_session_active(self, workflow_id: str, sid: str) -> bool:
+        """Check that the SID still owns its workflow membership and its worker is live."""
         if not sid:
             return False
 

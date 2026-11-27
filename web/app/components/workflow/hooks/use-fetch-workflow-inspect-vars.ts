@@ -8,7 +8,7 @@ import { useStoreApi } from 'reactflow'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { fetchAllInspectVars } from '@/service/workflow'
 import {
@@ -150,7 +150,7 @@ export const useSetWorkflowVarsWithValue = () => {
       } catch (error) {
         // Most callers refresh after a run without awaiting; the report marks the error handled,
         // so a caller that reports it too shows nothing more.
-        toastRequestError(error)
+        reportRequestError(error)
         throw error
       }
       setInspectVarsToStore(data, passedInAllPluginInfoList, passedInSchemaTypeDefinitions)
