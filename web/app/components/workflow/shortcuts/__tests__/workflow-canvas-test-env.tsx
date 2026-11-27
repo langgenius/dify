@@ -17,7 +17,7 @@ export const initialNodes = [
     position: { x: 350, y: 150 },
     data: { label: 'Workflow node' },
   }),
-  // Keep a nonempty snapshot for redo; the known empty-canvas redo bug is outside this batch.
+  // Keep an unrelated node to exercise history restoration on a nonempty canvas.
   createNode({
     id: 'anchor',
     type: 'default',

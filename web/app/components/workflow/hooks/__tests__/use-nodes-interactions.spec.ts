@@ -671,3 +671,25 @@ it('remaps iteration children and their internal references while the HITL gate 
     target: copiedTarget.id,
   })
 })
+
+it('undoes adding the first node back to an empty graph and redoes the addition', async () => {
+  const { result, store } = await paste([codeNode('first')], [], { nodes: [] })
+  expect(result.current.nodes).toHaveLength(1)
+  const addedNodeId = result.current.nodes[0]!.id
+  act(() => result.current.handleHistoryBack())
+  act(() => result.current.handleHistoryForward())
+  expect(result.current.nodes.map((node) => node.id)).toEqual([addedNodeId])
+  await waitFor(() => expect(store.temporal.getState().pastStates).toHaveLength(1))
+
+  act(() => result.current.handleHistoryBack())
+  expect(result.current.nodes).toEqual([])
+  expect(result.current.edges).toEqual([])
+  act(() => result.current.handleHistoryForward())
+  expect(result.current.nodes.map((node) => node.id)).toEqual([addedNodeId])
+
+  act(() => result.current.handleHistoryForward())
+  expect(result.current.nodes.map((node) => node.id)).toEqual([addedNodeId])
+  act(() => result.current.handleHistoryBack())
+  act(() => result.current.handleHistoryBack())
+  expect(result.current.nodes).toEqual([])
+})
