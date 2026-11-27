@@ -141,7 +141,12 @@ const SettingBuiltInTool: FC<Props> = ({
     setCurrType(!readonly && hasSetting ? 'setting' : 'info')
   }, [hasSetting])
 
-  const effectiveSetting = addDefaultValue(tempSetting, settingSchemas)
+  const effectiveSetting = addDefaultValue(
+    tempSetting,
+    settingSchemas.map((item) =>
+      tempSetting[item.variable] == null ? item : { ...item, default: undefined },
+    ),
+  )
   const isValid = settingSchemas.every((item) => {
     const value = effectiveSetting[item.name]
     return !item.required || (value !== undefined && value !== null && value !== '')
