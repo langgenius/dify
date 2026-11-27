@@ -13,6 +13,7 @@ from core.mcp.client.streamable_client import streamablehttp_client
 from core.mcp.error import MCPConnectionError
 from core.mcp.session.client_session import ClientSession
 from core.mcp.types import CallToolResult, Tool
+from extensions.otel import trace_span
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,7 @@ class MCPClient:
                 self._session = None
                 self.connect_server(streamablehttp_client, "mcp")
 
+    @trace_span()
     def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:
         """
         Connect to the MCP server using streamable http or sse.
@@ -114,6 +116,7 @@ class MCPClient:
         self._session = self._exit_stack.enter_context(session_context)
         self._session.initialize()
 
+    @trace_span()
     def list_tools(self) -> list[Tool]:
         """List the complete tool inventory within tool and request limits, or raise."""
         if not self._session:
@@ -139,14 +142,19 @@ class MCPClient:
             response = self._session.list_tools(cursor=response.nextCursor)
             requests_sent += 1
 
+    @trace_span()
     def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """Call a tool"""
         if not self._session:
             raise ValueError("Session not initialized.")
         return self._session.call_tool(tool_name, tool_args)
 
+    @trace_span()
     def cleanup(self):
-        """Clean up resources"""
+        """Close owned resources and clear session state.
+
+        If closing fails, state is still cleared and the error is re-raised as ValueError.
+        """
         try:
             # ExitStack will handle proper cleanup of all managed context managers
             self._exit_stack.close()
