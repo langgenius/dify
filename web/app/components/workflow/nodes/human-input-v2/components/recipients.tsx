@@ -42,7 +42,7 @@ import {
 } from '@/context/workspace-state'
 import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getContactRecipientQueryOptions } from '../contact-queries'
 import {
   addRecipient,
@@ -88,6 +88,7 @@ const RecipientsContent = ({
   workspace: { name: string; contactCount?: number }
 }) => {
   const { t } = useTranslation(['workflow', 'contacts', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const keyword = useDebounce(query.trim(), { wait: 300 })
@@ -775,8 +776,10 @@ const RecipientsContent = ({
                 {isDebouncing || search.isPending
                   ? t(($) => $['nodes.humanInputV2.recipients.loading'], { ns: 'workflow' })
                   : search.isError
-                    ? (getRequestErrorMessage(search.error) ??
-                      t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' }))
+                    ? describeRequestError(
+                        search.error,
+                        t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' }),
+                      )
                     : t(($) => $['nodes.humanInputV2.recipients.resultCount'], {
                         ns: 'workflow',
                         count: results.length,

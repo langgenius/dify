@@ -118,8 +118,24 @@ function resolveForbidden(
   return { message: t(($) => $['code.forbidden']), source: 'catalog' }
 }
 
-const isCatalogedCode = (code: string | undefined): code is CatalogedRequestErrorCode =>
-  code !== undefined && cataloged.has(code)
+// Cataloged codes whose text needs values from the error's `details`, one call per key like the
+// templates so the typed `t` sees each placeholder.
+const detailedMessages = {
+  evaluation_max_concurrent_runs: (t: RequestErrorTranslator, { limit = '' }: TemplateValues) =>
+    t(($) => $['code.evaluation_max_concurrent_runs'], { limit }),
+} satisfies Partial<
+  Record<CatalogedRequestErrorCode, (t: RequestErrorTranslator, values: TemplateValues) => string>
+>
+type DetailedRequestErrorCode = keyof typeof detailedMessages
+
+const isDetailedCode = (code: string): code is DetailedRequestErrorCode =>
+  Object.hasOwn(detailedMessages, code)
+
+const isCatalogedCode = (
+  code: string | undefined,
+): code is
+  | Exclude<CatalogedRequestErrorCode, DetailedRequestErrorCode>
+  | DetailedRequestErrorCode => code !== undefined && cataloged.has(code)
 
 function genericMessage(error: unknown, t: RequestErrorTranslator) {
   if (error instanceof DOMException && error.name === 'TimeoutError')
@@ -155,6 +171,8 @@ export function resolveRequestErrorMessage(
   if (code === 'forbidden') return resolveForbidden(serverMessage, t)
   if (isCatalogedCode(code) && error instanceof ORPCError) {
     const values = getInterpolationValues(error)
+    if (isDetailedCode(code))
+      return { message: detailedMessages[code](t, values), source: 'catalog' }
     return {
       message: t(($) => $[`code.${code}`], { ...values }),
       source: 'catalog',

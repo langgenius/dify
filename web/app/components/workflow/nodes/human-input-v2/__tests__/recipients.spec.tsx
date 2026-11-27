@@ -258,7 +258,7 @@ describe('recipient selection through generated queries', () => {
     expect(await screen.findByRole('option', { name: /Evan Zhang/ })).toBeVisible()
   })
 
-  it('shows the server message when the search fails', async () => {
+  it('shows the load failure over a generic server message', async () => {
     const user = userEvent.setup()
     contactApi.options.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 403 }), {
@@ -268,7 +268,9 @@ describe('recipient selection through generated queries', () => {
     )
     renderContactOwner(<Harness />)
     await openPicker(user)
-    expect(await screen.findByText('Server says why')).toBeVisible()
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.recipients.loadError'),
+    ).toBeVisible()
   })
 
   it.each(['one@example.com', 'one@example.com, two@example.com'])(

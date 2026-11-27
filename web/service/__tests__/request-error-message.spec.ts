@@ -72,6 +72,19 @@ describe('describeRequestError', () => {
     ).toBe(requestErrors['template.password_reset_rate_limit_exceeded'].replace('{{minutes}}', '5'))
   })
 
+  it('translates the evaluation concurrency limit with the limit from its details', () => {
+    expect(
+      describeRequestError(
+        httpError(429, {
+          code: 'evaluation_max_concurrent_runs',
+          message: 'Maximum concurrent runs (3) reached.',
+          details: { limit: 3 },
+        }),
+        { t, fallback: 'Run failed' },
+      ),
+    ).toBe(requestErrors['code.evaluation_max_concurrent_runs'].replace('{{limit}}', '3'))
+  })
+
   it('falls back to the catalog entry or the server text when the sentence differs', () => {
     expect(
       describeRequestError(httpError(400, { code: 'file_extension_blocked', message: 'Blocked' }), {

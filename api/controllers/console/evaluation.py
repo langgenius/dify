@@ -11,7 +11,7 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, AliasPath, BaseModel, Field, RootModel, field_validator
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
 from configs import dify_config
@@ -25,6 +25,12 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.error import (
+    EvaluationConfigInvalidHTTPError,
+    EvaluationDatasetInvalidHTTPError,
+    EvaluationFrameworkNotConfiguredHTTPError,
+    EvaluationMaxConcurrentRunsHTTPError,
+)
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -50,6 +56,7 @@ from extensions.ext_storage import storage
 from fields.base import ResponseModel
 from fields.member_fields import SimpleAccount
 from graphon.file import helpers as file_helpers
+from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
@@ -500,17 +507,18 @@ def _start_run(
             run_request=payload,
         )
     except EvaluationFrameworkNotConfiguredError as exc:
-        raise BadRequest(exc.description) from exc
+        raise EvaluationFrameworkNotConfiguredHTTPError(exc.description) from exc
     except EvaluationDatasetInvalidError as exc:
-        raise BadRequest(exc.description) from exc
+        raise EvaluationDatasetInvalidHTTPError(exc.description) from exc
     except EvaluationNotFoundError as exc:
         raise NotFound(exc.description) from exc
     except EvaluationMaxConcurrentRunsError as exc:
-        raise TooManyRequests(exc.description) from exc
+        raise EvaluationMaxConcurrentRunsHTTPError(exc.description, limit=exc.limit) from exc
     except NoPermissionError as exc:
         raise Forbidden(str(exc)) from exc
     except ValueError as exc:
-        raise BadRequest(str(exc)) from exc
+        # Starting a run saves its configuration, whose validation names the field or model.
+        raise EvaluationConfigInvalidHTTPError(str(exc)) from exc
 
 
 def _run_detail(
@@ -615,17 +623,18 @@ def _retry_run(
             dataset_filename=dataset_filename,
         )
     except EvaluationFrameworkNotConfiguredError as exc:
-        raise BadRequest(exc.description) from exc
+        raise EvaluationFrameworkNotConfiguredHTTPError(exc.description) from exc
     except EvaluationDatasetInvalidError as exc:
-        raise BadRequest(exc.description) from exc
+        raise EvaluationDatasetInvalidHTTPError(exc.description) from exc
     except EvaluationNotFoundError as exc:
         raise NotFound(exc.description) from exc
     except EvaluationMaxConcurrentRunsError as exc:
-        raise TooManyRequests(exc.description) from exc
+        raise EvaluationMaxConcurrentRunsHTTPError(exc.description, limit=exc.limit) from exc
     except NoPermissionError as exc:
         raise Forbidden(str(exc)) from exc
     except ValueError as exc:
-        raise BadRequest(str(exc)) from exc
+        # Starting a run saves its configuration, whose validation names the field or model.
+        raise EvaluationConfigInvalidHTTPError(str(exc)) from exc
     return dump_response(EvaluationRunResponse, run)
 
 
@@ -689,6 +698,7 @@ class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
         "Evaluation dataset template",
         console_ns.models[BinaryFileResponse.__name__],
     )
+    @error_responses(EvaluationDatasetInvalidHTTPError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -707,7 +717,7 @@ class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
                 target, target_type, payload, session, language=_evaluation_template_language(current_user)
             )
         except ValueError as exc:
-            raise BadRequest(str(exc)) from exc
+            raise EvaluationDatasetInvalidHTTPError(str(exc)) from exc
         return _xlsx_response(content, filename)
 
 
@@ -727,6 +737,7 @@ class EvaluationDetailApi(EvaluationEditionResource):
 
     @console_ns.expect(console_ns.models[EvaluationConfigPayload.__name__])
     @console_ns.response(200, "Evaluation configuration saved", console_ns.models[EvaluationConfigResponse.__name__])
+    @error_responses(EvaluationConfigInvalidHTTPError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -750,7 +761,7 @@ class EvaluationDetailApi(EvaluationEditionResource):
                 payload,
             )
         except ValueError as exc:
-            raise BadRequest(str(exc)) from exc
+            raise EvaluationConfigInvalidHTTPError(str(exc)) from exc
         return _config_response(config, target_type=target_type)
 
 
@@ -762,6 +773,7 @@ class EvaluationTemplateColumnsApi(EvaluationEditionResource):
         "Evaluation template columns",
         console_ns.models[EvaluationTemplateColumnsResponse.__name__],
     )
+    @error_responses(EvaluationDatasetInvalidHTTPError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -773,7 +785,7 @@ class EvaluationTemplateColumnsApi(EvaluationEditionResource):
         try:
             columns = EvaluationService.get_dataset_column_names(target, target_type, payload, session)
         except ValueError as exc:
-            raise BadRequest(str(exc)) from exc
+            raise EvaluationDatasetInvalidHTTPError(str(exc)) from exc
         return dump_response(EvaluationTemplateColumnsResponse, {"columns": columns})
 
 
@@ -808,6 +820,12 @@ class EvaluationLogsApi(EvaluationEditionResource):
 class EvaluationRunApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationRunPayload.__name__])
     @console_ns.response(200, "Evaluation run started", console_ns.models[EvaluationRunResponse.__name__])
+    @error_responses(
+        EvaluationConfigInvalidHTTPError,
+        EvaluationDatasetInvalidHTTPError,
+        EvaluationFrameworkNotConfiguredHTTPError,
+        EvaluationMaxConcurrentRunsHTTPError,
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -894,6 +912,12 @@ class EvaluationRunCancelApi(EvaluationEditionResource):
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/runs/<uuid:run_id>/retry")
 class EvaluationRunRetryApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation run retry scheduled", console_ns.models[EvaluationRunResponse.__name__])
+    @error_responses(
+        EvaluationConfigInvalidHTTPError,
+        EvaluationDatasetInvalidHTTPError,
+        EvaluationFrameworkNotConfiguredHTTPError,
+        EvaluationMaxConcurrentRunsHTTPError,
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1176,6 +1200,7 @@ class DatasetEvaluationDetailApi(EvaluationEditionResource):
 
     @console_ns.expect(console_ns.models[EvaluationConfigPayload.__name__])
     @console_ns.response(200, "Evaluation configuration saved", console_ns.models[EvaluationConfigResponse.__name__])
+    @error_responses(EvaluationConfigInvalidHTTPError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1197,7 +1222,7 @@ class DatasetEvaluationDetailApi(EvaluationEditionResource):
                 payload,
             )
         except ValueError as exc:
-            raise BadRequest(str(exc)) from exc
+            raise EvaluationConfigInvalidHTTPError(str(exc)) from exc
         return _config_response(config, target_type=EvaluationTargetType.KNOWLEDGE_BASE.value)
 
 
@@ -1205,6 +1230,12 @@ class DatasetEvaluationDetailApi(EvaluationEditionResource):
 class DatasetEvaluationRunApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationRunPayload.__name__])
     @console_ns.response(200, "Evaluation run started", console_ns.models[EvaluationRunResponse.__name__])
+    @error_responses(
+        EvaluationConfigInvalidHTTPError,
+        EvaluationDatasetInvalidHTTPError,
+        EvaluationFrameworkNotConfiguredHTTPError,
+        EvaluationMaxConcurrentRunsHTTPError,
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1304,6 +1335,12 @@ class DatasetEvaluationRunCancelApi(EvaluationEditionResource):
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/runs/<uuid:run_id>/retry")
 class DatasetEvaluationRunRetryApi(EvaluationEditionResource):
     @console_ns.response(200, "Evaluation run retry scheduled", console_ns.models[EvaluationRunResponse.__name__])
+    @error_responses(
+        EvaluationConfigInvalidHTTPError,
+        EvaluationDatasetInvalidHTTPError,
+        EvaluationFrameworkNotConfiguredHTTPError,
+        EvaluationMaxConcurrentRunsHTTPError,
+    )
     @setup_required
     @login_required
     @account_initialization_required

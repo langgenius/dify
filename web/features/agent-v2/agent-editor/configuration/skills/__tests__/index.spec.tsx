@@ -962,7 +962,7 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'bad_request',
         message: 'Server says why',
       }),
     )
