@@ -51,16 +51,15 @@ def reconcile_generated_tool_setup(
     """Sanitize generated references and annotate delayed setup before preflight."""
     for node in inventory_tool_nodes(graph):
         data = node["data"]
-        ref = tools.get(tool_key(data))
+        key = tool_key(data)
+        ref = tools.get(key)
         if ref is None:
             # Unknown installed identities will be refused by the generation
             # allowlist; do not echo a generated credential into diagnostics.
             data.pop("credential_id", None)
             continue
         declaration = ToolDeclaration(
-            provider=tool_key(data)[0],
-            action=tool_key(data)[1],
-            label=ref.label,
+            provider=key[0],
             needs_credentials=ref.needs_credentials or ref.readiness == "missing_config",
             is_plugin=bool(ref.plugin_id),
         )

@@ -55,7 +55,6 @@ class TestFeatureApi:
         features = FeatureModel(
             apps=LimitationModel(size=3, limit=10),
             dify_builder_enabled=True,
-            skill_learning_policy="automatic",
             vector_space=LimitationModel(size=1, limit=2),
             next_credit_reset_date=1775001600,
         )

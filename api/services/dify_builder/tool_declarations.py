@@ -9,7 +9,6 @@ from uuid import UUID
 
 from models.provider_ids import ToolProviderID
 from services.credentials.query import CredentialQuery, ToolCredentialMetadata
-from services.workflow_ref_service import WorkflowRef
 
 INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
 
@@ -17,8 +16,6 @@ INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
 @dataclass(frozen=True, slots=True)
 class ToolDeclaration:
     provider: str
-    action: str
-    label: str
     needs_credentials: bool
     is_plugin: bool
 
@@ -46,8 +43,6 @@ def _selected_credential_metadata(
     actor_id: str | None,
     declaration: ToolDeclaration,
     credential_id: object,
-    workflow_ref: WorkflowRef | None = None,
-    node_id: str | None = None,
 ) -> ToolCredentialMetadata | None:
     """Exact native selection and canonical provider chain; query failures propagate.
 
@@ -66,30 +61,14 @@ def _selected_credential_metadata(
         except ValueError:
             return None
         selected_id = credential_id
-    metadata = None
-    if (
-        selected_id is not None
-        and declaration.is_plugin
-        and workflow_ref is not None
-        and workflow_ref.tenant_id == tenant_id
-        and node_id is not None
-    ):
-        metadata = query.resolve_workflow_tool_credential_metadata(
-            workflow_ref=workflow_ref,
-            node_id=node_id,
-            provider=declaration.provider,
-            action=declaration.action,
-            credential_id=selected_id,
-        )
-    if metadata is None:
-        legacy_provider = ToolProviderID(declaration.provider).provider_name if declaration.is_plugin else None
-        metadata = query.resolve_tool_credential_metadata(
-            workspace_id=tenant_id,
-            provider=declaration.provider,
-            legacy_provider=legacy_provider,
-            actor_id=actor_id,
-            credential_id=selected_id,
-        )
+    legacy_provider = ToolProviderID(declaration.provider).provider_name if declaration.is_plugin else None
+    metadata = query.resolve_tool_credential_metadata(
+        workspace_id=tenant_id,
+        provider=declaration.provider,
+        legacy_provider=legacy_provider,
+        actor_id=actor_id,
+        credential_id=selected_id,
+    )
     if not isinstance(metadata, ToolCredentialMetadata):
         return None
     if selected_id is not None and metadata.id != selected_id:
@@ -113,8 +92,6 @@ def selected_credential_is_available(
     actor_id: str | None,
     declaration: ToolDeclaration,
     credential_id: object,
-    workflow_ref: WorkflowRef | None = None,
-    node_id: str | None = None,
 ) -> bool:
     return (
         not declaration.needs_credentials
@@ -124,8 +101,6 @@ def selected_credential_is_available(
             actor_id=actor_id,
             declaration=declaration,
             credential_id=credential_id,
-            workflow_ref=workflow_ref,
-            node_id=node_id,
         )
         is not None
     )

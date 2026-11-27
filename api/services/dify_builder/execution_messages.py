@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.execution import ExecutionEvidenceSummary, FailureResourceKind
 from runtime_contracts.builder.presentation import BuilderText, copy_text, text_parts
-from services.dify_builder.native_launch_observation import FailureResource
 
 if TYPE_CHECKING:
     from core.dify_builder.models import Run
+    from services.dify_builder.native_runtime_failure import FailureResource
 
 FALLBACK = copy_text(BuilderCopyId.REPLIES_EXECUTION_SAFETY_REQUIRES_REVIEW_OR_REVISED)
 _MESSAGES = {
@@ -185,7 +185,7 @@ def tool_credential_failure_message(
     cannot establish the resource. Unknown, foreign and stale evidence stays
     unknown. This display observation grants no execution or retry authority.
     """
-    from services.dify_builder.native_launch_observation import _public_id
+    from services.dify_builder.native_runtime_failure import is_public_resource_id
 
     evidence = run.verification
     summary = evidence.execution_evidence if evidence else None
@@ -206,7 +206,7 @@ def tool_credential_failure_message(
     ):
         return None
     failed = [node for node in run.per_node if node.status in {"failed", "exception"}]
-    if len(failed) != 1 or not _public_id(failed[0].node_id):
+    if len(failed) != 1 or not is_public_resource_id(failed[0].node_id):
         return None
     # These are backend-owned native runtime messages, not keyword matching.
     reasons = {
@@ -225,7 +225,12 @@ def tool_credential_failure_message(
     if data.get("type") != "tool" or data.get("provider_type") not in {"builtin", "plugin"}:
         return None
     provider, name = data.get("provider_id"), data.get("tool_name")
-    if not isinstance(provider, str) or not isinstance(name, str) or not _public_id(provider) or not _public_id(name):
+    if (
+        not isinstance(provider, str)
+        or not isinstance(name, str)
+        or not is_public_resource_id(provider)
+        or not is_public_resource_id(name)
+    ):
         return None
     return _resource_setup_guidance(
         reason=reason,

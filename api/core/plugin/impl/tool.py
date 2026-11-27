@@ -14,7 +14,6 @@ from core.plugin.utils.chunk_merger import merge_blob_chunks
 from core.schemas.resolver import resolve_dify_schema_refs
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from models.provider_ids import GenericProviderID, ToolProviderID
-from runtime_contracts.builder.execution import FailureResourceKind
 
 # The daemon's ``management/tools`` (ListTools) accepts ``page >= 1`` and
 # ``page_size <= 256`` and returns one tenant-filtered OFFSET/LIMIT page with
@@ -222,16 +221,13 @@ class PluginToolManager(BasePluginClient):
 
             return json_response
 
-        from services.dify_builder.native_launch_observation import observe_resource
-
-        with observe_resource(FailureResourceKind.TOOL, provider):
-            response = self._request_with_plugin_daemon_response(
-                "GET",
-                f"plugin/{tenant_id}/management/tool",
-                PluginToolProviderEntity,
-                params={"provider": tool_provider_id.provider_name, "plugin_id": tool_provider_id.plugin_id},
-                transformer=transformer,
-            )
+        response = self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/tool",
+            PluginToolProviderEntity,
+            params={"provider": tool_provider_id.provider_name, "plugin_id": tool_provider_id.plugin_id},
+            transformer=transformer,
+        )
 
         response.declaration.identity.name = f"{response.plugin_id}/{response.declaration.identity.name}"
 

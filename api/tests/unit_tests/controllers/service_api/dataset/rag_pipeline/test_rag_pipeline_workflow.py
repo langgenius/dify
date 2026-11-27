@@ -1,24 +1,3 @@
-"""Unit tests for Service API RAG Pipeline Workflow controllers.
-
-Tests coverage for:
-- DatasourceNodeRunPayload Pydantic model
-- PipelineRunApiEntity / DatasourceNodeRunApiEntity model validation
-- RAG pipeline service interfaces
-- File upload validation for pipelines
-- Endpoint tests for DatasourcePluginsApi, DatasourceNodeRunApi,
-  PipelineRunApi, and KnowledgebasePipelineFileUploadApi
-
-Strategy:
-- Endpoint methods on these resources have no billing decorators on the method
-  itself.  ``method_decorators = [validate_dataset_token]`` is only invoked by
-  Flask-RESTx dispatch, not by direct calls, so we call methods directly.
-- Dataset ownership checks run against the shared SQLite fixture; pipeline and
-  upload responses use real mapped instances while external services stay mocked.
-
-Unit tests for Service API knowledge pipeline file-upload serialization.
-
-Unit tests for Service API knowledge pipeline route registration."""
-
 import ast
 import io
 import uuid
@@ -33,9 +12,17 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
-from controllers.common.errors import FileTooLargeError as FileTooLargeHTTPError
-from controllers.common.errors import UnsupportedFileTypeError as UnsupportedFileTypeHTTPError
+from controllers.common.errors import (
+    FilenameNotExistsError,
+    NoFileUploadedError,
+    TooManyFilesError,
+)
+from controllers.common.errors import (
+    FileTooLargeError as FileTooLargeHTTPError,
+)
+from controllers.common.errors import (
+    UnsupportedFileTypeError as UnsupportedFileTypeHTTPError,
+)
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as workflow_module
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
@@ -58,10 +45,32 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
-from services.rag_pipeline.entity.pipeline_service_api_entities import DatasourceNodeRunApiEntity, PipelineRunApiEntity
+from services.rag_pipeline.entity.pipeline_service_api_entities import (
+    DatasourceNodeRunApiEntity,
+    PipelineRunApiEntity,
+)
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 from tests.helpers.unit.model_factories import make_upload_file
+
+"""
+Unit tests for Service API RAG Pipeline Workflow controllers.
+
+Tests coverage for:
+- DatasourceNodeRunPayload Pydantic model
+- PipelineRunApiEntity / DatasourceNodeRunApiEntity model validation
+- RAG pipeline service interfaces
+- File upload validation for pipelines
+- Endpoint tests for DatasourcePluginsApi, DatasourceNodeRunApi,
+  PipelineRunApi, and KnowledgebasePipelineFileUploadApi
+
+Strategy:
+- Endpoint methods on these resources have no billing decorators on the method
+  itself.  ``method_decorators = [validate_dataset_token]`` is only invoked by
+  Flask-RESTx dispatch, not by direct calls, so we call methods directly.
+- Dataset ownership checks run against the shared SQLite fixture; pipeline and
+  upload responses use real mapped instances while external services stay mocked.
+"""
 
 
 def _persist_dataset(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset:
@@ -884,6 +893,11 @@ class TestRagPipelineWorkflowCases:
                     api.post(tenant_id=str(uuid.uuid4()))
 
 
+"""
+Unit tests for Service API knowledge pipeline file-upload serialization.
+"""
+
+
 def _upload_file(*, created_at: datetime) -> UploadFile:
     return make_upload_file(
         file_id="file-1",
@@ -911,6 +925,11 @@ class TestRagPipelineFileUploadSerializationCases:
 
         result = dump_response(PipelineUploadFileResponse, upload_file)
         assert result["created_at"] is None
+
+
+"""
+Unit tests for Service API knowledge pipeline route registration.
+"""
 
 
 class TestRagPipelineRouteRegistrationCases:

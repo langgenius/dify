@@ -11,7 +11,13 @@ from enum import StrEnum
 
 from core.dify_builder.models import Run
 from runtime_contracts.builder.execution import FailureResourceKind
-from services.dify_builder.native_launch_observation import FailureResource, _public_id
+
+FailureResource = tuple[FailureResourceKind, str, str]
+
+
+def is_public_resource_id(value: str) -> bool:
+    """Accept identifiers safe to include in resource failure messages."""
+    return "://" not in value and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_./:@+-]{0,127}", value))
 
 
 class NativeResourceReason(StrEnum):
@@ -29,7 +35,7 @@ def native_resource_failure(
     if len(failed) != 1:
         return None
     failure = failed[0]
-    if not _public_id(failure.node_id):
+    if not is_public_resource_id(failure.node_id):
         return None
     graph_nodes = graph.get("nodes")
     if not isinstance(graph_nodes, list):
@@ -44,7 +50,12 @@ def native_resource_failure(
         kind, provider, name = FailureResourceKind.TOOL, data.get("provider_id"), data.get("tool_name")
     else:
         return None
-    if not isinstance(provider, str) or not isinstance(name, str) or not _public_id(provider) or not _public_id(name):
+    if (
+        not isinstance(provider, str)
+        or not isinstance(name, str)
+        or not is_public_resource_id(provider)
+        or not is_public_resource_id(name)
+    ):
         return None
     reason = _native_reason(failure.error, kind)
     return ((kind, provider, name), (failure.node_id,), reason) if reason is not None else None

@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -317,7 +317,7 @@ class PipelineRunApi(DatasetApiResource):
         rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
-            response: Mapping[str, object] | Generator[str] = PipelineGenerateService.generate(
+            response: dict[Any, Any] | Generator[str, Any] = PipelineGenerateService.generate(
                 generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
