@@ -180,18 +180,23 @@ def test_metadata_lookup_and_delete_by_metadata(lindorm_module):
     must_conditions = query["query"]["bool"]["must"]
     assert any("routing_field.keyword" in cond.get("term", {}) for cond in must_conditions)
 
-    vector.delete_by_ids = MagicMock()
+    vector._client.delete_by_query.reset_mock()
     vector.delete_by_metadata_field("document_id", "doc-1")
-    vector.delete_by_ids.assert_called_once_with(["id-1", "id-2"])
+    vector._client.delete_by_query.assert_called_once()
+    delete_body = vector._client.delete_by_query.call_args.kwargs["body"]
+    must_conditions = delete_body["query"]["bool"]["must"]
+    assert {"term": {"metadata.document_id.keyword": "doc-1"}} in must_conditions
+    assert any("routing_field.keyword" in cond.get("term", {}) for cond in must_conditions)
 
-    vector._client.search.return_value = {"hits": {"hits": []}}
-    vector.delete_by_ids.reset_mock()
+    # 删除不再先搜一遍：命中与否交给服务端判断
+    vector._client.search.reset_mock()
     vector.delete_by_metadata_field("document_id", "doc-2")
-    vector.delete_by_ids.assert_not_called()
+    assert vector._client.delete_by_query.call_count == 2
+    vector._client.search.assert_not_called()
 
 
-def test_delete_by_metadata_field_covers_more_than_the_default_page(lindorm_module) -> None:
-    """An app with more annotations than the server's default page size of 10 must be fully cleared."""
+def test_get_ids_by_metadata_field_asks_for_more_than_the_default_page(lindorm_module) -> None:
+    """An app with more annotations than the server's default page size of 10 must be fully listed."""
     vector = lindorm_module.LindormVectorStore("collection", _config(lindorm_module), using_ugc=False)
     hits = [{"_id": f"id-{index}"} for index in range(25)]
     vector._client.search.return_value = {"hits": {"hits": hits}}
@@ -202,11 +207,23 @@ def test_delete_by_metadata_field_covers_more_than_the_default_page(lindorm_modu
     body = vector._client.search.call_args.kwargs["body"]
     assert body["size"] > 10
 
-    vector._client.indices.exists.return_value = True
+
+def test_delete_by_metadata_field_is_one_delete_by_query(lindorm_module) -> None:
+    """Deleting must not be capped at the search page size nor check ids one by one."""
+    vector = lindorm_module.LindormVectorStore("collection", _config(lindorm_module), using_ugc=False)
+    vector._client.delete_by_query.reset_mock()
+    vector._client.search.reset_mock()
+    vector._client.exists.reset_mock()
     lindorm_module.helpers.bulk.reset_mock()
+
     vector.delete_by_metadata_field("app_id", "app-1")
-    actions = lindorm_module.helpers.bulk.call_args.args[1]
-    assert [action["_id"] for action in actions] == [f"id-{index}" for index in range(25)]
+
+    vector._client.delete_by_query.assert_called_once()
+    body = vector._client.delete_by_query.call_args.kwargs["body"]
+    assert body["query"]["bool"]["must"] == [{"term": {"metadata.app_id.keyword": "app-1"}}]
+    vector._client.search.assert_not_called()
+    vector._client.exists.assert_not_called()
+    lindorm_module.helpers.bulk.assert_not_called()
 
 
 def test_delete_by_ids_paths(lindorm_module):
