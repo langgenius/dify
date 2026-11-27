@@ -1255,6 +1255,15 @@ class PluginChangeAutoUpgradeApi(Resource):
         return jsonable_encoder({"success": True})
 
 
+def _read_auto_upgrade_settings(
+    tenant_id: str, category: TenantPluginAutoUpgradeCategory
+) -> AutoUpgradeSettingsResponse:
+    """Read the tenant's strategy for category, or return defaults without writing."""
+    with session_factory.create_session() as session:
+        strategy = PluginAutoUpgradeService.get_strategy(tenant_id, category, session=session)
+        return _auto_upgrade_settings_to_dict(strategy) if strategy else _missing_auto_upgrade_settings(tenant_id)
+
+
 @console_ns.route("/workspaces/current/plugin/auto-upgrade/fetch")
 class PluginFetchAutoUpgradeApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserAutoUpgradeFetch))
@@ -1265,14 +1274,7 @@ class PluginFetchAutoUpgradeApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserAutoUpgradeFetch)
     def get(self, req_data: ParserAutoUpgradeFetch, tenant_id: str):
-        """Read a tenant's persisted category strategy, or return defaults without writing."""
-        with session_factory.create_session() as session:
-            auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, req_data.category, session=session)
-            auto_upgrade_dict = (
-                _auto_upgrade_settings_to_dict(auto_upgrade)
-                if auto_upgrade
-                else _missing_auto_upgrade_settings(tenant_id)
-            )
+        auto_upgrade_dict = _read_auto_upgrade_settings(tenant_id, req_data.category)
 
         return jsonable_encoder(
             {
