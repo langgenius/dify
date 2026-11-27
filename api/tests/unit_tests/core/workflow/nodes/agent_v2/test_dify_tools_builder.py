@@ -4,7 +4,7 @@ from collections.abc import Generator
 from typing import Any, override
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -19,13 +19,17 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
     WorkflowAgentDifyToolsBuildError,
+    _list_provider_tool_names,
+    _resolve_mcp_provider_id,
 )
 from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulToolsConfig
+from models.tools import MCPToolProvider
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 
 
@@ -1296,7 +1300,9 @@ def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
 
 
-def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.MonkeyPatch):
+def test_list_provider_tool_names_reads_builtin_provider(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+):
     """The default provider-tools lister maps ToolManager's provider controller
     to the plain name list the expansion step consumes."""
     from types import SimpleNamespace
@@ -1319,6 +1325,7 @@ def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.Mon
     monkeypatch.setattr(module.ToolManager, "get_builtin_provider", staticmethod(fake_get_builtin_provider))
 
     names = module._list_provider_tool_names(
+        session_maker=sqlite_session_factory,
         tenant_id="tenant-1",
         provider_type=module.ToolProviderType.BUILT_IN,
         provider_id="langgenius/duckduckgo/duckduckgo",
@@ -1326,3 +1333,98 @@ def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.Mon
 
     assert names == ["ddg_search", "ddg_news"]
     assert captured == {"provider_id": "langgenius/duckduckgo/duckduckgo", "tenant_id": "tenant-1"}
+
+
+def _persist_mcp_provider(session: Session, *, tenant_id: str, server_identifier: str) -> MCPToolProvider:
+    provider = MCPToolProvider(
+        name=f"{server_identifier} server",
+        server_identifier=server_identifier,
+        server_url="encrypted-url",
+        server_url_hash=f"{server_identifier}-hash",
+        icon="icon.svg",
+        tenant_id=tenant_id,
+        user_id="user-1",
+        identity_mode="off",
+    )
+    session.add(provider)
+    session.commit()
+    return provider
+
+
+def test_list_provider_tool_names_raises_when_workflow_provider_is_missing(
+    sqlite_session_factory: sessionmaker[Session],
+):
+    """The workflow branch reads the provider row through the injected session maker."""
+    with pytest.raises(ToolProviderNotFoundError, match="workflow provider"):
+        _list_provider_tool_names(
+            session_maker=sqlite_session_factory,
+            tenant_id="tenant-1",
+            provider_type=ToolProviderType.WORKFLOW,
+            provider_id="00000000-0000-0000-0000-000000000000",
+        )
+
+
+def test_resolve_mcp_provider_id_reads_persisted_provider(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+):
+    """Both persisted reference forms resolve to the server identifier through the injected maker."""
+    provider = _persist_mcp_provider(sqlite_session, tenant_id="tenant-1", server_identifier="mcp-server-1")
+
+    by_id = _resolve_mcp_provider_id(
+        session_maker=sqlite_session_factory, tenant_id="tenant-1", provider_id=provider.id
+    )
+    by_identifier = _resolve_mcp_provider_id(
+        session_maker=sqlite_session_factory, tenant_id="tenant-1", provider_id="mcp-server-1"
+    )
+
+    assert by_id == "mcp-server-1"
+    assert by_identifier == "mcp-server-1"
+
+
+def test_resolve_mcp_provider_id_raises_for_unknown_or_foreign_provider(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+):
+    provider = _persist_mcp_provider(sqlite_session, tenant_id="tenant-2", server_identifier="mcp-server-2")
+
+    with pytest.raises(ToolProviderNotFoundError, match="mcp provider"):
+        _resolve_mcp_provider_id(session_maker=sqlite_session_factory, tenant_id="tenant-1", provider_id="unknown")
+    with pytest.raises(ToolProviderNotFoundError, match="mcp provider"):
+        _resolve_mcp_provider_id(session_maker=sqlite_session_factory, tenant_id="tenant-1", provider_id=provider.id)
+
+
+@pytest.mark.usefixtures("unbound_session_factory")
+def test_build_layers_default_resolver_uses_injected_session_maker(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+):
+    """Without a custom resolver, MCP provider ids are normalized from rows read via the injected maker.
+
+    The process-wide factory is unbound here, so the lookup succeeds only through the injected maker.
+    """
+    provider = _persist_mcp_provider(sqlite_session, tenant_id="tenant-1", server_identifier="mcp-server-1")
+    builder = WorkflowAgentDifyToolsBuilder(
+        tool_runtime_provider=FakeRuntimeProvider(_tool()),
+        session_maker=sqlite_session_factory,
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": provider.id,
+                    "provider_type": "mcp",
+                    "tool_name": "search",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert result.core_tools is not None
+    assert result.core_tools.tools[0].provider_id == "mcp-server-1"
