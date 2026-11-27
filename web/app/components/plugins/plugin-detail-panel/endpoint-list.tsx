@@ -98,8 +98,16 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
         <IconButton
           aria-label={t(($) => $['detailPanel.endpointModalTitle'], { ns: 'plugin' })}
           onClick={showEndpointModal}
+          disabled={isPending}
+          focusableWhenDisabled
+          aria-busy={isPending}
         >
-          <span aria-hidden className="i-ri-add-line size-4" />
+          <span
+            aria-hidden
+            className={
+              isPending ? 'i-ri-loader-4-line size-4 animate-spin' : 'i-ri-add-line size-4'
+            }
+          />
         </IconButton>
       </div>
       {data.endpoints.length === 0 && (
