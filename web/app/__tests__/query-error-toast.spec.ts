@@ -7,7 +7,7 @@ import { markErrorHandled } from '@/service/handled-error'
 import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { getQueryClient } from '../get-query-client'
-import { toastActionError, toastRequestError } from '../query-error-toast'
+import { reportRequestError } from '../query-error-toast'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
@@ -59,6 +59,24 @@ describe('query cache error toasts', () => {
     ).rejects.toBeInstanceOf(ORPCError)
 
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.app_unavailable')
+  })
+
+  it('uses the message from meta only for codes the catalog does not know', async () => {
+    const fail = (body: unknown) =>
+      queryClient
+        .query({
+          queryKey: nextKey(),
+          queryFn: () => Promise.reject(httpError(404, body)),
+          meta: { errorMessage: 'Could not load the app' },
+        })
+        .catch(() => {})
+    await fail({ code: 'not_found', message: 'Workflow not found' })
+    await fail({ code: 'app_unavailable', message: 'App not found.' })
+
+    expect(vi.mocked(toast.error).mock.calls).toEqual([
+      ['Could not load the app'],
+      ['requestErrors.code.app_unavailable'],
+    ])
   })
 
   const withRequestErrorBundle = (loadedBundle: () => boolean) => {
@@ -115,7 +133,7 @@ describe('query cache error toasts', () => {
       .catch(() => {})
 
     expect(toast.error).not.toHaveBeenCalled()
-    toastRequestError(error)
+    reportRequestError(error)
     await vi.waitFor(() =>
       expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.server'),
     )
@@ -291,10 +309,19 @@ describe('mutation cache error toasts', () => {
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('Invalid API key')
   })
 
-  it('uses the custom message from meta', async () => {
+  it('uses the message from meta for codes the catalog does not know', async () => {
     await mutate(httpError(500, { message: 'Unavailable' }), { errorMessage: 'Could not save' })
 
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('Could not save')
+  })
+
+  it('translates a cataloged code ahead of the message from meta', async () => {
+    await mutate(
+      httpError(409, { code: 'email_already_in_use', message: 'Dataset with name Docs exists.' }),
+      { errorMessage: 'Could not save' },
+    )
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.email_already_in_use')
   })
 
   it('lets the owner present the failure through the meta opt-out', async () => {
@@ -322,16 +349,47 @@ describe('mutation cache error toasts', () => {
   })
 })
 
-describe('toastRequestError', () => {
+describe('reportRequestError', () => {
   beforeEach(() => {
     vi.mocked(toast.error).mockClear()
   })
 
-  it('reports a failed request awaited outside TanStack Query like a failed mutation', () => {
-    toastRequestError(httpError(400, { message: 'Invalid name' }))
-    toastRequestError(httpError(500), 'Could not save')
+  it('reports request, network, timeout and client failures with text for their kind', () => {
+    reportRequestError(httpError(404, { message: 'Plugin not found' }))
+    reportRequestError(new TypeError('Failed to fetch'))
+    reportRequestError(new DOMException('Signal timed out.', 'TimeoutError'))
+    reportRequestError(new Error('Unexpected state'))
 
-    expect(vi.mocked(toast.error).mock.calls).toEqual([['Invalid name'], ['Could not save']])
+    expect(vi.mocked(toast.error).mock.calls).toEqual([
+      ['Plugin not found'],
+      ['requestErrors.generic.network'],
+      ['requestErrors.generic.timeout'],
+      ['requestErrors.generic.unknown'],
+    ])
+  })
+
+  it("uses the caller's text for codes the catalog does not know", () => {
+    reportRequestError(
+      httpError(404, { code: 'not_found', message: 'Plugin not found' }),
+      'Could not install',
+    )
+    reportRequestError(httpError(500), 'Could not save')
+    reportRequestError(new Error('Unexpected state'), 'Could not save')
+
+    expect(vi.mocked(toast.error).mock.calls).toEqual([
+      ['Could not install'],
+      ['Could not save'],
+      ['Could not save'],
+    ])
+  })
+
+  it("translates a cataloged error code ahead of the caller's text", () => {
+    reportRequestError(
+      httpError(403, { code: 'paid_plan_required', message: 'Paid plan required' }),
+      'Could not install',
+    )
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.paid_plan_required')
   })
 
   it('does not report a failure the app-access page already presents', () => {
@@ -340,7 +398,7 @@ describe('toastRequestError', () => {
     const error = httpError(403, data)
 
     expect(handleAppAccessError(403, data, captureAppAccessScope(), error)).toBe(true)
-    toastRequestError(error)
+    reportRequestError(error)
 
     expect(toast.error).not.toHaveBeenCalled()
     window.history.replaceState({}, '', '/')
@@ -348,58 +406,25 @@ describe('toastRequestError', () => {
 
   it.each([
     ['the session expired', httpError(401, { message: 'Unauthorized' })],
-    ['the error is not a request error', new DOMException('Aborted', 'AbortError')],
-  ])('does not report when %s', (_case, error) => {
-    toastRequestError(error)
-
-    expect(toast.error).not.toHaveBeenCalled()
-  })
-})
-
-describe('toastActionError', () => {
-  beforeEach(() => {
-    vi.mocked(toast.error).mockClear()
-  })
-
-  it('reports a request failure with the server message and a network failure with generic text', () => {
-    toastActionError(httpError(404, { message: 'Plugin not found' }))
-    // The marketplace client's shape for a response body that is not an oRPC error.
-    toastActionError(
-      new ORPCError('SERVICE_UNAVAILABLE', {
-        status: 503,
-        data: { status: 503, body: { message: 'Marketplace unavailable' } },
-      }),
-    )
-    toastActionError(new TypeError('Failed to fetch'))
-    toastActionError(new DOMException('Signal timed out.', 'TimeoutError'))
-
-    expect(vi.mocked(toast.error).mock.calls).toEqual([
-      ['Plugin not found'],
-      ['Marketplace unavailable'],
-      ['requestErrors.generic.network'],
-      ['requestErrors.generic.timeout'],
-    ])
-  })
-
-  it('translates a cataloged error code', () => {
-    toastActionError(httpError(403, { code: 'paid_plan_required', message: 'Paid plan required' }))
-
-    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.paid_plan_required')
-  })
-
-  it.each([
-    ['the session expired', httpError(401, { message: 'Unauthorized' })],
     ['the user cancelled', new DOMException('Aborted', 'AbortError')],
   ])('does not report when %s', (_case, error) => {
-    toastActionError(error)
+    reportRequestError(error)
 
     expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('reports a failure once, even when a caller rethrows it', () => {
+    const error = new TypeError('Failed to fetch')
+    reportRequestError(error)
+    reportRequestError(error)
+
+    expect(toast.error).toHaveBeenCalledOnce()
   })
 
   it('does not report a failure a mutation already reported', () => {
     const error = httpError(500, { message: 'Install failed' })
     markErrorHandled(error)
-    toastActionError(error)
+    reportRequestError(error)
 
     expect(toast.error).not.toHaveBeenCalled()
   })

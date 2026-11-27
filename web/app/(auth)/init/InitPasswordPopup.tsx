@@ -12,6 +12,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useRequestErrorMessage } from '@/service/use-request-error-message'
+import { leaveCompletedSetup } from '../leave-completed-setup'
 
 type InitPasswordFormValues = {
   password: string
@@ -57,6 +58,7 @@ const InitPasswordPopup = () => {
           queryClient.setQueryData(consoleQuery.init.get.queryKey(), { status: 'finished' })
           router.replace('/install')
         },
+        onError: (error) => leaveCompletedSetup(error, router.replace),
       },
     )
   }

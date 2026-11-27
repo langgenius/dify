@@ -15,7 +15,7 @@ import {
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { emailRegex } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
@@ -78,7 +78,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         typeof authenticationError.message === 'string'
       )
         toast.error(authenticationError.message)
-      else toastRequestError(error)
+      else reportRequestError(error)
     } finally {
       setIsLoading(false)
     }

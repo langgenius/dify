@@ -10,7 +10,7 @@ import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-pan
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { ENABLE_HITL_IM } from '@/config'
 import { submitHumanInputForm } from '@/service/workflow'
 import { editorAppIdAtom } from '../editor-resource/state'
@@ -108,7 +108,7 @@ const WorkflowPreview = () => {
         await submitHumanInputForm(formToken, formData, form?.form_version)
       } catch (error) {
         // HITL IM forms leave request failures unreported, as before.
-        if (!ENABLE_HITL_IM) toastRequestError(error)
+        if (!ENABLE_HITL_IM) reportRequestError(error)
         throw error
       }
     },

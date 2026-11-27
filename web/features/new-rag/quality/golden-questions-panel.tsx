@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
@@ -252,7 +252,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
           params: { control_space_id: knowledgeSpaceId },
         })
         .catch((error) => {
-          toastRequestError(error)
+          reportRequestError(error)
           return undefined
         })
     setDialog((current) => {

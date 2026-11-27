@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { toastActionError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -130,7 +130,7 @@ export const useWorkflowInit = () => {
         error.code === 'draft_workflow_not_exist'
       if (!draftMissing) {
         // The editor stays on its loading state, so the failure is reported here.
-        toastActionError(error)
+        reportRequestError(error)
         return
       }
       const isAdvancedChat = appDetail.mode === 'advanced-chat'
@@ -186,7 +186,7 @@ export const useWorkflowInit = () => {
           isDefinedError(saveError) &&
           saveError.code === 'draft_workflow_not_sync'
         if (!draftAlreadySaved) {
-          toastActionError(saveError)
+          reportRequestError(saveError)
           return
         }
       }

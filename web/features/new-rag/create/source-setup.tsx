@@ -9,7 +9,7 @@ import { useAtom } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleClient } from '@/service/console'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ConnectedSourceConfiguration } from '../sources/setup/connected-source-configuration'
@@ -204,7 +204,7 @@ function CreateSourceSetupSession({
         setCrawlState('running')
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       // Keep the job handle and running state so Stop can be retried and unmount
       // cleanup can still revoke a task whose cancellation response was lost.
       setCrawlState('running')
