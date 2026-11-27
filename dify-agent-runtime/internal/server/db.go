@@ -298,7 +298,7 @@ func (d *DB) TransitionStatus(jobID string, opts TransitionOpts) (*JobRow, error
 		args = append(args, now)
 	}
 
-	// ended_at + exit_code: set on terminal transitions
+	// ended_at: set on all terminal transitions; exit_code defaults to 0 only for normal exits
 	if opts.Target.IsTerminal() {
 		endedAt := opts.EndedAt
 		if endedAt == "" {
@@ -306,8 +306,10 @@ func (d *DB) TransitionStatus(jobID string, opts TransitionOpts) (*JobRow, error
 		}
 		setClauses += `, ended_at = CASE WHEN ended_at IS NULL THEN ? ELSE ended_at END`
 		args = append(args, endedAt)
-		// Set exit_code to 0 if not already set (normal exit without runner-exit callback)
-		setClauses += `, exit_code = CASE WHEN exit_code IS NULL THEN 0 ELSE exit_code END`
+		if opts.Target == StatusExited {
+			// Set exit_code to 0 if not already set (normal exit without runner-exit callback)
+			setClauses += `, exit_code = CASE WHEN exit_code IS NULL THEN 0 ELSE exit_code END`
+		}
 	}
 
 	whereClause := fmt.Sprintf("job_id = ? AND status IN (%s)", placeholders)

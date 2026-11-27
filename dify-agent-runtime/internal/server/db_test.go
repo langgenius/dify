@@ -320,6 +320,64 @@ func TestTransitionStatus(t *testing.T) {
 	}
 }
 
+func TestTransitionStatusNonExitedLeavesExitCodeNil(t *testing.T) {
+	for _, target := range []JobStatusName{StatusFailed, StatusTerminated, StatusLost} {
+		t.Run(string(target), func(t *testing.T) {
+			dir := t.TempDir()
+			db := setupTestDB(t, dir)
+			defer func() { _ = db.Close() }()
+
+			jobID := "job-" + string(target)
+			insertTestJob(t, db, jobID, StatusRunning)
+
+			reason := "test_" + string(target)
+			row, err := db.TransitionStatus(jobID, TransitionOpts{
+				AllowedFrom: []JobStatusName{StatusRunning},
+				Target:      target,
+				Reason:      &reason,
+			})
+			if err != nil {
+				t.Fatalf("TransitionStatus(%s): %v", target, err)
+			}
+			if row.Status != target {
+				t.Errorf("status = %q, want %q", row.Status, target)
+			}
+			if row.ExitCode != nil {
+				t.Errorf("exit_code = %d, want nil for %s transition", *row.ExitCode, target)
+			}
+			if row.EndedAt == nil {
+				t.Errorf("expected ended_at to be set after %s transition", target)
+			}
+		})
+	}
+}
+
+func TestTransitionStatusOverridePreservesRecordedExitCode(t *testing.T) {
+	dir := t.TempDir()
+	db := setupTestDB(t, dir)
+	defer func() { _ = db.Close() }()
+
+	insertTestJob(t, db, "job-override", StatusRunning)
+	if err := db.RecordRunnerExit("job-override", 130, "2025-01-15T12:00:00Z"); err != nil {
+		t.Fatalf("RecordRunnerExit: %v", err)
+	}
+
+	row, err := db.TransitionStatus("job-override", TransitionOpts{
+		AllowedFrom:       []JobStatusName{StatusCreated, StatusStarting, StatusRunning},
+		AllowOverrideFrom: []JobStatusName{StatusExited},
+		Target:            StatusTerminated,
+	})
+	if err != nil {
+		t.Fatalf("TransitionStatus(terminated): %v", err)
+	}
+	if row.Status != StatusTerminated {
+		t.Errorf("status = %q, want %q", row.Status, StatusTerminated)
+	}
+	if row.ExitCode == nil || *row.ExitCode != 130 {
+		t.Errorf("exit_code = %v, want 130", row.ExitCode)
+	}
+}
+
 func TestRecordRunnerExit(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
