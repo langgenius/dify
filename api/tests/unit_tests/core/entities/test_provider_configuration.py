@@ -595,6 +595,21 @@ class TestEntitiesProviderConfigurationCases:
         assert active == ({"free"} if restricted else {"free", "other"})
 
     @staticmethod
+    def test_hosted_overlay_preserves_the_default_model_order(config_overrides: Callable[..., None]) -> None:
+        """Replacing the route must not move an unpositioned model behind a billable fallback."""
+        config_overrides(HOSTED_MODEL_CREDIT_CONFIG="free:0")
+        config = _build_provider_configuration()
+        config.using_provider_type = ProviderType.CUSTOM
+        config.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "workspace"})
+        config.provider.models = [_build_ai_model("free"), _build_ai_model("metered")]
+        quota = config.system_configuration.quota_configurations[0]
+        quota.quota_unit = QuotaUnit.CREDITS
+        quota.quota_used = quota.quota_limit
+        quota.is_valid = False
+
+        assert [entry.model for entry in config.get_provider_models(only_active=True)] == ["free", "metered"]
+
+    @staticmethod
     def test_get_provider_models_system_filters_requested_model() -> None:
         configuration = _build_provider_configuration()
         provider_schema = ProviderEntity(

@@ -75,7 +75,7 @@ class DifyCredentialsProvider:
         if not provider_configuration:
             raise ValueError(f"Provider {provider_name} does not exist.")
 
-        provider_configuration = configuration_for_model(provider_configuration, model_name)
+        provider_configuration = configuration_for_model(provider_configuration, ModelType.LLM, model_name)
         provider_model = provider_configuration.get_provider_model(model_type=ModelType.LLM, model=model_name)
         if provider_model is None:
             raise ModelNotExistError(f"Model {model_name} not exist.")

@@ -71,15 +71,18 @@ class QuotaConfiguration(BaseModel):
     is_valid: bool
     restrict_models: list[RestrictModel] = []
 
-    def hosted_credit_cost(self, model: str) -> int | None:
-        """Return the fixed price in a metered hosted credit pool, or None for other accounting modes."""
-        if (
+    @property
+    def uses_metered_hosted_credits(self) -> bool:
+        """Only finite trial and paid credit pools use the hosted model price table."""
+        return (
             self.quota_limit != -1
             and self.quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}
             and self.quota_unit == QuotaUnit.CREDITS
-        ):
-            return dify_config.get_model_credits(model)
-        return None
+        )
+
+    def hosted_credit_cost(self, model: str) -> int | None:
+        """Return the fixed price in a metered hosted credit pool, or None for other accounting modes."""
+        return dify_config.get_model_credits(model) if self.uses_metered_hosted_credits else None
 
 
 class CredentialConfiguration(BaseModel):
@@ -100,6 +103,11 @@ class SystemConfiguration(BaseModel):
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
     credentials: dict[str, Any] | None = Field(default=None)
+
+
+def current_quota_configuration(system: SystemConfiguration) -> QuotaConfiguration | None:
+    """Return only the workspace's selected bucket, including when exhausted; never borrow another bucket."""
+    return next((quota for quota in system.quota_configurations if quota.quota_type == system.current_quota_type), None)
 
 
 class CustomProviderConfiguration(BaseModel):

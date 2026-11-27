@@ -31,7 +31,7 @@ from core.entities.provider_entities import (
     RestrictModel,
     SystemConfiguration,
 )
-from core.errors.error import QuotaExceededError
+from core.errors.error import ModelCurrentlyNotSupportError, QuotaExceededError
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderManager
@@ -255,7 +255,8 @@ def test_reserve_model_quota_skips_zero_credit_charge(
         ),
     )
 
-    status_lookup = mocker.spy(ProviderConfiguration, "get_provider_model")
+    reserve = mocker.patch("core.app.llm.quota.CreditPoolService.reserve_credits")
+    deduct = mocker.patch("core.app.llm.quota.CreditPoolService.deduct_credits_capped")
     with patch("core.app.llm.quota.create_plugin_provider_manager", return_value=_provider_manager(configuration)):
         ensure_llm_quota_available_for_model(tenant_id="tenant-id", provider="openai", model="gpt-4o")
     reservation = reserve_model_quota_for_configuration(
@@ -267,12 +268,43 @@ def test_reserve_model_quota_skips_zero_credit_charge(
         created_by=None,
     )
 
-    status_lookup.assert_not_called()
     assert reservation.credit_pool_reservation is None
     assert not reservation.requires_settlement
     assert reservation.commit_before_delivery
     reservation.commit()
     assert reservation.state == LLMQuotaReservationState.COMMITTED
+    reserve.assert_not_called()
+    deduct.assert_not_called()
+
+
+@pytest.mark.parametrize("name", ["gpt-4o", "text-embedding-3-small"])
+def test_zero_price_cannot_admit_an_unoffered_system_model(config_overrides: Callable[..., None], name: str) -> None:
+    """Check both the selected bucket's names and the concrete provider schema, even on direct quota calls."""
+    config_overrides(HOSTED_MODEL_CREDIT_CONFIG=f"{name}:0")
+    config = _provider_configuration(
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SystemConfiguration(
+            enabled=True,
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=1,
+                    quota_used=1,
+                    is_valid=False,
+                    restrict_models=[RestrictModel(model="text-embedding-3-small", model_type=ModelType.LLM)],
+                )
+            ],
+        ),
+    )
+    with patch("core.app.llm.quota.create_plugin_provider_manager", return_value=_provider_manager(config)):
+        with pytest.raises(ModelCurrentlyNotSupportError, match=name):
+            ensure_llm_quota_available_for_model(tenant_id=config.tenant_id, provider="openai", model=name)
+    with pytest.raises(ModelCurrentlyNotSupportError, match=name):
+        reserve_model_quota_for_configuration(
+            config, model_type=ModelType.LLM, model=name, request_id=None, app_type=None, created_by=None
+        )
 
 
 def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
@@ -472,8 +504,13 @@ def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
     [(True, ProviderQuotaType.PAID), (True, ProviderQuotaType.FREE), (False, ProviderQuotaType.TRIAL)],
 )
 @pytest.mark.parametrize("price", [0, 1])
-def test_reserve_llm_quota_requires_an_enabled_selected_bucket(
-    config_overrides: Callable[..., None], enabled: bool, offered_bucket: ProviderQuotaType, price: int
+@pytest.mark.parametrize("check_quota", [ensure_llm_quota_available_for_model, reserve_llm_quota_for_model])
+def test_llm_quota_requires_an_enabled_selected_bucket(
+    config_overrides: Callable[..., None],
+    enabled: bool,
+    offered_bucket: ProviderQuotaType,
+    price: int,
+    check_quota: Callable[..., object],
 ) -> None:
     """No model price grants access to a missing or disabled trial bucket."""
     config_overrides(HOSTED_MODEL_CREDIT_CONFIG=f"gpt-4o:{price}")
@@ -495,16 +532,13 @@ def test_reserve_llm_quota_requires_an_enabled_selected_bucket(
     )
     provider_manager = _provider_manager(provider_configuration)
 
+    assert not provider_configuration.get_provider_models(only_active=True)
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch("core.app.llm.quota.CreditPoolService.reserve_credits") as reserve,
         pytest.raises(QuotaExceededError, match="Model provider openai quota exceeded."),
     ):
-        reserve_llm_quota_for_model(
-            tenant_id="tenant-id",
-            provider="openai",
-            model="gpt-4o",
-        )
+        check_quota(tenant_id="tenant-id", provider="openai", model="gpt-4o")
 
     reserve.assert_not_called()
 

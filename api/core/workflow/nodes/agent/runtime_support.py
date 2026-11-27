@@ -346,7 +346,7 @@ class AgentRuntimeSupport:
             model_type=ModelType.LLM,
         )
         model_name = value.get("model", "")
-        configuration = configuration_for_model(provider_model_bundle.configuration, model_name)
+        configuration = configuration_for_model(provider_model_bundle.configuration, ModelType.LLM, model_name)
         model_credentials = configuration.get_current_credentials(
             model_type=ModelType.LLM,
             model=model_name,

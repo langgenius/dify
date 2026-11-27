@@ -29,7 +29,11 @@ from core.credit_usage import (
 from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle, bind_model_route
-from core.entities.provider_entities import ModelLoadBalancingConfiguration, ProviderQuotaType
+from core.entities.provider_entities import (
+    ModelLoadBalancingConfiguration,
+    ProviderQuotaType,
+    current_quota_configuration,
+)
 from core.errors.error import InsufficientHostedCreditsError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
@@ -1078,14 +1082,7 @@ class ModelManager:
 
         # Hosted allowlists retain the existing comma-separated format. Model names
         # are matched exactly; model-type-specific entries will be introduced later.
-        quota_configuration = next(
-            (
-                quota
-                for quota in configuration.system_configuration.quota_configurations
-                if quota.quota_type == configuration.system_configuration.current_quota_type
-            ),
-            None,
-        )
+        quota_configuration = current_quota_configuration(configuration.system_configuration)
         if quota_configuration is None or not quota_configuration.restrict_models:
             return
         if any(restricted_model.model == model for restricted_model in quota_configuration.restrict_models):

@@ -20,12 +20,13 @@ from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, S
 from core.entities.provider_entities import (
     CustomConfiguration,
     ModelSettings,
-    ProviderQuotaType,
     QuotaConfiguration,
-    QuotaUnit,
+    RestrictModel,
     SystemConfiguration,
     SystemConfigurationStatus,
+    current_quota_configuration,
 )
+from core.errors.error import ModelCurrentlyNotSupportError, QuotaExceededError
 from core.helper import encrypter
 from core.helper.model_provider_cache import (
     ProviderCredentialsCache,
@@ -93,24 +94,31 @@ def _exhausted_hosted_credit_fallback(configuration: ProviderConfiguration) -> Q
     if configuration.preferred_provider_type == ProviderType.CUSTOM and (custom.provider or custom.models):
         return None
     system = configuration.system_configuration
-    if not system.enabled or system.current_quota_type not in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
-        return None
-    return next(
-        (
-            q
-            for q in system.quota_configurations
-            if q.quota_type == system.current_quota_type and not q.is_valid and q.quota_unit == QuotaUnit.CREDITS
-        ),
-        None,
-    )
+    quota = current_quota_configuration(system)
+    if system.enabled and quota is not None and quota.uses_metered_hosted_credits and not quota.is_valid:
+        return quota
+    return None
 
 
-def configuration_for_model(configuration: ProviderConfiguration, model: str) -> ProviderConfiguration:
-    """Keep an offered zero-credit model on System without changing the provider-wide fallback."""
-    quota = _exhausted_hosted_credit_fallback(configuration)
-    if quota is not None and quota.hosted_credit_cost(model) == 0:
-        offered = quota.restrict_models or configuration._get_provider_schema().models
-        if any(entry.model == model for entry in offered):
+def configuration_for_model(
+    configuration: ProviderConfiguration, model_type: ModelType, model: str
+) -> ProviderConfiguration:
+    """Bind a concrete model without mutating the provider preference or borrowing another bucket.
+
+    A price is not an offer: the System catalog must contain the requested type and name
+    under the selected bucket. An absent offer preserves Custom fallback; a disabled one is rejected.
+    """
+    if not dify_config.HOSTED_MODEL_CREDIT_CONFIG or dify_config.get_model_credits(model) != 0:
+        return configuration
+    if configuration.using_provider_type == ProviderType.SYSTEM:
+        if configuration.require_current_system_quota().uses_metered_hosted_credits:
+            configuration.require_active_system_model(model_type, model)
+        return configuration
+
+    if _exhausted_hosted_credit_fallback(configuration) is not None:
+        offer = configuration._system_model_offer(model_type, model)
+        if offer is not None:
+            offer.raise_for_status()
             return configuration.model_copy(update={"using_provider_type": ProviderType.SYSTEM})
     return configuration
 
@@ -236,12 +244,8 @@ class ProviderConfiguration(BaseModel):
                         raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
-            restrict_models = []
-            for quota_configuration in self.system_configuration.quota_configurations:
-                if self.system_configuration.current_quota_type != quota_configuration.quota_type:
-                    continue
-
-                restrict_models = quota_configuration.restrict_models
+            quota = current_quota_configuration(self.system_configuration)
+            restrict_models = quota.restrict_models if quota else []
 
             copy_credentials = (
                 self.system_configuration.credentials.copy() if self.system_configuration.credentials else {}
@@ -307,21 +311,12 @@ class ProviderConfiguration(BaseModel):
         if self.system_configuration.enabled is False:
             return SystemConfigurationStatus.UNSUPPORTED
 
-        current_quota_type = self.system_configuration.current_quota_type
-        current_quota_configuration = next(
-            (q for q in self.system_configuration.quota_configurations if q.quota_type == current_quota_type), None
-        )
-        if current_quota_configuration is None:
+        quota = current_quota_configuration(self.system_configuration)
+        if quota is None:
             return None
-
-        if not current_quota_configuration:
+        if not quota:
             return SystemConfigurationStatus.UNSUPPORTED
-
-        return (
-            SystemConfigurationStatus.ACTIVE
-            if current_quota_configuration.is_valid
-            else SystemConfigurationStatus.QUOTA_EXCEEDED
-        )
+        return SystemConfigurationStatus.ACTIVE if quota.is_valid else SystemConfigurationStatus.QUOTA_EXCEEDED
 
     def is_custom_configuration_available(self) -> bool:
         """
@@ -1732,6 +1727,39 @@ class ProviderConfiguration(BaseModel):
 
         return None
 
+    def _model_settings_by_type(self) -> dict[ModelType, dict[str, ModelSettings]]:
+        """Index this workspace's settings without conflating same-named model types."""
+        settings: defaultdict[ModelType, dict[str, ModelSettings]] = defaultdict(dict)
+        for setting in self.model_settings:
+            settings[setting.model_type][setting.model] = setting
+        return settings
+
+    def require_current_system_quota(self) -> QuotaConfiguration:
+        """Return the enabled workspace bucket, regardless of balance, or reject the System route."""
+        system = self.system_configuration
+        quota = current_quota_configuration(system)
+        if not system.enabled or quota is None:
+            raise QuotaExceededError(f"Model provider {self.provider.provider} quota exceeded.")
+        return quota
+
+    def _system_model_offer(self, model_type: ModelType, model: str) -> ModelWithProviderEntity | None:
+        """Look up a typed offer in the selected bucket, never in the workspace's custom catalog."""
+        system = self.system_configuration
+        quota = current_quota_configuration(system)
+        if not system.enabled or quota is None:
+            return None
+        entries = self._get_system_provider_models(
+            (model_type,), self._get_provider_schema(), self._model_settings_by_type(), {model}, quota
+        )
+        return next((entry for entry in entries if entry.status != ModelStatus.NO_PERMISSION), None)
+
+    def require_active_system_model(self, model_type: ModelType, model: str) -> None:
+        """Reject missing bucket offers or inactive models before issuing a zero-credit admission."""
+        offer = self._system_model_offer(model_type, model)
+        if offer is None:
+            raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
+        offer.raise_for_status()
+
     def get_provider_models(
         self, model_type: ModelType | None = None, only_active: bool = False, model: str | None = None
     ) -> list[ModelWithProviderEntity]:
@@ -1752,10 +1780,7 @@ class ProviderConfiguration(BaseModel):
         else:
             model_types = list(provider_schema.supported_model_types)
 
-        # Group model settings by model type and model
-        model_setting_map: defaultdict[ModelType, dict[str, ModelSettings]] = defaultdict(dict)
-        for model_setting in self.model_settings:
-            model_setting_map[model_setting.model_type][model_setting.model] = model_setting
+        model_setting_map = self._model_settings_by_type()
 
         if self.using_provider_type == ProviderType.SYSTEM:
             provider_models = self._get_system_provider_models(
@@ -1763,6 +1788,7 @@ class ProviderConfiguration(BaseModel):
                 provider_schema=provider_schema,
                 model_setting_map=model_setting_map,
                 model_names={model} if model else None,
+                quota=current_quota_configuration(self.system_configuration),
             )
         else:
             provider_models = self._get_custom_provider_models(
@@ -1778,10 +1804,16 @@ class ProviderConfiguration(BaseModel):
                     if quota.hosted_credit_cost(entry.model) == 0
                 }
                 if hosted_names:
-                    provider_models = [entry for entry in provider_models if entry.model not in hosted_names]
-                    provider_models.extend(
-                        self._get_system_provider_models(model_types, provider_schema, model_setting_map, hosted_names)
-                    )
+                    hosted = {
+                        (entry.model_type, entry.model): entry
+                        for entry in self._get_system_provider_models(
+                            model_types, provider_schema, model_setting_map, hosted_names, quota
+                        )
+                    }
+                    # Replace in place: an unpositioned catalog's first active model can become the workspace default.
+                    custom_keys = {(entry.model_type, entry.model) for entry in provider_models}
+                    provider_models = [hosted.get((entry.model_type, entry.model), entry) for entry in provider_models]
+                    provider_models.extend(entry for key, entry in hosted.items() if key not in custom_keys)
 
         if only_active:
             provider_models = [m for m in provider_models if m.status == ModelStatus.ACTIVE]
@@ -1816,123 +1848,70 @@ class ProviderConfiguration(BaseModel):
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
         model_names: set[str] | None,
+        quota: QuotaConfiguration | None,
     ) -> list[ModelWithProviderEntity]:
+        """Build the System catalog for the selected bucket, types, and optional exact names.
+
+        Bucket allowlists are name-based. Model identity comes from the provider schema (or an
+        explicitly hosted deployment's schema), not from a matching name in workspace credentials.
         """
-        Get system provider models, preserving model permissions independently of credit availability.
+        if not self.system_configuration.enabled or quota is None:
+            return []
+        schemas = [
+            m
+            for m in provider_schema.models
+            if m.model_type in model_types and (model_names is None or m.model in model_names)
+        ]
+        restrictions = quota.restrict_models
+        if self._get_original_provider_configurate_methods() == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+            for deployment in restrictions:
+                if model_names is None or deployment.model in model_names:
+                    schema = self._get_hosted_deployment_schema(deployment)
+                    if (
+                        schema
+                        and schema.model_type in model_types
+                        and (model_names is None or schema.model in model_names)
+                    ):
+                        schemas.append(schema)
 
-        :param model_types: model types
-        :param provider_schema: provider schema
-        :param model_setting_map: model setting map
-        :param model_names: names to include, or None for all models
-        :return:
-        """
-        provider_models = []
-        for model_type in model_types:
-            for m in provider_schema.models:
-                if m.model_type != model_type:
-                    continue
-                if model_names is not None and m.model not in model_names:
-                    continue
-
-                status = ModelStatus.ACTIVE
-                if m.model_type in model_setting_map and m.model in model_setting_map[m.model_type]:
-                    model_setting = model_setting_map[m.model_type][m.model]
-                    if model_setting.enabled is False:
-                        status = ModelStatus.DISABLED
-
-                provider_models.append(
-                    ModelWithProviderEntity(
-                        model=m.model,
-                        label=m.label,
-                        model_type=m.model_type,
-                        features=m.features,
-                        fetch_from=m.fetch_from,
-                        model_properties=m.model_properties,
-                        deprecated=m.deprecated,
-                        provider=SimpleModelProviderEntity(self.provider),
-                        status=status,
-                    )
+        restricted_names = {rm.model for rm in restrictions}
+        entries = []
+        for schema in schemas:
+            setting = model_setting_map.get(schema.model_type, {}).get(schema.model)
+            status = ModelStatus.DISABLED if setting is not None and not setting.enabled else ModelStatus.ACTIVE
+            if restricted_names:
+                if schema.model not in restricted_names:
+                    status = ModelStatus.NO_PERMISSION
+                elif not quota.is_valid and quota.hosted_credit_cost(schema.model) != 0:
+                    status = ModelStatus.QUOTA_EXCEEDED
+            entries.append(
+                ModelWithProviderEntity(
+                    model=schema.model,
+                    label=schema.label,
+                    model_type=schema.model_type,
+                    features=schema.features,
+                    fetch_from=schema.fetch_from,
+                    model_properties=schema.model_properties,
+                    deprecated=schema.deprecated,
+                    provider=SimpleModelProviderEntity(self.provider),
+                    status=status,
                 )
+            )
+        return entries
 
-        original_configurate_methods = self._get_original_provider_configurate_methods()
-        should_use_custom_model = False
-        if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
-            should_use_custom_model = True
-
-        for quota_configuration in self.system_configuration.quota_configurations:
-            if self.system_configuration.current_quota_type != quota_configuration.quota_type:
-                continue
-
-            restrict_models = quota_configuration.restrict_models
-            if len(restrict_models) == 0:
-                break
-
-            if should_use_custom_model:
-                if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
-                    # only customizable model
-                    for restrict_model in restrict_models:
-                        if model_names is not None and restrict_model.model not in model_names:
-                            continue
-
-                        copy_credentials = (
-                            self.system_configuration.credentials.copy()
-                            if self.system_configuration.credentials
-                            else {}
-                        )
-                        if restrict_model.base_model_name:
-                            copy_credentials["base_model_name"] = restrict_model.base_model_name
-
-                        try:
-                            custom_model_schema = self.get_model_schema(
-                                model_type=restrict_model.model_type,
-                                model=restrict_model.model,
-                                credentials=copy_credentials,
-                            )
-                        except Exception as ex:
-                            logger.warning("get custom model schema failed, %s", ex)
-                            continue
-
-                        if not custom_model_schema:
-                            continue
-
-                        if custom_model_schema.model_type not in model_types:
-                            continue
-
-                        status = ModelStatus.ACTIVE
-                        if (
-                            custom_model_schema.model_type in model_setting_map
-                            and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
-                        ):
-                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
-                            if model_setting.enabled is False:
-                                status = ModelStatus.DISABLED
-
-                        provider_models.append(
-                            ModelWithProviderEntity(
-                                model=custom_model_schema.model,
-                                label=custom_model_schema.label,
-                                model_type=custom_model_schema.model_type,
-                                features=custom_model_schema.features,
-                                fetch_from=FetchFrom.PREDEFINED_MODEL,
-                                model_properties=custom_model_schema.model_properties,
-                                deprecated=custom_model_schema.deprecated,
-                                provider=SimpleModelProviderEntity(self.provider),
-                                status=status,
-                            )
-                        )
-
-            # Hosted allowlists currently use exact model names across model types.
-            restrict_model_names = [rm.model for rm in restrict_models]
-            for provider_model in provider_models:
-                if provider_model.model not in restrict_model_names:
-                    provider_model.status = ModelStatus.NO_PERMISSION
-                elif (
-                    not quota_configuration.is_valid
-                    and quota_configuration.hosted_credit_cost(provider_model.model) != 0
-                ):
-                    provider_model.status = ModelStatus.QUOTA_EXCEEDED
-
-        return provider_models
+    def _get_hosted_deployment_schema(self, deployment: RestrictModel) -> AIModelEntity | None:
+        """Resolve a customizable provider's declared deployment with hosted credentials; omit unavailable schemas."""
+        credentials = dict(self.system_configuration.credentials or {})
+        if deployment.base_model_name:
+            credentials["base_model_name"] = deployment.base_model_name
+        try:
+            schema = self.get_model_schema(
+                model_type=deployment.model_type, model=deployment.model, credentials=credentials
+            )
+        except Exception as ex:
+            logger.warning("get custom model schema failed, %s", ex)
+            return None
+        return schema.model_copy(update={"fetch_from": FetchFrom.PREDEFINED_MODEL}) if schema else None
 
     def _get_custom_provider_models(
         self,
@@ -2173,7 +2152,7 @@ class ProviderModelBundle(BaseModel):
 
 def bind_model_route(bundle: ProviderModelBundle, model: str) -> ProviderModelBundle:
     """Bind the named model's credential route without mutating a shared bundle or its runtime."""
-    route = configuration_for_model(bundle.configuration, model)
+    route = configuration_for_model(bundle.configuration, bundle.model_type_instance.model_type, model)
     if route is bundle.configuration:
         return bundle
     return bundle.model_copy(update={"configuration": route})

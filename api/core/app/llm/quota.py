@@ -24,7 +24,7 @@ from core.credit_usage import (
 )
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_configuration import ProviderConfiguration, configuration_for_model
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -126,18 +126,6 @@ def _get_provider_configuration(*, tenant_id: str, provider: str):
     return provider_configuration
 
 
-def _get_current_quota_configuration(system_configuration: SystemConfiguration) -> QuotaConfiguration | None:
-    """Return the entry for the selected bucket, or None when it was not offered."""
-    return next(
-        (
-            quota_configuration
-            for quota_configuration in system_configuration.quota_configurations
-            if quota_configuration.quota_type == system_configuration.current_quota_type
-        ),
-        None,
-    )
-
-
 def reserve_model_quota_for_model(
     *,
     tenant_id: str,
@@ -150,8 +138,10 @@ def reserve_model_quota_for_model(
 ) -> ModelQuotaReservation:
     """Resolve the current provider and reserve its system-hosted quota before invocation."""
     configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    if configuration.using_provider_type == ProviderType.CUSTOM:
+        configuration = configuration_for_model(configuration, model_type, model)
     return reserve_model_quota_for_configuration(
-        configuration_for_model(configuration, model),
+        configuration,
         model_type=model_type,
         model=model,
         request_id=request_id,
@@ -172,9 +162,9 @@ def reserve_model_quota_for_configuration(
     """Reserve quota for the supplied, tenant-bound route without reselecting credentials.
 
     Custom routes incur no hosted charge. A System route must offer its selected quota
-    or raise QuotaExceededError without reserving credits. A zero-credit model on that
-    route needs no balance check, reservation, or settlement. Billing evaluates the live
-    balance for positive metered credit charges.
+    or raise QuotaExceededError without reserving credits. Only an active, typed model
+    offered by that bucket qualifies for zero-credit admission without settlement.
+    Billing evaluates the live balance for positive metered credit charges.
     """
     tenant_id = provider_configuration.tenant_id
     provider = provider_configuration.provider.provider
@@ -192,13 +182,11 @@ def reserve_model_quota_for_configuration(
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return reservation
 
-    system_configuration = provider_configuration.system_configuration
-    quota_configuration = _get_current_quota_configuration(system_configuration)
-    if not system_configuration.enabled or quota_configuration is None:
-        raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
+    quota_configuration = provider_configuration.require_current_system_quota()
 
     credit_cost = quota_configuration.hosted_credit_cost(model)
     if credit_cost == 0:
+        provider_configuration.require_active_system_model(model_type, model)
         reservation.quota_unit = QuotaUnit.CREDITS
         return reservation
 
@@ -268,14 +256,14 @@ def reserve_llm_quota_for_model(
 
 
 def ensure_llm_quota_available_for_model(*, tenant_id: str, provider: str, model: str) -> None:
-    """Raise on exhaustion for a metered LLM; an offered zero-credit LLM needs no balance check."""
+    """Require the selected bucket on System; only an active, offered zero-credit LLM can ignore exhaustion."""
     provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return
 
-    system = provider_configuration.system_configuration
-    quota = _get_current_quota_configuration(system)
-    if system.enabled and quota is not None and quota.hosted_credit_cost(model) == 0:
+    quota = provider_configuration.require_current_system_quota()
+    if quota.hosted_credit_cost(model) == 0:
+        provider_configuration.require_active_system_model(ModelType.LLM, model)
         return
 
     provider_model = provider_configuration.get_provider_model(

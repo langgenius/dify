@@ -841,7 +841,9 @@ class ModelProviderService:
         :param model: model name
         :return:
         """
-        provider_configuration = configuration_for_model(self._get_provider_configuration(tenant_id, provider), model)
+        provider_configuration = configuration_for_model(
+            self._get_provider_configuration(tenant_id, provider), ModelType.LLM, model
+        )
 
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)
