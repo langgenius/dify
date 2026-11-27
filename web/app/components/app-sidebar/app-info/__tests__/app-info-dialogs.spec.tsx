@@ -9,6 +9,7 @@ import {
   createFeaturesFixture,
   renderWithConsoleQuery,
 } from '@/test/console/query-data'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createAppInfoDialogHandles } from '../app-info-dialog-handles'
@@ -38,6 +39,18 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   useExportAppDsl: () => ({ exportAppDsl: service.exportApp, isExporting: false, reset: vi.fn() }),
 }))
 vi.mock('@/service/base', () => ({ request: (...args: unknown[]) => service.request(...args) }))
+// boundary: bootstrap configuration may refetch while a dialog is closing.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'systemFeatures.get': async () =>
+        createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY', rbac_enabled: false }),
+    }),
+  }
+})
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
   webSocketClient: { getSocket: () => ({ emit: service.emit }) },
 }))
@@ -369,9 +382,11 @@ it.each([0, 12, null])(
     await user.clear(input)
     if (limit !== null) await user.type(input, String(limit))
     await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
-    await waitFor(() => expect(service.request).toHaveBeenCalledOnce())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(service.request).toHaveBeenCalledOnce()
     const request = service.request.mock.calls[0]?.[2]?.request
     expect(request).toBeInstanceOf(Request)
+    expect(request.method).toBe('PUT')
     const payload = await request.json()
     if (limit === null) expect(payload).not.toHaveProperty('max_active_requests')
     else expect(payload.max_active_requests).toBe(limit)

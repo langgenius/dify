@@ -5571,6 +5571,7 @@ Tool-specific parameter declaration and invocation-value normalization.
 | placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
 | precision | integer |  | No |
 | required | boolean |  | No |
+| reset_on_change | [ string ] | Reset this parameter to its default value when any listed sibling parameter changes | No |
 | scope | string |  | No |
 | template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
 | type | [ToolParameterType](#toolparametertype) | The type of the parameter | Yes |
