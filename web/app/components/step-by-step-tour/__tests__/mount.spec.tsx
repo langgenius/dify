@@ -393,7 +393,7 @@ describe('StepByStepTourMount', () => {
     renderStepByStepTourMount()
 
     await waitFor(() => {
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
   })
 
@@ -409,7 +409,7 @@ describe('StepByStepTourMount', () => {
     renderStepByStepTourMount()
 
     await waitFor(() => {
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
   })
 
@@ -419,7 +419,7 @@ describe('StepByStepTourMount', () => {
     await user.click(await screen.findByRole('button', { name: 'Skip tour' }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     expect(
       screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
@@ -472,7 +472,7 @@ describe('StepByStepTourMount', () => {
     deferred.reject(new Error('patch failed'))
 
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
         screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).not.toBeInTheDocument()
@@ -503,7 +503,7 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
     expect(
       await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
     ).toBeInTheDocument()
@@ -525,7 +525,7 @@ describe('StepByStepTourMount', () => {
       expect(
         screen.queryByRole('region', { name: 'Step-by-step Tour completed' }),
       ).not.toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     await expectStepByStepTourPatch({ action: 'skip' })
   })
@@ -542,7 +542,7 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
     expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
     expect(screen.getByText('Manage your apps in Studio')).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3')
@@ -588,7 +588,7 @@ describe('StepByStepTourMount', () => {
     await user.click(await screen.findByRole('button', { name: 'Minimize tour' }))
 
     await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
     )
     expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveAttribute(
       'aria-expanded',
@@ -599,7 +599,7 @@ describe('StepByStepTourMount', () => {
     unmount()
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
   it('exposes dialog semantics and returns focus after minimizing with the keyboard', async () => {
@@ -663,7 +663,7 @@ describe('StepByStepTourMount', () => {
     expect(
       await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveAttribute(
       'aria-expanded',
       'true',
@@ -680,7 +680,7 @@ describe('StepByStepTourMount', () => {
       })
       const { queryClient } = renderStepByStepTourMount()
       if (minimized) await screen.findByRole('button', { name: /^Get to know Dify/ })
-      else await screen.findByRole('region', { name: 'Get to know Dify' })
+      else await screen.findByRole('dialog', { name: 'Get to know Dify' })
       render(
         <Dialog>
           <DialogTrigger>Open editor</DialogTrigger>
@@ -732,7 +732,7 @@ describe('StepByStepTourMount', () => {
       await user.click(search)
       await user.keyboard('{Escape}')
 
-      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
     } finally {
       search.remove()
     }
@@ -757,7 +757,7 @@ describe('StepByStepTourMount', () => {
     await user.tab()
 
     await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
     )
     expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveAttribute(
       'aria-expanded',
@@ -776,11 +776,11 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
 
     await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
     )
     expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveFocus()
   })
@@ -798,7 +798,7 @@ describe('StepByStepTourMount', () => {
 
       renderStepByStepTourMount()
 
-      const checklist = await screen.findByRole('region', { name: 'Get to know Dify' })
+      const checklist = await screen.findByRole('dialog', { name: 'Get to know Dify' })
       render(
         <Dialog>
           <DialogTrigger>Open editor</DialogTrigger>
@@ -809,10 +809,10 @@ describe('StepByStepTourMount', () => {
       )
       await user.click(screen.getByRole('button', { name: 'Open editor' }))
       expect(await screen.findByRole('dialog', { name: 'Editor' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument()
       await user.keyboard('{Escape}')
-      expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBe(checklist)
+      expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBe(checklist)
       await waitFor(() => expect(screen.getByRole('button', { name: 'Open editor' })).toHaveFocus())
     },
   )
@@ -837,9 +837,9 @@ describe('StepByStepTourMount', () => {
     await screen.findByRole('dialog', { name: 'Editor' })
     renderStepByStepTourMount('', host)
     await screen.findByText('Open help menu')
-    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
-    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
   it('keeps the minimized tour entry available while a blocking modal is open', async () => {
@@ -865,7 +865,7 @@ describe('StepByStepTourMount', () => {
     await user.click(screen.getByRole('button', { name: 'Open editor' }))
     expect(await screen.findByRole('dialog', { name: 'Editor' })).toBeInTheDocument()
     expect(pill).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(await screen.findByRole('button', { name: /^Get to know Dify/ })).toBe(pill)
   })
@@ -1140,7 +1140,7 @@ describe('StepByStepTourMount', () => {
       expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       await expectStepByStepTourPatch({ action: 'complete_task', task_id: 'home' })
-      expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+      expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
     } finally {
       target.remove()
     }
@@ -1292,7 +1292,7 @@ describe('StepByStepTourMount', () => {
       await user.click(screen.getByRole('button', { name: 'Got it' }))
 
       await expectStepByStepTourPatch({ action: 'complete_task', task_id: 'integration' })
-      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
         await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
       ).toBeInTheDocument()
@@ -1545,7 +1545,7 @@ describe('StepByStepTourMount', () => {
       expect(
         mockStepByStepTour.patchState.mock.calls.map(([variables]) => variables.body),
       ).not.toContainEqual(expect.objectContaining({ action: 'complete_task' }))
-      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
         screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).not.toBeInTheDocument()
@@ -1585,7 +1585,7 @@ describe('StepByStepTourMount', () => {
       expect(
         screen.queryByRole('dialog', { name: guideDialogName('Tool Plugin') }),
       ).not.toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
         mockTrackEvent.mock.calls.filter(([, event]) => event.action === 'guide_skipped'),
       ).toEqual([

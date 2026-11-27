@@ -807,7 +807,7 @@ describe('MainNav', () => {
         body: { action: 'disable_current_workspace' },
       })
     })
-    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_disabled' })

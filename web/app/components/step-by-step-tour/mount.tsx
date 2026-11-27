@@ -9,7 +9,6 @@ import type {
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogPopup, DialogPortal, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   Popover,
   PopoverArrow,
@@ -22,7 +21,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Translation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
@@ -33,8 +32,14 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { getStepByStepTourPermissionVariant, trackStepByStepTourEvent } from './analytics'
+import {
+  TourChecklist,
+  TourChecklistBody,
+  TourChecklistContent,
+  TourChecklistPill,
+  TourChecklistTrigger,
+} from './checklist'
 import { StepByStepTourCoachmark } from './coachmark'
-import { FloatingChecklist, MinimizedTourPill } from './floating-widget'
 import {
   activeStepByStepTourGuideGroupAtom,
   activeStepByStepTourGuideIndexAtom,
@@ -145,9 +150,6 @@ export default function StepByStepTourMount({
   const uncompleteTask = useSetAtom(uncompleteStepByStepTourTaskAtom)
   const [checklistMinimized, setChecklistMinimized] = useAtom(stepByStepTourChecklistMinimizedAtom)
   const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
-  const restoreTriggerRef = useRef<HTMLButtonElement>(null)
-  const checklistPopupRef = useRef<HTMLDivElement>(null)
-  const checklistTitleId = useId()
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
@@ -584,11 +586,9 @@ export default function StepByStepTourMount({
             completed: completedAvailableTaskIds.length,
             total: availableTasks.length,
           }
-          const floatingChecklist = (
-            <FloatingChecklist
-              className="max-h-[calc(100dvh-4.5rem)]"
+          const checklistBody = (
+            <TourChecklistBody
               title={title}
-              titleId={checklistTitleId}
               duration={t(($) => $['stepByStepTour.duration'], { ns: 'onboarding' })}
               progress={progress}
               completionPrompt={
@@ -704,36 +704,14 @@ export default function StepByStepTourMount({
                 />
               )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (
-                <Dialog
-                  modal={false}
+                <TourChecklist
                   open={checklistOpen}
-                  onOpenChange={(open, { event, reason }) => {
-                    if (open) {
-                      setChecklistMinimized(false)
-                      return
-                    }
-                    // Only the checklist's own keyboard exits minimize it: Escape from inside it or
-                    // its trigger, and Tab past it through a focus guard. Outside presses keep it.
-                    const target = event.target instanceof Element ? event.target : null
-                    const escapedFromChecklist =
-                      reason === 'escape-key' &&
-                      Boolean(
-                        target &&
-                        (checklistPopupRef.current?.contains(target) ||
-                          restoreTriggerRef.current?.contains(target)),
-                      )
-                    const tabbedOut =
-                      reason === 'focus-out' &&
-                      Boolean(target?.hasAttribute('data-base-ui-focus-guard'))
-                    if (reason === 'trigger-press' || escapedFromChecklist || tabbedOut)
-                      setChecklistMinimized(true)
-                  }}
+                  onOpenChange={(open) => setChecklistMinimized(!open)}
                 >
                   {/* Preserve the clicked anchor while the checklist waits for its host. */}
-                  <DialogTrigger
-                    ref={restoreTriggerRef}
+                  <TourChecklistTrigger
                     render={(props) => (
-                      <MinimizedTourPill
+                      <TourChecklistPill
                         {...props}
                         className={cn(
                           props.className,
@@ -745,27 +723,16 @@ export default function StepByStepTourMount({
                       />
                     )}
                   />
-                  {visible && (
-                    <DialogPortal className="aria-hidden:invisible">
-                      <DialogPopup
-                        ref={checklistPopupRef}
-                        aria-labelledby={checklistTitleId}
-                        initialFocus={checklistCloseButtonRef}
-                        finalFocus={() =>
-                          activeGuide &&
-                          document.querySelector(
-                            getStepByStepTourTargetSelector(activeGuide.target),
-                          )
-                            ? false
-                            : restoreTriggerRef.current
-                        }
-                        className="fixed inset-s-2 bottom-14"
-                      >
-                        {floatingChecklist}
-                      </DialogPopup>
-                    </DialogPortal>
-                  )}
-                </Dialog>
+                  <TourChecklistContent
+                    initialFocus={checklistCloseButtonRef}
+                    restoreFocus={() =>
+                      !activeGuide ||
+                      !document.querySelector(getStepByStepTourTargetSelector(activeGuide.target))
+                    }
+                  >
+                    {checklistBody}
+                  </TourChecklistContent>
+                </TourChecklist>
               )}
               {recoveryAnchorRef && (
                 <SkipRecoveryPrompt
