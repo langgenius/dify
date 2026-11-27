@@ -72,12 +72,16 @@ function getTabbables(root: HTMLElement) {
 
 function useGliding(
   target: HTMLElement | undefined,
+  glideFromPrevious: boolean,
   spotlightRef: React.RefObject<HTMLDivElement | null>,
   positionerRef: React.RefObject<HTMLDivElement | null>,
 ) {
   const [glide, setGlide] = React.useState({ gliding: false, target })
   if (glide.target !== target)
-    setGlide({ gliding: glide.target !== undefined && target !== undefined, target })
+    setGlide({
+      gliding: glideFromPrevious && glide.target !== undefined && target !== undefined,
+      target,
+    })
 
   const waitForSpotlight = useAnimationsFinished(spotlightRef)
   const waitForPositioner = useAnimationsFinished(positionerRef)
@@ -147,7 +151,7 @@ function Coachmark<Payload = undefined>({
     shown &&
     (target !== step.targetKey || (highlightSelectors?.join('\n') ?? '') !== step.selectorKey)
   const shownTarget = shown ? step.target : undefined
-  const gliding = useGliding(shownTarget, spotlightRef, positionerRef)
+  const gliding = useGliding(shownTarget, !!step?.glide, spotlightRef, positionerRef)
   const stepKey = shown ? step.key : undefined
 
   const handleShow = React.useEffectEvent(() => {

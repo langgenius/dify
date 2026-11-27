@@ -800,3 +800,58 @@ it('waits for an animating ancestor of the target before measuring it', async ()
   expect(animation.playState).toBe('finished')
   expect(screen.getByTestId('spotlight').element().getBoundingClientRect().width).toBe(128)
 })
+
+it('opens the next step in place instead of gliding when the previous target is gone', async () => {
+  const flags = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
+  const animationsDisabled = flags.BASE_UI_ANIMATIONS_DISABLED
+  flags.BASE_UI_ANIMATIONS_DISABLED = false
+  onTestFinished(() => {
+    flags.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
+  })
+  function HandoffDemo({ step }: { step: 'first' | 'second' }) {
+    const [target, setTarget] = React.useState<HTMLElement | null>(null)
+    return (
+      <React.Fragment>
+        {step === 'first' ? (
+          <button key="first" ref={setTarget} type="button" style={{ margin: 40 }}>
+            Lesson card
+          </button>
+        ) : (
+          <button key="second" ref={setTarget} type="button" style={{ margin: 200 }}>
+            Create from lesson
+          </button>
+        )}
+        <Coachmark open target={target} payload={step}>
+          {({ payload }) => (
+            <CoachmarkPortal>
+              <CoachmarkSpotlight data-testid="spotlight" />
+              <CoachmarkPositioner>
+                <CoachmarkPopup>
+                  <CoachmarkTitle>{payload}</CoachmarkTitle>
+                  <CoachmarkClose>Skip</CoachmarkClose>
+                </CoachmarkPopup>
+              </CoachmarkPositioner>
+            </CoachmarkPortal>
+          )}
+        </Coachmark>
+      </React.Fragment>
+    )
+  }
+  const screen = await render(<HandoffDemo step="first" />)
+  await expect.element(screen.getByRole('dialog', { name: 'first' })).toBeVisible()
+
+  const glided: boolean[] = []
+  const observer = new MutationObserver(() => {
+    glided.push(!!document.querySelector('[data-gliding]'))
+  })
+  observer.observe(document.body, {
+    attributes: true,
+    subtree: true,
+    attributeFilter: ['data-gliding'],
+  })
+  onTestFinished(() => observer.disconnect())
+
+  await screen.rerender(<HandoffDemo step="second" />)
+  await expect.element(screen.getByRole('dialog', { name: 'second' })).toBeVisible()
+  expect(glided).not.toContain(true)
+})

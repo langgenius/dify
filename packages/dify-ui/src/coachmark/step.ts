@@ -26,6 +26,7 @@ export type CoachmarkTarget = HTMLElement | string | null
 
 export type ShownStep<Payload> = {
   detached: boolean
+  glide: boolean
   key: number
   layout: Layout
   parts: HTMLElement[]
@@ -242,8 +243,14 @@ export function useShownStep<Payload>(
       if (!intersectsViewport(geometry.highlight)) return
 
       const nextPayload = readPayload()
+      const glide =
+        !!shownTarget &&
+        !shownDetached &&
+        shownTarget.isConnected &&
+        isVisibleRect(toRect(shownTarget.getBoundingClientRect()))
       setShown((current) => ({
         detached: false,
+        glide,
         key: (current?.key ?? 0) + 1,
         layout: toLayout(geometry),
         parts,
@@ -276,7 +283,7 @@ export function useShownStep<Payload>(
       checker.cancel()
       stopObserving()
     }
-  }, [open, selectorKey, shownDetached, shownSelectorKey, shownTargetKey, target])
+  }, [open, selectorKey, shownDetached, shownSelectorKey, shownTarget, shownTargetKey, target])
 
   const shownParts = shown?.parts
   React.useLayoutEffect(() => {
