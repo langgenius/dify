@@ -7,7 +7,7 @@ from configs import dify_config
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message
 from models.web import SavedMessage
-from repositories.conversation_access import conversation_actor_scope, message_actor_scope
+from repositories.conversation_access import message_actor_scope
 from services.errors.message import LastMessageNotExistsError, MessageNotExistsError
 from services.saved_message_service import (
     SavedMessageActor,
@@ -102,7 +102,7 @@ class SQLAlchemySavedMessageRepository(SavedMessageStore):
                 .where(
                     Message.id == message_id,
                     Message.app_id == app_id,
-                    *conversation_actor_scope(
+                    message_actor_scope(
                         app_id,
                         end_user_id=actor.id if actor.role == "end_user" else None,
                         account_id=actor.id if actor.role == "account" else None,
@@ -135,7 +135,7 @@ class SQLAlchemySavedMessageRepository(SavedMessageStore):
                 .where(
                     Message.id == message_id,
                     Message.app_id == app_id,
-                    *conversation_actor_scope(
+                    message_actor_scope(
                         app_id,
                         end_user_id=actor.id if actor.role == "end_user" else None,
                         account_id=actor.id if actor.role == "account" else None,

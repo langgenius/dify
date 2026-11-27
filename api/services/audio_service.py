@@ -78,16 +78,22 @@ def _audio_ref(app: App) -> AudioAppRef:
 class AudioService:
     @staticmethod
     def _get_message_by_ref(session: Session, message_ref: MessageRef) -> Message | None:
+        """Return admitted message text only; Web history also requires the live conversation owner."""
         stmt = select(Message).where(
             Message.id == message_ref.message_id,
             Message.app_id == message_ref.app.app_id,
         )
-        if message_ref.end_user_id is not None or message_ref.account_id is not None:
+        if message_ref.is_web_app:
             stmt = stmt.where(
                 message_actor_scope(
                     message_ref.app.app_id, end_user_id=message_ref.end_user_id, account_id=message_ref.account_id
                 )
             )
+        else:
+            if message_ref.end_user_id is not None:
+                stmt = stmt.where(Message.from_end_user_id == message_ref.end_user_id)
+            if message_ref.account_id is not None:
+                stmt = stmt.where(Message.from_account_id == message_ref.account_id)
         return session.scalar(stmt.limit(1))
 
     @classmethod

@@ -19,6 +19,7 @@ class MessageRef(NamedTuple):
     message_id: str
     end_user_id: str | None = None
     account_id: str | None = None
+    is_web_app: bool = False
 
 
 class AppRefService:
@@ -35,10 +36,13 @@ class AppRefService:
         *,
         end_user_id: str | None = None,
         account_id: str | None = None,
+        is_web_app: bool = False,
     ) -> MessageRef:
+        """Build a reference from admitted actor IDs; only Web callers opt into transferred history."""
         return MessageRef(
             app=app_ref,
             message_id=message_id,
             end_user_id=end_user_id,
             account_id=account_id,
+            is_web_app=is_web_app,
         )

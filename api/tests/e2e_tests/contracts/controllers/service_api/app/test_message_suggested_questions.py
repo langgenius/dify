@@ -437,7 +437,7 @@ def test_unsupported_mode_does_not_invoke_questions(harness: _Harness, mode: App
     ("failure", "status", "code", "message"),
     [
         ("message", 404, "not_found", "Message Not Exists."),
-        ("conversation", 404, "not_found", "Message Not Exists."),
+        ("conversation", 404, "not_found", "Conversation not found"),
         ("agent_version", 404, "agent_version_not_found_error", "Agent config version not found."),
         ("disabled", 403, "app_suggested_questions_after_answer_disabled", ""),
     ],

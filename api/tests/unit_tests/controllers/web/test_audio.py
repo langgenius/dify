@@ -241,7 +241,7 @@ class TestTextApi:
                 assert result is None
 
         assert service_calls[0]["message_ref"] == MessageRef(
-            AppRef("tenant-1", "app-1"), message_id, end_user_id="eu-1"
+            AppRef("tenant-1", "app-1"), message_id, end_user_id="eu-1", is_web_app=True
         )
         assert audio_runtime.tts_calls == (
             [{"content_text": "persisted answer", "voice": "alloy"}] if owner == "current" else []

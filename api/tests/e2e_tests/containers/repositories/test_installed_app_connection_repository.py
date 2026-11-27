@@ -6,6 +6,7 @@ from threading import Barrier
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import delete, event, select, text, update
 from sqlalchemy.engine import Connection
 from sqlalchemy.exc import OperationalError
@@ -29,12 +30,11 @@ from tests.helpers.installed_app_connections import (
 
 @pytest.fixture
 def cases(
-    flask_req_ctx: object,
+    flask_app_with_containers: Flask,
 ) -> Iterator[tuple[sessionmaker[Session], InstalledConnectionData, InstalledConnectionData]]:
-    """Seed isolated real records and bound every transaction's lock wait."""
-    if db.engine.dialect.name != "postgresql":
-        pytest.skip("requires the CI PostgreSQL integration database")
-    sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
+    """Use the container schema and bound each isolated transaction's lock wait."""
+    with flask_app_with_containers.app_context():
+        sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
 
     def bound_lock_wait(_session: Session, _transaction: SessionTransaction, connection: Connection) -> None:
         connection.execute(text("SET LOCAL lock_timeout = '2s'"))

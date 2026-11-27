@@ -16,7 +16,9 @@ from repositories.conversation_access import may_read_conversation_run
 def history(sqlite_session: Session) -> tuple[EndUser, EndUser, Conversation]:
     """Given an empty database, persist transferred history while preserving the original sender."""
     original = EndUser(tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, session_id="original")
-    current = EndUser(tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, session_id="current")
+    current = EndUser(
+        tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, session_id="current", account_id="account"
+    )
     sqlite_session.add_all([original, current])
     sqlite_session.flush()
     conversation = Conversation(
@@ -141,4 +143,21 @@ def test_run_access_preserves_conversation_ownership_and_standalone_fallback(
             original_end_user_id=original.id,
         )
         is allowed
+    )
+
+
+def test_web_history_transfer_cannot_adopt_another_accounts_message(
+    sqlite_session: Session, history: tuple[EndUser, EndUser, Conversation]
+) -> None:
+    """A live conversation alone does not authorize a message from another mapped account."""
+    original, current, _ = history
+    original.account_id = "other-account"
+    sqlite_session.flush()
+
+    assert not may_read_conversation_run(
+        sqlite_session,
+        app_id="app",
+        user=current,
+        run_id="attached-run",
+        original_end_user_id=original.id,
     )

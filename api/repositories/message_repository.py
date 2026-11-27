@@ -23,13 +23,14 @@ from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
-from repositories.conversation_access import conversation_actor_scope
+from repositories.conversation_access import message_actor_scope, message_sender_scope, transferred_web_message_scope
 from repositories.message_projection import snapshot_console_message, snapshot_message
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import (
     ConsoleMessageRecord,
     MessageAccount,
     MessageActor,
+    MessageEndUser,
     MessagePage,
     MessageRecord,
     MessageSource,
@@ -309,10 +310,8 @@ class MessageRepository:
                     session,
                     message_id=message_id,
                     app_id=app_id,
-                    source="console" if isinstance(actor, MessageAccount) else "api",
-                    account_id=account_id,
-                    end_user_id=end_user_id,
-                    lock=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED and end_user_id is not None,
+                    actor=actor,
+                    write=True,
                 )
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for this app and actor")
@@ -415,14 +414,7 @@ class MessageRepository:
                 f"End user {actor.end_user_id} does not exist for app {app_id} in tenant {app_owner_tenant_id}"
             )
 
-        message = self._get_message(
-            session,
-            message_id=message_id,
-            app_id=app_id,
-            source=source,
-            account_id=account_id,
-            end_user_id=end_user_id,
-        )
+        message = self._get_message(session, message_id=message_id, app_id=app_id, actor=actor)
         if message is None:
             raise MessageNotExistsError()
 
@@ -509,14 +501,7 @@ class MessageRepository:
                     raise MessageActorNotFoundError(f"Account {actor.account_id} no longer exists")
                 raise MessageActorNotFoundError(f"End user {actor.end_user_id} is unavailable for app {app_id}")
 
-            message = self._get_message(
-                session,
-                message_id=message_id,
-                app_id=app_id,
-                source=source,
-                account_id=account_id,
-                end_user_id=end_user_id,
-            )
+            message = self._get_message(session, message_id=message_id, app_id=app_id, actor=actor)
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for this app and actor")
 
@@ -615,18 +600,30 @@ class MessageRepository:
         *,
         message_id: str,
         app_id: str,
-        source: str,
-        account_id: str | None,
-        end_user_id: str | None,
-        lock: bool = False,
+        actor: MessageActor,
+        write: bool = False,
     ) -> Message | None:
-        """Return the owned message, or None; the other actor kind's ID is None."""
-        statement = (
-            select(Message)
-            .join(Conversation, Conversation.id == Message.conversation_id)
-            .where(Message.id == message_id, Message.app_id == app_id)
-            .where(*conversation_actor_scope(app_id, account_id=account_id, end_user_id=end_user_id))
-        )
-        if lock:
-            statement = statement.with_for_update(of=Conversation)
+        """Return a message for an admitted actor or None, without disclosing a foreign sender.
+
+        Read callers check conversation availability separately, preserving their own
+        missing/deleted conversation responses. Web writes also require current
+        conversation ownership and lock it when transfers are enabled.
+        """
+        end_user_id = actor.end_user_id if isinstance(actor, MessageEndUser) else None
+        account_id = actor.account_id if isinstance(actor, MessageAccount) else None
+        sender = message_sender_scope(app_id, end_user_id=end_user_id, account_id=account_id)
+        statement = select(Message).where(Message.id == message_id)
+        if isinstance(actor, MessageEndUser) and actor.is_web_app:
+            if write:
+                statement = statement.join(Conversation, Conversation.id == Message.conversation_id).where(
+                    message_actor_scope(app_id, end_user_id=actor.end_user_id, account_id=None)
+                )
+                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
+                    statement = statement.with_for_update(of=Conversation)
+            else:
+                statement = statement.where(
+                    or_(sender, transferred_web_message_scope(app_id, end_user_id=actor.end_user_id))
+                )
+        else:
+            statement = statement.where(sender)
         return session.scalar(statement)

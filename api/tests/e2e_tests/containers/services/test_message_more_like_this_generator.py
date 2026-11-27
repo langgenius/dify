@@ -196,7 +196,7 @@ def scenario(
         headers = {
             HEADER_NAME_APP_CODE: site.code,
             HEADER_NAME_PASSPORT: PassportService().issue(
-                {"app_code": site.code, "app_id": app.id, "end_user_id": end_user.id}
+                {"sub": "Web API Passport", "app_code": site.code, "app_id": app.id, "end_user_id": end_user.id}
             ),
         }
         url = f"/api/messages/{message.id}/more-like-this"

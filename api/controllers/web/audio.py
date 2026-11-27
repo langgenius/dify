@@ -172,6 +172,7 @@ class TextApi(WebApiResource):
                     app_ref,
                     message_id,
                     end_user_id=end_user.id,
+                    is_web_app=True,
                 )
             return AudioService.transcript_tts(
                 app_model=app_model,
