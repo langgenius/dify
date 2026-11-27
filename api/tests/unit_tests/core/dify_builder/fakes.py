@@ -73,11 +73,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
-from services.dify_builder.application.execution_policy import (
-    BuilderExecutionPolicyError,
-    HttpFixtureSetV1,
-    HttpResponseFixtureV1,
-)
 from services.dify_builder.application.ports import DifyBuilderAgent, DifyPort, Repository
 from services.dify_builder.application.runner import Env
 from services.dify_builder.effect_disclosure import EffectDisclosure
@@ -629,14 +624,6 @@ class FakeDifyPort(DifyPort):
         del app_id, actor
         del inputs, code_risk_context
         return self.effect_disclosure
-
-    @override
-    def stamp_http_fixtures(
-        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
-    ) -> HttpFixtureSetV1:
-        if base_app_revision != self.hash:
-            raise BuilderExecutionPolicyError("stale_http_fixtures")
-        return HttpFixtureSetV1(execution_revision=self.hash, fixtures=fixtures)
 
     @override
     def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:

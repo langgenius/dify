@@ -72,7 +72,7 @@ def test_builder_runs_workflow_agent_with_ordinary_debugger(
     )
     backend = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.SUCCESS)
 
-    def agent_client(**_settings):
+    def agent_client(**_settings: object) -> FakeAgentBackendRunClient:
         return backend
 
     monkeypatch.setattr("clients.agent_backend.factory.create_agent_backend_run_client", agent_client)

@@ -32,7 +32,7 @@ type ModelList = Awaited<
   ReturnType<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>
 >['data']
 
-export const builderModelList: ModelList = [
+const builderModelList: ModelList = [
   {
     ...builderDefaultModel.provider,
     status: 'active',

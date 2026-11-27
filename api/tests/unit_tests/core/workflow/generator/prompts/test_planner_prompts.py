@@ -23,7 +23,7 @@ from core.workflow.generator.prompts.planner_prompts import (
 from core.workflow.generator.prompts.planner_prompts import (
     format_tool_catalogue_section as format_planner_tool_catalogue_section,
 )
-from core.workflow.node_factory import validate_node_config
+from services.dify_builder.preflight import validate_node_config
 
 
 class TestPlannerSystemPrompt:

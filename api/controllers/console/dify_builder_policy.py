@@ -49,7 +49,7 @@ def _actor(context: RequestContext) -> Actor:
 def _raise_policy_error(error: CognitionPolicyDeniedError):
     if error.reason == "policy_revision_conflict":
         raise BuilderPolicyConflictError() from error
-    raise Forbidden("Workspace administrator permission is required.") from error
+    raise Forbidden() from error
 
 
 @console_ns.route("/workspaces/current/dify-builder/policy")

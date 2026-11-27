@@ -7,7 +7,7 @@ from Crypto.PublicKey import RSA
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-import extensions.ext_key_provider as key_provider_module
+import models.engine as model_engine
 from core.helper.encrypter import (
     batch_decrypt_token,
     decrypt_token,
@@ -18,7 +18,6 @@ from core.helper.encrypter import (
 from libs import gmpy2_pkcs10aep_cipher, rsa
 from libs.rsa import PrivkeyNotFoundError
 from models.account import Tenant
-from tests.unit_tests.database_fixtures import BoundDatabase
 
 pytestmark = [
     pytest.mark.usefixtures("sqlite_session"),
@@ -28,10 +27,7 @@ pytestmark = [
 
 @pytest.fixture(autouse=True)
 def bind_sqlite_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-    # The key repository opens a short-lived read when the caller has no active
-    # transaction; bind both paths to the same real SQLite database.
-    monkeypatch.setattr(key_provider_module, "db", BoundDatabase(sqlite_session))
-    monkeypatch.setattr(key_provider_module.key_provider_manager, "_provider", None)
+    monkeypatch.setattr(model_engine.db, "session", sqlite_session)
 
 
 @pytest.fixture(scope="module")

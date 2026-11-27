@@ -38,10 +38,6 @@ def test_dify_builder_resource_classes_exist() -> None:
         "DifyBuilderMessagesApi",
         "DifyBuilderTaskStopApi",
         "DifyBuilderTaskResumeApi",
-        "DifyBuilderRealCallConsentsApi",
-        "DifyBuilderRealCallConsentApi",
-        "DifyBuilderRealCallConsentConfirmApi",
-        "DifyBuilderRealCallConsentExecuteApi",
     ):
         assert hasattr(mod, name), f"{name} missing from controllers.console.dify_builder"
 
@@ -66,10 +62,6 @@ def test_dify_builder_paths_registered_on_console_ns() -> None:
         "/dify-builder/sessions/<string:session_id>/messages",
         "/dify-builder/sessions/<string:session_id>/stop",
         "/dify-builder/sessions/<string:session_id>/resume",
-        "/dify-builder/sessions/<string:session_id>/real-call-consents",
-        "/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>",
-        "/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/confirm",
-        "/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/execute",
     }
     missing = expected - registered_urls
     assert not missing, f"dify_builder routes missing from console_ns.resources: {missing}"

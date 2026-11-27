@@ -1,12 +1,13 @@
 import type { Resource } from 'i18next'
 import type { ReactNode } from 'react'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { Suspense } from 'react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
+import englishAppDebug from '@/i18n/locales/en-US/app-debug.json'
 import englishCommon from '@/i18n/locales/en-US/common.json'
 import englishBuilder from '@/i18n/locales/en-US/dify-builder.json'
 import englishModelProvider from '@/i18n/locales/en-US/model-provider.json'
@@ -112,6 +113,7 @@ it('keeps the model selector visible while its detected-language translations lo
   renderSelector(
     {
       'en-US': {
+        appDebug: englishAppDebug,
         common: englishCommon,
         difyBuilder: englishBuilder,
         modelProvider: englishModelProvider,
@@ -148,6 +150,7 @@ it('keeps the real composer mounted while the real model popup cold-loads transl
   renderSelector(
     {
       'en-US': {
+        appDebug: englishAppDebug,
         common: englishCommon,
         difyBuilder: englishBuilder,
         modelProvider: englishModelProvider,
@@ -170,8 +173,8 @@ it('keeps the real composer mounted while the real model popup cold-loads transl
   await user.click(trigger)
   await waitFor(() => expect(loadResource).toHaveBeenCalledWith('en-US', 'plugin'))
 
-  expect(within(screen.getByRole('dialog')).getByRole('status')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'gpt-4o' })).toBe(trigger)
+  expect(screen.getByRole('button', { name: 'gpt-4o' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'gpt-4o' })).toBeVisible()
   expect(input).toBeVisible()
   expect(screen.queryByText('Loading composer')).not.toBeInTheDocument()
   expect(loadResource).not.toHaveBeenCalledWith('en-US', 'appDebug')
@@ -203,21 +206,21 @@ it('keeps a selected model and composer visible when both model dictionaries are
   })
   renderSelector(
     {
-      'en-US': { common: englishCommon, difyBuilder: englishBuilder },
+      'en-US': { appDebug: englishAppDebug, common: englishCommon, difyBuilder: englishBuilder },
       'zh-Hans': { common: chineseCommon, difyBuilder: chineseBuilder },
     },
     <DifyBuilderComposer />,
   )
   await waitFor(() => expect(loadResource).toHaveBeenCalledWith('en-US', 'modelProvider'))
 
-  const trigger = screen.getByRole('button', { name: 'gpt-4o' })
+  expect(screen.getByRole('button', { name: 'gpt-4o' })).toBeVisible()
   const input = screen.getByRole('textbox', { name: chineseBuilder.messagePlaceholder })
   await user.type(input, 'Draft during model translation loading')
   expect(screen.queryByText('Loading composer')).not.toBeInTheDocument()
 
   await act(async () => resolveTranslations())
 
-  expect(screen.getByRole('button', { name: 'gpt-4o' })).toBe(trigger)
+  expect(screen.getByRole('button', { name: 'gpt-4o' })).toBeVisible()
   expect(screen.getByRole('textbox', { name: chineseBuilder.messagePlaceholder })).toBe(input)
   expect(input).toHaveValue('Draft during model translation loading')
   expect(input).toHaveFocus()

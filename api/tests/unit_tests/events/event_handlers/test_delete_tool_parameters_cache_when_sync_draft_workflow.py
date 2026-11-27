@@ -121,7 +121,6 @@ def test_native_draft_cache_receiver_deletes_exact_key_without_resolving_runtime
     key/deletion remain in the call path. Only Redis is an external double;
     sensitive runtime owners are fail-fast observers, not policy substitutes.
     """
-    import core.tools.tool_manager as runtime_module
     from core.helper import provider_encryption, tool_parameter_cache
     from core.plugin.impl.oauth import OAuthHandler
     from core.plugin.impl.tool import PluginToolManager
@@ -146,7 +145,6 @@ def test_native_draft_cache_receiver_deletes_exact_key_without_resolving_runtime
     for owner, name in (
         (handler_module.ToolManager, "get_tool_runtime"),
         (handler_module.ToolManager, "get_builtin_provider"),
-        (runtime_module, "create_provider_encrypter"),
         (provider_encryption.ProviderConfigEncrypter, "decrypt"),
         (OAuthHandler, "refresh_credentials"),
         (PluginToolManager, "fetch_tool_provider"),

@@ -1070,8 +1070,6 @@ class WorkflowConfig(BaseSettings):
     )
 
 
-
-
 class WorkflowNodeExecutionConfig(BaseSettings):
     """
     Configuration for workflow node execution

@@ -4,7 +4,7 @@ import styles from './edit-border.module.css'
 
 const DASH_PERIOD = 12
 
-export function BuilderEditBorder() {
+function BuilderEditBorder() {
   const borderRef = useRef<SVGRectElement>(null)
 
   useLayoutEffect(() => {

@@ -118,8 +118,7 @@ def test_builder_agent_draft_keeps_the_same_revision_after_editor_save(
     sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from unittest.mock import Mock
-    from uuid import uuid4
+    from uuid import UUID, uuid4
 
     from sqlalchemy import select
 
@@ -134,7 +133,13 @@ def test_builder_agent_draft_keeps_the_same_revision_after_editor_save(
     from services.dify_builder.revision import execution_revision
     from services.workflow_service import WorkflowService
 
-    allocate_generation = Mock(wraps=uuid4)
+    generations: list[UUID] = []
+
+    def allocate_generation() -> UUID:
+        generation = uuid4()
+        generations.append(generation)
+        return generation
+
     monkeypatch.setattr(session_policy, "uuid4", allocate_generation)
     actor, workflow = agent_case.actor, agent_case.workflow
     selection = _selection(agent_case)
@@ -158,7 +163,7 @@ def test_builder_agent_draft_keeps_the_same_revision_after_editor_save(
     )
     assert bindings is not None
     assert workflow.unique_hash == original_hash
-    allocate_generation.assert_not_called()
+    assert not generations
 
     app = sqlite_session.get(App, workflow.app_id)
     account = sqlite_session.get(Account, actor.account_id)
@@ -170,7 +175,7 @@ def test_builder_agent_draft_keeps_the_same_revision_after_editor_save(
         app, prepared, workflow, original_hash, account, sqlite_session, app.id, commit=False
     )
     bindings.sync_prepared_bindings(actor=actor, workflow=updated, selections=selections)
-    allocate_generation.assert_called_once_with()
+    assert len(generations) == 1
     assert updated.graph_dict["nodes"][1]["data"]["agent_binding"]["agent_id"] == selection.agent_id
     binding = sqlite_session.scalar(
         select(WorkflowAgentNodeBinding).where(
