@@ -2,7 +2,7 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, override
 
 from sqlalchemy import select
@@ -17,6 +17,7 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.otel import trace_span
@@ -40,6 +41,18 @@ class AbstractVectorFactory(ABC):
         the caller and must not be committed, rolled back, or closed here.
         """
         raise NotImplementedError
+
+    @classmethod
+    def supported_retrieval_methods(cls) -> Sequence[RetrievalMethod] | None:
+        """Retrieval methods a backend outside :class:`VectorType` offers in dataset settings.
+
+        Built-in backends are listed in ``services.knowledge.datasets.retrieval`` and never
+        reach this hook. A backend installed from its own package (registered under the
+        ``dify.vector_backends`` entry-point group) overrides it to return a non-empty subset
+        of semantic, full-text and hybrid search. ``None`` means it declares nothing, and its
+        retrieval settings are reported as unsupported.
+        """
+        return None
 
     @staticmethod
     def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> VectorIndexStructDict:

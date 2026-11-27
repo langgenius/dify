@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+from collections.abc import Sequence
 from importlib.metadata import entry_points
 from typing import TYPE_CHECKING
 
@@ -72,16 +73,36 @@ def _load_builtin_factory(vector_type: str) -> type[AbstractVectorFactory]:
     return getattr(module, attr)  # type: ignore[no-any-return]
 
 
-def get_vector_factory_class(vector_type: str) -> type[AbstractVectorFactory]:
-    """Resolve :class:`AbstractVectorFactory` for a :class:`~VectorType` string value."""
+def find_vector_factory_class(vector_type: str) -> type[AbstractVectorFactory] | None:
+    """Like :func:`get_vector_factory_class`, but return ``None`` when no backend is registered.
+
+    A registered backend that fails to import still raises, so callers can tell a missing
+    backend from a broken one.
+    """
     if vector_type in _VECTOR_FACTORY_CACHE:
         return _VECTOR_FACTORY_CACHE[vector_type]
 
-    plugin_cls = _load_plugin_factory(vector_type)
-    if plugin_cls is not None:
-        _VECTOR_FACTORY_CACHE[vector_type] = plugin_cls
-        return plugin_cls
-
-    cls = _load_builtin_factory(vector_type)
-    _VECTOR_FACTORY_CACHE[vector_type] = cls
+    cls = _load_plugin_factory(vector_type)
+    if cls is None and vector_type in _BUILTIN_VECTOR_FACTORY_TARGETS:
+        cls = _load_builtin_factory(vector_type)
+    if cls is not None:
+        _VECTOR_FACTORY_CACHE[vector_type] = cls
     return cls
+
+
+def get_vector_factory_class(vector_type: str) -> type[AbstractVectorFactory]:
+    """Resolve :class:`AbstractVectorFactory` for a :class:`~VectorType` string value."""
+    cls = find_vector_factory_class(vector_type)
+    if cls is None:
+        raise _unsupported(vector_type)
+    return cls
+
+
+def declared_retrieval_methods(vector_type: str) -> Sequence[str] | None:
+    """Retrieval methods an installed backend declares, or ``None`` if it isn't installed or declares none.
+
+    See :meth:`AbstractVectorFactory.supported_retrieval_methods`. Import errors propagate.
+    """
+    cls = find_vector_factory_class(vector_type)
+    hook = getattr(cls, "supported_retrieval_methods", None)
+    return hook() if hook is not None else None

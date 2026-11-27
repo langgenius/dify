@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+from core.rag.datasource.vdb.vector_backend_registry import declared_retrieval_methods
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from libs.helper import generate_text_hash
 from repositories.app.console_repository import ConsoleAppRepository
@@ -144,6 +145,7 @@ def build_knowledge_services(
             service_api_url=dify_config.SERVICE_API_URL,
             vector_store=dify_config.VECTOR_STORE,
             tidb_fulltext=dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH,
+            declared_retrieval_methods=declared_retrieval_methods,
         ),
         external=ExternalKnowledgeApplicationService(
             dataset_access=dataset_access,
