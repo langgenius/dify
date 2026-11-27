@@ -33,6 +33,7 @@ from repositories.agent.agent_roster_queries import (
     build_roster_agents_stmt,
     load_published_workflows_by_agent_id,
     load_reference_counts_by_agent_id,
+    project_referencing_workflow,
 )
 from repositories.agent.agent_runtime_app import (
     create_backing_agent_for_app,
@@ -716,21 +717,7 @@ class AgentRosterService:
     ) -> dict[str, list[AgentReferencingWorkflow]]:
         """Return the legacy response shape for current published references in this tenant."""
         return {
-            agent_id: [
-                AgentReferencingWorkflow(
-                    app_id=reference.app.id,
-                    app_name=reference.app.name,
-                    app_icon_type=reference.app.icon_type.value if reference.app.icon_type else None,
-                    app_icon=reference.app.icon,
-                    app_icon_background=reference.app.icon_background,
-                    app_mode=str(reference.app.mode),
-                    app_updated_at=to_timestamp(reference.app.updated_at),
-                    workflow_id=reference.workflow_id,
-                    workflow_version=reference.workflow_version,
-                    node_ids=list(reference.node_ids),
-                )
-                for reference in references
-            ]
+            agent_id: [project_referencing_workflow(reference) for reference in references]
             for agent_id, references in load_published_workflows_by_agent_id(
                 self._session, tenant_id=tenant_id, agent_ids=agent_ids
             ).items()
