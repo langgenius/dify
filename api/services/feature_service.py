@@ -282,6 +282,7 @@ class FeatureService:
             dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
         )
         features.enable_skill = dify_config.ENABLE_SKILL
+        features.enable_decision_node = dify_config.ENABLE_DECISION_NODE
         features.enable_knowledge_fs = get_knowledge_fs_features().enabled
         features.enable_file_scan = dify_config.FILE_SCAN_ENABLED
 

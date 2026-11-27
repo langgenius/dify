@@ -17,6 +17,7 @@ import { codeBasedExtension } from './code-based-extension/orpc.gen.ts'
 import { compliance } from './compliance/orpc.gen.ts'
 import { dataSource } from './data-source/orpc.gen.ts'
 import { datasets } from './datasets/orpc.gen.ts'
+import { decisionGenerate } from './decision-generate/orpc.gen.ts'
 import { emailCodeLogin } from './email-code-login/orpc.gen.ts'
 import { emailRegister } from './email-register/orpc.gen.ts'
 import { byEvaluateTargetType } from './evaluate-target-type/orpc.gen.ts'
@@ -79,6 +80,7 @@ const communityContract = {
   compliance,
   dataSource,
   datasets,
+  decisionGenerate,
   emailCodeLogin,
   emailRegister,
   evaluation,

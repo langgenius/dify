@@ -41,6 +41,7 @@ from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import retire_standalone_node_execution_workspaces
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE, DecideBy
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -1202,6 +1203,18 @@ class WorkflowService:
                     self._validate_load_balancing_credentials(tenant_id, validation_node_data, node_id, session=session)
                 else:
                     raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
+
+            elif node_type == DECISION_NODE_TYPE:
+                # Only llm mode calls the model. A rules node may still carry the
+                # model of an earlier llm configuration, and its credentials are
+                # not needed to publish.
+                if node_data.get("decide_by") == DecideBy.LLM.value:
+                    decision_model_config = node_data.get("model") or {}
+                    decision_provider = decision_model_config.get("provider")
+                    decision_model_name = decision_model_config.get("name")
+                    if decision_provider and decision_model_name:
+                        self._validate_llm_model_config(tenant_id, decision_provider, decision_model_name)
+                        self._validate_load_balancing_credentials(tenant_id, node_data, node_id, session=session)
 
         except Exception as e:
             if isinstance(e, ValueError):

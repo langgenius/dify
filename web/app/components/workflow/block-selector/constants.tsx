@@ -108,6 +108,11 @@ export const BLOCKS = [
   },
   {
     classification: BlockClassification.Logic,
+    type: BlockEnum.Decision,
+    title: 'Decision',
+  },
+  {
+    classification: BlockClassification.Logic,
     type: BlockEnum.LoopEnd,
     title: 'Exit Loop',
     description: '',

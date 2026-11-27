@@ -48,6 +48,8 @@ export const useWorkflowNodeFinished = () => {
             data.status === NodeRunningStatus.Succeeded
           )
             currentNode.data._runningBranchId = data.outputs?.switch
+          if (data.node_type === BlockEnum.Decision)
+            currentNode.data._runningBranchId = data?.outputs?.outcome_id
           if (data.node_type === BlockEnum.HumanInput)
             currentNode.data._runningBranchId = data?.outputs?.__action_id
         }

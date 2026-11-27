@@ -1459,6 +1459,14 @@ class SkillConfig(BaseSettings):
     )
 
 
+class DecisionNodeConfig(BaseSettings):
+    ENABLE_DECISION_NODE: bool = Field(
+        description="Enable the Decision workflow node: offer it in the editor, serve its generator,"
+        " and run workflows that contain it",
+        default=False,
+    )
+
+
 class WorkspaceConfig(BaseSettings):
     """
     Configuration for workspace management
@@ -1886,6 +1894,7 @@ class FeatureConfig(
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,
+    DecisionNodeConfig,
     EndpointConfig,
     EvaluationConfig,
     FileAccessConfig,

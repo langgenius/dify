@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal, Protocol, TypedDict, cast
 
 import json_repair
@@ -12,10 +12,24 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ModelConfig
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
-from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
+from core.llm_generator.decision_generator import (
+    DecisionBuildResult,
+    DecisionGenerateResultDict,
+    build_decision_config,
+    decision_result_error,
+    fallback_to_llm,
+    parse_decision_payload,
+)
+from core.llm_generator.entities import (
+    DecisionGeneratePayload,
+    RuleCodeGeneratePayload,
+    RuleGeneratePayload,
+    RuleStructuredOutputPayload,
+)
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
+    DECISION_GENERATE_SYSTEM,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     LLM_MODIFY_CODE_SYSTEM,
@@ -23,12 +37,14 @@ from core.llm_generator.prompts import (
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
+    build_decision_generate_user_content,
 )
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.telemetry import PromptGenerationEvent, TelemetryContext
 from core.telemetry import emit as telemetry_emit
+from core.workflow.nodes.decision.entities import DecideBy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -76,6 +92,10 @@ _SUGGESTION_TEMPERATURE = 0.8
 # knowledge bases / tools the tenant has installed.
 _SUGGESTION_KB_LIMIT = 10
 _SUGGESTION_TOOL_SAMPLE_LINES = 20
+
+# Cap on how many validation errors are quoted back to the caller (and the model
+# on the repair retry); enough to name every offending outcome in practice.
+_DECISION_ERROR_SUMMARY_LIMIT = 5
 
 _SUGGESTION_SYSTEM_PROMPT = (
     "You help a user start building a Dify app by proposing example build instructions. "
@@ -688,6 +708,157 @@ class LLMGenerator:
         if error:
             return {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
         return {"output": generated_output, "error": ""}
+
+    @classmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.DECISION_GENERATION)
+    def generate_decision(
+        cls,
+        tenant_id: str,
+        args: DecisionGeneratePayload,
+        *,
+        app_id: str | None = None,
+    ) -> DecisionGenerateResultDict:
+        """Generate a decision node's configuration from one sentence.
+
+        Preconditions: ``args`` passed payload validation; the tenant may use
+        the model named in ``args.model_config_data``. Nothing is stored: the
+        caller writes the returned draft into the node.
+
+        Postconditions: the return value is either a draft-ready configuration
+        validated through the decision node's own entities, or the all-defaults
+        result with a short ``error`` reason. Provider and transport failures
+        keep the existing generator error mapping: model resolution errors
+        propagate to the controller, invoke errors surface as the ``error``
+        field with HTTP 200. Model-side problems (an invalid proposal) get one
+        repair retry; when the model was free to choose the mode, recommended
+        rules and no rule could be written, the proposal falls back to llm
+        mode instead of failing.
+        """
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=args.model_config_data.provider,
+            model=args.model_config_data.name,
+        )
+
+        forced_decide_by = DecideBy(args.decide_by.value) if args.decide_by is not None else None
+        prompt_decide_by: str | None = forced_decide_by.value if forced_decide_by is not None else None
+        decide_by_note = ""
+        if forced_decide_by is None and not args.available_variables:
+            # Code-enforced mode choice: without variables no rule can be written.
+            prompt_decide_by = DecideBy.LLM.value
+            decide_by_note = (
+                "No variables are available to this node, so no rule can be written; decide by language model."
+            )
+
+        def user_content(previous_output: str, validation_errors: Sequence[str]) -> str:
+            return build_decision_generate_user_content(
+                instruction=args.instruction,
+                available_variables=[variable.model_dump() for variable in args.available_variables],
+                decide_by=prompt_decide_by,
+                decide_by_note=decide_by_note,
+                outcomes=[outcome.model_dump() for outcome in args.outcomes],
+                language=args.language,
+                previous_output=previous_output,
+                validation_errors=validation_errors,
+            )
+
+        def invoke(content: str) -> LLMResult:
+            return model_instance.invoke_llm(
+                prompt_messages=[
+                    SystemPromptMessage(content=DECISION_GENERATE_SYSTEM),
+                    UserPromptMessage(content=content),
+                ],
+                model_parameters=args.model_config_data.completion_params,
+                stream=False,
+            )
+
+        def build(payload: Mapping[str, Any]) -> DecisionBuildResult:
+            return build_decision_config(
+                payload,
+                available_variables=args.available_variables,
+                preserved_outcomes=args.outcomes,
+                forced_decide_by=forced_decide_by,
+            )
+
+        response: LLMResult | None = None
+        generated_output = ""
+        result: DecisionGenerateResultDict | None = None
+        validation_errors: list[str] = []
+        attempted_decide_by: DecideBy | None = None
+        valid_rule_groups = 0
+        last_payload: Mapping[str, Any] | None = None
+        error: str | None = None
+        with measure_time() as timer:
+            try:
+                response = invoke(user_content("", ()))
+                generated_output = response.message.get_text_content()
+                payload, parse_error = parse_decision_payload(generated_output)
+                last_payload = payload
+                if payload is not None:
+                    build_result = build(payload)
+                    result = build_result.config
+                    validation_errors = build_result.errors
+                    attempted_decide_by = build_result.attempted_decide_by
+                    valid_rule_groups = build_result.valid_rule_groups
+                else:
+                    validation_errors = [parse_error or "The reply was not a valid JSON object."]
+                if result is None:
+                    # One repair retry: quote the validation errors back to the model, then re-validate.
+                    response = invoke(user_content(generated_output, validation_errors))
+                    generated_output = response.message.get_text_content()
+                    payload, parse_error = parse_decision_payload(generated_output)
+                    last_payload = payload
+                    if payload is not None:
+                        build_result = build(payload)
+                        result = build_result.config
+                        validation_errors = build_result.errors
+                        attempted_decide_by = build_result.attempted_decide_by
+                        valid_rule_groups = build_result.valid_rule_groups
+                    else:
+                        result = None
+                        validation_errors = [parse_error or "The reply was not a valid JSON object."]
+            except InvokeError as invoke_error:
+                error = str(invoke_error)
+            except Exception as unexpected_error:
+                logger.exception("Failed to invoke LLM model, model: %s", args.model_config_data.name)
+                error = str(unexpected_error)
+
+        validation_error_summary = "; ".join(validation_errors[:_DECISION_ERROR_SUMMARY_LIMIT])
+        cls._emit_prompt_generation(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            operation_type="decision_generate",
+            instruction=args.instruction,
+            generated_output=generated_output,
+            model_provider=args.model_config_data.provider,
+            model_name=args.model_config_data.name,
+            timer=timer,
+            result=response,
+            error=error or (validation_error_summary or None),
+        )
+
+        if error is not None:
+            return decision_result_error(f"Failed to generate the decision configuration. Error: {error}")
+        if result is not None:
+            return result
+        # The model was free to choose the mode; when it recommended rules but
+        # no rule could be written, fall back to deciding by language model.
+        if (
+            forced_decide_by is None
+            and attempted_decide_by is DecideBy.RULES
+            and valid_rule_groups == 0
+            and last_payload is not None
+        ):
+            fallback = fallback_to_llm(
+                last_payload,
+                available_variables=args.available_variables,
+                preserved_outcomes=args.outcomes,
+            )
+            if fallback is not None:
+                return fallback
+        return decision_result_error("Failed to generate the decision configuration: " + validation_error_summary)
 
     @staticmethod
     @with_credit_usage_created_by(CreditUsageCreatedBy.INSTRUCTION_MODIFICATION)

@@ -8,6 +8,7 @@ import AnswerNode from './answer/node'
 import AssignerNode from './assigner/node'
 import CodeNode from './code/node'
 import DataSourceNode from './data-source/node'
+import DecisionNode from './decision/node'
 import DocExtractorNode from './document-extractor/node'
 import EndNode from './end/node'
 import HttpNode from './http/node'
@@ -52,6 +53,7 @@ export const NodeComponentMap = {
   [BlockEnum.KnowledgeRetrievalV2]: KnowledgeRetrievalV2Node,
   [BlockEnum.QuestionClassifier]: QuestionClassifierNode,
   [BlockEnum.IfElse]: IfElseNode,
+  [BlockEnum.Decision]: DecisionNode,
   [BlockEnum.Code]: CodeNode,
   [BlockEnum.TemplateTransform]: TemplateTransformNode,
   [BlockEnum.HttpRequest]: HttpNode,

@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 import configs.feature as feature_config
-from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig, LoggingConfig
+from configs.feature import AuthConfig, DataSetConfig, DecisionNodeConfig, FileUploadConfig, LoggingConfig
 from tests.helpers.unit.configs._isolated_settings import InitSettingsOnly
 
 
@@ -15,6 +15,21 @@ class _IsolatedAuthConfig(InitSettingsOnly, AuthConfig):
 
 class _IsolatedDataSetConfig(InitSettingsOnly, DataSetConfig):
     pass
+
+
+class _IsolatedDecisionNodeConfig(InitSettingsOnly, DecisionNodeConfig):
+    pass
+
+
+def test_decision_node_is_disabled_by_default() -> None:
+    assert _IsolatedDecisionNodeConfig().ENABLE_DECISION_NODE is False
+
+
+@pytest.mark.parametrize(("configured", "expected"), [("true", True), ("false", False)])
+def test_decision_node_reads_environment(monkeypatch: pytest.MonkeyPatch, configured: str, expected: bool) -> None:
+    monkeypatch.setenv("ENABLE_DECISION_NODE", configured)
+
+    assert DecisionNodeConfig(_env_file=None).ENABLE_DECISION_NODE is expected
 
 
 def test_dataset_description_max_length_defaults_to_400() -> None:

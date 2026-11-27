@@ -203,6 +203,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         {data.type !== BlockEnum.StartPlaceholder &&
           data.type !== BlockEnum.IfElse &&
           data.type !== BlockEnum.QuestionClassifier &&
+          data.type !== BlockEnum.Decision &&
           !hasAgentV2OutputRoutes(data) &&
           data.type !== BlockEnum.HumanInput &&
           !data._isCandidate && (

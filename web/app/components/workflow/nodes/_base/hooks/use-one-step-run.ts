@@ -30,6 +30,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
+import DecisionDefault from '@/app/components/workflow/nodes/decision/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
 import HumanInputV2Default from '@/app/components/workflow/nodes/human-input-v2/default'
@@ -148,6 +149,7 @@ const { checkValid: checkIfElseValid } = IfElseDefault
 const { checkValid: checkCodeValid } = CodeDefault
 const { checkValid: checkTemplateTransformValid } = TemplateTransformDefault
 const { checkValid: checkQuestionClassifyValid } = QuestionClassifyDefault
+const { checkValid: checkDecisionValid } = DecisionDefault
 const { checkValid: checkHttpValid } = HTTPDefault
 const { checkValid: checkToolValid } = ToolDefault
 const { checkValid: checkVariableAssignerValid } = VariableAssigner
@@ -167,6 +169,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.Code]: checkCodeValid,
   [BlockEnum.TemplateTransform]: checkTemplateTransformValid,
   [BlockEnum.QuestionClassifier]: checkQuestionClassifyValid,
+  [BlockEnum.Decision]: checkDecisionValid,
   [BlockEnum.HttpRequest]: checkHttpValid,
   [BlockEnum.Tool]: checkToolValid,
   [BlockEnum.VariableAssigner]: checkAssignerValid,

@@ -57,6 +57,7 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
           />
           {data.type !== BlockEnum.IfElse &&
             data.type !== BlockEnum.QuestionClassifier &&
+            data.type !== BlockEnum.Decision &&
             data.type !== BlockEnum.HumanInput &&
             !hasAgentV2OutputRoutes(data) && (
               <NodeSourceHandle

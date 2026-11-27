@@ -28,6 +28,7 @@ from core.workflow.llm_environment_variable import (
     should_resolve_llm_model_selector,
 )
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE, DecideBy, DecisionNodeData
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_redis import redis_client
@@ -811,6 +812,16 @@ class RagPipelineDslService:
                                 parameter_extractor_entity.model.provider
                             ),
                         )
+                    case _ if typ == DECISION_NODE_TYPE:
+                        decision_entity = DecisionNodeData.model_validate(node["data"])
+                        # Only llm mode calls the model; a rules node may still
+                        # carry the model of an earlier llm configuration.
+                        if decision_entity.decide_by is DecideBy.LLM and decision_entity.model is not None:
+                            dependencies.append(
+                                DependenciesAnalysisService.analyze_model_provider_dependency(
+                                    decision_entity.model.provider
+                                ),
+                            )
                     case _ if typ == KNOWLEDGE_INDEX_NODE_TYPE:
                         knowledge_index_entity = KnowledgeConfiguration.model_validate(node["data"])
                         if knowledge_index_entity.indexing_technique == IndexTechniqueType.HIGH_QUALITY:

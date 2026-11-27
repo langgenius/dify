@@ -4855,3 +4855,66 @@ def test_convert_to_workflow_inherits_webapp_access(
         assert workflow.version == Workflow.VERSION_DRAFT
         assert verification.scalar(select(Site).where(Site.app_id == target.id)) is not None
         assert verification.scalar(select(InstalledApp).where(InstalledApp.app_id == target.id)) is not None
+
+
+def test_decision_node_credentials_are_checked_only_in_llm_mode(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """F6: a rules node keeps the model of an earlier llm configuration; publishing needs no credentials for it."""
+    checked: list[tuple[str, str]] = []
+    service = WorkflowService(session_maker=sqlite_session_factory)
+    monkeypatch.setattr(
+        service,
+        "_validate_llm_model_config",
+        lambda _tenant_id, provider, model_name: checked.append((provider, model_name)),
+    )
+    monkeypatch.setattr(service, "_validate_load_balancing_credentials", lambda *_args, **_kwargs: None)
+    model = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+
+    service.validate_node_credentials(
+        "tenant-1",
+        {"id": "decision", "data": {"type": "decision", "title": "Decision", "decide_by": "rules", "model": model}},
+        {},
+        session=sqlite_session,
+    )
+
+    assert checked == []
+
+    service.validate_node_credentials(
+        "tenant-1",
+        {"id": "decision", "data": {"type": "decision", "title": "Decision", "decide_by": "llm", "model": model}},
+        {},
+        session=sqlite_session,
+    )
+
+    assert checked == [("openai", "gpt-4o")]
+
+
+def test_decision_node_credentials_are_skipped_without_a_complete_model_and_for_unrelated_nodes(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An llm decision node without a provider and name, or a node that uses no model, has no credential to check."""
+    checked: list[tuple[str, str]] = []
+    service = WorkflowService(session_maker=sqlite_session_factory)
+    monkeypatch.setattr(
+        service,
+        "_validate_llm_model_config",
+        lambda _tenant_id, provider, model_name: checked.append((provider, model_name)),
+    )
+    monkeypatch.setattr(service, "_validate_load_balancing_credentials", lambda *_args, **_kwargs: None)
+
+    for node in (
+        {"id": "decision", "data": {"type": "decision", "title": "Decision", "decide_by": "llm"}},
+        {
+            "id": "decision",
+            "data": {"type": "decision", "title": "Decision", "decide_by": "llm", "model": {"provider": "openai"}},
+        },
+        {"id": "code", "data": {"type": "code", "title": "Code"}},
+    ):
+        service.validate_node_credentials("tenant-1", node, {}, session=sqlite_session)
+
+    assert checked == []

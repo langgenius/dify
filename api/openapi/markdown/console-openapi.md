@@ -8012,6 +8012,23 @@ Delete an API key for a dataset
 | 204 | API key deleted successfully |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /decision-generate
+Generate a decision node configuration from one sentence using LLM
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DecisionGeneratePayload](#decisiongeneratepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Decision configuration generated successfully | **application/json**: [DecisionGenerateResponse](#decisiongenerateresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /email-code-login
 #### Request Body
 
@@ -26472,6 +26489,109 @@ Delivery selection for editor debugging, resolved to current channel configurati
 | channels | [ [DebugChannel](#debugchannel) ] |  | Yes |
 | enabled | boolean |  | No |
 
+#### DecisionGenerateConditionResponse
+
+One rule condition, in the shape the If-Else node stores.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | string |  | Yes |
+| value | string<br>[ string ]<br>boolean |  | No |
+| variable_selector | [ string ] |  | Yes |
+
+#### DecisionGenerateInputResponse
+
+One variable handed to the deciding model in llm mode.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| value_selector | [ string ] |  | Yes |
+| variable | string |  | Yes |
+
+#### DecisionGenerateMode
+
+How the decision node should pick an outcome.
+
+``decision_model`` is reserved for a later phase and is never generated, so
+it is not accepted here either.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DecisionGenerateMode | string | How the decision node should pick an outcome.  ``decision_model`` is reserved for a later phase and is never generated, so it is not accepted here either. |  |
+
+#### DecisionGenerateOtherwiseResponse
+
+The fallback exit: only a label for "none of the above or unable to tell".
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | No |
+
+#### DecisionGenerateOutcome
+
+An outcome the author already configured; the generator keeps it and only writes its 'when'.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string | Existing outcome id; kept exactly | Yes |
+| label | string | Existing outcome label; kept exactly | No |
+
+#### DecisionGenerateOutcomeResponse
+
+One generated outcome; ``when`` is a rule group (rules) or a sentence (llm).
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | No |
+| when | [DecisionGenerateRuleGroupResponse](#decisiongeneraterulegroupresponse)<br>string |  | No |
+
+#### DecisionGeneratePayload
+
+Payload for the decision-node configuration generator.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_variables | [ [DecisionGenerateVariable](#decisiongeneratevariable) ] | Variables the node can read from upstream, with their workflow types | No |
+| decide_by | [DecisionGenerateMode](#decisiongeneratemode) | Force the deciding mode ('rules' or 'llm'); null lets the generator recommend one | No |
+| instruction | string | The author's one-sentence description of the decision | Yes |
+| language | string | Locale for labels and reasons; when absent the instruction's language is used | No |
+| model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
+| outcomes | [ [DecisionGenerateOutcome](#decisiongenerateoutcome) ] | Existing outcomes to keep (id and label); the generator only writes their 'when' | No |
+
+#### DecisionGenerateResponse
+
+Draft-ready decision node configuration; the frontend writes it into the node, nothing is stored.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| decide_by | string | 'rules', 'llm', or empty when generation failed | Yes |
+| decide_by_reason | string | Why this mode fits the instruction | No |
+| error | string | Failure reason, empty on success | No |
+| extras | [ object ] | Extra outputs, only when the instruction asks for them | No |
+| inputs | [ [DecisionGenerateInputResponse](#decisiongenerateinputresponse) ] | Variables handed to the deciding model (llm mode only) | No |
+| otherwise | [DecisionGenerateOtherwiseResponse](#decisiongenerateotherwiseresponse) |  | No |
+| outcomes | [ [DecisionGenerateOutcomeResponse](#decisiongenerateoutcomeresponse) ] |  | No |
+
+#### DecisionGenerateRuleGroupResponse
+
+One rules-mode ``when``: conditions combined with a logical operator.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [DecisionGenerateConditionResponse](#decisiongenerateconditionresponse) ] |  | No |
+| logical_operator | string |  | Yes |
+
+#### DecisionGenerateVariable
+
+One variable the decision node can read from upstream nodes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Optional human description of the variable | No |
+| type | string | Workflow variable type the frontend uses ('string', 'number', 'boolean', 'array[string]', ...) | Yes |
+| value_selector | [ string ] | Selector path of the variable, e.g. ['start', 'amount'] | Yes |
+
 #### DeclaredArrayItem
 
 Per-item shape for an ``array``-typed declared output.
@@ -28106,6 +28226,7 @@ Effective feature availability and limits for the current workspace.
 | can_replace_logo | boolean |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
+| enable_decision_node | boolean |  | Yes |
 | enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |

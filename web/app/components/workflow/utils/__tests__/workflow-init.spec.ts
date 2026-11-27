@@ -270,6 +270,61 @@ describe('initialNodes', () => {
     expect(result[0]!.data._targetBranches).toEqual([{ id: 'cls-1', name: 'Class 1' }])
   })
 
+  it('fills the defaults the backend gives a trimmed Decision node', () => {
+    // A DSL the backend accepts may omit every field that has a default.
+    const nodes = [
+      createNode({
+        id: 'decision-1',
+        data: {
+          type: BlockEnum.Decision,
+          title: 'Decision',
+          desc: '',
+          outcomes: [
+            { id: 'refund', when: 'wants money back' },
+            { id: 'vip', label: 'VIP', when: { conditions: [] } },
+          ],
+          extras: [{ name: 'note' }],
+        },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+    expect(result[0]!.data).toMatchObject({
+      intent: '',
+      decide_by: 'rules',
+      outcomes: [
+        { id: 'refund', label: '', when: 'wants money back' },
+        { id: 'vip', label: 'VIP', when: { logical_operator: 'and', conditions: [] } },
+      ],
+      otherwise: { label: '' },
+      inputs: [],
+      context: { glossary: '', prompt: '' },
+      extras: [{ name: 'note', from: 'fixed', values: {}, hint: '' }],
+      _targetBranches: [
+        { id: 'refund', name: '' },
+        { id: 'vip', name: 'VIP' },
+        { id: 'otherwise', name: '' },
+      ],
+    })
+  })
+
+  it('keeps the values a Decision node already has', () => {
+    const data = {
+      type: BlockEnum.Decision,
+      title: 'Decision',
+      desc: '',
+      intent: 'Refund or not',
+      decide_by: 'llm',
+      outcomes: [{ id: 'refund', label: 'Refund', when: 'wants money back' }],
+      otherwise: { label: 'Escalate' },
+      inputs: [{ variable: 'query', value_selector: ['start', 'query'] }],
+      context: { glossary: 'VIP: a paying customer', prompt: '' },
+      extras: [{ name: 'note', from: 'model', values: {}, hint: 'why' }],
+    }
+
+    const result = initialNodes([createNode({ id: 'decision-1', data })], [])
+    expect(result[0]!.data).toMatchObject(data)
+  })
   it.each([{}, { classes: 'missing' }])(
     'initializes an empty class list and no branches for classifier fields %j',
     (classFields) => {

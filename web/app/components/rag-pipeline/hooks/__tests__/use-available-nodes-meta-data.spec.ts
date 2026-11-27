@@ -62,3 +62,13 @@ it('hides Knowledge Retrieval V2 when KnowledgeFS is unavailable', () => {
   expect(types).not.toContain(BlockEnum.KnowledgeRetrievalV2)
   expect(result.current.nodesMap[BlockEnum.KnowledgeRetrievalV2]).toBeUndefined()
 })
+
+it.each([true, false])('offers Decision only while its switch is on (enabled=%s)', (enabled) => {
+  const { result } = renderHookWithConsoleQuery(() => useAvailableNodesMetaData(), {
+    features: { enable_knowledge_fs: true, enable_decision_node: enabled },
+  })
+  const types = result.current.nodes.map((node) => node.metaData.type)
+  expect(types.includes(BlockEnum.Decision)).toBe(enabled)
+  // An existing Decision node keeps its metadata either way.
+  expect(result.current.nodesMap[BlockEnum.Decision]).toBeDefined()
+})

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from constants.trigger import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
-from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.node_factory import disabled_node_type_error, resolve_workflow_node_class
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes
@@ -141,6 +141,11 @@ def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type
 def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
     raw_data: Mapping[str, Any] = raw["data"]
     node_type = str(raw_data.get("type", ""))
+    # A type a deployment switch turns off is unknown to this server: the run would refuse it.
+    disabled_error = disabled_node_type_error(node_type)
+    if disabled_error is not None:
+        issue = GraphIssue(IssueCode.UNKNOWN_NODE_TYPE, str(disabled_error), node_id, _data_loc(node_id, "type"))
+        return _Node(node_id, raw_data, (issue,))
     try:
         node_class = resolve_workflow_node_class(
             node_type=node_type, node_version=str(raw_data.get("version", "1")), node_data=raw_data

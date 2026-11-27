@@ -37,6 +37,7 @@ from core.workflow.llm_environment_variable import (
     should_resolve_llm_model_selector,
 )
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE, DecideBy, DecisionNodeData
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from enums import DeploymentEdition
@@ -1268,6 +1269,16 @@ class AppDslService:
                                 parameter_extractor_entity.model.provider
                             ),
                         )
+                    case _ if typ == DECISION_NODE_TYPE:
+                        decision_entity = DecisionNodeData.model_validate(node["data"])
+                        # Only llm mode calls the model; a rules node may still
+                        # carry the model of an earlier llm configuration.
+                        if decision_entity.decide_by is DecideBy.LLM and decision_entity.model is not None:
+                            dependencies.append(
+                                DependenciesAnalysisService.analyze_model_provider_dependency(
+                                    decision_entity.model.provider
+                                ),
+                            )
                     case BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":

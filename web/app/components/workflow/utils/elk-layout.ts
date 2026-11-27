@@ -1,4 +1,5 @@
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
+import type { DecisionNodeType } from '@/app/components/workflow/nodes/decision/types'
 import type { HumanInputSharedNodeType } from '@/app/components/workflow/nodes/human-input/shared/types'
 import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
 import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
@@ -10,6 +11,7 @@ import {
   NODE_LAYOUT_VERTICAL_PADDING,
 } from '@/app/components/workflow/constants'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
+import { OTHERWISE_HANDLE_ID } from '@/app/components/workflow/nodes/decision/types'
 import { HUMAN_INPUT_TIMEOUT_HANDLE } from '@/app/components/workflow/nodes/human-input/shared/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
@@ -311,6 +313,26 @@ const sortQuestionClassifierOutEdges = (classifierNode: Node, outEdges: Edge[]):
   })
 }
 
+const sortDecisionOutEdges = (decisionNode: Node, outEdges: Edge[]): Edge[] => {
+  return [...outEdges].sort((edgeA, edgeB) => {
+    const handleA = edgeA.sourceHandle
+    const handleB = edgeB.sourceHandle
+
+    if (handleA && handleB) {
+      const outcomes = (decisionNode.data as DecisionNodeType).outcomes || []
+      if (handleA === OTHERWISE_HANDLE_ID) return 1
+      if (handleB === OTHERWISE_HANDLE_ID) return -1
+
+      const indexA = outcomes.findIndex((outcome) => outcome.id === handleA)
+      const indexB = outcomes.findIndex((outcome) => outcome.id === handleB)
+
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+    }
+
+    return 0
+  })
+}
+
 const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] => {
   return [...outEdges].sort((edgeA, edgeB) => {
     const handleA = edgeA.sourceHandle
@@ -385,6 +407,7 @@ const buildPortAwareGraph = (nodes: Node[], originEdges: Edge[]) => {
     if (node.data.type === BlockEnum.IfElse) outEdges = sortIfElseOutEdges(node, outEdges)
     else if (node.data.type === BlockEnum.QuestionClassifier || hasAgentV2OutputRoutes(node.data))
       outEdges = sortQuestionClassifierOutEdges(node, outEdges)
+    else if (node.data.type === BlockEnum.Decision) outEdges = sortDecisionOutEdges(node, outEdges)
     else if (node.data.type === BlockEnum.HumanInput)
       outEdges = sortHumanInputOutEdges(node, outEdges)
 

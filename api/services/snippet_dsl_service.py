@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE, DecideBy
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -640,12 +641,16 @@ class SnippetDslService:
                 BuiltinNodeTypes.LLM,
                 BuiltinNodeTypes.QUESTION_CLASSIFIER,
                 BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+                DECISION_NODE_TYPE,
             ):
-                model = node_data.get("model")
-                if isinstance(model, Mapping) and isinstance(model.get("provider"), str) and model["provider"]:
-                    dependencies.append(
-                        DependenciesAnalysisService.analyze_model_provider_dependency(model["provider"])
-                    )
+                # Only llm mode calls the model; a rules node may still carry
+                # the model of an earlier llm configuration.
+                if data_type != DECISION_NODE_TYPE or node_data.get("decide_by") == DecideBy.LLM.value:
+                    model = node_data.get("model")
+                    if isinstance(model, Mapping) and isinstance(model.get("provider"), str) and model["provider"]:
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(model["provider"])
+                        )
             elif data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 if node_data.get("retrieval_mode") == "single":
                     model_config = node_data.get("single_retrieval_config") or {}

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from constants.trigger import TRIGGER_NODE_TYPES
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE
 from core.workflow.nodes.human_input.constants import TIMEOUT_HANDLE
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
 
@@ -25,6 +26,7 @@ SOURCE_HANDLE: Final = "source"
 _ELSE_HANDLE: Final = "false"
 _LEGACY_IF_HANDLE: Final = "true"
 _FAIL_BRANCH_HANDLE: Final = ErrorStrategy.FAIL_BRANCH.value
+_DECISION_OTHERWISE_HANDLE: Final = "otherwise"
 
 _TEMPLATE_REFERENCE_PATTERN = re.compile(
     r"\{\{#([a-zA-Z0-9_]{1,50})\.[a-zA-Z_][a-zA-Z0-9_]{0,29}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){0,9}#\}\}"
@@ -49,6 +51,10 @@ def _question_classifier_handles(data: Mapping[str, Any]) -> frozenset[str]:
     return _ids(data.get("classes"), "id")
 
 
+def _decision_handles(data: Mapping[str, Any]) -> frozenset[str]:
+    return _ids(data.get("outcomes"), "id") | {_DECISION_OTHERWISE_HANDLE}
+
+
 def _human_input_handles(data: Mapping[str, Any]) -> frozenset[str]:
     return _ids(data.get("user_actions"), "id") | {TIMEOUT_HANDLE}
 
@@ -65,6 +71,7 @@ _BRANCH_HANDLES: Final[Mapping[str, Callable[[Mapping[str, Any]], frozenset[str]
     BuiltinNodeTypes.QUESTION_CLASSIFIER: _question_classifier_handles,
     BuiltinNodeTypes.HUMAN_INPUT: _human_input_handles,
     BuiltinNodeTypes.AGENT: _agent_route_handles,
+    DECISION_NODE_TYPE: _decision_handles,
 }
 
 

@@ -52,6 +52,8 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
+from core.workflow.nodes.decision.entities import DECISION_NODE_TYPE, DecideBy, DecisionNodeData
+from core.workflow.nodes.decision.exc import DecisionNodeDisabledError
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
@@ -179,6 +181,23 @@ def resolve_workflow_node_class(
     return node_class
 
 
+def disabled_node_type_error(node_type: str) -> DecisionNodeDisabledError | None:
+    """The error that refuses ``node_type`` on this deployment, if a deployment switch turns it off.
+
+    The one rule every place that offers, checks or builds a node shares, so a
+    switched-off type is hidden from discovery, reported by graph checks and
+    refused by the factory alike.
+
+    Precondition: ``node_type`` is a node data ``type`` string, known or not.
+    Postcondition: returns ``DecisionNodeDisabledError`` for a decision node while
+    ``ENABLE_DECISION_NODE`` is off; returns ``None`` (the type is not switched
+    off here) for every other case. Reads ``dify_config`` and has no side effects.
+    """
+    if node_type == DECISION_NODE_TYPE and not dify_config.ENABLE_DECISION_NODE:
+        return DecisionNodeDisabledError()
+    return None
+
+
 def is_start_node_type(node_type: NodeType) -> bool:
     """Return True when the node type can serve as a workflow entry point."""
     return node_type in _START_NODE_TYPES
@@ -269,6 +288,9 @@ NODE_TYPE_CLASSES_MAPPING: MutableMapping[NodeType, Mapping[str, type[Node]]] = 
 
 
 type LLMCompatibleNodeData = LLMNodeData | QuestionClassifierNodeData | ParameterExtractorNodeData
+
+#: Node data that carries a `model` field the factory can turn into a model instance.
+type ModelBackedNodeData = LLMCompatibleNodeData | DecisionNodeData
 
 
 def fetch_memory(
@@ -487,7 +509,9 @@ class DifyNodeFactory(NodeFactory):
         :return: initialized Node instance
         :raises ValueError: if node_config fails NodeConfigDict/BaseNodeData validation
             (including pydantic ValidationError, which subclasses ValueError),
-            if node type is unknown, or if no implementation exists for the resolved version
+            if node type is unknown, if no implementation exists for the resolved version,
+            or (``DecisionNodeDisabledError``) if it is a decision node while
+            ``ENABLE_DECISION_NODE`` is off
         """
         adapted_node_config, typed_node_config, node_class, resolved_node_data = self._validate_node_config(node_config)
         node_id = typed_node_config["id"]
@@ -563,6 +587,9 @@ class DifyNodeFactory(NodeFactory):
                 include_retriever_attachment_loader=False,
                 include_jinja2_template_renderer=False,
             ),
+            DECISION_NODE_TYPE: lambda: self._build_decision_node_init_kwargs(
+                node_data=resolved_node_data,
+            ),
             BuiltinNodeTypes.TOOL: lambda: {
                 "tool_file_manager": self._bound_tool_file_manager_factory(),
                 "runtime": self._tool_runtime,
@@ -602,6 +629,11 @@ class DifyNodeFactory(NodeFactory):
         adapted_node_config = adapt_node_config_for_graph(node_config)
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_data = typed_node_config["data"]
+        # Shared by `validate_node` and `create_node`, so a disabled decision node
+        # fails graph validation before any node in the graph is constructed.
+        disabled_error = disabled_node_type_error(node_data.type)
+        if disabled_error is not None:
+            raise disabled_error
         node_class = self._resolve_node_class_for_factory(
             node_type=node_data.type,
             node_version=str(node_data.version),
@@ -731,6 +763,42 @@ class DifyNodeFactory(NodeFactory):
             execution_id_getter=execution_id_getter,
         )
 
+    def _build_decision_node_init_kwargs(
+        self,
+        *,
+        node_data: BaseNodeData,
+    ) -> dict[str, object]:
+        """Build model collaborators only for the LLM-driven mode.
+
+        ``rules`` mode evaluates conditions and must not require a model, so a
+        node without a model gets no model kwargs at all.
+        """
+        if not isinstance(node_data, DecisionNodeData):
+            return {}
+        if node_data.decide_by != DecideBy.LLM or node_data.model is None:
+            return {}
+        model_instance = self._build_model_instance_for_llm_node(node_data)
+        return {
+            "model_instance": self._wrap_model_instance_for_node(
+                node_data=node_data,
+                model_instance=model_instance,
+                request_metadata=self._build_request_metadata(),
+            ),
+            "llm_file_saver": self._llm_file_saver,
+            "prompt_message_serializer": self._prompt_message_serializer,
+        }
+
+    def _build_request_metadata(self) -> dict[str, object]:
+        request_metadata: dict[str, object] = {"app_id": self._dify_context.app_id}
+        app_type = self._dify_context.app_type
+        created_by = self._dify_context.created_by
+        if app_type is not None:
+            request_metadata["app_type"] = app_type
+            request_metadata["created_by"] = created_by_from_app_type(app_type)
+        elif created_by is not None:
+            request_metadata["created_by"] = created_by
+        return request_metadata
+
     def _build_llm_compatible_node_init_kwargs(
         self,
         *,
@@ -745,14 +813,7 @@ class DifyNodeFactory(NodeFactory):
     ) -> dict[str, object]:
         validated_node_data = cast(LLMCompatibleNodeData, node_data)
         model_instance = self._build_model_instance_for_llm_node(validated_node_data)
-        request_metadata: dict[str, object] = {"app_id": self._dify_context.app_id}
-        app_type = self._dify_context.app_type
-        created_by = self._dify_context.created_by
-        if app_type is not None:
-            request_metadata["app_type"] = app_type
-            request_metadata["created_by"] = created_by_from_app_type(app_type)
-        elif created_by is not None:
-            request_metadata["created_by"] = created_by
+        request_metadata = self._build_request_metadata()
 
         node_model_instance = (
             self._wrap_model_instance_for_node(
@@ -794,7 +855,7 @@ class DifyNodeFactory(NodeFactory):
     @staticmethod
     def _wrap_model_instance_for_node(
         *,
-        node_data: LLMCompatibleNodeData,
+        node_data: ModelBackedNodeData,
         model_instance: ModelInstance,
         request_metadata: Mapping[str, object] | None = None,
     ) -> DifyPreparedLLM:
@@ -841,8 +902,15 @@ class DifyNodeFactory(NodeFactory):
 
         return checker
 
-    def _build_model_instance_for_llm_node(self, node_data: LLMCompatibleNodeData) -> ModelInstance:
+    def _build_model_instance_for_llm_node(self, node_data: ModelBackedNodeData) -> ModelInstance:
+        """Build the model instance for node data that carries a model.
+
+        Precondition: ``node_data.model`` is set. Callers that allow an absent
+        model (the decision node in ``rules`` mode) must check before calling.
+        """
         node_data_model = node_data.model
+        if node_data_model is None:
+            raise ValueError("Node data has no model configured")
         model_instance, _ = fetch_model_config(
             node_data_model=node_data_model,
             credentials_provider=self._llm_credentials_provider,

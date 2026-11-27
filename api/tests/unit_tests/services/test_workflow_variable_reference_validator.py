@@ -535,6 +535,71 @@ class TestAgentOutputRoutes:
         assert validate_variable_references(graph) == []
 
 
+def _decision(*outcome_ids: str, **extra: object) -> dict[str, object]:
+    return {"type": "decision", "outcomes": [{"id": outcome_id} for outcome_id in outcome_ids], **extra}
+
+
+class TestDecisionBranchHandles:
+    """The decision node leaves by one of its outcome ids or by ``otherwise``."""
+
+    def test_outcome_ids_plus_otherwise(self) -> None:
+        assert branch_handles(_decision("refund", "human")) == {"refund", "human", "otherwise"}
+
+    def test_no_outcomes_still_exposes_otherwise(self) -> None:
+        assert branch_handles(_decision()) == {"otherwise"}
+
+    def test_fail_branch_adds_its_handle(self) -> None:
+        assert branch_handles(_decision("refund", error_strategy="fail-branch")) == {
+            "refund",
+            "otherwise",
+            "fail-branch",
+        }
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            {"type": "decision", "outcomes": None},
+            {"type": "decision", "outcomes": "refund"},
+            {"type": "decision", "outcomes": [{"name": "no id"}, "refund", None]},
+        ],
+    )
+    def test_malformed_outcomes_are_skipped(self, data: dict[str, object]) -> None:
+        assert branch_handles(data) == {"otherwise"}
+
+
+class TestDecisionVariableReferences:
+    def _graph(self, *edges: dict[str, str]) -> dict[str, object]:
+        return {
+            "nodes": [
+                _node("start", "start", "Start"),
+                {"id": "router", "data": _decision("refund", "human")},
+                _node("prod", "tool", "Prod"),
+                _node("cons", "llm", "Cons", selector=["prod", "text"]),
+            ],
+            "edges": list(edges),
+        }
+
+    def test_reference_from_a_skipped_outcome_is_flagged(self) -> None:
+        graph = self._graph(
+            _edge("start", "router"),
+            _edge("start", "cons"),
+            _edge("router", "prod", "refund"),
+        )
+
+        assert [(issue.node_id, issue.referenced_node_id) for issue in validate_variable_references(graph)] == [
+            ("cons", "prod")
+        ]
+
+    def test_reference_on_the_same_outcome_is_clean(self) -> None:
+        graph = self._graph(
+            _edge("start", "router"),
+            _edge("router", "prod", "refund"),
+            _edge("router", "cons", "refund"),
+        )
+
+        assert validate_variable_references(graph) == []
+
+
 class TestFailBranchOnBranchNodes:
     def test_classifier_whose_every_exit_runs_the_producer_is_not_flagged(self) -> None:
         router = _node("router", "question-classifier")

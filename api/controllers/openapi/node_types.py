@@ -14,7 +14,7 @@ from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._errors import NodeTypeNotFound
 from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResponse, NodeTypeRow
 from controllers.openapi.auth.context import Context
-from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
+from core.workflow.node_factory import LATEST_VERSION, disabled_node_type_error, get_node_type_classes_mapping
 from services.workflow.node_defaults import complete_sub_models, node_data_type
 from services.workflow_service import WorkflowService
 
@@ -37,9 +37,11 @@ class NodeTypeListApi(Resource):
         returns=(HTTPStatus.OK, NodeTypeListResponse, "Node types"),
     )
     def get(self, ctx: Context):
+        # A type a deployment switch turns off is left out: the server would refuse to run it.
         rows = [
             NodeTypeRow(type=str(node_type), version=versions[LATEST_VERSION].version())
             for node_type, versions in get_node_type_classes_mapping().items()
+            if disabled_node_type_error(str(node_type)) is None
         ]
         return NodeTypeListResponse(data=sorted(rows, key=lambda row: row.type))
 
@@ -56,7 +58,7 @@ class NodeTypeDetailApi(Resource):
     )
     def get(self, ctx: Context, node_type: str):
         node_class = get_node_type_classes_mapping().get(node_type, {}).get(LATEST_VERSION)
-        if node_class is None:
+        if node_class is None or disabled_node_type_error(node_type) is not None:
             raise NodeTypeNotFound()
         model = node_data_type(node_type, node_class)
         return NodeTypeDetailResponse(

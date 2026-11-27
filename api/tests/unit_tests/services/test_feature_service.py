@@ -457,6 +457,20 @@ def test_skill_feature_follows_env_config(config_overrides: Callable[..., None])
     assert features.enable_skill is True
 
 
+def test_decision_node_feature_is_disabled_by_default() -> None:
+    assert FeatureModel().enable_decision_node is False
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_decision_node_feature_follows_env_config(config_overrides: Callable[..., None], enabled: bool) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_DECISION_NODE=enabled)
+
+    features = FeatureService.get_features("")
+
+    assert features.enable_decision_node is enabled
+    assert features.model_dump(mode="json")["enable_decision_node"] is enabled
+
+
 @pytest.mark.parametrize("enabled", [True, False])
 def test_knowledge_fs_feature_follows_deployment_availability(
     config_overrides: Callable[..., None], enabled: bool

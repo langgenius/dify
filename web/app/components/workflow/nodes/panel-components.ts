@@ -14,6 +14,7 @@ const AnswerPanel = lazyPanel(() => import('./answer/panel'))
 const AssignerPanel = lazyPanel(() => import('./assigner/panel'))
 const CodePanel = lazyPanel(() => import('./code/panel'))
 const DataSourcePanel = lazyPanel(() => import('./data-source/panel'))
+const DecisionPanel = lazyPanel(() => import('./decision/panel'))
 const DocExtractorPanel = lazyPanel(() => import('./document-extractor/panel'))
 const EndPanel = lazyPanel(() => import('./end/panel'))
 const HttpPanel = lazyPanel(() => import('./http/panel'))
@@ -69,6 +70,7 @@ export const PanelComponentMap = {
   [BlockEnum.KnowledgeRetrievalV2]: KnowledgeRetrievalV2Panel,
   [BlockEnum.QuestionClassifier]: QuestionClassifierPanel,
   [BlockEnum.IfElse]: IfElsePanel,
+  [BlockEnum.Decision]: DecisionPanel,
   [BlockEnum.Code]: CodePanel,
   [BlockEnum.TemplateTransform]: TemplateTransformPanel,
   [BlockEnum.HttpRequest]: HttpPanel,

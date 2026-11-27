@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Callable, Mapping
-from typing import Protocol, cast
+from typing import Protocol, cast, runtime_checkable
 
 import pytest
 from flask import Flask
@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import node_types
-from controllers.openapi._models import NodeTypeDetailResponse
+from controllers.openapi._errors import NodeTypeNotFound
+from controllers.openapi._models import NodeTypeDetailResponse, NodeTypeListResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from graphon.enums import BuiltinNodeTypes
@@ -18,6 +19,7 @@ from libs.oauth_bearer import AuthContext
 from services.workflow_service import WorkflowService
 
 
+@runtime_checkable
 class _EndpointView(Protocol):
     __handler__: Callable[..., object]
 
@@ -48,6 +50,54 @@ def describe(
             return cast(NodeTypeDetailResponse, cast(_EndpointView, api.get).__handler__(api, ctx, node_type))
 
     return run
+
+
+@pytest.fixture
+def list_types(app: Flask, sqlite_session: Session) -> Callable[[], list[str]]:
+    auth = AuthContext(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        subject_email="caller@example.com",
+        subject_issuer="dify:account",
+        account_id=uuid.uuid4(),
+        client_id="difyctl",
+        token_id=uuid.uuid4(),
+        expires_at=None,
+    )
+
+    def run() -> list[str]:
+        ctx = Context(AccountSubject(auth), sqlite_session, {})
+        api = node_types.NodeTypeListApi()
+        view = node_types.NodeTypeListApi.get
+        assert isinstance(view, _EndpointView)
+        with app.test_request_context("/openapi/v1/node-types"):
+            response = view.__handler__(api, ctx)
+        assert isinstance(response, NodeTypeListResponse)
+        return [row.type for row in response.data]
+
+    return run
+
+
+def test_decision_node_type_is_hidden_while_its_switch_is_off(
+    config_overrides: Callable[..., None],
+    list_types: Callable[[], list[str]],
+    describe: Callable[[str], NodeTypeDetailResponse],
+) -> None:
+    config_overrides(ENABLE_DECISION_NODE=False)
+
+    assert "decision" not in list_types()
+    with pytest.raises(NodeTypeNotFound):
+        describe("decision")
+
+
+def test_decision_node_type_is_offered_while_its_switch_is_on(
+    config_overrides: Callable[..., None],
+    list_types: Callable[[], list[str]],
+    describe: Callable[[str], NodeTypeDetailResponse],
+) -> None:
+    config_overrides(ENABLE_DECISION_NODE=True)
+
+    assert "decision" in list_types()
+    assert describe("decision").type == "decision"
 
 
 def test_http_request_default_body_carries_an_empty_data_list(

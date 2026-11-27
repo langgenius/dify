@@ -1,3 +1,4 @@
+import type { DecisionNodeType } from '../nodes/decision/types'
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
@@ -26,6 +27,7 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
+import { OTHERWISE_HANDLE_ID, withDecisionDefaults } from '../nodes/decision/types'
 import { LogicalOperator } from '../nodes/if-else/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
@@ -282,6 +284,21 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       const nodeData = node.data as KnowledgeBaseNodeType
       if (!Array.isArray(nodeData.index_chunk_variable_selector))
         nodeData.index_chunk_variable_selector = []
+    }
+
+    if (node.data.type === BlockEnum.Decision) {
+      const nodeData = withDecisionDefaults(node.data as DecisionNodeType)
+      nodeData._targetBranches = [
+        ...nodeData.outcomes.map((outcome) => ({
+          id: outcome.id,
+          name: outcome.label,
+        })),
+        {
+          id: OTHERWISE_HANDLE_ID,
+          name: nodeData.otherwise.label,
+        },
+      ]
+      node.data = nodeData
     }
 
     if (hasAgentV2OutputRoutes(node.data))

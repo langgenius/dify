@@ -177,6 +177,7 @@ export const NodeSourceHandle = memo(
     const hasMultipleSourceHandles =
       data.type === BlockEnum.IfElse ||
       data.type === BlockEnum.QuestionClassifier ||
+      data.type === BlockEnum.Decision ||
       hasAgentV2OutputRoutes(data) ||
       data.type === BlockEnum.HumanInput ||
       data.error_strategy === ErrorHandleTypeEnum.failBranch

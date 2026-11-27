@@ -54,6 +54,13 @@ export const useWorkflowNodeCatalog = () => {
       select: (features) => features.enable_knowledge_fs,
     }),
   )
+  // The Decision node ships behind a deployment switch. While it is off the block is
+  // not offered for creation, but nodesMap keeps it so existing nodes still render.
+  const { data: decisionNodeEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_decision_node,
+    }),
+  )
   const humanInputData = useStore(
     useShallow((state) =>
       ENABLE_HITL_IM
@@ -145,9 +152,16 @@ export const useWorkflowNodeCatalog = () => {
             (useLegacyHumanInput ? BlockEnum.HumanInputV2 : BlockEnum.HumanInput) &&
           (shouldUseAgentV2
             ? node.metaData.type !== BlockEnum.Agent
-            : node.metaData.type !== BlockEnum.AgentV2),
+            : node.metaData.type !== BlockEnum.AgentV2) &&
+          (decisionNodeEnabled || node.metaData.type !== BlockEnum.Decision),
       ),
-    [nodesMetaData, shouldUseAgentV2, useLegacyHumanInput, humanInputV2MessageTemplate],
+    [
+      nodesMetaData,
+      shouldUseAgentV2,
+      useLegacyHumanInput,
+      humanInputV2MessageTemplate,
+      decisionNodeEnabled,
+    ],
   )
 
   const nodesMetaDataMap = useMemo(

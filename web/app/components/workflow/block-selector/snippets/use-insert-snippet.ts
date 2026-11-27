@@ -67,6 +67,7 @@ const canConnectFromSource = (node: Node) => {
   return (
     node.data.type !== BlockEnum.IfElse &&
     node.data.type !== BlockEnum.QuestionClassifier &&
+    node.data.type !== BlockEnum.Decision &&
     !hasAgentV2OutputRoutes(node.data) &&
     node.data.type !== BlockEnum.HumanInput &&
     node.data.type !== BlockEnum.LoopEnd

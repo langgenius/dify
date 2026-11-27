@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
+import useDecisionSingleRunFormParams from '@/app/components/workflow/nodes/decision/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
 import { isHumanInputV2NodeData } from '@/app/components/workflow/nodes/human-input-v2/types'
@@ -45,6 +46,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Code]: useCodeSingleRunFormParams,
   [BlockEnum.TemplateTransform]: useTemplateTransformSingleRunFormParams,
   [BlockEnum.QuestionClassifier]: useQuestionClassifierSingleRunFormParams,
+  [BlockEnum.Decision]: useDecisionSingleRunFormParams,
   [BlockEnum.HttpRequest]: useHttpRequestSingleRunFormParams,
   [BlockEnum.Tool]: useToolSingleRunFormParams,
   [BlockEnum.ParameterExtractor]: useParameterExtractorSingleRunFormParams,
@@ -89,6 +91,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.Code]: undefined,
   [BlockEnum.TemplateTransform]: undefined,
   [BlockEnum.QuestionClassifier]: undefined,
+  [BlockEnum.Decision]: undefined,
   [BlockEnum.HttpRequest]: undefined,
   [BlockEnum.ParameterExtractor]: undefined,
   [BlockEnum.Iteration]: undefined,

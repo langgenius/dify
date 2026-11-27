@@ -396,6 +396,7 @@ export const useNodesInteractions = () => {
                   connectingNode.data.type === BlockEnum.VariableAggregator) &&
                 node.data.type !== BlockEnum.IfElse &&
                 node.data.type !== BlockEnum.QuestionClassifier &&
+                node.data.type !== BlockEnum.Decision &&
                 !hasAgentV2OutputRoutes(node.data) &&
                 node.data.type !== BlockEnum.HumanInput
               ) {
@@ -1035,6 +1036,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          nodeType !== BlockEnum.Decision &&
           !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.HumanInputV2
@@ -1071,6 +1073,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          nodeType !== BlockEnum.Decision &&
           !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.HumanInputV2 &&
@@ -1234,6 +1237,7 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
+          nodeType !== BlockEnum.Decision &&
           !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
           nodeType !== BlockEnum.HumanInputV2 &&

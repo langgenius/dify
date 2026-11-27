@@ -19,6 +19,7 @@ import type { ToolNodeType } from '../../../tool/types'
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { DecisionNodeType, RuleGroup } from '@/app/components/workflow/nodes/decision/types'
 import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
@@ -43,6 +44,7 @@ import { isArray } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import {
   AGENT_OUTPUT_STRUCT,
+  DECISION_OUTPUT_STRUCT,
   FILE_STRUCT,
   getGlobalVars,
   HTTP_REQUEST_OUTPUT_STRUCT,
@@ -423,6 +425,17 @@ const formatItem = (
 
     case BlockEnum.QuestionClassifier: {
       res.vars = QUESTION_CLASSIFIER_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.Decision: {
+      const { extras } = data as DecisionNodeType
+      res.vars = [
+        ...DECISION_OUTPUT_STRUCT,
+        ...(extras ?? [])
+          .filter((extra) => extra.name)
+          .map((extra) => ({ variable: extra.name, type: VarType.string })),
+      ]
       break
     }
 
@@ -1325,6 +1338,57 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       res.push(...matchNotSystemVars(classes))
       break
     }
+    case BlockEnum.Decision: {
+      const payload = data as DecisionNodeType
+      res = []
+      // A condition's right-hand value can embed `{{#node.var#}}` templates,
+      // in the main rule group and in sub-variable conditions; those count as
+      // used variables too.
+      const conditionValueTexts = (conditions: Condition[]): string[] =>
+        conditions.flatMap((c) => {
+          if (typeof c.value === 'string') return [c.value]
+          if (Array.isArray(c.value))
+            return c.value.filter((v): v is string => typeof v === 'string')
+          return []
+        })
+      payload.outcomes?.forEach((outcome) => {
+        if (typeof outcome.when === 'object' && outcome.when !== null) {
+          res.push(
+            ...matchNotSystemVars(
+              conditionValueTexts(
+                outcome.when.conditions.flatMap((c) => [
+                  c,
+                  ...(c.sub_variable_condition?.conditions ?? []),
+                ]),
+              ),
+            ),
+          )
+          res.push(
+            ...outcome.when.conditions.flatMap((c) => {
+              const selectors: ValueSelector[] = []
+              if (c.variable_selector) selectors.push(c.variable_selector)
+              if (c.sub_variable_condition && c.sub_variable_condition.conditions)
+                selectors.push(
+                  ...c.sub_variable_condition.conditions
+                    .map((subC) => subC.variable_selector || [])
+                    .filter((sel) => sel.length > 0),
+                )
+              return selectors
+            }),
+          )
+        }
+      })
+      if (payload.inputs) res.push(...payload.inputs.map((v) => v.value_selector))
+      const varInTexts = matchNotSystemVars([
+        ...payload.outcomes.map((outcome) =>
+          typeof outcome.when === 'string' ? outcome.when : '',
+        ),
+        payload.context?.glossary || '',
+        payload.context?.prompt || '',
+      ])
+      res.push(...varInTexts)
+      break
+    }
     case BlockEnum.HttpRequest: {
       const payload = data as HttpNodeType
       res = matchNotSystemVars([
@@ -1566,6 +1630,38 @@ export const getNodeUsedVarPassToServerKey = (
       res = 'query'
       break
     }
+    case BlockEnum.Decision: {
+      const payload = data as DecisionNodeType
+      const selectorKey = valueSelector.join('.')
+      const inputVar = payload.inputs?.find(
+        (v) => v.value_selector && v.value_selector.join('.') === selectorKey,
+      )
+      if (inputVar) res = inputVar.variable
+      else {
+        const findConditionInRuleGroups = (ruleGroups: RuleGroup[]): Condition | undefined => {
+          for (const ruleGroup of ruleGroups) {
+            for (const condition of ruleGroup.conditions || []) {
+              if (condition.variable_selector?.join('.') === selectorKey) return condition
+
+              if (condition.sub_variable_condition) {
+                const found = findConditionInRuleGroups([condition.sub_variable_condition])
+                if (found) return found
+              }
+            }
+          }
+          return undefined
+        }
+        if (
+          findConditionInRuleGroups(
+            payload.outcomes
+              ?.filter((outcome) => typeof outcome.when === 'object' && outcome.when !== null)
+              .map((outcome) => outcome.when as RuleGroup) || [],
+          )
+        )
+          res = `#${selectorKey}#`
+      }
+      break
+    }
     case BlockEnum.HttpRequest: {
       res = `#${valueSelector.join('.')}#`
       break
@@ -1753,6 +1849,66 @@ export const updateNodeVars = (
           ...topic,
           name: replaceOldVarInText(topic.name, oldVarSelector, newVarSelector),
         }))
+        break
+      }
+      case BlockEnum.Decision: {
+        const payload = data as DecisionNodeType
+        payload.outcomes?.forEach((outcome) => {
+          if (typeof outcome.when === 'object' && outcome.when !== null) {
+            outcome.when.conditions = outcome.when.conditions.map((c) => {
+              if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
+                c.variable_selector = newVarSelector
+              // The right-hand value can embed `{{#node.var#}}` templates;
+              // rename those too, in the main rule group and in
+              // sub-variable conditions.
+              if (typeof c.value === 'string')
+                c.value = replaceOldVarInText(c.value, oldVarSelector, newVarSelector)
+              else if (Array.isArray(c.value))
+                c.value = c.value.map((v) =>
+                  typeof v === 'string'
+                    ? replaceOldVarInText(v, oldVarSelector, newVarSelector)
+                    : v,
+                )
+              if (c.sub_variable_condition && c.sub_variable_condition.conditions)
+                c.sub_variable_condition.conditions = c.sub_variable_condition.conditions.map(
+                  (subC) => {
+                    if (subC.variable_selector?.join('.') === oldVarSelector.join('.'))
+                      subC.variable_selector = newVarSelector
+                    if (typeof subC.value === 'string')
+                      subC.value = replaceOldVarInText(subC.value, oldVarSelector, newVarSelector)
+                    else if (Array.isArray(subC.value))
+                      subC.value = subC.value.map((v) =>
+                        typeof v === 'string'
+                          ? replaceOldVarInText(v, oldVarSelector, newVarSelector)
+                          : v,
+                      )
+                    return subC
+                  },
+                )
+              return c
+            })
+          } else if (typeof outcome.when === 'string') {
+            outcome.when = replaceOldVarInText(outcome.when, oldVarSelector, newVarSelector)
+          }
+        })
+        if (payload.inputs)
+          payload.inputs = payload.inputs.map((v) => {
+            if (v.value_selector.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        if (payload.context) {
+          payload.context.glossary = replaceOldVarInText(
+            payload.context.glossary || '',
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.context.prompt = replaceOldVarInText(
+            payload.context.prompt || '',
+            oldVarSelector,
+            newVarSelector,
+          )
+        }
         break
       }
       case BlockEnum.HttpRequest: {
@@ -2158,6 +2314,15 @@ export const getNodeOutputVars = (node: Node, isChatflow: boolean): ValueSelecto
 
     case BlockEnum.QuestionClassifier: {
       varsToValueSelectorList(QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.Decision: {
+      varsToValueSelectorList(DECISION_OUTPUT_STRUCT, [id], res)
+      const { extras } = data as DecisionNodeType
+      extras?.forEach((extra) => {
+        if (extra.name) res.push([id, extra.name])
+      })
       break
     }
 

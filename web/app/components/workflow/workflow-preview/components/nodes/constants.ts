@@ -1,5 +1,6 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import AgentNode from './agent-v2/node'
+import DecisionNode from './decision/node'
 import HumanInputNode from './human-input/node'
 import IfElseNode from './if-else/node'
 import IterationNode from './iteration/node'
@@ -11,6 +12,7 @@ export const NodeComponentMap: Record<string, any> = {
   [BlockEnum.AgentV2]: AgentNode,
   [BlockEnum.QuestionClassifier]: QuestionClassifierNode,
   [BlockEnum.IfElse]: IfElseNode,
+  [BlockEnum.Decision]: DecisionNode,
   [BlockEnum.HumanInput]: HumanInputNode,
   [BlockEnum.Iteration]: IterationNode,
   [BlockEnum.Loop]: LoopNode,
