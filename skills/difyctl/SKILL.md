@@ -7,7 +7,7 @@ description: 'Operate a Dify server, through the dify_* MCP tools when they are 
 
 ## Pick one way in
 
-1. Read [`references/mcp.md`](references/mcp.md) when you have tools named `dify_find`, `dify_read` and `dify_write`, and skip the rest of this file.
+1. When you have tools named `dify_find`, `dify_read` and `dify_write`, read [`references/mcp.md`](references/mcp.md) first. To build or change a Workflow or Chatflow app, then read [`references/build-workflow.md`](references/build-workflow.md). Skip the rest of this file.
 2. Otherwise use difyctl and read on.
 3. With both available, use difyctl: it reaches every operation and handles files on this machine.
 4. Stay on one way for the whole task. Logins and job ids do not carry across.
