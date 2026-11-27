@@ -268,9 +268,11 @@ class BasePluginClient:
                     if line:
                         yield line
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code < 500:
-                raise PluginDaemonClientSideError(description=str(exc)) from exc
-            raise PluginDaemonInternalServerError(description=str(exc)) from exc
+            status = exc.response.status_code
+            description = f"Plugin daemon returned HTTP {status}"
+            if status < 500:
+                raise PluginDaemonClientSideError(description=description) from exc
+            raise PluginDaemonInternalServerError(description=description) from exc
         except httpx.RequestError as exc:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from exc

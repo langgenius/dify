@@ -300,7 +300,7 @@ def test_failed_plugin_build_preserves_the_updated_draft(harness: _Harness, daem
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.get_json()["code"] == "invalid_param"
-    assert response.get_json()["message"] == "plugin daemon: subscription rejected, code: 1"
+    assert response.get_json()["message"] == "Trigger provider could not build the subscription."
     assert _stored(builder.id).name == "Retry me"
     with harness.session_factory() as session:
         assert session.scalar(select(TriggerSubscription).where(TriggerSubscription.id == builder.id)) is None

@@ -2,13 +2,20 @@ import json
 from collections.abc import Callable
 from urllib.parse import quote
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginListResponse
+from core.plugin.impl import base
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
-from core.plugin.impl.exc import PluginDaemonInternalServerError, PluginLLMPollingUnsupportedError, PluginRuntimeError
+from core.plugin.impl.exc import (
+    PluginDaemonClientSideError,
+    PluginDaemonInternalServerError,
+    PluginLLMPollingUnsupportedError,
+    PluginRuntimeError,
+)
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -60,6 +67,17 @@ class TestBasePluginClientImpl:
         headers_with_existing = {"TraceParent": "exists"}
         client._inject_trace_headers(headers_with_existing)
         assert headers_with_existing["TraceParent"] == "exists"
+
+    def test_stream_request_exposes_status_but_not_internal_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A daemon HTTP rejection carries only its status in the public error description."""
+        transport = httpx.MockTransport(lambda request: httpx.Response(404, request=request))
+        with httpx.Client(transport=transport) as daemon:
+            monkeypatch.setattr(base, "_httpx_client", daemon)
+            with pytest.raises(PluginDaemonClientSideError) as exc_info:
+                list(BasePluginClient()._stream_request("GET", "plugin/private-scope/stream"))
+
+        assert exc_info.value.description == "Plugin daemon returned HTTP 404"
+        assert "private-scope" not in str(exc_info.value)
 
     def test_stream_request_handles_data_lines_and_dict_payload(self, mocker: MockerFixture):
         client = BasePluginClient()

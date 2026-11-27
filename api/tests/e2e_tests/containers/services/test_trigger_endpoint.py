@@ -324,21 +324,21 @@ def test_plugin_dispatch_errors_keep_json_response_without_persisting_or_publish
     subscription = _seed(harness, daemon, CredentialType.API_KEY)
     diagnostic = "private-plugin-diagnostic-for-test"
     daemon.response_data = None
-    expected_status = HTTPStatus.BAD_REQUEST
-    expected_body = {
-        "error": "Endpoint processing failed",
-        "message": "Invalid webhook request or plugin response.",
-    }
+    expected_status = HTTPStatus.INTERNAL_SERVER_ERROR
+    expected_body = {"error": "Internal server error"}
     if failure == "rejected":
         daemon.response_code = 1
         daemon.response_message = f"signature rejected: {diagnostic}"
+        expected_status = HTTPStatus.BAD_REQUEST
+        expected_body = {
+            "error": "Endpoint processing failed",
+            "message": "Invalid webhook request or plugin response.",
+        }
     elif failure == "unavailable":
         daemon.response_code = -500
         daemon.response_message = json.dumps(
             {"error_type": "PluginDaemonInternalServerError", "message": f"unavailable: {diagnostic}"}
         )
-        expected_status = HTTPStatus.INTERNAL_SERVER_ERROR
-        expected_body = {"error": "Internal server error"}
     elif failure == "malformed":
         _dispatch(daemon, events=[])
         assert daemon.response_data is not None
@@ -350,14 +350,21 @@ def test_plugin_dispatch_errors_keep_json_response_without_persisting_or_publish
     assert response.status_code == expected_status
     assert response.get_json() == expected_body
     assert diagnostic not in response.get_data(as_text=True)
-    expected_detail = "got empty data from plugin daemon" if failure == "empty" else diagnostic
-    assert any(
-        record.name == "controllers.trigger.trigger"
-        and subscription.endpoint_id in record.getMessage()
-        and record.exc_info
-        and expected_detail in str(record.exc_info[1])
+    trigger_logs = [
+        record
         for record in caplog.records
-    )
+        if record.name == "controllers.trigger.trigger" and subscription.endpoint_id in record.getMessage()
+    ]
+    if failure == "rejected":
+        assert any("plugin code 1" in record.getMessage() for record in trigger_logs)
+        assert diagnostic not in caplog.text
+    else:
+        expected_detail = {
+            "empty": "got empty data from plugin daemon",
+            "malformed": "Invalid response from plugin daemon",
+            "unavailable": diagnostic,
+        }[failure]
+        assert any(record.exc_info and expected_detail in str(record.exc_info[1]) for record in trigger_logs)
     assert runtime.take_messages() == []
     assert runtime.publications == []
     assert not storage.exists("triggers/")

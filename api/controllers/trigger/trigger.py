@@ -6,6 +6,7 @@ from flask import Response, jsonify, request
 
 from controllers.common.access_response import plugin_endpoint_not_found_response
 from controllers.trigger import bp
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from extensions.ext_application_services import application_services
 from services.trigger.endpoint_service import (
     TriggerEndpointEventNotFoundError,
@@ -19,11 +20,17 @@ UUID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 UUID_MATCHER = re.compile(UUID_PATTERN)
 
 
+def _invalid_dispatch_response() -> tuple[Response, int]:
+    """Return the client error without publishing plugin diagnostics."""
+    return (
+        jsonify({"error": "Endpoint processing failed", "message": "Invalid webhook request or plugin response."}),
+        HTTPStatus.BAD_REQUEST,
+    )
+
+
 @bp.route("/plugin/<string:endpoint_id>", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 def trigger_endpoint(endpoint_id: str) -> Response | tuple[Response, int]:
-    """
-    Handle endpoint trigger calls.
-    """
+    """Dispatch a valid endpoint ID; known provider rejections return a redacted 400."""
     # endpoint_id must be UUID
     if not UUID_MATCHER.match(endpoint_id):
         return plugin_endpoint_not_found_response()
@@ -47,12 +54,14 @@ def trigger_endpoint(endpoint_id: str) -> Response | tuple[Response, int]:
             jsonify({"error": "Endpoint processing failed", "message": "Plugin returned an undeclared trigger event."}),
             HTTPStatus.BAD_REQUEST,
         )
+    except PluginDaemonInnerError as error:
+        logger.warning("Webhook dispatch failed for endpoint %s with plugin code %s", endpoint_id, error.code)
+        if error.code > 0:
+            return _invalid_dispatch_response()
+        return jsonify({"error": "Internal server error"}), HTTPStatus.INTERNAL_SERVER_ERROR
     except ValueError:
         logger.exception("Invalid webhook request or plugin response for endpoint %s", endpoint_id)
-        return (
-            jsonify({"error": "Endpoint processing failed", "message": "Invalid webhook request or plugin response."}),
-            HTTPStatus.BAD_REQUEST,
-        )
+        return _invalid_dispatch_response()
     except Exception:
         logger.exception("Webhook processing failed for %s", endpoint_id)
         return jsonify({"error": "Internal server error"}), HTTPStatus.INTERNAL_SERVER_ERROR
