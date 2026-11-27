@@ -28,13 +28,16 @@ from core.app.entities.task_entities import (
     StreamEvent,
     WorkflowTaskState,
 )
+from core.app.task_pipeline.message_file_utils import normalize_basename, parse_uuid
 from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import FileTransferMethod
 from models.enums import MessageFileBelongsTo
-from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile, UploadFile
+from models.tools import ToolFile
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -218,6 +221,60 @@ class MessageCycleManager:
 
             self._task_state.metadata.retriever_resources = merged_resources
 
+    def _resolve_stream_file_metadata(
+        self,
+        session: Session,
+        message_file: MessageFile,
+        *,
+        tool_file_id: str,
+        extension: str,
+    ) -> tuple[str | None, str | None, int | None, str | None]:
+        """Resolve filename, MIME type, size, and backing file ID for a streamed attachment.
+
+        Enforces fail-closed tenant scoping: metadata lookups run only when `app_config.tenant_id`
+        is a non-empty string and the candidate identifier parses as a valid UUID, always filtering
+        by `tenant_id`. Returned filenames are normalized to safe basenames, and `size` is emitted
+        only when it is a non-negative integer.
+        """
+        raw_tenant_id = self._application_generate_entity.app_config.tenant_id
+        if not isinstance(raw_tenant_id, str) or not raw_tenant_id:
+            return None, None, None, message_file.upload_file_id
+        tenant_id = raw_tenant_id
+
+        if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
+            candidate_id = parse_uuid(message_file.upload_file_id or tool_file_id)
+            if candidate_id is None:
+                return None, None, None, message_file.upload_file_id
+            tool_file = session.scalar(
+                select(ToolFile).where(
+                    ToolFile.id == candidate_id,
+                    ToolFile.tenant_id == tenant_id,
+                )
+            )
+            if tool_file is None:
+                return None, None, None, message_file.upload_file_id
+            filename = normalize_basename(tool_file.name) or f"{tool_file.id}{extension}"
+            size = tool_file.size if isinstance(tool_file.size, int) and tool_file.size >= 0 else None
+            return filename, tool_file.mimetype or None, size, tool_file.id
+
+        if message_file.upload_file_id:
+            candidate_id = parse_uuid(message_file.upload_file_id)
+            if candidate_id is None:
+                return None, None, None, message_file.upload_file_id
+            upload_file = session.scalar(
+                select(UploadFile).where(
+                    UploadFile.id == candidate_id,
+                    UploadFile.tenant_id == tenant_id,
+                )
+            )
+            if upload_file is None:
+                return None, None, None, message_file.upload_file_id
+            filename = normalize_basename(upload_file.name)
+            size = upload_file.size if isinstance(upload_file.size, int) and upload_file.size >= 0 else None
+            return filename, upload_file.mime_type or None, size, upload_file.id
+
+        return None, None, None, message_file.upload_file_id
+
     def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> MessageFileStreamResponse | None:
         """
         Message file to stream response.
@@ -226,8 +283,9 @@ class MessageCycleManager:
         """
         with Session(db.engine, expire_on_commit=False) as session:
             message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
+            if not message_file or message_file.url is None:
+                return None
 
-        if message_file and message_file.url is not None:
             self._message_has_file.add(message_file.message_id)
 
             # get tool file id
@@ -246,17 +304,28 @@ class MessageCycleManager:
             if message_file.url.startswith("http"):
                 url = message_file.url
             else:
-                url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
+                signing_tool_file_id = parse_uuid(tool_file_id) or tool_file_id
+                url = sign_tool_file(tool_file_id=signing_tool_file_id, extension=extension)
 
-            return MessageFileStreamResponse(
-                task_id=self._application_generate_entity.task_id,
-                id=message_file.id,
-                type=message_file.type,
-                belongs_to=message_file.belongs_to or MessageFileBelongsTo.USER,
-                url=url,
+            filename, mime_type, size, upload_file_id = self._resolve_stream_file_metadata(
+                session,
+                message_file,
+                tool_file_id=tool_file_id,
+                extension=extension,
             )
 
-        return None
+        return MessageFileStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            id=message_file.id,
+            type=message_file.type,
+            belongs_to=message_file.belongs_to or MessageFileBelongsTo.USER,
+            url=url,
+            filename=filename,
+            mime_type=mime_type,
+            size=size,
+            transfer_method=message_file.transfer_method,
+            upload_file_id=upload_file_id,
+        )
 
     def message_to_stream_response(
         self,

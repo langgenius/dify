@@ -1,3 +1,4 @@
+import type { MessageFileInput } from '../message-files'
 import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
@@ -6,7 +7,7 @@ import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, StreamCallbacks, StreamSender } from '@/service/event-stream'
 import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
-import { uniqBy } from 'es-toolkit/compat'
+import { findLast, findLastIndex, uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -38,21 +39,18 @@ import { streamEvents } from '@/service/event-stream'
 import { getRequestErrorMessage } from '@/service/http-error'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
+import { toFileResponse } from '../message-files'
 import { getThreadMessages } from '../utils'
 import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
-type HistoryMessageFile = Partial<FileResponse> & {
-  id?: string
-  belongs_to?: string
-}
 type HistoryConversationMessage = {
   id: string
   answer?: string
   status?: string
   message?: { role: string; text: string; files?: FileEntity[] }[]
-  message_files?: HistoryMessageFile[]
+  message_files?: MessageFileInput[]
   agent_thoughts?: ThoughtItem[] | null
   retriever_resources?: ChatItem['citation']
   metadata?: {
@@ -91,25 +89,276 @@ type UseChatOptions = {
   timezone?: string
 }
 
-function mergeStreamingThought(currentThought: ThoughtItem, nextThought: ThoughtItem): ThoughtItem {
+const defaultStreamingMimeType = (fileType: string) =>
+  fileType === 'image'
+    ? 'image/png'
+    : fileType === 'video'
+      ? 'video/mp4'
+      : fileType === 'audio'
+        ? 'audio/mpeg'
+        : 'application/octet-stream'
+
+const defaultStreamingSupportFileType = (fileType: string) =>
+  fileType === 'image'
+    ? 'image'
+    : fileType === 'video'
+      ? 'video'
+      : fileType === 'audio'
+        ? 'audio'
+        : fileType === 'custom'
+          ? 'custom'
+          : 'document'
+
+const defaultStreamingFilename = (fileType: string) =>
+  `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`
+
+/** Normalize SSE `message_file` payloads into display `FileEntity` objects while keeping legacy fallbacks. */
+function normalizeStreamingFile(file: VisionFile): FileEntity {
+  const fileType = file.type || 'image'
+
+  if ('transferMethod' in file) {
+    const baseFile = file as Partial<FileEntity>
+    return {
+      id: baseFile.id || file.id || '',
+      type: baseFile.type || defaultStreamingMimeType(fileType),
+      transferMethod:
+        baseFile.transferMethod ||
+        (fileType === 'image' ? TransferMethod.remote_url : TransferMethod.local_file),
+      uploadedId: baseFile.uploadedId || file.id || '',
+      supportFileType: baseFile.supportFileType || defaultStreamingSupportFileType(fileType),
+      progress: baseFile.progress ?? 100,
+      name: baseFile.name || defaultStreamingFilename(fileType),
+      url: baseFile.url || file.url,
+      size: baseFile.size ?? 0,
+    }
+  }
+
+  const fallbackTransferMethod =
+    fileType === 'image' ? TransferMethod.remote_url : TransferMethod.local_file
+  const [processed] = getProcessedFilesFromResponse([
+    toFileResponse({
+      id: file.id,
+      filename: file.filename ?? undefined,
+      size: file.size ?? undefined,
+      url: file.url,
+      upload_file_id: file.upload_file_id,
+      type: defaultStreamingSupportFileType(fileType),
+      mime_type: file.mime_type || defaultStreamingMimeType(fileType),
+      transfer_method: file.transfer_method || fallbackTransferMethod,
+    }),
+  ])
+
+  return {
+    ...processed!,
+    name: processed!.name || defaultStreamingFilename(fileType),
+    supportFileType: processed!.supportFileType || defaultStreamingSupportFileType(fileType),
+  }
+}
+
+/** Upsert file metadata by ID while retaining the order files first arrived in. */
+function mergeStreamingFiles(files: FileEntity[]): FileEntity[] {
+  return Array.from(new Map(files.map((file) => [file.id, file])).values())
+}
+
+const isFallbackStreamingFilename = (name: string | undefined) =>
+  !name || name === 'file' || /^generated_[^/]+\.[a-z0-9]+$/i.test(name)
+
+const isGenericMimeType = (mimeType: string | undefined) =>
+  !mimeType || mimeType === 'application/octet-stream'
+
+/**
+ * Preserve richer live filename/MIME/size while adopting freshly signed non-empty `url`
+ * and backfilling missing placeholder fields (`uploadedId`, fallback filename/MIME/size) from `message_end.files`.
+ */
+function backfillLiveFileMetadata(existing: FileEntity, incoming: FileEntity): FileEntity {
+  const nextName =
+    isFallbackStreamingFilename(existing.name) && !isFallbackStreamingFilename(incoming.name)
+      ? incoming.name
+      : existing.name
+  const nextType =
+    isGenericMimeType(existing.type) && !isGenericMimeType(incoming.type)
+      ? incoming.type
+      : existing.type
+  const nextSize = existing.size > 0 ? existing.size : incoming.size
+  const nextUrl = incoming.url || existing.url
+  const nextUploadedId =
+    (!existing.uploadedId || existing.uploadedId === existing.id) && incoming.uploadedId
+      ? incoming.uploadedId
+      : existing.uploadedId
+  const nextSupportFileType =
+    isGenericMimeType(existing.type) &&
+    !isGenericMimeType(incoming.type) &&
+    incoming.supportFileType
+      ? incoming.supportFileType
+      : existing.supportFileType || incoming.supportFileType
+
+  if (
+    nextName === existing.name &&
+    nextType === existing.type &&
+    nextSize === existing.size &&
+    nextUrl === existing.url &&
+    nextUploadedId === existing.uploadedId &&
+    nextSupportFileType === existing.supportFileType
+  )
+    return existing
+
+  return {
+    ...existing,
+    name: nextName,
+    type: nextType,
+    size: nextSize,
+    url: nextUrl,
+    uploadedId: nextUploadedId,
+    supportFileType: nextSupportFileType,
+  }
+}
+
+function backfillFileList(
+  files: FileEntity[] | undefined,
+  incomingById: Map<string, FileEntity>,
+): FileEntity[] | null {
+  if (!files?.length) return null
+  let changed = false
+  const updated = files.map((existing) => {
+    const incoming = incomingById.get(existing.id)
+    if (!incoming) return existing
+    const merged = backfillLiveFileMetadata(existing, incoming)
+    if (merged !== existing) changed = true
+    return merged
+  })
+  return changed ? updated : null
+}
+
+/**
+ * Merge `message_end.files` without duplicating attachments already shown via live `message_file` events.
+ * Live attachments stay in `message_files` / `agent_thoughts[i].message_files` (with in-place URL refresh
+ * and metadata backfill), while only unseen file IDs are appended to `responseItem.allFiles`.
+ */
+function mergeMessageEndFiles(
+  responseItem: ChatItemInTree,
+  files: FileResponse[] | undefined,
+  isNewAgent: boolean | undefined,
+) {
+  const processedFiles = getProcessedFilesFromResponse(files || [])
+  const liveFileIds = new Set<string>()
+  for (const file of responseItem.message_files ?? []) liveFileIds.add(file.id)
+  for (const thought of responseItem.agent_thoughts ?? []) {
+    for (const file of thought.message_files ?? []) liveFileIds.add(file.id)
+  }
+
+  const incomingById = new Map<string, FileEntity>()
+  const unseenFiles: FileEntity[] = []
+  for (const file of processedFiles) {
+    if (liveFileIds.has(file.id)) incomingById.set(file.id, file)
+    else unseenFiles.push(file)
+  }
+
+  if (incomingById.size > 0) {
+    const updatedMessageFiles = backfillFileList(responseItem.message_files, incomingById)
+    if (updatedMessageFiles) responseItem.message_files = updatedMessageFiles
+
+    for (const thought of responseItem.agent_thoughts ?? []) {
+      const updatedThoughtFiles = backfillFileList(thought.message_files, incomingById)
+      if (updatedThoughtFiles) {
+        thought.message_files = updatedThoughtFiles
+        syncAgentResponseThoughtPart(responseItem, thought, isNewAgent)
+      }
+    }
+  }
+
+  responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...unseenFiles], 'id')
+}
+
+/** Normalize SSE file IDs before a thought enters the display state. */
+function mergeStreamingThought(
+  currentThought: ThoughtItem | undefined,
+  nextThought: ThoughtItem,
+): ThoughtItem {
+  // SSE uses message_files for IDs; history uses files, and the UI keeps resolved objects.
+  const streamedFiles: (string | FileEntity)[] = nextThought.message_files ?? []
   return {
     ...nextThought,
-    message_files: nextThought.message_files?.length
-      ? nextThought.message_files
-      : currentThought.message_files,
+    files: Array.from(
+      new Set([
+        ...(currentThought?.files ?? []),
+        ...(nextThought.files ?? []),
+        ...streamedFiles.filter((file): file is string => typeof file === 'string'),
+      ]),
+    ),
+    message_files: mergeStreamingFiles([
+      ...(currentThought?.message_files ?? []),
+      ...streamedFiles.filter((file): file is FileEntity => typeof file !== 'string'),
+    ]),
   }
 }
 
 // A tool result streams in under the id of the thought that made the call. With parallel tool
 // calls that thought is not always the last one, so it is looked up by id from the end.
-function upsertStreamingThought(thoughts: ThoughtItem[], thought: ThoughtItem) {
-  for (let index = thoughts.length - 1; index >= 0; index--) {
-    if (thoughts[index]!.id === thought.id) {
-      thoughts[index] = mergeStreamingThought(thoughts[index]!, thought)
-      return
+function upsertStreamingThought(
+  responseItem: ChatItemInTree,
+  thought: ThoughtItem,
+  isNewAgent: boolean | undefined,
+) {
+  const thoughts = responseItem.agent_thoughts ?? (responseItem.agent_thoughts = [])
+  const index = findLastIndex(thoughts, (item) => item.id === thought.id)
+  const mergedThought = mergeStreamingThought(thoughts[index], thought)
+  if (index >= 0) thoughts[index] = mergedThought
+  else thoughts.push(mergedThought)
+
+  // A file may have arrived before its owning thought's IDs, so reclaim it from
+  // the answer or a different tool that received it through the legacy fallback.
+  if (mergedThought.files?.length) {
+    const ownedFileIds = new Set(mergedThought.files)
+    const fallbackFiles = mergeStreamingFiles([
+      ...(responseItem.message_files ?? []),
+      ...thoughts.flatMap((item) => (item === mergedThought ? [] : (item.message_files ?? []))),
+    ])
+    for (const file of fallbackFiles) {
+      if (ownedFileIds.has(file.id)) attachStreamingFile(responseItem, file, isNewAgent)
     }
   }
-  thoughts.push(thought)
+  syncAgentResponseThoughtPart(responseItem, mergedThought, isNewAgent)
+}
+
+/** Route a resolved SSE attachment to its declared owner, with the legacy last-thought fallback. */
+function attachStreamingFile(
+  responseItem: ChatItemInTree,
+  file: FileEntity,
+  isNewAgent: boolean | undefined,
+) {
+  const thoughts = responseItem.agent_thoughts ?? []
+  const targetThought =
+    findLast(thoughts, (thought) => thought.files?.includes(file.id)) ?? thoughts.at(-1)
+  if (!targetThought) {
+    responseItem.message_files = mergeStreamingFiles([...(responseItem.message_files ?? []), file])
+    return
+  }
+
+  for (const thought of thoughts) {
+    if (thought === targetThought) {
+      thought.message_files = mergeStreamingFiles([...(thought.message_files ?? []), file])
+      syncAgentResponseThoughtPart(responseItem, thought, isNewAgent)
+    } else if (thought.message_files?.some((item) => item.id === file.id)) {
+      thought.message_files = thought.message_files.filter((item) => item.id !== file.id)
+      syncAgentResponseThoughtPart(responseItem, thought, isNewAgent)
+    }
+  }
+  if (responseItem.message_files?.some((item) => item.id === file.id))
+    responseItem.message_files = responseItem.message_files.filter((item) => item.id !== file.id)
+}
+
+function syncAgentResponseThoughtPart(
+  responseItem: ChatItemInTree,
+  thought: ThoughtItem,
+  isNewAgent: boolean | undefined,
+) {
+  if (
+    isNewAgent ||
+    responseItem.agent_response_parts?.some(
+      (part) => part.type === 'thought' && part.thought.id === thought.id,
+    )
+  )
+    upsertAgentResponseThoughtPart(responseItem, thought)
 }
 
 function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
@@ -146,50 +395,22 @@ function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: T
   })
 }
 
+/** Resolve persisted thought file IDs to the same display-ready attachments as answer files. */
 function getHistoryAgentThoughts(responseItem: HistoryConversationMessage) {
   if (!Array.isArray(responseItem.agent_thoughts)) return []
 
-  const messageFiles: VisionFile[] =
-    responseItem.message_files?.map((file) => ({
-      id: file.id,
-      type: file.type || '',
-      transfer_method: file.transfer_method || TransferMethod.remote_url,
-      url: file.url || '',
-      upload_file_id: file.upload_file_id || '',
-      belongs_to: file.belongs_to,
-    })) || []
+  const messageFiles = getProcessedFilesFromResponse(
+    (responseItem.message_files ?? []).map(toFileResponse),
+  )
 
   return addFileInfos(sortAgentSorts(responseItem.agent_thoughts), messageFiles)
-}
-
-function toHistoryFileResponse(file: HistoryMessageFile): FileResponse {
-  return {
-    related_id: file.related_id || file.id || '',
-    extension: file.extension || '',
-    filename: file.filename || '',
-    size: file.size || 0,
-    mime_type: file.mime_type || file.type || '',
-    transfer_method: file.transfer_method || TransferMethod.remote_url,
-    type: file.type || '',
-    url: file.url || '',
-    upload_file_id: file.upload_file_id || '',
-    remote_url: file.remote_url || '',
-  }
 }
 
 function getHistoryAnswerFiles(responseItem: HistoryConversationMessage) {
   const answerFiles =
     responseItem.message_files?.filter((file) => file.belongs_to === 'assistant') || []
 
-  return getProcessedFilesFromResponse(
-    answerFiles.map((file) =>
-      toHistoryFileResponse({
-        ...file,
-        related_id: file.related_id || file.id || '',
-        upload_file_id: file.upload_file_id || '',
-      }),
-    ),
-  )
+  return getProcessedFilesFromResponse(answerFiles.map(toFileResponse))
 }
 
 function isHistoryConversationMessage(value: unknown): value is HistoryConversationMessage {
@@ -743,60 +964,9 @@ export const useChat = (
           }
         },
         onFile(file) {
-          // Convert simple file type to MIME type for non-agent mode
-          // Backend sends: { id, type: "image", belongs_to, url }
-          // Frontend expects: { id, type: "image/png", transferMethod, url, uploadedId, supportFileType, name, size }
-
-          // Determine file type for MIME conversion
-          const fileType = (file as { type?: string }).type || 'image'
-
-          // If file already has transferMethod, use it as base and ensure all required fields exist
-          // Otherwise, create a new complete file object
-          const baseFile = 'transferMethod' in file ? (file as Partial<FileEntity>) : null
-
-          const convertedFile: FileEntity = {
-            id: baseFile?.id || (file as { id: string }).id,
-            type:
-              baseFile?.type ||
-              (fileType === 'image'
-                ? 'image/png'
-                : fileType === 'video'
-                  ? 'video/mp4'
-                  : fileType === 'audio'
-                    ? 'audio/mpeg'
-                    : 'application/octet-stream'),
-            transferMethod:
-              (baseFile?.transferMethod as FileEntity['transferMethod']) ||
-              (fileType === 'image' ? 'remote_url' : 'local_file'),
-            uploadedId: baseFile?.uploadedId || (file as { id: string }).id,
-            supportFileType:
-              baseFile?.supportFileType ||
-              (fileType === 'image'
-                ? 'image'
-                : fileType === 'video'
-                  ? 'video'
-                  : fileType === 'audio'
-                    ? 'audio'
-                    : 'document'),
-            progress: baseFile?.progress ?? 100,
-            name:
-              baseFile?.name ||
-              `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`,
-            url: baseFile?.url || (file as { url?: string }).url,
-            size: baseFile?.size ?? 0, // Generated files don't have a known size
-          }
+          const convertedFile = normalizeStreamingFile(file)
           updateChatTreeNode(messageId, (responseItem) => {
-            const lastThought =
-              responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-            if (lastThought) {
-              responseItem.agent_thoughts!.at(-1)!.message_files = [
-                ...(lastThought as any).message_files,
-                convertedFile,
-              ]
-            } else {
-              const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
-              responseItem.message_files = [...currentFiles, convertedFile]
-            }
+            attachStreamingFile(responseItem, convertedFile, options.isNewAgent)
           })
         },
         onThought(thought) {
@@ -804,13 +974,7 @@ export const useChat = (
             if (thought.message_id) responseItem.id = thought.message_id
             if (thought.conversation_id) responseItem.conversationId = thought.conversation_id
 
-            if (!responseItem.agent_thoughts) responseItem.agent_thoughts = []
-            upsertStreamingThought(responseItem.agent_thoughts, thought)
-            if (options.isNewAgent) {
-              const currentThought =
-                responseItem.agent_thoughts.find((item) => item.id === thought.id) ?? thought
-              upsertAgentResponseThoughtPart(responseItem, currentThought)
-            }
+            upsertStreamingThought(responseItem, thought, options.isNewAgent)
           })
         },
         onAgentLog(agentLog) {
@@ -831,11 +995,7 @@ export const useChat = (
               return
             }
             responseItem.citation = messageEnd.metadata?.retriever_resources || []
-            const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
-            responseItem.allFiles = uniqBy(
-              [...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])],
-              'id',
-            )
+            mergeMessageEndFiles(responseItem, messageEnd.files, options.isNewAgent)
           })
         },
         onMessageReplace: (messageReplace) => {
@@ -1406,63 +1566,9 @@ export const useChat = (
           }
         },
         onFile(file) {
-          // Convert simple file type to MIME type for non-agent mode
-          // Backend sends: { id, type: "image", belongs_to, url }
-          // Frontend expects: { id, type: "image/png", transferMethod, url, uploadedId, supportFileType, name, size }
+          const convertedFile = normalizeStreamingFile(file)
 
-          // Determine file type for MIME conversion
-          const fileType = (file as { type?: string }).type || 'image'
-
-          // If file already has transferMethod, use it as base and ensure all required fields exist
-          // Otherwise, create a new complete file object
-          const baseFile = 'transferMethod' in file ? (file as Partial<FileEntity>) : null
-
-          const convertedFile: FileEntity = {
-            id: baseFile?.id || (file as { id: string }).id,
-            type:
-              baseFile?.type ||
-              (fileType === 'image'
-                ? 'image/png'
-                : fileType === 'video'
-                  ? 'video/mp4'
-                  : fileType === 'audio'
-                    ? 'audio/mpeg'
-                    : 'application/octet-stream'),
-            transferMethod:
-              (baseFile?.transferMethod as FileEntity['transferMethod']) ||
-              (fileType === 'image' ? 'remote_url' : 'local_file'),
-            uploadedId: baseFile?.uploadedId || (file as { id: string }).id,
-            supportFileType:
-              baseFile?.supportFileType ||
-              (fileType === 'image'
-                ? 'image'
-                : fileType === 'video'
-                  ? 'video'
-                  : fileType === 'audio'
-                    ? 'audio'
-                    : 'document'),
-            progress: baseFile?.progress ?? 100,
-            name:
-              baseFile?.name ||
-              `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`,
-            url: baseFile?.url || (file as { url?: string }).url,
-            size: baseFile?.size ?? 0, // Generated files don't have a known size
-          }
-
-          // For agent mode, add files to the last thought
-          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-          if (lastThought) {
-            const thought = lastThought as { message_files?: FileEntity[] }
-            responseItem.agent_thoughts!.at(-1)!.message_files = [
-              ...(thought.message_files ?? []),
-              convertedFile,
-            ]
-          }
-          // For non-agent mode, add files directly to responseItem.message_files
-          else {
-            const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
-            responseItem.message_files = [...currentFiles, convertedFile]
-          }
+          attachStreamingFile(responseItem, convertedFile, options.isNewAgent)
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -1475,16 +1581,10 @@ export const useChat = (
           isAgentMode = true
           if (thought.task_id) taskIdRef.current = thought.task_id
           if (thought.conversation_id) conversationIdRef.current = thought.conversation_id
-          const response = responseItem as any
-          if (thought.message_id && !hasSetResponseId) response.id = thought.message_id
-          if (thought.conversation_id) response.conversationId = thought.conversation_id
+          if (thought.message_id && !hasSetResponseId) responseItem.id = thought.message_id
+          if (thought.conversation_id) responseItem.conversationId = thought.conversation_id
 
-          upsertStreamingThought(response.agent_thoughts, thought)
-          if (options.isNewAgent) {
-            const currentThought =
-              responseItem.agent_thoughts?.find((item) => item.id === thought.id) ?? thought
-            upsertAgentResponseThoughtPart(responseItem, currentThought)
-          }
+          upsertStreamingThought(responseItem, thought, options.isNewAgent)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1521,11 +1621,7 @@ export const useChat = (
             return
           }
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
-          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
-          responseItem.allFiles = uniqBy(
-            [...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])],
-            'id',
-          )
+          mergeMessageEndFiles(responseItem, messageEnd.files, options.isNewAgent)
 
           updateCurrentQAOnTree({
             placeholderQuestionId,

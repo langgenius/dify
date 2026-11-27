@@ -15,6 +15,11 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     agent_stub_connections_url,
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
+    file_reference,
+    file_reference_record_id,
+    format_media_observation,
+    is_canonical_dify_file_reference,
+    is_safe_dify_file_uri,
     normalize_agent_stub_api_base_url,
 )
 
@@ -22,6 +27,119 @@ from dify_agent.agent_stub.protocol.agent_stub import (
 def _reference(record_id: str) -> str:
     payload = base64.urlsafe_b64encode(json.dumps({"record_id": record_id}, separators=(",", ":")).encode()).decode()
     return f"dify-file-ref:{payload}"
+
+
+def test_file_reference_has_canonical_wire_format() -> None:
+    assert file_reference("00000000-0000-4000-8000-000000000001") == (
+        "dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ=="
+    )
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",
+        # API references may also retain a storage_key for compatibility.
+        "dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEi"
+        "LCJzdG9yYWdlX2tleSI6InRvb2xfZmlsZXMvdC9maWxlLmJpbiJ9",
+    ],
+)
+def test_file_reference_record_id_accepts_api_wire_formats(reference: str) -> None:
+    assert is_canonical_dify_file_reference(reference)
+    assert file_reference_record_id(reference) == "00000000-0000-4000-8000-000000000001"
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "saved",
+        "dify-file-ref:saved",
+        "dify-file-ref:W10=",
+        "dify-file-ref:e30=",
+        "dify-file-ref:eyJyZWNvcmRfaWQiOiIifQ==",
+    ],
+)
+def test_invalid_file_reference_has_no_record_id(reference: str) -> None:
+    assert not is_canonical_dify_file_reference(reference)
+    with pytest.raises(ValueError, match="canonical Dify file reference"):
+        file_reference_record_id(reference)
+
+
+@pytest.mark.parametrize(
+    "mapping,filename,mime_type,size,delivered_to_user,expected",
+    [
+        (
+            AgentStubFileMapping(
+                transfer_method="tool_file",
+                reference="dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",
+            ),
+            None,
+            None,
+            None,
+            False,
+            '\nTool generated media file: {"transfer_method":"tool_file",'
+            '"reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ=="}'
+            " (call `read_media` with `file` set to this object only if you need to inspect its content).\n",
+        ),
+        (
+            AgentStubFileMapping(
+                transfer_method="tool_file",
+                reference="dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",
+            ),
+            "图.png",
+            "image/png",
+            3,
+            False,
+            '\nTool generated media file: {"transfer_method":"tool_file",'
+            '"reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",'
+            '"filename":"图.png","mime_type":"image/png","size":3}'
+            " (call `read_media` with `file` set to this object only if you need to inspect its content).\n",
+        ),
+        (
+            AgentStubFileMapping(
+                transfer_method="tool_file",
+                reference="dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",
+            ),
+            "report.pdf",
+            "application/pdf",
+            128,
+            True,
+            '\nTool generated media file: {"transfer_method":"tool_file",'
+            '"reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",'
+            '"filename":"report.pdf","mime_type":"application/pdf","size":128}'
+            " (already delivered to the user as an attachment; call `read_media` with `file` set to this object"
+            " only if you need to inspect its content).\n",
+        ),
+        (
+            AgentStubFileMapping(transfer_method="remote_url", url="https://example.com/chart.png?key=original"),
+            "chart.png",
+            None,
+            None,
+            False,
+            '\nTool generated media link: {"transfer_method":"remote_url",'
+            '"url":"https://example.com/chart.png?key=original","filename":"chart.png"}'
+            " (call `read_media` with `file` set to this object only if you need to inspect its content).\n",
+        ),
+    ],
+)
+def test_format_media_observation_wire_format(
+    mapping: AgentStubFileMapping,
+    filename: str | None,
+    mime_type: str | None,
+    size: int | None,
+    delivered_to_user: bool,
+    expected: str,
+) -> None:
+    assert (
+        format_media_observation(
+            mapping,
+            filename=filename,
+            mime_type=mime_type,
+            size=size,
+            delivered_to_user=delivered_to_user,
+        )
+        == expected
+    )
 
 
 def test_agent_stub_connections_url_handles_trailing_slash_and_no_trailing_slash() -> None:
@@ -46,6 +164,31 @@ def test_agent_stub_file_request_urls_handle_trailing_slash() -> None:
     assert agent_stub_file_download_request_url("https://agent.example.com/agent-stub") == (
         "https://agent.example.com/agent-stub/files/download-request"
     )
+
+
+@pytest.mark.parametrize(
+    ("uri", "expected"),
+    [
+        ("/files/upload/for-plugin?sign=1", True),
+        ("/files/tools/report.pdf?sign=1&timestamp=2", True),
+        ("/files/tools/my%20report.pdf", True),
+        ("/files/tools/../report.pdf", True),
+        ("https://api.example/files/upload/for-plugin?sign=1", False),
+        ("//api.example/files/upload/for-plugin?sign=1", False),
+        ("/files/upload/for-plugin#fragment", False),
+        ("files/upload/for-plugin", False),
+        ("/other/report.pdf", False),
+        ("/files/", False),
+        ("/files/../other/report.pdf", False),
+        ("/files/%2e%2e/other/report.pdf", False),
+        ("/files/%252e%252e/other/report.pdf", False),
+        ("/files/tools\\report.pdf", False),
+        ("/files/tools%5creport.pdf", False),
+        ("", False),
+    ],
+)
+def test_is_safe_dify_file_uri(uri: str, expected: bool) -> None:
+    assert is_safe_dify_file_uri(uri) is expected
 
 
 def test_agent_stub_file_upload_request_rejects_client_max_size() -> None:

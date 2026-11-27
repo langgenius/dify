@@ -1,6 +1,8 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
+import type { ThoughtItem } from '../type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act } from '@testing-library/react'
+import { getFilePreviewKind } from '@/app/components/base/file-uploader/utils'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
@@ -116,6 +118,18 @@ type HookCallbacks = {
     data: { message_id?: string; reasoning: string; node_id?: string; is_final?: boolean }
   }) => void
 }
+
+const createToolThought = (id: string, overrides: Partial<ThoughtItem> = {}): ThoughtItem => ({
+  id,
+  tool: 'create',
+  thought: '',
+  tool_input: '{}',
+  message_id: 'm-1',
+  conversation_id: 'c-1',
+  observation: '',
+  position: 1,
+  ...overrides,
+})
 
 describe('useChat', () => {
   beforeEach(() => {
@@ -1043,6 +1057,178 @@ describe('useChat', () => {
       ])
       expect(lastResponse!.agent_thoughts![0]!.message_files).toEqual([
         expect.objectContaining({ id: 'f-2', url: 'doc.pdf' }),
+      ])
+    })
+
+    it.each([
+      { stream: 'send', isNewAgent: false },
+      { stream: 'send', isNewAgent: true },
+      { stream: 'resume', isNewAgent: false },
+      { stream: 'resume', isNewAgent: true },
+    ])(
+      'routes attachments to their parallel tool owner ($stream, isNewAgent=$isNewAgent)',
+      ({ stream, isNewAgent }) => {
+        let callbacks: HookCallbacks
+        if (stream === 'send') {
+          vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+            callbacks = options as HookCallbacks
+          })
+        } else {
+          vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+            callbacks = options as HookCallbacks
+          })
+        }
+        const { result } = renderHookWithConsoleQuery(() =>
+          useChat(
+            undefined,
+            undefined,
+            stream === 'resume' ? createPausedChatTree() : undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            { isNewAgent },
+          ),
+        )
+        const thoughtA = createToolThought('th-a')
+        const thoughtB = createToolThought('th-b', { position: 2 })
+
+        act(() => {
+          if (stream === 'send')
+            result.current.handleSend(streams.sender('test-url'), { query: 'parallel files' }, {})
+          else result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+        })
+        act(() => {
+          callbacks.onThought(thoughtA)
+          callbacks.onThought(thoughtB)
+          callbacks.onThought({ ...thoughtA, message_files: ['mf-a', 'mf-a'] })
+        })
+
+        expect(result.current.chatList.at(-1)!.agent_thoughts![0]).toMatchObject({
+          files: ['mf-a'],
+          message_files: [],
+        })
+
+        act(() => {
+          callbacks.onFile({ id: 'mf-a', type: 'document', url: 'report-a.pdf' })
+          callbacks.onFile({ id: 'mf-a', type: 'document', url: 'report-a.pdf?sign=new' })
+          // Legacy streams without thought file IDs attach to the latest tool first.
+          callbacks.onFile({ id: 'mf-c', type: 'document', url: 'report-c.pdf' })
+        })
+        expect(result.current.chatList.at(-1)!.agent_thoughts![1]!.message_files).toEqual([
+          expect.objectContaining({ id: 'mf-c' }),
+        ])
+
+        act(() => {
+          // Ownership can arrive after the file, and later snapshots can omit it.
+          callbacks.onThought({
+            ...thoughtA,
+            files: ['mf-c', 'mf-a', 'mf-c'],
+            message_files: ['mf-a'],
+            observation: 'Files saved',
+          })
+          callbacks.onThought({ ...thoughtA, message_files: [], observation: 'Complete' })
+        })
+
+        const response = result.current.chatList.at(-1)!
+        const [savedThoughtA, savedThoughtB] = response.agent_thoughts!
+        expect(savedThoughtA).toMatchObject({
+          files: ['mf-a', 'mf-c'],
+          observation: 'Complete',
+          message_files: [
+            expect.objectContaining({
+              id: 'mf-a',
+              url: 'report-a.pdf?sign=new',
+              supportFileType: 'document',
+            }),
+            expect.objectContaining({
+              id: 'mf-c',
+              url: 'report-c.pdf',
+              supportFileType: 'document',
+            }),
+          ],
+        })
+        expect(savedThoughtB!.message_files).toEqual([])
+        if (isNewAgent) {
+          expect(response.agent_response_parts).toEqual([
+            { type: 'thought', thought: savedThoughtA },
+            { type: 'thought', thought: savedThoughtB },
+          ])
+        }
+      },
+    )
+
+    it('moves an earlier answer attachment to its thought when ownership arrives', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+
+      act(() => {
+        result.current.handleSend(streams.sender('test-url'), { query: 'file before thought' }, {})
+      })
+      act(() => {
+        callbacks.onFile({ id: 'mf-first', type: 'document', url: 'report.pdf' })
+        callbacks.onFile({ id: 'mf-first', type: 'document', url: 'report.pdf?sign=new' })
+      })
+
+      expect(result.current.chatList.at(-1)!.message_files).toEqual([
+        expect.objectContaining({ id: 'mf-first', url: 'report.pdf?sign=new' }),
+      ])
+
+      act(() => {
+        callbacks.onThought({ ...createToolThought('th-a'), message_files: ['mf-first'] })
+      })
+
+      const response = result.current.chatList.at(-1)!
+      expect(response.message_files).toEqual([])
+      expect(response.agent_thoughts![0]).toMatchObject({
+        files: ['mf-first'],
+        message_files: [expect.objectContaining({ id: 'mf-first', url: 'report.pdf?sign=new' })],
+      })
+      expect(response.agent_response_parts).toEqual([
+        { type: 'thought', thought: response.agent_thoughts![0] },
+      ])
+    })
+
+    it('updates existing response thought parts when resuming without the new agent option', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const thoughtA = createToolThought('th-a', { files: ['mf-a'] })
+      const thoughtB = createToolThought('th-b', { position: 2 })
+      const tree = createPausedChatTree()
+      const answer = tree[0]!.children![0]!
+      answer.agent_thoughts = [thoughtA, thoughtB]
+      answer.agent_response_parts = [
+        { type: 'thought', thought: thoughtA },
+        { type: 'message', content: 'Working' },
+        { type: 'thought', thought: thoughtB },
+      ]
+      const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, tree))
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+      act(() => {
+        callbacks.onFile({ id: 'mf-a', type: 'document', url: 'report.pdf' })
+        callbacks.onThought({ ...thoughtA, observation: 'Complete' })
+      })
+
+      const response = result.current.chatList.at(-1)!
+      expect(response.agent_thoughts![0]!.message_files).toEqual([
+        expect.objectContaining({ id: 'mf-a', url: 'report.pdf' }),
+      ])
+      expect(response.agent_response_parts).toEqual([
+        { type: 'thought', thought: response.agent_thoughts![0] },
+        { type: 'message', content: 'Working' },
+        { type: 'thought', thought: response.agent_thoughts![1] },
       ])
     })
 
@@ -3042,6 +3228,280 @@ describe('useChat', () => {
       expect(lastResponse!.citation).toEqual([])
     })
 
+    it('should deduplicate message_end files already delivered via live onFile on handleSend without degrading metadata', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend(streams.sender('url'), { query: 'generate pdf' }, {})
+      })
+
+      act(() => {
+        callbacks.onFile({
+          id: 'f-msg-legacy',
+          type: 'document',
+          url: '/files/tools/tool-legacy.pdf?sign=live',
+        })
+        callbacks.onFile({
+          id: 'f-msg-keep-url',
+          type: 'document',
+          url: '/files/tools/tool-keep.pdf?sign=live',
+          filename: 'keep.pdf',
+          mime_type: 'application/pdf',
+          size: 768,
+          transfer_method: 'tool_file',
+          upload_file_id: 'tool-keep',
+        })
+        callbacks.onThought({
+          id: 'thought-1',
+          message_id: 'm-pdf',
+          position: 1,
+          thought: '',
+          observation: 'created',
+          tool: 'pdf_tool',
+          tool_input: '{}',
+          message_files: ['f-thought-pdf'],
+        })
+        callbacks.onFile({
+          id: 'f-thought-pdf',
+          type: 'document',
+          url: '/files/tools/tool-1.pdf?sign=live',
+          filename: 'report.pdf',
+          mime_type: 'application/pdf',
+          size: 4096,
+          transfer_method: 'tool_file',
+          upload_file_id: 'tool-1',
+        })
+        callbacks.onMessageEnd({
+          id: 'm-pdf',
+          metadata: {},
+          files: [
+            {
+              related_id: 'f-thought-pdf',
+              filename: 'tool-1.pdf',
+              mime_type: 'application/octet-stream',
+              size: 0,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-1.pdf?sign=end',
+              upload_file_id: 'tool-1',
+            },
+            {
+              related_id: 'f-msg-legacy',
+              filename: 'summary.pdf',
+              mime_type: 'application/pdf',
+              size: 1024,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-legacy.pdf?sign=end',
+              upload_file_id: 'tool-legacy',
+            },
+            {
+              related_id: 'f-msg-keep-url',
+              filename: 'keep.pdf',
+              mime_type: 'application/pdf',
+              size: 768,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '',
+              upload_file_id: 'tool-keep',
+            },
+            {
+              related_id: 'f-end-only',
+              filename: 'extra.pdf',
+              mime_type: 'application/pdf',
+              size: 512,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-extra.pdf?sign=end',
+              upload_file_id: 'tool-extra',
+            },
+          ],
+        })
+      })
+
+      const lastResponse = result.current.chatList[1]!
+      expect(lastResponse.allFiles?.map((file) => file.id)).toEqual(['f-end-only'])
+
+      const thoughtFile = lastResponse.agent_thoughts?.[0]?.message_files?.[0]
+      expect(thoughtFile?.id).toBe('f-thought-pdf')
+      expect(thoughtFile?.name).toBe('report.pdf')
+      expect(thoughtFile?.type).toBe('application/pdf')
+      expect(thoughtFile?.size).toBe(4096)
+      expect(thoughtFile?.url).toBe('/files/tools/tool-1.pdf?sign=end')
+      expect(getFilePreviewKind(thoughtFile!)).toBe('pdf')
+
+      const messageFile = lastResponse.message_files?.[0]
+      expect(messageFile?.id).toBe('f-msg-legacy')
+      expect(messageFile?.name).toBe('summary.pdf')
+      expect(messageFile?.type).toBe('application/pdf')
+      expect(messageFile?.size).toBe(1024)
+      expect(messageFile?.url).toBe('/files/tools/tool-legacy.pdf?sign=end')
+      expect(messageFile?.uploadedId).toBe('tool-legacy')
+      expect(getFilePreviewKind(messageFile!)).toBe('pdf')
+
+      const keptUrlFile = lastResponse.message_files?.[1]
+      expect(keptUrlFile?.id).toBe('f-msg-keep-url')
+      expect(keptUrlFile?.url).toBe('/files/tools/tool-keep.pdf?sign=live')
+      expect(getFilePreviewKind(keptUrlFile!)).toBe('pdf')
+    })
+
+    it('should deduplicate message_end files on handleResume and sync thought backfills to agent_response_parts', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-resume',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-resume',
+              content: 'initial',
+              isAnswer: true,
+              message_files: [],
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(
+          undefined,
+          undefined,
+          prevChatTree as ChatItemInTree[],
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { isNewAgent: true },
+        ),
+      )
+
+      await act(async () => {
+        await result.current.handleResume('m-resume', 'wr-resume', { isPublicAPI: true })
+      })
+
+      act(() => {
+        callbacks.onThought({
+          id: 'thought-r1',
+          message_id: 'm-resume',
+          position: 1,
+          thought: '',
+          observation: 'created',
+          tool: 'pdf_tool',
+          tool_input: '{}',
+          message_files: ['f-r-pdf', 'f-r-legacy'],
+        })
+        callbacks.onFile({
+          id: 'f-r-pdf',
+          type: 'document',
+          url: '/files/tools/tool-r1.pdf?sign=live',
+          filename: 'resumed-report.pdf',
+          mime_type: 'application/pdf',
+          size: 2048,
+          transfer_method: 'tool_file',
+          upload_file_id: 'tool-r1',
+        })
+        callbacks.onFile({
+          id: 'f-r-legacy',
+          type: 'document',
+          url: '/files/tools/tool-r2.pdf?sign=live',
+        })
+        callbacks.onMessageEnd({
+          id: 'm-resume',
+          metadata: {},
+          files: [
+            {
+              related_id: 'f-r-pdf',
+              filename: 'tool-r1.pdf',
+              mime_type: 'application/octet-stream',
+              size: 0,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-r1.pdf?sign=end',
+              upload_file_id: 'tool-r1',
+            },
+            {
+              related_id: 'f-r-legacy',
+              filename: 'backfilled.pdf',
+              mime_type: 'application/pdf',
+              size: 1536,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-r2.pdf?sign=end',
+              upload_file_id: 'tool-r2',
+            },
+            {
+              related_id: 'f-r-end-only',
+              filename: 'tail.pdf',
+              mime_type: 'application/pdf',
+              size: 256,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-r3.pdf?sign=end',
+              upload_file_id: 'tool-r3',
+            },
+          ],
+        })
+      })
+
+      const responseItem = result.current.chatList.find((item) => item.id === 'm-resume')!
+      expect(responseItem.allFiles?.map((file) => file.id)).toEqual(['f-r-end-only'])
+
+      const thoughtFiles = responseItem.agent_thoughts?.[0]?.message_files ?? []
+      expect(thoughtFiles.map((file) => file.id)).toEqual(['f-r-pdf', 'f-r-legacy'])
+      expect(thoughtFiles[0]!.name).toBe('resumed-report.pdf')
+      expect(thoughtFiles[0]!.type).toBe('application/pdf')
+      expect(thoughtFiles[0]!.size).toBe(2048)
+      expect(thoughtFiles[0]!.url).toBe('/files/tools/tool-r1.pdf?sign=end')
+      expect(getFilePreviewKind(thoughtFiles[0]!)).toBe('pdf')
+
+      expect(thoughtFiles[1]!.name).toBe('backfilled.pdf')
+      expect(thoughtFiles[1]!.type).toBe('application/pdf')
+      expect(thoughtFiles[1]!.size).toBe(1536)
+      expect(thoughtFiles[1]!.url).toBe('/files/tools/tool-r2.pdf?sign=end')
+      expect(thoughtFiles[1]!.uploadedId).toBe('tool-r2')
+      expect(getFilePreviewKind(thoughtFiles[1]!)).toBe('pdf')
+
+      const thoughtPart = responseItem.agent_response_parts?.find(
+        (part) => part.type === 'thought' && part.thought.id === 'thought-r1',
+      )
+      expect(thoughtPart?.type).toBe('thought')
+      if (thoughtPart?.type === 'thought') {
+        expect(thoughtPart.thought.message_files?.map((file) => file.name)).toEqual([
+          'resumed-report.pdf',
+          'backfilled.pdf',
+        ])
+        expect(thoughtPart.thought.message_files?.map((file) => file.type)).toEqual([
+          'application/pdf',
+          'application/pdf',
+        ])
+        expect(thoughtPart.thought.message_files?.map((file) => file.url)).toEqual([
+          '/files/tools/tool-r1.pdf?sign=end',
+          '/files/tools/tool-r2.pdf?sign=end',
+        ])
+      }
+    })
+
     it.each(['onIterationStart', 'onNodeStarted', 'onLoopStart'] as const)(
       'restores tracing from %s when saved history has no trace array',
       async (event) => {
@@ -3194,6 +3654,7 @@ describe('useChat', () => {
                 id: 'history-thought',
                 thought: 'history thought',
                 answer: 'history agent answer',
+                files: ['history-file', 'deleted-file'],
                 tool: '',
                 tool_input: '',
                 observation: '',
@@ -3204,8 +3665,13 @@ describe('useChat', () => {
               {
                 id: 'history-file',
                 belongs_to: 'assistant',
-                type: 'image',
-                url: 'history.png',
+                filename: 'report.pdf',
+                mime_type: 'application/pdf',
+                size: 42,
+                transfer_method: 'tool_file',
+                upload_file_id: 'tool-file',
+                type: 'document',
+                url: 'https://files.test/report.pdf?sign=report',
               },
             ],
             retriever_resources: [{ id: 'history-citation', content: 'history citation' }],
@@ -3283,6 +3749,18 @@ describe('useChat', () => {
           id: 'history-thought',
           thought: 'history thought',
           answer: 'history agent answer',
+          message_files: [
+            expect.objectContaining({
+              id: 'history-file',
+              name: 'report.pdf',
+              supportFileType: 'document',
+              transferMethod: 'tool_file',
+              type: 'application/pdf',
+              size: 42,
+              url: 'https://files.test/report.pdf?sign=report',
+              uploadedId: 'tool-file',
+            }),
+          ],
         }),
       ])
     })
@@ -3505,7 +3983,7 @@ describe('useChat', () => {
       resumeCallbacks.onFile(fileWithMethodAndNoType)
 
       // Test the inner condition in handleSend `!isAgentMode` where we also push to current files
-      sendCallbacks.onFile(fileWithMethodAndNoType)
+      sendCallbacks.onFile({ ...fileWithMethodAndNoType, id: 'f-2' })
     })
 
     const lastSendResponse = result.current.chatList[1]
@@ -3513,6 +3991,81 @@ describe('useChat', () => {
 
     const lastResumeResponse = resumeResult.current.chatList[1]
     expect(lastResumeResponse!.message_files).toHaveLength(1)
+  })
+
+  it('should preserve filename, MIME type, size, transfer_method, and PDF preview on live send and resume message_file events', () => {
+    let resumeCallbacks: HookCallbacks
+    vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+      resumeCallbacks = options as HookCallbacks
+    })
+    let sendCallbacks: HookCallbacks
+    vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+      sendCallbacks = options as HookCallbacks
+    })
+
+    const { result: sendResult } = renderHookWithConsoleQuery(() => useChat())
+    act(() => {
+      sendResult.current.handleSend(streams.sender('url'), { query: 'export report' }, {})
+    })
+
+    const prevChatTree = [
+      {
+        id: 'q-resume-pdf',
+        content: 'export report',
+        isAnswer: false,
+        children: [
+          {
+            id: 'm-resume-pdf',
+            content: 'working',
+            isAnswer: true,
+            siblingIndex: 0,
+          },
+        ],
+      },
+    ]
+    const { result: resumeResult } = renderHookWithConsoleQuery(() =>
+      useChat(undefined, undefined, prevChatTree),
+    )
+    act(() => {
+      resumeResult.current.handleResume('m-resume-pdf', 'wr-pdf', { isPublicAPI: true })
+    })
+
+    const streamedPdf = {
+      id: 'mf-pdf-1',
+      type: 'custom',
+      belongs_to: 'assistant',
+      url: '/files/tools/tool-pdf-1.pdf?timestamp=1&nonce=n&sign=s',
+      filename: 'report.pdf',
+      mime_type: 'application/pdf',
+      size: 4096,
+      transfer_method: 'tool_file',
+      upload_file_id: 'tool-pdf-1',
+    }
+
+    act(() => {
+      sendCallbacks.onFile(streamedPdf)
+      resumeCallbacks.onFile(streamedPdf)
+    })
+
+    const expectedFile = {
+      id: 'mf-pdf-1',
+      name: 'report.pdf',
+      type: 'application/pdf',
+      size: 4096,
+      progress: 100,
+      transferMethod: 'tool_file',
+      supportFileType: 'document',
+      uploadedId: 'tool-pdf-1',
+      url: '/files/tools/tool-pdf-1.pdf?timestamp=1&nonce=n&sign=s',
+    }
+
+    const sendFile = sendResult.current.chatList[1]!.message_files![0]!
+    expect(sendFile).toEqual(expectedFile)
+    expect(getFilePreviewKind(sendFile)).toBe('pdf')
+
+    const resumeFile = resumeResult.current.chatList[1]!.message_files![0]!
+    expect(resumeFile).toEqual(expectedFile)
+    expect(getFilePreviewKind(resumeFile)).toBe('pdf')
   })
 
   it('should cover parallel_id tracing matches in iteration and loop finish', () => {

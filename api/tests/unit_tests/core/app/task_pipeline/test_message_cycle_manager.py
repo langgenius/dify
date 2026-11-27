@@ -5,6 +5,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, urlsplit
+from uuid import UUID
 
 import pytest
 from flask import Flask, current_app
@@ -12,17 +14,24 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import AppAdditionalFeatures
-from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
+from core.app.entities.queue_entities import (
+    QueueAnnotationReplyEvent,
+    QueueMessageFileEvent,
+    QueueRetrieverResourcesEvent,
+)
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata, WorkflowTaskState
 from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.rag.entities import RetrievalSourceMetadata
-from graphon.file import FileTransferMethod, FileType
+from core.workflow.file_reference import build_file_reference
+from graphon.file import File, FileTransferMethod, FileType
 from models.account import Account
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, Conversation, MessageAnnotation, MessageFile
-from tests.helpers.unit.model_factories import make_app, make_conversation
+from models.model import App, Conversation, MessageAnnotation, MessageFile, UploadFile
+from models.tools import ToolFile
+from services.tool_file_download_service import ToolFileDownloadService
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_upload_file
 
 
 @dataclass(frozen=True)
@@ -31,9 +40,26 @@ class _AppConfigWithFeatures:
 
 
 @dataclass(frozen=True)
+class _AppConfigWithTenant:
+    tenant_id: str | None
+
+
+@dataclass(frozen=True)
 class _SQLiteDb:
     engine: Engine
     session: Session
+
+
+class _InMemoryToolFileSource:
+    def __init__(self, payloads: dict[str, tuple[bytes, File]]) -> None:
+        self._payloads = payloads
+
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Iterator[bytes] | None, File | None]:
+        entry = self._payloads.get(tool_file_id)
+        if entry is None:
+            return None, None
+        data, file = entry
+        return iter((data,)), file
 
 
 @pytest.fixture
@@ -41,7 +67,13 @@ def cycle_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
     """Bind request-owned and cycle-manager-owned sessions to isolated SQLite."""
     TypeBase.metadata.create_all(
         sqlite_engine,
-        tables=[App.__table__, Conversation.__table__, MessageFile.__table__],
+        tables=[
+            App.__table__,
+            Conversation.__table__,
+            MessageFile.__table__,
+            ToolFile.__table__,
+            UploadFile.__table__,
+        ],
     )
     owned_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with owned_session_factory() as request_session:
@@ -95,6 +127,7 @@ class TestMessageCycleManagerOptimization:
         """Create a mock application generate entity."""
         entity = Mock()
         entity.task_id = "test-task-id"
+        entity.app_config.tenant_id = "tenant-1"
         return entity
 
     @pytest.fixture
@@ -641,6 +674,316 @@ class TestMessageCycleManagerOptimization:
         response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="missing"))
 
         assert response is None
+
+    def test_message_file_to_stream_response_includes_tool_file_metadata_scoped_to_tenant(
+        self, message_cycle_manager, cycle_db: Session
+    ):
+        """Include ToolFile metadata when the attachment belongs to the app tenant."""
+        message_cycle_manager._application_generate_entity.task_id = "task-tool-meta"
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithTenant(tenant_id="tenant-1")
+
+        report_tool = ToolFile(
+            tenant_id="tenant-1",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/report",
+            name="../dir/report.pdf",
+            mimetype="application/pdf",
+            size=4096,
+        )
+        unnamed_tool = ToolFile(
+            tenant_id="tenant-1",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/unnamed",
+            name="..",
+            mimetype="application/pdf",
+            size=-1,
+        )
+        uppercase_tool = ToolFile(
+            tenant_id="tenant-1",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/uppercase",
+            name="uppercase-live.pdf",
+            mimetype="application/pdf",
+            size=1536,
+        )
+        foreign_tool = ToolFile(
+            tenant_id="tenant-2",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/secret",
+            name="secret.pdf",
+            mimetype="application/pdf",
+            size=1024,
+        )
+        cycle_db.add_all([report_tool, unnamed_tool, uppercase_tool, foreign_tool])
+        cycle_db.flush()
+
+        report_file = _message_file(
+            file_id="file-report",
+            message_id="msg-meta",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{report_tool.id}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        report_file.upload_file_id = report_tool.id
+        unnamed_file = _message_file(
+            file_id="file-unnamed",
+            message_id="msg-meta",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{unnamed_tool.id}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        unnamed_file.upload_file_id = unnamed_tool.id
+        uppercase_file = _message_file(
+            file_id="file-uppercase",
+            message_id="msg-meta",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{uppercase_tool.id.upper()}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        foreign_file = _message_file(
+            file_id="file-foreign",
+            message_id="msg-meta",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{foreign_tool.id}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        foreign_file.upload_file_id = foreign_tool.id
+        cycle_db.add_all([report_file, unnamed_file, uppercase_file, foreign_file])
+        cycle_db.commit()
+
+        report_resp = message_cycle_manager.message_file_to_stream_response(
+            QueueMessageFileEvent(message_file_id="file-report")
+        )
+        unnamed_resp = message_cycle_manager.message_file_to_stream_response(
+            QueueMessageFileEvent(message_file_id="file-unnamed")
+        )
+        uppercase_resp = message_cycle_manager.message_file_to_stream_response(
+            QueueMessageFileEvent(message_file_id="file-uppercase")
+        )
+        foreign_resp = message_cycle_manager.message_file_to_stream_response(
+            QueueMessageFileEvent(message_file_id="file-foreign")
+        )
+
+        assert report_resp is not None
+        assert report_resp.filename == "report.pdf"
+        assert report_resp.mime_type == "application/pdf"
+        assert report_resp.size == 4096
+        assert report_resp.transfer_method == FileTransferMethod.TOOL_FILE
+        assert report_resp.upload_file_id == report_tool.id
+
+        assert unnamed_resp is not None
+        assert unnamed_resp.filename == f"{unnamed_tool.id}.pdf"
+        assert unnamed_resp.mime_type == "application/pdf"
+        assert unnamed_resp.size is None
+        assert unnamed_resp.transfer_method == FileTransferMethod.TOOL_FILE
+        assert unnamed_resp.upload_file_id == unnamed_tool.id
+
+        assert uppercase_resp is not None
+        assert uppercase_resp.filename == "uppercase-live.pdf"
+        assert uppercase_resp.mime_type == "application/pdf"
+        assert uppercase_resp.size == 1536
+        assert uppercase_resp.transfer_method == FileTransferMethod.TOOL_FILE
+        assert uppercase_resp.upload_file_id == uppercase_tool.id
+
+        assert foreign_resp is not None
+        assert foreign_resp.filename is None
+        assert foreign_resp.mime_type is None
+        assert foreign_resp.size is None
+        assert foreign_resp.transfer_method == FileTransferMethod.TOOL_FILE
+        assert foreign_resp.upload_file_id == foreign_tool.id
+
+        download_service = ToolFileDownloadService(
+            tool_files=_InMemoryToolFileSource(
+                {
+                    report_tool.id: (
+                        b"%PDF-live-report",
+                        File(
+                            file_type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.TOOL_FILE,
+                            reference=build_file_reference(record_id=report_tool.id),
+                            filename="report.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=len(b"%PDF-live-report"),
+                            storage_key=report_tool.file_key,
+                        ),
+                    ),
+                    uppercase_tool.id: (
+                        b"%PDF-live-uppercase",
+                        File(
+                            file_type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.TOOL_FILE,
+                            reference=build_file_reference(record_id=uppercase_tool.id),
+                            filename="uppercase-live.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=len(b"%PDF-live-uppercase"),
+                            storage_key=uppercase_tool.file_key,
+                        ),
+                    ),
+                }
+            )
+        )
+        for resp, expected_id, expected_bytes in (
+            (report_resp, report_tool.id, b"%PDF-live-report"),
+            (uppercase_resp, uppercase_tool.id, b"%PDF-live-uppercase"),
+        ):
+            parsed = urlsplit(resp.url)
+            assert parsed.path.endswith(f"/files/tools/{expected_id}.pdf")
+            path_stem = parsed.path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            params = parse_qs(parsed.query)
+            downloaded = download_service.get_signed_file(
+                file_id=str(UUID(path_stem)),
+                timestamp=params["timestamp"][0],
+                nonce=params["nonce"][0],
+                sign=params["sign"][0],
+            )
+            assert b"".join(downloaded.content) == expected_bytes
+
+    def test_message_file_to_stream_response_includes_upload_file_metadata_scoped_to_tenant(
+        self, message_cycle_manager, cycle_db: Session
+    ):
+        """Include UploadFile metadata only when the upload belongs to the app tenant."""
+        message_cycle_manager._application_generate_entity.task_id = "task-upload-meta"
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithTenant(tenant_id="tenant-1")
+
+        upload = make_upload_file(
+            tenant_id="tenant-1",
+            name="brief.pdf",
+            mime_type="application/pdf",
+            size=2048,
+            extension="pdf",
+        )
+        foreign_upload = make_upload_file(
+            tenant_id="tenant-2",
+            name="secret.pdf",
+            mime_type="application/pdf",
+            size=999,
+            extension="pdf",
+        )
+        cycle_db.add_all([upload, foreign_upload])
+        cycle_db.flush()
+
+        local_file = MessageFile(
+            message_id="msg-upload",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-id",
+            belongs_to=MessageFileBelongsTo.USER,
+            url=f"http://example.com/files/{upload.id}/file-preview",
+            upload_file_id=upload.id,
+        )
+        local_file.id = "file-local"
+        foreign_local_file = MessageFile(
+            message_id="msg-upload",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-id",
+            belongs_to=MessageFileBelongsTo.USER,
+            url=f"http://example.com/files/{foreign_upload.id}/file-preview",
+            upload_file_id=foreign_upload.id,
+        )
+        foreign_local_file.id = "file-foreign-local"
+        cycle_db.add_all([local_file, foreign_local_file])
+        cycle_db.commit()
+
+        response = message_cycle_manager.message_file_to_stream_response(
+            QueueMessageFileEvent(message_file_id="file-local")
+        )
+        foreign_response = message_cycle_manager.message_file_to_stream_response(
+            QueueMessageFileEvent(message_file_id="file-foreign-local")
+        )
+
+        assert response is not None
+        assert response.filename == "brief.pdf"
+        assert response.mime_type == "application/pdf"
+        assert response.size == 2048
+        assert response.transfer_method == FileTransferMethod.LOCAL_FILE
+        assert response.upload_file_id == upload.id
+
+        assert foreign_response is not None
+        assert foreign_response.filename is None
+        assert foreign_response.mime_type is None
+        assert foreign_response.size is None
+        assert foreign_response.transfer_method == FileTransferMethod.LOCAL_FILE
+        assert foreign_response.upload_file_id == foreign_upload.id
+
+    @pytest.mark.parametrize("missing_tenant_id", [None, ""])
+    def test_message_file_to_stream_response_fails_closed_without_tenant_id(
+        self, message_cycle_manager, cycle_db: Session, missing_tenant_id: str | None
+    ):
+        """Skip ToolFile and UploadFile metadata lookups when tenant_id is missing or empty."""
+        message_cycle_manager._application_generate_entity.task_id = "task-no-tenant"
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithTenant(
+            tenant_id=missing_tenant_id
+        )
+
+        tool_file = ToolFile(
+            tenant_id="tenant-1",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/report",
+            name="report.pdf",
+            mimetype="application/pdf",
+            size=4096,
+        )
+        upload = make_upload_file(
+            tenant_id="tenant-1",
+            name="brief.pdf",
+            mime_type="application/pdf",
+            size=2048,
+            extension="pdf",
+        )
+        cycle_db.add_all([tool_file, upload])
+        cycle_db.flush()
+
+        tool_msg_file = _message_file(
+            file_id="file-tool-no-tenant",
+            message_id="msg-no-tenant",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{tool_file.id}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        tool_msg_file.upload_file_id = tool_file.id
+        upload_msg_file = MessageFile(
+            message_id="msg-no-tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-id",
+            belongs_to=MessageFileBelongsTo.USER,
+            url=f"http://example.com/files/{upload.id}/file-preview",
+            upload_file_id=upload.id,
+        )
+        upload_msg_file.id = "file-upload-no-tenant"
+        cycle_db.add_all([tool_msg_file, upload_msg_file])
+        cycle_db.commit()
+
+        with patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file", return_value="signed-pdf"):
+            tool_response = message_cycle_manager.message_file_to_stream_response(
+                QueueMessageFileEvent(message_file_id="file-tool-no-tenant")
+            )
+            upload_response = message_cycle_manager.message_file_to_stream_response(
+                QueueMessageFileEvent(message_file_id="file-upload-no-tenant")
+            )
+
+        assert tool_response is not None
+        assert tool_response.filename is None
+        assert tool_response.mime_type is None
+        assert tool_response.size is None
+        assert tool_response.upload_file_id == tool_file.id
+
+        assert upload_response is not None
+        assert upload_response.filename is None
+        assert upload_response.mime_type is None
+        assert upload_response.size is None
+        assert upload_response.upload_file_id == upload.id
 
     def test_message_replace_to_stream_response_returns_reason(self, message_cycle_manager):
         """Include the provided replacement reason in the stream payload."""

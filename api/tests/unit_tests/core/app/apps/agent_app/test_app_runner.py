@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from dify_agent.protocol import (
@@ -37,8 +39,8 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolReturnPart,
 )
-from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, event, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -48,6 +50,12 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
+)
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
 )
 from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
@@ -63,17 +71,23 @@ from core.app.apps.agent_app.session_store import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, DifyRunContext, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueMessageFileEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.app.entities.task_entities import AgentThoughtStreamResponse, MessageFileStreamResponse
 from core.app.llm.model_access import ModelRuntimeProfile
+from core.app.task_pipeline import easy_ui_based_generate_task_pipeline as easy_ui_pipeline_module
+from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
+from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
+from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import (
@@ -81,9 +95,16 @@ from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulToolsConfig,
 )
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole, MessageFileBelongsTo
 from models.enums import InvokeFrom as ModelInvokeFrom
-from models.model import AppMode, Message, MessageAgentThought
+from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile
+from models.tools import ToolFile
+from tests.helpers.unit.core.model_fixtures import make_model_config
+
+
+@dataclass(frozen=True)
+class _SQLiteEngineDb:
+    engine: Engine
 
 
 @pytest.fixture(autouse=True)
@@ -99,6 +120,14 @@ def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Ses
 def _thought_rows(session: Session) -> list[MessageAgentThought]:
     session.expire_all()
     return list(session.scalars(select(MessageAgentThought).order_by(MessageAgentThought.position)).all())
+
+
+def _message_file_rows(session: Session) -> list[MessageFile]:
+    """Require no pending writes, then expire cached attachments and read stored columns."""
+    assert not session.new
+    assert not session.dirty
+    session.expire_all()
+    return list(session.scalars(select(MessageFile).order_by(MessageFile.url)).all())
 
 
 class _NoToolsBuilder:
@@ -117,15 +146,18 @@ class _NoToolsBuilder:
 
 
 class _FakeQueueManager(AppQueueManager):
-    def __init__(self) -> None:
+    def __init__(self, *, on_publish: Callable[[AppQueueEvent], None] | None = None) -> None:
         super().__init__(task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.WEB_APP)
         self.events: list[Any] = []
         self._stop_requested = False
+        self._on_publish = on_publish
 
     @override
     def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         del pub_from
         self.events.append(event)
+        if self._on_publish is not None:
+            self._on_publish(event)
 
     @override
     def is_stopped(self) -> bool:
@@ -487,6 +519,10 @@ class _AgentAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 
 class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(self, *, tool_return_metadata: dict[str, Any] | None = None) -> None:
+        super().__init__()
+        self._tool_return_metadata = tool_return_metadata
+
     @override
     def stream_events(
         self,
@@ -514,7 +550,14 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             id="4-0",
             run_id=run_id,
             created_at=created_at,
-            data=FunctionToolResultEvent(part=ToolReturnPart(tool_name="bash", content="ok", tool_call_id="tool-1")),
+            data=FunctionToolResultEvent(
+                part=ToolReturnPart(
+                    tool_name="bash",
+                    content="ok",
+                    tool_call_id="tool-1",
+                    metadata=self._tool_return_metadata,
+                )
+            ),
         )
         yield PydanticAIStreamRunEvent(
             id="5-0",
@@ -997,6 +1040,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
 
@@ -1039,6 +1083,7 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
     receipt = {
@@ -1071,11 +1116,451 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     assert _thought_rows(sqlite_session)[0].tool == "shell_run"
 
 
+def test_run_wires_conversation_id_for_plugin_blob_attachments(sqlite_session: Session) -> None:
+    tool_file = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        file_key="generated/report",
+        name="report.pdf",
+        mimetype="application/pdf",
+        size=20,
+    )
+    sqlite_session.add(tool_file)
+    sqlite_session.commit()
+
+    client = _ProcessStreamingFakeAgentBackendRunClient(tool_return_metadata={"dify_plugin_blob_files": [tool_file.id]})
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+    sqlite_session.expire_all()
+
+    attachments = _message_file_rows(sqlite_session)
+    assert len(attachments) == 1
+    assert attachments[0].upload_file_id == tool_file.id
+    assert attachments[0].message_id == "msg-1"
+    assert attachments[0].belongs_to == MessageFileBelongsTo.ASSISTANT
+    assert attachments[0].transfer_method == FileTransferMethod.TOOL_FILE
+    assert attachments[0].url == f"/files/tools/{tool_file.id}.pdf"
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 2
+    assert rows[1].tool == "bash"
+    assert rows[1].files == [attachments[0].id]
+
+    file_events = [item for item in qm.events if isinstance(item, QueueMessageFileEvent)]
+    assert [item.message_file_id for item in file_events] == [attachments[0].id]
+
+
+@pytest.mark.parametrize("conversation_id", [None, "conv-1"])
+def test_plugin_blob_files_are_owned_persisted_and_published_once(
+    sqlite_session: Session, conversation_id: str | None
+) -> None:
+    files = [
+        ToolFile(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            conversation_id=conversation_id,
+            file_key="generated/chart",
+            name="chart.png",
+            mimetype="image/png",
+            size=10,
+        ),
+        ToolFile(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            conversation_id=conversation_id,
+            file_key="generated/report",
+            name="report",
+            mimetype="application/pdf",
+            size=20,
+        ),
+    ]
+    sqlite_session.add_all(files)
+    sqlite_session.commit()
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        conversation_id="conv-1",
+        queue_manager=qm,
+    )
+    part = ToolReturnPart(
+        tool_name="create",
+        tool_call_id="create-call",
+        content="Files delivered",
+        metadata={
+            "dify_plugin_blob_files": [
+                files[0].id,
+                files[0].id.upper(),
+                "invalid",
+                None,
+                {},
+                *[file.id for file in files],
+            ],
+            "url": f"/files/tools/{uuid4()}.exe",
+            "extension": ".exe",
+            "mime_type": "text/html",
+        },
+    )
+    wire_event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+    stream_event = AgentBackendStreamInternalEvent(run_id="run-1", data=wire_event.model_dump(mode="json")["data"])
+    published_with_files = []
+
+    def record_commit(session: Session) -> None:
+        # At the attachment commit, the database and thought both have the files;
+        # no file event may escape before that commit has completed.
+        pending_files = [row for row in session.new if isinstance(row, MessageFile)]
+        if pending_files:
+            assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
+            thought = next(row for row in session.dirty if isinstance(row, MessageAgentThought))
+            assert thought.files == [row.id for row in pending_files]
+            published_with_files.extend(pending_files)
+
+    event.listen(sqlite_session, "before_commit", record_commit)
+    try:
+        recorder.handle_stream_event(stream_event)
+        recorder.handle_stream_event(stream_event)
+    finally:
+        event.remove(sqlite_session, "before_commit", record_commit)
+
+    attachments = _message_file_rows(sqlite_session)
+    assert len(attachments) == len(published_with_files) == 2
+    by_upload_id = {file.upload_file_id: file for file in attachments}
+    assert by_upload_id[files[0].id].url == f"/files/tools/{files[0].id}.png"
+    assert by_upload_id[files[1].id].url == f"/files/tools/{files[1].id}.pdf"
+    assert by_upload_id[files[0].id].type == FileType.IMAGE
+    assert by_upload_id[files[1].id].type == FileType.DOCUMENT
+    for attachment in attachments:
+        assert attachment.message_id == "msg-1"
+        assert attachment.belongs_to == MessageFileBelongsTo.ASSISTANT
+        assert attachment.transfer_method == FileTransferMethod.TOOL_FILE
+        assert attachment.created_by == "user-1"
+        assert attachment.created_by_role == CreatorUserRole.END_USER
+    assert _thought_rows(sqlite_session)[0].files == [by_upload_id[file.id].id for file in files]
+    file_events = [item for item in qm.events if isinstance(item, QueueMessageFileEvent)]
+    assert [item.message_file_id for item in file_events] == [by_upload_id[file.id].id for file in files]
+
+
+@pytest.mark.parametrize("invalid_owner", ["missing", "tenant", "user", "conversation"])
+def test_unowned_plugin_blob_files_are_not_delivered(sqlite_session: Session, invalid_owner: str) -> None:
+    file = ToolFile(
+        tenant_id="foreign-tenant" if invalid_owner == "tenant" else "tenant-1",
+        user_id="foreign-user" if invalid_owner == "user" else "user-1",
+        conversation_id="foreign-conversation" if invalid_owner == "conversation" else "conv-1",
+        file_key="generated/report",
+        name="report.pdf",
+        mimetype="application/pdf",
+    )
+    if invalid_owner != "missing":
+        sqlite_session.add(file)
+        sqlite_session.commit()
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        conversation_id="conv-1",
+        queue_manager=qm,
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "tool_name": "create",
+                    "content": "Still observable",
+                    "metadata": {"dify_plugin_blob_files": [file.id]},
+                },
+            },
+        )
+    )
+    assert _message_file_rows(sqlite_session) == []
+    assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
+    assert _thought_rows(sqlite_session)[0].observation == "Still observable"
+
+
+def _internal_stream_event(event_data: Any) -> AgentBackendStreamInternalEvent:
+    wire_event = PydanticAIStreamRunEvent(run_id="run-1", data=event_data)
+    return AgentBackendStreamInternalEvent(run_id="run-1", data=wire_event.model_dump(mode="json")["data"])
+
+
+def test_failed_blob_attachment_commit_can_be_retried(sqlite_session: Session) -> None:
+    file = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        file_key="generated/report",
+        name="report.pdf",
+        mimetype="application/pdf",
+    )
+    sqlite_session.add(file)
+    sqlite_session.commit()
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        conversation_id="conv-1",
+        queue_manager=qm,
+    )
+    recorder.handle_stream_event(
+        _internal_stream_event(
+            FunctionToolCallEvent(
+                part=ToolCallPart(tool_name="create", args={"name": "report.pdf"}, tool_call_id="call-retry")
+            )
+        )
+    )
+    initial_thoughts = _thought_rows(sqlite_session)
+    assert len(initial_thoughts) == 1
+    original_thought_id = initial_thoughts[0].id
+    assert initial_thoughts[0].tool == "create"
+
+    result_event = _internal_stream_event(
+        FunctionToolResultEvent(
+            part=ToolReturnPart(
+                tool_name="create",
+                tool_call_id="call-retry",
+                content="Saved",
+                metadata={"dify_plugin_blob_files": [file.id]},
+            )
+        )
+    )
+
+    def fail_attachment_commit(session: Session) -> None:
+        if any(isinstance(row, MessageFile) for row in session.new):
+            raise RuntimeError("attachment commit failed")
+
+    event.listen(sqlite_session, "before_commit", fail_attachment_commit)
+    try:
+        with pytest.raises(RuntimeError, match="attachment commit failed"):
+            recorder.handle_stream_event(result_event)
+        sqlite_session.rollback()
+    finally:
+        event.remove(sqlite_session, "before_commit", fail_attachment_commit)
+    assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
+    assert _message_file_rows(sqlite_session) == []
+    thoughts_after_failure = _thought_rows(sqlite_session)
+    assert len(thoughts_after_failure) == 1
+    assert thoughts_after_failure[0].id == original_thought_id
+    assert thoughts_after_failure[0].observation == ""
+    assert thoughts_after_failure[0].files == []
+
+    recorder.handle_stream_event(result_event)
+    attachments = _message_file_rows(sqlite_session)
+    assert len(attachments) == 1
+    thoughts_after_retry = _thought_rows(sqlite_session)
+    assert len(thoughts_after_retry) == 1
+    assert thoughts_after_retry[0].id == original_thought_id
+    assert thoughts_after_retry[0].observation == "Saved"
+    assert thoughts_after_retry[0].files == [attachments[0].id]
+    file_events = [item for item in qm.events if isinstance(item, QueueMessageFileEvent)]
+    assert [item.message_file_id for item in file_events] == [attachments[0].id]
+
+
+def test_parallel_tool_blob_attachments_preserve_thought_ownership_in_sse_responses(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chart_file = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        file_key="generated/chart",
+        name="chart.png",
+        mimetype="image/png",
+        size=12,
+    )
+    report_file = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        file_key="generated/report",
+        name="report.pdf",
+        mimetype="application/pdf",
+        size=24,
+    )
+    sqlite_session.add_all([chart_file, report_file])
+    sqlite_session.commit()
+
+    engine = sqlite_session.get_bind()
+    assert isinstance(engine, Engine)
+    owned_session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    monkeypatch.setattr(easy_ui_pipeline_module.session_factory, "create_session", owned_session_factory)
+    monkeypatch.setattr(message_cycle_manager_module, "db", _SQLiteEngineDb(engine=engine))
+
+    live_sse_responses: list[AgentThoughtStreamResponse | MessageFileStreamResponse] = []
+    pipeline: EasyUIBasedGenerateTaskPipeline | None = None
+
+    def convert_on_publish(item: AppQueueEvent) -> None:
+        assert pipeline is not None
+        if isinstance(item, QueueAgentThoughtEvent):
+            thought_response = pipeline._agent_thought_to_stream_response(item)
+            assert thought_response is not None
+            live_sse_responses.append(thought_response)
+        elif isinstance(item, QueueMessageFileEvent):
+            file_response = pipeline._message_cycle_manager.message_file_to_stream_response(item)
+            assert file_response is not None
+            live_sse_responses.append(file_response)
+        else:
+            raise AssertionError(f"Unexpected queue event: {item!r}")
+
+    qm = _FakeQueueManager(on_publish=convert_on_publish)
+    entity = ChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=EasyUIBasedAppConfig(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            app_mode=AppMode.AGENT_CHAT,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="test-provider", model="test-model"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
+        model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+        inputs={},
+        files=[],
+        user_id="user-1",
+        stream=True,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    conversation = Conversation(
+        id="conv-1",
+        app_id="app-1",
+        mode=AppMode.AGENT_CHAT,
+        name="Parallel tools",
+        status=ConversationStatus.NORMAL,
+        from_source=ConversationFromSource.API,
+        _inputs={},
+    )
+    message = Message(id="msg-1")
+    message.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    pipeline = EasyUIBasedGenerateTaskPipeline(
+        application_generate_entity=entity,
+        queue_manager=qm,
+        conversation=conversation,
+        message=message,
+        stream=True,
+    )
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        conversation_id="conv-1",
+        queue_manager=qm,
+    )
+
+    consumed = 0
+
+    def consume_new_sse_responses() -> list[AgentThoughtStreamResponse | MessageFileStreamResponse]:
+        nonlocal consumed
+        batch = live_sse_responses[consumed:]
+        consumed = len(live_sse_responses)
+        return batch
+
+    recorder.handle_stream_event(
+        _internal_stream_event(
+            FunctionToolCallEvent(part=ToolCallPart(tool_name="draw", args={"kind": "chart"}, tool_call_id="call-1"))
+        )
+    )
+    draw_call_responses = consume_new_sse_responses()
+    assert len(draw_call_responses) == 1
+    draw_call_thought = draw_call_responses[0]
+    assert isinstance(draw_call_thought, AgentThoughtStreamResponse)
+    assert draw_call_thought.tool == "draw"
+    assert draw_call_thought.observation == ""
+    assert draw_call_thought.message_files == []
+
+    recorder.handle_stream_event(
+        _internal_stream_event(
+            FunctionToolCallEvent(part=ToolCallPart(tool_name="export", args={"kind": "pdf"}, tool_call_id="call-2"))
+        )
+    )
+    export_call_responses = consume_new_sse_responses()
+    assert len(export_call_responses) == 1
+    export_call_thought = export_call_responses[0]
+    assert isinstance(export_call_thought, AgentThoughtStreamResponse)
+    assert export_call_thought.tool == "export"
+    assert export_call_thought.observation == ""
+    assert export_call_thought.message_files == []
+    assert export_call_thought.id != draw_call_thought.id
+
+    recorder.handle_stream_event(
+        _internal_stream_event(
+            FunctionToolResultEvent(
+                part=ToolReturnPart(
+                    tool_name="export",
+                    tool_call_id="call-2",
+                    content="Report ready",
+                    metadata={"dify_plugin_blob_files": [report_file.id]},
+                )
+            )
+        )
+    )
+    export_result_responses = consume_new_sse_responses()
+    attachments_after_export = {row.upload_file_id: row for row in _message_file_rows(sqlite_session)}
+    report_attachment = attachments_after_export[report_file.id]
+    assert len(export_result_responses) == 2
+    export_result_thought, report_sse = export_result_responses
+    assert isinstance(export_result_thought, AgentThoughtStreamResponse)
+    assert export_result_thought.id == export_call_thought.id
+    assert export_result_thought.tool == "export"
+    assert export_result_thought.observation == "Report ready"
+    assert export_result_thought.message_files == [report_attachment.id]
+    assert isinstance(report_sse, MessageFileStreamResponse)
+    assert report_sse.id == report_attachment.id
+    assert report_sse.belongs_to == MessageFileBelongsTo.ASSISTANT
+    assert report_sse.type == FileType.DOCUMENT
+    assert report_sse.filename == "report.pdf"
+    assert report_sse.mime_type == "application/pdf"
+    assert report_sse.size == 24
+    assert report_sse.transfer_method == FileTransferMethod.TOOL_FILE
+    assert report_sse.upload_file_id == report_file.id
+    assert f"/files/tools/{report_file.id}.pdf?" in report_sse.url
+    assert "timestamp=" in report_sse.url
+    assert "sign=" in report_sse.url
+
+    recorder.handle_stream_event(
+        _internal_stream_event(
+            FunctionToolResultEvent(
+                part=ToolReturnPart(
+                    tool_name="draw",
+                    tool_call_id="call-1",
+                    content="Chart ready",
+                    metadata={"dify_plugin_blob_files": [chart_file.id]},
+                )
+            )
+        )
+    )
+    draw_result_responses = consume_new_sse_responses()
+    attachments_after_draw = {row.upload_file_id: row for row in _message_file_rows(sqlite_session)}
+    chart_attachment = attachments_after_draw[chart_file.id]
+    assert len(draw_result_responses) == 2
+    draw_result_thought, chart_sse = draw_result_responses
+    assert isinstance(draw_result_thought, AgentThoughtStreamResponse)
+    assert draw_result_thought.id == draw_call_thought.id
+    assert draw_result_thought.tool == "draw"
+    assert draw_result_thought.observation == "Chart ready"
+    assert draw_result_thought.message_files == [chart_attachment.id]
+    assert isinstance(chart_sse, MessageFileStreamResponse)
+    assert chart_sse.id == chart_attachment.id
+    assert chart_sse.belongs_to == MessageFileBelongsTo.ASSISTANT
+    assert chart_sse.type == FileType.IMAGE
+    assert chart_sse.filename == "chart.png"
+    assert chart_sse.mime_type == "image/png"
+    assert chart_sse.size == 12
+    assert chart_sse.transfer_method == FileTransferMethod.TOOL_FILE
+    assert chart_sse.upload_file_id == chart_file.id
+    assert f"/files/tools/{chart_file.id}.png?" in chart_sse.url
+    assert "timestamp=" in chart_sse.url
+    assert "sign=" in chart_sse.url
+
+
 def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
 
@@ -1092,6 +1577,7 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(sqlite_session: Session)
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
 
@@ -1151,6 +1637,7 @@ def test_thinking_after_tool_starts_new_snapshot_row(sqlite_session: Session) ->
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
 
@@ -1209,6 +1696,7 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
 
@@ -1253,6 +1741,7 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
 
@@ -1326,6 +1815,7 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
         message_id="msg-1",
+        conversation_id="conv-1",
         queue_manager=qm,
     )
 

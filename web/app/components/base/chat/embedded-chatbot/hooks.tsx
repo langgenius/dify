@@ -25,6 +25,7 @@ import { tryAppParamsQueryOptions } from '@/service/try-app-queries'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
+import { toFileResponse } from '../message-files'
 import {
   buildChatItemTree,
   getProcessedInputsFromUrlParams,
@@ -42,9 +43,7 @@ function getFormattedChatList(messages: any[]) {
       id: `question-${item.id}`,
       content: item.query,
       isAnswer: false,
-      message_files: getProcessedFilesFromResponse(
-        questionFiles.map((item: any) => ({ ...item, related_id: item.id })),
-      ),
+      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
       parentMessageId: item.parent_message_id || undefined,
     })
     const answerFiles =
@@ -54,16 +53,14 @@ function getFormattedChatList(messages: any[]) {
       content: item.answer,
       agent_thoughts: addFileInfos(
         item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts,
-        item.message_files,
+        getProcessedFilesFromResponse((item.message_files ?? []).map(toFileResponse)),
       ),
       feedback: item.feedback,
       isAnswer: true,
       citation: item.retriever_resources,
       reasoningContent: item.metadata?.reasoning,
       reasoningFinished: true,
-      message_files: getProcessedFilesFromResponse(
-        answerFiles.map((item: any) => ({ ...item, related_id: item.id })),
-      ),
+      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
       parentMessageId: `question-${item.id}`,
     })
   })

@@ -1,11 +1,42 @@
+import os
+from collections.abc import Mapping
 from typing import TypedDict
+from uuid import UUID
 
 from core.tools.signature import sign_tool_file
 from graphon.file import FileTransferMethod
 from graphon.file import helpers as file_helpers
 from models.model import MessageFile, UploadFile
+from models.tools import ToolFile
 
 MAX_TOOL_FILE_EXTENSION_LENGTH = 10
+
+
+def parse_uuid(value: str | None) -> str | None:
+    """Return the canonical lowercase UUID string when `value` parses as a UUID, else `None`."""
+    if not value:
+        return None
+    try:
+        return str(UUID(value))
+    except ValueError:
+        return None
+
+
+def normalize_basename(name: str | None) -> str | None:
+    """Reduce a filename to a safe basename, returning `None` for empty or dot segments."""
+    basename = os.path.basename((name or "").replace("\\", "/")).strip()
+    if basename in {"", ".", ".."}:
+        return None
+    return basename
+
+
+def extract_tool_file_uuid(message_file: MessageFile) -> str | None:
+    """Extract and canonicalize the backing `ToolFile` UUID from a `MessageFile` row."""
+    candidate = message_file.upload_file_id
+    if not candidate and message_file.url:
+        file_part = message_file.url.split("/")[-1].split("?")[0]
+        candidate = file_part.rsplit(".", 1)[0] if "." in file_part else file_part
+    return parse_uuid(candidate)
 
 
 class MessageFileInfoDict(TypedDict):
@@ -21,12 +52,17 @@ class MessageFileInfoDict(TypedDict):
     remote_url: str | None
 
 
-def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, UploadFile]) -> MessageFileInfoDict:
+def prepare_file_dict(
+    message_file: MessageFile,
+    upload_files_map: Mapping[str, UploadFile],
+    tool_files_map: Mapping[str, ToolFile] | None = None,
+) -> MessageFileInfoDict:
     """
     Prepare file dictionary for message end stream response.
 
     :param message_file: MessageFile instance
-    :param upload_files_map: Dictionary mapping upload_file_id to UploadFile
+    :param upload_files_map: Mapping from upload_file_id to UploadFile
+    :param tool_files_map: Optional tenant-scoped mapping from ToolFile.id to ToolFile
     :return: Dictionary containing file information
     """
     upload_file = None
@@ -38,6 +74,7 @@ def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, Upl
     mime_type = "application/octet-stream"
     size = 0
     extension = ""
+    upload_file_id = message_file.upload_file_id or message_file.id
 
     match message_file.transfer_method:
         case FileTransferMethod.REMOTE_URL:
@@ -55,27 +92,41 @@ def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, Upl
                 extension = f".{upload_file.extension}" if upload_file.extension else ""
             elif message_file.upload_file_id:
                 url = file_helpers.get_signed_file_url(upload_file_id=str(message_file.upload_file_id))
-        case FileTransferMethod.TOOL_FILE if message_file.url:
-            if message_file.url.startswith(("http://", "https://")):
-                url = message_file.url
-                filename = message_file.url.split("/")[-1].split("?")[0]
-                if "." in filename:
-                    extension = "." + filename.rsplit(".", 1)[1]
-            else:
-                url_parts = message_file.url.split("/")
-                if url_parts:
-                    file_part = url_parts[-1].split("?")[0]
-                    if "." in file_part:
-                        tool_file_id, ext = file_part.rsplit(".", 1)
+        case FileTransferMethod.TOOL_FILE:
+            parsed_tool_file_id: str | None = None
+            if message_file.url:
+                if message_file.url.startswith(("http://", "https://")):
+                    url = message_file.url
+                    filename = message_file.url.split("/")[-1].split("?")[0]
+                    if "." in filename:
+                        parsed_tool_file_id, ext = filename.rsplit(".", 1)
                         extension = f".{ext}"
-                        if len(extension) > MAX_TOOL_FILE_EXTENSION_LENGTH:
-                            extension = ".bin"
                     else:
-                        tool_file_id = file_part
-                        extension = ".bin"
-                    url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
-                    filename = file_part
-        case FileTransferMethod.TOOL_FILE | FileTransferMethod.DATASOURCE_FILE:
+                        parsed_tool_file_id = filename
+                else:
+                    url_parts = message_file.url.split("/")
+                    if url_parts:
+                        file_part = url_parts[-1].split("?")[0]
+                        if "." in file_part:
+                            parsed_tool_file_id, ext = file_part.rsplit(".", 1)
+                            extension = f".{ext}"
+                            if len(extension) > MAX_TOOL_FILE_EXTENSION_LENGTH:
+                                extension = ".bin"
+                        else:
+                            parsed_tool_file_id = file_part
+                            extension = ".bin"
+                        signing_tool_file_id = parse_uuid(parsed_tool_file_id) or parsed_tool_file_id
+                        url = sign_tool_file(tool_file_id=signing_tool_file_id, extension=extension)
+                        filename = file_part
+            if tool_files_map:
+                lookup_id = parse_uuid(message_file.upload_file_id or parsed_tool_file_id)
+                tool_file = tool_files_map.get(lookup_id) if lookup_id else None
+                if tool_file is not None:
+                    filename = normalize_basename(tool_file.name) or f"{tool_file.id}{extension}"
+                    mime_type = tool_file.mimetype or "application/octet-stream"
+                    size = tool_file.size if isinstance(tool_file.size, int) and tool_file.size >= 0 else 0
+                    upload_file_id = tool_file.id
+        case FileTransferMethod.DATASOURCE_FILE:
             pass
 
     transfer_method_value = message_file.transfer_method.value
@@ -89,6 +140,6 @@ def prepare_file_dict(message_file: MessageFile, upload_files_map: dict[str, Upl
         "transfer_method": transfer_method_value,
         "type": message_file.type,
         "url": url or "",
-        "upload_file_id": message_file.upload_file_id or message_file.id,
+        "upload_file_id": upload_file_id,
         "remote_url": remote_url,
     }

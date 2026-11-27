@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import base64
 import json
+import posixpath
 import re
 from dataclasses import dataclass
 from typing import ClassVar, Final, Literal
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
@@ -120,20 +121,53 @@ def file_reference(record_id: str) -> str:
     return "dify-file-ref:" + base64.urlsafe_b64encode(payload).decode()
 
 
-def is_canonical_dify_file_reference(reference: str) -> bool:
-    """Return whether one string matches Dify's opaque file reference format."""
+def file_reference_record_id(reference: str) -> str:
+    """Decode a canonical locator's record ID without authorizing access to it.
+
+    Invalid references raise ValueError. Consumers must still verify ownership
+    through the control plane or database before reading or attaching the file.
+    """
     prefix = "dify-file-ref:"
     if not reference.startswith(prefix):
-        return False
+        raise ValueError("reference must be a canonical Dify file reference")
     encoded_payload = reference.removeprefix(prefix)
     try:
         payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
-    except (ValueError, json.JSONDecodeError):
+    except ValueError as exc:
+        raise ValueError("reference must be a canonical Dify file reference") from exc
+    record_id = payload.get("record_id") if isinstance(payload, dict) else None
+    if not isinstance(record_id, str) or not record_id:
+        raise ValueError("reference must be a canonical Dify file reference")
+    return record_id
+
+
+def is_canonical_dify_file_reference(reference: str) -> bool:
+    """Return whether one string matches Dify's opaque file reference format."""
+    try:
+        file_reference_record_id(reference)
+    except ValueError:
         return False
-    if not isinstance(payload, dict):
+    return True
+
+
+def is_safe_dify_file_uri(value: str) -> bool:
+    """Check that a URI stays within Dify's signed ``/files/*`` data plane.
+
+    Accept origin-free paths with an optional signed query. Reject origins,
+    fragments, backslashes, and paths escaping ``/files/`` after decoding and
+    normalization. This client-safe check performs no I/O or token validation.
+    """
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc or parsed.fragment or value.startswith("//"):
         return False
-    record_id = payload.get("record_id")
-    return isinstance(record_id, str) and bool(record_id)
+
+    decoded_path = parsed.path
+    for _ in range(2):
+        decoded_path = unquote(decoded_path)
+    if "\\" in decoded_path:
+        return False
+    normalized_path = posixpath.normpath(decoded_path)
+    return decoded_path.startswith("/files/") and normalized_path.startswith("/files/")
 
 
 class AgentStubConnectRequest(BaseModel):
@@ -202,11 +236,14 @@ def format_media_observation(
     filename: str | None = None,
     mime_type: str | None = None,
     size: int | None = None,
+    delivered_to_user: bool = False,
 ) -> str:
     """Render a copyable lightweight handle, omitting unavailable metadata.
 
     No multimodal content is attached. Both the API and agent runtime use this
     client-safe format so the model can pass the object back to read_media.
+    Set ``delivered_to_user=True`` when the runtime also delivers the persisted
+    file directly to the user as an attachment.
     """
     summary = mapping.model_dump(mode="json", exclude_none=True)
     summary.update(
@@ -217,10 +254,11 @@ def format_media_observation(
         }
     )
     kind = "link" if mapping.transfer_method == "remote_url" else "file"
+    hint_prefix = "already delivered to the user as an attachment; " if delivered_to_user else ""
     return (
         f"\nTool generated media {kind}: "
         + json.dumps(summary, ensure_ascii=False, separators=(",", ":"))
-        + " (call `read_media` with `file` set to this object only if you need to inspect its content).\n"
+        + f" ({hint_prefix}call `read_media` with `file` set to this object only if you need to inspect its content).\n"
     )
 
 
@@ -427,8 +465,10 @@ __all__ = [
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "file_reference",
+    "file_reference_record_id",
     "format_media_observation",
     "is_canonical_dify_file_reference",
+    "is_safe_dify_file_uri",
     "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
 ]

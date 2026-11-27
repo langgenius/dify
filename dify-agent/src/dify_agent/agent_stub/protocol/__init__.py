@@ -37,8 +37,10 @@ from .agent_stub import (
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
     file_reference,
+    file_reference_record_id,
     format_media_observation,
     is_canonical_dify_file_reference,
+    is_safe_dify_file_uri,
     normalize_agent_stub_api_base_url,
     parse_agent_stub_endpoint,
 )
@@ -80,8 +82,10 @@ __all__ = [
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "file_reference",
+    "file_reference_record_id",
     "format_media_observation",
     "is_canonical_dify_file_reference",
+    "is_safe_dify_file_uri",
     "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
 ]

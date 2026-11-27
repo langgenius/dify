@@ -6,6 +6,7 @@ _MIME_ALIASES = {
     "audio/mpeg3": "audio/mpeg",
     "audio/x-wav": "audio/wav",
     "audio/wave": "audio/wav",
+    "audio/vnd.wave": "audio/wav",
     "audio/x-flac": "audio/flac",
     "audio/x-aac": "audio/aac",
     "application/x-pdf": "application/pdf",

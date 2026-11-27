@@ -11,6 +11,67 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
+def _runtime_dependency_bootstrap() -> list[str]:
+    """Isolate import checks from optional runtime dependencies without testing their behavior."""
+    return [
+        "import importlib.util",
+        "import types",
+        "if importlib.util.find_spec('opentelemetry.sdk') is None:",
+        "    sdk_module = types.ModuleType('opentelemetry.sdk')",
+        "    sdk_trace_module = types.ModuleType('opentelemetry.sdk.trace')",
+        "    sdk_trace_module.ReadableSpan = type('ReadableSpan', (), {})",
+        "    sdk_module.trace = sdk_trace_module",
+        "    sys.modules['opentelemetry.sdk'] = sdk_module",
+        "    sys.modules['opentelemetry.sdk.trace'] = sdk_trace_module",
+        "if 'graphon.model_runtime.entities.llm_entities' not in sys.modules:",
+        "    graphon_module = types.ModuleType('graphon')",
+        "    model_runtime_module = types.ModuleType('graphon.model_runtime')",
+        "    entities_module = types.ModuleType('graphon.model_runtime.entities')",
+        "    llm_entities_module = types.ModuleType('graphon.model_runtime.entities.llm_entities')",
+        "    message_entities_module = types.ModuleType('graphon.model_runtime.entities.message_entities')",
+        "    llm_entities_module.LLMResultChunk = type('LLMResultChunk', (), {})",
+        "    llm_entities_module.LLMUsage = type('LLMUsage', (), {})",
+        "    for name in ('AssistantPromptMessage', 'AudioPromptMessageContent', 'DocumentPromptMessageContent', 'ImagePromptMessageContent', 'PromptMessage', 'PromptMessageContentUnionTypes', 'PromptMessageTool', 'SystemPromptMessage', 'TextPromptMessageContent', 'ToolPromptMessage', 'UserPromptMessage', 'VideoPromptMessageContent'):",
+        "        setattr(message_entities_module, name, type(name, (), {}))",
+        "    sys.modules['graphon'] = graphon_module",
+        "    sys.modules['graphon.model_runtime'] = model_runtime_module",
+        "    sys.modules['graphon.model_runtime.entities'] = entities_module",
+        "    sys.modules['graphon.model_runtime.entities.llm_entities'] = llm_entities_module",
+        "    sys.modules['graphon.model_runtime.entities.message_entities'] = message_entities_module",
+        "    graphon_module.model_runtime = model_runtime_module",
+        "    model_runtime_module.entities = entities_module",
+        "    entities_module.llm_entities = llm_entities_module",
+        "    entities_module.message_entities = message_entities_module",
+        "if 'jsonschema' not in sys.modules:",
+        "    jsonschema_module = types.ModuleType('jsonschema')",
+        "    jsonschema_exceptions_module = types.ModuleType('jsonschema.exceptions')",
+        "    jsonschema_protocols_module = types.ModuleType('jsonschema.protocols')",
+        "    jsonschema_validators_module = types.ModuleType('jsonschema.validators')",
+        "    class _SchemaError(Exception):",
+        "        pass",
+        "    class _ValidationError(Exception):",
+        "        path = ()",
+        "    class _Validator:",
+        "        @staticmethod",
+        "        def check_schema(schema):",
+        "            return None",
+        "        def __init__(self, schema):",
+        "            self.schema = schema",
+        "        def iter_errors(self, value):",
+        "            return iter(())",
+        "    def _validator_for(schema):",
+        "        return _Validator",
+        "    jsonschema_module.SchemaError = _SchemaError",
+        "    jsonschema_exceptions_module.ValidationError = _ValidationError",
+        "    jsonschema_protocols_module.Validator = _Validator",
+        "    jsonschema_validators_module.validator_for = _validator_for",
+        "    sys.modules['jsonschema'] = jsonschema_module",
+        "    sys.modules['jsonschema.exceptions'] = jsonschema_exceptions_module",
+        "    sys.modules['jsonschema.protocols'] = jsonschema_protocols_module",
+        "    sys.modules['jsonschema.validators'] = jsonschema_validators_module",
+    ]
+
+
 def _run_import_check(
     *,
     blocked_imports: list[str],
@@ -140,6 +201,43 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
     )
 
 
+def test_plugin_tools_and_agent_stub_protocol_are_core_only() -> None:
+    _run_import_check(
+        blocked_imports=[
+            "dify_agent.agent_stub.server",
+            "dify_agent.server",
+            "fastapi",
+            "jwcrypto",
+            "graphon",
+            "jsonschema",
+            "pydantic_settings",
+            "redis",
+        ],
+        imports=[
+            "dify_agent.agent_stub.protocol.agent_stub",
+            "dify_agent.layers.dify_plugin.tools_layer",
+        ],
+        assertions=[
+            "assert dify_agent_agent_stub_protocol_agent_stub.is_safe_dify_file_uri('/files/upload?sign=1')",
+            "assert hasattr(dify_agent_layers_dify_plugin_tools_layer, 'Toolset')",
+        ],
+    )
+
+
+def test_runtime_does_not_import_agent_stub_server_dependencies() -> None:
+    _run_import_check(
+        blocked_imports=[
+            "dify_agent.agent_stub.server",
+            "dify_agent.server",
+            "fastapi",
+            "jwcrypto",
+        ],
+        imports=["dify_agent.runtime.modules"],
+        assertions=["assert 'tools' in dify_agent_runtime_modules.REGISTRY"],
+        bootstrap=_runtime_dependency_bootstrap(),
+    )
+
+
 def test_agent_cli_help_import_is_client_safe() -> None:
     _run_import_check(
         blocked_imports=[
@@ -162,55 +260,7 @@ def test_agent_cli_help_import_is_client_safe() -> None:
             "assert hasattr(dify_agent_agent_stub_shell_env, 'build_shell_agent_stub_env')",
             "assert hasattr(dify_agent_layers_shell_layer, 'Capability')",
         ],
-        bootstrap=[
-            "import types",
-            "if 'graphon.model_runtime.entities.llm_entities' not in sys.modules:",
-            "    graphon_module = types.ModuleType('graphon')",
-            "    model_runtime_module = types.ModuleType('graphon.model_runtime')",
-            "    entities_module = types.ModuleType('graphon.model_runtime.entities')",
-            "    llm_entities_module = types.ModuleType('graphon.model_runtime.entities.llm_entities')",
-            "    message_entities_module = types.ModuleType('graphon.model_runtime.entities.message_entities')",
-            "    llm_entities_module.LLMResultChunk = type('LLMResultChunk', (), {})",
-            "    llm_entities_module.LLMUsage = type('LLMUsage', (), {})",
-            "    for name in ('AssistantPromptMessage', 'AudioPromptMessageContent', 'DocumentPromptMessageContent', 'ImagePromptMessageContent', 'PromptMessage', 'PromptMessageContentUnionTypes', 'PromptMessageTool', 'SystemPromptMessage', 'TextPromptMessageContent', 'ToolPromptMessage', 'UserPromptMessage', 'VideoPromptMessageContent'):",
-            "        setattr(message_entities_module, name, type(name, (), {}))",
-            "    sys.modules['graphon'] = graphon_module",
-            "    sys.modules['graphon.model_runtime'] = model_runtime_module",
-            "    sys.modules['graphon.model_runtime.entities'] = entities_module",
-            "    sys.modules['graphon.model_runtime.entities.llm_entities'] = llm_entities_module",
-            "    sys.modules['graphon.model_runtime.entities.message_entities'] = message_entities_module",
-            "    graphon_module.model_runtime = model_runtime_module",
-            "    model_runtime_module.entities = entities_module",
-            "    entities_module.llm_entities = llm_entities_module",
-            "    entities_module.message_entities = message_entities_module",
-            "if 'jsonschema' not in sys.modules:",
-            "    jsonschema_module = types.ModuleType('jsonschema')",
-            "    jsonschema_exceptions_module = types.ModuleType('jsonschema.exceptions')",
-            "    jsonschema_protocols_module = types.ModuleType('jsonschema.protocols')",
-            "    jsonschema_validators_module = types.ModuleType('jsonschema.validators')",
-            "    class _SchemaError(Exception):",
-            "        pass",
-            "    class _ValidationError(Exception):",
-            "        path = ()",
-            "    class _Validator:",
-            "        @staticmethod",
-            "        def check_schema(schema):",
-            "            return None",
-            "        def __init__(self, schema):",
-            "            self.schema = schema",
-            "        def iter_errors(self, value):",
-            "            return iter(())",
-            "    def _validator_for(schema):",
-            "        return _Validator",
-            "    jsonschema_module.SchemaError = _SchemaError",
-            "    jsonschema_exceptions_module.ValidationError = _ValidationError",
-            "    jsonschema_protocols_module.Validator = _Validator",
-            "    jsonschema_validators_module.validator_for = _validator_for",
-            "    sys.modules['jsonschema'] = jsonschema_module",
-            "    sys.modules['jsonschema.exceptions'] = jsonschema_exceptions_module",
-            "    sys.modules['jsonschema.protocols'] = jsonschema_protocols_module",
-            "    sys.modules['jsonschema.validators'] = jsonschema_validators_module",
-        ],
+        bootstrap=_runtime_dependency_bootstrap(),
     )
 
 

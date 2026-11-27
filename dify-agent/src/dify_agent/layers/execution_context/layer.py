@@ -42,4 +42,5 @@ class Capability(AbstractCapability[Deps]):
             plugin_daemon_api_key=deps.services.plugin_daemon_api_key,
             user_id=config.user_id,
             http_client=http_client,
+            max_file_size=deps.services.agent_file_upload_max_bytes,
         )

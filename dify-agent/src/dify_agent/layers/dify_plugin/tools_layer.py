@@ -16,6 +16,7 @@ from __future__ import annotations
 from copy import deepcopy
 import json
 import mimetypes
+import posixpath
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import override
@@ -24,11 +25,12 @@ from urllib.parse import urlparse
 import httpx
 from pydantic import BaseModel, ConfigDict
 from pydantic_ai import RunContext, Tool
+from pydantic_ai.messages import ToolReturn
 from pydantic_ai.tools import ToolDefinition
 
 from pydantic_ai.toolsets import FunctionToolset
 from dify_agent.runtime.context import Deps
-from dify_agent.agent_stub.protocol import AgentStubFileMapping, format_media_observation
+from dify_agent.agent_stub.protocol import AgentStubFileMapping, file_reference_record_id, format_media_observation
 from dify_agent.layers.agent_files import (
     AgentFileDownload,
     file_mapping_from_link,
@@ -50,6 +52,7 @@ from dify_agent.layers.dify_plugin.tool_client import (
 )
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import Capability as ExecutionContextCapability
+from dify_agent.layers.read_media.mime import normalize_media_mime
 
 
 # Plugin tools intentionally do not expose a per-tool strictness override in the
@@ -146,14 +149,17 @@ def _build_pydantic_ai_tool(
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-    async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
+    async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str | ToolReturn:
         try:
-            merged_arguments = await _prepare_tool_arguments(
-                effective_parameters,
-                tool_config,
-                tool_arguments,
-                file_context=file_context,
-            )
+            try:
+                merged_arguments = await _prepare_tool_arguments(
+                    effective_parameters,
+                    tool_config,
+                    tool_arguments,
+                    file_context=file_context,
+                )
+            except ValueError as exc:
+                return f"tool parameters validation error: {exc}, please check your tool parameters"
             messages = await client.invoke(
                 provider=tool_config.provider,
                 tool_name=tool_config.tool_name,
@@ -161,11 +167,13 @@ def _build_pydantic_ai_tool(
                 credentials=dict(tool_config.credentials),
                 tool_parameters=merged_arguments,
             )
-            return await _convert_tool_response_to_text(messages, file_context=file_context)
+            return await _convert_tool_response_to_text(
+                messages,
+                file_context=file_context,
+                tool_name=tool_name,
+            )
         except DifyPluginToolClientError as exc:
             return _tool_error_text(tool_name=tool_name, error=exc)
-        except ValueError as exc:
-            return f"tool parameters validation error: {exc}, please check your tool parameters"
         except httpx.HTTPError as exc:
             return f"tool file request failed: {exc}"
 
@@ -473,10 +481,128 @@ def _normalized_json_part(text: str) -> str:
         return text
 
 
+_GENERIC_BINARY_MIME_TYPE = "application/octet-stream"
+_ENCODING_MIME_TYPES: Mapping[str, str] = {
+    "gzip": "application/gzip",
+    "bzip2": "application/x-bzip2",
+    "xz": "application/x-xz",
+    "br": "application/x-brotli",
+    "compress": "application/x-compress",
+}
+_MIME_TYPE_ALIASES: Mapping[str, str] = {
+    "application/xml": "text/xml",
+    "application/javascript": "text/javascript",
+}
+
+
+def _guess_mime_type_from_filename(filename: str) -> str | None:
+    guessed_type, encoding = mimetypes.guess_type(filename)
+    if encoding is not None:
+        return _ENCODING_MIME_TYPES.get(encoding.lower())
+    if guessed_type is not None:
+        return normalize_media_mime(guessed_type)
+    return None
+
+
+def _canonical_mime_type(mime_type: str) -> str:
+    normalized = mime_type.partition(";")[0].strip().lower()
+    main_type, sep, sub_type = normalized.partition("/")
+    if sep and sub_type.startswith("x-"):
+        normalized = f"{main_type}/{sub_type[2:]}"
+    normalized = normalize_media_mime(normalized)
+    return _MIME_TYPE_ALIASES.get(normalized, normalized)
+
+
+def _has_safe_extension(extension: str) -> bool:
+    return len(extension) > 1 and all(char.isalnum() or char in "+-_" for char in extension[1:])
+
+
+def _guess_extension_for_mime_type(mime_type: str) -> str:
+    canonical = _canonical_mime_type(mime_type)
+    for ext, encoding in mimetypes.encodings_map.items():
+        encoding_mime = _ENCODING_MIME_TYPES.get(encoding.lower())
+        if encoding_mime is not None and _canonical_mime_type(encoding_mime) == canonical:
+            return ext
+    candidates: list[str] = [canonical]
+    if mime_type != canonical:
+        candidates.append(mime_type)
+    main_type, sep, sub_type = canonical.partition("/")
+    if sep:
+        x_candidate = f"{main_type}/x-{sub_type}"
+        if x_candidate not in candidates:
+            candidates.append(x_candidate)
+    for candidate in candidates:
+        extension = mimetypes.guess_extension(candidate)
+        if extension:
+            return extension
+    return ".bin"
+
+
+def _extension_matches_mime_type(filename: str, extension: str, mime_type: str) -> bool:
+    lower_ext = extension.lower()
+    canonical = _canonical_mime_type(mime_type)
+    for candidate in (canonical, mime_type):
+        if lower_ext in mimetypes.guess_all_extensions(candidate):
+            return True
+    guessed_type = _guess_mime_type_from_filename(filename)
+    return guessed_type is not None and _canonical_mime_type(guessed_type) == canonical
+
+
+def _default_blob_stem(*, tool_name: str, blob_index: int) -> str:
+    safe_tool_name = posixpath.basename(tool_name.replace("\\", "/"))
+    safe_tool_name = "".join(char for char in safe_tool_name if char.isprintable()).strip().strip(".").strip()
+    if safe_tool_name and safe_tool_name not in {".", ".."}:
+        return f"{safe_tool_name}_output_{blob_index}"
+    return "output" if blob_index == 1 else f"output_{blob_index}"
+
+
+def _resolve_blob_file_info(
+    meta: Mapping[str, object] | None,
+    *,
+    tool_name: str = "",
+    blob_index: int = 1,
+) -> tuple[str, str]:
+    """Return a safe basename and normalized MIME essence for untrusted blob metadata.
+
+    Missing names default to ``<tool_name>_output_<blob_index>`` (or ``output`` /
+    ``output_<blob_index>`` when ``tool_name`` is omitted). Known media MIME
+    aliases are normalized to canonical media types via ``normalize_media_mime``;
+    missing or generic ``application/octet-stream`` MIME types are inferred from
+    the filename when possible while keeping safe unknown extensions intact.
+    Strip path segments and control characters, and repair missing or conflicting
+    extensions without overwriting equivalent safe extensions.
+    """
+    raw_filename = meta.get("filename") if meta is not None else None
+    filename = posixpath.basename(raw_filename.replace("\\", "/")) if isinstance(raw_filename, str) else ""
+    filename = "".join(char for char in filename if char.isprintable()).strip()
+    if filename in {"", ".", ".."}:
+        stem = _default_blob_stem(tool_name=tool_name, blob_index=blob_index)
+        extension = ""
+        filename = stem
+    else:
+        stem, extension = posixpath.splitext(filename)
+    raw_mime_type = meta.get("mime_type") if meta is not None else None
+    mime_type = normalize_media_mime(raw_mime_type) if isinstance(raw_mime_type, str) else ""
+    if mime_type in {"", _GENERIC_BINARY_MIME_TYPE}:
+        inferred = _guess_mime_type_from_filename(filename)
+        if inferred is not None:
+            return filename, inferred
+        mime_type = _GENERIC_BINARY_MIME_TYPE
+        if not _has_safe_extension(extension):
+            filename = f"{stem}.bin"
+        return filename, mime_type
+    if not _has_safe_extension(extension) or not _extension_matches_mime_type(filename, extension, mime_type):
+        filename = stem + _guess_extension_for_mime_type(mime_type)
+    return filename, mime_type
+
+
 async def _convert_tool_response_to_text(
-    tool_response: Sequence[DifyPluginToolInvokeMessage], *, file_context: _PluginToolFileContext
-) -> str:
-    """Convert daemon stream messages into the plain-text tool observation.
+    tool_response: Sequence[DifyPluginToolInvokeMessage],
+    *,
+    file_context: _PluginToolFileContext,
+    tool_name: str = "",
+) -> str | ToolReturn:
+    """Convert daemon messages into observations and persisted blob attachment IDs.
 
     This preserves the user-facing semantics Dify's agent tool runtime relies on:
     Text/JSON semantics are preserved. Media returns copyable locators only;
@@ -485,6 +611,8 @@ async def _convert_tool_response_to_text(
     """
     parts: list[str] = []
     json_parts: list[str] = []
+    uploaded_tool_file_ids: list[str] = []
+    blob_index = 0
 
     for response in tool_response:
         if response.type is DifyPluginToolInvokeMessage.MessageType.TEXT:
@@ -503,7 +631,17 @@ async def _convert_tool_response_to_text(
             DifyPluginToolInvokeMessage.MessageType.BLOB,
             DifyPluginToolInvokeMessage.MessageType.BLOB_CHUNK,
         }:
-            parts.append(await _media_response_to_text(response, file_context))
+            if response.type is DifyPluginToolInvokeMessage.MessageType.BLOB:
+                blob_index += 1
+            observation, tool_file_id = await _media_response_to_text(
+                response,
+                file_context,
+                tool_name=tool_name,
+                blob_index=blob_index or 1,
+            )
+            parts.append(observation)
+            if tool_file_id is not None:
+                uploaded_tool_file_ids.append(tool_file_id)
         elif response.type is DifyPluginToolInvokeMessage.MessageType.JSON:
             json_message = response.message
             if isinstance(json_message, DifyPluginToolInvokeMessage.JsonMessage) and not json_message.suppress_output:
@@ -516,14 +654,24 @@ async def _convert_tool_response_to_text(
     if json_parts:
         existing_parts = {_normalized_json_part(part) for part in parts}
         parts.extend(part for part in json_parts if _normalized_json_part(part) not in existing_parts)
-    return "".join(parts)
+    observation_text = "".join(parts)
+    if uploaded_tool_file_ids:
+        return ToolReturn(return_value=observation_text, metadata={"dify_plugin_blob_files": uploaded_tool_file_ids})
+    return observation_text
 
 
-async def _media_response_to_text(response: DifyPluginToolInvokeMessage, context: _PluginToolFileContext) -> str:
+async def _media_response_to_text(
+    response: DifyPluginToolInvokeMessage,
+    context: _PluginToolFileContext,
+    *,
+    tool_name: str = "",
+    blob_index: int = 1,
+) -> tuple[str, str | None]:
     """Persist blob outputs and soften file conversion errors into text observations.
 
     No media response, including a failed or incomplete blob, is stringified.
     The control plane rechecks authorization when the locator is consumed.
+    Only successfully persisted BLOBs return an attachment candidate record ID.
     """
     meta = response.meta or {}
     filename = meta.get("filename")
@@ -532,13 +680,19 @@ async def _media_response_to_text(response: DifyPluginToolInvokeMessage, context
     mime_type = mime_type if isinstance(mime_type, str) and mime_type else None
     size = meta.get("size")
     size = size if isinstance(size, int) and not isinstance(size, bool) else None
+    tool_file_id = None
     try:
+        if response.chunk_error is not None:
+            raise ValueError(response.chunk_error)
         if response.type is DifyPluginToolInvokeMessage.MessageType.BLOB and isinstance(
             response.message, DifyPluginToolInvokeMessage.BlobMessage
         ):
             size = len(response.message.blob)
-            mime_type = mime_type or "application/octet-stream"
-            filename = filename or "tool-output" + (mimetypes.guess_extension(mime_type) or ".bin")
+            filename, mime_type = _resolve_blob_file_info(
+                response.meta,
+                tool_name=tool_name,
+                blob_index=blob_index,
+            )
             mapping = await upload_agent_tool_file(
                 context.deps.services,
                 context.execution_context,
@@ -547,6 +701,8 @@ async def _media_response_to_text(response: DifyPluginToolInvokeMessage, context
                 mime_type=mime_type,
                 max_size=context.deps.services.agent_file_upload_max_bytes,
             )
+            assert mapping.reference is not None
+            tool_file_id = file_reference_record_id(mapping.reference)
         elif response.type is DifyPluginToolInvokeMessage.MessageType.FILE:
             file = meta.get("file")
             if not isinstance(file, dict):
@@ -572,9 +728,16 @@ async def _media_response_to_text(response: DifyPluginToolInvokeMessage, context
             mime_type = mime_type or mimetypes.guess_type(filename or "")[0]
         else:
             raise ValueError("media output is incomplete or has no usable locator")
-        return format_media_observation(mapping, filename=filename, mime_type=mime_type, size=size)
+        observation = format_media_observation(
+            mapping,
+            filename=filename,
+            mime_type=mime_type,
+            size=size,
+            delivered_to_user=tool_file_id is not None and context.execution_context.agent_mode == "agent_app",
+        )
+        return observation, tool_file_id
     except Exception as exc:
-        return f"\nTool media unavailable ({filename}, {mime_type}, {size} bytes): {exc}.\n"
+        return f"\nTool media unavailable ({filename}, {mime_type}, {size} bytes): {exc}.\n", None
 
 
 __all__ = ["Config", "State", "Toolset"]

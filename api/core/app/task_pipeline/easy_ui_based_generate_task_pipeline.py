@@ -49,7 +49,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.app.task_pipeline.message_file_utils import prepare_file_dict
+from core.app.task_pipeline.message_file_utils import extract_tool_file_uuid, prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
 from core.model_manager import ModelInstance
@@ -65,6 +65,7 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
@@ -585,9 +586,32 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
                     upload_files_map = {uf.id: uf for uf in upload_files}
 
+                raw_tenant_id = self._application_generate_entity.app_config.tenant_id
+                tool_file_ids = list(
+                    dict.fromkeys(
+                        tool_file_id
+                        for mf in message_files
+                        if mf.transfer_method == FileTransferMethod.TOOL_FILE
+                        and (tool_file_id := extract_tool_file_uuid(mf)) is not None
+                    )
+                )
+                tool_files_map: dict[str, ToolFile] = {}
+                if tool_file_ids and isinstance(raw_tenant_id, str) and raw_tenant_id:
+                    tool_files = session.scalars(
+                        select(ToolFile).where(
+                            ToolFile.tenant_id == raw_tenant_id,
+                            ToolFile.id.in_(tool_file_ids),
+                        )
+                    ).all()
+                    tool_files_map = {tf.id: tf for tf in tool_files}
+
                 files_list = []
                 for message_file in message_files:
-                    file_dict = prepare_file_dict(message_file, upload_files_map)
+                    file_dict = prepare_file_dict(
+                        message_file,
+                        upload_files_map,
+                        tool_files_map=tool_files_map,
+                    )
                     files_list.append(file_dict)
 
                 files = cast(Sequence[Mapping[str, Any]], files_list)

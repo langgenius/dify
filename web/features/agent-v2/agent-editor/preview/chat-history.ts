@@ -4,28 +4,11 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { MessageRating } from '@/models/log'
-import type { TransferMethod } from '@/types/app'
-import type { FileResponse } from '@/types/workflow'
+import { toFileResponse } from '@/app/components/base/chat/message-files'
 import { buildChatItemTree } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-
-const toFileResponse = (
-  file: NonNullable<MessageDetailResponse['message_files']>[number],
-): FileResponse => ({
-  related_id: file.id ?? file.upload_file_id,
-  extension: '',
-  filename: file.filename,
-  size: file.size ?? 0,
-  mime_type: file.mime_type ?? '',
-  transfer_method: file.transfer_method as TransferMethod,
-  type: file.type,
-  url: file.url ?? '',
-  upload_file_id: file.upload_file_id ?? '',
-  remote_url: file.url ?? '',
-})
 
 const toLogMessages = (
   message: MessageDetailResponse['message'],
@@ -145,7 +128,7 @@ export function getFormattedAgentDebugChatTree(
             toAgentThoughtItem(thought, item.conversation_id),
           ),
         ),
-        item.message_files as unknown as FileEntity[],
+        getProcessedFilesFromResponse((item.message_files ?? []).map(toFileResponse)),
       ),
       feedback: toFeedback(item.feedbacks?.find((feedback) => feedback.from_source === 'user')),
       isAnswer: true,
