@@ -523,13 +523,12 @@ class ToolManager:
             yield from cls._list_hardcoded_providers()
 
     @classmethod
-    def list_plugin_providers(cls, tenant_id: str) -> list[PluginToolProviderController]:
-        """
-        list all the plugin providers
-        """
+    def list_plugin_providers(cls, tenant_id: str, *, complete: bool = False) -> list[PluginToolProviderController]:
+        """Read the Console provider page or verify the complete installed inventory."""
 
         manager = PluginToolManager()
-        provider_entities = manager.fetch_tool_providers(tenant_id)
+        fetch = manager.fetch_complete_tool_providers if complete else manager.fetch_tool_providers
+        provider_entities = fetch(tenant_id)
         return [
             PluginToolProviderController(
                 entity=provider.declaration,

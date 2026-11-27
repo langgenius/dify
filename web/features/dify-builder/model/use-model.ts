@@ -1,32 +1,47 @@
 import type { SessionModel } from '../types'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { consoleQuery } from '@/service/console'
 import { difyBuilderSelectedModelAtom, difyBuilderSessionModelAtom } from '../state'
 
 export const useDifyBuilderModel = ({ enabled = true }: { enabled?: boolean } = {}) => {
   const selectedModel = useAtomValue(difyBuilderSelectedModelAtom)
   const sessionModel = useAtomValue(difyBuilderSessionModelAtom)
   const explicitModel = selectedModel ?? sessionModel
+  const defaultEnabled = enabled && !explicitModel
   const {
     data: defaultModel,
-    isLoading: defaultLoading,
+    isPending: defaultPending,
     isError: defaultError,
-    mutate: refetchDefault,
-  } = useDefaultModel(ModelTypeEnum.textGeneration, { enabled: enabled && !explicitModel })
+    refetch: refetchDefault,
+  } = useQuery(
+    consoleQuery.workspaces.current.defaultModel.get.queryOptions({
+      input: { query: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data ?? undefined,
+      enabled: defaultEnabled,
+    }),
+  )
   const {
-    activeTextGenerationModelList,
-    isLoading: modelsLoading,
+    data: modelProviders,
+    isPending: modelsPending,
     isError: modelsError,
     refetch: refetchModels,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(undefined, { enabled })
+  } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+      enabled,
+    }),
+  )
+  const activeTextGenerationModelList = useMemo(
+    () => (modelProviders ?? []).filter((provider) => provider.status === ModelStatusEnum.active),
+    [modelProviders],
+  )
   const model = useMemo<SessionModel | null>(() => {
     const candidate =
       explicitModel ??
@@ -49,13 +64,15 @@ export const useDifyBuilderModel = ({ enabled = true }: { enabled?: boolean } = 
   const retry = useCallback(async () => {
     await Promise.all([explicitModel ? undefined : refetchDefault(), refetchModels()])
   }, [explicitModel, refetchDefault, refetchModels])
-  const isError = defaultError || modelsError
+  const isError =
+    (defaultEnabled && defaultError && defaultModel === undefined) ||
+    (enabled && modelsError && modelProviders === undefined)
 
   return {
     model,
     selection: explicitModel ?? model,
     modelList: activeTextGenerationModelList,
-    isLoading: !isError && (defaultLoading || modelsLoading),
+    isLoading: !isError && ((defaultEnabled && defaultPending) || (enabled && modelsPending)),
     isError,
     hasAvailableModels: activeTextGenerationModelList.some((provider) =>
       provider.models.some((model) => model.status === ModelStatusEnum.active),

@@ -1250,30 +1250,34 @@ class WorkflowServiceDifyPort:
         pause = PauseStateLayerConfig(session_factory=_session_factory(), state_owner_user_id=draft.created_by)
         if app.mode == "advanced-chat":
             generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-            return generator.convert_to_event_stream(generator.generate(
+            return generator.convert_to_event_stream(
+                generator.generate(
+                    app_model=app,
+                    workflow=draft,
+                    user=account,
+                    args=args,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                    workflow_run_id=str(uuid4()),
+                    streaming=True,
+                    pause_state_config=pause,
+                    session=session,
+                )
+            )
+        session.commit()
+        generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+        return generator.convert_to_event_stream(
+            generator.generate(
                 app_model=app,
                 workflow=draft,
+                execution_identity=build_workflow_execution_identity(account),
                 user=account,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
-                workflow_run_id=str(uuid4()),
                 streaming=True,
+                call_depth=0,
                 pause_state_config=pause,
-                session=session,
-            ))
-        session.commit()
-        generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-        return generator.convert_to_event_stream(generator.generate(
-            app_model=app,
-            workflow=draft,
-            execution_identity=build_workflow_execution_identity(account),
-            user=account,
-            args=args,
-            invoke_from=InvokeFrom.DEBUGGER,
-            streaming=True,
-            call_depth=0,
-            pause_state_config=pause,
-        ))
+            )
+        )
 
     def graph_revision(self, graph: Graph) -> str:
         return executable_graph_revision(graph)

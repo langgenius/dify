@@ -245,7 +245,6 @@ export const zDifyBuilderSubmitMessagePayload = z.object({
 export const zDifyBuilderCreateBuildSessionPayload = z.object({
   app_id: z.string().min(1),
   attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
-  derive_app_name: z.boolean().optional().default(false),
   goal_text: z.string().max(20000).optional().default(''),
   model_config: zSessionModel.nullish(),
   scenario: z.literal('build'),

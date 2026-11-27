@@ -10,8 +10,6 @@ import {
 } from './zod.gen.ts'
 import {
   zPostWorkflowGenerateBody,
-  zPostWorkflowGenerateImproveBody,
-  zPostWorkflowGenerateImproveResponse,
   zPostWorkflowGenerateResponse,
   zPostWorkflowGenerateStreamBody,
   zPostWorkflowGenerateStreamResponse,
@@ -20,28 +18,9 @@ import {
 } from './zod.gen.ts'
 
 /**
- * Expand a workflow-generator instruction with the details it leaves unstated
- */
-export const post = oc
-  .route({
-    description: 'Expand a workflow-generator instruction with the details it leaves unstated',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkflowGenerateImprove',
-    path: '/workflow-generate/improve',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostWorkflowGenerateImproveBody }))
-  .output(zPostWorkflowGenerateImproveResponse)
-
-export const improve = {
-  post,
-}
-
-/**
  * Stream a Dify workflow graph (plan then result) via SSE
  */
-export const post2 = oc
+export const post = oc
   .route({
     description: 'Stream a Dify workflow graph (plan then result) via SSE',
     inputStructure: 'detailed',
@@ -54,13 +33,13 @@ export const post2 = oc
   .output(zPostWorkflowGenerateStreamResponse)
 
 export const stream = {
-  post: post2,
+  post,
 }
 
 /**
  * Suggest example workflow-generator instructions for the tenant
  */
-export const post3 = oc
+export const post2 = oc
   .route({
     description: 'Suggest example workflow-generator instructions for the tenant',
     inputStructure: 'detailed',
@@ -73,13 +52,13 @@ export const post3 = oc
   .output(zPostWorkflowGenerateSuggestionsResponse)
 
 export const suggestions = {
-  post: post3,
+  post: post2,
 }
 
 /**
  * Generate a Dify workflow graph from natural language
  */
-export const post4 = oc
+export const post3 = oc
   .route({
     description: 'Generate a Dify workflow graph from natural language',
     inputStructure: 'detailed',
@@ -98,8 +77,7 @@ export const post4 = oc
   })
 
 export const workflowGenerate = {
-  post: post4,
-  improve,
+  post: post3,
   stream,
   suggestions,
 }

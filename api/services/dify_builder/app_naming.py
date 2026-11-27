@@ -1,6 +1,5 @@
 """Read the existing Dify app name for the Builder session."""
 
-
 import logging
 
 from sqlalchemy import select

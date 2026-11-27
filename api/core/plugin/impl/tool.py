@@ -1,10 +1,9 @@
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from typing import Any
 
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.dify_builder.real_call_consent import validate_confirmed_dispatch_headers
 
 # from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin import PluginCategory, PluginInstallation
@@ -21,7 +20,7 @@ from runtime_contracts.builder.execution import FailureResourceKind
 # ``page_size <= 256`` and returns one tenant-filtered OFFSET/LIMIT page with
 # no total and no ORDER BY. Pages are read until a short or empty page, but
 # that alone does not prove completeness: coverage is checked against the
-# installed Tool plugin ID list (see ``fetch_tool_providers``).
+# installed Tool plugin ID list (see ``fetch_complete_tool_providers``).
 _TOOL_PROVIDER_PAGE_SIZE = 256
 # 40 pages = 10,240 tool providers for one workspace -- far beyond any real
 # tenant. Reaching it means the daemon is not paging, so fail explicitly rather
@@ -35,6 +34,10 @@ _INSTALLATION_BATCH_SIZE = 256
 
 class PluginToolManager(BasePluginClient):
     def fetch_tool_providers(self, tenant_id: str) -> list[PluginToolProviderEntity]:
+        """Fetch the first provider page used by the Console tool listing."""
+        return self._fetch_tool_provider_page(tenant_id, 1)
+
+    def fetch_complete_tool_providers(self, tenant_id: str) -> list[PluginToolProviderEntity]:
         """
         Fetch every tool provider installed for the given tenant.
 
@@ -145,7 +148,7 @@ class PluginToolManager(BasePluginClient):
         or declarations). A failed page fails the whole fetch; a page that adds
         nothing new (the daemon ignoring ``page``) or exceeding
         ``_MAX_TOOL_PROVIDER_PAGES`` raises ``ValueError``. Coverage is
-        checked by ``fetch_tool_providers``.
+        checked by ``fetch_complete_tool_providers``.
         """
         providers: list[PluginToolProviderEntity] = []
         seen: dict[str, PluginToolProviderEntity] = {}
@@ -250,24 +253,12 @@ class PluginToolManager(BasePluginClient):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-        *,
-        confirmed_dispatch_headers: Mapping[str, str] | None = None,
     ) -> Generator[ToolInvokeMessage]:
         """
         Invoke the tool with the given tenant, user, plugin, provider, name, credentials and parameters.
-
-        ``confirmed_dispatch_headers`` is ``None`` for every ordinary call. A
-        confirmed Builder call supplies exactly the three server-built companion
-        headers (validated here, before any transport) on the same native route.
         """
 
         tool_provider_id = GenericProviderID(tool_provider)
-        headers = {
-            "X-Plugin-ID": tool_provider_id.plugin_id,
-            "Content-Type": "application/json",
-        }
-        if confirmed_dispatch_headers is not None:
-            headers.update(validate_confirmed_dispatch_headers(confirmed_dispatch_headers))
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -286,7 +277,10 @@ class PluginToolManager(BasePluginClient):
                     "tool_parameters": tool_parameters,
                 },
             },
-            headers=headers,
+            headers={
+                "X-Plugin-ID": tool_provider_id.plugin_id,
+                "Content-Type": "application/json",
+            },
         )
 
         return merge_blob_chunks(response, max_file_size=dify_config.PLUGIN_MAX_FILE_SIZE)
