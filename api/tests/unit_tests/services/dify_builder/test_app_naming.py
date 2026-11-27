@@ -1,10 +1,9 @@
-"""Builder-driven app rename: usable proposals only, and never fatal."""
+"""Reading the stored app name into a Builder session."""
 
 from dataclasses import dataclass
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
-import pytest_mock
 import sqlalchemy.orm
 from sqlalchemy import Engine
 
@@ -23,15 +22,14 @@ def db_stubbed(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: sqlalchemy.Engine,
     sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
-    mocker: pytest_mock.MockerFixture,
-) -> Mock:
+) -> None:
     """Use the actual database owner so swallowed setup errors cannot make tests pass."""
     monkeypatch.setattr(app_naming, "db", NamingDatabase(sqlite_engine))
     with sqlite_session_factory.begin() as session:
         session.add(make_app(app_id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW, name="Set up an expense"))
-    return mocker.spy(app_naming, "sessionmaker")
 
 
+@pytest.mark.usefixtures("db_stubbed")
 def test_current_app_name_reads_the_stored_name(
     sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
 ) -> None:
