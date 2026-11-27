@@ -13,8 +13,9 @@ import logging
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from enum import StrEnum
 from functools import cache
-from typing import Any, Literal, Protocol, TypedDict
+from typing import Any, Protocol, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -129,11 +130,17 @@ class _KnowledgeBaseArgs(_Args):
     )
 
 
+class _SearchMode(StrEnum):
+    FAST = "fast"
+    DEEP = "deep"
+    RESEARCH = "research"
+
+
 class _SearchArgs(_KnowledgeBaseArgs):
     query: str = Field(
         min_length=1, max_length=4000, pattern=_NOT_BLANK, description="What to look for, in natural language."
     )
-    mode: Literal["fast", "deep", "research"] | None = Field(
+    mode: _SearchMode | None = Field(
         default=None,
         description="Omit for the knowledge base's default; deep/research use its reasoning model.",
     )
@@ -201,17 +208,23 @@ class _TidyArgs(_KnowledgeBaseArgs):
     cursor: str | None = Field(default=None, pattern=_TidyCursor, description="nextCursor from the previous page.")
 
 
+def _resolved(node: dict[str, Any], defs: dict[str, Any]) -> dict[str, Any]:
+    """The node with its `$ref` (an enum or a nested model) replaced by the definition it names."""
+    if "$ref" not in node:
+        return node
+    target = defs[node["$ref"].rsplit("/", 1)[-1]]
+    return {**target, **{key: value for key, value in node.items() if key != "$ref"}}
+
+
 def _plain_schema(node: dict[str, Any], defs: dict[str, Any]) -> dict[str, Any]:
     """One schema node without pydantic's indirection: refs inlined, `X | None` as X, no titles."""
-    if "$ref" in node:
-        target = defs[node["$ref"].rsplit("/", 1)[-1]]
-        node = {**target, **{key: value for key, value in node.items() if key != "$ref"}}
+    node = _resolved(node, defs)
     variants = node.get("anyOf")
     if isinstance(variants, list):
         # An optional argument is left out, not sent as null: advertise the value's own schema.
         present = [variant for variant in variants if variant != {"type": "null"}]
         if len(present) == 1:
-            node = {**present[0], **{key: value for key, value in node.items() if key != "anyOf"}}
+            node = {**_resolved(present[0], defs), **{key: value for key, value in node.items() if key != "anyOf"}}
     plain: dict[str, Any] = {}
     for key, value in node.items():
         if key == "title" or (key == "default" and value is None):
@@ -439,8 +452,24 @@ class KnowledgeAgentMcpServer:
             "structuredContent": result,
         }
 
+    def _handlers(self) -> dict[str, Callable[..., dict[str, Any]]]:
+        """Every advertised tool and the method that serves it; a test keeps the two in step."""
+        return {
+            "list_knowledge_bases": self._tool_list_knowledge_bases,
+            "search": self._tool_search,
+            "grep": self._tool_grep,
+            "browse": self._tool_browse,
+            "read_path": self._tool_read_path,
+            "list_documents": self._tool_list_documents,
+            "get_document": self._tool_get_document,
+            "get_document_outline": self._tool_get_document_outline,
+            "read_document": self._tool_read_document,
+            "read_chunk": self._tool_read_chunk,
+            "list_tidy_findings": self._tool_list_tidy_findings,
+        }
+
     def _run(self, principal: KnowledgeAgentPrincipal, tool: _Tool, args: _Args) -> dict[str, Any]:
-        handler = getattr(self, f"_tool_{tool.name}")
+        handler = self._handlers()[tool.name]
         if isinstance(args, _KnowledgeBaseArgs):
             # A tool that reads a knowledge base is handed an authorised scope instead of the
             # principal: it has no other way to address the facade, so it cannot skip the check.
@@ -726,7 +755,8 @@ class KnowledgeAgentMcpServer:
         page = self._facade.list_tidy_findings(
             **scope,
             query=_downstream(
-                KnowledgeFSTidyFindingQuery, {"status": args.status or "open", "kind": args.kind, "cursor": args.cursor}
+                KnowledgeFSTidyFindingQuery,
+                {"status": args.status or TidyFindingStatus.OPEN, "kind": args.kind, "cursor": args.cursor},
             ),
         )
         budget = _Budget(MAX_RESULT_TEXT)
@@ -745,8 +775,8 @@ class KnowledgeAgentMcpServer:
             "findings": [
                 {
                     "id": finding.id,
-                    "kind": finding.kind,
-                    "status": finding.status,
+                    "kind": finding.kind.value,
+                    "status": finding.status.value,
                     "reason": finding.reason,
                     **({"similarity": _round(finding.similarity)} if finding.similarity is not None else {}),
                     "left": side(finding.left),

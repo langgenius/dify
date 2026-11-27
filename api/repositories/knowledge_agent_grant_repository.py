@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import NamedTuple
 
 import sqlalchemy as sa
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from models.knowledge_agent import KnowledgeAgentGrant, KnowledgeAgentRefreshToken
@@ -57,6 +58,6 @@ def revoke_knowledge_agent_grant(
         .execution_options(synchronize_session=False)
     )
     return KnowledgeAgentGrantRevocation(
-        newly_revoked=getattr(result, "rowcount", 0) == 1,
+        newly_revoked=isinstance(result, CursorResult) and result.rowcount == 1,
         token_hashes=tuple(token_hash for token_hash in hashes if token_hash),
     )

@@ -5,7 +5,7 @@
 import type { TFunction } from 'i18next'
 
 /** The name agents register the server under; also used in the personal-token snippets. */
-export const AGENT_MCP_SERVER_NAME = 'knowledge'
+const AGENT_MCP_SERVER_NAME = 'knowledge'
 export const AGENT_TOKEN_ENV = 'KNOWLEDGE_MCP_TOKEN'
 
 export type AgentDefinition = {

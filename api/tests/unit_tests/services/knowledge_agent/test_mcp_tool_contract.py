@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable, Iterable
-from types import SimpleNamespace
-from typing import TypedDict, cast, get_args
+from collections.abc import Iterable
+from typing import TypedDict
 
 import pytest
 
@@ -19,9 +18,9 @@ from services.knowledge_agent.mcp_server import (
     _KnowledgeBaseArgs,
     _Tool,
 )
-from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_dto import KnowledgeFSCatQuery, KnowledgeFSListQuery
 from services.knowledge_fs.tidy_dto import KnowledgeFSTidyFindingQuery, TidyFindingKind, TidyFindingStatus
+from tests.helpers.unit.knowledge_agent import FakeKnowledgeFacade, SpaceListing, json_rows
 
 PRINCIPAL = KnowledgeAgentPrincipal(
     account_id="acct",
@@ -48,20 +47,6 @@ OTHER_ARGUMENTS: dict[str, dict[str, object]] = {
 BASE_TOOLS = [tool for tool in TOOLS if issubclass(tool.args, _KnowledgeBaseArgs)]
 
 
-class RecordingFacade:
-    """Any facade operation is recorded; none of these tests should reach one."""
-
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, dict[str, object]]] = []
-
-    def __getattr__(self, name: str) -> Callable[..., None]:
-        def operation(**kwargs: object) -> None:
-            self.calls.append((name, kwargs))
-            raise AssertionError(f"facade.{name} must not be reached")
-
-        return operation
-
-
 class GrantedSpaces:
     def knowledge_bases_for(
         self, principal: KnowledgeAgentPrincipal, *, among: Iterable[str] | None = None
@@ -71,7 +56,7 @@ class GrantedSpaces:
 
 
 class NoNames:
-    def list_spaces(self, **_kwargs: object) -> SimpleNamespace:
+    def list_spaces(self, **_kwargs: object) -> SpaceListing:
         raise AssertionError("not listed in these tests")
 
 
@@ -88,11 +73,12 @@ class InputSchema(TypedDict):
     additionalProperties: bool
 
 
-def _server() -> tuple[KnowledgeAgentMcpServer, RecordingFacade, list[dict[str, object]]]:
-    facade = RecordingFacade()
+def _server() -> tuple[KnowledgeAgentMcpServer, FakeKnowledgeFacade, list[dict[str, object]]]:
+    """A server whose facade has no prepared answers: none of these tests should get one."""
+    facade = FakeKnowledgeFacade()
     events: list[dict[str, object]] = []
     server = KnowledgeAgentMcpServer(
-        facade=cast(KnowledgeFSDataFacade, facade),
+        facade=facade,
         spaces=GrantedSpaces(),
         names=NoNames(),
         console_url="https://cloud.dify.test",
@@ -184,12 +170,17 @@ def _advertised() -> dict[str, InputSchema]:
     return {tool["name"]: tool["inputSchema"] for tool in reply["result"]["tools"]}
 
 
-def _expected_property(raw: dict[str, object]) -> dict[str, object]:
-    """Pydantic's schema of one field, as a client should see it: the value's schema, no null, no title."""
-    union = cast(list[dict[str, object]], raw.get("anyOf", []))
-    variants = [variant for variant in union if variant != {"type": "null"}]
+def _expected_property(raw: dict[str, object], defs: dict[str, dict[str, object]]) -> dict[str, object]:
+    """Pydantic's schema of one field, as a client should see it: the value's schema, no null, no title.
+
+    An enum is a named definition in pydantic's schema; a client sees its values in place.
+    """
+    variants = [variant for variant in json_rows(raw.get("anyOf", [])) if variant != {"type": "null"}]
     assert len(variants) <= 1, raw
     merged = {**(variants[0] if variants else {}), **{key: value for key, value in raw.items() if key != "anyOf"}}
+    reference = merged.pop("$ref", None)
+    if isinstance(reference, str):
+        merged = {**defs[reference.removeprefix("#/$defs/")], **merged}
     merged.pop("title", None)
     if merged.get("default", "") is None:
         del merged["default"]
@@ -209,7 +200,7 @@ def test_the_advertised_schema_is_the_one_derived_from_the_arguments_model(tool:
         field.alias or name for name, field in fields.items() if field.is_required()
     )
     for name, raw in derived.get("properties", {}).items():
-        assert advertised["properties"][name] == _expected_property(raw), name
+        assert advertised["properties"][name] == _expected_property(raw, derived.get("$defs", {})), name
         assert advertised["properties"][name]["description"], f"{tool.name}.{name} needs a description"
     # Plain for MCP clients: self-contained, no nullable unions, no pydantic titles.
     serialised = json.dumps(advertised)
@@ -233,11 +224,14 @@ def test_advertised_schemas_and_validation_agree_on_names_and_literals() -> None
         "maximum": 50,
         "description": "Default 10.",
     }
-    assert sorted(cast(list[str], search["properties"]["mode"]["enum"])) == ["deep", "fast", "research"]
+    assert search["properties"]["mode"]["enum"] == ["fast", "deep", "research"]
     tidy = advertised["list_tidy_findings"]["properties"]
-    # The Tidy literals come from the Tidy DTOs, not from a second list here.
-    assert sorted(cast(list[str], tidy["kind"]["enum"])) == sorted(get_args(TidyFindingKind))
-    assert sorted(cast(list[str], tidy["status"]["enum"])) == sorted(get_args(TidyFindingStatus))
+    # The Tidy values come from the Tidy DTOs, not from a second list here, and are plain strings.
+    assert tidy["kind"]["enum"] == [kind.value for kind in TidyFindingKind] == ["duplicate", "similar", "conflict"]
+    assert tidy["status"]["enum"] == [status.value for status in TidyFindingStatus]
+    assert tidy["status"]["enum"] == ["open", "dismissed", "reviewed", "disabled", "outdated"]
+    # Plain JSON strings, not enum members: the schema is serialised as it is.
+    assert '"enum": ["duplicate", "similar", "conflict"]' in json.dumps(tidy["kind"])
     # Every advertised name is accepted by validation, and nothing else is.
     for tool in TOOLS:
         for name in advertised[tool.name]["properties"]:
@@ -310,3 +304,8 @@ def test_a_query_refused_after_the_tool_model_accepted_it_is_still_a_readable_ar
     with pytest.raises(KnowledgeAgentToolError, match=r"^Invalid arguments: cursor: "):
         _downstream(KnowledgeFSTidyFindingQuery, {"status": "open", "cursor": "abc"})
     assert _downstream(KnowledgeFSTidyFindingQuery, {"status": "open", "cursor": "a" * 64}).cursor == "a" * 64
+
+
+def test_every_advertised_tool_has_a_handler_and_no_handler_is_unadvertised() -> None:
+    server, _, _ = _server()
+    assert set(server._handlers()) == {tool.name for tool in TOOLS}

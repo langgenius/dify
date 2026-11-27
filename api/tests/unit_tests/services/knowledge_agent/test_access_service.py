@@ -5,7 +5,6 @@ from __future__ import annotations
 import secrets
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
-from typing import cast
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -353,23 +352,24 @@ def test_expired_personal_tokens_stop_working(world: World) -> None:
 def test_personal_tokens_may_never_expire_or_take_a_custom_lifetime(world: World) -> None:
     service = world.service
 
-    def create(days: object) -> dict[str, object]:
-        return service.create_personal_token(
+    def create(days: object) -> tuple[str, str | None, datetime | None]:
+        """The new token, with the hint and the expiry its connection was given."""
+        created = service.create_personal_token(
             account=world.member_account,
             tenant_id=world.tenant,
             body={"name": "CI", "knowledge_base_ids": ["kb-handbook"], "expires_in_days": days},
         )
+        return created["token"], created["grant"]["token_hint"], created["grant"]["expires_at"]
 
-    never = create(None)
-    never_grant = cast(dict[str, object], never["grant"])
-    never_token = cast(str, never["token"])
-    assert never_grant["expires_at"] is None
+    never_token, never_hint, never_expires = create(None)
+    assert never_expires is None
     # The owner tells tokens apart by their last characters; the token itself is not kept.
-    assert never_grant["token_hint"] == never_token[-4:]
+    assert never_hint == never_token[-4:]
     assert not isinstance(service.authenticate(never_token), KnowledgeAgentAuthFailure)
 
-    custom = cast(dict[str, object], create(45)["grant"])
-    remaining = cast(datetime, custom["expires_at"]) - datetime.now(UTC)
+    _, _, expires_at = create(45)
+    assert expires_at is not None
+    remaining = expires_at - datetime.now(UTC)
     assert timedelta(days=44, hours=23) < remaining <= timedelta(days=45)
 
     for invalid in (0, 366, True, "30"):

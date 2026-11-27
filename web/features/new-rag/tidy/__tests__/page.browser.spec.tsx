@@ -1,74 +1,88 @@
+import type {
+  KnowledgeFsTidyFindingResponse,
+  KnowledgeFsTidySettingsResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { setupFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { TidyPage } from '../page'
-const service = vi.hoisted(() => ({
-  settings: vi.fn(),
-  configure: vi.fn(),
-  findings: vi.fn(),
-  act: vi.fn(),
-}))
-vi.mock('@/service/console', async (original) => {
-  const actual = await original<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.tidy.settings.get': service.settings,
-      'knowledgeFs.spaces.byControlSpaceId.tidy.summary.get': async () => ({
-        findings: [],
-        documents: { pending: 0, scanning: 0, complete: 0, failed: 0 },
-        modelCalls: 0,
-      }),
-      'knowledgeFs.spaces.byControlSpaceId.tidy.settings.patch': service.configure,
-      'knowledgeFs.spaces.byControlSpaceId.tidy.findings.get': service.findings,
-      'knowledgeFs.spaces.byControlSpaceId.tidy.scans.get': async () => ({
-        items: [],
-        nextCursor: null,
-      }),
-      'knowledgeFs.spaces.byControlSpaceId.tidy.findings.byFindingId.actions.post': service.act,
-    }),
-  }
+
+const space = createKnowledgeSpaceFixture({
+  permission_keys: ['knowledge_space_read', 'knowledge_space_edit'],
 })
+const settings: KnowledgeFsTidySettingsResponse = {
+  enabled: false,
+  conflicts: true,
+  revision: 0,
+  lastError: null,
+  updatedAt: '2026-11-03',
+}
+const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 3 }
+const finding: KnowledgeFsTidyFindingResponse = {
+  id: 'f',
+  kind: 'conflict',
+  left: { ...evidence, documentId: 'a', title: 'Policy A', text: '十四天退款' },
+  right: { ...evidence, documentId: 'b', title: 'Policy B', text: '七天退款' },
+  reason: '期限不一致',
+  similarity: null,
+  status: 'open',
+  revision: 1,
+  actionId: null,
+  createdAt: '2026-11-03',
+  stale: false,
+}
+// The server's open findings: the list handler reads it and a reviewer action empties it, so the
+// reload that follows an action finds the card gone, as it would against the real API.
+let openFindings: KnowledgeFsTidyFindingResponse[] = []
+beforeEach(() => {
+  openFindings = []
+})
+
+const fake = setupFakeApi({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          tidy: {
+            settings: { get: () => settings, patch: () => settings },
+            summary: {
+              get: () => ({
+                findings: [],
+                documents: { pending: 0, scanning: 0, complete: 0, failed: 0 },
+                modelCalls: 0,
+              }),
+            },
+            findings: {
+              get: () => ({ items: openFindings, nextCursor: null }),
+              byFindingId: {
+                actions: {
+                  post: () => {
+                    openFindings = []
+                    return { ...finding, status: 'disabled' as const, revision: 2 }
+                  },
+                },
+              },
+            },
+            scans: { get: () => ({ items: [], nextCursor: null }) },
+          },
+        },
+      },
+    },
+  },
+})
+const tidy = () => fake.console.knowledgeFs.spaces.byControlSpaceId.tidy
+
 async function setup(withFinding = false) {
-  service.settings.mockResolvedValue({
-    enabled: false,
-    conflicts: true,
-    revision: 0,
-    lastError: null,
-    updatedAt: '2026-11-03',
-  })
-  const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 3 }
-  const finding = {
-    id: 'f',
-    kind: 'conflict',
-    left: { ...evidence, documentId: 'a', title: 'Policy A', text: '十四天退款' },
-    right: { ...evidence, documentId: 'b', title: 'Policy B', text: '七天退款' },
-    reason: '期限不一致',
-    similarity: null,
-    status: 'open',
-    revision: 1,
-    actionId: null,
-    createdAt: '2026-11-03',
-    stale: false,
-  }
-  service.findings.mockResolvedValue({ items: withFinding ? [finding] : [], nextCursor: null })
-  service.act.mockImplementation(async () => {
-    service.findings.mockResolvedValue({ items: [], nextCursor: null })
-    return { ...finding, status: 'disabled', revision: 2 }
-  })
+  if (withFinding) openFindings = [finding]
   const { queryClient } = createConsoleQueryWrapper()
   return render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter>
-        <KnowledgeSpaceTestProvider
-          space={createKnowledgeSpaceFixture({
-            permission_keys: ['knowledge_space_read', 'knowledge_space_edit'],
-          })}
-        >
+        <KnowledgeSpaceTestProvider space={space}>
           <TidyPage />
         </KnowledgeSpaceTestProvider>
       </NuqsTestingAdapter>
@@ -89,7 +103,10 @@ describe('Tidy confirmation focus', () => {
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
     await expect.element(toggle).toHaveFocus()
-    expect(service.configure).not.toHaveBeenCalled()
+    const params = { control_space_id: space.control_space_id }
+    expect(tidy().settings.get).toHaveBeenCalledWith({ params })
+    expect(tidy().findings.get).toHaveBeenCalledWith({ params, query: { status: 'open' } })
+    expect(tidy().settings.patch).not.toHaveBeenCalled()
   })
   it('keeps showing what was asked while the dialog animates out', async () => {
     const screen = await setup(true)
@@ -105,6 +122,7 @@ describe('Tidy confirmation focus', () => {
     await expect.element(dialog).not.toBeInTheDocument()
     observer.disconnect()
     for (const text of shown) expect(text).toContain('Policy B')
+    expect(tidy().findings.byFindingId.actions.post).not.toHaveBeenCalled()
   })
   it('keeps focus on the review queue after processing removes the evidence button', async () => {
     const screen = await setup(true)
@@ -117,5 +135,9 @@ describe('Tidy confirmation focus', () => {
         screen.getByRole('button', { name: /knowledgeSpace\.tidy\.allKinds/, pressed: true }),
       )
       .toHaveFocus()
+    expect(tidy().findings.byFindingId.actions.post).toHaveBeenCalledExactlyOnceWith({
+      params: { control_space_id: space.control_space_id, finding_id: finding.id },
+      body: { action: 'disable_document', expectedRevision: finding.revision, documentId: 'b' },
+    })
   })
 })

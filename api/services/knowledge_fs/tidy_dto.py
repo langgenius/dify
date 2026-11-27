@@ -1,14 +1,52 @@
 """Tidy evidence and opt-in contracts. KnowledgeFS owns scanning and review state."""
 
-from typing import Literal
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from fields.base import ResponseModel
 
-TidyFindingStatus = Literal["open", "dismissed", "reviewed", "disabled", "outdated"]
-TidyFindingKind = Literal["duplicate", "similar", "conflict"]
-TidyScanState = Literal["pending", "scanning", "complete", "failed"]
+
+# The enums carry no docstring on purpose: pydantic would publish it as the schema description.
+class TidyFindingStatus(StrEnum):
+    OPEN = "open"
+    DISMISSED = "dismissed"
+    REVIEWED = "reviewed"
+    DISABLED = "disabled"
+    OUTDATED = "outdated"
+
+
+class TidyFindingKind(StrEnum):
+    DUPLICATE = "duplicate"
+    SIMILAR = "similar"
+    CONFLICT = "conflict"
+
+
+class TidyScanState(StrEnum):
+    PENDING = "pending"
+    SCANNING = "scanning"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+
+class TidySettingsError(StrEnum):
+    SCAN_FAILED = "scan_failed"
+    AUTHORIZATION_FAILED = "authorization_failed"
+    MODEL_UNAVAILABLE = "model_unavailable"
+
+
+class TidyFurtherActionName(StrEnum):
+    DISMISS = "dismiss"
+    REVIEW = "review"
+    DISABLE_DOCUMENT = "disable_document"
+
+
+class TidyActionName(StrEnum):
+    DISMISS = "dismiss"
+    REVIEW = "review"
+    DISABLE_DOCUMENT = "disable_document"
+    UNDO = "undo"
+    ADOPT = "adopt"
 
 
 class KnowledgeFSTidySettingsPayload(BaseModel):
@@ -32,7 +70,7 @@ class KnowledgeFSTidySettingsResponse(ResponseModel):
     enabled: bool
     conflicts: bool
     revision: int
-    lastError: Literal["scan_failed", "authorization_failed", "model_unavailable"] | None  # noqa: N815  # Public field name.
+    lastError: TidySettingsError | None  # noqa: N815  # Public field name.
     updatedAt: str  # noqa: N815  # Public field name.
 
 
@@ -136,7 +174,7 @@ class KnowledgeFSTidyFurtherAction(BaseModel):
 
     findingId: str = Field(pattern=r"^[a-f0-9]{64}$")  # noqa: N815  # Public field name.
     expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
-    action: Literal["dismiss", "review", "disable_document"]
+    action: TidyFurtherActionName
     documentId: str | None = None  # noqa: N815  # Public field name.
 
     model_config = ConfigDict(extra="forbid")
@@ -144,14 +182,14 @@ class KnowledgeFSTidyFurtherAction(BaseModel):
     @model_validator(mode="after")
     def require_document(self) -> "KnowledgeFSTidyFurtherAction":
         """A document disable must explicitly identify the selected evidence side."""
-        if self.action == "disable_document" and not self.documentId:
+        if self.action == TidyFurtherActionName.DISABLE_DOCUMENT and not self.documentId:
             raise ValueError("Choose the document to disable")
         return self
 
 
 class KnowledgeFSTidyActionPayload(BaseModel):
     expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
-    action: Literal["dismiss", "review", "disable_document", "undo", "adopt"]
+    action: TidyActionName
     documentId: str | None = None  # noqa: N815  # Public field name.
     # ``adopt`` only: ``documentId`` is the side that is right, and this text replaces the
     # conflicting passage of the other document. Only the knowledge base's indexed copy changes.
@@ -164,13 +202,15 @@ class KnowledgeFSTidyActionPayload(BaseModel):
     @model_validator(mode="after")
     def require_document(self) -> "KnowledgeFSTidyActionPayload":
         """Actions on one evidence side must explicitly identify the side the user selected."""
-        if self.action == "disable_document" and not self.documentId:
+        if self.action == TidyActionName.DISABLE_DOCUMENT and not self.documentId:
             raise ValueError("Choose the document to disable")
-        if self.action == "adopt" and not (self.documentId and self.replacement and self.replacement.strip()):
+        if self.action == TidyActionName.ADOPT and not (
+            self.documentId and self.replacement and self.replacement.strip()
+        ):
             raise ValueError("Choose the document to keep and the new wording")
-        if self.action != "adopt" and self.replacement is not None:
+        if self.action != TidyActionName.ADOPT and self.replacement is not None:
             raise ValueError("Only adopting a side rewrites a passage")
-        if self.also and self.action in ("undo", "adopt"):
+        if self.also and self.action in (TidyActionName.UNDO, TidyActionName.ADOPT):
             raise ValueError("Undo or adopt one finding at a time")
         return self
 

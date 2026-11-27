@@ -2,7 +2,6 @@ import { ORPCError } from '@orpc/client'
 
 /** Lifetimes offered for a personal token; `null` never expires, `custom` asks for a number of days. */
 export const PERSONAL_TOKEN_EXPIRY_OPTIONS = [30, 1, 7, null, 'custom'] as const
-export type PersonalTokenExpiry = (typeof PERSONAL_TOKEN_EXPIRY_OPTIONS)[number]
 export const DEFAULT_PERSONAL_TOKEN_EXPIRY_DAYS = 30
 export const MAX_PERSONAL_TOKEN_EXPIRY_DAYS = 365
 

@@ -61,7 +61,7 @@ export type KnowledgeAgentGrantResponse = {
   created_at: string
   expires_at?: string | null
   id: string
-  kind: 'oauth' | 'personal'
+  kind: KnowledgeAgentGrantKind
   knowledge_base_ids: Array<string>
   last_used_at?: string | null
   name: string
@@ -1401,7 +1401,7 @@ export type KnowledgeFsTidyFindingListResponse = {
 }
 
 export type KnowledgeFsTidyActionPayload = {
-  action: 'adopt' | 'disable_document' | 'dismiss' | 'review' | 'undo'
+  action: TidyActionName
   also?: Array<KnowledgeFsTidyFurtherAction> | null
   documentId?: string | null
   expectedRevision: number
@@ -1412,14 +1412,14 @@ export type KnowledgeFsTidyFindingResponse = {
   actionId: string | null
   createdAt: string
   id: string
-  kind: 'conflict' | 'duplicate' | 'similar'
+  kind: TidyFindingKind
   left: KnowledgeFsTidyEvidenceResponse
   reason: string
   revision: number
   right: KnowledgeFsTidyEvidenceResponse
   similarity: number | null
   stale?: boolean
-  status: 'disabled' | 'dismissed' | 'open' | 'outdated' | 'reviewed'
+  status: TidyFindingStatus
 }
 
 export type KnowledgeFsTidyRetryResponse = {
@@ -1434,7 +1434,7 @@ export type KnowledgeFsTidyScanListResponse = {
 export type KnowledgeFsTidySettingsResponse = {
   conflicts: boolean
   enabled: boolean
-  lastError: 'authorization_failed' | 'model_unavailable' | 'scan_failed' | null
+  lastError: TidySettingsError | null
   revision: number
   updatedAt: string
 }
@@ -1551,7 +1551,7 @@ export type KnowledgeFsjwkResponse = {
 }
 
 export type KnowledgeAgentAuthorizationClientResponse = {
-  kind: 'cimd' | 'dcr'
+  kind: KnowledgeAgentClientKind
   name: string
   redirect_host: string
 }
@@ -1566,6 +1566,8 @@ export type KnowledgeAgentGrantAccountResponse = {
   id: string
   name: string
 }
+
+export type KnowledgeAgentGrantKind = 'oauth' | 'personal'
 
 export type KnowledgeFsQueryImageReference = {
   uploadFileId: string
@@ -2549,12 +2551,16 @@ export type KnowledgeFsTidyDocumentCardResponse = {
   title: string
 }
 
+export type TidyActionName = 'adopt' | 'disable_document' | 'dismiss' | 'review' | 'undo'
+
 export type KnowledgeFsTidyFurtherAction = {
-  action: 'disable_document' | 'dismiss' | 'review'
+  action: TidyFurtherActionName
   documentId?: string | null
   expectedRevision: number
   findingId: string
 }
+
+export type TidyFindingKind = 'conflict' | 'duplicate' | 'similar'
 
 export type KnowledgeFsTidyEvidenceResponse = {
   chunkId: string
@@ -2566,14 +2572,18 @@ export type KnowledgeFsTidyEvidenceResponse = {
   title: string
 }
 
+export type TidyFindingStatus = 'disabled' | 'dismissed' | 'open' | 'outdated' | 'reviewed'
+
 export type KnowledgeFsTidyScanResponse = {
   documentId: string
   error: string | null
   modelCalls: number
-  state: 'complete' | 'failed' | 'pending' | 'scanning'
+  state: TidyScanState
   title: string
   windows: number
 }
+
+export type TidySettingsError = 'authorization_failed' | 'model_unavailable' | 'scan_failed'
 
 export type KnowledgeFsTidyCurrentScanResponse = {
   documentId: string
@@ -2591,8 +2601,8 @@ export type KnowledgeFsTidyDocumentProgressResponse = {
 
 export type KnowledgeFsTidyFindingCountResponse = {
   count: number
-  kind: 'conflict' | 'duplicate' | 'similar'
-  status: 'disabled' | 'dismissed' | 'open' | 'outdated' | 'reviewed'
+  kind: TidyFindingKind
+  status: TidyFindingStatus
 }
 
 export type KnowledgeFsTraceResponse = {
@@ -2664,6 +2674,8 @@ export type KnowledgeFsUploadSessionPartPayload = {
   etag: string
   partNumber: number
 }
+
+export type KnowledgeAgentClientKind = 'cimd' | 'dcr'
 
 export type KnowledgeFsInitialWebsiteCrawlOptionsPayload = {
   include_subpages?: boolean
@@ -2834,6 +2846,10 @@ export type KnowledgeFsSourcePageResponse = {
   parent_id?: string | null
   type: string
 }
+
+export type TidyFurtherActionName = 'disable_document' | 'dismiss' | 'review'
+
+export type TidyScanState = 'complete' | 'failed' | 'pending' | 'scanning'
 
 export type KnowledgeFsTraceProfileResponse = {
   embedding_model?: string | null

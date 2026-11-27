@@ -29301,7 +29301,7 @@ Attributes:
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| kind | string, <br>**Available values:** "cimd", "dcr" | *Enum:* `"cimd"`, `"dcr"` | Yes |
+| kind | [KnowledgeAgentClientKind](#knowledgeagentclientkind) |  | Yes |
 | name | string |  | Yes |
 | redirect_host | string |  | Yes |
 
@@ -29358,6 +29358,12 @@ The OAuth authorization request the agent opened the consent page with.
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### KnowledgeAgentClientKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeAgentClientKind | string |  |  |
+
 #### KnowledgeAgentGrantAccountResponse
 
 | Name | Type | Description | Required |
@@ -29365,6 +29371,12 @@ The OAuth authorization request the agent opened the consent page with.
 | email | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
+
+#### KnowledgeAgentGrantKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeAgentGrantKind | string |  |  |
 
 #### KnowledgeAgentGrantResponse
 
@@ -29375,7 +29387,7 @@ The OAuth authorization request the agent opened the consent page with.
 | created_at | dateTime |  | Yes |
 | expires_at | string | Absent for a token that never expires | No |
 | id | string |  | Yes |
-| kind | string, <br>**Available values:** "oauth", "personal" | *Enum:* `"oauth"`, `"personal"` | Yes |
+| kind | [KnowledgeAgentGrantKind](#knowledgeagentgrantkind) |  | Yes |
 | knowledge_base_ids | [ string ] |  | Yes |
 | last_used_at | string |  | No |
 | name | string |  | Yes |
@@ -31970,7 +31982,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string, <br>**Available values:** "adopt", "disable_document", "dismiss", "review", "undo" | *Enum:* `"adopt"`, `"disable_document"`, `"dismiss"`, `"review"`, `"undo"` | Yes |
+| action | [TidyActionName](#tidyactionname) |  | Yes |
 | also | [ [KnowledgeFSTidyFurtherAction](#knowledgefstidyfurtheraction) ] |  | No |
 | documentId | string |  | No |
 | expectedRevision | integer |  | Yes |
@@ -32025,8 +32037,8 @@ What the review page shows about a document a finding quotes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | count | integer |  | Yes |
-| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" | *Enum:* `"conflict"`, `"duplicate"`, `"similar"` | Yes |
-| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
+| kind | [TidyFindingKind](#tidyfindingkind) |  | Yes |
+| status | [TidyFindingStatus](#tidyfindingstatus) |  | Yes |
 
 #### KnowledgeFSTidyFindingListResponse
 
@@ -32043,8 +32055,8 @@ Query of the findings list; ``cursor`` is the previous page's ``nextCursor``. Un
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
-| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" |  | No |
-| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |  | No |
+| kind | [TidyFindingKind](#tidyfindingkind) |  | No |
+| status | [TidyFindingStatus](#tidyfindingstatus) |  | No |
 
 #### KnowledgeFSTidyFindingResponse
 
@@ -32053,14 +32065,14 @@ Query of the findings list; ``cursor`` is the previous page's ``nextCursor``. Un
 | actionId | string |  | Yes |
 | createdAt | string |  | Yes |
 | id | string |  | Yes |
-| kind | string, <br>**Available values:** "conflict", "duplicate", "similar" | *Enum:* `"conflict"`, `"duplicate"`, `"similar"` | Yes |
+| kind | [TidyFindingKind](#tidyfindingkind) |  | Yes |
 | left | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
 | reason | string |  | Yes |
 | revision | integer |  | Yes |
 | right | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
 | similarity | number |  | Yes |
 | stale | boolean |  | No |
-| status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
+| status | [TidyFindingStatus](#tidyfindingstatus) |  | Yes |
 
 #### KnowledgeFSTidyFurtherAction
 
@@ -32068,7 +32080,7 @@ Another finding settled in the same transaction as the one the request addresses
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string, <br>**Available values:** "disable_document", "dismiss", "review" | *Enum:* `"disable_document"`, `"dismiss"`, `"review"` | Yes |
+| action | [TidyFurtherActionName](#tidyfurtheractionname) |  | Yes |
 | documentId | string |  | No |
 | expectedRevision | integer |  | Yes |
 | findingId | string |  | Yes |
@@ -32093,7 +32105,7 @@ Query of the scans list; ``cursor`` is the previous page's ``nextCursor``. Unkno
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
-| state | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |  | No |
+| state | [TidyScanState](#tidyscanstate) |  | No |
 
 #### KnowledgeFSTidyScanResponse
 
@@ -32102,7 +32114,7 @@ Query of the scans list; ``cursor`` is the previous page's ``nextCursor``. Unkno
 | documentId | string |  | Yes |
 | error | string |  | Yes |
 | modelCalls | integer |  | Yes |
-| state | string, <br>**Available values:** "complete", "failed", "pending", "scanning" | *Enum:* `"complete"`, `"failed"`, `"pending"`, `"scanning"` | Yes |
+| state | [TidyScanState](#tidyscanstate) |  | Yes |
 | title | string |  | Yes |
 | windows | integer |  | Yes |
 
@@ -32121,7 +32133,7 @@ Query of the scans list; ``cursor`` is the previous page's ``nextCursor``. Unkno
 | ---- | ---- | ----------- | -------- |
 | conflicts | boolean |  | Yes |
 | enabled | boolean |  | Yes |
-| lastError | string, <br>**Available values:** "authorization_failed", "model_unavailable", "scan_failed" |  | Yes |
+| lastError | [TidySettingsError](#tidysettingserror) |  | Yes |
 | revision | integer |  | Yes |
 | updatedAt | string |  | Yes |
 
@@ -38040,6 +38052,42 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
+
+#### TidyActionName
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyActionName | string |  |  |
+
+#### TidyFindingKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyFindingKind | string |  |  |
+
+#### TidyFindingStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyFindingStatus | string |  |  |
+
+#### TidyFurtherActionName
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyFurtherActionName | string |  |  |
+
+#### TidyScanState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyScanState | string |  |  |
+
+#### TidySettingsError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidySettingsError | string |  |  |
 
 #### TimeoutUnit
 

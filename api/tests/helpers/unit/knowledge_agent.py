@@ -10,9 +10,11 @@ import base64
 import hashlib
 import json
 import secrets
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, NoReturn, override
 from urllib.parse import parse_qs, urlsplit
 
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
@@ -20,7 +22,12 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from enums.account import TenantAccountRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin
 from services.knowledge_agent.access_service import KnowledgeAgentAccessService
-from services.knowledge_agent.contracts import KnowledgeAgentUrls
+from services.knowledge_agent.contracts import KnowledgeAgentUrls, utcnow
+from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
+from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
+from services.knowledge_fs.feature_service import KnowledgeFSFeatures
+from services.knowledge_fs.product_remote import UnavailableKnowledgeFSProductRemote
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 
 URLS = KnowledgeAgentUrls(
     issuer="https://dify.test",
@@ -119,6 +126,187 @@ class FakeSpaces:
         return {space_id for space_id in ids if space_id in self.blocked_ids}
 
 
+class DeploymentSwitch:
+    """The deployment's agent-connections setting; a test turns it off by clearing ``on``."""
+
+    def __init__(self) -> None:
+        self.on = True
+
+
+class RefusingCapabilityIssuer:
+    """The facade's capability issuer in tests that replace its operations: issuing one fails the test."""
+
+    def issue_interactive(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        operation_id: str,
+        resource_id: str | None = None,
+        trace_id: str | None = None,
+    ) -> KnowledgeFSIssuedProductCapability:
+        self._refuse(operation_id)
+
+    def issue_namespace_interactive(
+        self, *, tenant_id: str, account_id: str, operation_id: str, trace_id: str | None = None
+    ) -> KnowledgeFSIssuedProductCapability:
+        self._refuse(operation_id)
+
+    def issue_service(
+        self,
+        *,
+        profile: KnowledgeFSServiceApiProfile,
+        operation_id: str,
+        resource_id: str | None = None,
+        trace_id: str | None = None,
+    ) -> KnowledgeFSIssuedProductCapability:
+        self._refuse(operation_id)
+
+    @staticmethod
+    def _refuse(operation_id: str) -> NoReturn:
+        raise AssertionError(f"a capability for {operation_id} was not expected")
+
+
+class FakeKnowledgeFacade(KnowledgeFSDataFacade):
+    """The KnowledgeFS data facade as the MCP tools and the Console Tidy routes call it.
+
+    Each of those operations is recorded with its keyword arguments, then raises the failure
+    prepared for it in ``failures`` or returns the answer prepared in ``answers``. An operation
+    with neither was not expected by the test and fails it. Any other facade operation is the real
+    one, over a capability issuer that fails the test and a remote that is not configured.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(broker=RefusingCapabilityIssuer(), remote=UnavailableKnowledgeFSProductRemote())
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.answers: dict[str, object] = {}
+        self.failures: dict[str, Exception] = {}
+
+    def _prepared(self, name: str, kwargs: dict[str, Any]) -> Any:
+        self.calls.append((name, kwargs))
+        if name in self.failures:
+            raise self.failures[name]
+        if name not in self.answers:
+            raise AssertionError(f"facade.{name} was not expected")
+        return self.answers[name]
+
+    def called(self) -> list[str]:
+        """The operations reached so far, in order."""
+        return [name for name, _ in self.calls]
+
+    @override
+    def retrieve_evidence(self, **kwargs: Any) -> Any:
+        return self._prepared("retrieve_evidence", kwargs)
+
+    @override
+    def grep_knowledge_fs(self, **kwargs: Any) -> Any:
+        return self._prepared("grep_knowledge_fs", kwargs)
+
+    @override
+    def list_knowledge_fs(self, **kwargs: Any) -> Any:
+        return self._prepared("list_knowledge_fs", kwargs)
+
+    @override
+    def cat_knowledge_fs(self, **kwargs: Any) -> Any:
+        return self._prepared("cat_knowledge_fs", kwargs)
+
+    @override
+    def list_logical_documents(self, **kwargs: Any) -> Any:
+        return self._prepared("list_logical_documents", kwargs)
+
+    @override
+    def get_logical_document(self, **kwargs: Any) -> Any:
+        return self._prepared("get_logical_document", kwargs)
+
+    @override
+    def get_document_outline(self, **kwargs: Any) -> Any:
+        return self._prepared("get_document_outline", kwargs)
+
+    @override
+    def list_document_chunks(self, **kwargs: Any) -> Any:
+        return self._prepared("list_document_chunks", kwargs)
+
+    @override
+    def open_knowledge_fs_node(self, **kwargs: Any) -> Any:
+        return self._prepared("open_knowledge_fs_node", kwargs)
+
+    @override
+    def get_tidy_settings(self, **kwargs: Any) -> Any:
+        return self._prepared("get_tidy_settings", kwargs)
+
+    @override
+    def update_tidy_settings(self, **kwargs: Any) -> Any:
+        return self._prepared("update_tidy_settings", kwargs)
+
+    @override
+    def get_tidy_summary(self, **kwargs: Any) -> Any:
+        return self._prepared("get_tidy_summary", kwargs)
+
+    @override
+    def list_tidy_findings(self, **kwargs: Any) -> Any:
+        return self._prepared("list_tidy_findings", kwargs)
+
+    @override
+    def list_tidy_scans(self, **kwargs: Any) -> Any:
+        return self._prepared("list_tidy_scans", kwargs)
+
+    @override
+    def act_on_tidy_finding(self, **kwargs: Any) -> Any:
+        return self._prepared("act_on_tidy_finding", kwargs)
+
+    @override
+    def retry_tidy_scans(self, **kwargs: Any) -> Any:
+        return self._prepared("retry_tidy_scans", kwargs)
+
+
+@dataclass(frozen=True)
+class FakeKnowledgeRuntime:
+    """The two parts of the KnowledgeFS runtime the agent and Tidy routes read."""
+
+    facade: object
+    application: object = None
+
+
+def knowledge_fs_features(*, enabled: bool) -> KnowledgeFSFeatures:
+    """The deployment's Agent Knowledge Base availability, on or off."""
+    return KnowledgeFSFeatures(enabled=enabled, upload_enabled=enabled, agent_enabled=False)
+
+
+@dataclass(frozen=True)
+class SpaceSummary:
+    name: str
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class SpaceRow:
+    """One knowledge base of the workspace listing; ``technical_summary`` is absent while it is being built."""
+
+    control_space_id: str
+    technical_summary: SpaceSummary | None = None
+
+
+@dataclass(frozen=True)
+class SpaceListing:
+    data: list[SpaceRow] = field(default_factory=list)
+
+
+def json_rows(value: object) -> list[dict[str, Any]]:
+    """``value`` as the JSON array of objects a test expects it to be; anything else fails the test."""
+    assert isinstance(value, list), value
+    assert all(isinstance(row, dict) for row in value), value
+    return value
+
+
+def console_account(account_id: str, role: TenantAccountRole | None) -> Account:
+    """A signed-in Console account with its role in the current workspace."""
+    account = Account(name="Member", email=f"{account_id}@example.com", status=AccountStatus.ACTIVE)
+    account.id = account_id
+    account.role = role
+    return account
+
+
 @dataclass
 class World:
     """One workspace with a normal member and an owner, and the real service over fakes."""
@@ -133,11 +321,20 @@ class World:
     redis: FakeRedis
     spaces: FakeSpaces
     documents: dict[str, dict[str, object]]
+    deployment: DeploymentSwitch
 
 
 @contextmanager
-def knowledge_agent_world(session_factory: sessionmaker[Session], redis: FakeRedis | None = None) -> Generator[World]:
-    """Seed the workspace and build the service; ``redis`` lets a test supply an instrumented fake."""
+def knowledge_agent_world(
+    session_factory: sessionmaker[Session],
+    redis: FakeRedis | None = None,
+    *,
+    clock: Callable[[], datetime] = utcnow,
+) -> Generator[World]:
+    """Seed the workspace and build the service.
+
+    ``redis`` lets a test supply an instrumented fake and ``clock`` a time it controls.
+    """
     with session_factory.begin() as session:
         tenant = Tenant(name="Acme")
         member = Account(name="Mia", email="mia@example.com", status=AccountStatus.ACTIVE)
@@ -155,6 +352,7 @@ def knowledge_agent_world(session_factory: sessionmaker[Session], redis: FakeRed
     redis = redis or FakeRedis()
     spaces = FakeSpaces(readable={"kb-handbook", "kb-finance", "kb-board"}, blocked={"kb-board"})
     documents: dict[str, dict[str, object]] = {}
+    deployment = DeploymentSwitch()
     # Stands in for Flask-SQLAlchemy's request-scoped session, which request teardown closes.
     bearer_session = scoped_session(session_factory)
     service = KnowledgeAgentAccessService(
@@ -165,7 +363,8 @@ def knowledge_agent_world(session_factory: sessionmaker[Session], redis: FakeRed
         fetch_client_metadata=lambda url: (
             (200, json.dumps(documents[url]).encode()) if url in documents else (404, b"")
         ),
-        enabled=lambda: True,
+        enabled=lambda: deployment.on,
+        clock=clock,
     )
     try:
         yield World(
@@ -179,6 +378,7 @@ def knowledge_agent_world(session_factory: sessionmaker[Session], redis: FakeRed
             redis=redis,
             spaces=spaces,
             documents=documents,
+            deployment=deployment,
         )
     finally:
         bearer_session.remove()

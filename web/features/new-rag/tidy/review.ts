@@ -11,7 +11,7 @@ import type {
 type TidyFinding = KnowledgeFsTidyFindingResponse
 type TidyDocumentCard = KnowledgeFsTidyDocumentCardResponse
 /** Actions that need no text; `adopt` carries a replacement and is requested on its own. */
-export type TidyAction = Exclude<KnowledgeFsTidyActionPayload['action'], 'adopt'>
+type TidyAction = Exclude<KnowledgeFsTidyActionPayload['action'], 'adopt'>
 
 /**
  * Identical documents linked by duplicate findings: one connected component of the findings

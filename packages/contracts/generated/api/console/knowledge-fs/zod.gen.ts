@@ -555,17 +555,6 @@ export const zKnowledgeFsTidyRetryResponse = z.object({
 })
 
 /**
- * KnowledgeFSTidySettingsResponse
- */
-export const zKnowledgeFsTidySettingsResponse = z.object({
-  conflicts: z.boolean(),
-  enabled: z.boolean(),
-  lastError: z.enum(['authorization_failed', 'model_unavailable', 'scan_failed']).nullable(),
-  revision: z.int(),
-  updatedAt: z.string(),
-})
-
-/**
  * KnowledgeFSTidySettingsPayload
  */
 export const zKnowledgeFsTidySettingsPayload = z.object({
@@ -657,31 +646,11 @@ export const zKnowledgeFsjwksResponse = z.object({
 })
 
 /**
- * KnowledgeAgentAuthorizationClientResponse
- */
-export const zKnowledgeAgentAuthorizationClientResponse = z.object({
-  kind: z.enum(['cimd', 'dcr']),
-  name: z.string(),
-  redirect_host: z.string(),
-})
-
-/**
  * KnowledgeAgentAuthorizationWorkspaceResponse
  */
 export const zKnowledgeAgentAuthorizationWorkspaceResponse = z.object({
   id: z.string(),
   name: z.string(),
-})
-
-/**
- * KnowledgeAgentAuthorizationResponse
- */
-export const zKnowledgeAgentAuthorizationResponse = z.object({
-  agent_access_enabled: z.boolean(),
-  blocked_knowledge_base_ids: z.array(z.string()),
-  client: zKnowledgeAgentAuthorizationClientResponse,
-  scopes: z.array(z.string()),
-  workspace: zKnowledgeAgentAuthorizationWorkspaceResponse,
 })
 
 /**
@@ -694,6 +663,11 @@ export const zKnowledgeAgentGrantAccountResponse = z.object({
 })
 
 /**
+ * KnowledgeAgentGrantKind
+ */
+export const zKnowledgeAgentGrantKind = z.enum(['oauth', 'personal'])
+
+/**
  * KnowledgeAgentGrantResponse
  */
 export const zKnowledgeAgentGrantResponse = z.object({
@@ -702,7 +676,7 @@ export const zKnowledgeAgentGrantResponse = z.object({
   created_at: z.iso.datetime(),
   expires_at: z.iso.datetime().nullish(),
   id: z.string(),
-  kind: z.enum(['oauth', 'personal']),
+  kind: zKnowledgeAgentGrantKind,
   knowledge_base_ids: z.array(z.string()),
   last_used_at: z.iso.datetime().nullish(),
   name: z.string(),
@@ -2640,27 +2614,14 @@ export const zKnowledgeFsTidyDocumentCardResponse = z.object({
 })
 
 /**
- * KnowledgeFSTidyFurtherAction
- *
- * Another finding settled in the same transaction as the one the request addresses.
+ * TidyActionName
  */
-export const zKnowledgeFsTidyFurtherAction = z.object({
-  action: z.enum(['disable_document', 'dismiss', 'review']),
-  documentId: z.string().nullish(),
-  expectedRevision: z.int().gt(0),
-  findingId: z.string().regex(/^[a-f0-9]{64}$/),
-})
+export const zTidyActionName = z.enum(['adopt', 'disable_document', 'dismiss', 'review', 'undo'])
 
 /**
- * KnowledgeFSTidyActionPayload
+ * TidyFindingKind
  */
-export const zKnowledgeFsTidyActionPayload = z.object({
-  action: z.enum(['adopt', 'disable_document', 'dismiss', 'review', 'undo']),
-  also: z.array(zKnowledgeFsTidyFurtherAction).min(1).max(63).nullish(),
-  documentId: z.string().nullish(),
-  expectedRevision: z.int().gt(0),
-  replacement: z.string().min(1).max(20000).nullish(),
-})
+export const zTidyFindingKind = z.enum(['conflict', 'duplicate', 'similar'])
 
 /**
  * KnowledgeFSTidyEvidenceResponse
@@ -2676,20 +2637,25 @@ export const zKnowledgeFsTidyEvidenceResponse = z.object({
 })
 
 /**
+ * TidyFindingStatus
+ */
+export const zTidyFindingStatus = z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed'])
+
+/**
  * KnowledgeFSTidyFindingResponse
  */
 export const zKnowledgeFsTidyFindingResponse = z.object({
   actionId: z.string().nullable(),
   createdAt: z.string(),
   id: z.string(),
-  kind: z.enum(['conflict', 'duplicate', 'similar']),
+  kind: zTidyFindingKind,
   left: zKnowledgeFsTidyEvidenceResponse,
   reason: z.string(),
   revision: z.int(),
   right: zKnowledgeFsTidyEvidenceResponse,
   similarity: z.number().nullable(),
   stale: z.boolean().optional().default(false),
-  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
+  status: zTidyFindingStatus,
 })
 
 /**
@@ -2702,23 +2668,23 @@ export const zKnowledgeFsTidyFindingListResponse = z.object({
 })
 
 /**
- * KnowledgeFSTidyScanResponse
+ * TidySettingsError
  */
-export const zKnowledgeFsTidyScanResponse = z.object({
-  documentId: z.string(),
-  error: z.string().nullable(),
-  modelCalls: z.int(),
-  state: z.enum(['complete', 'failed', 'pending', 'scanning']),
-  title: z.string(),
-  windows: z.int(),
-})
+export const zTidySettingsError = z.enum([
+  'authorization_failed',
+  'model_unavailable',
+  'scan_failed',
+])
 
 /**
- * KnowledgeFSTidyScanListResponse
+ * KnowledgeFSTidySettingsResponse
  */
-export const zKnowledgeFsTidyScanListResponse = z.object({
-  items: z.array(zKnowledgeFsTidyScanResponse),
-  nextCursor: z.string().nullable(),
+export const zKnowledgeFsTidySettingsResponse = z.object({
+  conflicts: z.boolean(),
+  enabled: z.boolean(),
+  lastError: zTidySettingsError.nullable(),
+  revision: z.int(),
+  updatedAt: z.string(),
 })
 
 /**
@@ -2748,8 +2714,8 @@ export const zKnowledgeFsTidyDocumentProgressResponse = z.object({
  */
 export const zKnowledgeFsTidyFindingCountResponse = z.object({
   count: z.int(),
-  kind: z.enum(['conflict', 'duplicate', 'similar']),
-  status: z.enum(['disabled', 'dismissed', 'open', 'outdated', 'reviewed']),
+  kind: zTidyFindingKind,
+  status: zTidyFindingStatus,
 })
 
 /**
@@ -2882,6 +2848,31 @@ export const zKnowledgeFsUploadSessionPartPayload = z.object({
  */
 export const zKnowledgeFsUploadSessionCompletePayload = z.object({
   parts: z.array(zKnowledgeFsUploadSessionPartPayload).max(10000).nullish(),
+})
+
+/**
+ * KnowledgeAgentClientKind
+ */
+export const zKnowledgeAgentClientKind = z.enum(['cimd', 'dcr'])
+
+/**
+ * KnowledgeAgentAuthorizationClientResponse
+ */
+export const zKnowledgeAgentAuthorizationClientResponse = z.object({
+  kind: zKnowledgeAgentClientKind,
+  name: z.string(),
+  redirect_host: z.string(),
+})
+
+/**
+ * KnowledgeAgentAuthorizationResponse
+ */
+export const zKnowledgeAgentAuthorizationResponse = z.object({
+  agent_access_enabled: z.boolean(),
+  blocked_knowledge_base_ids: z.array(z.string()),
+  client: zKnowledgeAgentAuthorizationClientResponse,
+  scopes: z.array(z.string()),
+  workspace: zKnowledgeAgentAuthorizationWorkspaceResponse,
 })
 
 /**
@@ -3675,6 +3666,59 @@ export const zKnowledgeFsSourceWorkspacePagesResponse = z.object({
 export const zKnowledgeFsSourcePagesResponse = z.object({
   next_cursor: z.string().nullish(),
   workspaces: z.array(zKnowledgeFsSourceWorkspacePagesResponse),
+})
+
+/**
+ * TidyFurtherActionName
+ */
+export const zTidyFurtherActionName = z.enum(['disable_document', 'dismiss', 'review'])
+
+/**
+ * KnowledgeFSTidyFurtherAction
+ *
+ * Another finding settled in the same transaction as the one the request addresses.
+ */
+export const zKnowledgeFsTidyFurtherAction = z.object({
+  action: zTidyFurtherActionName,
+  documentId: z.string().nullish(),
+  expectedRevision: z.int().gt(0),
+  findingId: z.string().regex(/^[a-f0-9]{64}$/),
+})
+
+/**
+ * KnowledgeFSTidyActionPayload
+ */
+export const zKnowledgeFsTidyActionPayload = z.object({
+  action: zTidyActionName,
+  also: z.array(zKnowledgeFsTidyFurtherAction).min(1).max(63).nullish(),
+  documentId: z.string().nullish(),
+  expectedRevision: z.int().gt(0),
+  replacement: z.string().min(1).max(20000).nullish(),
+})
+
+/**
+ * TidyScanState
+ */
+export const zTidyScanState = z.enum(['complete', 'failed', 'pending', 'scanning'])
+
+/**
+ * KnowledgeFSTidyScanResponse
+ */
+export const zKnowledgeFsTidyScanResponse = z.object({
+  documentId: z.string(),
+  error: z.string().nullable(),
+  modelCalls: z.int(),
+  state: zTidyScanState,
+  title: z.string(),
+  windows: z.int(),
+})
+
+/**
+ * KnowledgeFSTidyScanListResponse
+ */
+export const zKnowledgeFsTidyScanListResponse = z.object({
+  items: z.array(zKnowledgeFsTidyScanResponse),
+  nextCursor: z.string().nullable(),
 })
 
 /**
