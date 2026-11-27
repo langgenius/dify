@@ -4,14 +4,15 @@ import type { ComponentProps, RefObject } from 'react'
 import type { StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogDescription } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useEffect, useId } from 'react'
 import { waitForAccessibleElement } from './wait-for-accessible-element'
 
 export type FloatingChecklistProps = {
   className?: string
   title: string
+  titleId: string
   duration: string
   progress: {
     ariaValueText: string
@@ -40,6 +41,7 @@ export type FloatingChecklistProps = {
 export function FloatingChecklist({
   className,
   title,
+  titleId,
   duration,
   progress,
   completionPrompt,
@@ -65,10 +67,10 @@ export function FloatingChecklist({
       <div className="flex w-full shrink-0 flex-col gap-2 px-4 pt-4 pb-1">
         <div className="flex w-full items-start gap-1">
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <PopoverTitle className="system-xl-semibold text-text-secondary">{title}</PopoverTitle>
-            <PopoverDescription className="system-xs-regular text-text-tertiary">
-              {duration}
-            </PopoverDescription>
+            <h2 id={titleId} className="system-xl-semibold text-text-secondary">
+              {title}
+            </h2>
+            <DialogDescription>{duration}</DialogDescription>
           </div>
           {!completionPrompt && (
             <>

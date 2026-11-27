@@ -9,6 +9,7 @@ import type {
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogPopup, DialogPortal, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   Popover,
   PopoverArrow,
@@ -18,11 +19,10 @@ import {
   PopoverPortal,
   PopoverPositioner,
   PopoverTitle,
-  PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Translation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
@@ -114,13 +114,11 @@ const getActiveGuideIndexes = (
 type StepByStepTourMountProps = {
   className?: string
   recoveryAnchorRef?: RefObject<HTMLButtonElement | null>
-  checklistAnchorRef?: RefObject<HTMLElement | null>
 }
 
 export default function StepByStepTourMount({
   className,
   recoveryAnchorRef,
-  checklistAnchorRef,
 }: StepByStepTourMountProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -149,6 +147,7 @@ export default function StepByStepTourMount({
   const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
   const restoreTriggerRef = useRef<HTMLButtonElement>(null)
   const checklistPopupRef = useRef<HTMLDivElement>(null)
+  const checklistTitleId = useId()
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
@@ -587,7 +586,9 @@ export default function StepByStepTourMount({
           }
           const floatingChecklist = (
             <FloatingChecklist
+              className="max-h-[calc(100dvh-4.5rem)]"
               title={title}
+              titleId={checklistTitleId}
               duration={t(($) => $['stepByStepTour.duration'], { ns: 'onboarding' })}
               progress={progress}
               completionPrompt={
@@ -703,7 +704,8 @@ export default function StepByStepTourMount({
                 />
               )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (
-                <Popover
+                <Dialog
+                  modal={false}
                   open={checklistOpen}
                   onOpenChange={(open, { event, reason }) => {
                     if (open) {
@@ -728,7 +730,7 @@ export default function StepByStepTourMount({
                   }}
                 >
                   {/* Preserve the clicked anchor while the checklist waits for its host. */}
-                  <PopoverTrigger
+                  <DialogTrigger
                     ref={restoreTriggerRef}
                     render={(props) => (
                       <MinimizedTourPill
@@ -744,37 +746,26 @@ export default function StepByStepTourMount({
                     )}
                   />
                   {visible && (
-                    <PopoverPortal className="aria-hidden:invisible">
-                      <PopoverPositioner
-                        anchor={checklistAnchorRef}
-                        side="top"
-                        align="start"
-                        sideOffset={checklistAnchorRef ? -4 : ({ anchor }) => -anchor.height}
-                        collisionPadding={8}
-                        collisionAvoidance={{
-                          side: 'shift',
-                          align: 'shift',
-                          fallbackAxisSide: 'none',
-                        }}
+                    <DialogPortal className="aria-hidden:invisible">
+                      <DialogPopup
+                        ref={checklistPopupRef}
+                        aria-labelledby={checklistTitleId}
+                        initialFocus={checklistCloseButtonRef}
+                        finalFocus={() =>
+                          activeGuide &&
+                          document.querySelector(
+                            getStepByStepTourTargetSelector(activeGuide.target),
+                          )
+                            ? false
+                            : restoreTriggerRef.current
+                        }
+                        className="fixed inset-s-2 bottom-14"
                       >
-                        <PopoverPopup
-                          ref={checklistPopupRef}
-                          initialFocus={checklistCloseButtonRef}
-                          finalFocus={() =>
-                            activeGuide &&
-                            document.querySelector(
-                              getStepByStepTourTargetSelector(activeGuide.target),
-                            )
-                              ? false
-                              : restoreTriggerRef.current
-                          }
-                        >
-                          {floatingChecklist}
-                        </PopoverPopup>
-                      </PopoverPositioner>
-                    </PopoverPortal>
+                        {floatingChecklist}
+                      </DialogPopup>
+                    </DialogPortal>
                   )}
-                </Popover>
+                </Dialog>
               )}
               {recoveryAnchorRef && (
                 <SkipRecoveryPrompt
