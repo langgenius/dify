@@ -63,21 +63,21 @@ R = TypeVar("R")
 
 
 class LLMModerationPolicy(Protocol):
-    """Tenant-bound checks injected during model assembly, never overridden by an invocation."""
+    """Tenant-bound checks injected at assembly, including the policy for backend unavailability."""
 
     @property
     def tenant_id(self) -> str: ...
 
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
-        """Approve model inputs or raise before provider invocation and quota reservation."""
+        """Enforce input moderation before provider invocation and quota reservation."""
         ...
 
     def check_result(self, result: LLMResult) -> None:
-        """Approve a completed result or raise without modifying it or refunding settled quota."""
+        """Enforce output moderation without changing the result or refunding settled quota."""
         ...
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
-        """Return approved results or a guarded stream; unavailable checks must fail closed."""
+        """Apply the policy to the result or stream before releasing content."""
         ...
 
 
@@ -265,7 +265,7 @@ class ModelInstance:
 
         Requires an LLM instance. An assembly-bound policy checks inputs before
         any provider or quota effects and outputs after accounting, before caller
-        delivery. Rejection and unavailable checks propagate without model retry.
+        delivery. Errors raised by the policy propagate without model retry.
         """
         if self._moderation is not None:
             self._moderation.check_inputs(prompt_messages)

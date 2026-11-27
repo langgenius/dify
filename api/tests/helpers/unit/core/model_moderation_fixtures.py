@@ -1,6 +1,6 @@
 """Deterministic provider and quota boundary for exercising real model invocation guards."""
 
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from typing import Any, override
 
 from pydantic.json_schema import JsonValue
@@ -158,7 +158,7 @@ def make_failing_moderated_model(
 ) -> tuple[RecordingQuotaModelInstance, RecordingLLM]:
     """Bind a real invocation guard that rejects or fails at one phase, retaining provider and quota evidence."""
 
-    def check(_text: str, checked_phase: ModerationPhase) -> None:
+    def check(_segments: Iterable[str], checked_phase: ModerationPhase) -> None:
         if checked_phase == phase:
             if unavailable:
                 raise RuntimeError("Moderation backend is unavailable")
@@ -256,14 +256,11 @@ class RecordingPollingRuntime(PluginModelRuntime):
         return self.terminal
 
 
-class RecordingHostedModerationClient(PluginModelClient):
-    """Record installed and direct dispatch without tenant provider discovery or daemon I/O."""
+class RecordingTenantModerationClient(PluginModelClient):
+    """Record tenant plugin dispatch without daemon I/O."""
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str, str, dict[str, Any], str, str | None]] = []
-        self.routes: list[str] = []
-        self.error: Exception | None = None
-        self.identifier_errors: dict[str, Exception] = {}
 
     @override
     def invoke_moderation(
@@ -275,57 +272,16 @@ class RecordingHostedModerationClient(PluginModelClient):
         model: str,
         credentials: dict[str, Any],
         text: str,
+        *,
         plugin_unique_identifier: str | None = None,
     ) -> bool:
-        self.routes.append("tenant")
-        return self._record(tenant_id, user_id, plugin_id, provider, model, credentials, text, plugin_unique_identifier)
-
-    @override
-    def invoke_moderation_direct(
-        self,
-        tenant_id: str,
-        user_id: str | None,
-        plugin_id: str,
-        provider: str,
-        model: str,
-        credentials: dict[str, Any],
-        text: str,
-        *,
-        plugin_unique_identifier: str,
-    ) -> bool:
-        self.routes.append("direct")
-        return self._record(tenant_id, user_id, plugin_id, provider, model, credentials, text, plugin_unique_identifier)
-
-    def _record(
-        self,
-        tenant_id: str,
-        user_id: str | None,
-        plugin_id: str,
-        provider: str,
-        model: str,
-        credentials: dict[str, Any],
-        text: str,
-        plugin_unique_identifier: str | None,
-    ) -> bool:
         self.calls.append(
-            (
-                tenant_id,
-                user_id or "",
-                plugin_id,
-                provider,
-                dict(credentials),
-                text,
-                plugin_unique_identifier,
-            )
+            (tenant_id, user_id or "", plugin_id, provider, dict(credentials), text, plugin_unique_identifier)
         )
-        if plugin_unique_identifier is not None and plugin_unique_identifier in self.identifier_errors:
-            raise self.identifier_errors[plugin_unique_identifier]
-        if self.error is not None:
-            raise self.error
         return "blocked" in text
 
 
-def make_tenant_moderation_provider() -> tuple[RecordingProviderManager, RecordingHostedModerationClient]:
+def make_tenant_moderation_provider() -> tuple[RecordingProviderManager, RecordingTenantModerationClient]:
     """Offer both sources so tests can detect accidental use of system credentials."""
     model = make_model_config(provider="openai", model="test-model", mode="chat")
     configuration = model.provider_model_bundle.configuration
@@ -334,7 +290,7 @@ def make_tenant_moderation_provider() -> tuple[RecordingProviderManager, Recordi
     configuration.custom_configuration.provider = CustomProviderConfiguration(
         credentials={"openai_api_key": "tenant-key"}
     )
-    client = RecordingHostedModerationClient()
+    client = RecordingTenantModerationClient()
     runtime = PluginModelRuntime(
         tenant_id=configuration.tenant_id, user_id=None, client=client, plugin_service=PluginService
     )

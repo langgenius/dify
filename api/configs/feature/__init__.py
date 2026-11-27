@@ -1215,7 +1215,7 @@ class ModerationConfig(BaseSettings):
     )
 
     MODERATION_NON_STREAM_SEGMENT_SIZE: PositiveInt = Field(
-        description="Maximum characters checked per moderation request for input or non-streaming output",
+        description="Maximum characters per input or non-streaming output moderation segment",
         default=2000,
     )
 
