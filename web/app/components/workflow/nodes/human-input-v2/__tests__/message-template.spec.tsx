@@ -780,11 +780,11 @@ describe('Human Input v2 Message Template', () => {
     ).toBeEnabled()
   })
 
-  it('reports the server message when the test request fails', async () => {
+  it('reports the test failure over a generic server message', async () => {
     const user = userEvent.setup()
     mocks.workflowTest.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'bad_request',
         message: 'Server says why',
       }),
     )
@@ -792,7 +792,9 @@ describe('Human Input v2 Message Template', () => {
     await openTest(user)
     await sendTest(user)
 
-    expect(await screen.findByText('Server says why')).toBeInTheDocument()
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.template.testFailed'),
+    ).toBeInTheDocument()
   })
 
   it('deduplicates subject and body variables, preserving zero and string-array input types', async () => {

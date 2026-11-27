@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Las herramientas permiten al agente actuar, como buscar en la web o invocar tus aplicaciones",
   "agentDetail.configure.tools.empty.title": "Aún no hay herramientas",
   "agentDetail.configure.tools.label": "Herramientas",
-  "agentDetail.configure.tools.moreActions": "Más acciones para {{name}}",
   "agentDetail.configure.tools.removeAction": "Eliminar {{name}}",
   "agentDetail.configure.tools.removeProvider": "Eliminar todas las herramientas",
   "agentDetail.configure.tools.richTip": "Añade herramientas de Dify desde tu espacio de trabajo. <docLink>Más información</docLink>\n\nLas herramientas que el agente instale en su sandbox no aparecerán aquí, pero seguirán disponibles para él.",
@@ -373,5 +372,17 @@
   "agentDetail.versionHistory.restore": "Restaurar",
   "agentDetail.versionHistory.versionName": "Versión {{version}}",
   "agentDetail.versionHistory.viewOnly": "Solo lectura",
-  "exportAgent": "Exportar agente"
+  "exportAgent": "Exportar agente",
+  "toolCallLimit.invalid": "Introduce un número entero mayor que 0.",
+  "toolCallLimit.label": "Límite de llamadas de {{toolName}}",
+  "toolCallLimit.maximum": "Máximo de llamadas",
+  "toolCallLimit.notExecuted": "No ejecutada",
+  "toolCallLimit.reached": "Límite de llamadas alcanzado ({{limit}} por ejecución). Esta solicitud no se ejecutó.",
+  "toolCallLimit.reason": "Motivo",
+  "toolCallLimit.set": "Establecer límite",
+  "toolCallLimit.summary_one": "{{count}} llamada / ejecución",
+  "toolCallLimit.summary_other": "{{count}} llamadas / ejecución",
+  "toolCallLimit.title": "Límite de llamadas por ejecución",
+  "toolCallLimit.used_one": "{{used}} de {{limit}} llamada utilizada",
+  "toolCallLimit.used_other": "{{used}} de {{limit}} llamadas utilizadas"
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
@@ -572,6 +572,44 @@ class TestEntitiesProviderConfigurationCases:
         assert [model.model for model in active_models] == ["b-model"]
 
     @staticmethod
+    @pytest.mark.parametrize("restricted", [False, True])
+    def test_zero_credit_catalog_keeps_model_restrictions_with_an_exhausted_pool(
+        config_overrides: Callable[..., None], restricted: bool
+    ) -> None:
+        """Even without a usable custom key, list free hosted models but never grant disabled or unoffered ones."""
+        config_overrides(HOSTED_MODEL_CREDIT_CONFIG="free:0,disabled:0,other:0")
+        configuration = _build_provider_configuration()
+        configuration.preferred_provider_type = configuration.using_provider_type = ProviderType.CUSTOM
+        configuration.provider.models = [_build_ai_model(name) for name in ("free", "paid", "disabled", "other")]
+        configuration.model_settings = [ModelSettings(model="disabled", model_type=ModelType.LLM, enabled=False)]
+        quota = configuration.system_configuration.quota_configurations[0]
+        quota.quota_unit = QuotaUnit.CREDITS
+        quota.quota_used = quota.quota_limit
+        quota.is_valid = False
+        if restricted:
+            quota.restrict_models = [
+                RestrictModel(model=name, model_type=ModelType.LLM) for name in ("free", "disabled")
+            ]
+
+        active = {model.model for model in configuration.get_provider_models(only_active=True)}
+        assert active == ({"free"} if restricted else {"free", "other"})
+
+    @staticmethod
+    def test_hosted_overlay_preserves_the_default_model_order(config_overrides: Callable[..., None]) -> None:
+        """Replacing the route must not move an unpositioned model behind a billable fallback."""
+        config_overrides(HOSTED_MODEL_CREDIT_CONFIG="free:0")
+        config = _build_provider_configuration()
+        config.using_provider_type = ProviderType.CUSTOM
+        config.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "workspace"})
+        config.provider.models = [_build_ai_model("free"), _build_ai_model("metered")]
+        quota = config.system_configuration.quota_configurations[0]
+        quota.quota_unit = QuotaUnit.CREDITS
+        quota.quota_used = quota.quota_limit
+        quota.is_valid = False
+
+        assert [entry.model for entry in config.get_provider_models(only_active=True)] == ["free", "metered"]
+
+    @staticmethod
     def test_get_provider_models_system_filters_requested_model() -> None:
         configuration = _build_provider_configuration()
         provider_schema = ProviderEntity(
@@ -596,69 +634,65 @@ class TestEntitiesProviderConfigurationCases:
         assert [model.model for model in models] == ["target-model"]
 
     @staticmethod
-    def test_get_provider_models_system_customizable_filters_requested_restricted_model() -> None:
-        provider = ProviderEntity(
-            provider="openai",
-            label=I18nObject(en_US="OpenAI"),
-            supported_model_types=[ModelType.LLM],
-            configurate_methods=[ConfigurateMethod.CUSTOMIZABLE_MODEL],
+    @pytest.mark.parametrize(
+        ("schema_reply", "expected_models"),
+        [
+            pytest.param(_build_ai_model("target-model"), ["target-model"], id="available"),
+            pytest.param(None, [], id="missing-deployment"),
+            pytest.param(RuntimeError("plugin unavailable"), [], id="schema-lookup-failed"),
+            pytest.param(_build_ai_model("target-model", model_type=ModelType.TEXT_EMBEDDING), [], id="wrong-type"),
+        ],
+    )
+    def test_system_catalog_requires_a_matching_hosted_deployment_schema(
+        config_overrides: Callable[..., None],
+        schema_reply: AIModelEntity | RuntimeError | None,
+        expected_models: list[str],
+    ) -> None:
+        """A bucket can name a deployment, but its hosted schema must actually provide the requested model type."""
+        config_overrides(HOSTED_MODEL_CREDIT_CONFIG="target-model:0")
+        configuration = ProviderConfiguration(
+            tenant_id="tenant-1",
+            provider=ProviderEntity(
+                provider="langgenius/example/example",
+                label=I18nObject(en_US="Example"),
+                supported_model_types=[ModelType.LLM, ModelType.TEXT_EMBEDDING],
+                configurate_methods=[ConfigurateMethod.CUSTOMIZABLE_MODEL],
+            ),
+            preferred_provider_type=ProviderType.SYSTEM,
+            using_provider_type=ProviderType.SYSTEM,
+            system_configuration=SystemConfiguration(
+                enabled=True,
+                credentials={"api_key": "hosted"},
+                current_quota_type=ProviderQuotaType.TRIAL,
+                quota_configurations=[
+                    QuotaConfiguration(
+                        quota_type=ProviderQuotaType.TRIAL,
+                        quota_unit=QuotaUnit.CREDITS,
+                        quota_limit=1,
+                        quota_used=1,
+                        is_valid=False,
+                        restrict_models=[
+                            RestrictModel(model="target-model", base_model_name="base-model", model_type=ModelType.LLM),
+                            RestrictModel(model="other-model", model_type=ModelType.LLM),
+                        ],
+                    )
+                ],
+            ),
+            custom_configuration=CustomConfiguration(provider=None),
+            model_settings=[],
         )
-        system_configuration = SystemConfiguration(
-            enabled=True,
-            credentials={"api_key": "test-key"},
-            current_quota_type=ProviderQuotaType.TRIAL,
-            quota_configurations=[
-                QuotaConfiguration(
-                    quota_type=ProviderQuotaType.TRIAL,
-                    quota_unit=QuotaUnit.TOKENS,
-                    quota_limit=1_000,
-                    quota_used=0,
-                    is_valid=True,
-                    restrict_models=[
-                        RestrictModel(model="target-model", base_model_name="base-model", model_type=ModelType.LLM),
-                        RestrictModel(model="other-model", base_model_name="base-model", model_type=ModelType.LLM),
-                    ],
-                )
-            ],
+        runtime = PluginModelAssembly(tenant_id=configuration.tenant_id).model_runtime
+        configuration.bind_model_runtime(runtime)
+        with patch.object(runtime, "get_model_schema", side_effect=[schema_reply]) as resolve:
+            models = configuration.get_provider_models(ModelType.LLM, only_active=True, model="target-model")
+
+        assert [entry.model for entry in models] == expected_models
+        resolve.assert_called_once_with(
+            provider=configuration.provider.provider,
+            model_type=ModelType.LLM,
+            model="target-model",
+            credentials={"api_key": "hosted", "base_model_name": "base-model"},
         )
-        provider_schema = ProviderEntity(
-            provider="openai",
-            label=I18nObject(en_US="OpenAI"),
-            supported_model_types=[ModelType.LLM],
-            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
-            models=[],
-        )
-        assembly = PluginModelAssembly(tenant_id="tenant-1")
-
-        with patch("core.entities.provider_configuration.original_provider_configurate_methods", dict[str, object]()):
-            configuration = ProviderConfiguration(
-                tenant_id="tenant-1",
-                provider=provider,
-                preferred_provider_type=ProviderType.SYSTEM,
-                using_provider_type=ProviderType.SYSTEM,
-                system_configuration=system_configuration,
-                custom_configuration=CustomConfiguration(provider=None, models=[]),
-                model_settings=[],
-            )
-
-        with (
-            patch("core.entities.provider_configuration.create_plugin_model_assembly", return_value=assembly),
-            patch.object(assembly.model_provider_factory, "get_model_provider", return_value=provider_schema),
-            patch.object(
-                ProviderConfiguration,
-                "get_model_schema",
-                side_effect=lambda *args, **kwargs: _build_ai_model(kwargs["model"]),
-            ) as mock_get_model_schema,
-        ):
-            models = configuration.get_provider_models(
-                model_type=ModelType.LLM,
-                only_active=False,
-                model="target-model",
-            )
-
-        assert [model.model for model in models] == ["target-model"]
-        mock_get_model_schema.assert_called_once()
-        assert mock_get_model_schema.call_args.kwargs["model"] == "target-model"
 
     @staticmethod
     def test_get_custom_provider_models_sets_status_for_removed_credentials_and_invalid_lb_configs() -> None:

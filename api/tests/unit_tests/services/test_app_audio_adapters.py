@@ -3,7 +3,7 @@ import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
-from typing import cast, override
+from typing import override
 from uuid import uuid4
 
 import pytest
@@ -11,13 +11,15 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from extensions.application_services.agent import build_agent_app_repository
 from models import App, AppMode, AppModelConfig, Message
-from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource
+from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot, AgentScope, AgentSource
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AccountTrialAppRecord
 from models.workflow import Workflow, WorkflowType
 from services import audio_provider_gateway
+from services.agent.agent_config_contracts import AgentConfigVersionMissingError
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
@@ -41,7 +43,9 @@ class _Harness:
     def assert_database_closed(self) -> None:
         assert self.closed_sessions
         assert all(not session.in_transaction() and not session.identity_map for session in self.closed_sessions)
-        assert cast(QueuePool, self.engine.pool).checkedout() == 0
+        pool = self.engine.pool
+        assert isinstance(pool, QueuePool)
+        assert pool.checkedout() == 0
 
     def tts(
         self, *, text: str | None = " Text input ", voice: str | None = None, message_id: str | None = None
@@ -101,9 +105,11 @@ def harness(
             super().close()
             closed_sessions.append(self)
 
-    factory = sessionmaker(bind=sqlite_engine, class_=TrackedSession, expire_on_commit=True)
+    factory = sessionmaker[Session](bind=sqlite_engine, class_=TrackedSession, expire_on_commit=True)
     state = _Harness(
-        runtime=AppAudioRuntime(session_factory=cast(sessionmaker[Session], factory)),
+        runtime=AppAudioRuntime(
+            session_factory=factory, agent_audio=build_agent_app_repository(database_client=factory)
+        ),
         app=AudioAppRef(app_id=app.id, tenant_id=app.tenant_id, app_mode=app.mode),
         config_id=config.id,
         message_id=message.id,
@@ -319,6 +325,98 @@ def test_asr_uses_published_agent_soul_over_model_config(
         with pytest.raises(SpeechToTextDisabledServiceError):
             harness.asr()
         assert harness.asr_calls == []
+    harness.assert_database_closed()
+
+
+@pytest.fixture
+def agent_id(harness: _Harness, sqlite_session_factory: sessionmaker[Session]) -> str:
+    """Bind the harness App and its existing audio data to a tenant-owned roster Agent."""
+    with sqlite_session_factory.begin() as session:
+        app = session.get_one(App, harness.app.app_id)
+        app.mode = AppMode.AGENT
+        agent = Agent(
+            tenant_id=app.tenant_id,
+            name="Audio Agent",
+            app_id=app.id,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+        )
+        session.add(agent)
+        session.flush()
+        agent_id = agent.id
+    harness.app = replace(harness.app, app_mode=AppMode.AGENT.value)
+    return agent_id
+
+
+def test_agent_asr_preserves_draft_scope_and_model_config_fallback(
+    harness: _Harness, agent_id: str, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """Use the requested draft and close its read session before calling the provider."""
+    other_account = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                AgentConfigDraft(
+                    tenant_id=harness.app.tenant_id,
+                    agent_id=agent_id,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    draft_owner_key="",
+                    config_snapshot=AgentSoulConfig(),
+                ),
+                AgentConfigDraft(
+                    tenant_id=harness.app.tenant_id,
+                    agent_id=agent_id,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=other_account,
+                    draft_owner_key=other_account,
+                    config_snapshot=AgentSoulConfig.model_validate(
+                        {"app_features": {"speech_to_text": {"enabled": False}}}
+                    ),
+                ),
+            ]
+        )
+    assert harness.runtime.transcript_agent_asr(
+        app=harness.app,
+        agent_id=agent_id,
+        account_id=_ACCOUNT_ID,
+        build=False,
+        audio=AudioUpload(stream=io.BytesIO(b"draft audio"), mime_type="audio/mp3"),
+    ) == {"text": " transcript "}
+    with pytest.raises(AgentConfigVersionMissingError):
+        harness.runtime.transcript_agent_asr(
+            app=harness.app, agent_id=agent_id, account_id=_ACCOUNT_ID, build=True, audio=None
+        )
+    with pytest.raises(SpeechToTextDisabledServiceError):
+        harness.runtime.transcript_agent_asr(
+            app=harness.app, agent_id=agent_id, account_id=other_account, build=True, audio=None
+        )
+    assert harness.asr_calls == [(harness.app, b"draft audio", None)]
+    harness.assert_database_closed()
+
+
+def test_agent_tts_uses_owned_message_without_falling_back_to_text(harness: _Harness, agent_id: str) -> None:
+    """Use the owned answer and provider voice default, then reject the same message for another account."""
+    result = harness.runtime.transcript_agent_tts(
+        tenant_id=harness.app.tenant_id,
+        agent_id=agent_id,
+        account_id=_ACCOUNT_ID,
+        text="fallback text",
+        voice=None,
+        message_id=harness.message_id,
+    )
+    assert result is harness.output
+    assert (
+        harness.runtime.transcript_agent_tts(
+            tenant_id=harness.app.tenant_id,
+            agent_id=agent_id,
+            account_id=str(uuid4()),
+            text="fallback text",
+            voice=None,
+            message_id=harness.message_id,
+        )
+        is None
+    )
+    assert harness.tts_calls == [(harness.app, "Message answer", None, None)]
     harness.assert_database_closed()
 
 

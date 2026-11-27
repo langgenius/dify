@@ -7,7 +7,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
 import { runSkillDraftMutation } from './mutations'
 
@@ -28,6 +28,7 @@ export function SkillDisplayNameEditor({
 }) {
   const { t } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const inputRef = useRef<HTMLInputElement>(null)
   const submittingRef = useRef(false)
   const [displayNameOverride, setDisplayNameOverride] = useState<{
@@ -98,7 +99,10 @@ export function SkillDisplayNameEditor({
         )
       } else {
         toast.error(
-          getRequestErrorMessage(error) ?? t(($) => $['skillManagement.detail.saveFailed']),
+          describeRequestError(
+            error,
+            t(($) => $['skillManagement.detail.saveFailed']),
+          ),
         )
       }
     } finally {

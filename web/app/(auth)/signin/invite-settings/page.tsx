@@ -31,7 +31,8 @@ import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getRequestErrorMessage, isUnauthorizedError } from '@/service/http-error'
+import { isUnauthorizedError } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -50,6 +51,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation(['common', 'login'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -141,9 +143,10 @@ export default function InviteSettingsPage() {
           return
         }
         toast.error(
-          isDefined
-            ? error.message
-            : (getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })),
+          describeRequestError(
+            error,
+            t(($) => $['api.actionFailed'], { ns: 'common' }),
+          ),
         )
         recheck()
         return
@@ -159,6 +162,7 @@ export default function InviteSettingsPage() {
       setIsActivating(false)
     }
   }, [
+    describeRequestError,
     isInvitationForCurrentAccount,
     isActivating,
     language,

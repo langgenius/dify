@@ -75,6 +75,7 @@
   "entry.checkFailed": "Impossibile verificare la versione pubblicata. Riprova.",
   "entry.duplicateNodeNames": "La versione pubblicata contiene nodi con lo stesso nome ({{names}}). Puoi continuare la valutazione, ma rinominarli e pubblicare una nuova versione renderà più facile distinguere i risultati.",
   "entry.duplicateNodeNamesTitle": "Nomi dei nodi duplicati",
+  "entry.triggerUnsupported": "I workflow avviati da un trigger non possono essere valutati. Pubblica un workflow con un nodo iniziale Input utente.",
   "history.actions.cancel": "Annulla esecuzione",
   "history.actions.downloadFailed": "Impossibile scaricare il file di valutazione.",
   "history.actions.downloadResultFile": "Scarica risultato",

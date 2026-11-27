@@ -31,6 +31,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
+from core.errors.error import AppInvokeQuotaWaitTimeoutError
 from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
 from core.evaluation.agent.customized_workflow_adapter import (
     AGENT_CUSTOM_EVALUATOR_NODE_ID,
@@ -79,6 +80,12 @@ from models.evaluation import (
 from models.model import UploadFile
 from services.agent.evaluation_target_service import AgentEvaluationTargetService
 from services.agent.workspace_service import AgentWorkspaceService
+from services.errors.app import QuotaExceededError
+from services.errors.evaluation import (
+    EvaluationRunCancelledError,
+    EvaluationRunControlError,
+    EvaluationRunOwnershipLostError,
+)
 from services.evaluation_service import EvaluationService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
@@ -86,14 +93,6 @@ logger = logging.getLogger(__name__)
 
 _PERSIST_BATCH_SIZE = 10
 _HEARTBEAT_JOIN_TIMEOUT_SECONDS = 5
-
-
-class EvaluationRunCancelledError(Exception):
-    """Raised when cooperative cancellation stops an evaluation task."""
-
-
-class EvaluationRunOwnershipLostError(Exception):
-    """Raised when a task invocation no longer owns the evaluation run lease."""
 
 
 def _affected_rows(result: Result[Any]) -> int:
@@ -174,16 +173,20 @@ def _evaluate_with_customized_workflow(
             )
 
             generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-            response: Mapping[str, Any] = generator.generate(
-                execution_identity=build_workflow_execution_identity(service_account),
-                app_model=app,
-                workflow=published_workflow,
-                user=service_account,
-                args={"inputs": workflow_inputs},
-                invoke_from=InvokeFrom.SERVICE_API,
-                streaming=False,
-                call_depth=0,
-                task_id=task_id_factory(idx) if task_id_factory is not None else None,
+            response = EvaluationService.run_app_for_evaluation(
+                app=app,
+                cancellation_check=cancellation_check,
+                action=lambda generator=generator, workflow_inputs=workflow_inputs, idx=idx: generator.generate(
+                    execution_identity=build_workflow_execution_identity(service_account),
+                    app_model=app,
+                    workflow=published_workflow,
+                    user=service_account,
+                    args={"inputs": workflow_inputs},
+                    invoke_from=InvokeFrom.SERVICE_API,
+                    streaming=False,
+                    call_depth=0,
+                    task_id=task_id_factory(idx) if task_id_factory is not None else None,
+                ),
             )
 
             metrics = evaluation_instance._extract_workflow_metrics(
@@ -194,6 +197,8 @@ def _evaluate_with_customized_workflow(
             if not metrics:
                 raise ValueError("Evaluation workflow returned none of the configured metric outputs")
             eval_results.append(EvaluationItemResult(index=idx, metrics=metrics))
+        except (AppInvokeQuotaWaitTimeoutError, EvaluationRunControlError, QuotaExceededError):
+            raise
         except Exception:
             failure = new_public_evaluation_error(EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
             logger.exception(
@@ -245,6 +250,14 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
                 failure.error_id,
             )
             _mark_run_failed(session, lease, failure.text)
+        except QuotaExceededError:
+            failure = new_public_evaluation_error(EvaluationErrorCode.RUN_QUOTA_EXCEEDED)
+            logger.info(
+                "Evaluation run %s stopped because workflow quota was exhausted (error_id=%s)",
+                run_data.evaluation_run_id,
+                failure.error_id,
+            )
+            _mark_run_failed(session, lease, failure.text)
         except ValueError:
             failure = new_public_evaluation_error(EvaluationErrorCode.INVALID_CONFIG)
             logger.exception(
@@ -255,7 +268,12 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
             retry_number = task.request.retries + 1
             max_retries = dify_config.EVALUATION_RUN_MAX_RETRIES
             if task.request.retries >= max_retries:
-                failure = new_public_evaluation_error(EvaluationErrorCode.RUN_FAILED)
+                error_code = (
+                    EvaluationErrorCode.APP_CONCURRENCY_TIMEOUT
+                    if isinstance(exc, AppInvokeQuotaWaitTimeoutError)
+                    else EvaluationErrorCode.RUN_FAILED
+                )
+                failure = new_public_evaluation_error(error_code)
                 logger.exception(
                     "Evaluation run %s exhausted its retry budget after %d attempts (error_id=%s)",
                     run_data.evaluation_run_id,
@@ -1083,6 +1101,8 @@ def _evaluate_agent_row(
             _merge_customized_results(results_by_index, customized_results, [dataset_item])
         except EvaluationWorkflowVersionNotFoundError:
             raise
+        except (AppInvokeQuotaWaitTimeoutError, EvaluationRunControlError, QuotaExceededError):
+            raise
         except Exception:
             failure = new_public_evaluation_error(EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
             logger.exception(
@@ -1460,6 +1480,8 @@ def _execute_evaluation_runner(
                 )
                 _merge_customized_results(results_by_index, customized_results, customized_input_items)
         except EvaluationWorkflowVersionNotFoundError:
+            raise
+        except (AppInvokeQuotaWaitTimeoutError, EvaluationRunControlError, QuotaExceededError):
             raise
         except Exception:
             failure = new_public_evaluation_error(EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)

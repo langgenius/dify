@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { toastActionError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import {
@@ -122,7 +122,7 @@ export const useSnippetInit = (snippetId: string) => {
         // Keep the canvas gated on unexpected draft fetch failures and report them.
         // `fetchSnippetDraftWorkflow` resolves with undefined for 404, so this
         // branch represents a real initialization failure rather than "no draft".
-        if (!ignore) toastActionError(error)
+        if (!ignore) reportRequestError(error)
       })
 
     return () => {

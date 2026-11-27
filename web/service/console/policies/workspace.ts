@@ -1,6 +1,7 @@
 import type {
   AccountWithRoleListResponse,
   RbacRoleList,
+  WorkspaceAccessMatrix,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
@@ -8,12 +9,25 @@ import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { humanInputPolicies } from './human-input'
 import { workspacePluginPolicies } from './plugins'
-import {
-  invalidateHumanInputContactQueries,
-  invalidateNetworkAccessGroupQueries,
-  invalidateQueryKeys,
-} from './shared'
+import { invalidateQueryKeys } from './shared'
 import { skillPolicies } from './skills'
+
+// Resources whose details show the permission sets they are bound to.
+const accessPolicyReaders = [
+  'agent.get',
+  'agent.byAgentId.get',
+  'apps.byAppId.get',
+  'datasets.byDatasetId.get',
+]
+// An agent's access changes the agent lists and who can be invited to it.
+const agentAccessReaders = ['agent.get', 'agent.inviteOptions', 'agent.byAgentId.get']
+const appNetworkAccessGroupPath = 'apps.byAppId.networkAccessGroup'
+const humanInputContactPaths = [
+  'workspaces.current.humanInput.v2.contacts',
+  'workspaces.current.humanInput.v2.contactOptions',
+  'workspaces.current.humanInput.v2.imIdentities',
+  'workspaces.current.humanInput.v2.organizationCandidates',
+]
 
 export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['workspaces'] {
   return {
@@ -23,13 +37,16 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
           revoke: {
             post: {
               mutationOptions: {
-                // A failed revoke may mean the invitation was already accepted or revoked.
-                // Waits for the pending invitations; members and seats refresh in the background.
-                onSettled: (_data, _error, { params }, _result, { client }) => {
-                  void invalidateQueryKeys(client, [
-                    consoleQuery.workspaces.current.members.get.key(),
-                    consoleQuery.features.get.queryKey(),
-                  ])
+                // Invitees are listed as members too, and invitations use seats.
+                meta: { alsoInvalidate: ['features', 'workspaces.current.members'] },
+                // A failed revoke may mean the invitation was already accepted or revoked, so
+                // members and seats refresh after one too. Waits for the pending invitations.
+                onSettled: (_data, error, { params }, _result, { client }) => {
+                  if (error)
+                    void invalidateQueryKeys(client, [
+                      consoleQuery.workspaces.current.members.get.key(),
+                      consoleQuery.features.get.queryKey(),
+                    ])
                   return invalidateQueryKeys(client, [
                     consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
                       input: { params: { workspace_id: params.workspace_id } },
@@ -46,57 +63,45 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
       customizedSnippets: {
         post: {
           mutationOptions: {
-            // Waits for the snippet list and details; workflows refresh in the background.
-            onSuccess: (_data, _variables, _onMutateResult, context) => {
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.snippets.key(),
-              })
-              return context.client.invalidateQueries({
+            meta: { alsoInvalidate: ['snippets'] },
+            // Waits for the snippet list and details.
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              context.client.invalidateQueries({
                 queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-              })
-            },
+              }),
           },
         },
         bySnippetId: {
           patch: {
             mutationOptions: {
-              // Waits for the snippet list and details; workflows refresh in the background.
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.snippets.key(),
-                })
-                return context.client.invalidateQueries({
+              meta: { alsoInvalidate: ['snippets'] },
+              // Waits for the snippet list and details.
+              onSuccess: (_data, _variables, _onMutateResult, context) =>
+                context.client.invalidateQueries({
                   queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                })
-              },
+                }),
             },
           },
           delete: {
             mutationOptions: {
-              // Waits for the snippet list and details; workflows refresh in the background.
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.snippets.key(),
-                })
-                return context.client.invalidateQueries({
+              meta: { alsoInvalidate: ['snippets'] },
+              // Waits for the snippet list and details.
+              onSuccess: (_data, _variables, _onMutateResult, context) =>
+                context.client.invalidateQueries({
                   queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                })
-              },
+                }),
             },
           },
           useCount: {
             increment: {
               post: {
                 mutationOptions: {
-                  // Waits for the snippet list and details; workflows refresh in the background.
-                  onSuccess: (_data, _variables, _onMutateResult, context) => {
-                    void context.client.invalidateQueries({
-                      queryKey: consoleQuery.snippets.key(),
-                    })
-                    return context.client.invalidateQueries({
+                  meta: { alsoInvalidate: ['snippets'] },
+                  // Waits for the snippet list and details.
+                  onSuccess: (_data, _variables, _onMutateResult, context) =>
+                    context.client.invalidateQueries({
                       queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                    })
-                  },
+                    }),
                 },
               },
             },
@@ -105,30 +110,24 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         imports: {
           post: {
             mutationOptions: {
-              // Waits for the snippet list and details; workflows refresh in the background.
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.snippets.key(),
-                })
-                return context.client.invalidateQueries({
+              meta: { alsoInvalidate: ['snippets'] },
+              // Waits for the snippet list and details.
+              onSuccess: (_data, _variables, _onMutateResult, context) =>
+                context.client.invalidateQueries({
                   queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                })
-              },
+                }),
             },
           },
           byImportId: {
             confirm: {
               post: {
                 mutationOptions: {
-                  // Waits for the snippet list and details; workflows refresh in the background.
-                  onSuccess: (_data, _variables, _onMutateResult, context) => {
-                    void context.client.invalidateQueries({
-                      queryKey: consoleQuery.snippets.key(),
-                    })
-                    return context.client.invalidateQueries({
+                  meta: { alsoInvalidate: ['snippets'] },
+                  // Waits for the snippet list and details.
+                  onSuccess: (_data, _variables, _onMutateResult, context) =>
+                    context.client.invalidateQueries({
                       queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                    })
-                  },
+                    }),
                 },
               },
             },
@@ -136,22 +135,13 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         },
       },
       members: {
-        // Invitations change seats (plan usage), the member list, and pending invitations.
-        // Waits for the member list and pending invitations; seats refresh in the background.
         inviteEmail: {
           post: {
             mutationOptions: {
-              // The invite modal shows the one-time invitation links from the response, and
-              // the response has no member rows to write. A new invitee can't be acted on
-              // before its row appears, so the lists refresh in the background.
-              onSuccess: (response, _variables, _result, { client }) => {
-                void invalidateQueryKeys(client, [
-                  consoleQuery.features.get.queryKey(),
-                  consoleQuery.workspaces.current.members.get.key(),
-                  consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
-                    input: { params: { workspace_id: response.tenant_id } },
-                  }),
-                ])
+              // Invitations change seats (plan usage) and pending invitations. The invite modal
+              // shows the one-time links from the response, so nothing waits for the lists.
+              meta: {
+                alsoInvalidate: ['features', 'workspaces.byWorkspaceId.members.pendingInvitations'],
               },
             },
           },
@@ -159,7 +149,18 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         byMemberId: {
           delete: {
             mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
+              // Contacts list workspace members.
+              meta: { alsoInvalidate: humanInputContactPaths },
+              // The row leaves at once; the refetch confirms it.
+              onSuccess: async (_data, variables, _result, context) => {
+                if (
+                  context.client.isFetching({
+                    queryKey: consoleQuery.workspaces.current.members.get.key(),
+                  })
+                )
+                  await context.client.cancelQueries({
+                    queryKey: consoleQuery.workspaces.current.members.get.key(),
+                  })
                 context.client.setQueriesData(
                   { queryKey: consoleQuery.workspaces.current.members.get.key() },
                   (members: AccountWithRoleListResponse | undefined) =>
@@ -173,7 +174,6 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.workspaces.current.members.get.key(),
                 })
-                void invalidateHumanInputContactQueries(consoleQuery, context.client)
               },
             },
           },
@@ -182,48 +182,47 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
       networkAccessGroups: {
         post: {
           mutationOptions: {
+            meta: { alsoInvalidate: [appNetworkAccessGroupPath] },
             // Show the new group right away; the settled refetch confirms it.
-            onSuccess: (data, _variables, _result, { client }) => {
-              client.setQueryData(
-                consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
-                (current) => {
-                  if (!current) return current
-                  if (current.groups.some((group) => group.id === data.group.id)) return current
-                  return { ...current, groups: [...current.groups, data.group] }
-                },
-              )
+            onSuccess: async (data, _variables, _result, { client }) => {
+              const queryKey = consoleQuery.workspaces.current.networkAccessGroups.get.queryKey()
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
+              client.setQueryData(queryKey, (current) => {
+                if (!current) return current
+                if (current.groups.some((group) => group.id === data.group.id)) return current
+                return { ...current, groups: [...current.groups, data.group] }
+              })
             },
-            onSettled: (_data, error, _variables, _result, context) => {
+            onSettled: (_data, error, _variables, _result, { client }) => {
               if (error) return
-              void invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+              void invalidateQueryKeys(client, [
+                consoleQuery.workspaces.current.networkAccessGroups.get.key(),
+              ])
             },
           },
         },
         byGroupId: {
           put: {
             mutationOptions: {
-              // Waits for the groups list and details; app bindings refresh in the background.
+              meta: { alsoInvalidate: [appNetworkAccessGroupPath] },
+              // Waits for the groups list and details.
               onSettled: (_data, error, _variables, _result, { client }) => {
                 if (error) return
                 const groups = consoleQuery.workspaces.current.networkAccessGroups
-                void invalidateQueryKeys(client, [
-                  consoleQuery.apps.byAppId.networkAccessGroup.key(),
-                ])
                 return invalidateQueryKeys(client, [groups.get.key(), groups.byGroupId.key()])
               },
             },
           },
           delete: {
             mutationOptions: {
-              // Waits for the groups list; details and app bindings refresh in the background.
+              meta: { alsoInvalidate: [appNetworkAccessGroupPath] },
+              // Waits for the groups list.
               onSettled: (_data, error, _variables, _result, { client }) => {
                 if (error) return
-                const groups = consoleQuery.workspaces.current.networkAccessGroups
-                void invalidateQueryKeys(client, [
-                  groups.byGroupId.key(),
-                  consoleQuery.apps.byAppId.networkAccessGroup.key(),
+                return invalidateQueryKeys(client, [
+                  consoleQuery.workspaces.current.networkAccessGroups.get.key(),
                 ])
-                return invalidateQueryKeys(client, [groups.get.key()])
               },
             },
           },
@@ -257,7 +256,10 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             },
             delete: {
               mutationOptions: {
-                onSettled: (_data, error, { params }, _result, { client }) => {
+                // Removing a role changes the roles shown on member rows.
+                meta: { alsoInvalidate: ['workspaces.current.members'] },
+                // The role leaves at once; the refetch confirms it.
+                onSettled: async (_data, error, { params }, _result, { client }) => {
                   if (error) return
                   const roles = consoleQuery.workspaces.current.rbac.roles.get
                   const removeRole = (page: RbacRoleList): RbacRoleList =>
@@ -267,6 +269,14 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                           data: page.data.filter((role) => role.id !== params.role_id),
                         }
                       : page
+                  if (
+                    client.isFetching({ queryKey: roles.key({ type: 'query' }) }) ||
+                    client.isFetching({ queryKey: roles.key({ type: 'infinite' }) })
+                  )
+                    await Promise.all([
+                      client.cancelQueries({ queryKey: roles.key({ type: 'query' }) }),
+                      client.cancelQueries({ queryKey: roles.key({ type: 'infinite' }) }),
+                    ])
                   client.setQueriesData<RbacRoleList>(
                     { queryKey: roles.key({ type: 'query' }) },
                     (data) => data && removeRole(data),
@@ -276,9 +286,6 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                     (data) => data && { ...data, pages: data.pages.map(removeRole) },
                   )
                   void client.invalidateQueries({ queryKey: roles.key() })
-                  void client.invalidateQueries({
-                    queryKey: consoleQuery.workspaces.current.members.get.key(),
-                  })
                 },
               },
             },
@@ -323,10 +330,11 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
           },
         },
         // Every permission-set write waits for the RBAC lists it changes (the modal seeds its
-        // draft from them); resource details refresh in the background.
+        // draft from them).
         accessPolicies: {
           post: {
             mutationOptions: {
+              meta: { alsoInvalidate: accessPolicyReaders },
               onSettled: (_data, error, _variables, _result, context) => {
                 if (error) return
                 return invalidateAccessPolicyQueries(consoleQuery, context.client)
@@ -336,6 +344,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
           byPolicyId: {
             put: {
               mutationOptions: {
+                meta: { alsoInvalidate: accessPolicyReaders },
                 onSettled: (_data, error, _variables, _result, context) => {
                   if (error) return
                   return invalidateAccessPolicyQueries(consoleQuery, context.client)
@@ -344,6 +353,11 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             },
             delete: {
               mutationOptions: {
+                meta: { alsoInvalidate: accessPolicyReaders },
+                // The rule leaves its list before the delete dialog closes, so focus does not
+                // return to its row.
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  removeAccessPolicyRows(consoleQuery, client, params.policy_id),
                 onSettled: (_data, error, _variables, _result, context) => {
                   if (error) return
                   return invalidateAccessPolicyQueries(consoleQuery, context.client)
@@ -353,6 +367,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             copy: {
               post: {
                 mutationOptions: {
+                  meta: { alsoInvalidate: accessPolicyReaders },
                   onSettled: (_data, error, _variables, _result, context) => {
                     if (error) return
                     return invalidateAccessPolicyQueries(consoleQuery, context.client)
@@ -367,6 +382,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             whitelist: {
               put: {
                 mutationOptions: {
+                  meta: { alsoInvalidate: agentAccessReaders },
                   onSettled: (_data, error, variables, _result, context) => {
                     if (error) return
                     // The access page shows the pending scope toggle until the refreshed config lands.
@@ -384,6 +400,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 accessPolicies: {
                   put: {
                     mutationOptions: {
+                      meta: { alsoInvalidate: agentAccessReaders },
                       onSettled: (_data, error, variables, _result, context) => {
                         if (error) return
                         // The access page keeps the member row and add menu busy until the refreshed list lands.
@@ -403,6 +420,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 memberBindings: {
                   delete: {
                     mutationOptions: {
+                      meta: { alsoInvalidate: agentAccessReaders },
                       onSettled: (_data, error, variables, _result, context) => {
                         if (error) return
                         // The access page keeps removed rows busy until the refreshed list lands.
@@ -438,30 +456,54 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
   }
 }
 
-/** Returns once the RBAC lists have refreshed; resource details refresh in the background. */
 function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
-  void invalidateQueryKeys(client, [
-    query.agent.get.key(),
-    query.agent.byAgentId.get.key(),
-    query.apps.byAppId.get.key(),
-    query.datasets.byDatasetId.get.key(),
-  ])
   return invalidateQueryKeys(client, [query.workspaces.current.rbac.key()])
 }
 
-// Returns once the agent's access settings have refreshed; permissions and agent
-// lists refresh in the background.
+async function removeAccessPolicyRows(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  policyId: string,
+) {
+  const lists = query.workspaces.current.rbac.workspace
+  // Every page carries the list's total, and the section shows the first page's; once the rule
+  // is found on any page, the row leaves its page and every page's total drops.
+  const removeRule = (data: InfiniteData<WorkspaceAccessMatrix>) => {
+    if (!data.pages.some((page) => page.items?.some((row) => row.policy?.id === policyId)))
+      return data
+    return {
+      ...data,
+      pages: data.pages.map((page) => ({
+        ...page,
+        items: page.items?.filter((row) => row.policy?.id !== policyId),
+        pagination: page.pagination && {
+          ...page.pagination,
+          total_count: Math.max(0, (page.pagination.total_count ?? 0) - 1),
+        },
+      })),
+    }
+  }
+  const listKeys = [lists.apps, lists.datasets, lists.agents].map((list) =>
+    list.accessPolicy.get.key({ type: 'infinite' }),
+  )
+  // Cancel only running reads: an await with nothing to cancel would move the write past the
+  // delete dialog's own callback.
+  const running = listKeys.filter((queryKey) => client.isFetching({ queryKey }))
+  if (running.length)
+    await Promise.all(running.map((queryKey) => client.cancelQueries({ queryKey })))
+  for (const queryKey of listKeys)
+    client.setQueriesData<InfiniteData<WorkspaceAccessMatrix>>(
+      { queryKey },
+      (data) => data && removeRule(data),
+    )
+}
+
+// Returns once the agent's access settings have refreshed.
 function invalidateAgentAccessQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
   agentId: string,
 ) {
-  void invalidateQueryKeys(client, [
-    query.workspaces.current.rbac.myPermissions.get.key(),
-    query.agent.get.key(),
-    query.agent.inviteOptions.get.key(),
-    query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-  ])
   return invalidateQueryKeys(client, [
     query.workspaces.current.rbac.agents.byAgentId.key({
       input: { params: { agent_id: agentId } },

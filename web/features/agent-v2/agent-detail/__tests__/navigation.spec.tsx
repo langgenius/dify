@@ -206,7 +206,7 @@ describe('AgentDetailSection', () => {
     const user = userEvent.setup()
     mocks.deleteAgent.mockRejectedValue(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'agent_in_use',
+        code: 'agent_not_found_error',
         message: 'Server says why',
       }),
     )
@@ -221,7 +221,9 @@ describe('AgentDetailSection', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.agent_not_found_error',
+    )
     expect(mocks.replace).not.toHaveBeenCalled()
     expect(dialog).toBeInTheDocument()
   })

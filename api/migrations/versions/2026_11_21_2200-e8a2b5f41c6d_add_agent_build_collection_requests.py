@@ -1,7 +1,7 @@
 """Keep Build binding collection requests discoverable until cleanup completes.
 
 Revision ID: e8a2b5f41c6d
-Revises: f8b6e2c4a901
+Revises: 6b1d2f4e8a90
 Create Date: 2026-11-21 22:00:00.000000
 """
 
@@ -13,7 +13,7 @@ from alembic import op
 from models.types import StringUUID
 
 revision: str = "e8a2b5f41c6d"
-down_revision: str | Sequence[str] | None = "f8b6e2c4a901"
+down_revision: str | Sequence[str] | None = "6b1d2f4e8a90"
 branch_labels = None
 depends_on = None
 

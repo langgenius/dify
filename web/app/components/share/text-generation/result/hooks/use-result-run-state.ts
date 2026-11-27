@@ -3,7 +3,7 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -173,7 +173,7 @@ export const useResultRunState = ({
           appId,
         )
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         throw error
       }
       setFeedback(nextFeedback)

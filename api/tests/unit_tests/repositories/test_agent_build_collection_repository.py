@@ -6,7 +6,6 @@ from contextlib import nullcontext
 from datetime import timedelta
 from pathlib import Path
 from threading import Barrier
-from typing import TypedDict
 from uuid import uuid4
 
 import pytest
@@ -14,6 +13,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import Connection, Engine, create_engine, event, inspect, select
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from libs.datetime_utils import naive_utc_now
 from models.agent import (
@@ -25,9 +25,9 @@ from models.agent import (
     AgentWorkspace,
     AgentWorkspaceBinding,
 )
+from repositories.agent.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.agent_build_collection_repository import AgentBuildCollectionRepository
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
-from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.build_session_store import AgentBuildApplyChangedError
 from services.agent.workspace_service import AgentWorkspaceService
 from services.evaluation_service import EvaluationService
@@ -46,7 +46,7 @@ from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_agent_build_session",)
 
 
-class _PublishedCollection(TypedDict):
+class _PublishedCollection(TypedDict, closed=True):
     tenant_id: str
     binding_ids: list[str]
     workspace_ids: list[str]
@@ -422,7 +422,7 @@ def test_collection_request_migration_upgrade_and_downgrade(tmp_path: Path) -> N
     table = "agent_build_collection_requests"
     with engine.begin() as connection, Operations.context(MigrationContext.configure(connection)) as op:
         module = runpy.run_path(str(migration), {"op": op})
-        assert module["down_revision"] == "f8b6e2c4a901"
+        assert module["down_revision"] == "6b1d2f4e8a90"
         module["upgrade"]()
         assert inspect(connection).has_table(table)
         indexes = inspect(connection).get_indexes(table)

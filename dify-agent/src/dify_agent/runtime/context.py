@@ -16,6 +16,7 @@ from pydantic import JsonValue
 
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLease
+from dify_agent.runtime.tool_call_limits import InMemoryToolCallLimitStore
 
 if TYPE_CHECKING:
     from dify_agent.layers.knowledge_fs.session import KnowledgeFsSessionStore
@@ -57,3 +58,5 @@ class Deps:
     services: Services
     run_id: str
     resources: RunResources = field(default_factory=RunResources)
+    # Live counters never enter layer/session state or lifespan Services.
+    tool_call_limit_store: InMemoryToolCallLimitStore = field(default_factory=InMemoryToolCallLimitStore)

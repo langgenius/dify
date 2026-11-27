@@ -288,7 +288,9 @@ it('does not save the other settings when the file scan policy is rejected', asy
   await expect
     .poll(() => fake.console.datasets.byDatasetId.fileScanPolicy.put.mock.calls.length)
     .toBe(1)
-  await expect.element(screen.getByRole('dialog', { name: 'offline' })).toBeVisible()
+  await expect
+    .element(screen.getByRole('dialog', { name: fileScan['policy.saveFailed'] }))
+    .toBeVisible()
   await expect
     .element(screen.getByRole('switch', { name: fileScan['policy.enable'] }))
     .toBeChecked()

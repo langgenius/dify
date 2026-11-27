@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { TaskStatus } from '@/app/components/plugins/types'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
 
@@ -80,7 +80,7 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
 
             await finish()
           } catch (error) {
-            toastRequestError(error)
+            reportRequestError(error)
             setIsTracking(false)
             install.reset()
           }

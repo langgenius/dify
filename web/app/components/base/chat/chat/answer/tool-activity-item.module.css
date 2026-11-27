@@ -1,0 +1,35 @@
+@font-face {
+  font-family: 'Agent Tool Text';
+  src: url('./assets/inter-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Agent Tool Code';
+  src: url('./assets/fira-code-regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+.activity {
+  container: tool-activity / inline-size;
+  font-family: 'Agent Tool Text', var(--font-sans);
+}
+
+.code {
+  font-family: 'Agent Tool Code', var(--font-mono);
+  letter-spacing: 0.005em;
+}
+
+.quota {
+  display: none;
+}
+
+@container tool-activity (width >= 400px) {
+  .quota {
+    display: inline;
+  }
+}

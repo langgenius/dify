@@ -38,7 +38,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import Conversation
-from repositories.app.agent_debug_conversations import get_or_create_agent_debug_conversation
+from repositories.agent.agent_debug_conversations import get_or_create_agent_debug_conversation
 from services.agent.workspace_service import AgentWorkspaceService
 from tasks.collect_agent_resources_task import collect_agent_resources, reconcile_agent_build_collections
 from tests.helpers.unit.config_override import config_overrides_context

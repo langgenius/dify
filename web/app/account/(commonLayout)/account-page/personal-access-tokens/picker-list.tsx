@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { noop } from 'es-toolkit/function'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import PickerPagination from './picker-pagination'
 
 type PickerListQuery = ComponentProps<typeof PickerPagination>['query'] &
@@ -35,6 +35,7 @@ export default function PickerList({
   const { t } = useTranslation(['accountSettings', 'common'])
   const listRef = useRef<HTMLDivElement>(null)
   const loadFailed = query.isError && !query.isFetchNextPageError
+  const loadErrorMessage = useRequestErrorMessage(query.error, labels.loadError)
 
   return (
     <div
@@ -58,9 +59,7 @@ export default function PickerList({
       )}
       {loadFailed && (
         <div role="alert" className={feedbackClassName}>
-          <p className={messageClassName}>
-            {getRequestErrorMessage(query.error) ?? labels.loadError}
-          </p>
+          <p className={messageClassName}>{loadErrorMessage}</p>
           <p className={messageClassName}>
             {t(($) => $['resourceAccessToken.selectionPreservedError'])}
           </p>

@@ -26,6 +26,7 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.tools.entities.common_entities import I18nObjectDict
 from core.workflow.agent_log_events import (
     AgentLogEvent,
     NodeRunAgentLogEvent,
@@ -450,6 +451,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 and not node_job.output_routes.enabled
                 and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
                 evaluation_trace_collector=evaluation_trace_collector,
+                tool_labels=runtime_request.tool_labels,
             )
             if metadata.get("knowledge_fs_sources"):
                 yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
@@ -588,6 +590,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
         evaluation_trace_collector: AgentV2TraceCollector | None = None,
+        tool_labels: Mapping[str, I18nObjectDict] | None = None,
     ) -> Generator[
         StreamChunkEvent | AgentLogEvent,
         None,
@@ -611,7 +614,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         ``stream_text`` is set: structured-output, output-route, and
         default-value runs stay fully buffered and do not project logs.
         ``finish`` closes any still-started calls before this generator
-        returns.
+        returns. Prepared labels affect display only; native call/tool identities
+        remain unchanged, and unknown tools retain their technical name.
 
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
@@ -626,6 +630,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
                 node_title=self.title,
+                tool_labels=tool_labels,
             )
             if stream_text
             else None
@@ -644,8 +649,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 terminal_event=terminal_event,
                 transport_failure=transport_failure,
             )
-            for activity in projector.finish(finish_status, error=finish_error):
+            for activity in projector.finish(
+                finish_status,
+                error=finish_error,
+                call_limits=terminal_event.tool_call_limits if terminal_event is not None else None,
+            ):
                 yield self._agent_log_event(activity)
+        if terminal_event is not None and terminal_event.tool_call_limits:
+            metadata["agent_backend"] = {
+                **dict(metadata.get("agent_backend") or {}),
+                "tool_call_limits": {
+                    identity: summary.model_dump(mode="json")
+                    for identity, summary in terminal_event.tool_call_limits.items()
+                },
+            }
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
         return terminal_event, transport_failure  # noqa: B901  # StopIteration.value is the generator completion result.

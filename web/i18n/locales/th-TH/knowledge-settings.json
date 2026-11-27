@@ -16,6 +16,8 @@
   "settings.membersRequired": "เลือกสมาชิกทีมอย่างน้อยหนึ่งคน",
   "settings.nameRequired": "ต้องระบุชื่อฐานความรู้ Agent",
   "settings.pageDescription": "จัดการข้อมูลพื้นฐาน การเข้าถึง API และการเรียกค้น",
+  "settings.personalAgentDescription": "สมาชิกสามารถให้เอเจนต์ของตนเอง (Claude Code, Codex, ไคลเอนต์ MCP) อ่านฐานความรู้นี้ด้วยสิทธิ์ของตนได้",
+  "settings.personalAgentLabel": "เอเจนต์ส่วนตัว",
   "settings.reloadLatest": "โหลดการตั้งค่าล่าสุด",
   "settings.rerankModelRequired": "เลือกโมเดลจัดอันดับใหม่",
   "settings.retrievalDepth": "ความลึกของการเรียกคืน",

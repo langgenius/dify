@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, Literal
 
+from dify_agent.protocol.tool_call_limits import AgentToolActivity
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
@@ -191,6 +192,7 @@ class AgentThoughtStreamResponse(StreamResponse):
     tool_labels: Mapping[str, object] = Field(default_factory=dict)
     tool_input: str | None = None
     message_files: list[str] | None = None
+    tool_activity: AgentToolActivity | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class AgentMessageStreamResponse(StreamResponse):

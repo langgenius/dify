@@ -227,7 +227,7 @@ it('reports the server preflight blocker without changing the graph', async () =
   expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
 })
 
-it('reports the server message when the migration preflight fails', async () => {
+it('reports the preflight failure over a generic server message', async () => {
   const view = setup({ nodes: [createLegacyNode(true)] })
   const original = view.graph()
   postMigration.mockRejectedValueOnce(
@@ -237,7 +237,9 @@ it('reports the server message when the migration preflight fails', async () => 
     }),
   )
   await confirmMigration(newUser())
-  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'workflow.nodes.humanInputMigration.error.preflight',
+  )
   expect(view.graph()).toEqual(original)
 })
 

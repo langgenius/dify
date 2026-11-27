@@ -8,7 +8,7 @@ import { ORPCError } from '@orpc/client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 
@@ -33,7 +33,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
 
   const handleSSOError = (error: unknown) => {
     if (hasServerErrorMessage(error)) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     toast.error(t(($) => $['error.ssoFailed'], { ns: 'login' }))

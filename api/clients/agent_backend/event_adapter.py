@@ -23,6 +23,7 @@ from dify_agent.protocol import (
     RunSucceededEvent,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 
 _EVENT_DATA_ADAPTER = TypeAdapter(object)
@@ -76,6 +77,7 @@ class AgentBackendRunSucceededInternalEvent(AgentBackendInternalEventBase):
     output: JsonValue
     session_snapshot: SessionSnapshot
     usage: dict[str, JsonValue] | None = None
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict)
 
 
 class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
@@ -87,6 +89,7 @@ class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
     reason: str | None = None
     session_snapshot: SessionSnapshot | None = None
     usage: dict[str, JsonValue] | None = None
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict)
 
 
 class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
@@ -97,6 +100,7 @@ class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
     message: str | None = None
     session_snapshot: SessionSnapshot | None = None
     usage: dict[str, JsonValue] | None = None
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] = Field(default_factory=dict)
 
 
 type AgentBackendInternalEvent = Annotated[
@@ -150,6 +154,7 @@ class AgentBackendRunEventAdapter:
                         output=event.data.output,
                         session_snapshot=event.data.session_snapshot,
                         usage=_agent_run_usage(event.data.usage),
+                        tool_call_limits=event.tool_call_limits,
                     )
                 ]
             case RunFailedEvent():
@@ -162,6 +167,7 @@ class AgentBackendRunEventAdapter:
                         reason=event.data.reason,
                         session_snapshot=event.data.session_snapshot,
                         usage=_agent_run_usage(event.data.usage),
+                        tool_call_limits=event.tool_call_limits,
                     )
                 ]
             case RunCancelledEvent():
@@ -173,6 +179,7 @@ class AgentBackendRunEventAdapter:
                         message=event.data.message,
                         session_snapshot=event.data.session_snapshot,
                         usage=_agent_run_usage(event.data.usage),
+                        tool_call_limits=event.tool_call_limits,
                     )
                 ]
         raise TypeError(f"unsupported agent backend run event: {type(event).__name__}")

@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Nessun documento corrisponde a questa ricerca.",
   "parentChildChunkCount": "{{parentCount}} principali / {{childCount}} secondari",
   "partialDocumentResults": "Potrebbero esserci altri documenti corrispondenti. Caricane altri per continuare la ricerca.",
+  "reindexConfirmDescription": "La reindicizzazione ricrea tutti i segmenti e le voci di indice a partire dal file di origine. Le modifiche apportate ai segmenti nella knowledge base, ad esempio l’adozione dell’affermazione di un altro documento durante la risoluzione di un conflitto, verranno sovrascritte dal contenuto del file di origine. La ricerca continua a usare l’indice attuale fino al termine della reindicizzazione.",
+  "reindexConfirmTitle": "Reindicizzare dal file di origine?",
   "reindexDocument": "Reindicizza",
   "retrievalCountValue": "{{value}} negli ultimi 7 giorni",
   "retryReindexDocument": "Reindicizza di nuovo",

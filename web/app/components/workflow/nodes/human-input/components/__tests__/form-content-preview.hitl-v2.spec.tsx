@@ -132,19 +132,19 @@ it('shows a server failure and retries without presenting local content as the r
   expect(await screen.findByText('Retried preview')).toBeInTheDocument()
 })
 
-it('shows the server message when the preview request fails', async () => {
+it('shows the generic error over a generic server message when the preview request fails', async () => {
   preview.mockRejectedValueOnce(
     createHttpError(new Response(null, { status: 400 }), {
-      code: 'invalid_param',
+      code: 'bad_request',
       message: 'Server says why',
     }),
   )
   renderPreview({ hooksStoreProps: { doSyncWorkflowDraft: savedDraft } })
   await userEvent.setup().click(screen.getByRole('button', { name: previewLabel }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
 })
 
-it('shows the server message when the draft save fails', async () => {
+it('shows the translated reason when the draft save fails', async () => {
   renderPreview({
     hooksStoreProps: {
       doSyncWorkflowDraft: async (_notRefresh, callbacks) => {
@@ -159,7 +159,9 @@ it('shows the server message when the draft save fails', async () => {
     },
   })
   await userEvent.setup().click(screen.getByRole('button', { name: previewLabel }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Draft save rejected')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'requestErrors.code.draft_workflow_not_sync',
+  )
   expect(preview).not.toHaveBeenCalled()
 })
 

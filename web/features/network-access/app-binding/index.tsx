@@ -44,7 +44,7 @@ import {
 import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import { startIpPolicyForm } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState, getAccessControlStatusChipState } from './chip-status'
 import { AccessControlConfigPanel } from './config-panel'
@@ -178,6 +178,12 @@ function AccessControlSession({
     }),
   )
   const saveCheck = useMutation(checkCurrentIp.mutationOptions({ meta: { errorToast: false } }))
+  const currentIpErrorFallback = t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })
+  const ipCheckErrorMessage = useRequestErrorMessage(
+    saveCheck.error ?? ipCheck.error,
+    currentIpErrorFallback,
+  )
+  const saveCheckErrorMessage = useRequestErrorMessage(saveCheck.error, currentIpErrorFallback)
 
   if (!canFetchNetworkAccess) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null
@@ -408,6 +414,7 @@ function AccessControlSession({
       { params: { group_id: groupId } },
       {
         onSuccess: (check) => {
+          // Only the current attempt shows its result; a discarded one must not overwrite it.
           if (saveAttemptRef.current !== attempt) return
           queryClient.setQueryData(
             checkCurrentIp.queryKey({ input: { params: { group_id: groupId } } }),
@@ -552,7 +559,7 @@ function AccessControlSession({
                       ? 'error'
                       : undefined
                 }
-                ipCheckErrorMessage={getRequestErrorMessage(saveCheck.error ?? ipCheck.error)}
+                ipCheckErrorMessage={ipCheckErrorMessage}
                 onRetryIpCheck={() => {
                   saveCheck.reset()
                   void ipCheck.refetch()
@@ -661,8 +668,7 @@ function AccessControlSession({
             )}
             {saveCheck.isError && (
               <p role="alert" className="system-sm-regular text-text-warning">
-                {getRequestErrorMessage(saveCheck.error) ??
-                  t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+                {saveCheckErrorMessage}
               </p>
             )}
           </div>
