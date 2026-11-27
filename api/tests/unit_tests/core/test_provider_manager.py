@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy import Engine, event, select
@@ -9,13 +9,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
 from core import provider_manager as provider_manager_module
-from core.entities.model_entities import (
-    DefaultModelSetting,
-    ModelStatus,
-    ModelWithProviderEntity,
-    SimpleModelProviderEntity,
+from core.entities.model_entities import DefaultModelSetting
+from core.entities.provider_configuration import (
+    ProviderConfiguration,
+    ProviderConfigurations,
+    ProviderModelBundle,
 )
-from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from core.entities.provider_entities import (
     CustomConfiguration,
     CustomProviderConfiguration,
@@ -37,8 +36,14 @@ from core.hosting_configuration import (
 from core.model_manager import ModelManager
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
-from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+from core.provider_manager import (
+    ProviderConfigurationCacheSource,
+    ProviderManager,
+    _LoadBalancingModelConfigCacheEntry,
+    _ProviderModelSettingCacheEntry,
+)
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from extensions.ext_storage import storage
@@ -48,10 +53,13 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFr
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
+    FieldModelSchema,
     FormType,
+    ModelCredentialSchema,
     ProviderCredentialSchema,
     ProviderEntity,
 )
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.key_providers import generate_key_pair
 from models.account import Tenant
 from models.engine import db
@@ -77,14 +85,14 @@ from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 
 def _build_provider_manager() -> ProviderManager:
-    return ProviderManager(model_runtime=Mock())
+    return ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
 
 
 def _persist_model_configuration(
     session: Session,
     setting: ProviderModelSetting,
     load_balancing_configs: list[LoadBalancingModelConfig],
-) -> tuple[list[ProviderModelSetting], list[LoadBalancingModelConfig]]:
+) -> tuple[list[_ProviderModelSettingCacheEntry], list[_LoadBalancingModelConfigCacheEntry]]:
     session.add_all([setting, *load_balancing_configs])
     session.commit()
     session.expire_all()
@@ -96,7 +104,10 @@ def _persist_model_configuration(
             select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == setting.tenant_id)
         ).all()
     )
-    return settings, configs
+    return (
+        [_ProviderModelSettingCacheEntry.from_record(record) for record in settings],
+        [_LoadBalancingModelConfigCacheEntry.from_record(record) for record in configs],
+    )
 
 
 def _build_plugin_provider_declaration(
@@ -145,7 +156,7 @@ class _FakeRedis:
         self.store: dict[str, str] = {}
         self.expirations: dict[str, int] = {}
 
-    def get(self, key: str):
+    def get(self, key: str) -> str | None:
         return self.store.get(key)
 
     def set(self, key: str, value: str, *, ex: int | None = None) -> None:
@@ -167,31 +178,27 @@ class _FakeRedis:
 
 
 @pytest.fixture
-def mock_provider_entity():
-    mock_entity = Mock()
-    mock_entity.provider = "openai"
-    mock_entity.configurate_methods = ["predefined-model"]
-    mock_entity.supported_model_types = [ModelType.LLM]
-
-    # Use PropertyMock to ensure credential_form_schemas is iterable
-    provider_credential_schema = Mock()
-    type(provider_credential_schema).credential_form_schemas = PropertyMock(return_value=[])
-    mock_entity.provider_credential_schema = provider_credential_schema
-
-    model_credential_schema = Mock()
-    type(model_credential_schema).credential_form_schemas = PropertyMock(return_value=[])
-    mock_entity.model_credential_schema = model_credential_schema
-
-    return mock_entity
+def mock_provider_entity() -> ProviderEntity:
+    return ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        provider_credential_schema=ProviderCredentialSchema(credential_form_schemas=[]),
+        model_credential_schema=ModelCredentialSchema(
+            model=FieldModelSchema(label=I18nObject(en_US="OpenAI")),
+            credential_form_schemas=[],
+        ),
+    )
 
 
-def test__to_model_settings(mock_provider_entity, sqlite_session: Session):
+def test__to_model_settings(mock_provider_entity: ProviderEntity, sqlite_session: Session) -> None:
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="llm",
+        model_type=ModelType.LLM,
         enabled=True,
         load_balancing_enabled=True,
     )
@@ -204,7 +211,7 @@ def test__to_model_settings(mock_provider_entity, sqlite_session: Session):
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -213,7 +220,7 @@ def test__to_model_settings(mock_provider_entity, sqlite_session: Session):
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="first",
             encrypted_config='{"openai_api_key": "fake_key"}',
             enabled=True,
@@ -272,13 +279,13 @@ def test_invalid_credentials_are_not_decrypted_or_cached(encrypted_config: str) 
 
 @pytest.mark.parametrize("encrypted_config", ["{", "[]"])
 def test_invalid_load_balancing_credentials_preserve_valid_configs(
-    mock_provider_entity: Mock, sqlite_session: Session, encrypted_config: str
+    mock_provider_entity: ProviderEntity, sqlite_session: Session, encrypted_config: str
 ) -> None:
     setting = ProviderModelSetting(
         tenant_id="tenant-id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="llm",
+        model_type=ModelType.LLM,
         enabled=True,
         load_balancing_enabled=True,
     )
@@ -287,7 +294,7 @@ def test_invalid_load_balancing_credentials_preserve_valid_configs(
             tenant_id="tenant-id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name=name,
             encrypted_config=credentials,
             enabled=True,
@@ -857,14 +864,14 @@ def test_package_provider_keeps_custom_configuration_without_billing(sqlite_sess
     assert configuration.custom_configuration.provider.credentials == {"openai_api_key": "user-secret"}
 
 
-def test__to_model_settings_only_one_lb(mock_provider_entity, sqlite_session: Session):
+def test__to_model_settings_only_one_lb(mock_provider_entity: ProviderEntity, sqlite_session: Session) -> None:
     # Mocking the inputs
 
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="llm",
+        model_type=ModelType.LLM,
         enabled=True,
         load_balancing_enabled=True,
     )
@@ -875,7 +882,7 @@ def test__to_model_settings_only_one_lb(mock_provider_entity, sqlite_session: Se
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -908,13 +915,13 @@ def test__to_model_settings_only_one_lb(mock_provider_entity, sqlite_session: Se
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test__to_model_settings_lb_disabled(mock_provider_entity, sqlite_session: Session):
+def test__to_model_settings_lb_disabled(mock_provider_entity: ProviderEntity, sqlite_session: Session) -> None:
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
         provider_name="openai",
         model_name="gpt-4",
-        model_type="llm",
+        model_type=ModelType.LLM,
         enabled=True,
         load_balancing_enabled=False,
     )
@@ -925,7 +932,7 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, sqlite_session: Se
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="__inherit__",
             encrypted_config=None,
             enabled=True,
@@ -934,7 +941,7 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, sqlite_session: Se
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
-            model_type="llm",
+            model_type=ModelType.LLM,
             name="first",
             encrypted_config='{"openai_api_key": "fake_key"}',
             enabled=True,
@@ -968,7 +975,7 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, sqlite_session: Se
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test_get_default_model_uses_injected_runtime_for_existing_default_record(sqlite_session: Session):
+def test_get_default_model_uses_injected_runtime_for_existing_default_record(sqlite_session: Session) -> None:
     existing_default_model = TenantDefaultModel(
         tenant_id="tenant-id",
         provider_name="openai",
@@ -978,26 +985,25 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(sql
     sqlite_session.add(existing_default_model)
     sqlite_session.commit()
     manager = _build_provider_manager()
+    provider_schema = ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
+        icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+    )
 
-    with (
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        mock_factory_cls.return_value.get_provider_schema.return_value = Mock(
-            provider="openai",
-            label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
-            icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-            supported_model_types=[ModelType.LLM],
-        )
-
+    with patch.object(manager._model_runtime, "fetch_model_providers", return_value=[provider_schema]):
         result = manager.get_default_model("tenant-id", ModelType.LLM)
 
-    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
+    assert isinstance(manager._model_runtime, PluginModelRuntime)
     assert result is not None
     assert result.model == "gpt-4"
     assert result.provider.provider == "openai"
+    assert result.provider.label == I18nObject(en_US="OpenAI", zh_Hans="OpenAI")
 
 
-def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(sqlite_session: Session):
+def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(sqlite_session: Session) -> None:
     manager = _build_provider_manager()
     provider = Provider(
         tenant_id="tenant-id",
@@ -1032,14 +1038,11 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(sqli
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
         patch.object(manager, "_get_all_provider_credentials", return_value={}),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
+        patch.object(manager._model_runtime, "fetch_model_providers", return_value=[]),
     ):
-        mock_factory_cls.return_value.get_providers.return_value = []
-
         result = manager.get_configurations("tenant-id")
 
     expected_alias = str(ModelProviderID("openai"))
-    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
     assert result.tenant_id == "tenant-id"
     assert expected_alias in provider_records
     assert expected_alias in provider_model_records
@@ -1054,11 +1057,13 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(sqli
         ("langgenius/gemini/google", ["langgenius/gemini/google", "google"]),
     ],
 )
-def test_get_provider_names_returns_short_and_full_aliases(provider_name: str, expected_provider_names: list[str]):
+def test_get_provider_names_returns_short_and_full_aliases(
+    provider_name: str, expected_provider_names: list[str]
+) -> None:
     assert ProviderManager._get_provider_names(provider_name) == expected_provider_names
 
 
-def test_get_provider_model_bundle_raises_for_unknown_provider():
+def test_get_provider_model_bundle_raises_for_unknown_provider() -> None:
     manager = _build_provider_manager()
 
     with patch.object(manager, "get_configurations", return_value={}):
@@ -1066,13 +1071,10 @@ def test_get_provider_model_bundle_raises_for_unknown_provider():
             manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
 
 
-def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock_provider_entity):
+def test_get_configurations_binds_manager_runtime_to_provider_configuration(
+    mock_provider_entity: ProviderEntity,
+) -> None:
     manager = _build_provider_manager()
-    provider_configuration = Mock()
-    provider_factory = Mock()
-    provider_factory.get_providers.return_value = [mock_provider_entity]
-    custom_configuration = SimpleNamespace(provider=None, models=[])
-    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
 
     with (
         patch.object(manager, "_get_all_providers", return_value={"openai": []}),
@@ -1082,15 +1084,13 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
         patch.object(manager, "_get_all_provider_credentials", return_value={}),
-        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
-        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
-        patch.object(manager, "_to_model_settings", return_value=[]),
-        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
-        patch("core.provider_manager.ProviderConfiguration", return_value=provider_configuration),
+        patch.object(manager._model_runtime, "fetch_model_providers", return_value=[mock_provider_entity]),
     ):
-        manager.get_configurations("tenant-id")
+        configurations = manager.get_configurations("tenant-id")
 
-    provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+    configuration = configurations["openai"]
+    assert isinstance(configuration, ProviderConfiguration)
+    assert configuration._bound_model_runtime is manager._model_runtime
 
 
 @pytest.mark.parametrize(
@@ -1104,12 +1104,12 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock
     ],
 )
 def test_get_configurations_resolves_system_preference_with_quota_and_custom_fallback(
-    mock_provider_entity,
+    mock_provider_entity: ProviderEntity,
     quota_is_valid: bool | None,
     has_custom_provider: bool,
     has_custom_model: bool,
     expected_using_provider_type: ProviderType,
-):
+) -> None:
     manager = _build_provider_manager()
     provider_configuration = Mock()
     provider_factory = Mock()
@@ -1149,13 +1149,8 @@ def test_get_configurations_resolves_system_preference_with_quota_and_custom_fal
     assert mock_provider_configuration.call_args.kwargs["using_provider_type"] == expected_using_provider_type
 
 
-def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_entity):
+def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_entity: ProviderEntity) -> None:
     manager = _build_provider_manager()
-    provider_configuration = Mock()
-    provider_factory = Mock()
-    provider_factory.get_providers.return_value = [mock_provider_entity]
-    custom_configuration = SimpleNamespace(provider=None, models=[])
-    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
 
     with (
         patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
@@ -1165,33 +1160,18 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_e
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
         patch.object(manager, "_get_all_provider_credentials", return_value={}),
-        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
-        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
-        patch.object(manager, "_to_model_settings", return_value=[]),
-        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory) as mock_factory_cls,
-        patch(
-            "core.provider_manager.ProviderConfiguration",
-            return_value=provider_configuration,
-        ) as mock_provider_configuration,
+        patch.object(manager._model_runtime, "fetch_model_providers", return_value=[mock_provider_entity]),
     ):
         first = manager.get_configurations("tenant-id")
         second = manager.get_configurations("tenant-id")
 
     assert first is second
     mock_get_all_providers.assert_called_once_with("tenant-id")
-    mock_factory_cls.assert_called_once_with(runtime=manager._model_runtime)
-    mock_provider_configuration.assert_called_once()
-    provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+    assert first["openai"]._bound_model_runtime is manager._model_runtime
 
 
-def test_clear_configurations_cache_rebuilds_requested_tenant(mock_provider_entity):
+def test_clear_configurations_cache_rebuilds_requested_tenant(mock_provider_entity: ProviderEntity) -> None:
     manager = _build_provider_manager()
-    provider_factory = Mock()
-    provider_factory.get_providers.return_value = [mock_provider_entity]
-    custom_configuration = SimpleNamespace(provider=None, models=[])
-    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
-    provider_configuration_first = Mock()
-    provider_configuration_second = Mock()
 
     with (
         patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
@@ -1201,67 +1181,77 @@ def test_clear_configurations_cache_rebuilds_requested_tenant(mock_provider_enti
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
         patch.object(manager, "_get_all_provider_credentials", return_value={}),
-        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
-        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
-        patch.object(manager, "_to_model_settings", return_value=[]),
-        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
-        patch(
-            "core.provider_manager.ProviderConfiguration",
-            side_effect=[provider_configuration_first, provider_configuration_second],
-        ) as mock_provider_configuration,
+        patch.object(manager._model_runtime, "fetch_model_providers", return_value=[mock_provider_entity]),
     ):
         first = manager.get_configurations("tenant-id")
         manager.clear_configurations_cache("tenant-id")
         second = manager.get_configurations("tenant-id")
 
     assert first is not second
+    assert first["openai"] is not second["openai"]
     assert mock_get_all_providers.call_count == 2
-    assert mock_provider_configuration.call_count == 2
-    provider_configuration_first.bind_model_runtime.assert_called_once_with(manager._model_runtime)
-    provider_configuration_second.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+    assert first["openai"]._bound_model_runtime is manager._model_runtime
+    assert second["openai"]._bound_model_runtime is manager._model_runtime
 
 
-def test_get_provider_model_bundle_returns_selected_model_type_instance():
-    manager = _build_provider_manager()
-    provider_configuration = Mock()
-    model_type_instance = Mock()
-    provider_configuration.get_model_type_instance.return_value = model_type_instance
-    expected_bundle = Mock()
-
-    with (
-        patch.object(manager, "get_configurations", return_value={"openai": provider_configuration}),
-        patch("core.provider_manager.ProviderModelBundle", return_value=expected_bundle) as mock_bundle,
-    ):
-        result = manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
-
-    provider_configuration.get_model_type_instance.assert_called_once_with(ModelType.LLM)
-    mock_bundle.assert_called_once_with(
-        configuration=provider_configuration,
-        model_type_instance=model_type_instance,
+def test_get_provider_model_bundle_returns_selected_model_type_instance() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="openai", models=["gpt-4"], configured=True),
     )
-    assert result is expected_bundle
+
+    result = manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
+
+    assert isinstance(result, ProviderModelBundle)
+    assert isinstance(result.configuration, ProviderConfiguration)
+    assert result.configuration.provider.provider == "openai"
+    assert isinstance(result.model_type_instance, LargeLanguageModel)
+    assert result.model_type_instance.model_type == ModelType.LLM
+    assert result.model_type_instance.provider == "openai"
+    assert result.model_type_instance.model_runtime is manager._model_runtime
 
 
 def _fallback_provider_configuration(
-    *, provider: str, models: list[str], configured: bool, disabled_models: tuple[str, ...] = ()
+    *,
+    provider: str,
+    models: list[str],
+    configured: bool,
+    disabled_models: tuple[str, ...] = (),
+    model_type: ModelType = ModelType.LLM,
 ) -> ProviderConfiguration:
     """Build a real local provider catalog; predefined schemas require no plugin requests."""
+    return _fallback_multi_type_provider_configuration(
+        provider=provider,
+        models=[(model, model_type) for model in models],
+        configured=configured,
+        disabled_models=[(model, model_type) for model in disabled_models],
+    )
+
+
+def _fallback_multi_type_provider_configuration(
+    *,
+    provider: str,
+    models: list[tuple[str, ModelType]],
+    configured: bool,
+    disabled_models: list[tuple[str, ModelType]] | None = None,
+) -> ProviderConfiguration:
+    """Build one real provider catalog entry that serves several model types at once."""
+    supported_model_types = list(dict.fromkeys(model_type for _, model_type in models))
     return ProviderConfiguration(
         tenant_id="tenant-id",
         provider=ProviderEntity(
             provider=provider,
             label=I18nObject(en_US=provider),
-            supported_model_types=[ModelType.LLM],
+            supported_model_types=supported_model_types,
             configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
             models=[
                 AIModelEntity(
                     model=model,
                     label=I18nObject(en_US=model),
-                    model_type=ModelType.LLM,
+                    model_type=model_type,
                     fetch_from=FetchFrom.PREDEFINED_MODEL,
                     model_properties={},
                 )
-                for model in models
+                for model, model_type in models
             ],
         ),
         preferred_provider_type=ProviderType.CUSTOM,
@@ -1271,7 +1261,8 @@ def _fallback_provider_configuration(
             provider=CustomProviderConfiguration(credentials={"api_key": "synthetic"}) if configured else None
         ),
         model_settings=[
-            ModelSettings(model=model, model_type=ModelType.LLM, enabled=False) for model in disabled_models
+            ModelSettings(model=model, model_type=model_type, enabled=False)
+            for model, model_type in disabled_models or []
         ],
     )
 
@@ -1281,7 +1272,8 @@ def _fallback_provider_manager(*configurations: ProviderConfiguration) -> Provid
     manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
     catalog = ProviderConfigurations(tenant_id="tenant-id")
     for configuration in configurations:
-        catalog[configuration.provider.provider] = configuration
+        configuration.bind_model_runtime(manager._model_runtime)
+        catalog[str(ModelProviderID(configuration.provider.provider))] = configuration
     manager._configurations_cache["tenant-id"] = catalog
     return manager
 
@@ -1338,32 +1330,28 @@ def test_get_first_provider_first_model_skips_disabled_model() -> None:
     )
 
 
-def test_update_default_model_record_raises_for_unknown_provider():
-    manager = _build_provider_manager()
+def test_update_default_model_record_raises_for_unknown_provider() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="openai", models=["gpt-4"], configured=True),
+    )
 
-    with patch.object(manager, "get_configurations", return_value={}):
-        with pytest.raises(ValueError, match="Provider openai does not exist."):
-            manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
-
-
-def test_update_default_model_record_raises_for_unknown_model():
-    manager = _build_provider_manager()
-    provider_configurations = MagicMock()
-    provider_configurations.__contains__.return_value = True
-    provider_configurations.get_models.return_value = [Mock(model="gpt-4")]
-
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        with pytest.raises(ValueError, match="Model gpt-3.5-turbo does not exist."):
-            manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
-
-    provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
+    with pytest.raises(ValueError, match="Provider anthropic does not exist."):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "anthropic", "claude-3-sonnet")
 
 
-def test_update_default_model_record_updates_existing_record(sqlite_session: Session):
-    manager = _build_provider_manager()
-    provider_configurations = MagicMock()
-    provider_configurations.__contains__.return_value = True
-    provider_configurations.get_models.return_value = [Mock(model="gpt-3.5-turbo")]
+def test_update_default_model_record_raises_for_unknown_model() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="openai", models=["gpt-4"], configured=True),
+    )
+
+    with pytest.raises(ValueError, match="Model gpt-3.5-turbo does not exist."):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
+
+
+def test_update_default_model_record_updates_existing_record(sqlite_session: Session) -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="openai", models=["gpt-3.5-turbo"], configured=True),
+    )
     existing_default_model = TenantDefaultModel(
         tenant_id="tenant-id",
         provider_name="anthropic",
@@ -1379,8 +1367,7 @@ def test_update_default_model_record_updates_existing_record(sqlite_session: Ses
     sqlite_session.add_all([existing_default_model, other_tenant_default])
     sqlite_session.commit()
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
+    result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
 
     assert result.id == existing_default_model.id
     assert result.provider_name == "openai"
@@ -1395,11 +1382,10 @@ def test_update_default_model_record_updates_existing_record(sqlite_session: Ses
     assert persisted_other_default.model_name == "command-r"
 
 
-def test_update_default_model_record_creates_record_with_origin_model_type(sqlite_session: Session):
-    manager = _build_provider_manager()
-    provider_configurations = MagicMock()
-    provider_configurations.__contains__.return_value = True
-    provider_configurations.get_models.return_value = [Mock(model="gpt-4")]
+def test_update_default_model_record_creates_record_with_origin_model_type(sqlite_session: Session) -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="openai", models=["gpt-4"], configured=True),
+    )
     sqlite_session.add(
         TenantDefaultModel(
             tenant_id="other-tenant",
@@ -1410,8 +1396,7 @@ def test_update_default_model_record_creates_record_with_origin_model_type(sqlit
     )
     sqlite_session.commit()
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
+    result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
 
     assert result.tenant_id == "tenant-id"
     assert result.provider_name == "openai"
@@ -1469,7 +1454,6 @@ def test_update_default_model_record_does_not_commit_the_callers_pending_work(sq
 def test_replace_default_model_records_removes_omitted_types_only_for_current_tenant(
     sqlite_session: Session, clear_all: bool
 ) -> None:
-    manager = _build_provider_manager()
     existing_default = TenantDefaultModel(
         tenant_id="tenant-id",
         provider_name="anthropic",
@@ -1490,24 +1474,16 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
     )
     sqlite_session.add_all([existing_default, omitted_default, other_tenant_default])
     sqlite_session.commit()
-    embedding_provider = _build_plugin_provider_declaration(None)
-    embedding_provider.supported_model_types = [ModelType.TEXT_EMBEDDING]
-    available_embedding_model = ModelWithProviderEntity(
-        model="text-embedding-3-small",
-        label=I18nObject(en_US="text-embedding-3-small"),
-        model_type=ModelType.TEXT_EMBEDDING,
-        fetch_from=FetchFrom.PREDEFINED_MODEL,
-        model_properties={},
-        status=ModelStatus.ACTIVE,
-        provider=SimpleModelProviderEntity(embedding_provider),
+    manager = _fallback_provider_manager(
+        _fallback_multi_type_provider_configuration(
+            provider="openai",
+            models=[("gpt-4", ModelType.LLM), ("text-embedding-3-small", ModelType.TEXT_EMBEDDING)],
+            configured=True,
+        ),
+        _fallback_provider_configuration(
+            provider="cohere", models=["rerank-v3"], configured=True, model_type=ModelType.RERANK
+        ),
     )
-    configurations = MagicMock()
-    configurations.__contains__.return_value = True
-    configurations.get_models.side_effect = lambda model_type, **_kwargs: {
-        ModelType.LLM: [Mock(model="gpt-4")],
-        ModelType.RERANK: [Mock(model="rerank-v3")],
-        ModelType.TEXT_EMBEDDING: [available_embedding_model],
-    }[model_type]
     settings = (
         []
         if clear_all
@@ -1517,16 +1493,10 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
         ]
     )
 
-    with (
-        patch.object(manager, "get_configurations", return_value=configurations) as get_configurations,
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        manager.replace_default_model_records("tenant-id", settings)
-        sqlite_session.expire_all()
-        for _ in range(2):
-            assert manager.get_default_model("tenant-id", ModelType.TEXT_EMBEDDING) is None
-
-    mock_factory_cls.assert_not_called()
+    manager.replace_default_model_records("tenant-id", settings)
+    sqlite_session.expire_all()
+    for _ in range(2):
+        assert manager.get_default_model("tenant-id", ModelType.TEXT_EMBEDDING) is None
 
     sqlite_session.expire_all()
     defaults = list(sqlite_session.scalars(select(TenantDefaultModel)))
@@ -1535,9 +1505,7 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
     assert {
         (record.tenant_id, record.model_type, record.provider_name, record.model_name) for record in defaults
     } == expected_defaults
-    if clear_all:
-        get_configurations.assert_not_called()
-    else:
+    if not clear_all:
         persisted_default = sqlite_session.get(TenantDefaultModel, existing_default.id)
         assert persisted_default is not None
         assert persisted_default.model_name == "gpt-4"
@@ -1592,7 +1560,13 @@ def test_replace_default_model_records_preserves_defaults_when_validation_fails(
 
 
 def test_replace_default_model_records_rolls_back_when_persistence_fails(sqlite_session: Session) -> None:
-    manager = _build_provider_manager()
+    manager = _fallback_provider_manager(
+        _fallback_multi_type_provider_configuration(
+            provider="openai",
+            models=[("gpt-4", ModelType.LLM), ("text-embedding-3-small", ModelType.TEXT_EMBEDDING)],
+            configured=True,
+        ),
+    )
     existing_defaults = [
         TenantDefaultModel(
             tenant_id="tenant-id", provider_name="anthropic", model_name="claude-3-sonnet", model_type=ModelType.LLM
@@ -1604,9 +1578,6 @@ def test_replace_default_model_records_rolls_back_when_persistence_fails(sqlite_
     sqlite_session.add_all(existing_defaults)
     sqlite_session.commit()
     original_defaults = {(record.id, record.provider_name, record.model_name) for record in existing_defaults}
-    configurations = MagicMock()
-    configurations.__contains__.return_value = True
-    configurations.get_models.return_value = [Mock(model="gpt-4"), Mock(model="text-embedding-3-small")]
 
     def fail_after_flush(_session: Session, _flush_context: object) -> None:
         raise RuntimeError("Persistence failed")
@@ -1614,7 +1585,6 @@ def test_replace_default_model_records_rolls_back_when_persistence_fails(sqlite_
     with Session(bind=sqlite_session.get_bind()) as write_session:
         event.listen(write_session, "after_flush", fail_after_flush)
         with (
-            patch.object(manager, "get_configurations", return_value=configurations),
             patch.object(provider_manager_module.session_factory, "create_session", return_value=write_session),
             pytest.raises(RuntimeError, match="Persistence failed"),
         ):
@@ -1746,7 +1716,7 @@ def test_provider_model_credentials_cache_returns_cache_entries(sqlite_session: 
 
     credential_query_count = 0
 
-    def count_credential_queries(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def count_credential_queries(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         nonlocal credential_query_count
         if statement.lstrip().upper().startswith("SELECT") and "provider_model_credentials" in statement:
             credential_query_count += 1
@@ -1831,7 +1801,7 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
     sqlite_session.commit()
     version_bumped = False
 
-    def bump_version_on_credential_query(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def bump_version_on_credential_query(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         nonlocal version_bumped
         if (
             not version_bumped
@@ -1848,7 +1818,7 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", bump_version_on_credential_query)
 
-    assert version_bumped is True
+    assert version_bumped
     assert fake_redis.store[version_key] == "1"
     assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
     assert "provider_configurations:v2:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
@@ -1865,7 +1835,9 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
     ],
 )
 def test_provider_grouping_helpers_group_records_by_provider_name(method_name: str, sqlite_session: Session) -> None:
-    def build_record(provider_name: str, index: int, *, tenant_id: str = "tenant-id"):
+    def build_record(
+        provider_name: str, index: int, *, tenant_id: str = "tenant-id"
+    ) -> Provider | ProviderModel | ProviderModelSetting | ProviderModelCredential | ProviderCredential:
         match method_name:
             case "_get_all_provider_models":
                 record = ProviderModel(
@@ -1955,7 +1927,7 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
 ) -> None:
     statements: list[str] = []
 
-    def record_statement(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def record_statement(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         statements.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)

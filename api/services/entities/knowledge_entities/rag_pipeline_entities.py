@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, field_validator
 
 from core.rag.entities import KeywordSetting, VectorSetting
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
@@ -73,7 +74,7 @@ class KnowledgeConfiguration(BaseModel):
     keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
     # add summary index setting
-    summary_index_setting: dict[str, object] | None = None
+    summary_index_setting: SummaryIndexSettingDict | None = None
 
     @field_validator("embedding_model_provider", "embedding_model", mode="before")
     @classmethod
