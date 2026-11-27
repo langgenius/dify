@@ -50,7 +50,7 @@ function CapabilityProbe() {
             ? 'Centrally managed'
             : 'Workspace managed'}
       </output>
-      {context.imCapabilityError && (
+      {context.imCapabilityError != null && (
         <>
           <p role="alert">
             {context.imCapabilityError instanceof Error && context.imCapabilityError.message}
