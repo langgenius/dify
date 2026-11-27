@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import Loading from '../../base/loading'
 import { pluginDeclarationToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
@@ -27,7 +28,7 @@ const Item: FC<Props> = ({
   onFetchError,
 }) => {
   const info = dependency.value
-  const { data, error } = useQuery(
+  const githubQuery = useQuery(
     consoleQuery.workspaces.current.plugin.upload.github.post.queryOptions({
       input: {
         body: {
@@ -39,6 +40,9 @@ const Item: FC<Props> = ({
       retry: 0,
     }),
   )
+  const { data } = githubQuery
+  // The bundle list renders a failed first load as an error row in place of this item.
+  const isLoadFailed = !!useOwnedQueryError(githubQuery)
   const fetchedPayload = useMemo<Plugin | null>(
     () => (data ? pluginDeclarationToCardPluginProps(data.manifest, data.unique_identifier) : null),
     [data],
@@ -52,8 +56,8 @@ const Item: FC<Props> = ({
     if (fetchedPayload) onFetchedPayload(fetchedPayload)
   }, [fetchedPayload])
   useEffect(() => {
-    if (error) onFetchError()
-  }, [error])
+    if (isLoadFailed) onFetchError()
+  }, [isLoadFailed])
   if (!payload) return <Loading />
   return (
     <LoadedItem

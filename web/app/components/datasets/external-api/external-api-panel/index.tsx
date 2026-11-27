@@ -1,4 +1,5 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -17,6 +18,8 @@ import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import { fetchExternalAPI } from '@/service/datasets'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 import DeleteExternalApiDialog from './delete-external-api-dialog'
 
@@ -41,9 +44,17 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   })
   const save = useSaveExternalApi()
   const externalKnowledgeApiQueryOptions =
-    consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
-  const { data, isLoading } = useQuery(externalKnowledgeApiQueryOptions)
+    consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({
+      input: {},
+    })
+  const externalKnowledgeApiQuery = useQuery(externalKnowledgeApiQueryOptions)
+  const { data, isLoading } = externalKnowledgeApiQuery
   const externalKnowledgeApiList = data?.data ?? []
+  const externalKnowledgeApiLoad = useOwnedQueryError(externalKnowledgeApiQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    externalKnowledgeApiLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
+  )
 
   return (
     <>
@@ -106,6 +117,19 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           <div className="flex grow flex-col items-start gap-1 self-stretch px-4 py-0">
             {isLoading ? (
               <LoadingPlaceholder />
+            ) : externalKnowledgeApiLoad ? (
+              <Alert type="error" className="self-stretch">
+                <AlertTitle>{loadErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button
+                    size="small"
+                    loading={externalKnowledgeApiLoad.retrying}
+                    onClick={externalKnowledgeApiLoad.retry}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
             ) : (
               externalKnowledgeApiList.map((api, index) => (
                 <ExternalKnowledgeAPICard

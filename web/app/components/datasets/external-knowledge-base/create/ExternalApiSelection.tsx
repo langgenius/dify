@@ -1,6 +1,7 @@
 'use client'
 
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -13,6 +14,8 @@ import { ExternalApiDialogContent } from '@/app/components/datasets/external-api
 import { useSaveExternalApi } from '@/app/components/datasets/external-api/external-api-modal/use-save-external-api'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import ExternalApiSelect from './ExternalApiSelect'
 
 type ExternalApiSelectionProps = {
@@ -26,11 +29,20 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
   external_knowledge_id,
   onChange,
 }) => {
-  const { t } = useTranslation(['dataset'])
+  const { t } = useTranslation(['dataset', 'common'])
   const router = useRouter()
   const externalKnowledgeApiQueryOptions =
-    consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
-  const { data } = useQuery(externalKnowledgeApiQueryOptions)
+    consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({
+      input: {},
+    })
+  const externalKnowledgeApiQuery = useQuery(externalKnowledgeApiQueryOptions)
+  const { data } = externalKnowledgeApiQuery
+  // A failed load must not offer to create the first API as if none existed.
+  const externalKnowledgeApiLoad = useOwnedQueryError(externalKnowledgeApiQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    externalKnowledgeApiLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
+  )
   const externalKnowledgeApiList = data?.data ?? []
   const externalKnowledgeApiLabelId = useId()
   const externalKnowledgeIdInputId = useId()
@@ -67,7 +79,21 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
               {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
             </span>
           </div>
-          {apiItems.length > 0 ? (
+          {externalKnowledgeApiLoad ? (
+            <Alert type="error">
+              <AlertTitle>{loadErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button
+                  type="button"
+                  size="small"
+                  loading={externalKnowledgeApiLoad.retrying}
+                  onClick={externalKnowledgeApiLoad.retry}
+                >
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
+          ) : apiItems.length > 0 ? (
             <ExternalApiSelect
               aria-labelledby={externalKnowledgeApiLabelId}
               items={apiItems}

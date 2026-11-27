@@ -60,6 +60,27 @@ describe('DatasetMetadataDrawer', () => {
     vi.clearAllMocks()
   })
 
+  it('shows a failed metadata load with a retry', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    render(
+      <DatasetMetadataDrawer
+        {...defaultProps}
+        userMetadata={[]}
+        builtInMetadata={[]}
+        loadError={{
+          error: new Error('metadata request failed'),
+          retrying: false,
+          onRetry,
+        }}
+      />,
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
   it('renames the focused editable field with its identity intact', async () => {
     const user = userEvent.setup()
     render(<DatasetMetadataDrawer {...defaultProps} />)

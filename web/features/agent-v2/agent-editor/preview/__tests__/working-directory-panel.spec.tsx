@@ -403,20 +403,22 @@ describe('AgentWorkingDirectoryPanel', () => {
     ).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('reports a folder that fails to expand', async () => {
+  it('marks a folder that fails to expand and retries it when opened again', async () => {
     const user = userEvent.setup()
+    let folderFails = true
     mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => {
       const path = input.query?.path ?? '~'
       return {
         // Mirrors the real options: the panel renders a failed root listing itself.
         meta: { errorToast: false },
         queryFn: async () => {
-          if (path !== '~')
+          if (path === '~') return { path, entries: [{ name: 'reports', type: 'dir' }] }
+          if (folderFails)
             throw createHttpError(
               { status: 500, statusText: '', headers: new Headers() },
               { message: 'Sandbox unavailable' },
             )
-          return { path, entries: [{ name: 'reports', type: 'dir' }] }
+          return { path, entries: [{ name: 'summary.txt', type: 'file' }] }
         },
       }
     })
@@ -424,9 +426,21 @@ describe('AgentWorkingDirectoryPanel', () => {
 
     await user.click(await screen.findByRole('button', { name: 'reports' }))
 
+    const failedFolder = await screen.findByRole('button', { name: 'reports common.error' })
+    expect(failedFolder).toHaveAttribute('aria-expanded', 'false')
+    expect(mocks.toastError).not.toHaveBeenCalled()
+
+    folderFails = false
+    await user.click(failedFolder)
+
     await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Sandbox unavailable'),
+      expect(screen.getByRole('button', { name: 'reports' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      ),
     )
+    expect(screen.getAllByText('summary.txt').length).toBeGreaterThan(0)
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('opens a folder without an active binding as empty, without reporting it', async () => {

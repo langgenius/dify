@@ -3,7 +3,11 @@ import type { IBatchModalProps } from '../index'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import BatchModal, { ProcessStatus } from '../index'
 
 let annotationQuota = { size: 0, limit: 10 }
@@ -11,21 +15,29 @@ let annotationQuota = { size: 0, limit: 10 }
 const mocks = vi.hoisted(() => ({
   annotationBatchImport: vi.fn(),
   checkAnnotationBatchImportProgress: vi.fn(),
+  features: vi.fn(),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    apps: {
-      byAppId: {
-        annotations: {
-          batchImport: { post: mocks.annotationBatchImport },
-          batchImportStatus: { byJobId: { get: mocks.checkAnnotationBatchImportProgress } },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => mocks.features(),
+    }),
+    consoleClient: {
+      apps: {
+        byAppId: {
+          annotations: {
+            batchImport: { post: mocks.annotationBatchImport },
+            batchImportStatus: { byJobId: { get: mocks.checkAnnotationBatchImportProgress } },
+          },
         },
       },
     },
-  },
-}))
+  }
+})
 
 vi.mock('../csv-downloader', () => ({
   default: () => <div data-testid="csv-downloader-stub" />,
@@ -66,10 +78,10 @@ const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
   }
 }
 
-function render(ui: ReactElement) {
+function render(ui: ReactElement, { withFeatures = true } = {}) {
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: 'CLOUD' },
-    features: { annotation_quota_limit: annotationQuota },
+    features: withFeatures ? { annotation_quota_limit: annotationQuota } : null,
   })
 }
 
@@ -208,5 +220,25 @@ describe('BatchModal', () => {
       expect(props.onCancel).toHaveBeenCalledTimes(1)
     })
     vi.useRealTimers()
+  })
+
+  it('shows a failed quota load with a retry and keeps the import disabled', async () => {
+    const user = userEvent.setup()
+    const features = seedFeatures(createConsoleQueryWrapper().queryClient, {
+      annotation_quota_limit: annotationQuota,
+    })
+    mocks.features.mockRejectedValueOnce(new Error('Offline')).mockResolvedValue(features)
+    render(<BatchModal appId="app-id" isShow onCancel={vi.fn()} onAdded={vi.fn()} />, {
+      withFeatures: false,
+    })
+    await selectFile(user)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('common.api.actionFailed')
+    expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })).toBeEnabled()
   })
 })

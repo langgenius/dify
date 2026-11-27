@@ -2,6 +2,7 @@
 
 import type { AppImportPayload, AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -33,6 +34,8 @@ import DSLImportWarningDescription from '@/features/dsl-import/warning-descripti
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
@@ -138,11 +141,12 @@ function CreateFromDSLModal({
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data: appQuota } = useQuery(
+  const appQuotaQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => getCountQuota(data.apps),
     }),
   )
+  const appQuota = appQuotaQuery.data
   const isPackageImport =
     currentTab === CreateFromDSLModalTab.FROM_FILE &&
     currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
@@ -150,6 +154,11 @@ function CreateFromDSLModal({
   const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
   const isAppQuotaUnavailable = requiresAppQuota && appQuota === undefined
   const isAppsFull = requiresAppQuota && appQuota !== undefined && isQuotaReached(appQuota)
+  const appQuotaLoad = useOwnedQueryErrors(requiresAppQuota ? [appQuotaQuery] : [])
+  const appQuotaErrorMessage = useRequestErrorMessage(
+    appQuotaLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const isImporting = importMutation.isPending
   const isConfirming = confirmImportMutation.isPending
 
@@ -376,6 +385,18 @@ function CreateFromDSLModal({
           {isAppsFull && (
             <div className="px-6">
               <AppsFull className="mt-0" loc="app-create-dsl" />
+            </div>
+          )}
+          {appQuotaLoad && appQuotaErrorMessage && (
+            <div className="px-6">
+              <Alert type="error">
+                <AlertTitle>{appQuotaErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button size="small" loading={appQuotaLoad.retrying} onClick={appQuotaLoad.retry}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
             </div>
           )}
           <DialogFooter>

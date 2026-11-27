@@ -4,6 +4,8 @@ import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -23,6 +25,8 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
 import DataSourceProvider from './data-source/store/provider'
@@ -40,15 +44,17 @@ import { StepOneContent, StepThreeContent, StepTwoContent } from './steps'
 import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
 
 const CreateFormPipeline = () => {
-  const { t } = useTranslation(['billing', 'datasetPipeline'])
+  const { t } = useTranslation(['billing', 'datasetPipeline', 'common', 'dataset'])
+  const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const planQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.billing.subscription.plan,
     }),
   )
+  const plan = planQuery.data
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const pipelineId = dataset?.pipeline_id ?? undefined
   const { data: currentUserId } = useSuspenseQuery({
@@ -73,13 +79,14 @@ const CreateFormPipeline = () => {
   const [documents, setDocuments] = useState<PipelineDocument[]>([])
 
   // Data fetching
-  const { data: pipelineNodes, isLoading: isLoadingPipelineInfo } = useQuery(
+  const pipelineNodesQuery = useQuery(
     consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryOptions({
       input: { params: { pipeline_id: pipelineId || '' } },
       enabled: !!pipelineId,
       select: selectPublishedPipelineNodes,
     }),
   )
+  const { data: pipelineNodes, isLoading: isLoadingPipelineInfo } = pipelineNodesQuery
   const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
 
   const fileUploadConfig = useMemo(
@@ -143,6 +150,9 @@ const CreateFormPipeline = () => {
   const isVectorSpaceFull =
     !!vectorSpace && !vectorSpace.usage_unknown && isQuotaReached(getVectorSpaceQuota(vectorSpace))
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
+  // Without the data sources or the plan the first step has nothing to pick or stays disabled.
+  // The first step renders the failure, so it is claimed only on that step.
+  const loadFailure = useOwnedQueryErrors(currentStep === 1 ? [pipelineNodesQuery, planQuery] : [])
   const supportBatchUpload =
     deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'
 
@@ -259,7 +269,22 @@ const CreateFormPipeline = () => {
             currentStep={currentStep}
           />
           <div className="grow overflow-y-auto">
-            {currentStep === 1 && (
+            {currentStep === 1 && loadFailure && (
+              <Alert type="error" className="mt-4">
+                <AlertTitle>
+                  {describeRequestError(
+                    loadFailure.error,
+                    t(($) => $.loadError, { ns: 'dataset' }),
+                  )}
+                </AlertTitle>
+                <AlertActions>
+                  <Button size="small" loading={loadFailure.retrying} onClick={loadFailure.retry}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            )}
+            {currentStep === 1 && !(pipelineNodesQuery.isError && !pipelineNodes) && (
               <StepOneContent
                 datasource={datasource}
                 datasourceType={datasourceType}

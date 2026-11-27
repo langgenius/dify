@@ -1,6 +1,7 @@
 'use client'
 
 import type { AccessPoint } from '@/models/app-access-point'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -13,6 +14,8 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
@@ -51,11 +54,7 @@ export function BuiltInAccessPoints({
     (systemFeatures.rbac_enabled ||
       (!workspaceLoading && ['owner', 'admin', 'editor'].includes(workspace.role)))
   const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo) && canReadWorkflow)
-  const {
-    data: workflow,
-    isError: workflowError,
-    isPending: workflowLoading,
-  } = useQuery({
+  const workflowQuery = useQuery({
     ...appWorkflowQueryOptions(shouldFetchWorkflow ? appId : ''),
     retry: (failureCount, error) => {
       if (getHttpErrorStatus(error) === 403) return false
@@ -63,6 +62,7 @@ export function BuiltInAccessPoints({
       return failureCount < 3
     },
   })
+  const { data: workflow, isError: workflowError, isPending: workflowLoading } = workflowQuery
   const useWorkflowSummary = Boolean(appInfo && isAdvancedApp(appInfo) && !canReadWorkflow)
   const needsPublishedTriggers =
     useWorkflowSummary && appInfo?.mode === 'workflow' && Boolean(appInfo.workflow?.id)
@@ -73,6 +73,14 @@ export function BuiltInAccessPoints({
     }),
   )
   const actions = useAccessPointActions(appId, canManageAccessPoint)
+  const failedLoad = useOwnedQueryErrors([
+    ...(shouldFetchWorkflow ? [workflowQuery] : []),
+    ...(needsPublishedTriggers ? [triggersQuery] : []),
+  ])
+  const loadErrorMessage = useRequestErrorMessage(
+    failedLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'deployments' }),
+  )
 
   if (!appInfo) return <LoadingPlaceholder />
 
@@ -110,6 +118,16 @@ export function BuiltInAccessPoints({
 
   return (
     <div className="flex h-full flex-col gap-2">
+      {failedLoad && loadErrorMessage && (
+        <Alert type="error" className="shrink-0">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={failedLoad.retrying} onClick={failedLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
       {isUnpublished && !builtInLoading && !builtInError && (
         <div className="flex flex-col items-start gap-2 rounded-xl bg-background-section-burn p-3">
           <div className="flex flex-col gap-0.5">

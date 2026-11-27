@@ -57,6 +57,7 @@ export default function PersonalAccessTokens() {
   const page = Math.max(1, requestedPage)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.get.queryOptions({
+      // The table area shows any failure with a retry, also over the previous page's tokens.
       meta: { errorToast: false },
       input: { query: { page, limit: 20 } },
       placeholderData: keepPreviousData,

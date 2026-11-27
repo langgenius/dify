@@ -135,7 +135,9 @@ export function NewKnowledgeList() {
   const upgradeDatasetIdBatches = batchUpgradeDatasetIds(upgradeDatasetIds)
   const upgradeDatasetsQueries = useQueries({
     queries: upgradeDatasetIdBatches.map((datasetIds) =>
-      consoleQuery.datasets.get.queryOptions({ input: { query: { ids: datasetIds } } }),
+      consoleQuery.datasets.get.queryOptions({
+        input: { query: { ids: datasetIds } },
+      }),
     ),
   })
   const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.data) ?? []

@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "อีโค",
   "indexingTechnique.high_quality": "สํานักงานใหญ่",
   "knowledge": "ความรู้",
+  "loadError": "ไม่สามารถโหลดข้อมูลได้ ลองอีกครั้ง",
   "metadata.addMetadata": "เพิ่มข้อมูลเมตา",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "ใช้กับเอกสารที่เลือกทั้งหมด",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "สร้างข้อมูลเมตาใหม่และแก้ไขทั้งหมดข้างต้นโดยอัตโนมัติสำหรับเอกสารที่เลือกทั้งหมด มิฉะนั้นการแก้ไขข้อมูลเมตาจะใช้ได้เฉพาะกับเอกสารที่มีข้อมูลเมตานั้นเท่านั้น.",

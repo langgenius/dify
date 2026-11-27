@@ -33,6 +33,7 @@ import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderConsole,
 } from '@/test/console/query-data'
+import { apiError } from '@/test/fake-api'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { KnowledgeSettingsPage } from '../page'
 
@@ -43,6 +44,7 @@ const serviceMock = vi.hoisted(() => ({
   getMigration: vi.fn(),
   getSpace: vi.fn(),
   getSpaces: vi.fn(),
+  listModels: vi.fn(),
   patchExternalAccess: vi.fn(),
   patchSettings: vi.fn(),
   patchSpace: vi.fn(),
@@ -96,6 +98,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${space}.settings.migrations.byMigrationId.get`]: serviceMock.getMigration,
       [`${space}.settings.patch`]: serviceMock.patchSettings,
       'workspaces.current.members.get': async () => ({ accounts: membersQueryMock.accounts }),
+      'workspaces.current.models.modelTypes.byModelType.get': serviceMock.listModels,
     }),
   }
 })
@@ -2700,5 +2703,28 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(screen.queryByText('knowledgeSpace.settings.viewOnly')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeDisabled()
+  })
+
+  it('shows a failed model catalog load with a retry above the retrieval models', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    await renderForm({ queryClient })
+    const llmCatalog = consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'llm' } },
+    })
+    serviceMock.listModels
+      .mockRejectedValueOnce(apiError({ status: 503, message: 'Models unavailable' }))
+      .mockResolvedValue({ data: modelCatalog })
+    // A reset query has no data again, so its next failure is a failed first load.
+    await act(async () => {
+      await queryClient.resetQueries({ queryKey: llmCatalog }).catch(() => {})
+    })
+
+    expect(await screen.findByText('knowledgeCreate.modelsLoadFailed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() =>
+      expect(screen.queryByText('knowledgeCreate.modelsLoadFailed')).not.toBeInTheDocument(),
+    )
+    expect(serviceMock.listModels).toHaveBeenCalledTimes(2)
   })
 })

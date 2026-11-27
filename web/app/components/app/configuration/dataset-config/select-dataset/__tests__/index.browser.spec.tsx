@@ -4,7 +4,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { setupFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import SelectDataSet from '../index'
 
@@ -149,4 +149,19 @@ it('does not request knowledge until the user opens the selector', async () => {
   await screen.getByRole('button', { name: 'Select knowledge' }).click()
   await expect.element(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeVisible()
   expect(fake.console.datasets.get).toHaveBeenCalledOnce()
+})
+
+it('shows a failed knowledge load with a retry instead of the empty state', async () => {
+  fake.console.datasets.get
+    .mockRejectedValueOnce(apiError({ status: 500, message: 'Datasets unavailable' }))
+    .mockResolvedValue(response([dataset('Available')]))
+  const screen = await setup()
+  const dialog = screen.getByRole('dialog')
+  const alert = dialog.getByRole('alert')
+  await expect.element(alert).toBeVisible()
+  await expect
+    .element(dialog.getByText('appDebug.feature.dataSet.noDataSet'))
+    .not.toBeInTheDocument()
+  await alert.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(dialog.getByRole('button', { name: /^Available/ })).toBeVisible()
 })

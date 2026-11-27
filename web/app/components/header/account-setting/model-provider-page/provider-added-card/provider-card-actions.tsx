@@ -168,6 +168,7 @@ function ProviderCardActions(props: Props) {
     const response = await queryClient.query(
       consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
         input: { body: { plugin_ids: [pluginID] } },
+        // The info and update actions report every failed load themselves, cached data or not.
         meta: { errorToast: false },
       }),
     )

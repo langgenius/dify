@@ -28,6 +28,8 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { useFileScanProviderTypeLabel } from './provider-types'
 
@@ -117,6 +119,13 @@ function FileScanPolicyEditor({ className, controller }: FileScanSettingProps) {
     controller
   const providersQuery = useQuery(consoleQuery.fileScan.providers.get.queryOptions())
   const providers = providersQuery.data?.data ?? []
+  // A failed load must not look like a workspace without scanners. The scanner picker, and so
+  // its load error, shows only while scanning is enabled.
+  const providersLoad = useOwnedQueryErrors(current.enabled ? [providersQuery] : [])
+  const providersLoadErrorMessage = useRequestErrorMessage(
+    providersLoad?.error,
+    t(($) => $['scanner.loadFailed']),
+  )
   const selectedProvider = providers.find((provider) => provider.id === current.provider_id)
   const layout = layoutClassNames[product]
   const rowClassName = cn('flex min-w-0 flex-col items-stretch gap-2', layout.row)
@@ -220,6 +229,21 @@ function FileScanPolicyEditor({ className, controller }: FileScanSettingProps) {
                     <p role="alert" className="mt-1 system-xs-regular text-text-destructive">
                       {t(($) => $['policy.scannerRequired'])}
                     </p>
+                  )}
+                  {providersLoad && (
+                    <div role="alert" className="mt-1 flex items-center gap-2">
+                      <p className="system-xs-regular text-text-destructive">
+                        {providersLoadErrorMessage}
+                      </p>
+                      <Button
+                        size="small"
+                        type="button"
+                        loading={providersLoad.retrying}
+                        onClick={providersLoad.retry}
+                      >
+                        {tCommon(($) => $['operation.retry'])}
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <SelectContent>

@@ -1,5 +1,5 @@
 import type { SnippetWorkflow } from '@/types/snippet'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { useAtomValue } from 'jotai'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
@@ -161,6 +161,40 @@ describe('SnippetPage', () => {
     )
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.queryByRole('status', { name: 'Initialized nodes' })).not.toBeInTheDocument()
+  })
+
+  it('shows a failed first load of the snippet with a retry', async () => {
+    requests.detail.mockRejectedValueOnce(createHttpError(new Response(null, { status: 503 })))
+    renderWithConsoleQuery(<SnippetPage snippetId="snippet-1" />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('workflow.common.loadFailed')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+
+    act(() => {
+      within(alert).getByRole('button', { name: 'common.operation.retry' }).click()
+    })
+
+    await expectGraph('published')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed first load of the draft with the server message and a retry', async () => {
+    requests.draft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Draft unavailable' }),
+    )
+    renderWithConsoleQuery(<SnippetPage snippetId="snippet-1" />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Draft unavailable')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+
+    act(() => {
+      within(alert).getByRole('button', { name: 'common.operation.retry' }).click()
+    })
+
+    await expectGraph('published')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('keeps the route shell gated until the draft arrives', async () => {

@@ -1,5 +1,6 @@
 'use client'
-import { buttonVariants } from '@langgenius/dify-ui/button'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
@@ -8,10 +9,12 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 const ActivateForm = () => {
   const router = useRouter()
-  const { t } = useTranslation(['login'])
+  const { t } = useTranslation(['login', 'common'])
   const searchParams = useSearchParams()
   const workspaceID = searchParams.get('workspace_id')
   const email = searchParams.get('email')
@@ -25,11 +28,17 @@ const ActivateForm = () => {
       token,
     },
   }
-  const { data: checkRes } = useQuery(
+  const checkQuery = useQuery(
     consoleQuery.activate.check.get.queryOptions({
       input: token ? { query: { ...checkParams.params, token } } : skipToken,
       retry: false,
     }),
+  )
+  const checkRes = checkQuery.data
+  const checkLoad = useOwnedQueryError(checkQuery)
+  const checkErrorMessage = useRequestErrorMessage(
+    checkLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   useDocumentTitle(
     checkRes?.is_valid === false
@@ -49,7 +58,19 @@ const ActivateForm = () => {
 
   return (
     <>
-      {!checkRes && <LoadingPlaceholder />}
+      {!checkRes &&
+        (checkErrorMessage ? (
+          <Alert type="error">
+            <AlertTitle>{checkErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={checkLoad?.retrying} onClick={checkLoad?.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        ) : (
+          <LoadingPlaceholder />
+        ))}
       {checkRes && !checkRes.is_valid && (
         <div className="flex flex-col">
           <div className="mx-auto w-full">

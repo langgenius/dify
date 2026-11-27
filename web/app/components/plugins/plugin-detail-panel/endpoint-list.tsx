@@ -1,5 +1,7 @@
 import type { EndpointProviderDeclarationResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -10,6 +12,8 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
@@ -28,11 +32,14 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   const docLink = useDocLink()
   const pluginUniqueID = detail.plugin_unique_identifier
   const showTopBorder = detail.declaration.tool
-  const { data } = useQuery(
+  const endpointsQuery = useQuery(
     consoleQuery.workspaces.current.endpoints.list.plugin.get.queryOptions({
       input: { query: { plugin_id: detail.plugin_id, page: 1, page_size: 100 } },
     }),
   )
+  const { data } = endpointsQuery
+  const endpointsLoad = useOwnedQueryError(endpointsQuery)
+  const loadErrorMessage = useRequestErrorMessage(endpointsLoad?.error)
   const [isShowEndpointModal, { setTrue: showEndpointModal, setFalse: hideEndpointModal }] =
     useBoolean(false)
   const showSaveError = (error: unknown) => {
@@ -47,6 +54,21 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
       onError: showSaveError,
     }),
   )
+
+  if (endpointsLoad && loadErrorMessage) {
+    return (
+      <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
+        <Alert type="error">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={endpointsLoad.retrying} onClick={endpointsLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      </div>
+    )
+  }
 
   if (!data) return null
 

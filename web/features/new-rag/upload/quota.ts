@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { KnowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
 import { getCountQuota, getVectorSpaceQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
+import { markErrorHandled } from '@/service/handled-error'
 
 export async function getKnowledgeFsUploadQuotaFailure(
   queryClient: QueryClient,
@@ -9,8 +10,6 @@ export async function getKnowledgeFsUploadQuotaFailure(
   try {
     const features = await queryClient.query(
       consoleQuery.features.get.queryOptions({
-        // The upload reports an unavailable quota as its own task failure.
-        meta: { errorToast: false },
         retry: false,
         staleTime: 0,
       }),
@@ -24,15 +23,15 @@ export async function getKnowledgeFsUploadQuotaFailure(
     )
       return 'taskFailure.documentCountQuotaUnavailable'
     if (isQuotaReached(getCountQuota(quota))) return 'taskFailure.documentCountQuotaExceeded'
-  } catch {
+  } catch (error) {
+    // The upload reports an unavailable quota as its own task failure.
+    markErrorHandled(error)
     return 'taskFailure.documentCountQuotaUnavailable'
   }
 
   try {
     const quota = await queryClient.query(
       consoleQuery.features.vectorSpace.get.queryOptions({
-        // The upload reports an unavailable quota as its own task failure.
-        meta: { errorToast: false },
         retry: false,
         staleTime: 0,
       }),
@@ -46,7 +45,8 @@ export async function getKnowledgeFsUploadQuotaFailure(
     )
       return 'taskFailure.vectorSpaceQuotaUnavailable'
     if (isQuotaReached(getVectorSpaceQuota(quota))) return 'taskFailure.vectorSpaceQuotaExceeded'
-  } catch {
+  } catch (error) {
+    markErrorHandled(error)
     return 'taskFailure.vectorSpaceQuotaUnavailable'
   }
 }

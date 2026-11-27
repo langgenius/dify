@@ -337,6 +337,21 @@ describe('useChatWithHistory', () => {
       )
     })
 
+    it('should expose a failed first list load with a retry', async () => {
+      mockFetchConversations
+        .mockRejectedValueOnce(new Error('history unavailable'))
+        .mockRejectedValueOnce(new Error('history unavailable'))
+        .mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => expect(result.current.conversationListLoadError).toBeInstanceOf(Error))
+      act(() => result.current.retryConversationList())
+      await waitFor(() => expect(result.current.conversationListLoadError).toBeUndefined())
+      expect(result.current.conversationList.map(({ id }) => id)).toEqual(['conversation-1'])
+      expect(mockFetchConversations).toHaveBeenCalledTimes(4)
+    })
+
     it('should load the full list on the next mount after a failed list load', async () => {
       mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
       mockFetchChatList.mockResolvedValue({ data: [] })
@@ -603,6 +618,7 @@ describe('useChatWithHistory', () => {
         expect(result.current.currentConversationId).toBe('')
       })
       expect(result.current.clearChatList).toBe(true)
+      expect(result.current.appChatListLoadError).toBeUndefined()
       const storedSelections = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO)!)
       expect(storedSelections['environment:environment-code']['user-1']).toBe('')
     })
@@ -622,6 +638,11 @@ describe('useChatWithHistory', () => {
       expect(result.current.currentConversationId).toBe('conversation-1')
       expect(result.current.clearChatList).toBe(false)
       expect(localStorage.getItem(CONVERSATION_ID_INFO)).toContain('conversation-1')
+      // Any other failed first load replaces the chat with a retry.
+      await waitFor(() => expect(result.current.appChatListLoadError).toBeDefined())
+      mockFetchChatList.mockResolvedValueOnce({ data: [] })
+      act(() => result.current.retryAppChatList())
+      await waitFor(() => expect(result.current.appChatListLoadError).toBeUndefined())
     })
   })
 

@@ -47,6 +47,8 @@ export const useMarketplacePluginSearch = <TData>(
       retry: false,
       placeholderData: keepPreviousData,
       select: (response) => select(response.data?.plugins ?? []),
+      // Its only caller, the search session, shows a failed search over the previous results.
+      meta: { errorToast: false },
     }),
   )
 }

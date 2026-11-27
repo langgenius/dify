@@ -1,8 +1,10 @@
 import type { PipelineTemplateListResponse } from '@dify/contracts/api/console/rag/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import BuiltInPipelineList from '../built-in-pipeline-list'
 
 const { getTemplates } = vi.hoisted(() => ({ getTemplates: vi.fn() }))
@@ -72,4 +74,15 @@ it.each([
 it('does not request marketplace templates when the marketplace is disabled', () => {
   render(<BuiltInPipelineList />, { systemFeatures: { enable_marketplace: false } })
   expect(getTemplates).not.toHaveBeenCalled()
+})
+
+it('shows a failed first load with a retry instead of an empty template list', async () => {
+  const user = userEvent.setup()
+  getTemplates.mockRejectedValueOnce(apiError({ status: 503, message: 'Templates unavailable' }))
+  render(<BuiltInPipelineList />, { systemFeatures: { enable_marketplace: true } })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  expect(getTemplates).toHaveBeenCalledTimes(2)
 })

@@ -8,6 +8,7 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { DataType } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
 
@@ -25,7 +26,7 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   )
   const { checkName } = useCheckMetadataName()
   const [isEdit, setIsEdit] = useState(false)
-  const { data: documentDetail } = useQuery(
+  const documentMetadataQuery = useQuery(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
       input: {
         params: { dataset_id: datasetId, document_id: documentId },
@@ -33,6 +34,7 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
       },
     }),
   )
+  const documentDetail = documentMetadataQuery.data
   const allList = documentDetail?.doc_metadata || []
   const list = allList.filter((item) => item.id !== 'built-in')
   const builtList = allList.filter((item) => item.id === 'built-in')
@@ -77,12 +79,17 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     setIsEdit(true)
   }
   // built in enabled is set in dataset
-  const { data: datasetMetaData } = useQuery(
+  const datasetMetadataQuery = useQuery(
     consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
       input: { params: { dataset_id: datasetId } },
     }),
   )
+  const datasetMetaData = datasetMetadataQuery.data
   const builtInEnabled = datasetMetaData?.built_in_field_enabled
+  // Without the document's metadata the panel would offer to start from an empty list; a failed
+  // refetch keeps the cached metadata and is reported by the query cache.
+  // The only caller renders it in place of the metadata, so it is claimed here.
+  const metadataLoad = useOwnedQueryErrors([documentMetadataQuery, datasetMetadataQuery])
   // old metadata and technical params
   const metadataMap = useMetadataMap()
   const languageMap = useLanguages()
@@ -120,6 +127,9 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   const technicalParameters = getReadOnlyMetaData('technicalParameters')
   return {
     embeddingAvailable,
+    metadataLoadError: metadataLoad?.error,
+    isRetryingMetadataLoad: metadataLoad?.retrying ?? false,
+    retryMetadataLoad: () => metadataLoad?.retry(),
     isEdit,
     setIsEdit,
     list,

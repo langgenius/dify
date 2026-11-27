@@ -6,6 +6,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -45,6 +46,8 @@ import {
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 export type SwitchAppSource = Pick<
   AppPartial,
@@ -86,13 +89,19 @@ function SwitchAppSession({
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   const { t } = useTranslation(['app', 'common', 'explore'])
-  const { data: appQuota } = useQuery(
+  const appQuotaQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => getCountQuota(data.apps),
     }),
   )
+  const appQuota = appQuotaQuery.data
   const isAppQuotaUnavailable = appQuota === undefined
   const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
+  const appQuotaLoad = useOwnedQueryError(appQuotaQuery)
+  const appQuotaErrorMessage = useRequestErrorMessage(
+    appQuotaLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
 
   const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
@@ -186,6 +195,16 @@ function SwitchAppSession({
             </Field>
           </Fieldset>
           {isAppsFull && <AppsFull className="mt-4" loc="app-switch" />}
+          {appQuotaLoad && appQuotaErrorMessage && (
+            <Alert type="error" className="mt-4">
+              <AlertTitle>{appQuotaErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={appQuotaLoad.retrying} onClick={appQuotaLoad.retry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
+          )}
         </DialogBody>
         <DialogFooter>
           <div className="me-auto flex items-center">

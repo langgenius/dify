@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { ReactNode } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -10,6 +11,8 @@ import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/compone
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
 import { Item } from './item'
@@ -59,8 +62,13 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
   const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
-  const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(
-    consoleQuery.apiBasedExtension.get.queryOptions(),
+  const apiBasedExtensionsQuery = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
+  const { data: apiBasedExtensions = [], isPending: isLoading } = apiBasedExtensionsQuery
+  const apiBasedExtensionsLoad = useOwnedQueryError(apiBasedExtensionsQuery)
+  const isLoadFailed = !!apiBasedExtensionsLoad
+  const loadErrorMessage = useRequestErrorMessage(
+    apiBasedExtensionsLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
   const [keywords, setKeywords] = useState('')
@@ -116,7 +124,21 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
   const body = (
     <>
       {isLoading && <ApiBasedExtensionListSkeleton />}
-      {!isLoading && !hasApiBasedExtensions && <Empty />}
+      {apiBasedExtensionsLoad && (
+        <Alert type="error">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button
+              size="small"
+              loading={apiBasedExtensionsLoad.retrying}
+              onClick={apiBasedExtensionsLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
+      {!isLoading && !isLoadFailed && !hasApiBasedExtensions && <Empty />}
       <div
         role="status"
         aria-atomic="true"

@@ -7,6 +7,7 @@ import type { FormOption } from '@/app/components/header/account-setting/model-p
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
@@ -19,6 +20,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
@@ -32,6 +34,8 @@ import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/compone
 import { VarType } from '@/app/components/workflow/types'
 import { pluginDynamicOptionsMutationOptions } from '@/service/plugin-list-queries'
 import { triggerPluginDynamicOptionsQueryOptions } from '@/service/trigger-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
 import {
@@ -91,6 +95,7 @@ const FormInputItem: FC<Props> = ({
   staticSchema = false,
   disableVariableInsertion = false,
 }) => {
+  const { t } = useTranslation(['workflow', 'common'])
   const language = useLanguage()
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
@@ -143,8 +148,8 @@ const FormInputItem: FC<Props> = ({
   )
 
   // Fetch dynamic options hook for triggers
-  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useQuery({
-    ...triggerPluginDynamicOptionsQueryOptions(
+  const triggerOptionsQuery = useQuery(
+    triggerPluginDynamicOptionsQueryOptions(
       {
         plugin_id: currentProvider?.plugin_id || '',
         provider: currentProvider?.name || '',
@@ -159,10 +164,14 @@ const FormInputItem: FC<Props> = ({
         !!currentTool &&
         !!currentProvider,
     ),
-    // This select has no error slot, so the query cache reports a failure, as it does for the
-    // tool options mutation above.
-    meta: undefined,
-  })
+  )
+  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = triggerOptionsQuery
+  // The query runs only for a trigger's dynamic select, which shows its failed first load.
+  const triggerOptionsLoad = useOwnedQueryError(triggerOptionsQuery)
+  const triggerOptionsErrorMessage = useRequestErrorMessage(
+    triggerOptionsLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
 
   // Computed values for dynamic options (unified for triggers and tools)
   const triggerOptions = triggerDynamicOptions?.options
@@ -318,7 +327,13 @@ const FormInputItem: FC<Props> = ({
     null
 
   return (
-    <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
+    <div
+      className={cn(
+        'gap-1',
+        !(isShowJSONEditor && isConstant) && 'flex',
+        isDynamicSelect && triggerOptionsLoad && 'flex-wrap',
+      )}
+    >
       {showTypeSwitch && (
         <FormInputTypeSwitch
           readonly={readOnly}
@@ -456,6 +471,22 @@ const FormInputItem: FC<Props> = ({
           placeholder={placeholder?.[language] || placeholder?.en_US}
           selectedLabel={selectedLabels}
         />
+      )}
+      {isDynamicSelect && triggerOptionsLoad && (
+        <div
+          role="alert"
+          className="flex min-w-0 basis-full items-center gap-1 system-xs-regular text-text-destructive"
+        >
+          <span className="min-w-0 wrap-break-word">{triggerOptionsErrorMessage}</span>
+          <Button
+            size="small"
+            variant="ghost"
+            loading={triggerOptionsLoad.retrying}
+            onClick={triggerOptionsLoad.retry}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
       )}
       {isShowJSONEditor && isConstant && (
         <JsonEditorField

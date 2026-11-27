@@ -12,6 +12,7 @@ import { useEvaluationStore } from '../../../store'
 import HistoryTab from '../history-tab'
 
 const cancelRun = vi.hoisted(() => vi.fn())
+const loadLogs = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -20,6 +21,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.byDatasetId.evaluation.runs.byRunId.cancel.post': cancelRun,
+      'datasets.byDatasetId.evaluation.logs.get': loadLogs,
     }),
   }
 })
@@ -263,6 +265,38 @@ describe('evaluation history run details', () => {
     expect(
       await screen.findByText('evaluation.history.status.notCompleted: Judge model quota exceeded'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('evaluation history load failure', () => {
+  it('shows why the history failed to load instead of an empty history, and retries it', async () => {
+    const user = userEvent.setup()
+    loadLogs.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'History unavailable' }),
+    )
+    loadLogs.mockResolvedValueOnce({
+      data: [createRun('run-1', 1793894400)],
+      page: 1,
+      page_size: 16,
+      total: 1,
+    })
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: [],
+    })
+    act(() => useEvaluationStore.getState().ensureResource('datasets', resourceId))
+
+    renderWithConsoleQuery(<HistoryTab resourceType="datasets" resourceId={resourceId} />, {
+      queryClient,
+    })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('History unavailable')
+    expect(screen.queryByText('evaluation.history.empty')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByRole('row', { name: /2026-11-0\d/ })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
 

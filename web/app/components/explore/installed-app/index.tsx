@@ -60,15 +60,15 @@ const InstalledApp = ({ id }: { id: string }) => {
     data: installedApp,
     isPending: isPendingInstalledApp,
     error: installedAppError,
-  } = useQuery({
-    ...consoleQuery.installedApps.byInstalledAppId.get.queryOptions({
+  } = useQuery(
+    consoleQuery.installedApps.byInstalledAppId.get.queryOptions({
       input: {
         params: {
           installed_app_id: id,
         },
       },
     }),
-  })
+  )
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateWebAppAccessMode = useWebAppStore((s) => s.updateWebAppAccessMode)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)

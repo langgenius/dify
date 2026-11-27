@@ -1,9 +1,10 @@
 import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
+import { consoleQuery } from '@/service/console'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
@@ -183,6 +184,71 @@ describe('SkillDetailPage navigation', () => {
     expect(
       screen.queryByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows a failed first load of the skill with a retry', async () => {
+    const user = userEvent.setup()
+    const detailQueryFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('detail request failed'))
+      .mockImplementation(async () => mocks.skillDetail)
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({ queryFn: detailQueryFn }))
+    renderSkillDetailPage()
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(detailQueryFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the loaded skill on screen when a refetch fails', async () => {
+    const detailQueryFn = vi.fn().mockImplementation(async () => mocks.skillDetail)
+    mocks.skillDetailQueryOptions.mockImplementation(() => ({ queryFn: detailQueryFn }))
+    const { queryClient } = renderSkillDetailPage()
+    expect(await screen.findByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+
+    detailQueryFn.mockRejectedValueOnce(new Error('detail refetch failed'))
+    await act(async () => {
+      await queryClient.refetchQueries({
+        queryKey: consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
+          input: { params: { skill_id: 'skill-1' } },
+        }),
+      })
+      // TanStack Query notifies observers on the next macrotask; flush it inside act.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    expect(detailQueryFn).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('skill-detail-sidebar-header')).toBeInTheDocument()
+    expect(screen.queryByText('skill.skillManagement.detail.loadFailed')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed version list load in the version panel and retries it', async () => {
+    const user = userEvent.setup()
+    const versionsQueryFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('versions request failed'))
+      .mockResolvedValue({ data: [] })
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({ queryFn: versionsQueryFn }))
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
+    )
+    const panel = await screen.findByRole('region', {
+      name: 'skill.skillManagement.detail.versions',
+    })
+    expect(await within(panel).findByRole('alert')).toBeInTheDocument()
+    expect(
+      within(panel).queryByText('skill.skillManagement.detail.noVersions'),
+    ).not.toBeInTheDocument()
+
+    await user.click(within(panel).getByRole('button', { name: 'common.operation.retry' }))
+    expect(
+      await within(panel).findByText('skill.skillManagement.detail.noVersions'),
+    ).toBeInTheDocument()
+    expect(within(panel).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('shows the sidebar while the collapsed rail is hovered', async () => {

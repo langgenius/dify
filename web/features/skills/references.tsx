@@ -1,6 +1,7 @@
 'use client'
 
 import type { SkillReferenceResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -9,6 +10,34 @@ import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
+
+/** A one-line failed-load message with a retry, shown where the data would be. */
+export function SkillLoadError({
+  className,
+  error,
+  fallback,
+  onRetry,
+  retrying,
+}: {
+  className?: string
+  error: unknown
+  fallback: string
+  onRetry: () => void
+  retrying?: boolean
+}) {
+  const { t } = useTranslation(['common'])
+  const message = useRequestErrorMessage(error, fallback) ?? fallback
+  return (
+    <div role="alert" className={cn('flex min-w-0 items-center gap-2 py-2', className)}>
+      <p className="min-w-0 flex-1 system-xs-regular text-text-destructive">{message}</p>
+      <Button size="small" variant="secondary" loading={retrying} onClick={onRetry}>
+        {t(($) => $['operation.retry'], { ns: 'common' })}
+      </Button>
+    </div>
+  )
+}
 
 export function SkillReferencesPanel({
   compact = false,
@@ -40,9 +69,22 @@ export function SkillReferencesPanel({
     refetchOnMount: 'always',
   })
   const references = referencesQuery.data?.data ?? []
+  const referencesLoad = useOwnedQueryError(referencesQuery)
 
   if (referencesQuery.isPending) {
     return <SkillReferencesListSkeleton compact={compact} embedded={embedded} />
+  }
+
+  if (referencesLoad) {
+    return (
+      <SkillLoadError
+        className={embedded ? 'w-full px-1' : 'w-max max-w-120'}
+        error={referencesLoad.error}
+        fallback={t(($) => $['skillManagement.detail.referencesLoadFailed'])}
+        onRetry={referencesLoad.retry}
+        retrying={referencesLoad.retrying}
+      />
+    )
   }
 
   if (references.length === 0) {

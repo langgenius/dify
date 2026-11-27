@@ -123,17 +123,32 @@ it('keeps initialization gated on an unexpected draft failure', async () => {
   expect(store.getState().isWorkflowDataLoaded).toBe(false)
 })
 
-it('reports an unexpected draft failure with the server message', async () => {
+it('exposes an unexpected draft failure for the page to present, without a toast', async () => {
   const toastError = vi.spyOn(toast, 'error')
-  requests.draft.mockRejectedValue(
-    createHttpError(
-      { status: 500, statusText: '', headers: new Headers() },
-      { message: 'Draft unavailable' },
-    ),
+  const draftFailure = createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
   )
+  requests.draft.mockRejectedValue(draftFailure)
   const { result } = renderInit()
-  await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+  await waitFor(() => expect(result.current.draftError).toBe(draftFailure))
   expect(result.current.isLoading).toBe(true)
+  expect(toastError).not.toHaveBeenCalled()
+})
+
+it('retries a failed draft load', async () => {
+  requests.draft.mockRejectedValueOnce(new Error('unavailable')).mockResolvedValue(workflow())
+  const { result, store } = renderInit()
+  await waitFor(() => expect(result.current.draftError).toBeInstanceOf(Error))
+
+  await act(async () => {
+    await result.current.refetch()
+  })
+
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(requests.draft).toHaveBeenCalledTimes(2)
+  expect(result.current.draftError).toBeUndefined()
+  expect(store.getState().isWorkflowDataLoaded).toBe(true)
 })
 
 it('treats a missing draft as an empty one without reporting it', async () => {

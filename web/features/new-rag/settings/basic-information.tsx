@@ -58,7 +58,9 @@ export function BasicInformationSection() {
     knowledgeSettingsValidationAtom,
   )
   const membersQuery = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: {},
+    }),
   )
   const [nameTouched, setNameTouched] = useState(false)
 

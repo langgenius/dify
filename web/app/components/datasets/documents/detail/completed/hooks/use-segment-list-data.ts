@@ -2,6 +2,7 @@ import type {
   ConsoleSegmentListResponse,
   SegmentResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentUpdater } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
@@ -32,6 +33,9 @@ type UseSegmentListDataOptions = {
 type UseSegmentListDataReturn = {
   segments: SegmentResponse[]
   isLoadingSegmentList: boolean
+  /** The page's query, for the owner that renders its failed first load to claim. */
+  segmentListLoadQuery: UseQueryResult<ConsoleSegmentListResponse>
+
   segmentListData: ConsoleSegmentListResponse | undefined
   totalText: string
   isFullDocMode: boolean
@@ -102,7 +106,8 @@ export const useSegmentListData = (
     })
   // Query key for optimistic updates
   const currentQueryKey = segmentListQuery.queryKey
-  const { isLoading: isLoadingSegmentList, data: segmentListData } = useQuery(segmentListQuery)
+  const segmentListLoadQuery = useQuery(segmentListQuery)
+  const { isLoading: isLoadingSegmentList, data: segmentListData } = segmentListLoadQuery
   // Derive segments from query data
   const segments = useMemo(() => segmentListData?.data || [], [segmentListData])
   const invalidSegmentList = useCallback(() => {
@@ -345,6 +350,8 @@ export const useSegmentListData = (
   return {
     segments,
     isLoadingSegmentList,
+    segmentListLoadQuery,
+
     segmentListData,
     totalText,
     isFullDocMode,

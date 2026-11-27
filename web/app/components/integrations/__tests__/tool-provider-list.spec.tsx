@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -377,6 +378,24 @@ it('waits for the builtin catalog before showing the empty state', async () => {
   expect(screen.queryByText('tools.noTools')).not.toBeInTheDocument()
   await act(async () => request.resolve([]))
   expect(await screen.findByText('tools.noTools')).toBeInTheDocument()
+})
+
+it('shows why the builtin catalog failed to load instead of the empty state, and retries it', async () => {
+  const user = userEvent.setup()
+  api.providers
+    .mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'Catalog unavailable' }),
+    )
+    .mockResolvedValueOnce(builtin)
+  renderProviderList({ pending: true })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Catalog unavailable')
+  expect(screen.queryByText('tools.noTools')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  expect(api.providers).toHaveBeenCalledTimes(2)
 })
 
 it('distinguishes an empty workflow catalog from a search with no matches', async () => {

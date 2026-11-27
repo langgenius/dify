@@ -24,6 +24,7 @@ const archiveRequests = vi.hoisted(() => ({
   delete: vi.fn(),
   prepareDownload: vi.fn(),
   download: vi.fn(),
+  features: vi.fn(),
 }))
 
 vi.mock('@/service/console/browser', () => ({
@@ -38,6 +39,8 @@ vi.mock('@/service/console/browser', () => ({
           return archiveRequests.prepareDownload(input)
         case 'workflowRunArchives.downloads.byDownloadId.get':
           return archiveRequests.download(input)
+        case 'features.get':
+          return archiveRequests.features(input)
         default:
           throw new Error(`Unexpected console request: ${path.join('.')}`)
       }
@@ -884,7 +887,42 @@ describe('WorkflowLogArchivesPage', () => {
       expect(within(errorRow).getByText('appLog.archives.error.title')).toBeInTheDocument()
       expect(within(errorRow).getByText('appLog.archives.error.description')).toBeInTheDocument()
       expect(screen.queryByText('appLog.archives.empty.title')).not.toBeInTheDocument()
-      expect(within(table).queryByRole('button')).not.toBeInTheDocument()
+      expect(within(errorRow).getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
+    })
+
+    it('retries a failed first archive load from the error row', async () => {
+      const user = userEvent.setup()
+      archiveRequests.list
+        .mockRejectedValueOnce(new Error('Archives unavailable'))
+        .mockResolvedValueOnce(archiveData)
+      renderPage(null)
+
+      const errorRow = await screen.findByRole('row', { name: /appLog\.archives\.error\.title/ })
+      await user.click(within(errorRow).getByRole('button', { name: 'common.operation.retry' }))
+
+      expect(await screen.findByRole('row', { name: /2025-03/ })).toBeInTheDocument()
+      expect(screen.queryByText('appLog.archives.error.title')).not.toBeInTheDocument()
+      expect(archiveRequests.list).toHaveBeenCalledTimes(2)
+    })
+
+    it('shows the error row instead of loading forever when the plan fails to load', async () => {
+      const user = userEvent.setup()
+      archiveRequests.features
+        .mockRejectedValueOnce(new Error('Features unavailable'))
+        .mockResolvedValueOnce({ billing: { subscription: { plan: 'professional' } } })
+      archiveRequests.list.mockResolvedValue(archiveData)
+      render(<WorkflowLogArchivesPage />, {
+        currentWorkspace: { role: 'owner' },
+        systemFeatures: { deployment_edition: 'CLOUD' },
+        features: null,
+      })
+
+      const errorRow = await screen.findByRole('row', { name: /appLog\.archives\.error\.title/ })
+      expect(screen.queryByText('appLog.archives.empty.title')).not.toBeInTheDocument()
+      await user.click(within(errorRow).getByRole('button', { name: 'common.operation.retry' }))
+
+      expect(await screen.findByRole('row', { name: /2025-03/ })).toBeInTheDocument()
+      expect(archiveRequests.features).toHaveBeenCalledTimes(2)
     })
 
     it('keeps a refresh error between the headers and retained archive rows', async () => {

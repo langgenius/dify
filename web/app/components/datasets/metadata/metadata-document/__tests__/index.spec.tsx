@@ -1,6 +1,7 @@
 import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import MetadataDocument from '../index'
@@ -10,7 +11,12 @@ const fields = [
   { id: '2', name: 'score', type: DataType.number, value: 42 },
 ]
 const builtin = { id: 'built-in', name: 'created_at', type: DataType.time, value: 1609459200 }
-const state = { embeddingAvailable: true, metadata: [...fields, builtin], builtInEnabled: true }
+const state = {
+  embeddingAvailable: true,
+  metadata: [...fields, builtin],
+  builtInEnabled: true,
+  metadataError: undefined as Error | undefined,
+}
 const save = vi.fn()
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -18,10 +24,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.byDocumentId.get': async () => ({
-        id: 'doc-1',
-        doc_metadata: state.metadata,
-      }),
+      'datasets.byDatasetId.documents.byDocumentId.get': async () => {
+        if (state.metadataError) throw state.metadataError
+        return { id: 'doc-1', doc_metadata: state.metadata }
+      },
       'datasets.byDatasetId.metadata.get': async () => ({
         built_in_field_enabled: state.builtInEnabled,
         doc_metadata: [],
@@ -51,10 +57,28 @@ beforeEach(() => {
   state.embeddingAvailable = true
   state.metadata = [...fields, builtin]
   state.builtInEnabled = true
+  state.metadataError = undefined
   save.mockReset().mockResolvedValue({ result: 'success' })
 })
 
 describe('Document metadata', () => {
+  it('shows a failed metadata load instead of an empty metadata list and retries it', async () => {
+    const user = userEvent.setup()
+    state.metadataError = createHttpError(new Response(null, { status: 503 }))
+    render(<MetadataDocument {...props} canEdit />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+    expect(
+      screen.queryByText('dataset.metadata.metadata', { exact: false }),
+    ).not.toBeInTheDocument()
+
+    state.metadataError = undefined
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('Original')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('edits and removes custom metadata while keeping builtin fields readonly', async () => {
     const user = userEvent.setup()
     render(<MetadataDocument {...props} canEdit />)

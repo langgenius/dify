@@ -13,6 +13,9 @@ export type EmbeddedChatbotContextValue = {
   appData: AppData | null
   appParams: ChatConfig | null
   appChatListDataLoading?: boolean
+  chatLoadError?: unknown
+  chatLoadRetrying?: boolean
+  retryChatLoad?: () => void
   currentConversationId: string
   currentConversationItem?: ConversationItem
   appPrevChatList: ChatItem[]

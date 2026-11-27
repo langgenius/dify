@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "تكوين بيانات اعتماد متعددة للنموذج واستدعاؤها تلقائيًا. ",
   "modelProvider.loadBalancingInfo": "بشكل افتراضي، تستخدم موازنة التحميل استراتيجية Round-robin. إذا تم تشغيل تحديد المعدل، فسيتم تطبيق فترة تباطؤ مدتها دقيقة واحدة.",
   "modelProvider.loadBalancingLeastKeyWarning": "لتمكين موازنة التحميل، يجب تمكين مفتاحين على الأقل.",
+  "modelProvider.loadFailed": "فشل التحميل. يرجى المحاولة مرة أخرى.",
   "modelProvider.loadPresets": "تحميل الإعدادات المسبقة",
   "modelProvider.model": "النموذج",
   "modelProvider.modelHasBeenDeprecated": "تم إهمال هذا النموذج",

@@ -2,6 +2,7 @@ import type { CustomActionsProps } from '@/app/components/base/form/components/f
 import * as React from 'react'
 import { useCallback } from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
 import { useConfigurations, useInitialData } from '../../../../../hooks/use-input-fields'
 import Actions from './actions'
 import { useInputVariables } from './hooks'
@@ -14,26 +15,33 @@ type DocumentProcessingProps = {
 }
 
 const DocumentProcessing = ({ dataSourceNodeId, onProcess, onBack }: DocumentProcessingProps) => {
-  const { isFetchingParams, paramsConfig } = useInputVariables(dataSourceNodeId)
+  const { isFetchingParams, paramsConfig, paramsLoadError } = useInputVariables(dataSourceNodeId)
   const initialData = useInitialData(paramsConfig?.variables || [])
   const configurations = useConfigurations(paramsConfig?.variables || [])
   const schema = generateZodSchema(configurations)
 
   const renderCustomActions = useCallback(
     (props: CustomActionsProps) => (
-      <Actions runDisabled={isFetchingParams} formParams={props} onBack={onBack} />
+      <Actions
+        runDisabled={isFetchingParams || !!paramsLoadError}
+        formParams={props}
+        onBack={onBack}
+      />
     ),
-    [isFetchingParams, onBack],
+    [isFetchingParams, onBack, paramsLoadError],
   )
 
   return (
-    <Options
-      initialData={initialData}
-      configurations={configurations}
-      schema={schema}
-      onSubmit={onProcess}
-      CustomActions={renderCustomActions}
-    />
+    <>
+      {paramsLoadError && <DatasetLoadErrorAlert className="mx-4 mt-3" {...paramsLoadError} />}
+      <Options
+        initialData={initialData}
+        configurations={configurations}
+        schema={schema}
+        onSubmit={onProcess}
+        CustomActions={renderCustomActions}
+      />
+    </>
   )
 }
 

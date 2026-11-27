@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { downloadUrl } from '@/utils/download'
 import { getFileIconType, hasFileDataPreview } from '@/utils/file-icon'
 import { AgentSkillDetailBody } from '../configuration/skills/detail-dialog'
@@ -244,7 +245,8 @@ export function AgentWorkingDirectoryPanel({
 const isNoActiveBindingError = (error: unknown) =>
   error instanceof ORPCError && error.defined && error.code === 'no_active_binding'
 
-// An expanded folder is reported through the query cache, which must not see the empty case.
+// An expanded folder's failed refresh is reported through the query cache, which must not see
+// the empty case.
 function withNoActiveBindingAsEmpty<TContext, TData, TOptions extends object>(
   options: TOptions & { queryFn: (context: TContext) => TData | Promise<TData> },
 ) {
@@ -316,6 +318,7 @@ function AgentWorkingDirectoryContent({
                 path: toSandboxApiPath(path),
               },
             },
+            // The file preview shows a failed listing, including a failed refresh.
             meta: { errorToast: false },
           },
         )
@@ -333,14 +336,22 @@ function AgentWorkingDirectoryContent({
     queries: loadedFolderPaths.map((path) => ({
       ...withNoActiveBindingAsEmpty(getFileListQueryOptions(path)),
       retry: false,
-      // A folder that fails to expand has no error slot in the tree, so the query cache reports it.
-      meta: undefined,
+      // A folder marks only a failed first load, claimed below; a failed refresh of a loaded
+      // folder is the query cache's to report, unlike the root listing's.
+      meta: {},
     })),
   })
+  useOwnedQueryErrors(expandedFolderQueries)
   const expandedFolders = expandedFolderQueries.map((query) => ({
     entries: query.data?.entries,
     isLoaded: query.isSuccess,
   }))
+  const failedFolderPaths = new Set(
+    loadedFolderPaths.filter(
+      (_path, index) =>
+        expandedFolderQueries[index]?.isError && expandedFolderQueries[index].data === undefined,
+    ),
+  )
   const workingDirectoryFiles = expandedFolders.reduce(
     (files, folder, index) => {
       return mergeSandboxFileTree(
@@ -376,6 +387,7 @@ function AgentWorkingDirectoryContent({
                 },
               }
             : skipToken,
+          // The file preview shows a failed read, including a failed refresh.
           meta: { errorToast: false },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
@@ -393,6 +405,7 @@ function AgentWorkingDirectoryContent({
                   },
                 }
               : skipToken,
+            // The file preview shows a failed read, including a failed refresh.
             meta: { errorToast: false },
           },
         )
@@ -641,6 +654,14 @@ function AgentWorkingDirectoryContent({
         onFolderOpenChange: ({ file, open }) => {
           if (loadingFolderPaths.has(file.id)) return
 
+          if (open && failedFolderPaths.has(file.id)) {
+            void expandedFolderQueries[loadedFolderPathIndexes.get(file.id)!]?.refetch()
+            setPendingOpenFolderPaths((paths) =>
+              paths.includes(file.id) ? paths : [...paths, file.id],
+            )
+            return
+          }
+
           if (open && !loadedFolderPaths.includes(file.id)) {
             setLoadedFolderPaths((paths) => [...paths, file.id])
             setPendingOpenFolderPaths((paths) =>
@@ -664,6 +685,10 @@ function AgentWorkingDirectoryContent({
           loadingFolderPaths.has(file.id) ? (
             <span className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary">
               <span className="sr-only">{tCommon(($) => $.loading)}</span>
+            </span>
+          ) : failedFolderPaths.has(file.id) ? (
+            <span className="ms-auto i-ri-error-warning-line size-4 shrink-0 text-text-destructive">
+              <span className="sr-only">{tCommon(($) => $.error)}</span>
             </span>
           ) : null,
         selectedFileId: selectedWorkingDirectoryFile?.id,

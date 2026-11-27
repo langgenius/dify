@@ -57,6 +57,8 @@ const EMPTY_IDS: readonly string[] = []
 type CommentThreadProps = {
   comment: Omit<WorkflowCommentDetail, 'replies'> & { replies: ThreadReply[] }
   loading?: boolean
+  /** Why the thread's replies could not load, with a retry; the comment itself still shows. */
+  loadError?: { message: string; onRetry: () => void }
   onDelete?: (commentId: string) => Promise<void> | void
   onResolve?: () => void
   onPrev?: () => void
@@ -262,6 +264,7 @@ type CommentThreadSessionProps = Pick<
   CommentThreadProps,
   | 'comment'
   | 'loading'
+  | 'loadError'
   | 'onCommentEdit'
   | 'savingIds'
   | 'deletingIds'
@@ -278,6 +281,7 @@ type CommentThreadSessionProps = Pick<
 function CommentThreadSession({
   comment,
   loading = false,
+  loadError,
   replyInputRef,
   onCommentEdit,
   savingIds = EMPTY_IDS,
@@ -449,6 +453,17 @@ function CommentThreadSession({
               }
             />
           ),
+        )}
+        {loadError && (
+          <div
+            role="alert"
+            className="flex items-center gap-1 px-3 py-1 system-xs-regular text-text-destructive"
+          >
+            <span className="min-w-0 wrap-break-word">{loadError.message}</span>
+            <Button size="small" variant="ghost" onClick={loadError.onRetry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
         )}
       </CommentThreadList>
       {onReply && (

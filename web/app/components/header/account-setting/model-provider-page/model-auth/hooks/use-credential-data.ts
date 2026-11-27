@@ -17,7 +17,7 @@ export const useCredentialData = (
     if (providerFormSchemaPredefined) return 'predefined-model'
     return 'custom-model'
   }, [providerFormSchemaPredefined])
-  const { isLoading, data: credentialData = {} } = useGetCredential(
+  const credentialQuery = useGetCredential(
     provider.provider,
     isModelCredential,
     credential?.credential_id,
@@ -25,8 +25,16 @@ export const useCredentialData = (
     configFrom,
   )
 
+  const { isLoading, data: credentialData = {} } = credentialQuery
+
   return {
     isLoading,
     credentialData,
+    // Only a failed first load leaves no credential to edit; a failed refetch keeps it.
+    loadError: credentialQuery.isError && !credentialQuery.data ? credentialQuery.error : undefined,
+    isRetrying: credentialQuery.isFetching,
+    retry: () => {
+      void credentialQuery.refetch()
+    },
   }
 }

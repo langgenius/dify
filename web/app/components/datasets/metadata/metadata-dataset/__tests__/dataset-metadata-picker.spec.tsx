@@ -1,8 +1,16 @@
 import type { MetadataItem } from '../../types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createHttpError } from '@/service/http-error'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import { DataType } from '../../types'
 import { DatasetMetadataPicker } from '../dataset-metadata-picker'
 
@@ -27,8 +35,15 @@ const metadataItems: MetadataItem[] = [
   { id: '3', name: 'field_three', type: DataType.time },
 ]
 
+const metadataLoadError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Metadata unavailable' },
+  )
+
 function renderDatasetMetadataPicker(
   overrides: Partial<React.ComponentProps<typeof DatasetMetadataPicker>> = {},
+  queryClient = createConsoleQueryClient(),
 ) {
   const props = {
     datasetId: 'dataset-1',
@@ -40,7 +55,7 @@ function renderDatasetMetadataPicker(
 
   return {
     props,
-    ...render(<DatasetMetadataPicker {...props} />),
+    ...render(<DatasetMetadataPicker {...props} />, { queryClient }),
   }
 }
 
@@ -48,6 +63,61 @@ describe('DatasetMetadataPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDatasetMetadataQuery.mockResolvedValue({ doc_metadata: metadataItems })
+  })
+
+  it('shows a failed metadata load with a retry instead of the empty state', async () => {
+    const user = userEvent.setup()
+    mockDatasetMetadataQuery
+      .mockRejectedValueOnce(apiError({ status: 503, message: 'Metadata unavailable' }))
+      .mockResolvedValue({ doc_metadata: metadataItems })
+    renderDatasetMetadataPicker()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+    expect(screen.queryByText('common.noData')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('option', { name: /field_one/ })).toBeInTheDocument()
+  })
+
+  describe('Load failure reporting', () => {
+    beforeEach(() => {
+      vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('reports a failed metadata load while the picker is closed, since nothing shows it', async () => {
+      mockDatasetMetadataQuery.mockImplementation(() => Promise.reject(metadataLoadError()))
+      renderDatasetMetadataPicker(
+        {},
+        createConsoleQueryClient({ caches: createErrorToastCaches() }),
+      )
+
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith('Metadata unavailable'),
+      )
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('shows a failed metadata load inline instead of reporting it while the picker is open', async () => {
+      const user = userEvent.setup()
+      const metadataResponse = createDeferred<never>()
+      mockDatasetMetadataQuery.mockImplementation(() => metadataResponse.promise)
+      renderDatasetMetadataPicker(
+        {},
+        createConsoleQueryClient({ caches: createErrorToastCaches() }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      metadataResponse.reject(metadataLoadError())
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+      // The cache reports after the render that follows the failure; let that window pass.
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      expect(toast.error).not.toHaveBeenCalled()
+    })
   })
 
   describe('Search', () => {

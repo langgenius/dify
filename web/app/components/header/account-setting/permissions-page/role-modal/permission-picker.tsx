@@ -16,11 +16,12 @@ const PermissionPicker = ({
   className,
   readonly = false,
 }: PermissionPickerProps) => {
-  const { groups } = useWorkspacePermissionGroups()
+  const { groups, loadError } = useWorkspacePermissionGroups()
 
   return (
     <PermissionGroupList
       groups={groups}
+      loadError={loadError}
       value={value}
       onChange={onChange}
       className={className}

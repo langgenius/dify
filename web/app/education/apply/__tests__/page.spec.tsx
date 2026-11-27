@@ -11,6 +11,7 @@ let mockConsoleState: Record<string, unknown> = {}
 const mockGetSubscription = vi.hoisted(() => vi.fn())
 const mockEducationAdd = vi.hoisted(() => vi.fn())
 const mockSwitchWorkspace = vi.hoisted(() => vi.fn())
+const mockGetWorkspaces = vi.hoisted(() => vi.fn())
 const mockWorkspaces = vi.hoisted(() => [
   {
     id: 'workspace-1',
@@ -61,7 +62,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       }),
       'account.education.post': mockEducationAdd,
       'account.education.get': async () => ({ is_student: true }),
-      'workspaces.get': async () => ({ workspaces: mockWorkspaces }),
+      'workspaces.get': mockGetWorkspaces,
       'workspaces.switch.post': mockSwitchWorkspace,
     }),
   }
@@ -96,6 +97,7 @@ describe('EducationApplyPage billing boundary', () => {
     vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
     mockGetSubscription.mockResolvedValue({ url: window.location.href })
     mockSwitchWorkspace.mockResolvedValue(undefined)
+    mockGetWorkspaces.mockResolvedValue({ workspaces: mockWorkspaces })
     vi.stubGlobal('location', {
       href: 'https://console.example.com/education/apply?token=education-token',
       reload: vi.fn(),
@@ -162,6 +164,24 @@ describe('EducationApplyPage billing boundary', () => {
       })
       expect(globalThis.location.reload).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('shows a failed workspace list load with a retry', async () => {
+    setupContext(true)
+    mockGetWorkspaces.mockRejectedValueOnce(
+      new ORPCError('internal_server_error', { status: 500, message: 'Backend text' }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('common.api.actionFailed')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(mockGetWorkspaces).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByRole('combobox'))
+    expect(await screen.findByRole('option', { name: /Workspace Two/ })).toBeInTheDocument()
   })
 
   it('disables workspace selection while switching and recovers after a failure', async () => {

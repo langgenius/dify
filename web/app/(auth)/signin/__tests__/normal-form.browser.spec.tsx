@@ -3,10 +3,12 @@ import type { DeepPartial } from '@/test/console/system-features'
 import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createHttpError } from '@/service/http-error'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import NormalForm from '../normal-form'
 
@@ -205,4 +207,39 @@ it('does not expose SSO when enforcement has no configured protocol', async () =
   await expect
     .element(screen.getByRole('button', { name: 'login.withSSO' }))
     .not.toBeInTheDocument()
+})
+
+it('shows a failed invitation check in place without a toast and retries it', async () => {
+  search = 'invite_token=invite-token'
+  const toastError = vi.spyOn(toast, 'error')
+  onTestFinished(() => toastError.mockRestore())
+  let failCheck = true
+  const fake = installFakeApi({
+    console: {
+      activate: {
+        check: {
+          get: () => {
+            if (failCheck)
+              throw apiError({ status: 500, code: 'check_unavailable', message: 'Down' })
+            return invitation
+          },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
+
+  const screen = await renderForm()
+  const alert = screen.getByRole('alert')
+  await expect.element(alert.getByText('common.api.actionFailed')).toBeVisible()
+  await expect.element(screen.getByText('login.noLoginMethod')).not.toBeInTheDocument()
+  expect(toastError).not.toHaveBeenCalled()
+
+  failCheck = false
+  await userEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await expect.element(alert).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('heading', { level: 1 }))
+    .toHaveTextContent('login.joinAcme')
+  expect(fake.console.activate.check.get).toHaveBeenCalledTimes(2)
 })

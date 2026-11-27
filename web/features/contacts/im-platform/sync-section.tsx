@@ -26,6 +26,7 @@ export function ContactImDirectorySyncSection({
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns
   const runQuery = useQuery(
     api.latest.get.queryOptions({
+      // Polled; the section shows a failed read, with retry, over the last known run.
       meta: { errorToast: false },
       retry: (count, error) => getHttpErrorStatus(error) !== 404 && count < 2,
       refetchInterval: ({ state }) =>

@@ -1,11 +1,24 @@
-import { act, screen } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEvaluationStore } from '../../store'
 import { buildEvaluationTemplateConfigPayload, buildResourceKey } from '../../store-utils'
 import ConditionsSection from '../conditions-section'
 import FixedMetricsSection from '../fixed-metrics-section'
+
+const getDefaultMetrics = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get': getDefaultMetrics,
+    }),
+  }
+})
 
 describe('agent evaluation metrics', () => {
   it('uses checkboxes for fixed metrics and makes a selected metric available to judgment conditions', async () => {
@@ -72,5 +85,33 @@ describe('agent evaluation metrics', () => {
     expect(taskCompletion).not.toBeChecked()
     expect(addCondition).toBeDisabled()
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed first metrics load with a retry instead of an empty list', async () => {
+    const user = userEvent.setup()
+    const agentId = 'agent-fixed-metrics-failed'
+    const nodeInfoList = [{ node_id: agentId, title: 'Research Agent', type: 'agent' }]
+    getDefaultMetrics
+      .mockReset()
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 500 }), { message: 'Metrics unavailable' }),
+      )
+      .mockResolvedValueOnce({
+        default_metrics: [
+          { metric: 'task_completion', value_type: 'number', node_info_list: nodeInfoList },
+        ],
+      })
+    const queryClient = createConsoleQueryClient()
+    act(() => useEvaluationStore.getState().ensureResource('agents', agentId))
+
+    renderWithConsoleQuery(<FixedMetricsSection resourceType="agents" resourceId={agentId} />, {
+      queryClient,
+    })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Metrics unavailable')
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('checkbox', { name: /Task Completion/ })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

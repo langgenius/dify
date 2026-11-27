@@ -10,14 +10,12 @@ type SearchForWhiteListCandidatesQuery = Omit<
   'pageNumber'
 >
 
-type UserCanAccessAppParams = {
-  appId?: string
-  isInstalledApp?: boolean
-  enabled?: boolean
-}
+type UserCanAccessAppParams = Parameters<typeof useGetUserCanAccessAppBase>[0]
 
-export const useAppWhiteListSubjects = (appId: string | undefined, enabled: boolean) => {
-  return useAppWhiteListSubjectsBase(appId, enabled)
+export const useAppWhiteListSubjects = (
+  ...args: Parameters<typeof useAppWhiteListSubjectsBase>
+) => {
+  return useAppWhiteListSubjectsBase(...args)
 }
 
 export const useSearchForWhiteListCandidates = (

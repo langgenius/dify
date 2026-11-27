@@ -25,6 +25,8 @@ import { useAtomValue } from 'jotai'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { canConfigureModelsAtom } from '../atoms'
 import { ModelTypeEnum } from '../declarations'
 import { ModelSelector } from '../model-selector'
@@ -82,17 +84,19 @@ export default function SystemModelSession() {
   const modelLabelId = useId()
   const modelTriggersRef = useRef<Partial<Record<ModelTypeEnum, HTMLButtonElement | null>>>({})
   const canConfigureModels = useAtomValue(canConfigureModelsAtom)
+  const textGenerationModelListQuery = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
-    useQuery(
-      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-        input: { params: { model_type: ModelTypeEnum.textGeneration } },
-        select: (response) => response.data,
-      }),
-    )
+    textGenerationModelListQuery
   const defaultModelQueries = useQueries({
     queries: systemModelTypes.map((modelType) =>
       consoleQuery.workspaces.current.defaultModel.get.queryOptions({
         input: { query: { model_type: modelType } },
+        // The session shows a failed refresh as its error state even over cached defaults.
         meta: { errorToast: false },
         refetchOnMount: 'always',
         refetchOnWindowFocus: false,
@@ -100,30 +104,36 @@ export default function SystemModelSession() {
       }),
     ),
   })
-  const { data: embeddingModelList = [], isPending: isEmbeddingModelListLoading } = useQuery(
+  const embeddingModelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textEmbedding } },
       select: (response) => response.data,
     }),
   )
-  const { data: rerankModelList = [], isPending: isRerankModelListLoading } = useQuery(
+  const { data: embeddingModelList = [], isPending: isEmbeddingModelListLoading } =
+    embeddingModelListQuery
+  const rerankModelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.rerank } },
       select: (response) => response.data,
     }),
   )
-  const { data: speech2textModelList = [], isPending: isSpeech2textModelListLoading } = useQuery(
+  const { data: rerankModelList = [], isPending: isRerankModelListLoading } = rerankModelListQuery
+  const speech2textModelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.speech2text } },
       select: (response) => response.data,
     }),
   )
-  const { data: ttsModelList = [], isPending: isTTSModelListLoading } = useQuery(
+  const { data: speech2textModelList = [], isPending: isSpeech2textModelListLoading } =
+    speech2textModelListQuery
+  const ttsModelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.tts } },
       select: (response) => response.data,
     }),
   )
+  const { data: ttsModelList = [], isPending: isTTSModelListLoading } = ttsModelListQuery
 
   // Start this mounted editing session only after every default has been refreshed.
   // Later cache updates must not replace the user's draft.
@@ -149,8 +159,24 @@ export default function SystemModelSession() {
   const failedDefaultModelQuery = !defaultModels
     ? defaultModelQueries.find((query) => query.isError && !query.isFetching)
     : undefined
+  // A model list that never loaded would otherwise look like a list without models.
+  const modelListLoad = useOwnedQueryErrors([
+    textGenerationModelListQuery,
+    embeddingModelListQuery,
+    rerankModelListQuery,
+    speech2textModelListQuery,
+    ttsModelListQuery,
+  ])
+  // A retrying model list shows the loading state.
+  const failedModelListError =
+    modelListLoad && !modelListLoad.retrying ? modelListLoad.error : undefined
+  const loadErrorMessage = useRequestErrorMessage(
+    failedDefaultModelQuery?.error ?? failedModelListError,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
+  )
   const isSystemModelLoading =
     !defaultModels ||
+    !!modelListLoad ||
     isTextGenerationModelListLoading ||
     isEmbeddingModelListLoading ||
     isRerankModelListLoading ||
@@ -245,10 +271,10 @@ export default function SystemModelSession() {
         />
       </DialogHeader>
       <DialogBody>
-        {failedDefaultModelQuery ? (
+        {loadErrorMessage ? (
           <div className="flex min-h-48 flex-col items-center justify-center gap-3">
             <p role="alert" className="text-sm text-text-destructive">
-              {failedDefaultModelQuery.error?.message || t(($) => $.error, { ns: 'common' })}
+              {loadErrorMessage}
             </p>
             <Button
               onClick={() => {
@@ -257,6 +283,7 @@ export default function SystemModelSession() {
                   .forEach((query) => {
                     void query.refetch()
                   })
+                modelListLoad?.retry()
               }}
             >
               {t(($) => $['operation.retry'], { ns: 'common' })}

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Reduzieren Sie den Druck mit mehreren Sätzen von Anmeldeinformationen.",
   "modelProvider.loadBalancingInfo": "Standardmäßig wird für den Lastenausgleich die Round-Robin-Strategie verwendet. Wenn die Ratenbegrenzung ausgelöst wird, wird eine Abklingzeit von 1 Minute angewendet.",
   "modelProvider.loadBalancingLeastKeyWarning": "Um den Lastausgleich zu aktivieren, müssen mindestens 2 Schlüssel aktiviert sein.",
+  "modelProvider.loadFailed": "Laden fehlgeschlagen. Bitte versuchen Sie es erneut.",
   "modelProvider.loadPresets": "Voreinstellungen laden",
   "modelProvider.model": "Modell",
   "modelProvider.modelHasBeenDeprecated": "Dieses Modell ist veraltet",

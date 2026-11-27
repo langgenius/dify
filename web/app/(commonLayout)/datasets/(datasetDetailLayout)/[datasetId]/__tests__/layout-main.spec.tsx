@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import {
@@ -207,6 +207,38 @@ describe('DatasetDetailLayout', () => {
         expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
       },
     )
+  })
+
+  describe('Load Errors', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('should show the load failure with a retry when dataset detail fails to load', async () => {
+      // The detail query retries other failures before giving up.
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      loadDataset.mockRejectedValue(createHttpError(new Response(null, { status: 400 })))
+
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Documents content</div>
+        </DatasetDetailLayout>,
+      )
+
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      expect(screen.queryByText('Documents content')).not.toBeInTheDocument()
+      expect(mockReplace).not.toHaveBeenCalled()
+
+      loadDataset.mockResolvedValue(
+        createDatasetFixture({ id: 'dataset-1', name: 'Dataset 1', provider: 'vendor' }),
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+      expect(await screen.findByText('Documents content')).toBeInTheDocument()
+      expect(loadDataset).toHaveBeenCalledTimes(5)
+    })
   })
 
   describe('Rendering', () => {

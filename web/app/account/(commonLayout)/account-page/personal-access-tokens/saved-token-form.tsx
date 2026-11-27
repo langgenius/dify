@@ -21,6 +21,7 @@ export default function SavedTokenForm({
   const [sessionVersion, setSessionVersion] = useState<number | null>(null)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
+      // The form shows a refetch failure above the saved values, and a first-load failure in place.
       meta: { errorToast: false },
       input: { params: { token_id: tokenId } },
     }),

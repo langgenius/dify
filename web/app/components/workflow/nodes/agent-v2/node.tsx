@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateNodeInternals } from 'reactflow'
 import AppIcon from '@/app/components/base/app-icon'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { NodeBranches } from '../_base/components/branch-list/node-branches'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
@@ -38,10 +40,12 @@ function AgentNodeModel({
   data,
   agent,
   isLoading,
+  loadErrorMessage,
 }: {
   data: AgentV2NodeType
   agent?: ReturnType<typeof useAgentRosterDetail>['data']
   isLoading: boolean
+  loadErrorMessage?: string
 }) {
   const { t } = useTranslation(['workflow', 'workflowAgent'])
   const isInlineAgent = hasInlineAgentBinding(data)
@@ -51,7 +55,7 @@ function AgentNodeModel({
   const role = isInlineAgent
     ? t(($) => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflowAgent' })
     : ''
-  const showPlaceholder = isLoading || (!isInlineAgent && !agent)
+  const showPlaceholder = !loadErrorMessage && (isLoading || (!isInlineAgent && !agent))
 
   return (
     <div className="flex flex-col gap-0.5 py-1">
@@ -66,7 +70,11 @@ function AgentNodeModel({
             <AgentNodeAvatar agent={agent} isInlineAgent={isInlineAgent} />
           )}
           <div className="flex min-w-0 flex-1 flex-col justify-center">
-            {showPlaceholder ? (
+            {loadErrorMessage ? (
+              <div role="alert" className="truncate system-xs-regular text-text-destructive">
+                {loadErrorMessage}
+              </div>
+            ) : showPlaceholder ? (
               <div aria-hidden className="flex flex-col gap-1.5 py-0.5">
                 <span className="h-2 w-20 rounded-xs bg-text-quaternary/20" />
                 <span className="h-2 w-14 rounded-xs bg-text-quaternary/15" />
@@ -98,6 +106,12 @@ export function AgentV2Node(props: NodeProps<AgentV2NodeType>) {
   const inlineAgentId =
     data.agent_binding?.binding_type === 'inline_agent' ? data.agent_binding.agent_id : undefined
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
+  // The node panel offers the retry; the canvas node only says the agent could not load.
+  const rosterAgentLoad = useOwnedQueryError(rosterAgentQuery)
+  const rosterAgentLoadErrorMessage = useRequestErrorMessage(
+    rosterAgentLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
   const isInlineAgentDetailLoading = isInlineAgent && !!inlineAgentId && inlineAgentQuery.isPending
 
@@ -108,6 +122,7 @@ export function AgentV2Node(props: NodeProps<AgentV2NodeType>) {
           data={data}
           agent={rosterAgentQuery.data}
           isLoading={isInlineAgentDetailLoading}
+          loadErrorMessage={rosterAgentLoadErrorMessage}
         />
         {data.agent_output_routes?.enabled && (
           <div className="px-3 pb-2">

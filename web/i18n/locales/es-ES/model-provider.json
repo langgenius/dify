@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Reduce la presión con múltiples conjuntos de credenciales.",
   "modelProvider.loadBalancingInfo": "Por defecto, el balanceo de carga usa la estrategia Round-robin. Si se activa el límite de velocidad, se aplicará un período de enfriamiento de 1 minuto.",
   "modelProvider.loadBalancingLeastKeyWarning": "Para habilitar el balanceo de carga se deben habilitar al menos 2 claves.",
+  "modelProvider.loadFailed": "Error al cargar. Inténtalo de nuevo.",
   "modelProvider.loadPresets": "Cargar Presets",
   "modelProvider.model": "Modelo",
   "modelProvider.modelHasBeenDeprecated": "Este modelo ha sido desaprobado",

@@ -7,6 +7,8 @@ import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { useDocumentContext } from '../context'
 import BatchAction from './common/batch-action'
 import { DrawerGroup } from './components/drawer-group'
@@ -111,6 +113,23 @@ const Completed: FC<ICompletedProps> = ({
     updateSegmentInCache: segmentListDataHook.updateSegmentInCache,
   })
 
+  // A failed first load must not look like a document without chunks.
+  const chunkListLoad = useOwnedQueryErrors(
+    segmentListDataHook.isFullDocMode
+      ? [segmentListDataHook.segmentListLoadQuery, childSegmentDataHook.childSegmentListLoadQuery]
+      : [segmentListDataHook.segmentListLoadQuery],
+  )
+  const chunkListLoadError = chunkListLoad && {
+    error: chunkListLoad.error,
+    retrying: chunkListLoad.retrying,
+    onRetry: chunkListLoad.retry,
+  }
+  const chunkListLoadErrorAlert = chunkListLoadError ? (
+    <div className="px-6 py-3">
+      <DatasetLoadErrorAlert {...chunkListLoadError} />
+    </div>
+  ) : null
+
   // Compute total for pagination
   const paginationTotal = useMemo(() => {
     if (segmentListDataHook.isFullDocMode)
@@ -150,22 +169,24 @@ const Completed: FC<ICompletedProps> = ({
     <SegmentListContext.Provider value={contextValue}>
       {/* Segment list */}
       {segmentListDataHook.isFullDocMode ? (
-        <FullDocModeContent
-          segments={segmentListDataHook.segments}
-          childSegments={childSegmentDataHook.childSegments}
-          isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
-          isLoadingChildSegmentList={childSegmentDataHook.isLoadingChildSegmentList}
-          currSegmentId={modalState.currSegment?.segInfo?.id}
-          onClickCard={modalState.onClickCard}
-          onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
-          handleInputChange={searchFilter.handleInputChange}
-          handleAddNewChildChunk={modalState.handleAddNewChildChunk}
-          onClickSlice={modalState.onClickSlice}
-          archived={archived}
-          childChunkTotal={childSegmentDataHook.childChunkListData?.total || 0}
-          inputValue={searchFilter.inputValue}
-          onClearFilter={searchFilter.onClearFilter}
-        />
+        (chunkListLoadErrorAlert ?? (
+          <FullDocModeContent
+            segments={segmentListDataHook.segments}
+            childSegments={childSegmentDataHook.childSegments}
+            isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
+            isLoadingChildSegmentList={childSegmentDataHook.isLoadingChildSegmentList}
+            currSegmentId={modalState.currSegment?.segInfo?.id}
+            onClickCard={modalState.onClickCard}
+            onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
+            handleInputChange={searchFilter.handleInputChange}
+            handleAddNewChildChunk={modalState.handleAddNewChildChunk}
+            onClickSlice={modalState.onClickSlice}
+            archived={archived}
+            childChunkTotal={childSegmentDataHook.childChunkListData?.total || 0}
+            inputValue={searchFilter.inputValue}
+            onClearFilter={searchFilter.onClearFilter}
+          />
+        ))
       ) : (
         <CheckboxGroup
           aria-label={t(($) => $['segment.chunk'], { ns: 'datasetDocuments' })}
@@ -188,20 +209,22 @@ const Completed: FC<ICompletedProps> = ({
             isCollapsed={modalState.isCollapsed}
             toggleCollapsed={modalState.toggleCollapsed}
           />
-          <GeneralModeContent
-            segmentListRef={segmentListDataHook.segmentListRef}
-            embeddingAvailable={embeddingAvailable}
-            isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
-            segments={segmentListDataHook.segments}
-            onChangeSwitch={segmentListDataHook.onChangeSwitch}
-            onDelete={segmentListDataHook.onDelete}
-            onClickCard={modalState.onClickCard}
-            archived={archived}
-            onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
-            handleAddNewChildChunk={modalState.handleAddNewChildChunk}
-            onClickSlice={modalState.onClickSlice}
-            onClearFilter={searchFilter.onClearFilter}
-          />
+          {chunkListLoadErrorAlert ?? (
+            <GeneralModeContent
+              segmentListRef={segmentListDataHook.segmentListRef}
+              embeddingAvailable={embeddingAvailable}
+              isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
+              segments={segmentListDataHook.segments}
+              onChangeSwitch={segmentListDataHook.onChangeSwitch}
+              onDelete={segmentListDataHook.onDelete}
+              onClickCard={modalState.onClickCard}
+              archived={archived}
+              onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
+              handleAddNewChildChunk={modalState.handleAddNewChildChunk}
+              onClickSlice={modalState.onClickSlice}
+              onClearFilter={searchFilter.onClearFilter}
+            />
+          )}
         </CheckboxGroup>
       )}
 

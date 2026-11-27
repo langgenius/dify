@@ -1,5 +1,7 @@
 import type { EvaluationRunResponse } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
 import type { EvaluationResourceProps } from '../../types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Pagination } from '@langgenius/dify-ui/pagination'
@@ -49,7 +51,7 @@ const formatCreatedAt = (createdAt: number | null | undefined, formatTime: Forma
 }
 
 const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation(['evaluation'])
+  const { t } = useTranslation(['evaluation', 'common'])
   const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp()
   const { data: membersData } = useQuery(
@@ -101,6 +103,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   }
   const total = logsQuery.data?.total ?? 0
   const isInitialLoading = logsQuery.isLoading && !logsQuery.data
+  const isLoadFailed = logsQuery.isError && !logsQuery.data
 
   useEffect(() => {
     if (hasResultsPreview || resource.selectedRunId) return
@@ -328,7 +331,21 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
               ))}
           </tbody>
         </table>
-        {!isInitialLoading && records.length === 0 && (
+        {isLoadFailed && (
+          <Alert type="error" className="mx-3 mt-4">
+            <AlertTitle>{describeRequestError(logsQuery.error)}</AlertTitle>
+            <AlertActions>
+              <Button
+                size="small"
+                loading={logsQuery.isFetching}
+                onClick={() => logsQuery.refetch()}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
+        {!isInitialLoading && !isLoadFailed && records.length === 0 && (
           <div className="mt-4 rounded-2xl border border-dashed border-divider-subtle px-4 py-10 text-center system-sm-regular text-text-tertiary">
             {t(($) => $['history.empty'])}
           </div>

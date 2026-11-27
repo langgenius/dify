@@ -153,6 +153,54 @@ describe('useInputFieldsActions', () => {
     expect(mocks.downloadTemplate).toHaveBeenCalledWith(configPayload)
   })
 
+  it('exposes a failed first template-columns load with a retry instead of an empty list', () => {
+    const error = new Error('columns unavailable')
+    const refetch = vi.fn()
+    mocks.templateColumnsQuery.mockReturnValue({
+      data: undefined,
+      error,
+      isError: true,
+      isFetching: false,
+      isPending: false,
+      refetch,
+    })
+    const { result } = renderHook(() =>
+      useInputFieldsActions({
+        isPanelReady: true,
+        isRunnable: true,
+        resourceId: 'app-1',
+        resourceType: 'apps',
+        templateFileName: 'evaluation-template.xlsx',
+      }),
+    )
+
+    expect(result.current.templateColumnsLoadError).toBe(error)
+    result.current.retryTemplateColumns()
+    expect(refetch).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the cached template columns when a refetch fails', () => {
+    mocks.templateColumnsQuery.mockReturnValue({
+      data: { columns: [{ name: 'Answer : expected_output', type: 'string' }] },
+      error: new Error('columns unavailable'),
+      isError: true,
+      isFetching: false,
+      isPending: false,
+    })
+    const { result } = renderHook(() =>
+      useInputFieldsActions({
+        isPanelReady: true,
+        isRunnable: true,
+        resourceId: 'app-1',
+        resourceType: 'apps',
+        templateFileName: 'evaluation-template.xlsx',
+      }),
+    )
+
+    expect(result.current.templateColumnsLoadError).toBeNull()
+    expect(result.current.templateColumns).toHaveLength(1)
+  })
+
   it('reports a failed template download with its translated failure, not the server text', async () => {
     mocks.downloadTemplate.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 404 }), {

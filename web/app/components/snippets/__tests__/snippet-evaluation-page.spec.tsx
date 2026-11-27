@@ -1,5 +1,6 @@
 import type { Snippet } from '@/types/snippet'
 import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SnippetEvaluationPage from '../snippet-evaluation-page'
 
@@ -82,5 +83,20 @@ describe('SnippetEvaluationPage', () => {
       expect(mockReplace).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')
     })
     expect(screen.queryByTestId('evaluation')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed load with a retry instead of loading forever', async () => {
+    const user = userEvent.setup()
+    mockGetSnippet.mockRejectedValueOnce(new Error('network'))
+
+    renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />, {
+      features: { evaluation_enabled: true },
+    })
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(await screen.findByTestId('evaluation')).toHaveTextContent('snippet-1')
+    expect(mockGetSnippet).toHaveBeenCalledTimes(2)
   })
 })

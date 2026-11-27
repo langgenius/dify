@@ -9,6 +9,7 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { RETRIEVE_METHOD } from '@/types/app'
 
 export const IndexingType = {
@@ -52,22 +53,48 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
     currentModel: isRerankDefaultModelValid,
+    loadQueries: rerankLoadQueries,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
-
-  // Embedding model list
-  const { data: embeddingModelList = [] } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
-      select: (response) => response.data,
-    }),
-  )
-  const { data: defaultEmbeddingModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   // Index type state
   const [indexType, setIndexType] = useState<IndexingType>(() => {
     if (initialIndexType) return initialIndexType
     return isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL
   })
+
+  // Embedding model list
+  const embeddingModelListQuery = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+      select: (response) => response.data,
+    }),
+  )
+  const { data: embeddingModelList = [] } = embeddingModelListQuery
+  // The only caller renders these load errors, so claiming them here keeps them off the toasts.
+  // A failed first load leaves no embedding model to pick; a failed refetch keeps the cached list.
+  // Both render only in the high-quality settings, so they are claimed only while those show.
+  const showsModelSettings = indexType === IndexingType.QUALIFIED
+  const embeddingModelListLoad = useOwnedQueryErrors(
+    showsModelSettings ? [embeddingModelListQuery] : [],
+  )
+  const embeddingModelLoadError = embeddingModelListLoad && {
+    error: embeddingModelListLoad.error,
+    retrying: embeddingModelListLoad.retrying,
+    onRetry: embeddingModelListLoad.retry,
+  }
+  const { data: defaultEmbeddingModel, query: defaultEmbeddingModelQuery } = useDefaultModel(
+    ModelTypeEnum.textEmbedding,
+  )
+  // The rerank models and the default models seed the retrieval and embedding settings; a failed
+  // first load would otherwise look like no rerank model and no default to start from.
+  const modelDefaultsLoad = useOwnedQueryErrors(
+    showsModelSettings ? [...rerankLoadQueries, defaultEmbeddingModelQuery] : [],
+  )
+  const modelDefaultsLoadError = modelDefaultsLoad && {
+    error: modelDefaultsLoad.error,
+    retrying: modelDefaultsLoad.retrying,
+    onRetry: modelDefaultsLoad.retry,
+  }
 
   // Embedding model state
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
@@ -136,6 +163,8 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
     embeddingModel,
     setEmbeddingModel,
     embeddingModelList,
+    embeddingModelLoadError,
+    modelDefaultsLoadError,
     defaultEmbeddingModel,
 
     // Retrieval config

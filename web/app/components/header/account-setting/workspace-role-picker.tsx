@@ -3,6 +3,7 @@
 import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
 import type { Ref } from 'react'
 import type { Role } from '@/models/access-control'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -18,6 +19,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import {
   createSelectedRolePlaceholder,
   workspaceRoleListInfiniteOptions,
@@ -66,21 +69,14 @@ const WorkspaceRolePicker = ({
   onSelectedRolesChange,
   includeOwner = false,
 }: WorkspaceRolePickerProps) => {
-  const { t } = useTranslation(['permission', 'workspaceMembers'])
+  const { t } = useTranslation(['common', 'permission', 'workspaceMembers'])
   const locale = useLocale()
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-  const {
-    data: rolesData,
-    isLoading: rolesLoading,
-    error,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  } = useInfiniteQuery(
+  const rolesQuery = useInfiniteQuery(
     workspaceRoleListInfiniteOptions({
       page: 1,
       limit: PAGE_SIZE,
@@ -88,6 +84,15 @@ const WorkspaceRolePicker = ({
       language,
     }),
   )
+  const {
+    data: rolesData,
+    isLoading: rolesLoading,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = rolesQuery
+  const rolesLoad = useOwnedQueryError(rolesQuery)
 
   useEffect(() => {
     const hasMore = hasNextPage ?? true
@@ -144,11 +149,14 @@ const WorkspaceRolePicker = ({
     )
   }, [roles, keyword])
 
+  const rolesLoadErrorMessage = useRequestErrorMessage(
+    rolesLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const statusMessage = rolesLoading
     ? t(($) => $['role.loading'], { ns: 'permission' })
-    : filteredRoles.length === 0
-      ? t(($) => $['role.noMatchingRoles'], { ns: 'permission' })
-      : ''
+    : (rolesLoadErrorMessage ??
+      (filteredRoles.length === 0 ? t(($) => $['role.noMatchingRoles'], { ns: 'permission' }) : ''))
 
   const getRoleDescription = (role: Role) => {
     if (role.description) return role.description
@@ -212,9 +220,22 @@ const WorkspaceRolePicker = ({
       </div>
 
       <DialogBody ref={containerRef} className="overscroll-contain">
-        <ComboboxStatus className={cn('p-0', statusMessage && 'px-3 py-6 text-center')}>
+        <ComboboxStatus
+          className={cn(
+            'p-0',
+            statusMessage && 'px-3 py-6 text-center',
+            rolesLoad && 'text-text-destructive',
+          )}
+        >
           {statusMessage}
         </ComboboxStatus>
+        {rolesLoad && (
+          <div className="flex justify-center pb-6">
+            <Button size="small" loading={rolesLoad.retrying} onClick={rolesLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
         <ComboboxList<Role>
           aria-label={t(($) => $['role.workspaceRoles.title'], { ns: 'permission' })}
           className="flex max-h-none flex-col gap-0.5 overflow-visible p-0"

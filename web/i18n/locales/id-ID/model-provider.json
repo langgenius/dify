@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Konfigurasikan beberapa kredensial untuk model dan panggil secara otomatis.",
   "modelProvider.loadBalancingInfo": "Secara default, penyeimbangan beban menggunakan strategi Round-robin. Jika pembatasan kecepatan dipicu, periode cooldown 1 menit akan diterapkan.",
   "modelProvider.loadBalancingLeastKeyWarning": "Untuk mengaktifkan penyeimbangan beban, setidaknya 2 tombol harus diaktifkan.",
+  "modelProvider.loadFailed": "Gagal memuat. Silakan coba lagi.",
   "modelProvider.loadPresets": "Muat Preset",
   "modelProvider.model": "Pola",
   "modelProvider.modelHasBeenDeprecated": "Model ini tidak digunakan lagi",

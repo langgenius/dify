@@ -128,7 +128,7 @@ describe('KnowledgeRetrievalV2Panel', () => {
     })
   })
 
-  it('reports metadata fields that fail to load instead of showing an empty filter', async () => {
+  it('shows metadata fields that fail to load inline with a retry, without a toast', async () => {
     const errorToast = vi.spyOn(toast, 'error')
     service.listMetadata.mockRejectedValue(
       createHttpError(
@@ -146,7 +146,13 @@ describe('KnowledgeRetrievalV2Panel', () => {
     queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
     renderNodePanel(Panel, nodeData(), { queryClient })
 
-    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Metadata unavailable'))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(errorToast).not.toHaveBeenCalled()
+
+    service.listMetadata.mockResolvedValue({ data: [], next_cursor: null })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(errorToast).not.toHaveBeenCalled()
   })
 
   it('lists the selected spaces by name and routes recall changes to the node config', async () => {

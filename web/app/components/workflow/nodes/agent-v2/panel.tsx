@@ -26,6 +26,8 @@ import { useStore } from '@/app/components/workflow/store'
 import { AgentRosterConfigurationPanel } from '@/features/agent-v2/agent-editor/roster-panel'
 import { WorkflowInlineAgentEditor } from '@/features/agent-v2/agent-editor/workflow-panel'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentOutputRoutes } from './components/agent-output-routes'
@@ -120,7 +122,7 @@ function FloatingOutputEditor({
 }
 
 export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation(['workflowAgent', 'agentRoster'])
+  const { t } = useTranslation(['workflowAgent', 'agentRoster', 'workflow'])
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
   const promptOutputNamesRef = useRefWithInit(extractAgentOutputNames, inputs.agent_task || '')
@@ -176,6 +178,12 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       : sourceInlineAgentId
   const isInlineAgentCreated = isInlineAgentReady && !!inlineAgent
   const isInlineAgentLoadError = isInlineAgentReady && inlineAgentQuery.isError
+  // A failed refetch keeps the cached roster agent; only a failed first load has none to show.
+  const rosterAgentLoad = useOwnedQueryError(rosterAgentQuery)
+  const rosterAgentLoadErrorMessage = useRequestErrorMessage(
+    rosterAgentLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
   const isInlineAgentWaitingForCreation =
     isInlineAgentReady && !isInlineAgentCreated && !isInlineAgentLoadError
   const isInlineAgentPanelOpen =
@@ -669,14 +677,16 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           errorMessage={
             isInlineAgentLoadError
               ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' })
-              : undefined
+              : rosterAgentLoadErrorMessage
           }
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}
           isLoading={isInlineAgentLoading}
           isPanelCopyPending={isCopyingFromRoster}
           isPanelOpen={isAgentPanelOpen}
           isPending={isAgentBindingPending}
-          isRetrying={isInlineAgentLoadError && inlineAgentQuery.isFetching}
+          isRetrying={
+            isInlineAgentLoadError ? inlineAgentQuery.isFetching : !!rosterAgentLoad?.retrying
+          }
           panelBody={
             isAgentPanelOpen && displayedAgent ? (
               isInlineAgentReady || isInlineAgentPending ? (
@@ -711,7 +721,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onChange={handleRosterChange}
           onMakeCopy={rosterAgentId ? handleMakeRosterCopy : undefined}
           onPanelOpenChange={handleAgentPanelOpenChange}
-          onRetry={isInlineAgentLoadError ? () => void inlineAgentQuery.refetch() : undefined}
+          onRetry={
+            isInlineAgentLoadError ? () => void inlineAgentQuery.refetch() : rosterAgentLoad?.retry
+          }
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />

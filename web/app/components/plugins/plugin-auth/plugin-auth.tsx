@@ -8,9 +8,11 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import { usePluginAuth } from './hooks/use-plugin-auth'
+import PluginAuthLoadError from './load-error'
 import { AuthCategory } from './types'
 
 type PluginAuthProps = {
@@ -29,7 +31,9 @@ const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => 
     credentials,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
+    credentialInfoQuery,
   } = usePluginAuth(pluginPayload, !!pluginPayload.provider)
+  const credentialInfoLoad = useOwnedQueryError(credentialInfoQuery)
   const showPermissionHint =
     !isAuthorized &&
     !canCreateCredential &&
@@ -45,6 +49,18 @@ const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => 
       notAllowCustomCredential={notAllowCustomCredential}
     />
   )
+
+  if (credentialInfoLoad) {
+    return (
+      <div className={className}>
+        <PluginAuthLoadError
+          error={credentialInfoLoad.error}
+          isRetrying={credentialInfoLoad.retrying}
+          onRetry={credentialInfoLoad.retry}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className={cn(!isAuthorized && className)}>

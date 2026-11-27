@@ -204,6 +204,20 @@ it('creates an annotation from the empty page and displays the saved record', as
   })
 })
 
+it('shows a failed first load of annotations with a retry instead of the empty page', async () => {
+  const loadPage = api.list.getMockImplementation()!
+  api.list.mockRejectedValueOnce(new Error('Offline'))
+  const user = setup()
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('common.api.actionFailed')
+  expect(screen.queryByText('appAnnotation.noData.title')).not.toBeInTheDocument()
+  annotations = [item]
+  api.list.mockImplementation(loadPage)
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('checkbox', { name: 'Question 1' })).toBeVisible()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
 it('removes a row after confirmation and refreshes the empty state', async () => {
   annotations = [item]
   const user = setup()

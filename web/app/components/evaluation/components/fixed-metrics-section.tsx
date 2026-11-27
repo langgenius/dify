@@ -1,8 +1,12 @@
 'use client'
 
 import type { MetricOption } from '../types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useDatasetEvaluationMetrics, useDefaultEvaluationMetrics } from '../queries'
 import { useEvaluationResource, useEvaluationStore } from '../store'
 import { isBuiltinMetricSupportedByFramework } from '../store-utils'
@@ -19,21 +23,27 @@ type FixedMetricsSectionProps = {
 }
 
 const FixedMetricsSection = ({ resourceType, resourceId }: FixedMetricsSectionProps) => {
-  const { t } = useTranslation(['evaluation'])
+  const { t } = useTranslation(['evaluation', 'common'])
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
   const resource = useEvaluationResource(resourceType, resourceId)
-  const { data: datasetMetricsData } = useDatasetEvaluationMetrics(
+  const datasetMetricsQuery = useDatasetEvaluationMetrics(
     resourceId,
     resource.evaluationFramework,
     resourceType === 'datasets',
   )
-  const { data: agentMetricsData } = useDefaultEvaluationMetrics(
+  const { data: datasetMetricsData } = datasetMetricsQuery
+  const agentMetricsQuery = useDefaultEvaluationMetrics(
     'agents',
     resourceId,
     resource.evaluationFramework,
     resourceType === 'agents',
   )
+  const { data: agentMetricsData } = agentMetricsQuery
+  // The list of metrics to choose from comes from this read; a failed first load is not "none".
+  const metricsQuery = resourceType === 'datasets' ? datasetMetricsQuery : agentMetricsQuery
+  const metricsLoad = useOwnedQueryError(metricsQuery)
+  const metricsLoadErrorMessage = useRequestErrorMessage(metricsLoad?.error)
   const builtinMetricMap = useMemo(
     () =>
       new Map(
@@ -126,6 +136,16 @@ const FixedMetricsSection = ({ resourceType, resourceId }: FixedMetricsSectionPr
       />
       <div className="mt-1 space-y-1">
         <UnsupportedMetricsWarning resourceType={resourceType} resourceId={resourceId} />
+        {metricsLoad && metricsLoadErrorMessage && (
+          <Alert type="error">
+            <AlertTitle>{metricsLoadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={metricsLoad.retrying} onClick={metricsLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
         {availableBuiltinMetrics.map((metric) => {
           const selectedMetric = builtinMetricMap.get(metric.id)
 

@@ -125,13 +125,27 @@ it('shows a failed execution consistently in its summary and metadata', async ()
   await expect.element(screen.getByText('Success')).not.toBeInTheDocument()
 })
 
-it('removes loading and reports the service error', async () => {
-  fake.console.apps.byAppId.agent.logs.get.mockRejectedValue(
+it('replaces loading with the service error in place and retries the load', async () => {
+  fake.console.apps.byAppId.agent.logs.get.mockRejectedValueOnce(
     apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'API Error' }),
   )
-  const { screen } = await renderDetail()
-  await expect.element(screen.getByRole('dialog', { name: 'API Error' })).toBeVisible()
+  // The modal gives the detail its height; the content area scrolls inside it.
+  const { screen } = await renderAgentLog(
+    <div className="flex h-150 flex-col">
+      <AgentLogDetail appId={appId} conversationID="conv-id" messageID="msg-id" log={log} />
+    </div>,
+  )
+  await expect.element(screen.getByRole('alert').filter({ hasText: 'API Error' })).toBeVisible()
   await expect.element(screen.getByRole('progressbar')).not.toBeInTheDocument()
+  // The failure is shown in place, never as a toast.
+  await expect.element(screen.getByRole('dialog', { name: 'API Error' })).not.toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+  await expect.element(screen.getByText('Success')).toBeVisible()
+  await expect
+    .element(screen.getByRole('alert').filter({ hasText: 'API Error' }))
+    .not.toBeInTheDocument()
 })
 
 it('summarizes empty and repeated trace data from the service response', async () => {

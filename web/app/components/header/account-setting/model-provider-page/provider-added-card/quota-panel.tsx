@@ -3,6 +3,7 @@ import type { FC, MouseEvent } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { PluginManifestInMarket } from '@/app/components/plugins/types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -20,6 +21,8 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { fetchManifestFromMarketPlace, fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import {
@@ -93,13 +96,20 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     isLoading,
     exhaustedAt,
     nextCreditResetDate,
+    query: trialCreditsQuery,
   } = useTrialCredits()
   const isCloud = deploymentEdition === 'CLOUD'
-  const { data: trialModels = [], isPending: isTrialModelsPending } = useQuery(
+  const trialModelsQuery = useQuery(
     consoleQuery.trialModels.get.queryOptions({
       enabled: isCloud,
       select: (data) => data.trial_models,
     }),
+  )
+  const { data: trialModels = [], isPending: isTrialModelsPending } = trialModelsQuery
+  const quotaLoad = useOwnedQueryErrors([trialCreditsQuery, trialModelsQuery])
+  const quotaErrorMessage = useRequestErrorMessage(
+    quotaLoad?.error,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
   )
   const providerMap = useMemo(
     () => new Map(providers.map((p) => [p.provider, p.preferred_provider_type])),
@@ -176,6 +186,36 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       .filter(Boolean)
       .join(', '),
   })
+
+  if (quotaLoad) {
+    return (
+      <div className="relative h-16 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default ps-4 pe-2.5 pt-3 pb-2.5 shadow-xs">
+        <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
+        <div className="relative">
+          <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['modelProvider.quotaLabel'], { ns: 'modelProvider' })}
+          </div>
+          <div className="flex h-6 items-center justify-between gap-3">
+            <span
+              role="alert"
+              title={quotaErrorMessage}
+              className="min-w-0 truncate system-sm-regular text-text-destructive"
+            >
+              {quotaErrorMessage}
+            </span>
+            <Button
+              size="small"
+              className="shrink-0"
+              loading={quotaLoad.retrying}
+              onClick={quotaLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading || (isCloud && isTrialModelsPending)) {
     return (

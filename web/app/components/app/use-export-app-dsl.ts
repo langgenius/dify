@@ -10,6 +10,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { rethrowHandled } from '@/service/handled-error'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -48,12 +49,14 @@ async function getSecretEnvironmentVariables(
     ? await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get(input, {
         signal,
       })
-    : await queryClient.query(
-        consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
-          input,
-          meta: { errorToast: false },
-        }),
-      )
+    : // The export action reports a failed read with its own text.
+      await queryClient
+        .query(
+          consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
+            input,
+          }),
+        )
+        .catch(rethrowHandled)
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
 }
 
@@ -81,12 +84,10 @@ export async function exportAppDslFile(
   }
   const response = signal
     ? await consoleClient.apps.byAppId.export.get(input, { signal })
-    : await queryClient.query(
-        consoleQuery.apps.byAppId.export.get.queryOptions({
-          input,
-          meta: { errorToast: false },
-        }),
-      )
+    : // The export action reports a failed read with its own text.
+      await queryClient
+        .query(consoleQuery.apps.byAppId.export.get.queryOptions({ input }))
+        .catch(rethrowHandled)
 
   signal?.throwIfAborted()
   if (response instanceof Blob) {

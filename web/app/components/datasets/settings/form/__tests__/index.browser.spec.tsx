@@ -75,7 +75,10 @@ let fake: ReturnType<typeof installDatasetApi>
 
 async function setup(
   overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
-  { fileScanEnabled = false }: { fileScanEnabled?: boolean } = {},
+  {
+    fileScanEnabled = false,
+    beforeRender,
+  }: { fileScanEnabled?: boolean; beforeRender?: () => void } = {},
 ) {
   const dataset = createDatasetFixture({
     id: TEST_DATASET_ID,
@@ -84,6 +87,7 @@ async function setup(
   })
   fake = installDatasetApi(dataset)
   onTestFinished(fake)
+  beforeRender?.()
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     accountProfile: { id: 'user-1', name: 'Current User' },
     workspacePermissionKeys: [],
@@ -162,6 +166,28 @@ it('saves edited basic information once while pending and refreshes the dataset 
   await expect.element(screen.getByText('Modified successfully')).toBeVisible()
   await expect.poll(() => document.title).toContain('Updated Dataset')
   await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')
+})
+
+it('shows a failed member list load above the form and retries it', async () => {
+  let restoreMembers = () => {}
+  const screen = await setup(
+    {},
+    {
+      beforeRender: () => {
+        const members = fake.console.workspaces.current.members.get
+        const loadMembers = members.getMockImplementation()!
+        members.mockRejectedValue(apiError({ status: 503, message: 'Members unavailable' }))
+        restoreMembers = () => members.mockImplementation(loadMembers)
+      },
+    },
+  )
+
+  const alert = screen.getByRole('alert')
+  await expect.element(alert).toBeVisible()
+  restoreMembers()
+  await alert.getByRole('button', { name: 'Retry', exact: true }).click()
+
+  await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
 })
 
 it('rejects a blank name without submitting', async () => {

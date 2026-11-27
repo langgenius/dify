@@ -115,6 +115,7 @@ export function IpPolicyForm({
     consoleQuery.workspaces.current.networkAccessGroups.currentIp.get.queryOptions({
       enabled: mode !== 'view' && currentIp === undefined,
       retry: false,
+      // The allowlist field shows a failed lookup, with retry, until one succeeds.
       meta: { errorToast: false },
     }),
   )

@@ -4,6 +4,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createElement } from 'react'
 import { useNodes } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { createNode } from '../../__tests__/fixtures'
 import {
   renderWorkflowFlowComponent,
@@ -174,8 +175,8 @@ describe('useAutoGenerateWebhookUrl', () => {
     expect(mockRequest).not.toHaveBeenCalled()
   })
 
-  it('leaves failed URL generation retryable', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('reports a failed URL generation and leaves it retryable', async () => {
+    const toastSpy = vi.spyOn(toast, 'error').mockImplementation(() => '')
     mockRequest.mockRejectedValue(new Error('network error'))
 
     const { result } = renderAutoGenerateWebhookUrlHook()
@@ -184,10 +185,8 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('webhook-1')
     })
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Failed to auto-generate webhook URL:',
-      expect.any(Error),
-    )
+    // The cache leaves a network failure to the caller, which reports it once.
+    expect(toastSpy).toHaveBeenCalledTimes(1)
     const webhookNode = result.current.nodes.find((node) => node.id === 'webhook-1') as
       | WebhookFlowNode
       | undefined
@@ -202,6 +201,6 @@ describe('useAutoGenerateWebhookUrl', () => {
     expect(result.current.nodes.find((node) => node.id === 'webhook-1')?.data.webhook_url).toBe(
       'https://example.com/retry',
     )
-    consoleSpy.mockRestore()
+    toastSpy.mockRestore()
   })
 })

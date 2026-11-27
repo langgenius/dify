@@ -155,6 +155,26 @@ it('requests a separate locale and falls back from a category absent in the new 
   expect(queryClient.getQueryData(catalogKey('zh-Hans'))).toEqual(chinese)
 })
 
+it('shows a failed catalog load with a retry instead of an empty template list', async () => {
+  const user = userEvent.setup()
+  let fails = true
+  request.mockImplementation(async () =>
+    fails
+      ? Response.json({ message: 'Catalog unavailable' }, { status: 500 })
+      : Response.json(catalog),
+  )
+  render(<Apps />, {
+    queryClient: createConsoleQueryClient(),
+    workspacePermissionKeys: ['app.create_and_management'],
+  })
+  const alert = await screen.findByRole('alert')
+  expect(screen.queryByText('app.newApp.noTemplateFound')).not.toBeInTheDocument()
+  fails = false
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByTitle('Alpha')).toBeInTheDocument()
+  expect(alert).not.toBeInTheDocument()
+})
+
 it('combines real type selection with debounced case-insensitive search and restores focus on clear', async () => {
   const user = userEvent.setup()
   renderApps()

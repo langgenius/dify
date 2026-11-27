@@ -13,6 +13,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
   const [now] = useState(Date.now)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
+      // The dialog shows any failure with a retry, also over the loaded details.
       meta: { errorToast: false },
       input: { params: { token_id: tokenId } },
     }),

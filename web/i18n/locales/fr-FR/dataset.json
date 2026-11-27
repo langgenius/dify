@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ÉCO",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "Connaissance",
+  "loadError": "Impossible de charger les données. Réessayez.",
   "metadata.addMetadata": "Ajouter des métadonnées",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Appliquer à tous les documents sélectionnés",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Créez automatiquement toutes les métadonnées modifiées et nouvelles pour tous les documents sélectionnés, sinon l'édition des métadonnées ne s'appliquera qu'aux documents qui en ont.",

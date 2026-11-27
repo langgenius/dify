@@ -1,6 +1,7 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -21,6 +22,8 @@ import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getAvatarInitial } from '@/utils/avatar'
 import { toRole } from '../../workspace-role-list-query'
 import { AssignRolesContent } from '../assign-roles-content'
@@ -46,11 +49,17 @@ export const MemberDetailsContent = memo(
     const [assignOpen, setAssignOpen] = useState(false)
     const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-    const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useQuery(
+    const rolesOfMemberQuery = useQuery(
       consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.queryOptions({
         input: { params: { member_id: member.id }, query: { language } },
         select: (data) => ({ ...data, roles: (data.roles ?? []).map(toRole) }),
       }),
+    )
+    const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = rolesOfMemberQuery
+    const rolesLoad = useOwnedQueryError(rolesOfMemberQuery)
+    const rolesLoadErrorMessage = useRequestErrorMessage(
+      rolesLoad?.error,
+      t(($) => $['api.actionFailed'], { ns: 'common' }),
     )
     const [pendingRoles, setPendingRoles] = useState<Role[]>()
 
@@ -140,7 +149,7 @@ export const MemberDetailsContent = memo(
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 system-sm-semibold text-text-secondary">
               <span>{assignedRolesLabel}</span>
-              {!isLoadingRolesOfMember && (
+              {!isLoadingRolesOfMember && !rolesLoad && (
                 <span className="system-xs-medium text-text-tertiary">
                   {selectedRoleIds.length}
                 </span>
@@ -177,6 +186,15 @@ export const MemberDetailsContent = memo(
             <div className="mt-4">
               <LoadingPlaceholder />
             </div>
+          ) : rolesLoad ? (
+            <Alert type="error" className="mt-4">
+              <AlertTitle>{rolesLoadErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={rolesLoad.retrying} onClick={rolesLoad.retry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
           ) : (
             <>
               {builtinRoles.length > 0 && (

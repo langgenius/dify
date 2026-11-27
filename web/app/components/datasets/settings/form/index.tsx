@@ -3,6 +3,7 @@ import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/ap
 import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { FileScanSetting } from '@/features/file-scan/file-scan-setting'
@@ -24,6 +25,7 @@ const DatasetSettingsForm = ({
 
     // Loading state
     loading,
+    loadError,
 
     // Basic form
     name,
@@ -96,6 +98,7 @@ const DatasetSettingsForm = ({
 
   return (
     <div className="flex w-full max-w-240 flex-col gap-y-4 px-4 py-8 @3xl/settings:px-20">
+      {loadError && <DatasetLoadErrorAlert {...loadError} />}
       <BasicInfoSection
         currentDataset={currentDataset}
         name={name}

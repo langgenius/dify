@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
@@ -78,6 +79,12 @@ export const useInputFieldsActions = ({
   const isTemplateColumnsLoading =
     resourceType !== 'datasets' &&
     (templateColumnsQuery.isPending || templateColumnsQuery.isFetching)
+  // A failed first load is not "no input fields"; the run cannot be prepared without them. The
+  // input fields tab renders it in place of the requirements, so it is claimed here.
+  const templateColumnsLoad = useOwnedQueryErrors(
+    resourceType !== 'datasets' ? [templateColumnsQuery] : [],
+  )
+  const templateColumnsLoadError = templateColumnsLoad?.error ?? null
   const templateColumns =
     resourceType === 'datasets'
       ? DATASET_TEMPLATE_FIELDS
@@ -175,6 +182,11 @@ export const useInputFieldsActions = ({
     isRunning,
     isRunDisabled,
     isTemplateColumnsLoading,
+    isTemplateColumnsRetrying: templateColumnsLoad?.retrying ?? false,
+    retryTemplateColumns: () => {
+      templateColumnsLoad?.retry()
+    },
+    templateColumnsLoadError,
     isUploadPopoverOpen,
     setIsUploadPopoverOpen,
     templateColumns,

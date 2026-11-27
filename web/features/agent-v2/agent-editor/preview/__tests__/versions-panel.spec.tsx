@@ -19,6 +19,7 @@ const exportState = vi.hoisted(() => ({
   plan: 'professional' as 'professional' | 'sandbox' | undefined,
   exportAppDsl: vi.fn(),
   onUrlUpdate: vi.fn(),
+  versionsResponse: vi.fn<() => Promise<{ data: AgentConfigSnapshotSummaryResponse[] }>>(),
 }))
 
 vi.mock('@/features/agent-v2/permissions', () => ({
@@ -60,18 +61,22 @@ const versions: AgentConfigSnapshotSummaryResponse[] = [
   },
 ]
 
-function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfile>[1]) {
+function render(
+  ui: ReactElement,
+  options?: Parameters<typeof renderAccountProfile>[1] & { seedVersions?: boolean },
+) {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: exportState.onUrlUpdate })
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: exportState.edition },
     features: exportState.plan ? { billing: { subscription: { plan: exportState.plan } } } : null,
   })
-  queryClient.setQueryData(
-    consoleQuery.agent.byAgentId.versions.get.queryKey({
-      input: { params: { agent_id: 'agent-1' } },
-    }),
-    { data: versions },
-  )
+  if (options?.seedVersions !== false)
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.versions.get.queryKey({
+        input: { params: { agent_id: 'agent-1' } },
+      }),
+      { data: versions },
+    )
   return renderAccountProfile(<NuqsWrapper>{ui}</NuqsWrapper>, {
     ...options,
     queryClient,
@@ -92,7 +97,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': () => new Promise(() => {}),
-      'agent.byAgentId.versions.get': async () => ({ data: versions }),
+      'agent.byAgentId.versions.get': () => exportState.versionsResponse(),
       'agent.byAgentId.versions.byVersionId.restore.post': exportState.restoreVersion,
     }),
   }
@@ -107,6 +112,27 @@ describe('AgentPreviewVersionsPanel', () => {
     exportState.isExporting = false
     exportState.edition = 'CLOUD'
     exportState.plan = 'professional'
+    exportState.versionsResponse.mockImplementation(async () => ({ data: versions }))
+  })
+
+  it('shows a failed first load of the versions with a retry instead of an empty history', async () => {
+    const user = userEvent.setup()
+    exportState.versionsResponse.mockRejectedValueOnce(new Error('Offline'))
+    render(
+      <AgentPreviewVersionsPanel
+        agentId="agent-1"
+        activeVersionId={null}
+        onSelectVersion={vi.fn()}
+        onClose={vi.fn()}
+      />,
+      { seedVersions: false },
+    )
+
+    const alert = await screen.findByRole('alert')
+    expect(screen.queryByText('agentV2.agentDetail.versionHistory.empty')).not.toBeInTheDocument()
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('button', { name: /^Published update/i })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   describe('Version export', () => {

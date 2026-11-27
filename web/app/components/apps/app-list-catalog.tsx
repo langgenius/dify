@@ -9,6 +9,7 @@ import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
 import type { AppListDialogHandles } from './app-list-dialogs'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -31,6 +32,8 @@ import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-se
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
@@ -80,10 +83,31 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
     isFetchingNextPage: boolean
     isPlaceholderData: boolean
     onFetchNextPage: () => Promise<unknown>
+    onRetryStarredApps: () => void
     starredApps: AppPartial[]
+    starredAppsError: unknown
+    starredAppsRetrying: boolean
     systemFeatures: GetSystemFeaturesResponse
     isCollaborationEnabled: boolean
   }>
+
+/** With no apps and a member who can create one, the first-run state replaces the catalog. */
+const isFirstEmptyState = ({
+  appListPages,
+  canCreateApp,
+  hasActiveFilters,
+  isPlaceholderData,
+}: {
+  appListPages: AppPagination[] | undefined
+  canCreateApp: boolean
+  hasActiveFilters: boolean
+  isPlaceholderData: boolean
+}) =>
+  !isPlaceholderData &&
+  !!appListPages?.length &&
+  !((appListPages[0]?.total ?? 0) > 0) &&
+  canCreateApp &&
+  !hasActiveFilters
 
 function CatalogSkeleton() {
   const { t } = useTranslation(['common'])
@@ -115,12 +139,19 @@ function AppListCatalogContent({
   onFetchNextPage,
   onImportDSL,
   onOpenTagManagement,
+  onRetryStarredApps,
   onTryLearnDify,
   starredApps,
+  starredAppsError,
+  starredAppsRetrying,
   scrollViewportRef,
   systemFeatures,
 }: AppListCatalogContentProps) {
   const { t } = useTranslation(['app', 'common'])
+  const starredAppsErrorMessage = useRequestErrorMessage(
+    starredAppsError,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAppDialogPayload>())
   const [appListDialogs] = useState<AppListDialogHandles>(() => ({
     edit: createDialogHandle(),
@@ -164,8 +195,12 @@ function AppListCatalogContent({
   const emptyMessage = t(($) => $['filterEmpty.noApps'], { ns: 'app' })
   const resultStatusMessage =
     !isError && !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp ? emptyMessage : ''
-  const showFirstEmptyState =
-    !isPlaceholderData && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const showFirstEmptyState = isFirstEmptyState({
+    appListPages,
+    canCreateApp,
+    hasActiveFilters,
+    isPlaceholderData,
+  })
   const showNoCreateEmptyState =
     !isPlaceholderData && !hasAnyApp && !canCreateApp && hasResolvedFirstPage && !hasActiveFilters
   const { shouldHighlightAllAppsRow, shouldHighlightStarredAppRow, shouldOpenFirstAppActionMenu } =
@@ -194,6 +229,16 @@ function AppListCatalogContent({
         />
       ) : (
         <>
+          {starredAppsErrorMessage && (
+            <Alert type="error" className="mb-3 shrink-0">
+              <AlertTitle>{starredAppsErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={starredAppsRetrying} onClick={onRetryStarredApps}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
+          )}
           {starredApps.length > 0 && (
             <StarredAppList
               apps={starredApps}
@@ -426,6 +471,16 @@ export function AppListCatalog(props: AppListCatalogProps) {
     }),
   )
 
+  // The first-run state replaces the catalog and its starred apps error, so the error is claimed
+  // only while the catalog shows.
+  const showFirstEmptyState = isFirstEmptyState({
+    appListPages: appList.data?.pages,
+    canCreateApp,
+    hasActiveFilters,
+    isPlaceholderData: appList.isPlaceholderData,
+  })
+  const starredAppsLoad = useOwnedQueryErrors(showFirstEmptyState ? [] : [starredAppList])
+
   if (appList.data === undefined && appList.error) throw appList.error
 
   if (appList.data === undefined || (starredAppList.data === undefined && !starredAppList.error))
@@ -453,6 +508,9 @@ export function AppListCatalog(props: AppListCatalogProps) {
       onTryLearnDify={onTryLearnDify}
       scrollViewportRef={scrollViewportRef}
       starredApps={starredAppList.data?.data ?? emptyStarredApps}
+      starredAppsError={starredAppsLoad?.error}
+      starredAppsRetrying={starredAppsLoad?.retrying ?? false}
+      onRetryStarredApps={() => starredAppsLoad?.retry()}
       systemFeatures={systemFeatures}
     />
   )

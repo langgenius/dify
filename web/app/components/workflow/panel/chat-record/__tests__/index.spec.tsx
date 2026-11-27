@@ -39,6 +39,19 @@ describe('ChatRecord', () => {
     expect(await screen.findByText('TEST CHAT (Paused)')).toBeInTheDocument()
   })
 
+  it('shows history that fails to load with a retry', async () => {
+    const user = userEvent.setup()
+    mockRequest.mockRejectedValueOnce(new Error('network')).mockResolvedValue({ data: [] })
+
+    renderWorkflowComponent(<ChatRecord />, { initialStoreState: { historyWorkflowData } })
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(mockRequest).toHaveBeenCalledTimes(2)
+  })
+
   it('renders chat history and keeps sibling selection within its conversation', async () => {
     const user = userEvent.setup()
 

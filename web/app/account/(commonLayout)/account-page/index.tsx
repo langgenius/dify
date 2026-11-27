@@ -1,6 +1,7 @@
 'use client'
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -11,6 +12,8 @@ import Collapse from '@/app/components/header/account-setting/collapse'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import DeleteAccount from '../delete-account'
 import AvatarWithEdit from './AvatarWithEdit'
 import { ChangePasswordDialog } from './change-password-dialog'
@@ -29,7 +32,7 @@ type AccountAppItem = AppPartial & IItem
 export default function AccountPage() {
   const { t } = useTranslation(['common', 'accountSettings'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: appList } = useQuery(
+  const appListQuery = useQuery(
     consoleQuery.apps.get.queryOptions({
       input: {
         query: {
@@ -40,7 +43,12 @@ export default function AccountPage() {
       },
     }),
   )
-  const apps = appList?.data || []
+  const apps = appListQuery.data?.data || []
+  const appListLoad = useOwnedQueryError(appListQuery)
+  const appListErrorMessage = useRequestErrorMessage(
+    appListLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
@@ -146,6 +154,16 @@ export default function AccountPage() {
         <div className={descriptionClassName}>
           {t(($) => $['account.langGeniusAccountTip'], { ns: 'accountSettings' })}
         </div>
+        {appListLoad && (
+          <Alert type="error" className="mt-2">
+            <AlertTitle>{appListErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={appListLoad.retrying} onClick={appListLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
         {!!apps.length && (
           <Collapse
             title={`${t(($) => $['account.showAppLength'], { ns: 'accountSettings', length: apps.length })}`}

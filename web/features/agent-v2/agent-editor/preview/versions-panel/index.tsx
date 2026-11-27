@@ -1,6 +1,8 @@
 'use client'
 
 import type { AgentVersionFilter } from './filter'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -16,6 +18,8 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { AgentVersionRestore } from '../../version-restore'
 import { CurrentDraftItem } from './current-draft-item'
 import { VersionFilter } from './filter'
@@ -81,6 +85,11 @@ export function AgentPreviewVersionsPanel({
     }),
   )
   const versions = versionsQuery.data?.data ?? []
+  const versionsLoad = useOwnedQueryError(versionsQuery)
+  const versionsErrorMessage = useRequestErrorMessage(
+    versionsLoad?.error,
+    tCommon(($) => $['api.actionFailed']),
+  )
   const latestVersionId = versions[0]?.id
   const currentUserCreatedByValues = new Set(
     [userProfile.id, userProfile.name, userProfile.email].filter(Boolean),
@@ -132,7 +141,21 @@ export function AgentPreviewVersionsPanel({
                 <div className="h-10 animate-pulse rounded-lg bg-state-base-hover" />
               </div>
             )}
-            {!versionsQuery.isPending && versions.length === 0 && (
+            {versionsErrorMessage && (
+              <Alert type="error">
+                <AlertTitle>{versionsErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button
+                    size="small"
+                    loading={versionsLoad?.retrying}
+                    onClick={versionsLoad?.retry}
+                  >
+                    {tCommon(($) => $['operation.retry'])}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            )}
+            {!versionsQuery.isPending && !versionsErrorMessage && versions.length === 0 && (
               <div className="rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 py-6 text-center system-sm-regular text-text-tertiary">
                 {t(($) => $['agentDetail.versionHistory.empty'])}
               </div>

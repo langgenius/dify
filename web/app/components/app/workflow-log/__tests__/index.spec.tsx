@@ -157,6 +157,22 @@ describe('Logs Container', () => {
     })
   })
 
+  describe('Load Failure', () => {
+    it('should show a failed first load with a retry instead of a spinner', async () => {
+      const user = userEvent.setup()
+      mockedUseWorkflowLogs.mockRejectedValueOnce(new Error('Offline'))
+      mockedUseWorkflowLogs.mockResolvedValue(createMockLogsResponse([], 0))
+
+      const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
+
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('common.api.actionFailed')
+      expect(within(container).queryByRole('progressbar')).not.toBeInTheDocument()
+      await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+      expect(await screen.findByText('appLog.table.empty.element.title')).toBeInTheDocument()
+    })
+  })
+
   describe('Empty State', () => {
     it('should render empty element when total is 0', async () => {
       mockedUseWorkflowLogs.mockResolvedValue(createMockLogsResponse([], 0))

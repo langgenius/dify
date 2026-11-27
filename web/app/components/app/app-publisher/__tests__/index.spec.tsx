@@ -11,9 +11,14 @@ import { webSocketClient } from '@/app/components/workflow/collaboration/core/we
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
-import { appWorkflowQueryOptions } from '@/service/workflow-queries'
+import { createHttpError } from '@/service/http-error'
+import {
+  appWorkflowQueryOptions,
+  appWorkflowVersionsInfiniteQueryOptions,
+} from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
@@ -40,6 +45,10 @@ const api = vi.hoisted(() => ({
   createTool:
     vi.fn<
       typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.create.post
+    >(),
+  toolDetail:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.get.get
     >(),
   access: vi.fn<typeof import('@/service/share').getUserCanAccess>(),
   patch:
@@ -73,6 +82,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.toolProvider.workflow.get.get': api.toolDetail,
       'workspaces.current.tools.mcp.get': async () => [],
       'rag.pipelines.datasourcePlugins.get': async () => [],
     }),
@@ -96,6 +106,26 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ redirect_url: 'https://marketplace.example.com/publish?code=abc' })
   api.createTool.mockReset().mockResolvedValue({ result: 'success' })
+  api.toolDetail.mockReset().mockResolvedValue({
+    workflow_app_id: 'app-1',
+    workflow_tool_id: 'tool-1',
+    label: 'Demo Tool',
+    name: 'demo_tool',
+    icon: { content: '🤖', background: '#FFEAD5' },
+    description: 'A published tool',
+    synced: true,
+    privacy_policy: '',
+    parameters: [],
+    tool: {
+      author: 'user-1',
+      name: 'demo_tool',
+      label: { en_US: 'Demo Tool' },
+      description: { en_US: 'A published tool' },
+      labels: [],
+      parameters: [],
+      output_schema: {},
+    },
+  })
   api.access.mockReset().mockResolvedValue({ result: true })
   api.patch.mockReset().mockResolvedValue(createWorkflowResponseFixture())
   vi.spyOn(window, 'open').mockImplementation(() => null)
@@ -375,6 +405,70 @@ it.each(['publish', 'create'] as const)(
     expect(success).toHaveBeenCalledOnce()
   },
 )
+
+it('blocks configuring a published workflow tool until its detail loads', async () => {
+  const user = userEvent.setup()
+  const toastError = vi.spyOn(toast, 'error')
+  api.toolDetail.mockRejectedValueOnce(createHttpError(new Response(null, { status: 503 })))
+  renderPublisher({ app: { mode: 'workflow' }, props: { toolPublished: true } })
+  await user.click(trigger())
+
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('workflow.common.loadFailed')
+  expect(
+    screen.queryByRole('button', { name: /workflow.common.configure/ }),
+  ).not.toBeInTheDocument()
+  expect(toastError).not.toHaveBeenCalled()
+
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  await user.click(await screen.findByRole('button', { name: /workflow.common.configure/ }))
+
+  const drawer = screen.getByRole('dialog', { name: 'navigation.common.workflowAsTool' })
+  expect(
+    within(drawer).getByRole('textbox', { name: 'tools.createTool.nameForToolCall' }),
+  ).toHaveValue('demo_tool')
+  expect(api.toolDetail).toHaveBeenCalledTimes(2)
+})
+
+describe('when a published workflow tool detail fails to load', () => {
+  const toolDetailUnavailable = () =>
+    createHttpError(
+      { status: 503, statusText: '', headers: new Headers() },
+      { message: 'Tool detail unavailable' },
+    )
+
+  it('reports the failure while the publisher is closed, since nothing shows it', async () => {
+    const toastError = vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
+    api.toolDetail.mockImplementation(() => Promise.reject(toolDetailUnavailable()))
+    renderPublisher({
+      app: { mode: 'workflow' },
+      props: { toolPublished: true },
+      queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+    })
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Tool detail unavailable'))
+  })
+
+  it('shows the failure inline instead of reporting it while the publisher is open', async () => {
+    const user = userEvent.setup()
+    const toastError = vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
+    const toolDetailResponse = createDeferred<never>()
+    api.toolDetail.mockImplementation(() => toolDetailResponse.promise)
+    renderPublisher({
+      app: { mode: 'workflow' },
+      props: { toolPublished: true },
+      queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+    })
+
+    await user.click(trigger())
+    toolDetailResponse.reject(toolDetailUnavailable())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('workflow.common.loadFailed')
+    // The cache reports after the render that follows the failure; let that window pass.
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(toastError).not.toHaveBeenCalledWith('Tool detail unavailable')
+  })
+})
 
 it('disables configuring a workflow tool without tool.manage', async () => {
   const user = userEvent.setup()

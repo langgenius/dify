@@ -4,6 +4,7 @@ import type { ReactElement } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -21,6 +22,8 @@ import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
 import { marketplaceCollectionPluginsQueryOptions } from '@/service/plugin-list-queries'
 import { createCustomCollection } from '@/service/tools'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 const ToolBrowser = dynamic(() => import('./tool-browser'), {
   loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
@@ -57,38 +60,61 @@ export function ToolPickerContent({
   selectedTools,
   panelClassName,
 }: ToolPickerContentProps) {
-  const { t } = useTranslation(['common', 'plugin', 'tools'])
+  const { t } = useTranslation(['common', 'plugin', 'tools', 'workflow'])
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const canManageTools = useCanManageTools()
 
   const enable_marketplace = useMarketplace() !== null
-  const { data: buildInTools } = useQuery(
+  const buildInToolsQuery = useQuery(
     consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
       select: selectToolsWithProvider,
     }),
   )
+  const buildInTools = buildInToolsQuery.data
   const installedPluginIds = useMemo(
     () => new Set(buildInTools?.map((provider) => provider.plugin_id || provider.id)),
     [buildInTools],
   )
   const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
-  const { data: customTools } = useQuery(
+  const customToolsQuery = useQuery(
     consoleQuery.workspaces.current.tools.api.get.queryOptions({
       enabled: shouldFetchCustomTools,
       select: selectToolsWithProvider,
     }),
   )
+  const customTools = customToolsQuery.data
   const queryClient = useQueryClient()
   const shouldFetchWorkflowTools = scope !== 'plugins' && scope !== 'custom'
-  const { data: workflowTools } = useQuery(
+  const workflowToolsQuery = useQuery(
     consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
       enabled: shouldFetchWorkflowTools,
       select: selectToolsWithProvider,
     }),
   )
-  const { data: mcpTools } = useQuery(
-    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  const workflowTools = workflowToolsQuery.data
+  const mcpToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const mcpTools = mcpToolsQuery.data
+  const [
+    isShowEditCollectionToolModal,
+    { setFalse: hideEditCustomCollectionModal, setTrue: showEditCustomCollectionModal },
+  ] = useBoolean(false)
+
+  const showsCustomToolModal = isShowEditCollectionToolModal && canManageTools
+  // The custom tool modal replaces the picker and its load error, so the error is claimed only
+  // while the picker shows.
+  const toolsLoad = useOwnedQueryErrors(
+    showsCustomToolModal
+      ? []
+      : [buildInToolsQuery, customToolsQuery, workflowToolsQuery, mcpToolsQuery],
+  )
+  const toolsLoadErrorMessage = useRequestErrorMessage(
+    toolsLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
 
   const { data: featuredPlugins = [], isLoading: isFeaturedLoading } = useQuery(
@@ -135,11 +161,6 @@ export function ToolPickerContent({
     onSelectMultiple(tools)
   }
 
-  const [
-    isShowEditCollectionToolModal,
-    { setFalse: hideEditCustomCollectionModal, setTrue: showEditCustomCollectionModal },
-  ] = useBoolean(false)
-
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
 
@@ -155,7 +176,7 @@ export function ToolPickerContent({
     })
   }
 
-  if (isShowEditCollectionToolModal && canManageTools) {
+  if (showsCustomToolModal) {
     return (
       <EditCustomToolModal
         dialogClassName="bg-background-overlay"
@@ -198,6 +219,22 @@ export function ToolPickerContent({
           </IconButton>
         )}
       </div>
+      {toolsLoad && (
+        <div
+          role="alert"
+          className="mx-3 mt-1 flex items-center gap-1 system-xs-regular text-text-destructive"
+        >
+          <span className="min-w-0 wrap-break-word">{toolsLoadErrorMessage}</span>
+          <Button
+            size="small"
+            variant="ghost"
+            loading={toolsLoad.retrying}
+            onClick={toolsLoad.retry}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
       <ToolBrowser
         className="mt-1"
         toolContentClassName="max-w-full"

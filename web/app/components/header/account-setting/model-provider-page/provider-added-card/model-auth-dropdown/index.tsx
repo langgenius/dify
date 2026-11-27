@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { useQuery } from '@tanstack/react-query'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { modelProviderDetailsQueryOptions } from '../../utils'
 import { getButtonConfig } from './button-config'
 import DropdownContent from './dropdown-content'
@@ -37,6 +39,11 @@ function ModelAuthDropdown({
   const loading = requestedOpen && !isFullProvider && detailQuery.isLoading
   const open = requestedOpen && (isFullProvider || !detailQuery.isPending)
   const buttonConfig = getButtonConfig(state.variant, state.hasCredentials, t)
+  const actionFailedMessage = t(($) => $['api.actionFailed'], { ns: 'common' })
+  // The open popover shows a failed first load in place of the dropdown.
+  const detailLoad = useOwnedQueryErrors(open ? [detailQuery] : [])
+  const loadErrorMessage =
+    useRequestErrorMessage(detailLoad?.error, actionFailedMessage) ?? actionFailedMessage
 
   return (
     <Popover open={open} onOpenChange={setRequestedOpen}>
@@ -66,9 +73,7 @@ function ModelAuthDropdown({
           />
         ) : (
           <div className="flex w-80 flex-col items-start gap-3 p-4" role="alert">
-            <span className="system-sm-medium text-text-primary">
-              {t(($) => $['api.actionFailed'], { ns: 'common' })}
-            </span>
+            <span className="system-sm-medium text-text-primary">{loadErrorMessage}</span>
             <Button size="small" variant="secondary" onClick={() => void detailQuery.refetch()}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>

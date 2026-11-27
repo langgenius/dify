@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "TIẾT KIỆM",
   "indexingTechnique.high_quality": "CHẤT LƯỢNG",
   "knowledge": "Kiến thức",
+  "loadError": "Không thể tải dữ liệu. Hãy thử lại.",
   "metadata.addMetadata": "Thêm siêu dữ liệu",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Áp dụng cho tất cả các tài liệu đã chọn",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Tự động tạo tất cả các siêu dữ liệu đã chỉnh sửa và mới cho tất cả các tài liệu được chọn, nếu không, việc chỉnh sửa siêu dữ liệu sẽ chỉ áp dụng cho các tài liệu có nó.",

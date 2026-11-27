@@ -66,6 +66,8 @@ export default function SkillsPage() {
       getNextPageParam: (lastPage) => (lastPage.has_more ? (lastPage.page ?? 1) + 1 : undefined),
       initialPageParam: 1,
     }),
+    // The grid shows failed refreshes and next pages inline, with retry, over the loaded skills.
+    meta: { errorToast: false },
     refetchOnMount: 'always',
   })
   const skills = skillsQuery.data?.pages.flatMap((page) => page.data ?? []) ?? []

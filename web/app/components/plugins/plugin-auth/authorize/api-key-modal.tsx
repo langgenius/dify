@@ -19,12 +19,14 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PermissionLevel } from '@/models/permission'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import PluginAuthLoadError from '../load-error'
 import { CredentialTypeEnum } from '../types'
 import PermissionSelector from './permission-selector'
 
@@ -57,10 +59,12 @@ const ApiKeyModal = ({
     doingActionRef.current = value
     setDoingAction(value)
   }, [])
-  const { data = [], isLoading } = useGetPluginCredentialSchemaHook(
-    pluginPayload,
-    CredentialTypeEnum.API_KEY,
-  )
+  const schemaQuery = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
+  const { data = [], isLoading } = schemaQuery
+  // Without the schema the form has no credential fields, so it cannot be saved.
+  // With schemas from props the read is unused, so its failure is left to the toast, as it is
+  // while the dialog is closed (it stays mounted).
+  const schemaLoad = useOwnedQueryErrors(open && !formSchemasFromProps?.length ? [schemaQuery] : [])
   const [permission, setPermission] = useState<CredentialPermission>(
     editValues?.__visibility__ === PermissionLevel.onlyMe
       ? PermissionLevel.onlyMe
@@ -172,6 +176,13 @@ const ApiKeyModal = ({
               <LoadingPlaceholder />
             </div>
           )}
+          {schemaLoad && (
+            <PluginAuthLoadError
+              error={schemaLoad.error}
+              isRetrying={schemaLoad.retrying}
+              onRetry={schemaLoad.retry}
+            />
+          )}
           {!isLoading && !!mergedData.length && (
             <AuthForm
               ref={formRef}
@@ -180,7 +191,7 @@ const ApiKeyModal = ({
               disabled={disabled}
             />
           )}
-          {!isLoading && !editValues && (
+          {!isLoading && !schemaLoad && !editValues && (
             <div className="mt-4 px-1">
               <div className="mb-1 system-sm-semibold text-text-secondary">
                 {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
@@ -205,7 +216,7 @@ const ApiKeyModal = ({
           <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-          <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
+          <Button variant="primary" onClick={handleConfirm} disabled={isDisabled || !!schemaLoad}>
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </DialogFooter>

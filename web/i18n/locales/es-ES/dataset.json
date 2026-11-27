@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "AC",
   "knowledge": "Conocimiento",
+  "loadError": "No se pudieron cargar los datos. Inténtalo de nuevo.",
   "metadata.addMetadata": "Agregar Metadatos",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Aplicar a todos los documentos seleccionados",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Cree automáticamente todos los metadatos editados y nuevos anteriores para todos los documentos seleccionados, de lo contrario, la edición de metadatos solo se aplicará a los documentos que ya los tengan.",

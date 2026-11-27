@@ -1,4 +1,5 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -16,7 +17,10 @@ import { normalizeLegacyHumanInputForm } from '@/features/human-input/form/norma
 import { createLegacyFormUploadStrategy } from '@/features/human-input/public/legacy-upload'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { humanInputFormQueryOptions } from '@/service/share-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import LegacyLoadedFormContent from './loaded-form-content'
 import { useFormSubmit } from './use-form-submit'
 
@@ -33,7 +37,10 @@ const FormContent = () => {
     [inheritedUploadContext, token],
   )
 
-  const { data: formData, isLoading, error } = useQuery(humanInputFormQueryOptions(token))
+  const formQuery = useQuery(humanInputFormQueryOptions(token))
+  const { data: formData, isLoading, error } = formQuery
+  // Every failed first load replaces the form with a status card.
+  const formLoad = useOwnedQueryError(formQuery)
   const { isSubmitting, submit, success } = useFormSubmit(token)
 
   const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
@@ -46,6 +53,14 @@ const FormContent = () => {
   const expired = errorCode === 'human_input_form_expired'
   const submitted = errorCode === 'human_input_form_submitted'
   const rateLimitExceeded = errorCode === 'web_form_rate_limit_exceeded'
+  // A missing form keeps its "not found" card; any other failed load says why and can retry.
+  const loadError = formLoad?.error
+  const loadErrorMessage = useRequestErrorMessage(
+    (loadError instanceof ORPCError && loadError.code === 'not_found') ||
+      getHttpErrorStatus(loadError) === 404
+      ? null
+      : loadError,
+  )
   const documentTitle = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : success
@@ -108,6 +123,22 @@ const FormContent = () => {
         iconClassName="i-ri-error-warning-fill text-text-destructive"
         title={t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })}
       />
+    )
+  }
+
+  if (formLoad && loadErrorMessage) {
+    return (
+      <FormStatusCard
+        legacy={!ENABLE_HITL_IM}
+        iconClassName="i-ri-error-warning-fill text-text-destructive"
+        title={loadErrorMessage}
+      >
+        <div>
+          <Button loading={formLoad.retrying} onClick={formLoad.retry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      </FormStatusCard>
     )
   }
 

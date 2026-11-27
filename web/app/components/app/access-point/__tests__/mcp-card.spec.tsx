@@ -15,6 +15,7 @@ import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
 const mocks = vi.hoisted(() => ({
   serverDetail: {
     data: undefined as undefined | { id: string; server_code: string; status: string },
+    failure: undefined as Error | undefined,
     isPending: false,
   },
   refreshServerCode: vi.fn(),
@@ -37,7 +38,9 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.server.get': () =>
         mocks.serverDetail.isPending
           ? new Promise(() => {})
-          : Promise.resolve(mocks.serverDetail.data ?? {}),
+          : mocks.serverDetail.failure
+            ? Promise.reject(mocks.serverDetail.failure)
+            : Promise.resolve(mocks.serverDetail.data ?? {}),
       'apps.byAppId.server.put': async (input) => {
         await mocks.updateServer(input)
         if (mocks.serverDetail.data)
@@ -101,7 +104,7 @@ function createDeferredPromise<T>() {
 
 function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
-  if (!mocks.serverDetail.isPending)
+  if (!mocks.serverDetail.isPending && !mocks.serverDetail.failure)
     queryClient.setQueryData(
       consoleQuery.apps.byAppId.server.get.queryKey({
         input: { params: { app_id: cardAppInfo.id } },
@@ -133,8 +136,27 @@ describe('MCPAccessPointCard', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     mocks.serverDetail.data = undefined
+    mocks.serverDetail.failure = undefined
     mocks.serverDetail.isPending = false
     mocks.updateServer.mockResolvedValue(undefined)
+  })
+
+  it('shows a failed server load as unavailable with a retry instead of an unpublished server', async () => {
+    const user = userEvent.setup()
+    mocks.serverDetail.failure = new Error('Offline')
+    renderCard()
+
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByText('deployments.common.loadFailed')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /tools\.mcp\.server\.addDescription/ }),
+    ).toBeDisabled()
+
+    mocks.serverDetail.failure = undefined
+    mocks.serverDetail.data = { id: 'server-1', server_code: 'code-1', status: 'active' }
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /tools\.mcp\.server\.edit/ })).toBeEnabled()
   })
 
   it('opens settings with the provided basic app model config', async () => {

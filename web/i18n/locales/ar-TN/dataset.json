@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "المعرفة",
+  "loadError": "تعذّر تحميل البيانات. حاول مرة أخرى.",
   "metadata.addMetadata": "إضافة بيانات وصفية",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "تطبيق على جميع المستندات المحددة",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "إنشاء جميع البيانات الوصفية المعدلة والجديدة أعلاه تلقائيًا لجميع المستندات المحددة، وإلا فإن تعديل البيانات الوصفية سينطبق فقط على المستندات التي تحتوي عليها.",

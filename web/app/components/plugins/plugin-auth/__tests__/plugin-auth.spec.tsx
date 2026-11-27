@@ -1,8 +1,9 @@
 import type { Credential } from '../types'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory, CredentialTypeEnum } from '../types'
@@ -63,6 +64,24 @@ it('offers API authorization when the provider has no saved credentials', async 
   expect(
     screen.queryByRole('button', { name: /plugin.auth.authorization$/ }),
   ).not.toBeInTheDocument()
+})
+
+it('shows a failed credential load with a retry instead of offering authorization', async () => {
+  const user = userEvent.setup()
+  requests.credentials
+    .mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Credentials unavailable' }),
+    )
+    .mockResolvedValueOnce(credentialInfo([credential]))
+  renderAuth()
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('Credentials unavailable')
+  expect(screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  expect(
+    await screen.findByRole('button', { name: /1.*plugin.auth.authorization/ }),
+  ).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
 it('opens the saved credentials when the provider is authorized', async () => {

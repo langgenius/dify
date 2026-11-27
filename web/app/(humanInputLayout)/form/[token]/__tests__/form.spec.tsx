@@ -217,6 +217,21 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     },
   )
 
+  it('says why the form failed to load and retries the load', async () => {
+    mockGetForm.mockRejectedValueOnce(new ORPCError('internal_server_error', { status: 500 }))
+    render(<FormContent />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'requestErrors.generic.server' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('share.humanInput.formNotFound')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    expect(mockGetForm).toHaveBeenCalledTimes(2)
+  })
+
   it('preserves edited text when an earlier upload callback completes and submits serialized values', async () => {
     const user = userEvent.setup()
     render(<FormContent />)

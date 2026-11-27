@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/client'
 import * as reactI18next from 'react-i18next'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { markErrorHandled } from '@/service/handled-error'
@@ -13,6 +13,9 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const httpError = (status: number, body?: unknown) =>
   createHttpError({ status, statusText: '', headers: new Headers() }, body)
+
+// The cache reports a failure after the render that follows it.
+const afterReport = () => new Promise((resolve) => setTimeout(resolve, 10))
 
 let keyIndex = 0
 const nextKey = () => ['query-error-toast', keyIndex++]
@@ -30,48 +33,67 @@ describe('query cache error toasts', () => {
     queryClient.clear()
   })
 
-  const loadThenFail = async (error: unknown, meta?: { errorToast?: false }) => {
+  const loadThenFail = async (
+    error: unknown,
+    meta?: { errorToast?: false; errorMessage?: string },
+  ) => {
     const queryKey = nextKey()
     const queryFn = vi.fn().mockResolvedValueOnce('cached').mockRejectedValue(error)
     await queryClient.query({ queryKey, queryFn, meta })
     await queryClient.refetchQueries({ queryKey })
+    await afterReport()
     return { queryKey, queryFn }
   }
 
-  it('reports a failed first load with the server message', async () => {
+  it('reports a failed first load with the server message after its observers render', async () => {
+    const error = httpError(500, { message: 'Unavailable' })
     await expect(
-      queryClient.query({
-        queryKey: nextKey(),
-        queryFn: () => Promise.reject(httpError(500, { message: 'Unavailable' })),
-      }),
+      queryClient.query({ queryKey: nextKey(), queryFn: () => Promise.reject(error) }),
     ).rejects.toBeInstanceOf(ORPCError)
 
+    // The report waits for the render that follows, where an owner can claim the error.
+    expect(toast.error).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith('Unavailable'))
+    // A caller that rethrows it, such as an action awaiting the read, does not report it again.
+    reportRequestError(error)
+    expect(toast.error).toHaveBeenCalledOnce()
+  })
+
+  it('reports a failed first load once when a caller that awaits it reports it first', async () => {
+    const error = httpError(500, { message: 'Unavailable' })
+    await expect(
+      queryClient.query({ queryKey: nextKey(), queryFn: () => Promise.reject(error) }),
+    ).rejects.toBeInstanceOf(ORPCError)
+    reportRequestError(error)
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('Unavailable')
   })
 
-  it('reports a failed first load with a cataloged code in translated text', async () => {
+  it('does not report a failed first load its owner claimed', async () => {
+    const error = httpError(500, { message: 'Unavailable' })
     await expect(
-      queryClient.query({
-        queryKey: nextKey(),
-        queryFn: () =>
-          Promise.reject(httpError(404, { code: 'app_unavailable', message: 'App unavailable.' })),
-      }),
+      queryClient.query({ queryKey: nextKey(), queryFn: () => Promise.reject(error) }),
     ).rejects.toBeInstanceOf(ORPCError)
+    markErrorHandled(error)
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed background refetch with a cataloged code in translated text', async () => {
+    await loadThenFail(httpError(404, { code: 'app_unavailable', message: 'App unavailable.' }))
 
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.app_unavailable')
   })
 
   it('uses the message from meta only for codes the catalog does not know', async () => {
-    const fail = (body: unknown) =>
-      queryClient
-        .query({
-          queryKey: nextKey(),
-          queryFn: () => Promise.reject(httpError(404, body)),
-          meta: { errorMessage: 'Could not load the app' },
-        })
-        .catch(() => {})
-    await fail({ code: 'not_found', message: 'Workflow not found' })
-    await fail({ code: 'app_unavailable', message: 'App not found.' })
+    await loadThenFail(httpError(404, { code: 'not_found', message: 'Workflow not found' }), {
+      errorMessage: 'Could not load the app',
+    })
+    await loadThenFail(httpError(404, { code: 'app_unavailable', message: 'App not found.' }), {
+      errorMessage: 'Could not load the app',
+    })
 
     expect(vi.mocked(toast.error).mock.calls).toEqual([
       ['Could not load the app'],
@@ -88,23 +110,18 @@ describe('query cache error toasts', () => {
       getResourceBundle: () => (loadedBundle() ? {} : undefined),
       loadNamespaces: load,
     })
-    return { load, loaded, restore: () => getI18n.mockRestore() }
+    onTestFinished(() => getI18n.mockRestore())
+    return { load, loaded }
   }
 
-  const failWithCatalogedCode = () =>
-    queryClient
-      .query({
-        queryKey: nextKey(),
-        queryFn: () =>
-          Promise.reject(httpError(404, { code: 'app_unavailable', message: 'App unavailable.' })),
-      })
-      .catch(() => {})
+  const refetchWithCatalogedCode = () =>
+    loadThenFail(httpError(404, { code: 'app_unavailable', message: 'App unavailable.' }))
 
   it('loads the request error translations before reporting the first failure', async () => {
     let bundle = false
-    const { load, loaded, restore } = withRequestErrorBundle(() => bundle)
+    const { load, loaded } = withRequestErrorBundle(() => bundle)
 
-    await failWithCatalogedCode()
+    await refetchWithCatalogedCode()
     expect(load).toHaveBeenCalledWith('requestErrors')
     expect(toast.error).not.toHaveBeenCalled()
 
@@ -113,42 +130,26 @@ describe('query cache error toasts', () => {
     await vi.waitFor(() =>
       expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.app_unavailable'),
     )
-    restore()
   })
 
   it("keeps the server's message when the translations fail to load", async () => {
-    const { loaded, restore } = withRequestErrorBundle(() => false)
+    const { loaded } = withRequestErrorBundle(() => false)
 
-    await failWithCatalogedCode()
+    await refetchWithCatalogedCode()
     // A failed resource load still resolves.
     loaded.resolve()
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith('App unavailable.'))
-    restore()
   })
 
-  it('leaves a failed read nothing explains to a caller that rethrows it', async () => {
+  it('leaves a failed refetch nothing explains to a caller that rethrows it', async () => {
     const error = httpError(502)
-    await queryClient
-      .query({ queryKey: nextKey(), queryFn: () => Promise.reject(error) })
-      .catch(() => {})
+    await loadThenFail(error)
 
     expect(toast.error).not.toHaveBeenCalled()
     reportRequestError(error)
     await vi.waitFor(() =>
       expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.server'),
     )
-  })
-
-  it('leaves a failed first load to an owner that renders its own error state', async () => {
-    await expect(
-      queryClient.query({
-        queryKey: nextKey(),
-        queryFn: () => Promise.reject(httpError(500, { message: 'Unavailable' })),
-        meta: { errorToast: false },
-      }),
-    ).rejects.toBeInstanceOf(ORPCError)
-
-    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('reports a failed background refetch with the server message', async () => {
@@ -171,31 +172,40 @@ describe('query cache error toasts', () => {
     await queryClient.query({ queryKey, queryFn })
 
     await queryClient.refetchQueries({ queryKey })
+    await afterReport()
     vi.setSystemTime(Date.now() + 1000)
     await queryClient.refetchQueries({ queryKey })
+    await afterReport()
     expect(toast.error).toHaveBeenCalledOnce()
 
     await queryClient.refetchQueries({ queryKey })
+    await afterReport()
     await queryClient.refetchQueries({ queryKey })
+    await afterReport()
     expect(toast.error).toHaveBeenCalledTimes(2)
   })
 
   it('drops the dedupe window of a removed query', async () => {
-    const queryKey = nextKey()
-    const fail = () => Promise.reject(httpError(503, { message: 'Down' }))
-    await queryClient.query({ queryKey, queryFn: fail }).catch(() => {})
+    const { queryKey } = await loadThenFail(httpError(503, { message: 'Down' }))
     queryClient.removeQueries({ queryKey })
-    await queryClient.query({ queryKey, queryFn: fail }).catch(() => {})
+    await loadThenFail(httpError(503, { message: 'Down' }))
 
     expect(toast.error).toHaveBeenCalledTimes(2)
   })
 
   it('reports the same message again once its window expires', async () => {
     const queryKey = nextKey()
-    const fail = () => Promise.reject(httpError(503, { message: 'Down' }))
-    await queryClient.query({ queryKey, queryFn: fail, staleTime: 0 }).catch(() => {})
+    // Every failed fetch is a new error.
+    const queryFn = vi
+      .fn()
+      .mockResolvedValueOnce('cached')
+      .mockImplementation(() => Promise.reject(httpError(503, { message: 'Down' })))
+    await queryClient.query({ queryKey, queryFn })
+    await queryClient.refetchQueries({ queryKey })
+    await afterReport()
     vi.setSystemTime(Date.now() + 10_000)
-    await queryClient.query({ queryKey, queryFn: fail, staleTime: 0 }).catch(() => {})
+    await queryClient.refetchQueries({ queryKey })
+    await afterReport()
 
     expect(toast.error).toHaveBeenCalledTimes(2)
   })

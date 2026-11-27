@@ -1,6 +1,8 @@
 import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { MarketplaceLinks } from '@/features/marketplace/links'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useCallback, useState } from 'react'
@@ -12,6 +14,7 @@ import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
@@ -26,13 +29,20 @@ const InstallFromMarketplace = ({
   providers,
   searchText,
 }: InstallFromMarketplaceProps) => {
-  const { t } = useTranslation(['plugin', 'modelProvider'])
+  const { t } = useTranslation(['plugin', 'modelProvider', 'common'])
   const theme = useResolvedTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
-  const { plugins: allPlugins, isLoading: isAllPluginsLoading } = useMarketplaceAllPlugins(
-    providers,
-    searchText,
+  const {
+    plugins: allPlugins,
+    isLoading: isAllPluginsLoading,
+    loadError,
+    isRetrying,
+    retryLoad,
+  } = useMarketplaceAllPlugins(providers, searchText, !collapse)
+  const loadErrorMessage = useRequestErrorMessage(
+    loadError,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
   )
 
   const cardRender = useCallback(
@@ -99,7 +109,17 @@ const InstallFromMarketplace = ({
           )}
         </div>
       </div>
-      {!!searchText.trim() && !isAllPluginsLoading && !collapse && (
+      {!isAllPluginsLoading && !collapse && loadErrorMessage && (
+        <Alert type="error">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={isRetrying} onClick={retryLoad}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
+      {!!searchText.trim() && !isAllPluginsLoading && !collapse && !loadErrorMessage && (
         <div role="status" className="sr-only">
           {t(($) => $['modelProvider.installDataSource'], { ns: 'modelProvider' })}
           {': '}
@@ -110,7 +130,8 @@ const InstallFromMarketplace = ({
         </div>
       )}
       {!collapse && isAllPluginsLoading && <LoadingPlaceholder />}
-      {!isAllPluginsLoading && !collapse && (
+      {/* With a failed load, an empty list would read as nothing to install. */}
+      {!isAllPluginsLoading && !collapse && (!loadErrorMessage || allPlugins.length > 0) && (
         <List
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}

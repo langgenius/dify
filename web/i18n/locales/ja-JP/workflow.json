@@ -174,6 +174,7 @@
   "common.latestPublished": "最新公開版",
   "common.learnMore": "詳細を見る",
   "common.listening": "リッスン中",
+  "common.loadFailed": "読み込みに失敗しました。もう一度お試しください。",
   "common.loadMore": "さらに読み込む",
   "common.manageInTools": "ツールページで管理",
   "common.maxTreeDepth": "1 ブランチあたりの最大ノード数：{{depth}}",

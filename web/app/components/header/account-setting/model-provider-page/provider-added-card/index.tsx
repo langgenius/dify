@@ -13,7 +13,9 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import {
   canConfigureModelsAtom,
   useModelProviderListExpanded,
@@ -70,12 +72,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   )
   const systemConfig = provider.system_configuration
   const canConfigureModels = useAtomValue(canConfigureModelsAtom)
-  const {
-    data: modelList = [],
-    isFetching: loading,
-    isSuccess: hasFetchedModelList,
-    refetch: refetchModelList,
-  } = useQuery(
+  const modelListQuery = useQuery(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: currentProviderName } },
       enabled: expanded && canConfigureModels,
@@ -83,7 +80,19 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       select: normalizeModelProviderModelsResponse,
     }),
   )
+  const {
+    data: modelList = [],
+    isFetching: loading,
+    isSuccess: hasFetchedModelList,
+    refetch: refetchModelList,
+  } = modelListQuery
   const hasModelList = hasFetchedModelList && !!modelList.length
+  // The collapsed "show models" action retries a failed first load.
+  const modelListLoad = useOwnedQueryError(modelListQuery)
+  const modelListErrorMessage = useRequestErrorMessage(
+    modelListLoad && !modelListLoad.retrying ? modelListLoad.error : undefined,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
+  )
   const showCollapsedSection = !canConfigureModels || !expanded || !hasFetchedModelList
   const cardRef = useRef<HTMLDivElement>(null)
   const collapsedButtonRef = useRef<HTMLButtonElement>(null)
@@ -205,6 +214,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               <ModelBadge key={modelType}>{modelTypeFormat(modelType)}</ModelBadge>
             ))}
           </div>
+          {modelListErrorMessage && (
+            <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
+              {modelListErrorMessage}
+            </p>
+          )}
         </div>
         <div className="absolute inset-x-0 bottom-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
           {canConfigureModels && (showModelProvider || !notConfigured) && (
@@ -315,6 +329,15 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               )}
               {loading && <div className="ms-0.5 i-ri-loader-2-line size-3 animate-spin" />}
             </button>
+          )}
+          {modelListErrorMessage && (
+            <span
+              role="alert"
+              title={modelListErrorMessage}
+              className="min-w-0 truncate system-xs-regular text-text-destructive"
+            >
+              {modelListErrorMessage}
+            </span>
           )}
           {!showModelProvider && notConfigured && (
             <div className="flex h-6 items-center ps-1 pe-1.5">

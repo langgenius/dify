@@ -3,6 +3,7 @@ import type { MetricOption, NonPipelineEvaluationResourceType } from '../../type
 import type { BuiltinMetricMap, MetricSelectorSection } from './types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { getTranslatedMetricDescription } from '../../default-metric-descriptions'
 import { useDefaultEvaluationMetrics } from '../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
@@ -19,6 +20,9 @@ type UseMetricSelectorDataResult = {
   builtinMetricMap: BuiltinMetricMap
   sections: MetricSelectorSection[]
   isRemoteLoading: boolean
+  remoteLoadError: unknown
+  isRemoteRetrying: boolean
+  retryRemoteLoad: () => void
   toggleNodeSelection: (metric: MetricOption, nodeInfo: NodeInfo) => void
 }
 
@@ -32,8 +36,13 @@ export const useMetricSelectorData = ({
   const metrics = resource.metrics
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
-  const { data: defaultMetricsData, isLoading: isDefaultMetricsLoading } =
-    useDefaultEvaluationMetrics(resourceType, resourceId, resource.evaluationFramework, open)
+  const defaultMetricsQuery = useDefaultEvaluationMetrics(
+    resourceType,
+    resourceId,
+    resource.evaluationFramework,
+    open,
+  )
+  const { data: defaultMetricsData, isLoading: isDefaultMetricsLoading } = defaultMetricsQuery
 
   const builtinMetrics = useMemo(() => {
     return metrics.filter((metric) => metric.kind === 'builtin')
@@ -98,10 +107,19 @@ export const useMetricSelectorData = ({
     addBuiltinMetric(resourceType, resourceId, metricId, nextSelectedNodes, metric)
   }
 
+  // A failed first load is not an empty metric list. The open selector renders it in place of the
+  // sections, so it is claimed here.
+  const remoteLoad = useOwnedQueryErrors(open ? [defaultMetricsQuery] : [])
+
   return {
     builtinMetricMap,
     sections,
     isRemoteLoading: isDefaultMetricsLoading,
+    remoteLoadError: remoteLoad?.error ?? null,
+    isRemoteRetrying: remoteLoad?.retrying ?? false,
+    retryRemoteLoad: () => {
+      remoteLoad?.retry()
+    },
     toggleNodeSelection,
   }
 }

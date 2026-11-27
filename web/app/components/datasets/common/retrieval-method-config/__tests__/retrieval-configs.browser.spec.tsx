@@ -14,6 +14,7 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EconomicalRetrievalMethodConfig from '../../economical-retrieval-method-config'
 import RetrievalMethodConfig from '../index'
@@ -87,7 +88,8 @@ async function renderRetrieval({
 }: {
   initial?: RetrievalConfig
   modelAvailable?: boolean
-  supported?: string[]
+  /** `null` leaves the supported methods unseeded so they are requested. */
+  supported?: string[] | null
   disabled?: boolean
   economical?: boolean
   showMultiModalTip?: boolean
@@ -134,9 +136,10 @@ async function renderRetrieval({
       },
     )
   }
-  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
-    retrieval_method: supported,
-  })
+  if (supported)
+    queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+      retrieval_method: supported,
+    })
   const { wrapper: ConsoleQuery } = createConsoleQueryWrapper({ queryClient })
   return render(
     <ConsoleQuery>
@@ -326,4 +329,28 @@ it('renders only retrieval methods supported by the service contract', async () 
   await expect
     .element(screen.getByRole('radio', { name: methodName(RETRIEVE_METHOD.semantic) }))
     .toBeChecked()
+})
+
+it('shows a failed method list load with a retry instead of offering no retrieval method', async () => {
+  let failures = 1
+  const fake = installFakeApi({
+    console: {
+      datasets: {
+        retrievalSetting: {
+          get: () => {
+            if (failures-- > 0) throw apiError({ status: 503, message: 'Settings unavailable' })
+            return { retrieval_method: methods }
+          },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
+  const screen = await renderRetrieval({ supported: null })
+
+  await expect.element(screen.getByRole('alert').getByText('dataset.loadError')).toBeVisible()
+  await screen.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect
+    .element(screen.getByRole('radio', { name: methodName(RETRIEVE_METHOD.semantic) }))
+    .toBeVisible()
 })

@@ -16,6 +16,7 @@ import { createAgentFixture } from '@/test/fixtures/agent'
 import { createData, createPanelEnvironment } from './panel-test-env'
 
 const api = vi.hoisted(() => ({
+  loadAgent: vi.fn(),
   loadComposer: vi.fn(),
   copyApp: vi.fn(),
   copySnippet: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.trace.get': async () => ({ enabled: false, tracing_provider: null }),
+      'agent.byAgentId.get': api.loadAgent,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
       'snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get': api.loadComposer,
       'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post': api.copyApp,
@@ -86,6 +88,11 @@ const rosterComposer = zAgentAppComposerResponse.parse({
   agent_soul: { schema_version: 1, prompt: { system_prompt: 'Read-only roster instructions' } },
 } satisfies AgentAppComposerResponse)
 const rosterPrefix = 'workflowAgent.nodes.agent.roster'
+const agentNames: Record<string, string> = {
+  [TEST_AGENT_ID]: 'Nadia',
+  'agent-2': 'Mara',
+  'saved-agent': 'Saved Agent',
+}
 const trigger = () => screen.getByRole('button', { name: new RegExp(`${rosterPrefix}.openPanel`) })
 const environment = (options: Parameters<typeof createPanelEnvironment>[0] = {}) => {
   const env = createPanelEnvironment(options)
@@ -119,6 +126,11 @@ const seedInline = (env: ReturnType<typeof environment>, composer = createCompos
 }
 
 beforeEach(() => {
+  api.loadAgent
+    .mockReset()
+    .mockImplementation(async ({ params }: { params: { agent_id: string } }) =>
+      createAgentFixture({ id: params.agent_id, name: agentNames[params.agent_id] ?? 'Nadia' }),
+    )
   api.loadComposer.mockReset().mockResolvedValue(createComposer())
   api.copyApp.mockReset().mockResolvedValue(createComposer())
   api.copySnippet.mockReset().mockResolvedValue(createComposer())
@@ -296,6 +308,29 @@ describe('Agent panel bindings', () => {
     expect(rosterTrigger).not.toHaveAttribute('aria-busy')
     expect(await screen.findByText('Follow the request')).toBeVisible()
     await act(async () => loaded.resolve(createComposer()))
+  })
+
+  it('shows a failed roster agent load with a retry instead of an empty selection', async () => {
+    const user = userEvent.setup()
+    const agentKey = consoleQuery.agent.byAgentId.get.queryKey({
+      input: { params: { agent_id: TEST_AGENT_ID } },
+    })
+    const loadAgent = api.loadAgent.getMockImplementation()!
+    api.loadAgent.mockRejectedValue(createHttpError(new Response(null, { status: 503 })))
+    const env = environment()
+    env.queryClient.removeQueries({ queryKey: agentKey })
+    env.queryClient.setQueryDefaults(consoleQuery.agent.byAgentId.get.key(), { retryDelay: 0 })
+    env.render()
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('workflow.common.loadFailed')
+    api.loadAgent.mockImplementation(loadAgent)
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(
+      await screen.findByRole('button', { name: new RegExp(`${rosterPrefix}.openPanel`) }),
+    ).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('retries a failed composer request and then opens the recovered agent', async () => {

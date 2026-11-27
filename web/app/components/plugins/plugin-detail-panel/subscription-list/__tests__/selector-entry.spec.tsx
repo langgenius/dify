@@ -13,6 +13,13 @@ vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({
     subscriptions: mockSubscriptions,
     isLoading: false,
+    subscriptionsQuery: {
+      data: mockSubscriptions,
+      error: null,
+      isError: false,
+      isFetching: false,
+      refetch: mockRefetch,
+    },
     refetch: mockRefetch,
   }),
 }))

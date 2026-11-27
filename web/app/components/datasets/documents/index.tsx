@@ -1,6 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -12,6 +13,7 @@ import {
   AlertDialogTitle,
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   keepPreviousData,
   useMutation,
@@ -30,6 +32,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -49,7 +52,7 @@ const TERMINAL_INDEXING_STATUSES = new Set(['completed', 'paused', 'error'])
 const FORCED_POLLING_STATUSES = new Set(['queuing', 'indexing', 'paused'])
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
-  const { t } = useTranslation(['common', 'datasetDocuments'])
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const describeRequestError = useRequestErrorDescriber()
   const listRef = useRef<HTMLDivElement>(null)
   const [deleteDialog] = useState(() =>
@@ -99,7 +102,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   } = useDocumentsPageState()
 
   // Fetch document list
-  const { data: documentsRes, isLoading: isListLoading } = useQuery(
+  const documentsQuery = useQuery(
     consoleQuery.datasets.byDatasetId.documents.get.queryOptions({
       input: {
         params: { dataset_id: datasetId },
@@ -125,6 +128,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       },
     }),
   )
+  const { data: documentsRes, isLoading: isListLoading } = documentsQuery
+  const documentsLoad = useOwnedQueryError(documentsQuery)
 
   // Invalidation hooks
   const queryClient = useQueryClient()
@@ -177,6 +182,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     builtInEnabled,
     setBuiltInEnabled,
     builtInMetaData,
+    metadataLoadError,
   } = useEditDocumentMetadata({
     datasetId,
     dataset,
@@ -199,6 +205,24 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   // Render content based on loading and data state
   const renderContent = () => {
     if (isListLoading && !documentsRes) return <LoadingPlaceholder className="h-full" />
+
+    // A failed first load must not look like an empty knowledge base.
+    if (documentsLoad)
+      return (
+        <Alert type="error">
+          <AlertTitle>
+            {describeRequestError(
+              documentsLoad.error,
+              t(($) => $.loadError, { ns: 'dataset' }),
+            )}
+          </AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={documentsLoad.retrying} onClick={documentsLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )
 
     if (total > 0) {
       return (
@@ -264,6 +288,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         hideEditMetadataModal={hideEditMetadataModal}
         datasetMetaData={datasetMetaData}
         builtInMetaData={builtInMetaData}
+        metadataLoadError={metadataLoadError}
         builtInEnabled={!!builtInEnabled}
         onAddMetaData={handleAddMetaData}
         onRenameMetaData={handleRename}

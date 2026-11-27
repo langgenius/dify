@@ -9,7 +9,7 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { networkError, setupFakeApi } from '@/test/fake-api'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
 import ExternalAPIPanel from '../index'
 
 const response: ExternalKnowledgeApiListResponse = {
@@ -198,4 +198,16 @@ it('attempts an offline edit immediately without opening an editor on reconnect'
   await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).not.toBeInTheDocument()
   await edit.click()
   await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).toBeVisible()
+})
+
+it('shows a failed first load with a retry instead of an empty API list', async () => {
+  fake.console.datasets.externalKnowledgeApi.get.mockRejectedValueOnce(
+    apiError({ status: 503, message: 'APIs unavailable' }),
+  )
+  const screen = await setup()
+
+  await expect.element(screen.getByRole('alert').getByText('dataset.loadError')).toBeVisible()
+  await screen.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(screen.getByText('Product knowledge')).toBeVisible()
+  await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
 })

@@ -1,6 +1,7 @@
 'use client'
 
 import type { PermissionGroup } from '@/models/access-control'
+import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -12,6 +13,14 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
+
+/** A failed first load of the permission catalog, shown in place of the list. */
+export type PermissionGroupListLoadError = {
+  error: unknown
+  retrying?: boolean
+  onRetry: () => void
+}
 
 type PermissionGroupListProps = {
   groups: PermissionGroup[]
@@ -19,6 +28,7 @@ type PermissionGroupListProps = {
   onChange: (next: string[]) => void
   className?: string
   readonly?: boolean
+  loadError?: PermissionGroupListLoadError
 }
 
 const PermissionGroupList = ({
@@ -27,8 +37,13 @@ const PermissionGroupList = ({
   onChange,
   className,
   readonly = false,
+  loadError,
 }: PermissionGroupListProps) => {
-  const { t } = useTranslation(['permission'])
+  const { t } = useTranslation(['permission', 'common'])
+  const loadErrorMessage = useRequestErrorMessage(
+    loadError?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string> | null>(null)
 
   const selectedSet = useMemo(() => new Set(value), [value])
@@ -83,8 +98,20 @@ const PermissionGroupList = ({
     >
       <ScrollArea className="h-full overflow-hidden rounded-xl">
         <ScrollAreaViewport className="overscroll-contain">
-          <ScrollAreaContent className={groups.length === 0 ? 'h-full' : undefined}>
-            {groups.length === 0 ? (
+          <ScrollAreaContent
+            className={groups.length === 0 || loadErrorMessage ? 'h-full' : undefined}
+          >
+            {loadErrorMessage ? (
+              <div
+                role="alert"
+                className="flex h-full flex-col items-center justify-center gap-2 px-3 py-6 text-center"
+              >
+                <span className="system-sm-regular text-text-destructive">{loadErrorMessage}</span>
+                <Button size="small" loading={loadError?.retrying} onClick={loadError?.onRetry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </div>
+            ) : groups.length === 0 ? (
               <div className="flex h-full items-center justify-center px-3 py-6 text-center system-sm-regular text-text-tertiary">
                 {t(($) => $['permissionList.noPermissionsFound'], { ns: 'permission' })}
               </div>

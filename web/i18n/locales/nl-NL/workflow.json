@@ -174,6 +174,7 @@
   "common.latestPublished": "Latest Published",
   "common.learnMore": "Learn More",
   "common.listening": "Listening",
+  "common.loadFailed": "Laden mislukt. Probeer het opnieuw.",
   "common.loadMore": "Load More",
   "common.manageInTools": "Manage in Tools",
   "common.maxTreeDepth": "Maximum limit of {{depth}} nodes per branch",

@@ -56,6 +56,26 @@ describe('ApiBasedExtensionPage', () => {
       expect(await screen.findByText('common.apiBasedExtension.title')).toBeInTheDocument()
     })
 
+    it('should show a retryable error instead of the empty state when the first load fails', async () => {
+      const user = userEvent.setup()
+      listExtensions
+        .mockRejectedValueOnce(new Error('Request failed'))
+        .mockResolvedValueOnce([
+          { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'key1' },
+        ])
+
+      render(<ApiBasedExtensionPage />)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+      expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+      expect(await screen.findByText('Extension 1')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(listExtensions).toHaveBeenCalledTimes(2)
+    })
+
     it('should render list of extensions when data exists', async () => {
       const mockData: ApiBasedExtensionResponse[] = [
         { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'key1' },

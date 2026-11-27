@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "이코노미",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "지식",
+  "loadError": "데이터를 불러오지 못했습니다. 다시 시도하세요.",
   "metadata.addMetadata": "메타데이터 추가",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "선택한 모든 문서에 적용",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "선택된 모든 문서에 대해 위에서 편집한 모든 메타데이터와 새 메타데이터를 자동으로 생성하십시오. 그렇지 않으면 메타데이터 편집은 해당 문서에만 적용됩니다.",

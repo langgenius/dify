@@ -1,5 +1,6 @@
 'use client'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -18,7 +19,9 @@ import { useTranslation } from 'react-i18next'
 import { AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useMutationPluginAutoUpgradeSettings } from '@/service/use-plugins'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { UpdateSettingDialogForm } from './update-setting-dialog-form'
 
 type Props = {
@@ -28,12 +31,7 @@ type Props = {
 export function UpdateSettingDialog({ category }: Props) {
   const actionsRef = useRef<DialogActions>(null)
   const { t } = useTranslation(['common', 'plugin'])
-  const {
-    data: autoUpgradeSetting,
-    error,
-    isFetching,
-    isLoading,
-  } = useQuery(
+  const autoUpgradeSettingQuery = useQuery(
     consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryOptions({
       input: { query: { category } },
     }),
@@ -46,6 +44,7 @@ export function UpdateSettingDialog({ category }: Props) {
         actionsRef.current?.close()
       },
     })
+  const { data: autoUpgradeSetting, error, isFetching, isLoading } = autoUpgradeSettingQuery
   const savedAutoUpgrade = autoUpgradeSetting?.auto_upgrade
   const isSettingsLoading = !savedAutoUpgrade && !error && (isLoading || isFetching)
   const getStrategyLabel = (strategy: AUTO_UPDATE_STRATEGY) => {
@@ -114,11 +113,7 @@ export function UpdateSettingDialog({ category }: Props) {
           </DialogBody>
         )}
         {!isSettingsLoading && !savedAutoUpgrade && (
-          <DialogBody>
-            <div className="flex min-h-65 items-center justify-center text-center system-sm-regular text-text-tertiary">
-              {t(($) => $['api.actionFailed'], { ns: 'common' })}
-            </div>
-          </DialogBody>
+          <SettingsLoadError query={autoUpgradeSettingQuery} />
         )}
         {savedAutoUpgrade && (
           <UpdateSettingDialogForm
@@ -130,5 +125,27 @@ export function UpdateSettingDialog({ category }: Props) {
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Mounted only inside the open dialog, so a failed load is claimed only while it is shown. */
+function SettingsLoadError({ query }: { query: UseQueryResult<unknown> }) {
+  const { t } = useTranslation(['common'])
+  const settingsLoad = useOwnedQueryError(query)
+  const fallback = t(($) => $['api.actionFailed'], { ns: 'common' })
+  const settingsErrorMessage = useRequestErrorMessage(settingsLoad?.error, fallback)
+
+  return (
+    <DialogBody>
+      <div
+        role="alert"
+        className="flex min-h-65 flex-col items-center justify-center gap-3 text-center system-sm-regular text-text-tertiary"
+      >
+        <span>{settingsErrorMessage ?? fallback}</span>
+        <Button size="small" loading={query.isFetching} onClick={() => void query.refetch()}>
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
+    </DialogBody>
   )
 }

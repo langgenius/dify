@@ -2,6 +2,8 @@
 
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -21,6 +23,8 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
@@ -97,17 +101,18 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const {
-    data: datasetRes,
-    error,
-    refetch: mutateDatasetRes,
-  } = useQuery(
+  const datasetQuery = useQuery(
     consoleQuery.datasets.byDatasetId.get.queryOptions({
       input: { params: { dataset_id: datasetId } },
       enabled: !!datasetId,
     }),
   )
+  const { data: datasetRes, error, refetch: mutateDatasetRes } = datasetQuery
   const shouldRedirect = shouldRedirectToDatasetList(error)
+  // A 403/404 first load shows the loading state while redirecting to the list; any other one
+  // renders below.
+  const datasetLoad = useOwnedQueryError(datasetQuery)
+  const loadErrorMessage = useRequestErrorMessage(datasetLoad?.error)
   const datasetACLCapabilities = React.useMemo(
     () =>
       getDatasetACLCapabilities(datasetRes?.permission_keys, {
@@ -164,6 +169,17 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const documentTitleOwnedByChild = isDocumentDetailPath(pathname) && !shouldShowLoading
   const content = shouldShowLoading ? (
     <LoadingPlaceholder className="h-full" />
+  ) : datasetLoad ? (
+    <div className="flex grow items-center justify-center p-4">
+      <Alert type="error" className="w-max max-w-105">
+        <AlertTitle>{loadErrorMessage}</AlertTitle>
+        <AlertActions>
+          <Button size="small" loading={datasetLoad.retrying} onClick={datasetLoad.retry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </AlertActions>
+      </Alert>
+    </div>
   ) : (
     <div
       className={cn(

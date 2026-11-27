@@ -19,6 +19,7 @@ import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { apiError } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
@@ -195,6 +196,24 @@ describe('DocumentDetail', () => {
       mocks.state.documentDetail = null
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+    })
+
+    it('shows a failed first load with a retry instead of an empty chunk list', async () => {
+      const user = userEvent.setup()
+      mocks.state.documentDetail = null
+      mocks.detailRefetch
+        .mockRejectedValueOnce(apiError({ status: 503, message: 'Document unavailable' }))
+        .mockResolvedValue(createDocumentDetail())
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+      expect(
+        screen.queryByRole('combobox', { name: 'datasetDocuments.segment.statusFilterLabel' }),
+      ).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      expect(
+        await screen.findByRole('combobox', { name: 'datasetDocuments.segment.statusFilterLabel' }),
+      ).toBeVisible()
     })
   })
 

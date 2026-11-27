@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { ToolsContentInset } from '@/app/components/tools/content-inset'
 import type { Collection } from '@/app/components/tools/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -32,7 +34,9 @@ import {
 import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
 import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
@@ -48,7 +52,7 @@ const EMPTY_COLLECTIONS: Collection[] = []
 const ProviderList = ({ category, contentInset = 'default', layout }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
-  const { t } = useTranslation(['tools', 'navigation'])
+  const { t } = useTranslation(['tools', 'navigation', 'common'])
   const { getTagLabel } = useTags()
   const { canDeletePlugin, canSetPluginPreferences, canUpdatePlugin } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
@@ -108,6 +112,9 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const collectionList = activeToolsQuery.data ?? EMPTY_COLLECTIONS
   const isCollectionListLoading = activeToolsQuery.isLoading
   const refetch = activeToolsQuery.refetch
+  // A failed first load is not "no tools": it replaces the list with its reason and a retry.
+  const toolsLoad = useOwnedQueryError(activeToolsQuery)
+  const loadErrorMessage = useRequestErrorMessage(toolsLoad?.error)
   const activeTabCollectionList = useMemo(() => {
     return collectionList.filter((collection) => collection.type === activeTab)
   }, [activeTab, collectionList])
@@ -196,7 +203,19 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
           className="flex min-h-0 grow flex-col overflow-y-auto overscroll-contain bg-components-panel-bg"
           role="region"
         >
-          {activeTab !== 'mcp' && (
+          {loadErrorMessage && (
+            <div className={cn('shrink-0 py-4', toolListFrameClassName)}>
+              <Alert type="error">
+                <AlertTitle>{loadErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button size="small" loading={toolsLoad?.retrying} onClick={toolsLoad?.retry}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            </div>
+          )}
+          {!loadErrorMessage && activeTab !== 'mcp' && (
             <ToolProviderGrid
               activeTab={activeTab}
               collections={filteredCollectionList}
@@ -212,7 +231,8 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               onSelectProvider={setCurrentProviderId}
             />
           )}
-          {!isCollectionListLoading &&
+          {!loadErrorMessage &&
+            !isCollectionListLoading &&
             !activeTabCollectionList.length &&
             activeTab === 'builtin' && (
               <Empty
@@ -233,7 +253,7 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               tagFilterValue={tagFilterValue}
             />
           )}
-          {activeTab === 'mcp' && (
+          {!loadErrorMessage && activeTab === 'mcp' && (
             <MCPList
               providers={activeTabCollectionList}
               isLoading={allToolProvidersQuery.isLoading}

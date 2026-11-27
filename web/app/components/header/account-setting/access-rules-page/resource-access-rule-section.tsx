@@ -49,6 +49,8 @@ export function ResourceAccessRuleSection({
       const page = lastPage.pagination?.current_page ?? 1
       return page < (lastPage.pagination?.total_pages ?? 0) ? page + 1 : undefined
     },
+    // The section shows a failed load or refetch in place of the rules, with a retry.
+    meta: { errorToast: false },
   })
   const rulesQuery = useInfiniteQuery(rulesOptions)
   const createRule = useMutation(

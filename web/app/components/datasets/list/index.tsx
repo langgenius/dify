@@ -29,6 +29,7 @@ import { TagManagementDialog } from '@/features/tag-management/tag-management-di
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
@@ -69,6 +70,8 @@ function LegacyList() {
     keyword: searchKeywords,
     tagIds: tagIDs,
   })
+  // A failed refetch keeps the cached list; only a failed first load has nothing to show.
+  const datasetListLoad = useOwnedQueryError(datasetListQuery)
   const pages = datasetListQuery.data?.pages ?? []
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0
@@ -175,6 +178,9 @@ function LegacyList() {
           isFetchingNextPage={datasetListQuery.isFetchingNextPage}
           isLoading={datasetListQuery.isLoading}
           isPlaceholderData={datasetListQuery.isPlaceholderData}
+          loadError={
+            datasetListLoad && { error: datasetListLoad.error, onRetry: datasetListLoad.retry }
+          }
           onOpenTagManagement={() => setShowTagManagementDialog(true)}
           stepByStepTourActionMenuHighlightPart={
             STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu

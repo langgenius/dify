@@ -7,9 +7,11 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import { usePluginAuth } from './hooks/use-plugin-auth'
+import PluginAuthLoadError from './load-error'
 
 type PluginAuthInAgentProps = {
   pluginPayload: PluginPayload
@@ -32,7 +34,9 @@ const PluginAuthInAgent = ({
     credentials,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
+    credentialInfoQuery,
   } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
+  const credentialInfoLoad = useOwnedQueryError(credentialInfoQuery)
 
   const extraAuthorizationItems: Credential[] = [
     {
@@ -87,6 +91,16 @@ const PluginAuthInAgent = ({
     },
     [credentialId, credentials, t],
   )
+
+  // Without the credential list the picker would offer to authorize an authorized plugin.
+  if (credentialInfoLoad)
+    return (
+      <PluginAuthLoadError
+        error={credentialInfoLoad.error}
+        isRetrying={credentialInfoLoad.retrying}
+        onRetry={credentialInfoLoad.retry}
+      />
+    )
 
   return (
     <>

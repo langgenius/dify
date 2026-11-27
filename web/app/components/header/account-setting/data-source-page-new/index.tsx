@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -11,7 +13,9 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import { useMarketplace } from '@/features/marketplace/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
@@ -59,8 +63,13 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   const [searchText, setSearchText] = useState('')
   const { canSetPluginPreferences } = usePluginSettingsAccess()
   const marketplace = useMarketplace()
-  const { data, isLoading: isDataSourceListLoading } = useQuery(
-    consoleQuery.auth.plugin.datasource.list.get.queryOptions(),
+  const dataSourceListQuery = useQuery(consoleQuery.auth.plugin.datasource.list.get.queryOptions())
+  const { data, isLoading: isDataSourceListLoading } = dataSourceListQuery
+  const dataSourceListLoad = useOwnedQueryError(dataSourceListQuery)
+  const isDataSourceListLoadFailed = !!dataSourceListLoad
+  const dataSourceListErrorMessage = useRequestErrorMessage(
+    dataSourceListLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const { data: installedPluginList } = useInstalledPluginList({
     category: PluginCategoryEnum.datasource,
@@ -134,7 +143,21 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
           })}
         </div>
       )}
-      {!isDataSourceListLoading && !dataSources.length && (
+      {dataSourceListLoad && (
+        <Alert type="error" className="mb-2">
+          <AlertTitle>{dataSourceListErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button
+              size="small"
+              loading={dataSourceListLoad.retrying}
+              onClick={dataSourceListLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
+      {!isDataSourceListLoading && !isDataSourceListLoadFailed && !dataSources.length && (
         <div
           className="mb-2 rounded-[10px] bg-workflow-process-bg p-4"
           data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceFirstCard}

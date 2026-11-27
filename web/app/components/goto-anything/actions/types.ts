@@ -90,5 +90,6 @@ export type ActionItem = RemoteActionItem | LocalActionItem
 
 export type SearchQueryOptions = {
   enabled?: boolean
+  meta?: { errorToast: false }
   placeholderData?: typeof keepPreviousData
 }

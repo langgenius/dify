@@ -23,6 +23,7 @@ import {
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { ContactChannelIcon } from '../management/channel-icon'
@@ -70,6 +71,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest
   const runQuery = useQuery(
     api.get.queryOptions({
+      // A failed read, even a refetch, replaces the report with the load error and its retry.
       meta: { errorToast: false },
     }),
   )
@@ -83,9 +85,12 @@ function SyncDetailsContent({ runId }: { runId: string }) {
         : skipToken,
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
-      meta: { errorToast: false },
     }),
   )
+  // A failed first load replaces the results and a failed next page shows below them; a failed
+  // refresh keeps the loaded results and is the query cache's to report.
+  const itemsLoad = useOwnedQueryError(itemsQuery)
+  const itemsPage = useOwnedNextPageError(itemsQuery)
   const items = itemsQuery.data?.pages.flatMap((page) => page.data) ?? []
   const labels = {
     added: t(($) => $['imPlatform.details.filter.added']),
@@ -184,11 +189,11 @@ function SyncDetailsContent({ runId }: { runId: string }) {
         {run ? `${statuses[run.status]} · ${labels[result]}: ${items.length}` : ''}
       </div>
       <DialogBody>
-        {runQuery.isError || (itemsQuery.isError && !itemsQuery.data) ? (
+        {runQuery.isError || itemsLoad ? (
           <div role="alert">
             <p>
               {describeRequestError(
-                runQuery.error ?? itemsQuery.error,
+                runQuery.error ?? itemsLoad?.error,
                 t(($) => $['imPlatform.details.loadError']),
               )}
             </p>
@@ -313,10 +318,10 @@ function SyncDetailsContent({ runId }: { runId: string }) {
             {items.length === 0 && (
               <p className="py-12 text-center">{t(($) => $['imPlatform.details.empty'])}</p>
             )}
-            {itemsQuery.isFetchNextPageError && (
+            {itemsPage && (
               <p role="alert" className="mt-3 text-text-destructive">
                 {describeRequestError(
-                  itemsQuery.error,
+                  itemsPage.error,
                   t(($) => $['imPlatform.details.pageError']),
                 )}
               </p>

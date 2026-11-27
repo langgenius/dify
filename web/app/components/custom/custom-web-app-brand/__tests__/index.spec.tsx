@@ -1,6 +1,6 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ConsoleClient } from '@/service/console'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -180,18 +180,23 @@ it('keeps edits disabled until the custom configuration arrives', async () => {
   expectPreviewLogo('https://example.com/logo.png')
 })
 
-it('keeps edits disabled when loading configuration fails', async () => {
-  getConfig.mockRejectedValue(new Error('Configuration unavailable'))
-  const { user, queryClient } = renderBrand({ seedConfig: false })
-  await waitFor(() =>
-    expect(
-      queryClient.getQueryState(consoleQuery.workspaces.customConfig.get.queryKey())?.status,
-    ).toBe('error'),
+it('says why edits are disabled when loading configuration fails, and retries it', async () => {
+  getConfig.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 500 }), { message: 'Configuration unavailable' }),
   )
+  const { user } = renderBrand({ seedConfig: false })
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('Configuration unavailable')
+  // The failed first load is presented once, in place, not as a toast.
+  expect(screen.getAllByText('Configuration unavailable')).toHaveLength(1)
   expect(removalSwitch()).toHaveAttribute('aria-disabled', 'true')
   expect(uploadInput()).toBeDisabled()
   await user.click(removalSwitch())
   expect(updateConfig).not.toHaveBeenCalled()
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(uploadInput()).toBeEnabled())
+  expect(getConfig).toHaveBeenCalledTimes(2)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
 it('rejects an oversized logo before sending an upload', async () => {

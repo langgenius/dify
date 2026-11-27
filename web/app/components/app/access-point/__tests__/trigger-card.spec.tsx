@@ -1,6 +1,6 @@
 import type { WorkflowTriggerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   getTriggers: vi.fn(),
   triggerQuery: {
     data: undefined as { data: WorkflowTriggerResponse[] } | undefined,
+    failure: undefined as Error | undefined,
     isLoading: false,
   },
   updateTriggerStatus: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.triggers.get': async () => [],
       'apps.byAppId.triggers.get': async (input) => {
         mocks.getTriggers(input)
+        if (mocks.triggerQuery.failure) throw mocks.triggerQuery.failure
         return mocks.triggerQuery.data ?? { data: [] }
       },
       'apps.byAppId.triggerEnable.post': async (input) => {
@@ -94,7 +96,8 @@ const triggersQueryKey = consoleQuery.apps.byAppId.triggers.get.queryKey({
 
 function renderCard(availability: 'available' | 'loading' | 'unavailable') {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(triggersQueryKey, mocks.triggerQuery.data ?? { data: [] })
+  if (!mocks.triggerQuery.failure)
+    queryClient.setQueryData(triggersQueryKey, mocks.triggerQuery.data ?? { data: [] })
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -119,8 +122,29 @@ describe('TriggerAccessPointCard', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     mocks.triggerQuery.data = undefined
+    mocks.triggerQuery.failure = undefined
     mocks.triggerQuery.isLoading = false
     mocks.updateTriggerStatus.mockResolvedValue(undefined)
+  })
+
+  it('shows a failed trigger list with a retry instead of the empty state', async () => {
+    const user = userEvent.setup()
+    mocks.triggerQuery.failure = new Error('Offline')
+    renderCard('available')
+
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByText('deployments.common.loadFailed')).toBeInTheDocument()
+    expect(
+      screen.queryByText('appOverview.overview.triggerInfo.triggerStatusDescription', {
+        exact: false,
+      }),
+    ).not.toBeInTheDocument()
+
+    mocks.triggerQuery.failure = undefined
+    mocks.triggerQuery.data = { data: [createTrigger('1', 'enabled')] }
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByText('Trigger 1')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('shows loading without reporting an environment failure', () => {

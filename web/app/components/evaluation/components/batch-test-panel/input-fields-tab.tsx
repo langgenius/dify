@@ -1,6 +1,8 @@
 import type { EvaluationResourceProps } from '../../types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { EVALUATION_TEMPLATE_FILE_NAMES } from '../../store-utils'
 import InputFieldsRequirements from './input-fields/input-fields-requirements'
 import UploadRunPopover from './input-fields/upload-run-popover'
@@ -17,7 +19,7 @@ const InputFieldsTab = ({
   isPanelReady,
   isRunnable,
 }: InputFieldsTabProps) => {
-  const { t } = useTranslation(['evaluation'])
+  const { t } = useTranslation(['evaluation', 'common'])
   const actions = useInputFieldsActions({
     resourceType,
     resourceId,
@@ -25,15 +27,31 @@ const InputFieldsTab = ({
     isRunnable,
     templateFileName: EVALUATION_TEMPLATE_FILE_NAMES[resourceType],
   })
+  const templateColumnsLoadErrorMessage = useRequestErrorMessage(actions.templateColumnsLoadError)
 
   return (
     <div className="space-y-5">
-      <InputFieldsRequirements
-        resourceType={resourceType}
-        resourceId={resourceId}
-        inputFields={actions.templateColumns}
-        isLoading={actions.isTemplateColumnsLoading}
-      />
+      {templateColumnsLoadErrorMessage ? (
+        <Alert type="error">
+          <AlertTitle>{templateColumnsLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button
+              size="small"
+              loading={actions.isTemplateColumnsRetrying}
+              onClick={actions.retryTemplateColumns}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      ) : (
+        <InputFieldsRequirements
+          resourceType={resourceType}
+          resourceId={resourceId}
+          inputFields={actions.templateColumns}
+          isLoading={actions.isTemplateColumnsLoading}
+        />
+      )}
       <div className="space-y-3">
         <Button
           variant="secondary"

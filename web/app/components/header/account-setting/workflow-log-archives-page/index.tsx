@@ -95,17 +95,18 @@ function buildArchiveDownloadFileUrl(downloadId: string) {
 }
 
 export default function WorkflowLogArchivesPage() {
-  const { t } = useTranslation(['appLog'])
+  const { t } = useTranslation(['appLog', 'common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { data: plan } = useQuery(
+  const planQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.billing.subscription.plan,
     }),
   )
+  const plan = planQuery.data
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const archiveListQuery = useQuery(
@@ -115,15 +116,20 @@ export default function WorkflowLogArchivesPage() {
         query.state.data?.months.some((archive) => isDeletingStatus(archive.deletion_status))
           ? DOWNLOAD_TASK_POLLING_INTERVAL
           : false,
+      // The table shows a failed load or polling refetch in place, with a retry.
+      meta: { errorToast: false },
     }),
   )
   const archiveData = archiveListQuery.data
   const archiveMonths = archiveData?.months ?? []
   const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
   const summary = archiveData?.summary
+  const isPlanLoadFailed = planQuery.isError && plan === undefined
+  const isLoadFailed = isPlanLoadFailed || archiveListQuery.isError
   const isLoading =
-    (deploymentEdition === 'CLOUD' && plan === undefined) || archiveListQuery.isLoading
-  const isEmpty = !isLoading && !archiveListQuery.isError && archiveMonths.length === 0
+    (deploymentEdition === 'CLOUD' && plan === undefined && !isPlanLoadFailed) ||
+    archiveListQuery.isLoading
+  const isEmpty = !isLoading && !isLoadFailed && archiveMonths.length === 0
   const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
 
   useEffect(() => {
@@ -253,7 +259,7 @@ export default function WorkflowLogArchivesPage() {
                   ))}
                 </>
               )}
-              {!isLoading && archiveListQuery.isError && (
+              {!isLoading && isLoadFailed && (
                 <tr>
                   <td colSpan={4}>
                     <div className="sticky start-0 flex min-h-36 max-w-[100cqw] flex-col items-center justify-center gap-2 px-4 py-4 text-center">
@@ -267,6 +273,16 @@ export default function WorkflowLogArchivesPage() {
                       <div className="system-xs-regular text-text-tertiary">
                         {t(($) => $['archives.error.description'], { ns: 'appLog' })}
                       </div>
+                      <Button
+                        size="small"
+                        loading={planQuery.isFetching || archiveListQuery.isFetching}
+                        onClick={() => {
+                          if (isPlanLoadFailed) void planQuery.refetch()
+                          else void archiveListQuery.refetch()
+                        }}
+                      >
+                        {t(($) => $['operation.retry'], { ns: 'common' })}
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -277,7 +293,7 @@ export default function WorkflowLogArchivesPage() {
 
                   return <WorkflowArchiveMonthRow key={archiveMonth} archive={archive} />
                 })}
-              {!isLoading && !archiveListQuery.isError && hasMoreArchives && (
+              {!isLoading && !isLoadFailed && hasMoreArchives && (
                 <tr aria-hidden="true">
                   <td colSpan={4}>
                     <div

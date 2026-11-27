@@ -66,12 +66,16 @@ async function renderSetting({
   providers = [scanner()],
   readonly = false,
   canManageScanners = true,
+  providerLoadFailures = 0,
 }: {
   enabled?: boolean
   providers?: FileScanProviderResponse[]
   readonly?: boolean
   canManageScanners?: boolean
+  /** How many scanner list requests fail before it loads. */
+  providerLoadFailures?: number
 } = {}) {
+  let remainingProviderFailures = providerLoadFailures
   const fake = installFakeApi({
     console: {
       datasets: {
@@ -82,7 +86,15 @@ async function renderSetting({
           },
         },
       },
-      fileScan: { providers: { get: () => ({ data: providers }) } },
+      fileScan: {
+        providers: {
+          get: () => {
+            if (remainingProviderFailures-- > 0)
+              throw apiError({ status: 503, message: 'Scanners unavailable' })
+            return { data: providers }
+          },
+        },
+      },
     },
   })
   onTestFinished(fake)
@@ -247,4 +259,14 @@ it('cannot be changed by a member who may only view the settings', async () => {
   await expect.element(draftState()).toHaveTextContent('clean')
   await expect.element(saveResult()).toHaveTextContent('unchanged')
   expect(putPolicy).not.toHaveBeenCalled()
+})
+
+it('shows a failed scanner list load with a retry instead of an empty scanner choice', async () => {
+  const { listProviders } = await renderSetting({ providerLoadFailures: 1 })
+  await enableSwitch().click()
+
+  await expect.element(page.getByText('fileScan.scanner.loadFailed')).toBeVisible()
+  await page.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(page.getByText('fileScan.scanner.loadFailed')).not.toBeInTheDocument()
+  expect(listProviders).toHaveBeenCalledTimes(2)
 })

@@ -27,6 +27,11 @@ import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'
+import {
+  useOwnedNextPageError,
+  useOwnedQueryError,
+  useOwnedQueryErrors,
+} from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ConnectedSourceEditForm } from './setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from './setup/crawl-selection'
@@ -196,8 +201,10 @@ function ConnectedSourceEditDialogContent({
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const describeRequestError = useRequestErrorDescriber()
   const datasourcePluginsQuery = useQuery(
-    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions(),
   )
+  // Without the plugins there is no provider to edit; a failed refetch keeps the cached ones.
+  const datasourcePluginsLoad = useOwnedQueryError(datasourcePluginsQuery)
   const {
     data: connectionsData,
     error: connectionsQueryError,
@@ -307,7 +314,7 @@ function ConnectedSourceEditDialogContent({
 
   const loading = datasourcePluginsQuery.isPending || connectionsPending
   const unavailable =
-    datasourcePluginsQuery.isError ||
+    !!datasourcePluginsLoad ||
     connectionsError ||
     !installedProviderOption ||
     (!loading && !bindingReady)
@@ -330,9 +337,9 @@ function ConnectedSourceEditDialogContent({
         ) : unavailable || !installedProviderOption || !previewBinding ? (
           <div className="py-8">
             <p role="alert" className="system-sm-regular text-text-destructive">
-              {datasourcePluginsQuery.isError || connectionsError
+              {datasourcePluginsLoad || connectionsError
                 ? describeRequestError(
-                    datasourcePluginsQuery.error ?? connectionsQueryError,
+                    datasourcePluginsLoad?.error ?? connectionsQueryError,
                     t(($) => $.providerLoadFailed),
                   )
                 : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
@@ -508,19 +515,8 @@ function WebsiteSourceEditDialogContent({
       enabled: usesProviderDeclaration,
     }),
   )
-  const {
-    data: connectionsData,
-    error: connectionsError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isFetchNextPageError,
-    isRefetching: connectionsRefetching,
-    refetch: refetchConnections,
-  } = useInfiniteQuery(
+  const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      // Failures, including a failed next page, are shown inline with a retry.
-      meta: { errorToast: false },
       enabled: initialSource.type === 'web' && Boolean(initialSource.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },
@@ -534,6 +530,13 @@ function WebsiteSourceEditDialogContent({
       retry: false,
     }),
   )
+  const {
+    data: connectionsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  } = connectionsQuery
   const [initialParameters] = useState(() => sourceWebsiteParameters(initialSource))
   const [nextName, setNextName] = useState(initialSource.name)
   const [nextParameters, setNextParameters] = useState(initialParameters)
@@ -563,6 +566,12 @@ function WebsiteSourceEditDialogContent({
   const connections =
     connectionsData?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
   const connection = connections.find((item) => item.id === initialSource.connectionId)
+  // The saved connection's failed first load or next page shows until it is found; a failed
+  // refresh is the query cache's to report.
+  const showsConnectionError = Boolean(initialSource.connectionId) && !connection
+  const connectionsLoad = useOwnedQueryErrors(showsConnectionError ? [connectionsQuery] : [])
+  const connectionsPage = useOwnedNextPageError(connectionsQuery, showsConnectionError)
+  const connectionsFailure = connectionsLoad ?? connectionsPage
   const connectionConfiguration = connection?.configuration
   const credentialId = connectionConfiguration?.credentialId
   const datasource = connectionConfiguration?.datasource
@@ -805,19 +814,19 @@ function WebsiteSourceEditDialogContent({
           ) : (
             <div>{sourceNameField}</div>
           )}
-          {initialSource.connectionId && !connection && connectionsError && (
+          {connectionsFailure && (
             <div className="mt-4">
               <p role="alert" className="system-sm-regular text-text-destructive">
                 {describeRequestError(
-                  connectionsError,
+                  connectionsFailure.error,
                   t(($) => $.providerLoadFailed),
                 )}
               </p>
               <Button
                 className="mt-3"
                 disabled={pending}
-                loading={isFetchingNextPage || connectionsRefetching}
-                onClick={() => void (isFetchNextPageError ? fetchNextPage() : refetchConnections())}
+                loading={connectionsFailure.retrying}
+                onClick={connectionsFailure.retry}
                 type="button"
               >
                 {tCommon(($) => $['operation.retry'])}

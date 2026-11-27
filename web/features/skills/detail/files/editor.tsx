@@ -287,7 +287,6 @@ export function SkillFileEditor({
   const shouldFetchTextFileContent = !!file && isTextFile(file) && file.content == null
   const textContentQuery = useQuery({
     queryKey: ['skill-file-text-content', skillId, selectedVersionId, filePath, fileHash],
-    meta: { errorToast: false },
     queryFn: async () => {
       if (!filePath) throw new Error('file path is required')
       const blob = await fetchSkillFileBlob({
@@ -307,6 +306,7 @@ export function SkillFileEditor({
     !!file && !isTextFile(file) && (isSkillImageFile(file) || isSkillPdfFile(file))
   const binaryPreviewQuery = useQuery({
     queryKey: ['skill-file-blob-preview', skillId, selectedVersionId, filePath, fileHash],
+    // The preview shows a failed load in place of any earlier preview.
     meta: { errorToast: false },
     queryFn: () => {
       if (!filePath) throw new Error('file path is required')
@@ -1000,6 +1000,7 @@ export function SkillFileEditor({
 
     const references = await queryClient.query({
       ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+        // Publishing reports a failed lookup once, through reportRequestError.
         meta: { errorToast: false },
         input: {
           params: {

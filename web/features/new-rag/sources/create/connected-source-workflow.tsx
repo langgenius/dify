@@ -38,6 +38,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getRequestErrorMessage } from '@/service/http-error'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { formatFileSize } from '@/utils/format'
 import { createRequestId } from '../../request-id'
@@ -1840,10 +1841,17 @@ function AppliedResourceConfiguration({
 export function ConnectedSourceWorkflow(props: ConnectedSourceWorkflowProps) {
   const { draft, onDraftChange } = props
   const datasourcePluginsQuery = useQuery(
-    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      // The workflow session shows failures, including a failed refetch, inline with a retry.
+      meta: { errorToast: false },
+    }),
   )
   const datasourceAuthQuery = useQuery(
-    consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }),
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions({
+      // The workflow session shows failures, including a failed refetch, inline with a retry.
+      meta: { errorToast: false },
+      retry: 0,
+    }),
   )
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
@@ -1923,15 +1931,20 @@ function ConnectedSourceWorkflowSession({
     }),
   )
   const datasourcePluginsQuery = useQuery(
-    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      // The workflow session shows failures, including a failed refetch, inline with a retry.
+      meta: { errorToast: false },
+    }),
   )
   const datasourceAuthQuery = useQuery(
-    consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }),
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions({
+      // The workflow session shows failures, including a failed refetch, inline with a retry.
+      meta: { errorToast: false },
+      retry: 0,
+    }),
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      // Failures, including a failed next page, are shown inline with a retry.
-      meta: { errorToast: false },
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {
@@ -1944,6 +1957,10 @@ function ConnectedSourceWorkflowSession({
       retry: false,
     }),
   )
+  // A failed first load or next page shows inline with a retry; a failed refresh keeps the
+  // loaded connections and is the query cache's to report.
+  const connectionsLoad = useOwnedQueryError(connectionsQuery)
+  const connectionsPage = useOwnedNextPageError(connectionsQuery)
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, draft.sourceType],
@@ -2007,9 +2024,8 @@ function ConnectedSourceWorkflowSession({
     providersQuery.error ||
     datasourcePluginsQuery.error ||
     datasourceAuthQuery.error ||
-    // A failed refresh keeps the loaded connections; the action that refreshed reports it.
-    (connectionsQuery.error && !connectionsQuery.data) ||
-    connectionsQuery.isFetchNextPageError
+    connectionsLoad?.error ||
+    connectionsPage?.error
   const loadingConnections =
     connectionsQuery.isPending ||
     (!connectionsQuery.isFetchNextPageError &&
@@ -2140,7 +2156,7 @@ function ConnectedSourceWorkflowSession({
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">
             {describeRequestError(
-              queryError === true ? connectionsQuery.error : queryError,
+              queryError,
               t(($) => $.providerLoadFailed),
             )}
           </p>

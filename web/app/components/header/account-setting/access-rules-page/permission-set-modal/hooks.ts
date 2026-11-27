@@ -1,9 +1,11 @@
 import type { SelectorKey } from 'i18next'
+import type { PermissionGroupListLoadError } from '../../permission-group-list'
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 
 export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => {
   const { t } = useTranslation(['permission', 'permissionKeys'])
@@ -11,7 +13,8 @@ export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => 
     consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryOptions({
       input: {},
     })
-  const { data: permissionCatalog } = useQuery(permissionCatalogQueryOptions)
+  const permissionCatalogQuery = useQuery(permissionCatalogQueryOptions)
+  const permissionCatalog = permissionCatalogQuery.data
 
   const groups = useMemo(() => {
     // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
@@ -38,8 +41,17 @@ export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => 
 
   const permissionMap = Object.fromEntries(allPermissions.map((p) => [p.key, p]))
 
+  // Every caller renders the failed first load; a failed refetch keeps the catalog and toasts.
+  const catalogLoad = useOwnedQueryError(permissionCatalogQuery)
+  const loadError: PermissionGroupListLoadError | undefined = catalogLoad && {
+    error: catalogLoad.error,
+    retrying: catalogLoad.retrying,
+    onRetry: catalogLoad.retry,
+  }
+
   return {
     groups,
+    loadError,
     permissionMap,
   }
 }

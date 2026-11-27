@@ -10,6 +10,7 @@ import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
@@ -20,6 +21,10 @@ const api = vi.hoisted(() => ({
   upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   capacity: vi.fn<typeof import('@/service/console').consoleClient.features.vectorSpace.get>(),
   replace: vi.fn(),
+  published:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.publish.get
+    >(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -32,6 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.vectorSpace.get': api.capacity,
+      'rag.pipelines.byPipelineId.workflows.publish.get': api.published,
       'rag.pipelines.datasourcePlugins.get': async () => [],
       'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': async () => ({
         variables: [],
@@ -66,38 +72,42 @@ afterEach(async () => {
 function renderPage({
   plan = 'professional',
   permissions = [DatasetACLPermission.Use],
+  seedPipeline = true,
 }: {
   plan?: CloudPlan
   permissions?: NonNullable<ReturnType<typeof createDatasetFixture>['permission_keys']>
+  /** `false` leaves the published pipeline unseeded so it is requested. */
+  seedPipeline?: boolean
 } = {}) {
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
-      input: { params: { pipeline_id: 'pipeline-1' } },
-    }),
-    createWorkflowResponseFixture({
-      graph: {
-        nodes: [
-          createNode({
-            id: 'source',
-            data: {
-              ...datasourceDefault.defaultValue,
-              type: BlockEnum.DataSource,
-              title: 'Local documents',
-              provider_type: DatasourceType.localFile,
-              provider_name: 'upload-file',
-              datasource_name: 'upload-file',
-              datasource_label: 'Local documents',
-              plugin_id: '',
-              fileExtensions: ['pdf'],
-            },
-          }),
-        ],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      },
-    }),
-  )
+  if (seedPipeline)
+    queryClient.setQueryData(
+      consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+        input: { params: { pipeline_id: 'pipeline-1' } },
+      }),
+      createWorkflowResponseFixture({
+        graph: {
+          nodes: [
+            createNode({
+              id: 'source',
+              data: {
+                ...datasourceDefault.defaultValue,
+                type: BlockEnum.DataSource,
+                title: 'Local documents',
+                provider_type: DatasourceType.localFile,
+                provider_name: 'upload-file',
+                datasource_name: 'upload-file',
+                datasource_label: 'Local documents',
+                plugin_id: '',
+                fileExtensions: ['pdf'],
+              },
+            }),
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+      }),
+    )
   queryClient.setQueryData(
     consoleQuery.files.upload.get.queryKey(),
     createFileUploadConfigFixture(),
@@ -199,4 +209,16 @@ it('keeps the uploaded document while the pipeline reloads in the background', a
 
   await waitFor(() => expect(screen.getByText('Guide.pdf')).toBeInTheDocument())
   expect(nextButton()).toBeInTheDocument()
+})
+
+it('shows a failed data-source load with a retry instead of an empty source list', async () => {
+  const user = userEvent.setup()
+  api.published
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Pipeline unavailable' }))
+    .mockReturnValue(new Promise(() => {}))
+  renderPage({ seedPipeline: false })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(api.published).toHaveBeenCalledTimes(2)
 })

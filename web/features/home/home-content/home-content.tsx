@@ -380,6 +380,7 @@ export function HomeContent() {
       try {
         const appDetail = await queryClient.query({
           ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+            // The create flow reports this lookup's failure itself, cached data or not.
             meta: { errorToast: false },
             input: { params: { app_id: appId } },
           }),

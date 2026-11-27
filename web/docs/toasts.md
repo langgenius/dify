@@ -41,7 +41,7 @@ A success toast is appropriate when the result is not on screen: a background jo
 - The query client reports failed requests once, at the cache; see [query error toasts]. The request layer shows no error toasts.
   - The message comes from [`describeRequestError`]: a translated `requestErrors` entry for the error's `code`, the server's message for a code whose text is upstream detail, then the server's message for a code the catalog does not know, then generic text for the kind of failure (network, timeout, rate limit, server error).
   - A failed mutation shows that message. Set `meta: { errorMessage }` to give it the mutation's own text for codes the catalog does not know; a cataloged code keeps its translated text. Do not add a second toast for the same failure in `catch` or `onError`.
-  - A failed query shows that message, on its first load and on a background refetch alike, but only when the code or the server explains the failure. A polling query shows a given message once per 10 seconds. When the owner renders its own error state, set `meta: { errorToast: false }` on the query.
+  - A failed query shows that message, on its first load and on a background refetch alike, but only when the code or the server explains the failure; a polling query shows a given message once per 10 seconds. Prefer an error state (with a retry) where the data would be: render it from [`useOwnedQueryError`]`(query)` (or `useOwnedQueryErrors([...])` for several reads), which returns `{ error, retry, retrying }` while a first load has failed and claims that error, so the cache, which waits for the render after a failure, does not also toast it. A failed refetch, which keeps showing cached data, still toasts. Call it only where the error is rendered; a hook shared by callers that do not render it exposes its query instead. Set `meta: { errorToast: false }` when the owner also presents refetch failures itself. [`query-error-claims.spec.ts`] requires every rendered query error to come through `useOwnedQueryError`.
   - Sign-in failures (401), app-access errors and other failures the request layer already presents are never reported again.
 - When a business flow owns the error feedback, set `meta: { errorToast: false }` on its mutation or query and present the failure once at that business boundary. Prefer inline errors; use a business-specific toast only when the feedback cannot live where the user acted. For multi-request actions, let the business flow choose one message for the overall result. An opted-out request with no other error presentation fails without any feedback.
 - A request called outside TanStack Query, such as a direct `consoleClient` call, has no automatic toast. Run a user action through a mutation, or present its failure where it is caught; `reportRequestError(error, fallback)` reports it like the mutation cache, and also reports a network failure, timeout or other exception with generic text. Event streams and uploads report through their own error callbacks.
@@ -55,6 +55,8 @@ Many existing calls predate these rules and are migrated in batches. Do not copy
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
 [`describeRequestError`]: ../service/request-error-message.ts
+[`query-error-claims.spec.ts`]: ../app/__tests__/query-error-claims.spec.ts
+[`useOwnedQueryError`]: ../service/use-owned-query-error.ts
 [`useRequestErrorMessage`]: ../service/use-request-error-message.ts
 [form contract]: ../../packages/dify-ui/docs/forms.md
 [query error toasts]: ../app/query-error-toast.ts

@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "经济",
   "indexingTechnique.high_quality": "高质量",
   "knowledge": "知识库",
+  "loadError": "数据加载失败，请重试。",
   "metadata.addMetadata": "添加元数据",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "应用于所有选定文档",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "自动为所有选定文档创建上述编辑和新元数据，否则仅对具有元数据的文档应用编辑。",

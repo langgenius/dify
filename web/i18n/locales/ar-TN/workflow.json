@@ -174,6 +174,7 @@
   "common.latestPublished": "آخر منشور",
   "common.learnMore": "تعرف على المزيد",
   "common.listening": "الاستماع",
+  "common.loadFailed": "تعذر التحميل. حاول مرة أخرى.",
   "common.loadMore": "تحميل المزيد",
   "common.manageInTools": "إدارة في الأدوات",
   "common.maxTreeDepth": "الحد الأقصى لـ {{depth}} عقد لكل فرع",

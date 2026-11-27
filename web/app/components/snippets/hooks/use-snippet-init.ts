@@ -1,15 +1,15 @@
 import type { SnippetWorkflow } from '@/types/snippet'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import {
   fetchSnippetDraftWorkflow,
   snippetPublishedWorkflowQueryOptions,
 } from '@/service/snippet-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { buildSnippetDetailPayload } from '../utils/snippet-detail-payload'
 
 const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
@@ -46,6 +46,8 @@ type DraftWorkflowState = {
   snippetId: string
   data?: SnippetWorkflow
   isLoaded: boolean
+  error?: unknown
+  isRetrying?: boolean
 }
 
 export const useSnippetInit = (snippetId: string) => {
@@ -60,6 +62,7 @@ export const useSnippetInit = (snippetId: string) => {
     snippetId: '',
     isLoaded: false,
   })
+  const [draftAttempt, setDraftAttempt] = useState(0)
   const defaultBlockConfigsOptions =
     consoleQuery.snippets.bySnippetId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
       input: { params: { snippet_id: snippetId } },
@@ -119,16 +122,24 @@ export const useSnippetInit = (snippetId: string) => {
         })
       })
       .catch((error: unknown) => {
-        // Keep the canvas gated on unexpected draft fetch failures and report them.
-        // `fetchSnippetDraftWorkflow` resolves with undefined for 404, so this
-        // branch represents a real initialization failure rather than "no draft".
-        if (!ignore) reportRequestError(error)
+        // Keep the canvas gated on unexpected draft fetch failures; the page presents them with a
+        // retry. `fetchSnippetDraftWorkflow` resolves with undefined for 404, so this branch
+        // represents a real initialization failure rather than "no draft".
+        if (ignore) return
+        setDraftWorkflowState({ snippetId, isLoaded: false, error })
       })
 
     return () => {
       ignore = true
     }
-  }, [snippetId, workflowStore])
+  }, [draftAttempt, snippetId, workflowStore])
+
+  const draftError =
+    draftWorkflowState.snippetId === snippetId ? draftWorkflowState.error : undefined
+  const retryDraft = useCallback(() => {
+    setDraftWorkflowState((state) => ({ ...state, isRetrying: true }))
+    setDraftAttempt((attempt) => attempt + 1)
+  }, [])
 
   const isDraftWorkflowLoading =
     !!snippetId && (!draftWorkflowState.isLoaded || draftWorkflowState.snippetId !== snippetId)
@@ -167,9 +178,30 @@ export const useSnippetInit = (snippetId: string) => {
     snippetApiDetail.error,
   ])
 
+  // A missing snippet resolves `data` to null and is left to the query cache; any other failed
+  // first load of the detail is presented by the page, the hook's only caller.
+  const detailLoad = useOwnedQueryError({
+    data: snippetApiDetail.data,
+    error: snippetApiDetail.error,
+    isError: snippetApiDetail.isError && !isNotFoundError(snippetApiDetail.error),
+    isFetching: snippetApiDetail.isFetching,
+    refetch: snippetApiDetail.refetch,
+  })
+  const { refetch: refetchDetail } = snippetApiDetail
+  const hasDetailError = !!detailLoad
+  const refetch = useCallback(async () => {
+    if (draftError) retryDraft()
+    if (hasDetailError) await refetchDetail()
+  }, [draftError, hasDetailError, refetchDetail, retryDraft])
+
   return {
-    ...snippetApiDetail,
+    error: detailLoad?.error,
     data,
+    // An unexpected draft failure leaves the page without a graph to show; its message is the
+    // server's, so the owner presents it without the detail's fallback text.
+    draftError,
+    isFetching: snippetApiDetail.isFetching || (!!draftError && !!draftWorkflowState.isRetrying),
+    refetch,
     isLoading:
       snippetApiDetail.isLoading || publishedWorkflowQuery.isLoading || isDraftWorkflowLoading,
   }

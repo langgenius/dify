@@ -52,6 +52,23 @@ describe('MemberSelector', () => {
     ).toBeInTheDocument()
   })
 
+  it('should show a retryable error in the dropdown when members fail to load', async () => {
+    const user = userEvent.setup()
+    mockMembersHook
+      .mockRejectedValueOnce(new Error('Request failed'))
+      .mockResolvedValueOnce({ accounts: mockAccounts })
+    render(<MemberSelector onSelect={mockOnSelect} />)
+
+    await user.click(getTrigger())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('Jane Smith')).toBeInTheDocument()
+    expect(mockMembersHook).toHaveBeenCalledTimes(2)
+  })
+
   it('should open dropdown and show filtered list on click', async () => {
     const user = userEvent.setup()
     render(<MemberSelector onSelect={mockOnSelect} exclude={['1']} />)

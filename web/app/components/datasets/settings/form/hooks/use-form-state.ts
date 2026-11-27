@@ -21,6 +21,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { toIconInfo, toRetrievalConfig, toSummaryIndexSetting } from '../../../dataset-fields'
@@ -112,21 +113,39 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
   )
 
   // Model lists
-  const { data: rerankModelList = [] } = useQuery(
+  const rerankModelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.rerank } },
       select: (response) => response.data,
     }),
   )
-  const { data: embeddingModelList = [] } = useQuery(
+  const { data: rerankModelList = [] } = rerankModelListQuery
+  const embeddingModelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textEmbedding } },
       select: (response) => response.data,
     }),
   )
-  const { data: membersData } = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  const { data: embeddingModelList = [] } = embeddingModelListQuery
+  const membersQuery = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: {},
+    }),
   )
+  const { data: membersData } = membersQuery
+  // Without the model catalogs or members their pickers look empty; a failed refetch keeps the
+  // cached lists and is reported by the query cache. The only caller renders this load error, so
+  // claiming it here keeps it off the toasts.
+  const settingsLoad = useOwnedQueryErrors([
+    rerankModelListQuery,
+    embeddingModelListQuery,
+    membersQuery,
+  ])
+  const loadError = settingsLoad && {
+    error: settingsLoad.error,
+    retrying: settingsLoad.retrying,
+    onRetry: settingsLoad.retry,
+  }
   const queryClient = useQueryClient()
   const invalidDatasetList = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
@@ -274,6 +293,7 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
 
     // Loading state
     loading,
+    loadError,
 
     // Basic form
     name,

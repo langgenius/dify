@@ -1,6 +1,8 @@
 'use client'
 
 import type { WorkflowVersionListItem } from '@/service/workflow-queries'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import {
   useInfiniteQuery,
@@ -22,6 +24,8 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useDeleteWorkflow, useUpdateWorkflow } from '@/service/use-workflow'
 import {
   lastRunQueryKey,
@@ -92,17 +96,19 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation(['billing', 'common', 'workflow', 'workflowHistory'])
 
-  const {
-    data: versionHistory,
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-  } = useInfiniteQuery(
+  const versionHistoryQuery = useInfiniteQuery(
     workflowVersionHistoryInfiniteOptions(resource, {
       limit: HISTORY_PER_PAGE,
       userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
       namedOnly: isOnlyShowNamedVersions,
     }),
+  )
+
+  const { data: versionHistory, fetchNextPage, hasNextPage, isFetching } = versionHistoryQuery
+  const versionHistoryLoad = useOwnedQueryError(versionHistoryQuery)
+  const versionHistoryErrorMessage = useRequestErrorMessage(
+    versionHistoryLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
 
   // Showing the draft inside the history session loads the backup but keeps it, so the draft can be
@@ -387,6 +393,15 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
         <div className="flex-1 overflow-y-auto px-3 py-2">
           {isFetching && !versionHistory?.pages?.length ? (
             <Loading />
+          ) : versionHistoryLoad ? (
+            <Alert type="error">
+              <AlertTitle>{versionHistoryErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" variant="secondary" onClick={versionHistoryLoad.retry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
           ) : (
             <>
               {versionHistory?.pages?.map((page, pageNumber) =>

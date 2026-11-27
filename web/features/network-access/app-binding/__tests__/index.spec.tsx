@@ -296,17 +296,29 @@ describe('AccessControlEntry', () => {
     ).toHaveLength(2)
   })
 
-  it('reports a binding that fails to load instead of hiding the entry silently', async () => {
+  it('reports a binding that fails to load in place of the entry and retries it', async () => {
     const errorToast = vi.spyOn(toast, 'error')
     const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
     seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
     const fallback = vi.mocked(globalThis.fetch).getMockImplementation()!
+    let bindingRequests = 0
     vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
       const request = new Request(input, init)
-      if (new URL(request.url).pathname.endsWith('/apps/app-1/network-access-group'))
-        return Response.json({ message: 'Access control unavailable' }, { status: 503 })
+      if (new URL(request.url).pathname.endsWith('/apps/app-1/network-access-group')) {
+        bindingRequests += 1
+        if (bindingRequests === 1)
+          return Response.json({ message: 'Access control unavailable' }, { status: 503 })
+        return Response.json({
+          app_id: 'app-1',
+          entitled: true,
+          effective_enabled: false,
+          binding: null,
+          available_access_points: ['webapp', 'service_api', 'mcp'],
+        })
+      }
       return fallback(input, init)
     })
+    const user = userEvent.setup()
     const { wrapper: UrlState } = createNuqsTestWrapper({ searchParams: initialSearchParams })
     renderWithConsoleQuery(
       <UrlState>
@@ -326,10 +338,14 @@ describe('AccessControlEntry', () => {
       },
     )
 
-    await waitFor(() =>
-      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Access control unavailable'),
-    )
+    // The entry presents its failed first load in place of the chip, without a toast.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Access Control')
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
+    expect(errorToast).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByRole('button', { name: /Access Control/ })).toBeInTheDocument()
+    expect(bindingRequests).toBe(2)
   })
 
   it('does not render on community edition', () => {

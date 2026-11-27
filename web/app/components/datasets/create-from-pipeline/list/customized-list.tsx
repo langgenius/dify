@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -11,11 +12,14 @@ import {
   AlertDialogTitle,
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { selectPipelineTemplateList } from '@/app/components/rag-pipeline/utils/query-select'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import TemplateCard from './template-card'
 
@@ -29,13 +33,22 @@ const CustomizedList = ({
 }: {
   fallbackFocusRef: RefObject<HTMLElement | null>
 }) => {
-  const { t } = useTranslation(['common', 'datasetPipeline'])
+  const { t } = useTranslation(['common', 'dataset', 'datasetPipeline'])
   const queryClient = useQueryClient()
   const [deleteDialog] = useState(() => createAlertDialogHandle<string>())
-  const { data } = useQuery(
-    templates.queryOptions({ input: listInput, select: selectPipelineTemplateList }),
+  const listQuery = useQuery(
+    templates.queryOptions({
+      input: listInput,
+      select: selectPipelineTemplateList,
+    }),
   )
+  const { data } = listQuery
   const list = data?.pipeline_templates ?? []
+  const listLoad = useOwnedQueryError(listQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    listLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
+  )
   const instanceId = useId()
   const mutationKey = [...deleteTemplate.mutationKey(), instanceId]
   const deleteFilter = { mutationKey, exact: true }
@@ -52,6 +65,21 @@ const CustomizedList = ({
 
   return (
     <>
+      {listLoad && (
+        <>
+          <div className="pt-2 system-sm-semibold-uppercase text-text-tertiary">
+            {t(($) => $['templates.customized'], { ns: 'datasetPipeline' })}
+          </div>
+          <Alert type="error" className="my-2">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={listLoad.retrying} onClick={listLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        </>
+      )}
       {list.length > 0 && (
         <>
           <div className="pt-2 system-sm-semibold-uppercase text-text-tertiary">

@@ -1,10 +1,13 @@
 'use client'
 
 import type { EvaluationResourceProps } from '../../types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationRunDetailQuery } from '../../queries'
 import { useEvaluationResource } from '../../store'
@@ -22,7 +25,7 @@ const PipelineResultsPreview = ({
   resourceId,
   runId,
 }: PipelineResultsPreviewProps) => {
-  const { t } = useTranslation(['evaluation'])
+  const { t } = useTranslation(['evaluation', 'common'])
   const [page, setPage] = useState(1)
   const resource = useEvaluationResource(resourceType, resourceId)
   const runDetailQuery = useEvaluationRunDetailQuery(
@@ -45,11 +48,26 @@ const PipelineResultsPreview = ({
   const isLoading = runDetailQuery.isPending || (!runDetail && runDetailQuery.isFetching)
   const totalPages = Math.ceil((runDetail?.items.total ?? 0) / PAGE_SIZE)
 
-  if (runDetailQuery.isError) {
+  // Only a failed first load replaces the results; a failed poll keeps them and is toasted.
+  const loadErrorMessage = useRequestErrorMessage(
+    runDetail ? null : runDetailQuery.error,
+    t(($) => $['results.loadFailed']),
+  )
+
+  if (loadErrorMessage) {
     return (
-      <div className="py-4 system-sm-regular text-text-destructive">
-        {t(($) => $['results.loadFailed'])}
-      </div>
+      <Alert type="error" className="my-4">
+        <AlertTitle>{loadErrorMessage}</AlertTitle>
+        <AlertActions>
+          <Button
+            size="small"
+            loading={runDetailQuery.isFetching}
+            onClick={() => runDetailQuery.refetch()}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </AlertActions>
+      </Alert>
     )
   }
 

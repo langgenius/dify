@@ -19,11 +19,12 @@ const PermissionPicker = ({
   className,
   readonly = false,
 }: PermissionPickerProps) => {
-  const { groups } = usePermissionsGroups(resourceType)
+  const { groups, loadError } = usePermissionsGroups(resourceType)
 
   return (
     <PermissionGroupList
       groups={groups}
+      loadError={loadError}
       value={value}
       onChange={onChange}
       className={className}

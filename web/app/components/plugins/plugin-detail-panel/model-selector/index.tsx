@@ -4,6 +4,7 @@ import type {
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelSelectorValue } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
@@ -17,6 +18,8 @@ import { ModelSettingsTrigger } from '@/app/components/header/account-setting/mo
 import { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { getErrorMessage } from '@/utils/error-message'
 import LLMParamsPanel from './llm-params-panel'
@@ -41,6 +44,8 @@ type PluginModelValue = Record<string, unknown> & {
   provider?: string
   voice?: string
 }
+
+const EMPTY_MODEL_LIST: never[] = []
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
@@ -71,42 +76,41 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       .map((item) => item as ModelFeatureEnum)
   }, [scopeArray])
 
-  const { data: textGenerationList = [] } = useQuery(
+  const modelListQueryOptions = (modelType: ModelTypeEnum) =>
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      input: { params: { model_type: modelType } },
       select: (response) => response.data,
-    }),
-  )
-  const { data: textEmbeddingList = [] } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
-      select: (response) => response.data,
-    }),
-  )
-  const { data: rerankList = [] } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.rerank } },
-      select: (response) => response.data,
-    }),
-  )
-  const { data: moderationList = [] } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.moderation } },
-      select: (response) => response.data,
-    }),
-  )
-  const { data: sttList = [] } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.speech2text } },
-      select: (response) => response.data,
-    }),
-  )
-  const { data: ttsList = [] } = useQuery(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: ModelTypeEnum.tts } },
-      select: (response) => response.data,
-    }),
-  )
+    })
+  const textGenerationQuery = useQuery(modelListQueryOptions(ModelTypeEnum.textGeneration))
+  const textEmbeddingQuery = useQuery(modelListQueryOptions(ModelTypeEnum.textEmbedding))
+  const rerankQuery = useQuery(modelListQueryOptions(ModelTypeEnum.rerank))
+  const moderationQuery = useQuery(modelListQueryOptions(ModelTypeEnum.moderation))
+  const sttQuery = useQuery(modelListQueryOptions(ModelTypeEnum.speech2text))
+  const ttsQuery = useQuery(modelListQueryOptions(ModelTypeEnum.tts))
+  const textGenerationList = textGenerationQuery.data ?? EMPTY_MODEL_LIST
+  const textEmbeddingList = textEmbeddingQuery.data ?? EMPTY_MODEL_LIST
+  const rerankList = rerankQuery.data ?? EMPTY_MODEL_LIST
+  const moderationList = moderationQuery.data ?? EMPTY_MODEL_LIST
+  const sttList = sttQuery.data ?? EMPTY_MODEL_LIST
+  const ttsList = ttsQuery.data ?? EMPTY_MODEL_LIST
+  const scopedModelQueries = scopeArray.includes('all')
+    ? [textGenerationQuery, textEmbeddingQuery, rerankQuery, sttQuery, ttsQuery, moderationQuery]
+    : scopeArray.includes(ModelTypeEnum.textGeneration)
+      ? [textGenerationQuery]
+      : scopeArray.includes(ModelTypeEnum.textEmbedding)
+        ? [textEmbeddingQuery]
+        : scopeArray.includes(ModelTypeEnum.rerank)
+          ? [rerankQuery]
+          : scopeArray.includes(ModelTypeEnum.moderation)
+            ? [moderationQuery]
+            : scopeArray.includes(ModelTypeEnum.speech2text)
+              ? [sttQuery]
+              : scopeArray.includes(ModelTypeEnum.tts)
+                ? [ttsQuery]
+                : []
+  // A failed model list is not "no models available".
+  const modelsLoad = useOwnedQueryErrors(scopedModelQueries)
+  const modelsLoadErrorMessage = useRequestErrorMessage(modelsLoad?.error)
 
   const scopedModelList = useMemo(() => {
     if (scopeArray.includes('all')) {
@@ -238,6 +242,21 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             surface={isInWorkflow ? 'workflow' : 'default'}
           />
         </div>
+        {modelsLoad && modelsLoadErrorMessage && (
+          <div role="alert" className="mt-1 flex items-center gap-1">
+            <span className="min-w-0 grow system-xs-regular text-text-destructive">
+              {modelsLoadErrorMessage}
+            </span>
+            <Button
+              size="small"
+              variant="ghost"
+              loading={modelsLoad.retrying}
+              onClick={modelsLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
         <PopoverContent
           side={isInWorkflow ? 'left' : 'bottom'}
           align={isInWorkflow ? 'center' : 'end'}

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "여러 자격 증명 세트로 부담을 줄입니다.",
   "modelProvider.loadBalancingInfo": "기본적으로 부하 분산은 라운드 로빈 전략을 사용합니다. 속도 제한이 트리거되면 1 분의 휴지 기간이 적용됩니다.",
   "modelProvider.loadBalancingLeastKeyWarning": "로드 밸런싱을 사용하려면 최소 2 개의 키를 사용하도록 설정해야 합니다.",
+  "modelProvider.loadFailed": "불러오지 못했습니다. 다시 시도해 주세요.",
   "modelProvider.loadPresets": "프리셋 로드",
   "modelProvider.model": "모델",
   "modelProvider.modelHasBeenDeprecated": "이 모델은 더 이상 사용되지 않습니다",

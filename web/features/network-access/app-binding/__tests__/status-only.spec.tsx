@@ -5,6 +5,7 @@ import { createInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { createErrorToastCaches } from '@/app/query-error-toast'
+import commonTranslations from '@/i18n/locales/en-US/common.json'
 import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -72,7 +73,9 @@ beforeEach(async () => {
       fallbackLng: 'en-US',
       keySeparator: false,
       interpolation: { escapeValue: false },
-      resources: { 'en-US': { deployments: deploymentTranslations } },
+      resources: {
+        'en-US': { common: commonTranslations, deployments: deploymentTranslations },
+      },
     })
 })
 
@@ -112,6 +115,7 @@ describe('Normal member Access Control status', () => {
     'does not show a false Off state or fetch configuration after HTTP %s',
     async (status) => {
       const message = status === 403 ? 'Access denied' : 'Service unavailable'
+      const user = userEvent.setup()
       const rendered = renderNormalEntry(() => Response.json({ message }, { status }))
 
       await waitFor(() => {
@@ -125,9 +129,13 @@ describe('Normal member Access Control status', () => {
       })
       expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      // The query cache reports the failed first load; the entry stays hidden.
-      expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
+      // The entry presents the failed first load in its place; the query cache stays silent.
+      expect(await screen.findByRole('alert')).toHaveTextContent('Access Control')
+      expect(toast.error).not.toHaveBeenCalled()
       expectOnlyStatusRequest()
+
+      await user.click(screen.getByRole('button', { name: 'Retry' }))
+      await waitFor(() => expect(requests).toHaveLength(2))
     },
   )
 })

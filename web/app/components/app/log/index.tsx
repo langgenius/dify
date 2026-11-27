@@ -5,6 +5,8 @@ import type {
   GetAppsByAppIdChatConversationsData,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
@@ -17,6 +19,8 @@ import { useTranslation } from 'react-i18next'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import PageTitle from '../log-annotation/page-title'
 import {
   resolveLogTimePeriod,
@@ -106,16 +110,25 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   }
 
   // When the details are obtained, proceed to the next request
-  const { data: chatConversations, refetch: mutateChatList } = useQuery(
+  const chatConversationsQuery = useQuery(
     consoleQuery.apps.byAppId.chatConversations.get.queryOptions({
       input: isChatMode ? { params: { app_id: appDetail.id }, query } : skipToken,
     }),
   )
+  const { data: chatConversations, refetch: mutateChatList } = chatConversationsQuery
 
-  const { data: completionConversations, refetch: mutateCompletionList } = useQuery(
+  const completionConversationsQuery = useQuery(
     consoleQuery.apps.byAppId.completionConversations.get.queryOptions({
       input: !isChatMode ? { params: { app_id: appDetail.id }, query } : skipToken,
     }),
+  )
+  const { data: completionConversations, refetch: mutateCompletionList } =
+    completionConversationsQuery
+  const conversationsQuery = isChatMode ? chatConversationsQuery : completionConversationsQuery
+  const failedLoad = useOwnedQueryError(conversationsQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    failedLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
@@ -144,11 +157,22 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           setQueryParams={handleQueryParamsChange}
         />
         <RetentionUpgradeNotice />
-        <List
-          logs={isChatMode ? chatConversations : completionConversations}
-          appDetail={appDetail}
-          onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
-        />
+        {loadErrorMessage && failedLoad ? (
+          <Alert type="error" className="mt-2 shrink-0">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={failedLoad.retrying} onClick={failedLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        ) : (
+          <List
+            logs={isChatMode ? chatConversations : completionConversations}
+            appDetail={appDetail}
+            onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
+          />
+        )}
         {/* Show Pagination only if the total is more than the limit */}
         {total !== undefined && total > APP_PAGE_LIMIT ? (
           <Pagination

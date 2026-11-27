@@ -8,6 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { createTheme } from '../embedded-chatbot/theme/theme'
+import ChatLoadError from '../load-error'
 import ChatWrapper from './chat-wrapper'
 import { ChatWithHistoryContext, useChatWithHistoryContext } from './context'
 import Header from './header'
@@ -19,8 +20,16 @@ type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
-  const { appData, appChatListDataLoading, chatShouldReloadKey, isBelowSm, sidebarCollapseState } =
-    useChatWithHistoryContext()
+  const {
+    appData,
+    appChatListDataLoading,
+    appChatListLoadError,
+    appChatListRetrying,
+    retryAppChatList,
+    chatShouldReloadKey,
+    isBelowSm,
+    sidebarCollapseState,
+  } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const site = appData?.site
 
@@ -111,7 +120,18 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
             <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
           )}
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
-          {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
+          {!appChatListDataLoading && !!appChatListLoadError && (
+            <div className="p-4">
+              <ChatLoadError
+                error={appChatListLoadError}
+                isRetrying={appChatListRetrying}
+                onRetry={() => retryAppChatList?.()}
+              />
+            </div>
+          )}
+          {!appChatListDataLoading && !appChatListLoadError && (
+            <ChatWrapper key={chatShouldReloadKey} />
+          )}
         </div>
       </div>
     </div>
@@ -137,11 +157,17 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appParams,
     appMeta,
     appChatListDataLoading,
+    appChatListLoadError,
+    appChatListRetrying,
+    retryAppChatList,
     currentConversationId,
     currentConversationItem,
     appPrevChatTree,
     pinnedConversationList,
     conversationList,
+    conversationListLoadError,
+    conversationListRetrying,
+    retryConversationList,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
@@ -183,11 +209,17 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         appParams,
         appMeta,
         appChatListDataLoading,
+        appChatListLoadError,
+        appChatListRetrying,
+        retryAppChatList,
         currentConversationId,
         currentConversationItem,
         appPrevChatTree,
         pinnedConversationList,
         conversationList,
+        conversationListLoadError,
+        conversationListRetrying,
+        retryConversationList,
         newConversationInputs,
         newConversationInputsRef,
         handleNewConversationInputsChange,

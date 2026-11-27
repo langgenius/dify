@@ -93,3 +93,22 @@ it('converts published variables to editable defaults and submits the edited val
   await act(async () => ref.current!.submit())
   await waitFor(() => expect(onSubmit).toHaveBeenCalledExactlyOnceWith({ separator: '|||' }))
 })
+
+it('shows a failed parameter load instead of an empty form and blocks processing until retried', async () => {
+  const user = userEvent.setup()
+  getParameters.mockRejectedValue(new Error('Parameters unavailable'))
+  const callbacks = renderProcess({ loading: true })
+
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('dataset.loadError')
+  const process = screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' })
+  expect(process).toBeDisabled()
+  await user.click(process)
+  expect(callbacks.onProcess).not.toHaveBeenCalled()
+
+  getParameters.mockResolvedValue(parameters)
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByDisplayValue('---')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})

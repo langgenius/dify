@@ -1,3 +1,5 @@
+import type { UseQueryResult } from '@tanstack/react-query'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -15,6 +17,8 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { ApiBasedExtensionModal } from './modal'
 
 type ApiBasedExtensionSelectorProps = {
@@ -22,14 +26,36 @@ type ApiBasedExtensionSelectorProps = {
   onChange: (value: string) => void
 }
 
+// Rendered inside the open popup, so a failed first load is claimed only while it is shown.
+function ApiBasedExtensionsLoadError({ query }: { query: UseQueryResult<unknown> }) {
+  const { t } = useTranslation(['common'])
+  const load = useOwnedQueryError(query)
+  const message = useRequestErrorMessage(
+    load?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
+  if (!load) return null
+
+  return (
+    <div
+      role="alert"
+      className="flex items-center justify-between gap-2 px-3 py-1.5 system-xs-regular text-text-destructive"
+    >
+      <span className="min-w-0">{message}</span>
+      <Button size="small" variant="ghost" loading={load.retrying} onClick={load.retry}>
+        {t(($) => $['operation.retry'], { ns: 'common' })}
+      </Button>
+    </div>
+  )
+}
+
 export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtensionSelectorProps) {
   const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
-  const { data: apiBasedExtensions = [] } = useQuery(
-    consoleQuery.apiBasedExtension.get.queryOptions(),
-  )
+  const apiBasedExtensionsQuery = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
+  const { data: apiBasedExtensions = [] } = apiBasedExtensionsQuery
   const handleSelect = (id: string) => {
     onChange(id)
     setOpen(false)
@@ -112,6 +138,7 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                     </button>
                   </div>
                   <div className="max-h-62.5 overflow-y-auto">
+                    <ApiBasedExtensionsLoadError query={apiBasedExtensionsQuery} />
                     {apiBasedExtensions.map((item) => (
                       <button
                         type="button"

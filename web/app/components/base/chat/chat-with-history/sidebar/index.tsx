@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import ChatLoadError from '@/app/components/base/chat/load-error'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import TextGenerationMenu from '@/app/components/share/text-generation/text-generation-menu'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -38,6 +39,9 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     handleNewConversation,
     pinnedConversationList,
     conversationList,
+    conversationListLoadError,
+    conversationListRetrying,
+    retryConversationList,
     currentConversationId,
     handleChangeConversation,
     handlePinConversation,
@@ -133,6 +137,13 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         </Button>
       </div>
       <div className="h-0 grow space-y-2 overflow-y-auto px-3 pt-4">
+        {!!conversationListLoadError && (
+          <ChatLoadError
+            error={conversationListLoadError}
+            isRetrying={conversationListRetrying}
+            onRetry={() => retryConversationList?.()}
+          />
+        )}
         {/* pinned list */}
         {!!pinnedConversationList.length && (
           <div className="mb-4">

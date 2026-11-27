@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ЕКО",
   "indexingTechnique.high_quality": "ВЯ",
   "knowledge": "Знання",
+  "loadError": "Не вдалося завантажити дані. Спробуйте ще раз.",
   "metadata.addMetadata": "Додати метадані",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Застосувати до всіх вибраних документів",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Автоматично створювати всю редаговану та нову метадані для всіх вибраних документів, інакше редагування метаданих буде застосовуватися тільки до документів, які мають їх.",

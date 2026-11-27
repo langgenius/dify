@@ -1,5 +1,7 @@
 'use client'
 
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +12,8 @@ import Evaluation from '@/app/components/evaluation'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import SnippetLayout from './components/snippet-layout'
 import { useSnippetDetailStore } from './store'
 import { buildSnippetDetailPayload } from './utils/snippet-detail-payload'
@@ -19,13 +23,19 @@ type SnippetEvaluationPageProps = {
 }
 
 const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
-  const { t } = useTranslation(['evaluation'])
+  const { t } = useTranslation(['evaluation', 'workflow', 'common'])
   const router = useRouter()
-  const { data, isLoading } = useQuery(
+  const snippetQuery = useQuery(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryOptions({
       input: { params: { snippet_id: snippetId } },
       enabled: !!snippetId,
     }),
+  )
+  const { data, isLoading } = snippetQuery
+  const snippetLoad = useOwnedQueryError(snippetQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    snippetLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
   const { reset, setNavigationState } = useSnippetDetailStore(
     useShallow((state) => ({
@@ -62,6 +72,26 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
       onFieldsChange: undefined,
     })
   }, [router, setNavigationState, snippet, snippetId, t])
+
+  if (snippetLoad) {
+    return (
+      <div className="flex h-full items-center justify-center bg-background-body p-4">
+        <Alert type="error" className="w-full max-w-100">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button
+              size="small"
+              variant="secondary"
+              loading={snippetLoad.retrying}
+              onClick={snippetLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      </div>
+    )
+  }
 
   if (isLoading || !snippet || !snippet.is_published) {
     return (

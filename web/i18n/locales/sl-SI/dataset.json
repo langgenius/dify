@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "Znanje",
+  "loadError": "Podatkov ni bilo mogoče naložiti. Poskusite znova.",
   "metadata.addMetadata": "Dodaj metapodatke",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Uporabi za vse izbrane dokumente",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Samodejno ustvarite vse zgoraj omenjene urejene in nove metapodatke za vsa izbrana dokumenta, sicer bo urejanje metapodatkov veljalo le za dokumente, ki jih imajo.",

@@ -156,6 +156,19 @@ describe('agent/node', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('says the roster agent could not load instead of a placeholder', () => {
+    mockUseAgentRosterDetail.mockReturnValue({
+      isPending: false,
+      isError: true,
+      error: new Error('roster agent request failed'),
+      data: undefined,
+    })
+
+    render(<AgentV2Node id="agent-node" data={createData()} />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('workflow.common.loadFailed')
+  })
+
   it('renders an error state when no roster agent is selected', () => {
     render(<AgentV2Node id="agent-node" data={createData({ agent_binding: undefined })} />)
 

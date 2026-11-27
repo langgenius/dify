@@ -3,6 +3,7 @@ import type {
   ChildChunkResponse,
   SegmentResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { SegmentUpdater } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -29,6 +30,9 @@ type UseChildSegmentDataOptions = {
 type UseChildSegmentDataReturn = {
   childSegments: ChildChunkResponse[]
   isLoadingChildSegmentList: boolean
+  /** The page's query, for the owner that renders its failed first load to claim. */
+  childSegmentListLoadQuery: UseQueryResult<ChildChunkListResponse>
+
   childChunkListData: ChildChunkListResponse | undefined
   childSegmentListRef: React.RefObject<HTMLDivElement | null>
   needScrollToBottom: React.RefObject<boolean>
@@ -86,8 +90,9 @@ export const useChildSegmentData = (
     )
   // Query key for optimistic updates
   const currentQueryKey = childSegmentListQuery.queryKey
+  const childSegmentListLoadQuery = useQuery(childSegmentListQuery)
   const { isLoading: isLoadingChildSegmentList, data: childChunkListData } =
-    useQuery(childSegmentListQuery)
+    childSegmentListLoadQuery
   // Derive child segments from query data
   const childSegments = useMemo(() => childChunkListData?.data || [], [childChunkListData])
   const invalidChildSegmentList = useCallback(() => {
@@ -257,6 +262,8 @@ export const useChildSegmentData = (
   return {
     childSegments,
     isLoadingChildSegmentList,
+    childSegmentListLoadQuery,
+
     childChunkListData,
     childSegmentListRef,
     needScrollToBottom,

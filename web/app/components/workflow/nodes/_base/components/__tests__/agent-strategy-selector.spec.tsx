@@ -3,7 +3,13 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { createPlugin } from '@/app/components/workflow/block-selector/__tests__/factories'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createHttpError } from '@/service/http-error'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import { runDebouncedUserInteraction } from '@/test/debounce'
 import { createDeferred } from '@/test/deferred'
 import { createInstalledPluginFixture } from '@/test/fixtures/plugin'
@@ -358,4 +364,49 @@ it('installs a missing saved strategy and refreshes its availability', async () 
   expect(
     screen.queryByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
   ).not.toBeInTheDocument()
+})
+
+describe('when the agent providers fail to load', () => {
+  beforeEach(() => {
+    vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const providersUnavailable = () =>
+    createHttpError(
+      { status: 500, statusText: '', headers: new Headers() },
+      { message: 'Providers unavailable' },
+    )
+  const renderWithFailingProviders = (respond: () => Promise<never>) => {
+    request.mockImplementation(respond)
+    render(<AgentStrategySelector onChange={vi.fn()} />, {
+      queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+      systemFeatures: { enable_marketplace: false },
+    })
+  }
+
+  it('reports the failure while the selector is closed, since nothing shows it', async () => {
+    renderWithFailingProviders(() => Promise.reject(providersUnavailable()))
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Providers unavailable'),
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows the failure inline instead of reporting it while the selector is open', async () => {
+    const user = userEvent.setup()
+    const providersResponse = createDeferred<never>()
+    renderWithFailingProviders(() => providersResponse.promise)
+
+    await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
+    providersResponse.reject(providersUnavailable())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('workflow.common.loadFailed')
+    // The cache reports after the render that follows the failure; let that window pass.
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(toast.error).not.toHaveBeenCalled()
+  })
 })

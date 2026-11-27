@@ -18,6 +18,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
@@ -64,7 +65,9 @@ export function EducationVerifyFlow() {
   const docLink = useDocLink()
   const verificationStartedRef = useRef(false)
   const featuresQuery = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectEducationPlanEnabled }),
+    consoleQuery.features.get.queryOptions({
+      select: selectEducationPlanEnabled,
+    }),
   )
   const enableEducationPlan = featuresQuery.data === true
   const educationStatusQuery = useQuery(
@@ -109,19 +112,29 @@ export function EducationVerifyFlow() {
     if (canVerify) startVerification()
   }, [canVerify, startVerification])
 
+  const featuresLoad = useOwnedQueryError(featuresQuery)
+  // A failed refetch keeps the cached status on screen; the query cache reports it.
+  const educationStatusLoad = useOwnedQueryError(educationStatusQuery)
+
   if (featuresQuery.isPending) return <EducationVerifyLoading />
+
+  if (featuresLoad)
+    return (
+      <EducationVerifyError
+        message={getBillingErrorMessage(featuresLoad.error, t, describeRequestError)}
+        onRetry={featuresLoad.retry}
+      />
+    )
 
   if (!enableEducationPlan) return redirect('/')
 
   if (educationStatusQuery.isPending) return <EducationVerifyLoading />
 
-  if (educationStatusQuery.isError)
+  if (educationStatusLoad)
     return (
       <EducationVerifyError
-        message={getBillingErrorMessage(educationStatusQuery.error, t, describeRequestError)}
-        onRetry={() => {
-          void educationStatusQuery.refetch()
-        }}
+        message={getBillingErrorMessage(educationStatusLoad.error, t, describeRequestError)}
+        onRetry={educationStatusLoad.retry}
       />
     )
 

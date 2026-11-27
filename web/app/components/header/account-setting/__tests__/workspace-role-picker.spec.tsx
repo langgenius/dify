@@ -47,6 +47,20 @@ describe('WorkspaceRolePicker', () => {
     })
   })
 
+  it('shows a retryable error instead of no matching roles when the roles fail to load', async () => {
+    const user = userEvent.setup()
+    mockWorkspaceRoleListHook.mockRejectedValueOnce(new Error('Request failed'))
+    render(<WorkspaceRolePicker selectedRoleIds={[]} onSelectedRolesChange={vi.fn()} />)
+
+    expect(await screen.findByText('common.api.actionFailed')).toBeInTheDocument()
+    expect(screen.queryByText('permission.role.noMatchingRoles')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByRole('option', { name: /First role/i })).toBeInTheDocument()
+    expect(mockWorkspaceRoleListHook).toHaveBeenCalledTimes(2)
+  })
+
   it.each([false, true])(
     'keeps keyboard focus in the input and selects a role without submitting (multiple=%s)',
     async (multiple) => {

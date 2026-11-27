@@ -31,6 +31,7 @@ import { createWorkflowAppHref } from '@/app/components/apps/query-params'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
 import SelectorFooter from './selector-footer'
@@ -178,7 +179,7 @@ const MetricRow = ({ section, addedMetric, onToggleNode }: MetricRowProps) => {
 }
 
 const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSelectorProps) => {
-  const { t } = useTranslation(['evaluation'])
+  const { t } = useTranslation(['evaluation', 'common'])
   const resource = useEvaluationResource(resourceType, resourceId)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateWorkflowApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
@@ -186,12 +187,20 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
   const [open, setOpen] = useState(false)
   const hasCustomMetric = resource.metrics.some((metric) => metric.kind === 'custom-workflow')
 
-  const { builtinMetricMap, sections, isRemoteLoading, toggleNodeSelection } =
-    useMetricSelectorData({
-      open,
-      resourceType,
-      resourceId,
-    })
+  const {
+    builtinMetricMap,
+    sections,
+    isRemoteLoading,
+    remoteLoadError,
+    isRemoteRetrying,
+    retryRemoteLoad,
+    toggleNodeSelection,
+  } = useMetricSelectorData({
+    open,
+    resourceType,
+    resourceId,
+  })
+  const remoteLoadErrorMessage = useRequestErrorMessage(remoteLoadError)
 
   return (
     <MenuFilterProvider>
@@ -225,7 +234,17 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
                   placeholder={t(($) => $['metrics.searchPlaceholder'])}
                 />
               </MenuInputGroup>
-              {isRemoteLoading ? (
+              {remoteLoadErrorMessage ? (
+                <div
+                  role="alert"
+                  className="flex items-center gap-2 px-3 py-2 system-xs-regular text-text-destructive"
+                >
+                  <span className="min-w-0 grow wrap-break-word">{remoteLoadErrorMessage}</span>
+                  <Button size="small" loading={isRemoteRetrying} onClick={retryRemoteLoad}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </div>
+              ) : isRemoteLoading ? (
                 <LoadingPlaceholder className="h-20 p-1" />
               ) : (
                 <MenuEmpty>{t(($) => $['metrics.noResults'])}</MenuEmpty>

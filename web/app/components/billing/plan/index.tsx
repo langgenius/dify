@@ -47,7 +47,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
     data: vectorSpace,
     isPending: isVectorSpacePending,
     isFetched: hasFetchedVectorSpace,
-  } = useQuery(consoleQuery.features.vectorSpace.get.queryOptions({ meta: { errorToast: false } }))
+  } = useQuery(consoleQuery.features.vectorSpace.get.queryOptions())
   const enableEducationPlan = features.education.enabled
   const { data: educationStatus } = useQuery(
     consoleQuery.account.education.get.queryOptions({

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "कई सेट्स की साख के साथ दबाव कम करें।",
   "modelProvider.loadBalancingInfo": "डिफ़ॉल्ट रूप से, लोड बैलेंसिंग राउंड-रॉबिन रणनीति का उपयोग करता है। यदि रेट लिमिटिंग ट्रिगर हो जाती है, तो 1 मिनट का कूलडाउन पीरियड लागू होगा।",
   "modelProvider.loadBalancingLeastKeyWarning": "लोड बैलेंसिंग सक्षम करने के लिए कम से कम 2 कुंजियों को सक्षम होना चाहिए।",
+  "modelProvider.loadFailed": "लोड नहीं हो सका। कृपया पुनः प्रयास करें।",
   "modelProvider.loadPresets": "प्रस्ताव प्रस्तुत करें",
   "modelProvider.model": "मॉडल",
   "modelProvider.modelHasBeenDeprecated": "यह मॉडल अप्रचलित हो गया है",

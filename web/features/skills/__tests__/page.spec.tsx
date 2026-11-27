@@ -1168,6 +1168,34 @@ describe('SkillsPage', () => {
     expect(mocks.references).toHaveBeenCalledWith({ params: { skill_id: 'skill-1' } })
   })
 
+  it('shows a failed reference load in the delete confirmation and retries it', async () => {
+    const user = userEvent.setup()
+    mocks.skills = [createSkill({ reference_count: 0 })]
+    mocks.skillPages = [mocks.skills]
+    mocks.references
+      .mockImplementationOnce(() => Promise.reject(new Error('references request failed')))
+      .mockImplementation(async () => ({ data: [] }))
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.delete'))
+    const dialog = await screen.findByRole('alertdialog')
+
+    expect(await within(dialog).findByRole('alert')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
+    expect(toast.error).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'common.operation.delete' })).toBeEnabled()
+    })
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('keeps deletion disabled while cached references refresh', async () => {
     const user = userEvent.setup()
     let referenceRequestCount = 0

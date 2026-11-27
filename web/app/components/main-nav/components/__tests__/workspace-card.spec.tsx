@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithoutPricing,
@@ -255,6 +256,25 @@ describe('WorkspaceCard', () => {
     expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toBeDisabled()
     expect(within(panel).getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(within(panel).queryByRole('button', { name: 'Evan Workspace' })).not.toBeInTheDocument()
+  })
+
+  it('says why the workspace list failed to load and retries it', async () => {
+    const user = userEvent.setup()
+    mockFetchWorkspaces.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message: 'Workspaces unavailable' }),
+    )
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    await user.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
+
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('Workspaces unavailable')
+
+    mockFetchWorkspaces.mockResolvedValue({ workspaces: mockWorkspaces })
+    await user.click(within(panel).getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await within(panel).findByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
+    expect(within(panel).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('uses the current workspace query for billing plan UI', () => {

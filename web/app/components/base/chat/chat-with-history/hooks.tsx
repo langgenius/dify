@@ -201,7 +201,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const { data: appPinnedConversationData } = useQuery(
+  const {
+    data: appPinnedConversationData,
+    error: appPinnedConversationError,
+    isFetching: appPinnedConversationFetching,
+    refetch: refetchPinnedConversations,
+  } = useQuery(
     shareConversationsQueryOptions(
       {
         appSourceType,
@@ -229,13 +234,34 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       refetchOnReconnect: false,
     },
   )
-  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
-    conversationListQueryOptions,
-  )
+  const {
+    data: appConversationData,
+    error: appConversationError,
+    isFetching: appConversationFetching,
+    isLoading: appConversationDataLoading,
+    refetch: refetchConversations,
+  } = useQuery(conversationListQueryOptions)
+  // A failed first load replaces the list in the sidebar; a failed refetch keeps the cached list.
+  const conversationListLoadError =
+    (!appPinnedConversationData && appPinnedConversationError) ||
+    (!appConversationData && appConversationError) ||
+    undefined
+  const conversationListRetrying = appPinnedConversationFetching || appConversationFetching
+  const retryConversationList = useCallback(() => {
+    if (!appPinnedConversationData) refetchPinnedConversations()
+    if (!appConversationData) refetchConversations()
+  }, [
+    appConversationData,
+    appPinnedConversationData,
+    refetchConversations,
+    refetchPinnedConversations,
+  ])
   const {
     data: appChatListData,
     error: appChatListError,
+    isFetching: appChatListRetrying,
     isLoading: appChatListDataLoading,
+    refetch: refetchAppChatList,
   } = useQuery(
     shareChatListQueryOptions(
       {
@@ -265,6 +291,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing Environment conversation must clear the rendered chat.
     setClearChatList(true)
   }, [appChatListError, handleConversationIdInfoChange])
+  // A missing Environment conversation resets to a new chat instead; any other failed first load
+  // replaces the chat it would fill.
+  const appChatListLoadError =
+    !appChatListData && !(appChatListError instanceof EnvironmentConversationNotFoundError)
+      ? appChatListError || undefined
+      : undefined
+  const retryAppChatList = useCallback(() => {
+    refetchAppChatList()
+  }, [refetchAppChatList])
   const appPrevChatTree = useMemo(
     () =>
       currentConversationId && appChatListData?.data.length
@@ -678,9 +713,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     appConversationDataLoading,
     appChatListData,
     appChatListDataLoading,
+    appChatListLoadError,
+    appChatListRetrying,
+    retryAppChatList,
     appPrevChatTree,
     pinnedConversationList,
     conversationList,
+    conversationListLoadError,
+    conversationListRetrying,
+    retryConversationList,
     setShowNewConversationItemInList,
     newConversationInputs,
     newConversationInputsRef,

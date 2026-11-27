@@ -50,6 +50,25 @@ describe('ApiBasedExtensionSelector', () => {
     listExtensions.mockResolvedValue(mockData)
   })
 
+  it('shows a retryable error in the picker when the extensions fail to load', async () => {
+    const user = userEvent.setup()
+    listExtensions
+      .mockRejectedValueOnce(new Error('Request failed'))
+      .mockResolvedValueOnce(mockData)
+    render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
+
+    await user.click(
+      await screen.findByRole('button', { name: /common.apiBasedExtension.selector.placeholder/ }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('Extension 1')).toBeInTheDocument()
+    expect(listExtensions).toHaveBeenCalledTimes(2)
+  })
+
   it('selects an extension, updates its displayed name and closes the picker', async () => {
     const user = userEvent.setup()
     function Selector() {

@@ -239,8 +239,8 @@ const BaseField = ({
     data: dynamicOptionsData,
     isLoading: isDynamicOptionsLoading,
     error: dynamicOptionsError,
-  } = useQuery(
-    triggerPluginDynamicOptionsQueryOptions(
+  } = useQuery({
+    ...triggerPluginDynamicOptionsQueryOptions(
       dynamicSelectParams || {
         plugin_id: '',
         provider: '',
@@ -250,7 +250,9 @@ const BaseField = ({
       },
       formItemType === FormTypeEnum.dynamicSelect,
     ),
-  )
+    // The dynamic select shows a failure in its notice, also over loaded options.
+    meta: { errorToast: false },
+  })
 
   const dynamicOptions = useMemo(() => {
     if (!dynamicOptionsData?.options) return []

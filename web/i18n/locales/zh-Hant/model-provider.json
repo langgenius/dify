@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "使用多組憑證減輕壓力。",
   "modelProvider.loadBalancingInfo": "預設情況下，負載均衡使用 Round-robin 策略。如果觸發了速率限制，將應用 1 分鐘的冷卻時間。",
   "modelProvider.loadBalancingLeastKeyWarning": "要啟用負載均衡，必須至少啟用 2 個金鑰。",
+  "modelProvider.loadFailed": "載入失敗,請重試。",
   "modelProvider.loadPresets": "載入預設",
   "modelProvider.model": "模型",
   "modelProvider.modelHasBeenDeprecated": "此模型已棄用",

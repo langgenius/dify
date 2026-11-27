@@ -120,11 +120,13 @@ describe('webhook/use-config', () => {
     await act(() => result.current.config.generateWebhookUrl())
     expect(mockRequest).toHaveBeenCalledTimes(1)
   })
-  it('stores an empty URL after a failed generation', async () => {
+  it('reports a failed generation and stores an empty URL', async () => {
+    vi.mocked(toast.error).mockClear()
     mockRequest.mockRejectedValueOnce(new Error('Unavailable'))
     const { result } = renderNodeConfig(useConfig, createPayload())
     await act(() => result.current.config.generateWebhookUrl())
     expect(result.current.flow.getNode('node')?.data.webhook_url).toBe('')
+    expect(toast.error).toHaveBeenCalledTimes(1)
   })
   it('skips URL generation in a readonly snippet', async () => {
     const payload = createPayload()

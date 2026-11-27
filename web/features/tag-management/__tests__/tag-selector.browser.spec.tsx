@@ -5,7 +5,7 @@ import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { createDeferred } from '@/test/deferred'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderWithTags } from '@/test/tag-management'
-import { TagFilter } from '../tag-filter'
+import { CompactTagFilter, TagFilter } from '../tag-filter'
 import { TagSelector } from '../tag-selector'
 
 let serverTags: Tag[] = []
@@ -428,3 +428,63 @@ it.each([false, true])(
       .toHaveAttribute('aria-selected', 'true')
   },
 )
+
+it('shows a failed tag catalog load in the selector with a retry instead of an empty catalog', async () => {
+  fake.console.tags.get.mockRejectedValueOnce(
+    apiError({ status: 503, message: 'Tags unavailable' }),
+  )
+  await renderWithTags(
+    <TagSelector
+      targetId="target-1"
+      type="app"
+      value={[]}
+      canBindOrUnbindTags
+      contextLabel="Test App"
+    />,
+    undefined,
+    ['app.tag.manage'],
+  )
+  await page.getByRole('combobox', { name: 'common.tag.addTag: Test App' }).click()
+
+  await expect
+    .element(page.getByRole('alert').getByText('common.dynamicSelect.error'))
+    .toBeVisible()
+  await page.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(page.getByRole('option', { name: 'Frontend' })).toBeVisible()
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
+})
+
+it('shows a failed tag catalog load in the compact filter with a retry', async () => {
+  fake.console.tags.get.mockRejectedValueOnce(
+    apiError({ status: 503, message: 'Tags unavailable' }),
+  )
+  await renderWithTags(<CompactTagFilter type="app" value={[]} onChange={vi.fn()} />, undefined, [
+    'app.tag.manage',
+  ])
+  await page.getByRole('button', { name: 'common.tag.placeholder' }).click()
+
+  await expect
+    .element(page.getByRole('alert').getByText('common.dynamicSelect.error'))
+    .toBeVisible()
+  await expect.element(page.getByText('common.tag.noTag')).not.toBeInTheDocument()
+  await page.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(page.getByRole('checkbox', { name: 'Frontend' })).toBeVisible()
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
+})
+
+it('shows a failed tag catalog load in the filter with a retry instead of an empty catalog', async () => {
+  fake.console.tags.get.mockRejectedValueOnce(
+    apiError({ status: 503, message: 'Tags unavailable' }),
+  )
+  await renderWithTags(<TagFilter type="app" value={[]} onChange={vi.fn()} />, undefined, [
+    'app.tag.manage',
+  ])
+  await page.getByRole('combobox', { name: 'common.tag.placeholder' }).click()
+
+  await expect
+    .element(page.getByRole('alert').getByText('common.dynamicSelect.error'))
+    .toBeVisible()
+  await page.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(page.getByRole('option', { name: 'Frontend' })).toBeVisible()
+  await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
+})

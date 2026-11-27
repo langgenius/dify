@@ -37,6 +37,7 @@ import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
+import { SkillLoadError } from '../../references'
 import { RestoreVersionDialogContent } from './restore-dialog'
 import { getSkillVersionTitle } from './title'
 
@@ -431,13 +432,20 @@ function VersionRow({
 }
 
 export function SkillVersionPanel({
+  loadError,
+  loadRetrying,
   onClose,
+  onRetryLoad,
   onSelect,
   selectedVersionId,
   skillId,
   versions,
 }: {
+  /** The failed first load of `versions`, shown in place of the list. */
+  loadError?: unknown
+  loadRetrying?: boolean
   onClose: () => void
+  onRetryLoad?: () => void
   onSelect: (versionId: string | null) => void
   selectedVersionId: string | null
   skillId: string
@@ -478,7 +486,16 @@ export function SkillVersionPanel({
               isLast={filteredVersions.length === 0}
               onSelect={() => onSelect(null)}
             />
-            {versions.length === 0 && (
+            {loadError ? (
+              <SkillLoadError
+                className="px-3"
+                error={loadError}
+                fallback={t(($) => $['skillManagement.detail.versionsLoadFailed'])}
+                onRetry={() => onRetryLoad?.()}
+                retrying={loadRetrying}
+              />
+            ) : null}
+            {!loadError && versions.length === 0 && (
               <p className="rounded-lg px-3 py-6 text-center system-sm-regular text-text-tertiary">
                 {t(($) => $['skillManagement.detail.noVersions'])}
               </p>

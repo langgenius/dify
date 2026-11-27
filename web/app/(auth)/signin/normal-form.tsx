@@ -1,4 +1,6 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
@@ -11,6 +13,8 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -24,7 +28,7 @@ import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 type AuthType = 'code' | 'password'
 
 function NormalForm() {
-  const { t } = useTranslation(['login'])
+  const { t } = useTranslation(['login', 'common'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()
@@ -51,11 +55,7 @@ function NormalForm() {
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(null)
 
   const isInviteLink = Boolean(inviteToken && inviteToken !== 'null')
-  const {
-    data: invitationCheckResp,
-    isPending: isInviteCheckLoading,
-    isError: isInviteCheckError,
-  } = useQuery({
+  const inviteCheckQuery = useQuery({
     queryKey: ['signin', 'invite-check', inviteToken],
     queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
     enabled: isInviteLink,
@@ -63,6 +63,12 @@ function NormalForm() {
     refetchOnWindowFocus: false,
   })
 
+  const { data: invitationCheckResp, isPending: isInviteCheckLoading } = inviteCheckQuery
+  const inviteCheckLoad = useOwnedQueryError(inviteCheckQuery)
+  const inviteCheckErrorMessage = useRequestErrorMessage(
+    inviteCheckLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
   const isInvitationForCurrentAccount = isInvitationForAccount(
     invitationCheckResp?.data?.email,
@@ -84,7 +90,6 @@ function NormalForm() {
   const showORLine = (hasSocialLogin || hasSsoLogin) && hasEmailLogin
   const noLoginMethodsConfigured =
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
-  const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
   const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
     shouldRedirectLoggedInUser || (isInviteLink && (isCheckLoading || isInviteCheckLoading))
@@ -198,6 +203,20 @@ function NormalForm() {
             </p>
           </div>
         )}
+        {inviteCheckLoad && (
+          <Alert type="error" className="mt-6">
+            <AlertTitle>{inviteCheckErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button
+                size="small"
+                loading={inviteCheckLoad.retrying}
+                onClick={inviteCheckLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
             {hasSocialLogin && <SocialAuth />}
@@ -256,7 +275,7 @@ function NormalForm() {
               </Link>
             </div>
           )}
-          {allMethodsAreDisabled && (
+          {noLoginMethodsConfigured && (
             <>
               <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
                 <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">

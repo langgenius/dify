@@ -9,10 +9,13 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import { MemberDetailsContent } from '../index'
 
-const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
-  mockWorkspaceRoleListHook: vi.fn(),
-  mockRolesOfMemberHook: vi.fn(),
-}))
+const { mockWorkspaceRoleListHook, mockRolesOfMemberHook, mockFetchRolesOfMember } = vi.hoisted(
+  () => ({
+    mockWorkspaceRoleListHook: vi.fn(),
+    mockRolesOfMemberHook: vi.fn(),
+    mockFetchRolesOfMember: vi.fn(),
+  }),
+)
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -21,7 +24,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.rbac.roles.get': async () => mockWorkspaceRoleListHook().data.pages[0],
-      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': () => new Promise(() => {}),
+      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': mockFetchRolesOfMember,
     }),
   }
 })
@@ -82,6 +85,7 @@ const render = (ui: ReactElement) => {
 describe('MemberDetailsContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFetchRolesOfMember.mockImplementation(() => new Promise(() => {}))
     vi.mocked(mockRolesOfMemberHook).mockReturnValue({
       data: {
         account_id: member.id,
@@ -153,6 +157,29 @@ describe('MemberDetailsContent', () => {
       ).toBeInTheDocument()
       expect(screen.queryByText('Custom role')).not.toBeInTheDocument()
       expect(screen.queryByText('1')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Load failure', () => {
+    it('should show a retryable error instead of an empty role list when roles fail to load', async () => {
+      const user = userEvent.setup()
+      vi.mocked(mockRolesOfMemberHook).mockReturnValue({ data: undefined, isLoading: false })
+      mockFetchRolesOfMember
+        .mockRejectedValueOnce(new Error('Request failed'))
+        .mockResolvedValueOnce({
+          account_id: member.id,
+          roles: [createRole({ id: 'role-1', name: 'Custom role' })],
+        })
+
+      render(<MemberDetailsContent member={member} canAssignRoles />)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+      expect(screen.queryByText('0')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+      expect(await screen.findByText('Custom role')).toBeInTheDocument()
+      expect(mockFetchRolesOfMember).toHaveBeenCalledTimes(2)
     })
   })
 

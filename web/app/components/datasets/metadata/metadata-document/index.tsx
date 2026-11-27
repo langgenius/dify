@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
 import useMetadataDocument from '../hooks/use-metadata-document'
 import InfoGroup from './info-group'
 import NoData from './no-data'
@@ -30,6 +31,9 @@ const MetadataDocument: FC<Props> = ({
 
   const {
     embeddingAvailable,
+    metadataLoadError,
+    isRetryingMetadataLoad,
+    retryMetadataLoad,
     isEdit,
     setIsEdit,
     list,
@@ -49,7 +53,14 @@ const MetadataDocument: FC<Props> = ({
 
   return (
     <div className={cn('w-97 space-y-4', className)}>
-      {hasData || isEdit ? (
+      {metadataLoadError ? (
+        <DatasetLoadErrorAlert
+          className="ms-2"
+          error={metadataLoadError}
+          retrying={isRetryingMetadataLoad}
+          onRetry={retryMetadataLoad}
+        />
+      ) : hasData || isEdit ? (
         <div className="ps-2">
           <InfoGroup
             title={t(($) => $['metadata.metadata'], { ns: 'dataset' })}

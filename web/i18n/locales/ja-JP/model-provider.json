@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "複数の認証情報を使って負荷を分散させます。",
   "modelProvider.loadBalancingInfo": "デフォルトでは、負荷分散はラウンドロビン方式を採用しています。レート制限が発生した場合、1 分間のクールダウン期間が適用されます。",
   "modelProvider.loadBalancingLeastKeyWarning": "負荷分散を利用するには、最低 2 つのキーを有効化する必要があります。",
+  "modelProvider.loadFailed": "読み込みに失敗しました。もう一度お試しください。",
   "modelProvider.loadPresets": "プリセットの読み込み",
   "modelProvider.model": "モデル",
   "modelProvider.modelHasBeenDeprecated": "このモデルは廃止予定です",

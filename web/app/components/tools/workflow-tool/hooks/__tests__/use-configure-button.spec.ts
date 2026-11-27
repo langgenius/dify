@@ -236,6 +236,20 @@ describe('useConfigureButton', () => {
       )
     })
 
+    it('exposes a failed first detail load with a retry', async () => {
+      queryClient.removeQueries({ queryKey: detailKey })
+      const error = new Error('detail unavailable')
+      getDetail.mockRejectedValueOnce(error).mockResolvedValueOnce(createMockDetail())
+      const { result } = renderHook(
+        () => useConfigureButton(createDefaultOptions({ published: true })),
+        { wrapper },
+      )
+      await waitFor(() => expect(result.current.loadError).toBe(error))
+      act(() => result.current.retryLoad())
+      await waitFor(() => expect(result.current.loadError).toBeNull())
+      expect(result.current.payload).toMatchObject({ workflow_tool_id: 'tool-456' })
+    })
+
     it('should call query hook with enabled=false when not published', () => {
       renderHook(() => useConfigureButton(createDefaultOptions({ published: false })), {
         wrapper,

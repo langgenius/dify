@@ -47,6 +47,7 @@ const commentFixtures: WorkflowCommentBasic[] = [
   },
 ]
 
+const listComments = vi.hoisted(() => vi.fn())
 const resolveRequest = vi.hoisted(() => ({ finish: undefined as undefined | (() => void) }))
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: { onCommentsUpdate: () => () => {}, emitCommentsUpdate: () => {} },
@@ -57,7 +58,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.byAppId.workflow.comments.get': async () => ({ data: commentFixtures }),
+      'apps.byAppId.workflow.comments.get': () => listComments(),
       'apps.byAppId.workflow.comments.byCommentId.get': async ({
         params,
       }: {
@@ -83,6 +84,23 @@ vi.mock('@/service/console', async (importOriginal) => {
         }),
     }),
   }
+})
+
+beforeEach(() => {
+  listComments.mockReset().mockResolvedValue({ data: commentFixtures })
+})
+
+it('shows comments that fail to load with a retry instead of the empty state', async () => {
+  const user = userEvent.setup()
+  listComments.mockRejectedValueOnce(new Error('network'))
+  setup()
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
+  expect(screen.queryByText('workflowComments.comments.emptyDescription')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByText('my open thread')).toBeInTheDocument()
+  expect(listComments).toHaveBeenCalledTimes(2)
 })
 
 it('filters to the current user and routes the chosen thread', async () => {

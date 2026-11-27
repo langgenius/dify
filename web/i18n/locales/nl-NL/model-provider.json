@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Configure multiple credentials for the model and invoke them automatically. ",
   "modelProvider.loadBalancingInfo": "By default, load balancing uses the Round-robin strategy. If rate limiting is triggered, a 1-minute cooldown period will be applied.",
   "modelProvider.loadBalancingLeastKeyWarning": "To enable load balancing at least 2 keys must be enabled.",
+  "modelProvider.loadFailed": "Laden mislukt. Probeer het opnieuw.",
   "modelProvider.loadPresets": "Load Presets",
   "modelProvider.model": "Model",
   "modelProvider.modelHasBeenDeprecated": "This model has been deprecated",

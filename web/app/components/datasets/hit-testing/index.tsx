@@ -11,6 +11,8 @@ import type {
 import type { FC } from 'react'
 import type { ExternalKnowledgeBaseHitTestingRequest, HitTestingRequest } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -37,6 +39,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
@@ -54,7 +57,7 @@ type Props = Readonly<{
 }>
 
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
-  const { t } = useTranslation(['common', 'datasetHitTesting'])
+  const { t } = useTranslation(['common', 'dataset', 'datasetHitTesting'])
   const describeRequestError = useRequestErrorDescriber()
 
   const isBelowSm = useMediaQuery('(width < 40rem)', {})
@@ -78,17 +81,15 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     resourceMaintainer: currentDataset?.maintainer,
     workspacePermissionKeys,
   }).canRetrievalRecall
-  const {
-    data: recordsRes,
-    refetch: recordsRefetch,
-    isLoading: isRecordsLoading,
-  } = useQuery(
+  const recordsQuery = useQuery(
     consoleQuery.datasets.byDatasetId.queries.get.queryOptions({
       input: { params: { dataset_id: datasetId }, query: { limit, page: currPage + 1 } },
       enabled: !!datasetId && canRunRetrievalRecall,
       placeholderData: keepPreviousData,
     }),
   )
+  const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = recordsQuery
+  const recordsLoad = useOwnedQueryError(recordsQuery)
 
   const total = recordsRes?.total || 0
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
@@ -256,7 +257,22 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
             ) : null}
           </>
         )}
-        {!isRecordsLoading && !recordsRes?.data?.length && <EmptyRecords />}
+        {!isRecordsLoading && recordsLoad && (
+          <Alert type="error">
+            <AlertTitle>
+              {describeRequestError(
+                recordsLoad.error,
+                t(($) => $.loadError, { ns: 'dataset' }),
+              )}
+            </AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={recordsLoad.retrying} onClick={recordsLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
+        {!isRecordsLoading && !recordsLoad && !recordsRes?.data?.length && <EmptyRecords />}
       </div>
       <FloatRightContainer
         panelClassName="justify-start! overflow-y-auto!"

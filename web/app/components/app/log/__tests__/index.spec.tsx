@@ -95,6 +95,25 @@ describe('Logs', () => {
     expect(screen.queryByRole('row', { busy: true })).not.toBeInTheDocument()
   })
 
+  it('should show a failed first load with a retry instead of a loading table', async () => {
+    const user = userEvent.setup()
+    getCompletionConversations.mockRejectedValueOnce(new Error('Offline')).mockResolvedValue({
+      total: 0,
+      data: [],
+      page: 1,
+      limit: APP_PAGE_LIMIT,
+      has_more: false,
+    })
+
+    render(<Logs appDetail={createAppDetailFixture({ id: 'app-2', mode: 'completion' })} />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('common.api.actionFailed')
+    expect(screen.queryByRole('row', { busy: true })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByText('appLog.table.empty.element.title')).toBeInTheDocument()
+  })
+
   it('should update the page query parameter when pagination changes', async () => {
     const user = userEvent.setup()
     getChatConversations.mockResolvedValue({

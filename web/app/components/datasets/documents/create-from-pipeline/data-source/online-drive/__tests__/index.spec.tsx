@@ -7,6 +7,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { apiError } from '@/test/fake-api'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { createDataSourceStore } from '../../store'
 import { DataSourceContext } from '../../store/provider'
@@ -14,6 +15,7 @@ import OnlineDrive from '../index'
 
 const streamEvents = vi.hoisted(() => vi.fn<typeof import('@/service/event-stream').streamEvents>())
 const runNode = vi.hoisted(() => vi.fn())
+const getAuth = vi.hoisted(() => vi.fn())
 const toastError = vi.hoisted(() => vi.fn())
 vi.mock('@/service/event-stream', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/event-stream')>()),
@@ -21,7 +23,8 @@ vi.mock('@/service/event-stream', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -33,6 +36,9 @@ vi.mock('@/service/console', async (importOriginal) => {
         input: unknown,
         options?: unknown,
       ) => runNode('published', input, options),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.byProviderId.get': getAuth,
     }),
   }
 })
@@ -61,7 +67,13 @@ const files: OnlineDriveFile[] = [
   { id: 'file-2', name: 'Other.txt', type: OnlineDriveFileType.file, size: 500 },
   { id: 'folder-1', name: 'Archive', type: OnlineDriveFileType.folder },
 ]
-function setup({ cached = true, credential = 'credential-1', single = false, draft = false } = {}) {
+function setup({
+  cached = true,
+  credential = 'credential-1',
+  single = false,
+  draft = false,
+  seedAuth = true,
+} = {}) {
   const store = createDataSourceStore()
   store.setState({
     localFileList: [],
@@ -73,12 +85,13 @@ function setup({ cached = true, credential = 'credential-1', single = false, dra
     nextPageParameters: { cursor: 'next' },
   })
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(
-    consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
-      input: { params: { provider_id: 'plugin-123/drive' } },
-    }).queryKey,
-    { result: [] },
-  )
+  if (seedAuth)
+    queryClient.setQueryData(
+      consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
+        input: { params: { provider_id: 'plugin-123/drive' } },
+      }).queryKey,
+      { result: [] },
+    )
   render(
     <DataSourceContext value={store}>
       <OnlineDrive
@@ -195,4 +208,17 @@ it('reports a failed stream and opens datasource configuration', async () => {
   await waitFor(() =>
     expect(onUrlUpdate.mock.lastCall![0].searchParams.get('settings')).toBe('data-source'),
   )
+})
+
+it('shows a failed credential load with a retry instead of an unauthorized source', async () => {
+  const user = userEvent.setup()
+  getAuth
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Credentials unavailable' }))
+    .mockResolvedValue({ result: [] })
+  setup({ seedAuth: false })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  expect(getAuth).toHaveBeenCalledTimes(2)
 })

@@ -33,9 +33,13 @@ type PublisherActionsSectionProps = Pick<
   showRunConfig?: boolean
   showWorkflowTool: boolean
   workflowToolIsLoading: boolean
+  workflowToolIsRetrying?: boolean
+  /** A failed first load of the published tool, which blocks configuring it. */
+  workflowToolLoadError?: string
   workflowToolMessage?: string
   workflowToolOutdated?: boolean
   onConfigureWorkflowTool: () => void
+  onRetryWorkflowTool?: () => void
   onPublishToMarketplace?: () => void
   /** Asks to switch a published workflow's kind; the caller confirms it outside the popover. */
   onRequestKindChange?: (targetKind: WorkflowKind) => void
@@ -63,10 +67,13 @@ export function PublisherActionsSection({
   toolPublished = false,
   workflowToolAvailable = true,
   workflowToolIsLoading,
+  workflowToolIsRetrying = false,
+  workflowToolLoadError,
   workflowToolMessage,
   workflowToolOutdated = false,
   workflowKindChangePending = false,
   onConfigureWorkflowTool,
+  onRetryWorkflowTool,
   onPublishToMarketplace,
   onRequestKindChange,
 }: PublisherActionsSectionProps) {
@@ -225,10 +232,13 @@ export function PublisherActionsSection({
           <WorkflowToolAction
             disabled={workflowToolDisabled}
             isLoading={workflowToolIsLoading}
+            isRetrying={workflowToolIsRetrying}
+            loadError={toolPublished ? workflowToolLoadError : undefined}
             message={workflowToolMessage}
             outdated={workflowToolOutdated}
             published={toolPublished}
             onConfigure={onConfigureWorkflowTool}
+            onRetry={onRetryWorkflowTool}
           />
         </>
       )}

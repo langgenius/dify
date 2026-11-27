@@ -1,5 +1,6 @@
 'use client'
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
@@ -14,6 +15,8 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from './permissions'
@@ -35,7 +38,7 @@ export const TagManagementDialog = ({
   const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
-  const { data: tagList = [] } = useQuery(
+  const tagsQuery = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: {
         query: {
@@ -44,6 +47,14 @@ export const TagManagementDialog = ({
       },
       enabled: show && canManageTags,
     }),
+  )
+  const tagList = tagsQuery.data ?? []
+  // A failed load must not look like a workspace without tags. The closed dialog stays mounted, so
+  // it claims the shared tag list's failure only while it shows it.
+  const tagsLoad = useOwnedQueryErrors(show ? [tagsQuery] : [])
+  const loadErrorMessage = useRequestErrorMessage(
+    tagsLoad?.error,
+    t(($) => $['dynamicSelect.error'], { ns: 'common' }),
   )
   const createTagMutation = useMutation(
     consoleQuery.tags.post.mutationOptions({
@@ -60,6 +71,16 @@ export const TagManagementDialog = ({
           <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="flex flex-wrap gap-2">
+          {tagsLoad && (
+            <div role="alert" className="flex w-full items-center gap-2">
+              <span className="min-w-0 flex-1 system-xs-regular text-text-tertiary">
+                {loadErrorMessage}
+              </span>
+              <Button size="small" loading={tagsLoad.retrying} onClick={tagsLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          )}
           <TagNameForm
             tags={tagList}
             label={t(($) => $['tag.addNew'])}

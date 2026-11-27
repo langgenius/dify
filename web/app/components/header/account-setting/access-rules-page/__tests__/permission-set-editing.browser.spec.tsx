@@ -96,6 +96,30 @@ async function setup(type: AccessPolicyResourceType = 'agent', canManage = true)
   return view
 }
 
+it('shows a failed permission catalog load in the permission set dialog with a retry', async () => {
+  rules = [ruleFor('agent')]
+  const catalog = fake.console.workspaces.current.rbac.rolePermissions.catalog.agent.get
+  catalog.mockRejectedValueOnce(apiError({ status: 503, message: 'Catalog unavailable' }))
+  const { screen, queryClient } = await setup('agent')
+  queryClient.removeQueries({
+    queryKey: consoleQuery.workspaces.current.rbac.rolePermissions.catalog.agent.get.queryKey({
+      input: {},
+    }),
+  })
+
+  await screen.getByRole('button', { name: 'permission.accessRule.newPermissionSet' }).click()
+  const dialog = screen.getByRole('dialog')
+  const alert = dialog.getByRole('alert')
+  await expect.element(alert).toBeVisible()
+  await alert.getByRole('button', { name: 'common.operation.retry' }).click()
+
+  await expect
+    .element(dialog.getByRole('checkbox', { name: new RegExp(permissionFor('agent')) }))
+    .toBeVisible()
+  await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()
+  expect(catalog).toHaveBeenCalledTimes(2)
+})
+
 it.each(resources)(
   'creates a %s permission set with trimmed fields and its actual catalog selection',
   async (type) => {

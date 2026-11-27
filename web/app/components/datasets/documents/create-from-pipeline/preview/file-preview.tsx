@@ -1,11 +1,15 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiCloseLine } from '@remixicon/react'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { formatFileSize, formatNumberAbbreviated } from '@/utils/format'
 import DocumentFileIcon from '../../../common/document-file-icon'
 import Loading from './loading'
@@ -16,11 +20,17 @@ type FilePreviewProps = {
 }
 
 const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
-  const { t } = useTranslation(['datasetPipeline'])
-  const { data: fileData, isFetching } = useQuery(
+  const { t } = useTranslation(['datasetPipeline', 'common', 'dataset'])
+  const previewQuery = useQuery(
     consoleQuery.files.byFileId.preview.get.queryOptions({
       input: file.id ? { params: { file_id: file.id } } : skipToken,
     }),
+  )
+  const { data: fileData, isFetching } = previewQuery
+  const previewLoad = useOwnedQueryError(previewQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    previewLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
   )
 
   const fileName = useMemo(() => {
@@ -65,6 +75,18 @@ const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
       {isFetching && (
         <div className="grow">
           <Loading />
+        </div>
+      )}
+      {!isFetching && previewLoad && (
+        <div className="grow px-6 py-5">
+          <Alert type="error">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" onClick={previewLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
         </div>
       )}
       {!isFetching && fileData && (

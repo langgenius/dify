@@ -7,6 +7,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import {
   createCatalogModelFixture,
   createProviderResponseFixture,
@@ -197,6 +198,22 @@ it('does not send duplicate model requests while expansion is loading', async ()
   expect(api.models).toHaveBeenCalledTimes(1)
   await act(async () => response.resolve({ data: [model] }))
   expect(await screen.findByText('GPT-4')).toBeInTheDocument()
+})
+
+it('shows a failed first model list load and retries it from the show models action', async () => {
+  api.models.mockRejectedValueOnce(
+    createHttpError(
+      { status: 500, statusText: '', headers: new Headers() },
+      { message: 'Backend text' },
+    ),
+  )
+  const { user } = setup()
+  await user.click(showModels())
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
+  await user.click(showModels())
+  expect(await screen.findByText('GPT-4')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(api.models).toHaveBeenCalledTimes(2)
 })
 
 it('expands only when requested for this provider', async () => {

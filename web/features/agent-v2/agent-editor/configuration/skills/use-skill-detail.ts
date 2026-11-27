@@ -398,6 +398,7 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
+                // The download action reports a failed read.
                 meta: { errorToast: false },
                 input: {
                   params: { app_id: apiContext.trialAppId, name: skill.name },
@@ -414,6 +415,7 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
+                // The download action reports a failed read.
                 meta: { errorToast: false },
                 input: {
                   params: {
@@ -437,6 +439,7 @@ export function useAgentSkillDetail({
 
         const result = await queryClient.query({
           ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
+            // The download action reports a failed read.
             meta: { errorToast: false },
             input: {
               params: {

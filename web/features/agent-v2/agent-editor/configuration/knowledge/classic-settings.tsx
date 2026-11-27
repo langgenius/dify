@@ -450,7 +450,9 @@ export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
   const ids = item.datasetRefs?.flatMap((dataset) => (dataset.id ? [dataset.id] : [])) ?? []
   const queries = useQueries({
     queries: (item.selectedDatasets === undefined ? ids : []).map((id) =>
-      consoleQuery.datasets.byDatasetId.get.queryOptions({ input: { params: { dataset_id: id } } }),
+      consoleQuery.datasets.byDatasetId.get.queryOptions({
+        input: { params: { dataset_id: id } },
+      }),
     ),
   })
   const datasets =

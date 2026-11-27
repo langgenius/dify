@@ -184,6 +184,24 @@ describe('QualityEvaluationPanel', () => {
     dateNowSpy.mockRestore()
   })
 
+  it('keeps the loaded runs on screen when a list refetch fails', async () => {
+    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
+    const { queryClient } = renderPanel()
+    expect(await screen.findByRole('table')).toBeInTheDocument()
+
+    serviceMock.listReplays.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 })),
+    )
+    await queryClient.refetchQueries({ type: 'active' })
+    await waitFor(() => expect(serviceMock.listReplays).toHaveBeenCalledTimes(2))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(
+      screen.queryByText('knowledgeQuality.qualityPage.evaluation.loadError'),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens evaluation settings with the run size and default retrieval mode', async () => {
     const user = userEvent.setup()
     renderPanel()

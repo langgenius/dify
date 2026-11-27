@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "Ekonomi",
   "indexingTechnique.high_quality": "Yüksek Kalite",
   "knowledge": "Bilgi",
+  "loadError": "Veriler yüklenemedi. Tekrar deneyin.",
   "metadata.addMetadata": "Meta Verileri Ekle",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Seçilen tüm belgelere uygula",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Seçilen tüm belgeler için yukarıda düzenlenmiş ve yeni olan tüm meta verileri otomatik olarak oluşturun, aksi takdirde meta verileri düzenlemek yalnızca bununla ilgili belgelere uygulanacaktır.",

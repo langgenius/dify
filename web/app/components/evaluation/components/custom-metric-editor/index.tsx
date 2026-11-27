@@ -11,6 +11,8 @@ import type {
   InputVar,
   Node,
 } from '@/app/components/workflow/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +21,8 @@ import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/com
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { snippetPublishedWorkflowQueryOptions } from '@/service/snippet-queries'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
 import MappingRow from './mapping-row'
@@ -84,7 +88,7 @@ const CustomMetricEditorCard = ({
   resourceId,
   metric,
 }: CustomMetricEditorCardProps) => {
-  const { t } = useTranslation(['evaluation'] as const)
+  const { t } = useTranslation(['evaluation', 'common'] as const)
   const setCustomMetricWorkflow = useEvaluationStore((state) => state.setCustomMetricWorkflow)
   const syncCustomMetricMappings = useEvaluationStore((state) => state.syncCustomMetricMappings)
   const syncCustomMetricOutputs = useEvaluationStore((state) => state.syncCustomMetricOutputs)
@@ -94,25 +98,41 @@ const CustomMetricEditorCard = ({
   const updateCustomMetricMapping = useEvaluationStore((state) => state.updateCustomMetricMapping)
   const selectedWorkflowAppId =
     metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? ''
-  const { data: selectedWorkflow, isPending: isSelectedWorkflowPending } = useQuery(
-    appWorkflowQueryOptions(selectedWorkflowAppId),
-  )
+  const selectedWorkflowQuery = useQuery(appWorkflowQueryOptions(selectedWorkflowAppId))
+  const { data: selectedWorkflow, isPending: isSelectedWorkflowPending } = selectedWorkflowQuery
   const { data: selectedEvaluatorApp, isPending: isSelectedEvaluatorAppPending } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: selectedWorkflowAppId ? { params: { app_id: selectedWorkflowAppId } } : skipToken,
     }),
   )
-  const { data: currentApp } = useQuery(
+  const currentAppQuery = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: resourceType === 'apps' ? { params: { app_id: resourceId } } : skipToken,
     }),
   )
-  const { data: currentAppWorkflow } = useQuery(
+  const currentApp = currentAppQuery.data
+  const currentAppWorkflowQuery = useQuery(
     appWorkflowQueryOptions(resourceType === 'apps' ? resourceId : ''),
   )
-  const { data: currentSnippetWorkflow } = useQuery(
+  const currentAppWorkflow = currentAppWorkflowQuery.data
+  const currentSnippetWorkflowQuery = useQuery(
     snippetPublishedWorkflowQueryOptions(resourceType === 'snippets' ? resourceId : ''),
   )
+  const currentSnippetWorkflow = currentSnippetWorkflowQuery.data
+  // The mapping needs the evaluator's inputs and this resource's graph; a failed load is not
+  // "nothing to map". The evaluator app only fills in a name, so its failure is not shown here.
+  // The mapping renders only once a workflow is chosen.
+  const mappingLoad = useOwnedQueryErrors(
+    metric.customConfig?.workflowId
+      ? [
+          selectedWorkflowQuery,
+          currentAppQuery,
+          currentAppWorkflowQuery,
+          currentSnippetWorkflowQuery,
+        ]
+      : [],
+  )
+  const mappingLoadErrorMessage = useRequestErrorMessage(mappingLoad?.error)
   const selectedWorkflowNodes = useMemo(
     () => getGraphNodes(selectedWorkflow?.graph),
     [selectedWorkflow?.graph],
@@ -265,6 +285,16 @@ const CustomMetricEditorCard = ({
               {t(($) => $['metrics.custom.mappingTitle'])}
             </div>
           </div>
+          {mappingLoad && mappingLoadErrorMessage && (
+            <Alert type="error" className="mb-2">
+              <AlertTitle>{mappingLoadErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={mappingLoad.retrying} onClick={mappingLoad.retry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
+          )}
           <div className="space-y-2">
             {mappingSource &&
               inputVariables.map((inputVariable) => {
@@ -289,7 +319,7 @@ const CustomMetricEditorCard = ({
                 )
               })}
           </div>
-          {!isConfigured && (
+          {!isConfigured && !mappingLoadErrorMessage && (
             <div className="mt-3 rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
               {t(($) => $['metrics.custom.mappingWarning'])}
             </div>

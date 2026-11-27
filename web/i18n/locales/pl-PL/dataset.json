@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "EKO",
   "indexingTechnique.high_quality": "WJ",
   "knowledge": "Wiedza",
+  "loadError": "Nie udało się wczytać danych. Spróbuj ponownie.",
   "metadata.addMetadata": "Dodaj metadane",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Zastosuj do wszystkich wybranych dokumentów",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Automatycznie utwórz wszystkie powyżej wymienione edytowane i nowe metadane dla wszystkich wybranych dokumentów, w przeciwnym razie edytowanie metadanych będzie dotyczyć tylko dokumentów, które je posiadają.",

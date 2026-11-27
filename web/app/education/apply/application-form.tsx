@@ -27,7 +27,11 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import {
+  useRequestErrorDescriber,
+  useRequestErrorMessage,
+} from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
@@ -339,18 +343,34 @@ function AppliedEducationWorkspaceContent({
   isSwitchingWorkspace,
   onSwitchWorkspace,
 }: AppliedEducationWorkspaceBlockProps) {
-  const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
-  const workspaces = workspacesData?.workspaces ?? []
+  const { t } = useTranslation(['common'])
+  const workspacesQuery = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const workspaces = workspacesQuery.data?.workspaces ?? []
+  const workspacesLoad = useOwnedQueryError(workspacesQuery)
+  const workspacesErrorMessage = useRequestErrorMessage(
+    workspacesLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
 
   return (
-    <AppliedEducationContent
-      workspaces={workspaces}
-      currentWorkspace={currentWorkspace}
-      plan={plan}
-      action={action}
-      isSwitchingWorkspace={isSwitchingWorkspace}
-      onSwitchWorkspace={onSwitchWorkspace}
-    />
+    <div className="flex w-full flex-col gap-2">
+      <AppliedEducationContent
+        workspaces={workspaces}
+        currentWorkspace={currentWorkspace}
+        plan={plan}
+        action={action}
+        isSwitchingWorkspace={isSwitchingWorkspace}
+        onSwitchWorkspace={onSwitchWorkspace}
+      />
+      {workspacesLoad && (
+        <div role="alert" className="ms-10 flex items-center gap-2 system-sm-regular">
+          <span className="text-text-destructive">{workspacesErrorMessage}</span>
+          <Button size="small" loading={workspacesLoad.retrying} onClick={workspacesLoad.retry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -141,6 +141,7 @@ export function PublisherContent({
     onPublish: publish.publishWorkflowTool,
     onRefreshData,
     outputs,
+    publisherOpen: open,
     toolPublished,
     workflowToolAvailable,
   })
@@ -246,10 +247,13 @@ export function PublisherContent({
             toolPublished: workflowTool.published,
             workflowToolAvailable: workflowTool.availableForUser,
             workflowToolIsLoading: workflowTool.configuration.isLoading,
+            workflowToolIsRetrying: workflowTool.isRetrying,
+            workflowToolLoadError: workflowTool.loadErrorMessage,
             workflowToolMessage: workflowTool.message,
             workflowToolOutdated: workflowTool.configuration.outdated,
             workflowKindChangePending,
             onConfigureWorkflowTool: workflowTool.openDrawer,
+            onRetryWorkflowTool: workflowTool.retryLoad,
             onPublishToMarketplace: marketplace.publish,
           },
         }}

@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ແບບປະຢັດ",
   "indexingTechnique.high_quality": "ຄຸນນະພາບສູງ",
   "knowledge": "ຄວາມຮູ້",
+  "loadError": "ບໍ່ສາມາດໂຫຼດຂໍ້ມູນໄດ້. ກະລຸນາລອງໃໝ່.",
   "metadata.addMetadata": "ເພີ່ມຂໍ້ມູນກຳກັບ (Metadata)",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "ນຳໃຊ້ກັບທຸກເອກະສານທີ່ເລືອກ",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "ສ້າງຂໍ້ມູນກຳກັບທີ່ແກ້ໄຂ ແລະ ເພີ່ມໃໝ່ຂ້າງເທິງທັງໝົດໃຫ້ກັບທຸກເອກະສານທີ່ເລືອກໂດຍອັດຕະໂນມັດ, ຖ້າບໍ່ດັ່ງນັ້ນການແກ້ໄຂຈະມີຜົນສະເພາະກັບເອກະສານທີ່ມີຂໍ້ມູນນັ້ນຢູ່ແລ້ວ.",

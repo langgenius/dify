@@ -3,6 +3,8 @@ import type {
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -14,6 +16,8 @@ import PresetsParameter from '@/app/components/header/account-setting/model-prov
 import { getSupportedPresetConfig } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter-utils'
 import { modelParameterRulesQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 type Props = Readonly<{
   isAdvancedMode: boolean
@@ -30,10 +34,14 @@ const LLMParamsPanel = ({
   completionParams,
   onCompletionParamsChange,
 }: Props) => {
-  const { t } = useTranslation(['modelProvider'])
-  const { data: parameterRulesData, isLoading } = useQuery(
+  const { t } = useTranslation(['modelProvider', 'common'])
+  const parameterRulesQuery = useQuery(
     modelParameterRulesQueryOptions({ provider, model: modelId }),
   )
+  const { data: parameterRulesData, isLoading } = parameterRulesQuery
+  // Without the rules the panel would read as a model that has no parameters.
+  const rulesLoad = useOwnedQueryError(parameterRulesQuery)
+  const rulesLoadErrorMessage = useRequestErrorMessage(rulesLoad?.error)
   const isRulesLoading = !!provider && !!modelId && isLoading
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
@@ -91,6 +99,16 @@ const LLMParamsPanel = ({
           />
         )}
       </div>
+      {rulesLoad && rulesLoadErrorMessage && (
+        <Alert type="error">
+          <AlertTitle>{rulesLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={rulesLoad.retrying} onClick={rulesLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
       {!!parameterRules.length &&
         [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map((parameter) => (
           <ParameterItem

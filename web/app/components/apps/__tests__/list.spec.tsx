@@ -573,11 +573,17 @@ it('does not paginate previous results while a changed filter is pending', async
   })
 })
 
-it('keeps the main catalog available when starred apps fail to load', async () => {
-  api.starred.mockRejectedValue(new Error('Starred request failed'))
-  await setup()
+it('keeps the main catalog available and retries when starred apps fail to load', async () => {
+  api.starred.mockRejectedValueOnce(new Error('Starred request failed'))
+  const { user } = await setup()
   expect(await screen.findByRole('link', { name: 'Chat app' })).toBeInTheDocument()
   expect(screen.queryByRole('list', { name: 'app.studio.starred' })).not.toBeInTheDocument()
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('common.api.actionFailed')
+  api.starred.mockResolvedValue(page([app({ id: 'starred', name: 'Starred app' })]))
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('list', { name: 'app.studio.starred' })).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
 it('preserves loaded cards and retries a failed next page', async () => {

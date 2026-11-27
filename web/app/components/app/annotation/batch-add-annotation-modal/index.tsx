@@ -18,6 +18,8 @@ import AnnotationFull from '@/app/components/billing/annotation-full'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
@@ -39,12 +41,18 @@ export type IBatchModalProps = {
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
-  const { data: annotationQuota } = useQuery(
+  const quota = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
+  const annotationQuota = quota.data
   const isAnnotationQuotaUnavailable = annotationQuota === undefined
+  const quotaLoad = useOwnedQueryError(quota)
+  const quotaErrorMessage = useRequestErrorMessage(
+    quotaLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   const [currentCSV, setCurrentCSV] = useState<File>()
   const handleFile = (file?: File) => setCurrentCSV(file)
@@ -123,6 +131,14 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
           {isAnnotationFull && (
             <div className="mt-4">
               <AnnotationFull />
+            </div>
+          )}
+          {quotaLoad && quotaErrorMessage && (
+            <div role="alert" className="mt-4 space-y-2">
+              <p className="system-sm-regular text-text-destructive">{quotaErrorMessage}</p>
+              <Button loading={quotaLoad.retrying} onClick={quotaLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
             </div>
           )}
         </DialogBody>

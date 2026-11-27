@@ -760,6 +760,71 @@ describe('AgentSkills', () => {
     expect(toast.error).not.toHaveBeenCalled()
   })
 
+  it('shows a failed first load of bound workspace skills with a retry', async () => {
+    const user = userEvent.setup()
+    let fails = true
+    mocks.agentSkillBindingsQueryOptions.mockImplementation(() => ({
+      queryFn: async () => {
+        if (fails) throw new Error('Offline')
+        return {
+          agent_id: 'agent-1',
+          skill_ids: ['workspace-skill-1'],
+          data: [createWorkspaceSkill({ display_name: 'Refund approval' })],
+        }
+      },
+    }))
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    const alert = await screen.findByRole('alert')
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.skills.empty.title'),
+    ).not.toBeInTheDocument()
+    fails = false
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByText('Refund approval')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed first load of the workspace skill library with a retry', async () => {
+    const user = userEvent.setup()
+    let fails = true
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { getNextPageParam, initialPageParam } = options as {
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+      return {
+        queryFn: async () => {
+          if (fails) throw new Error('Offline')
+          return {
+            data: [createWorkspaceSkill({ display_name: 'Refund approval' })],
+            has_more: false,
+            limit: 20,
+            page: 1,
+            total: 1,
+          }
+        },
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+
+    const alert = await screen.findByRole('alert')
+    fails = false
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('button', { name: /Refund approval/ })).toBeInTheDocument()
+  })
+
   it('should bind workspace skills without adding them to inline config skills', async () => {
     const user = userEvent.setup()
     mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {

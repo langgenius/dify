@@ -2,9 +2,11 @@ import type {
   CollectionPluginsResponse,
   CollectionsAndPluginsSearchParams,
 } from '@dify/contracts/marketplace'
+import type { useMarketplacePlugins } from './query'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { marketplaceQuery } from '@/service/marketplace'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { toListPlugin, toPluginCard } from './plugin-card-adapter'
 
@@ -15,7 +17,7 @@ export const useMarketplacePluginsByCollectionId = (
   collectionId?: string,
   query?: CollectionsAndPluginsSearchParams,
 ) => {
-  const { data, isFetching, isSuccess, isPending } = useQuery(
+  const collectionQuery = useQuery(
     marketplaceQuery.collectionPlugins.queryOptions({
       input: collectionId ? { params: { collectionId }, body: query ?? {} } : skipToken,
       select: selectCollectionListPlugins,
@@ -24,11 +26,35 @@ export const useMarketplacePluginsByCollectionId = (
       retry: false,
     }),
   )
+  const { data, isFetching, isSuccess, isPending, refetch } = collectionQuery
 
   return {
     plugins: data || [],
     isLoading: !!collectionId && (isPending || (isFetching && !data)),
     isSuccess,
+    refetch,
+    /** For a caller that renders a failed load: pass it to `useOwnedQueryError(s)`. */
+    query: collectionQuery,
+  }
+}
+
+const noop = () => {}
+
+/**
+ * A failed first load of the pinned collection or of the category list, which would otherwise
+ * look like a marketplace with nothing to install. A failed refetch keeps the loaded plugins.
+ * Both callers render it on their install panels, so it is claimed here.
+ */
+export const useMarketplaceLoadFailure = (
+  enabled: boolean,
+  collectionQuery: ReturnType<typeof useMarketplacePluginsByCollectionId>['query'],
+  pluginsQuery: ReturnType<typeof useMarketplacePlugins>,
+) => {
+  const load = useOwnedQueryErrors(enabled ? [collectionQuery, pluginsQuery] : [])
+  return {
+    loadError: load?.error ?? null,
+    isRetrying: load?.retrying ?? false,
+    retryLoad: load?.retry ?? noop,
   }
 }
 

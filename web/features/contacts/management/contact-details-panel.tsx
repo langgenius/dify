@@ -189,6 +189,7 @@ function ImBindingEditor({
       }),
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
+      // The picker shows a failed load, with retry, over any loaded identities.
       meta: { errorToast: false },
     }),
   )
@@ -503,6 +504,7 @@ function ContactIMChannels({
       input: canBind && context.imCentrallyManaged === false ? undefined : skipToken,
       select: (response) => response.channels.filter((channel) => channel.kind === 'im'),
       retry: false,
+      // The panel shows a failed channel load, with retry, whether or not channels are loaded.
       meta: { errorToast: false },
     }),
   )

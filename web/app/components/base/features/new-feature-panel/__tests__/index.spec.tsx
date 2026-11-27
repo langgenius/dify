@@ -1,7 +1,11 @@
+import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Features } from '../../types'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import {
   createCatalogModelFixture,
   createDefaultModelFixture,
@@ -12,6 +16,7 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
+const { loadDefaultModel } = vi.hoisted(() => ({ loadDefaultModel: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -19,6 +24,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'codeBasedExtension.get': async () => undefined,
+      'workspaces.current.defaultModel.get': loadDefaultModel,
     }),
   }
 })
@@ -52,15 +58,29 @@ const renderPanel = (
     showAnnotationReply: boolean
   }> = {},
   searchParams = '',
+  {
+    errorToasts = false,
+    unseededModelType,
+  }: { errorToasts?: boolean; unseededModelType?: ModelType } = {},
 ) => {
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createConsoleQueryClient({
+    caches: errorToasts ? createErrorToastCaches() : undefined,
+  })
   const models = [
     createCatalogModelFixture({ model: 'text-embedding-ada-002', model_type: 'text-embedding' }),
     createCatalogModelFixture({ model: 'whisper-1', model_type: 'speech2text' }),
     createCatalogModelFixture({ model: 'tts-1', model_type: 'tts' }),
   ]
   seedModelProviderQueries(queryClient, [createModelCatalogFixture({ models })])
+  if (unseededModelType) {
+    queryClient.removeQueries({
+      queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: unseededModelType } },
+      }),
+    })
+  }
   for (const model of models) {
+    if (model.model_type === unseededModelType) continue
     queryClient.setQueryData(
       consoleQuery.workspaces.current.defaultModel.get.queryKey({
         input: { query: { model_type: model.model_type } },
@@ -92,6 +112,22 @@ const renderPanel = (
 describe('NewFeaturePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  // The panel only reads the default models, so a failed first load has no owner to show it.
+  it('reports a default model that fails to load instead of leaving the panel silent', async () => {
+    const toastError = vi.spyOn(toast, 'error')
+    loadDefaultModel.mockRejectedValue(
+      createHttpError(
+        { status: 503, statusText: '', headers: new Headers() },
+        { message: 'Default model unavailable' },
+      ),
+    )
+
+    renderPanel({ show: true }, '', { errorToasts: true, unseededModelType: 'tts' })
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Default model unavailable'))
+    toastError.mockRestore()
   })
 
   describe('Rendering', () => {

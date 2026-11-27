@@ -9,6 +9,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { apiError } from '@/test/fake-api'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { createDataSourceStore } from '../../store'
 import { DataSourceContext } from '../../store/provider'
@@ -16,6 +17,7 @@ import OnlineDocuments from '../index'
 
 const streamEvents = vi.hoisted(() => vi.fn<typeof import('@/service/event-stream').streamEvents>())
 const runNode = vi.hoisted(() => vi.fn())
+const getAuth = vi.hoisted(() => vi.fn())
 const toastError = vi.hoisted(() => vi.fn())
 vi.mock('@tanstack/react-virtual')
 vi.mock('@/service/event-stream', async (importOriginal) => ({
@@ -24,7 +26,8 @@ vi.mock('@/service/event-stream', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -36,6 +39,9 @@ vi.mock('@/service/console', async (importOriginal) => {
         input: unknown,
         options?: unknown,
       ) => runNode('published', input, options),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.byProviderId.get': getAuth,
     }),
   }
 })
@@ -102,16 +108,23 @@ const credentials: DatasourceCredentialResponse[] = [
     credential: {},
   },
 ]
-function setup({ cached = true, credential = 'credential-1', single = false, draft = false } = {}) {
+function setup({
+  cached = true,
+  credential = 'credential-1',
+  single = false,
+  draft = false,
+  seedAuth = true,
+} = {}) {
   const store = createDataSourceStore()
   store.setState({ documentsData: cached ? documents : undefined, currentCredentialId: credential })
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(
-    consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
-      input: { params: { provider_id: 'plugin-123/notion' } },
-    }).queryKey,
-    { result: credential ? credentials : [] },
-  )
+  if (seedAuth)
+    queryClient.setQueryData(
+      consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
+        input: { params: { provider_id: 'plugin-123/notion' } },
+      }).queryKey,
+      { result: credential ? credentials : [] },
+    )
   const onCredentialChange = vi.fn((id: string) => store.getState().setCurrentCredentialId(id))
   render(
     <DataSourceContext value={store}>
@@ -252,4 +265,17 @@ it('reports stream failures and opens data-source configuration', async () => {
   await waitFor(() =>
     expect(onUrlUpdate.mock.lastCall![0].searchParams.get('settings')).toBe('data-source'),
   )
+})
+
+it('shows a failed credential load with a retry instead of an unauthorized source', async () => {
+  const user = userEvent.setup()
+  getAuth
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Credentials unavailable' }))
+    .mockResolvedValue({ result: [] })
+  setup({ seedAuth: false })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  expect(getAuth).toHaveBeenCalledTimes(2)
 })

@@ -54,6 +54,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   const form = useQuery(
     consoleQuery.form.humanInput.v2.byFormToken.get.queryOptions({
       input: { params: { form_token: formToken } },
+      // Any load failure, a refetch included, replaces the form with its status card and retry.
       meta: { errorToast: false },
       select: normalizeConsoleFormDefinition,
       retry: false,

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Riduci la pressione con più set di credenziali.",
   "modelProvider.loadBalancingInfo": "Per impostazione predefinita, il bilanciamento del carico utilizza la strategia Round-robin. Se viene attivato il rate limiting, verrà applicato un periodo di cooldown di 1 minuto.",
   "modelProvider.loadBalancingLeastKeyWarning": "Per abilitare il bilanciamento del carico devono essere abilitate almeno 2 chiavi.",
+  "modelProvider.loadFailed": "Caricamento non riuscito. Riprova.",
   "modelProvider.loadPresets": "Carica Preset",
   "modelProvider.model": "Modello",
   "modelProvider.modelHasBeenDeprecated": "Questo modello è stato deprecato",

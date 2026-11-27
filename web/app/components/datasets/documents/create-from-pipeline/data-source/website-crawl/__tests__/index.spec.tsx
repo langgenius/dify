@@ -13,6 +13,7 @@ import { CrawlStep } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { apiError } from '@/test/fake-api'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { createPipelineVariable } from '@/test/pipeline-variables'
 import { createDataSourceStore } from '../../store'
@@ -82,19 +83,22 @@ function setup({
   single = false,
   draft = false,
   loading = false,
+  failParams = false,
 } = {}) {
   parameters.mockImplementation(() =>
     loading
       ? new Promise(() => {})
-      : Promise.resolve({
-          variables: [
-            createPipelineVariable({
-              variable: 'url',
-              label: 'URL',
-              default_value: 'https://example.com',
-            }),
-          ],
-        }),
+      : failParams
+        ? Promise.reject(apiError({ status: 503, message: 'Parameters unavailable' }))
+        : Promise.resolve({
+            variables: [
+              createPipelineVariable({
+                variable: 'url',
+                label: 'URL',
+                default_value: 'https://example.com',
+              }),
+            ],
+          }),
   )
   const store = createDataSourceStore()
   store.setState({ currentCredentialId: credential })
@@ -113,7 +117,7 @@ function setup({
   })
   if (loading)
     queryClient.setQueryDefaults(options.queryKey, { queryFn: () => new Promise(() => {}) })
-  else
+  else if (!failParams)
     queryClient.setQueryData(options.queryKey, {
       variables: [
         createPipelineVariable({
@@ -304,6 +308,16 @@ it('uses the changed credential on the next run and opens configuration', async 
   await waitFor(() =>
     expect(onUrlUpdate.mock.lastCall![0].searchParams.get('settings')).toBe('data-source'),
   )
+})
+
+it('shows a failed parameter load with a retry instead of an empty crawl form', async () => {
+  const user = userEvent.setup()
+  setup({ failParams: true })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  const callsBeforeRetry = parameters.mock.calls.length
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(parameters.mock.calls.length).toBeGreaterThan(callsBeforeRetry))
 })
 
 vi.mock('@/service/console', async (importOriginal) => {

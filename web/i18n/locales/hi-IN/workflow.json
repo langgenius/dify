@@ -174,6 +174,7 @@
   "common.latestPublished": "नवीनतम प्रकाशित",
   "common.learnMore": "अधिक जानें",
   "common.listening": "सुनना",
+  "common.loadFailed": "लोड नहीं हो सका। फिर से प्रयास करें।",
   "common.loadMore": "अधिक वर्कफ़्लोज़ लोड करें",
   "common.manageInTools": "टूल्स में प्रबंधित करें",
   "common.maxTreeDepth": "प्रति शाखा अधिकतम {{depth}} नोड्स की सीमा",

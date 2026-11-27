@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "EKO",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "Pengetahuan",
+  "loadError": "Data tidak dapat dimuat. Coba lagi.",
   "metadata.addMetadata": "Tambahkan Metadata",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Terapkan ke semua dokumen yang dipilih",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Secara otomatis membuat semua metadata yang diedit di atas dan baru untuk semua dokumen yang dipilih, jika tidak, mengedit metadata hanya akan berlaku untuk dokumen yang dengannya.",

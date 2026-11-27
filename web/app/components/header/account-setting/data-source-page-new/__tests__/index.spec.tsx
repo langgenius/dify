@@ -179,6 +179,18 @@ it('replaces the initial loading state with actual datasource cards', async () =
   expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
 })
 
+it('shows a retryable error instead of the empty-state guidance when the first load fails', async () => {
+  api.sources
+    .mockRejectedValueOnce(new Error('Request failed'))
+    .mockResolvedValueOnce({ result: providers })
+  const { user } = setup()
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  expect(screen.queryByText('common.dataSourcePage.installFirst')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('heading', { name: 'Dify Source' })).toBeInTheDocument()
+  expect(api.sources).toHaveBeenCalledTimes(2)
+})
+
 it('filters installed sources, announces result counts, and restores them when search clears', async () => {
   const { user } = setup()
   await screen.findByRole('heading', { name: 'Dify Source' })
@@ -271,6 +283,24 @@ it('combines recommendations without installed plugins or duplicates and sends d
   await user.click(marketplaceToggle())
   expect(screen.getByText('Recommended Source')).toBeInTheDocument()
 })
+
+it.each(['collection', 'search'] as const)(
+  'shows a failed first load of the %s recommendations with a retry',
+  async (boundary) => {
+    if (boundary === 'collection') api.collection.mockRejectedValueOnce(new Error('down'))
+    else api.search.mockRejectedValueOnce(new Error('down'))
+    const { user } = setup({ systemFeatures: { enable_marketplace: true } })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('modelProvider.modelProvider.loadFailed')
+
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(screen.getByText('Recommended Source')).toBeInTheDocument()
+    expect(boundary === 'collection' ? api.collection : api.search).toHaveBeenCalledTimes(2)
+  },
+)
 
 it.each(['collection', 'search'] as const)(
   'keeps recommendations loading until the %s request completes and hides loading when collapsed',

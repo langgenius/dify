@@ -1,10 +1,13 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import {
   settingsQueryParamName,
@@ -15,6 +18,8 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import Header from '../base/header'
 import { runDatasourceNode } from '../run-datasource-node'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
@@ -36,6 +41,7 @@ const OnlineDrive = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDriveProps) => {
+  const { t: tLoad } = useTranslation(['common', 'dataset'])
   const docLink = useDocLink()
   const [isInitialMount, setIsInitialMount] = useState(true)
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
@@ -65,10 +71,17 @@ const OnlineDrive = ({
   const [isLoading, setIsLoading] = useState(false)
   const isLoadingRef = useRef(false)
 
-  const { data: dataSourceAuth } = useQuery(
+  const dataSourceAuthQuery = useQuery(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
       input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
     }),
+  )
+  const dataSourceAuth = dataSourceAuthQuery.data
+  // Without the credentials the source looks unauthorized, so a failed load is shown instead.
+  const credentialsLoad = useOwnedQueryError(dataSourceAuthQuery)
+  const credentialsLoadErrorMessage = useRequestErrorMessage(
+    credentialsLoad?.error,
+    tLoad(($) => $.loadError, { ns: 'dataset' }),
   )
 
   const getOnlineDriveFiles = useCallback(async () => {
@@ -218,6 +231,16 @@ const OnlineDrive = ({
         onCredentialChange={onCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
+      {credentialsLoad && (
+        <Alert type="error">
+          <AlertTitle>{credentialsLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={credentialsLoad.retrying} onClick={credentialsLoad.retry}>
+              {tLoad(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
       <FileList
         fileList={filteredOnlineDriveFileList}
         selectedFileIds={selectedFileIds}

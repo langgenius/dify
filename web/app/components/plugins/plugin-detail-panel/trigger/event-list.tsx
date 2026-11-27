@@ -1,11 +1,15 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { triggerProviderInfoQueryOptions } from '@/service/trigger-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { usePluginStore } from '../store'
 import { EventDetailDrawer } from './event-detail-drawer'
 
@@ -52,11 +56,33 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
 }
 
 export const TriggerEventsList = () => {
-  const { t } = useTranslation(['pluginTrigger'])
+  const { t } = useTranslation(['pluginTrigger', 'common'])
   const detail = usePluginStore((state) => state.detail)
 
-  const { data: providerInfo } = useQuery(triggerProviderInfoQueryOptions(detail?.provider || ''))
+  const providerInfoQuery = useQuery(triggerProviderInfoQueryOptions(detail?.provider || ''))
+  const { data: providerInfo } = providerInfoQuery
+  const providerInfoLoad = useOwnedQueryError(providerInfoQuery)
+  const loadErrorMessage = useRequestErrorMessage(providerInfoLoad?.error)
   const triggerEvents = providerInfo?.events || []
+
+  if (providerInfoLoad && loadErrorMessage) {
+    return (
+      <div className="px-4 pt-2 pb-4">
+        <Alert type="error">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button
+              size="small"
+              loading={providerInfoLoad.retrying}
+              onClick={providerInfoLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      </div>
+    )
+  }
 
   if (!providerInfo || !triggerEvents.length) return null
 

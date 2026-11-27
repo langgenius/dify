@@ -131,7 +131,13 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   const detailQueryKey = consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryKey({
     input: { query: { workflow_app_id: workflowAppId } },
   })
-  const { data: detail, isLoading } = useQuery(
+  const {
+    data: detail,
+    error: detailError,
+    isFetching: isDetailFetching,
+    isLoading,
+    refetch: refetchDetail,
+  } = useQuery(
     consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryOptions({
       input:
         enabled && published && workflowAppId
@@ -227,6 +233,13 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
 
   return {
     isLoading,
+    // Without the published detail the drawer would start from empty parameters and no tool id,
+    // so the owner presents a failed first load with a retry.
+    loadError: detail ? null : detailError,
+    isRetrying: isDetailFetching,
+    retryLoad: () => {
+      void refetchDetail()
+    },
     outdated,
     payload,
     handleCreate,

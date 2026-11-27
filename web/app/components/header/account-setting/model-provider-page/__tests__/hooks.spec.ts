@@ -43,8 +43,18 @@ vi.mock('#i18n', async (importOriginal) => ({
 
 // Mock dependencies
 
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+const idleCollectionQuery = vi.hoisted(() => ({
+  data: [],
+  error: null,
+  isError: false,
+  isFetching: false,
+  refetch: () => {},
+}))
+
+vi.mock('@/app/components/plugins/marketplace/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/plugins/marketplace/hooks')>()),
   useMarketplacePluginsByCollectionId: vi.fn(() => ({
+    query: idleCollectionQuery,
     plugins: [],
     isLoading: false,
   })),
@@ -137,6 +147,7 @@ describe('hooks', () => {
     vi.mocked(useLocale).mockReturnValue('en-US')
     ;(useMarketplacePlugins as Mock).mockReturnValue(searchResult([]))
     ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+      query: idleCollectionQuery,
       plugins: [],
       isLoading: false,
     })
@@ -207,6 +218,14 @@ describe('hooks', () => {
       getDefaultModel.mockResolvedValue({ data: null })
       const { result } = renderHook(() => useDefaultModel(ModelTypeEnum.textGeneration))
       await waitFor(() => expect(result.current.isLoading).toBe(false))
+      expect(result.current.data).toBeUndefined()
+    })
+    it('reports a failed first load as unknown and exposes its query to the owner', async () => {
+      const error = new Error('Backend text')
+      getDefaultModel.mockRejectedValue(error)
+      const { result } = renderHook(() => useDefaultModel(ModelTypeEnum.textGeneration))
+      await waitFor(() => expect(result.current.isLoadFailed).toBe(true))
+      expect(result.current.query.error).toBe(error)
       expect(result.current.data).toBeUndefined()
     })
   })
@@ -433,6 +452,20 @@ describe('hooks', () => {
       expect(result.current.currentProvider).toBeUndefined()
       expect(result.current.currentModel).toBeUndefined()
     })
+
+    it('exposes the model list and default model reads as load queries', async () => {
+      const error = new Error('Backend text')
+      getModels.mockRejectedValue(error)
+      getDefaultModel.mockResolvedValue({ data: null })
+
+      const { result } = renderHook(() =>
+        useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration),
+      )
+
+      await waitFor(() => expect(result.current.loadQueries[0].error).toBe(error))
+      await waitFor(() => expect(result.current.loadQueries[1].isSuccess).toBe(true))
+      expect(result.current.modelList).toEqual([])
+    })
   })
 
   describe('model cache refresh', () => {
@@ -480,6 +513,7 @@ describe('hooks', () => {
       const collectionPlugins = [{ plugin_id: 'collection1', type: 'plugin' }]
       const regularPlugins = createMockPlugins()
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: collectionPlugins,
         isLoading: false,
       })
@@ -497,6 +531,7 @@ describe('hooks', () => {
         { plugin_id: 'other', type: 'plugin' },
       ]
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: collectionPlugins,
         isLoading: false,
       })
@@ -557,12 +592,57 @@ describe('hooks', () => {
       expect(result.current.plugins).toEqual([])
     })
 
+    it.each(['collection', 'search'] as const)(
+      'should expose a failed first load of the %s with a retry',
+      (boundary) => {
+        const failure = new Error('down')
+        const refetchCollection = vi.fn()
+        const refetchSearch = vi.fn()
+        ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+          plugins: [],
+          isLoading: false,
+          refetch: refetchCollection,
+          query: {
+            data: boundary === 'collection' ? undefined : [],
+            error: boundary === 'collection' ? failure : null,
+            isError: boundary === 'collection',
+            isFetching: false,
+            refetch: refetchCollection,
+          },
+        })
+        ;(useMarketplacePlugins as Mock).mockReturnValue({
+          ...searchResult(boundary === 'search' ? undefined : [], {
+            isError: boundary === 'search',
+          }),
+          error: boundary === 'search' ? failure : null,
+          isFetching: false,
+          refetch: refetchSearch,
+        })
+
+        const { result } = renderHook(() => useMarketplaceAllPlugins('', []))
+
+        expect(result.current.loadError).toBe(failure)
+        act(() => result.current.retryLoad())
+        expect(boundary === 'collection' ? refetchCollection : refetchSearch).toHaveBeenCalledOnce()
+        expect(boundary === 'collection' ? refetchSearch : refetchCollection).not.toHaveBeenCalled()
+      },
+    )
+
+    it('should not report a load failure while the marketplace is disabled', () => {
+      ;(useMarketplacePlugins as Mock).mockReturnValue(searchResult(undefined, { isError: true }))
+
+      const { result } = renderHook(() => useMarketplaceAllPlugins('', [], false))
+
+      expect(result.current.loadError).toBeNull()
+    })
+
     it('should filter out bundle types', () => {
       const plugins = [
         { plugin_id: 'plugin1', type: 'plugin' },
         { plugin_id: 'bundle1', type: 'bundle' },
       ]
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: [],
         isLoading: false,
       })
@@ -577,6 +657,7 @@ describe('hooks', () => {
     it('should deduplicate plugins that exist in both collections and regular plugins', () => {
       const duplicatePlugin = { plugin_id: 'shared-plugin', type: 'plugin' }
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: [duplicatePlugin],
         isLoading: false,
       })
@@ -592,6 +673,7 @@ describe('hooks', () => {
 
     it('should handle loading states', () => {
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: [],
         isLoading: true,
       })
@@ -604,6 +686,7 @@ describe('hooks', () => {
 
     it('should return an empty list when plugin data is unavailable', () => {
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: [],
         isLoading: false,
       })
@@ -619,6 +702,7 @@ describe('hooks', () => {
       const searchPlugins = [{ plugin_id: 'search-result', type: 'plugin' }]
       const collectionPlugins = [{ plugin_id: 'collection-only', type: 'plugin' }]
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: collectionPlugins,
         isLoading: false,
       })
@@ -632,6 +716,7 @@ describe('hooks', () => {
 
     it('should hide installed plugins when a search response is stale', () => {
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: [],
         isLoading: false,
       })
@@ -649,6 +734,7 @@ describe('hooks', () => {
 
     it('should stop searching without clearing the marketplace cache when disabled', () => {
       ;(useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        query: idleCollectionQuery,
         plugins: [{ plugin_id: 'collection-only', type: 'plugin' }],
         isLoading: true,
       })

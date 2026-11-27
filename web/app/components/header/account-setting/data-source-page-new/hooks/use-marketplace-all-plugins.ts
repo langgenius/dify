@@ -1,19 +1,27 @@
 import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
-import { useMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/hooks'
+import {
+  useMarketplaceLoadFailure,
+  useMarketplacePluginsByCollectionId,
+} from '@/app/components/plugins/marketplace/hooks'
 import {
   MARKETPLACE_PANEL_CACHE_OPTIONS,
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 
-export const useMarketplaceAllPlugins = (providers: any[], searchText: string) => {
+/** `visible` is whether the panel shows the plugins, and so a failed load, right now. */
+export const useMarketplaceAllPlugins = (
+  providers: any[],
+  searchText: string,
+  visible: boolean,
+) => {
   const exclude = useMemo(() => {
     return providers.map((provider) => provider.plugin_id)
   }, [providers])
-  const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } =
-    useMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
+  const collection = useMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
+  const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } = collection
   // Typing waits 500 ms before searching; clearing the search lists the whole category at once.
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const marketplaceSearchParams = useMemo<PluginsSearchParams>(() => {
@@ -61,5 +69,6 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
   return {
     plugins: allPlugins,
     isLoading: isCollectionLoading || pluginsQuery.isLoading,
+    ...useMarketplaceLoadFailure(visible, collection.query, pluginsQuery),
   }
 }

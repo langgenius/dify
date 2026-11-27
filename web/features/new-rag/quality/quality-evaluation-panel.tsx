@@ -126,7 +126,8 @@ export function EvaluationReport({
       </div>
     )
 
-  if (!detailQuery.data || detailQuery.isError)
+  // A failed refetch keeps the loaded run on screen; the query cache reports it.
+  if (!detailQuery.data)
     return (
       <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
         <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
@@ -382,7 +383,7 @@ function EvidenceDetailsContent({ item, runId }: { item: ReplayItem; runId: stri
           <div className="flex min-h-40 items-center justify-center" role="status">
             <LoadingPlaceholder />
           </div>
-        ) : evidenceDetailQuery.isError ? (
+        ) : evidenceDetailQuery.isError && !evidenceDetailQuery.data ? (
           <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
             <p role="alert" className="system-sm-medium text-text-primary">
               {t(($) => $['qualityPage.evaluation.evidenceDetailsLoadError'], {
@@ -683,7 +684,7 @@ export function QualityEvaluationPanel({
           <div className="flex min-h-105 items-center justify-center">
             <LoadingPlaceholder />
           </div>
-        ) : listQuery.isError ? (
+        ) : listQuery.isError && !listQuery.data ? (
           <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
             <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
             <p role="alert" className="system-sm-medium text-text-primary">

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "ลดแรงกดดันด้วยข้อมูลประจําตัวหลายชุด",
   "modelProvider.loadBalancingInfo": "ตามค่าเริ่มต้น การปรับสมดุลภาระงานจะใช้กลยุทธ์แบบ Round-robin หากเปิดใช้งานการจํากัดอัตรา จะมีการใช้ระยะเวลาคูลดาวน์ 1 นาที",
   "modelProvider.loadBalancingLeastKeyWarning": "หากต้องการเปิดใช้งานการปรับสมดุลโหลด ต้องเปิดใช้งานคีย์อย่างน้อย 2 ปุ่ม",
+  "modelProvider.loadFailed": "โหลดไม่สำเร็จ โปรดลองอีกครั้ง",
   "modelProvider.loadPresets": "โหลดค่าที่ตั้งไว้ล่วงหน้า",
   "modelProvider.model": "แบบ",
   "modelProvider.modelHasBeenDeprecated": "โมเดลนี้เลิกใช้แล้ว",

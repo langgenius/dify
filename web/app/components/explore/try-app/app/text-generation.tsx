@@ -4,7 +4,8 @@ import type { InputValueTypes, Task } from '../../../share/text-generation/types
 import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
 import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
-import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertActions, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
@@ -22,6 +23,8 @@ import { appDefaultIconBackground } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AppSourceType } from '@/service/share'
 import { tryAppParamsQueryOptions } from '@/service/try-app-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { Resolution, TransferMethod } from '@/types/app'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import RunOnce from '../../../share/text-generation/run-once'
@@ -50,7 +53,10 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   }, [])
 
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
-  const { data: tryAppParams } = useQuery(tryAppParamsQueryOptions(appId))
+  const tryAppParamsQuery = useQuery(tryAppParamsQueryOptions(appId))
+  const tryAppParams = tryAppParamsQuery.data
+  const paramsLoad = useOwnedQueryError(tryAppParamsQuery)
+  const paramsLoadErrorMessage = useRequestErrorMessage(paramsLoad?.error)
 
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const appParams = useWebAppStore((s) => s.appParams)
@@ -170,6 +176,21 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       </div>
     </div>
   )
+
+  if (paramsLoad && paramsLoadErrorMessage) {
+    return (
+      <div className={cn('flex h-full items-center justify-center p-4', className)}>
+        <Alert type="error" className="w-max max-w-105">
+          <AlertTitle>{paramsLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={paramsLoad.retrying} onClick={paramsLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      </div>
+    )
+  }
 
   if (!siteInfo || !promptConfig) {
     return (

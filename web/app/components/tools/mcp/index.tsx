@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react'
 import type { ToolsContentInset } from '../content-inset'
 import type { Collection } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -13,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -21,6 +23,8 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 import { selectToolsWithProvider } from '../utils/query-select'
 import NewMCPCard from './create-card'
@@ -63,6 +67,11 @@ const MCPList = ({
   )
   const list = providers ?? fallbackMCPToolsQuery.data ?? EMPTY_MCP_TOOLS
   const isLoading = isLoadingProviders ?? fallbackMCPToolsQuery.isLoading
+  // Only the list's own lookup is presented here; a caller passing `providers` owns its failures.
+  const fallbackToolsLoad = useOwnedQueryErrors(
+    providers === undefined ? [fallbackMCPToolsQuery] : [],
+  )
+  const loadErrorMessage = useRequestErrorMessage(fallbackToolsLoad?.error)
   const queryClient = useQueryClient()
   // Refreshes the catalogs after a provider is opened from elsewhere or its tools are fetched.
   const refreshProviders = useCallback(
@@ -181,6 +190,20 @@ const MCPList = ({
         )}
       >
         {!isLoading && canManageMCP && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
+        {fallbackToolsLoad && loadErrorMessage && (
+          <Alert type="error" className="col-span-full">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button
+                size="small"
+                loading={fallbackToolsLoad.retrying}
+                onClick={fallbackToolsLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
         {isLoading ? (
           <ToolCardSkeletonGrid variant="mcp" />
         ) : (

@@ -4,6 +4,7 @@ import type { DocumentDetailResponse } from '@dify/contracts/api/console/dataset
 import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -14,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -43,6 +45,7 @@ import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/mode
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { documentRenameFilter } from '@/service/datasets'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -74,7 +77,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   )
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments', 'navigation'])
   const describeRequestError = useRequestErrorDescriber()
 
   const isBelowSm = useMediaQuery('(width < 40rem)', {})
@@ -161,11 +164,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     )
   }
 
-  const {
-    data: documentDetail,
-    error,
-    refetch: detailMutate,
-  } = useQuery(
+  const documentDetailQuery = useQuery(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
       input: {
         params: { dataset_id: datasetId, document_id: documentId },
@@ -179,6 +178,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       },
     }),
   )
+  const { data: documentDetail, error, refetch: detailMutate } = documentDetailQuery
+  const documentDetailLoad = useOwnedQueryError(documentDetailQuery)
   const documentTitle =
     documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
   const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })
@@ -440,6 +441,26 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         <div className="flex flex-1 flex-row" style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading ? (
             <LoadingPlaceholder className="h-full" />
+          ) : documentDetailLoad ? (
+            <div className="min-w-0 grow ps-5 pe-11 pt-3">
+              <Alert type="error">
+                <AlertTitle>
+                  {describeRequestError(
+                    documentDetailLoad.error,
+                    t(($) => $.loadError, { ns: 'dataset' }),
+                  )}
+                </AlertTitle>
+                <AlertActions>
+                  <Button
+                    size="small"
+                    loading={documentDetailLoad.retrying}
+                    onClick={documentDetailLoad.retry}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            </div>
           ) : (
             <div
               className={cn(

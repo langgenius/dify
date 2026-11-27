@@ -240,6 +240,31 @@ describe('Invitation activation', () => {
     expect(mocks.replace).not.toHaveBeenCalled()
   })
 
+  it('shows a failed invitation check in place without a toast and retries it', async () => {
+    const toastError = vi.spyOn(toast, 'error')
+    const user = userEvent.setup()
+    mocks.check.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), {
+        code: 'invitation_check_unavailable',
+        message: 'Server says why',
+        status: 500,
+      }),
+    )
+    renderWithConsoleQuery(<InviteSettingsPage />, {
+      queryClient: createConsoleQueryClient(),
+      accountProfile: { id: 'account-id', email: 'invitee@example.com' },
+      systemFeatures: { branding: { enabled: true, application_title: 'Acme AI' } },
+    })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('common.api.actionFailed')
+    expect(toastError).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('button', { name: 'Rejoindre Acme' })).toBeInTheDocument()
+    expect(mocks.check).toHaveBeenCalledTimes(2)
+  })
+
   it('falls back to console home for an external redirect', async () => {
     const user = userEvent.setup()
     searchParams.set('redirect_url', 'https://google.com')

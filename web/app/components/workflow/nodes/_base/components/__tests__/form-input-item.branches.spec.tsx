@@ -115,6 +115,7 @@ const renderForm = (props: Partial<Props> = {}, { reportErrors = false } = {}) =
   return {
     ...renderWorkflowFlowComponent(<Form />, { queryClient, nodes: [], edges: [] }),
     onChange,
+    queryClient,
   }
 }
 
@@ -243,14 +244,16 @@ describe('FormInputItem selections', () => {
     })
   })
 
-  it('reports trigger options that fail to load', async () => {
+  it('shows trigger options that fail to load inline, without a toast, and retries them', async () => {
+    const user = userEvent.setup()
     const errorToast = vi.spyOn(toast, 'error')
-    mockDynamicOptions.mockRejectedValue(
+    mockDynamicOptions.mockRejectedValueOnce(
       createHttpError(
         { status: 400, statusText: '', headers: new Headers() },
         { message: 'Credential expired' },
       ),
     )
+    mockDynamicOptions.mockResolvedValueOnce({ options: [createOption('trigger-option')] })
     renderForm(
       {
         schema: createSchema({ type: FormTypeEnum.dynamicSelect }),
@@ -261,7 +264,49 @@ describe('FormInputItem selections', () => {
       { reportErrors: true },
     )
 
-    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Credential expired'))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(errorToast).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /retry/i }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(mockDynamicOptions).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByRole('combobox'))
+    expect(await screen.findByRole('option', { name: 'trigger-option' })).toBeInTheDocument()
+    expect(errorToast).not.toHaveBeenCalled()
+  })
+
+  it('reports trigger options that fail to refresh once, keeping the loaded options', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    mockDynamicOptions.mockResolvedValueOnce({ options: [createOption('trigger-option')] })
+    mockDynamicOptions.mockRejectedValueOnce(
+      createHttpError(
+        { status: 503, statusText: '', headers: new Headers() },
+        { message: 'Options unavailable' },
+      ),
+    )
+    const { queryClient } = renderForm(
+      {
+        schema: createSchema({ type: FormTypeEnum.dynamicSelect }),
+        currentProvider: { ...provider, credential_id: 'credential-1' },
+        currentTool: tool,
+        providerType: PluginCategoryEnum.trigger,
+      },
+      { reportErrors: true },
+    )
+    await waitFor(() => expect(mockDynamicOptions).toHaveBeenCalledOnce())
+
+    // The select shows only a failed first load; a failed refresh is the cache's to report.
+    await queryClient.refetchQueries({
+      predicate: (query) => JSON.stringify(query.queryKey).includes('dynamicOptions'),
+    })
+
+    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Options unavailable'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('combobox'))
+    expect(await screen.findByRole('option', { name: 'trigger-option' })).toBeInTheDocument()
+    errorToast.mockRestore()
   })
 
   it('saves JSON edits as constant strings', async () => {

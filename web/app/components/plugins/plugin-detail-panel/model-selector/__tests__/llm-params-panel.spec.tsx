@@ -2,7 +2,7 @@ import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -62,9 +62,15 @@ describe('LLM parameter panel', () => {
       queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
     })
 
-    await waitFor(() =>
-      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Model provider unavailable'),
-    )
+    // A failed first load is shown in the panel, not as a toast.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Model provider unavailable')
+    expect(errorToast).not.toHaveBeenCalled()
+
+    getRules.mockResolvedValue({ data: [rule()] })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByRole('spinbutton', { name: 'temperature' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('loads rules for each model and replaces stale inputs when switching models', async () => {

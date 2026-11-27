@@ -65,7 +65,8 @@ const normalizeEventParameters = (
 
 const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { data: triggerPlugins = [] } = useQuery(allTriggerPluginsQueryOptions())
+  const triggerPluginsQuery = useQuery(allTriggerPluginsQueryOptions())
+  const { data: triggerPlugins = [] } = triggerPluginsQuery
 
   const { inputs, setInputs: doSetInputs } = useNodeCrud<PluginTriggerNodeType>(id, payload)
 
@@ -96,7 +97,8 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     )
   }, [triggerPlugins, provider_name, provider_id])
 
-  const { data: subscriptions = [] } = useQuery(triggerSubscriptionsQueryOptions(provider_id || ''))
+  const subscriptionsQuery = useQuery(triggerSubscriptionsQueryOptions(provider_id || ''))
+  const { data: subscriptions = [] } = subscriptionsQuery
 
   const subscriptionSelected = useMemo(() => {
     return subscriptions?.find((s) => s.id === subscription_id)
@@ -205,6 +207,9 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     hasObjectOutput,
     subscriptions,
     subscriptionSelected,
+    // Without the trigger plugins or subscriptions the parameter form cannot show. The node also
+    // reads this hook, so the panel, which renders the failure, claims these.
+    loadQueries: [triggerPluginsQuery, subscriptionsQuery] as const,
   }
 }
 

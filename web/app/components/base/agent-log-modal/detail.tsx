@@ -1,15 +1,18 @@
 'use client'
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { uniq } from 'es-toolkit/array'
 import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
@@ -77,21 +80,19 @@ function AgentLogContent({
   log,
   currentTab,
 }: AgentLogContentProps) {
-  const {
-    data: runDetail,
-    error,
-    isPending: loading,
-  } = useQuery(
+  const { t } = useTranslation(['common'])
+  const runDetailQuery = useQuery(
     consoleQuery.apps.byAppId.agent.logs.get.queryOptions({
       input: {
         params: { app_id: appId },
         query: { conversation_id: conversationID, message_id: messageID },
       },
-      meta: { errorToast: false },
       retry: false,
       refetchOnWindowFocus: false,
     }),
   )
+  const { data: runDetail, isPending: loading } = runDetailQuery
+  const runDetailLoad = useOwnedQueryError(runDetailQuery)
   const tools = useMemo(
     () =>
       uniq(
@@ -104,10 +105,7 @@ function AgentLogContent({
     [runDetail],
   )
 
-  // The query opts out of the cache toast, so its failure is reported here once per error.
-  useEffect(() => {
-    if (error) toast.error(error.message)
-  }, [error])
+  const loadErrorMessage = useRequestErrorMessage(runDetailLoad?.error)
 
   return (
     <div
@@ -119,6 +117,18 @@ function AgentLogContent({
       {loading && (
         <div className="flex h-full items-center justify-center bg-components-panel-bg">
           <LoadingPlaceholder />
+        </div>
+      )}
+      {!loading && runDetailLoad && loadErrorMessage && (
+        <div className="p-4">
+          <Alert type="error">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={runDetailLoad.retrying} onClick={runDetailLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
         </div>
       )}
       {!loading && currentTab === 'DETAIL' && runDetail && (
@@ -135,7 +145,9 @@ function AgentLogContent({
           iterations={runDetail.iterations.length}
         />
       )}
-      {!loading && currentTab === 'TRACING' && <TracingPanel list={runDetail?.iterations ?? []} />}
+      {!loading && !loadErrorMessage && currentTab === 'TRACING' && (
+        <TracingPanel list={runDetail?.iterations ?? []} />
+      )}
     </div>
   )
 }

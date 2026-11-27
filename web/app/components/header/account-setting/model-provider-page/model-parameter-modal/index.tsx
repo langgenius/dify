@@ -1,4 +1,5 @@
 import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { ComponentPropsWithRef, FC, ReactElement } from 'react'
 import type { FormValue, ModelParameterRule } from '../declarations'
 import type {
@@ -8,6 +9,8 @@ import type {
 } from '../model-selector/types'
 import type { ParameterValue } from './parameter-item'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -22,6 +25,8 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { ModelStatusEnum } from '../declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import { ModelSelector, SplitModelSelector } from '../model-selector'
@@ -64,6 +69,36 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'side' | 'align
   modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
 
+// Rendered inside the open popover, so a failed first load is claimed only while it is shown.
+function ParameterRulesLoadError({
+  query,
+  bordered,
+}: {
+  query: UseQueryResult<unknown>
+  bordered: boolean
+}) {
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const load = useOwnedQueryError(query)
+  const message = useRequestErrorMessage(
+    load?.error,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
+  )
+  if (!load) return null
+
+  return (
+    <div className={cn('px-4 pt-3 pb-4', bordered && 'border-t border-divider-subtle')}>
+      <Alert type="error">
+        <AlertTitle>{message}</AlertTitle>
+        <AlertActions>
+          <Button size="small" loading={load.retrying} onClick={load.retry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </AlertActions>
+      </Alert>
+    </div>
+  )
+}
+
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   trigger,
   triggerContainerClassName,
@@ -97,9 +132,14 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
   const canFetchParameterRules =
     !!currentProvider && currentModel?.status === ModelStatusEnum.active
-  const { data: parameterRulesData, isLoading } = useQuery(
-    modelParameterRulesQueryOptions({ provider, model: modelId, enabled: canFetchParameterRules }),
+  const parameterRulesQuery = useQuery(
+    modelParameterRulesQueryOptions({
+      provider,
+      model: modelId,
+      enabled: canFetchParameterRules,
+    }),
   )
+  const { data: parameterRulesData, isLoading } = parameterRulesQuery
   const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
   const selectableModelList = modelList ?? activeTextGenerationModelList
 
@@ -273,6 +313,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               )}
             </div>
           )}
+          <ParameterRulesLoadError query={parameterRulesQuery} bordered={!!trigger} />
           {!parameterRules.length && isRulesLoading && (
             <div className="px-4 py-5">
               <LoadingPlaceholder />

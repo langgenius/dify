@@ -257,15 +257,18 @@ export function SearchSession({ surface, inputRef, onClose, onInstallPlugin }: S
     remoteSearchEnabled &&
     agentsAvailable &&
     (!debouncedAction || debouncedAction.key === '@agents')
+  // The search results show every failed search, refetches included, as their status.
   const appSearchQuery = useQuery(
     appSearchQueryOptions(debouncedSearchTerm, {
       enabled: appSearchEnabled,
+      meta: { errorToast: false },
       placeholderData: keepPreviousData,
     }),
   )
   const knowledgeSearchQuery = useQuery(
     knowledgeSearchQueryOptions(debouncedSearchTerm, {
       enabled: knowledgeSearchEnabled,
+      meta: { errorToast: false },
       placeholderData: keepPreviousData,
     }),
   )
@@ -276,12 +279,14 @@ export function SearchSession({ surface, inputRef, onClose, onInstallPlugin }: S
   const skillSearchQuery = useQuery(
     skillSearchQueryOptions(debouncedSearchTerm, {
       enabled: skillSearchEnabled,
+      meta: { errorToast: false },
       placeholderData: keepPreviousData,
     }),
   )
   const agentSearchQuery = useQuery(
     agentSearchQueryOptions(debouncedSearchTerm, {
       enabled: agentSearchEnabled,
+      meta: { errorToast: false },
       placeholderData: keepPreviousData,
     }),
   )

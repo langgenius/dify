@@ -8,6 +8,7 @@ import type { ReactElement } from 'react'
 import type { PublishedWorkflow } from '../shared/utils'
 import { ORPCError } from '@orpc/client'
 import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { renderWithConsoleQuery as renderWithConsole } from '@/test/console/query-data'
@@ -334,5 +335,17 @@ describe('BuiltInAccessPoints', () => {
     expect(
       screen.queryByText('deployments.studio.accessPoint.noPublishedTitle'),
     ).not.toBeInTheDocument()
+  })
+
+  it('explains a failed published workflow load and retries it', async () => {
+    const user = userEvent.setup()
+    // A forbidden read is not retried automatically, so the failure shows at once.
+    fetchPublishedWorkflow.mockRejectedValueOnce(forbidden())
+    renderAccessPoints()
+
+    const alert = await screen.findByRole('alert')
+    fetchPublishedWorkflow.mockImplementation(pending)
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(fetchPublishedWorkflow).toHaveBeenCalledTimes(2))
   })
 })

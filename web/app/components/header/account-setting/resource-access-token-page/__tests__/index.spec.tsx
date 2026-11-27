@@ -484,6 +484,29 @@ describe('ResourceAccessTokenPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows a retryable error instead of no resources when the resource list fails to load', async () => {
+    const user = userEvent.setup()
+    mocks.listApps.mockRejectedValueOnce(new Error('Request failed'))
+    renderWithQueryClient(<ResourceAccessTokenPage />)
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'accountSettings.resourceAccessToken.createButton',
+      }),
+    )
+    const dialog = screen.getByRole('dialog')
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(
+      within(dialog).queryByText('accountSettings.resourceAccessToken.noResources'),
+    ).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await within(dialog).findByRole('checkbox', { name: 'Sales Bot' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(mocks.listApps).toHaveBeenCalledTimes(2)
+  })
+
   it('loads additional API-enabled apps from later pages', async () => {
     const user = userEvent.setup()
     mocks.listApps

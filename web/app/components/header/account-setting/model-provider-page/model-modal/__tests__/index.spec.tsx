@@ -1,5 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import {
   createCredentialProvider,
   customModel,
@@ -8,7 +9,11 @@ import {
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../../declarations'
 import { modelCredentialDialog } from '../handle'
 
-const requests = vi.hoisted(() => ({ provider: vi.fn(), model: vi.fn() }))
+const requests = vi.hoisted(() => ({
+  provider: vi.fn(),
+  model: vi.fn(),
+  providerCredential: vi.fn(),
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
@@ -20,6 +25,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.modelProviders.byProvider.models.credentials.post': requests.model,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.credentials.get': requests.providerCredential,
       'workspaces.current.modelProviders.byProvider.models.credentials.get': () => ({
         credentials: {},
         available_credentials: [],
@@ -30,6 +36,10 @@ vi.mock('@/service/console', async (importOriginal) => {
 beforeEach(() => {
   requests.provider.mockResolvedValue({ result: 'success' })
   requests.model.mockResolvedValue({ result: 'success' })
+  requests.providerCredential.mockResolvedValue({
+    credentials: { api_key: 'saved-secret' },
+    available_credentials: [],
+  })
 })
 function renderModal(
   overrides: Partial<Parameters<typeof modelCredentialDialog.openWithPayload>[0]> = {},
@@ -167,3 +177,20 @@ it.each(['openai', 'langgenius/openai/openai', 'langgenius/azure_openai/azure_op
     else expect(tip).toBeInTheDocument()
   },
 )
+it('shows a failed credential load with a retry instead of an empty form', async () => {
+  const user = userEvent.setup()
+  requests.providerCredential.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 503 })),
+  )
+  renderModal({ credential: { credential_id: 'credential-1', credential_name: 'Saved' } })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('modelProvider.loadFailed')
+  expect(screen.queryByLabelText(/API key/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByLabelText(/API key/)).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(requests.providerCredential).toHaveBeenCalledTimes(2)
+})

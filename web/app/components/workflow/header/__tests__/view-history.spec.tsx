@@ -86,6 +86,20 @@ it('fetches only after opening history and clears log modals when closing it', a
   expect(screen.queryByText('workflow.common.runHistory')).not.toBeInTheDocument()
 })
 
+it('shows history that fails to load with a retry instead of an empty list', async () => {
+  const user = userEvent.setup()
+  fetchHistory.mockRejectedValueOnce(new Error('network'))
+  renderHistory(<ViewHistory withText />)
+  await user.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
+  expect(await screen.findByRole('alert')).toBeVisible()
+  expect(screen.queryByText('workflow.common.notRunning')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByText('workflow.common.notRunning')).toBeVisible()
+  expect(fetchHistory).toHaveBeenCalledTimes(2)
+})
+
 it('clears log modals on the icon trigger and displays loading until history arrives', async () => {
   const user = userEvent.setup()
   const clearModals = vi.fn()

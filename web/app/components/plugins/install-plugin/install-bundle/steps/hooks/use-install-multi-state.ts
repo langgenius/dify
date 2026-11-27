@@ -14,6 +14,7 @@ import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hook
 import { toPluginCard } from '@/app/components/plugins/marketplace/plugin-card-adapter'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { marketplacePluginsByInfoQueryOptions } from '@/service/plugin-list-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 
 type UseInstallMultiStateParams = {
   allPlugins: Dependency[]
@@ -126,13 +127,12 @@ export function useInstallMultiState({
   }, [marketPlaceInDSLIndex, marketplacePlugins])
 
   // Marketplace data fetching: by normalized marketplace info
-  const {
-    isLoading: isFetchingById,
-    data: infoGetById,
-    error: infoByIdError,
-  } = useQuery(
+  const marketplaceQuery = useQuery(
     marketplacePluginsByInfoQueryOptions(marketplaceRequests.map((request) => request.info)),
   )
+  const { isLoading: isFetchingById, data: infoGetById } = marketplaceQuery
+  // The list renders a failed first load as error rows in place of the marketplace plugins.
+  const isMarketplaceLoadFailed = !!useOwnedQueryError(marketplaceQuery)
 
   // Derive marketplace plugin data and errors from API responses
   const { marketplacePluginMap, marketplaceErrorIndexes } = useMemo(() => {
@@ -168,14 +168,14 @@ export function useInstallMultiState({
     }
 
     // Mark all marketplace indexes as errors on fetch failure
-    if (infoByIdError) marketPlaceInDSLIndex.forEach((index) => errorSet.add(index))
+    if (isMarketplaceLoadFailed) marketPlaceInDSLIndex.forEach((index) => errorSet.add(index))
 
     return { marketplacePluginMap: pluginMap, marketplaceErrorIndexes: errorSet }
   }, [
     invalidMarketplaceIndexes,
     isFetchingById,
     infoGetById,
-    infoByIdError,
+    isMarketplaceLoadFailed,
     marketPlaceInDSLIndex,
     marketplaceRequests,
   ])

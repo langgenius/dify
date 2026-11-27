@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Zmanjšajte pritisk s pomočjo več sklopov poverilnic.",
   "modelProvider.loadBalancingInfo": "Privzeto uravnoteženje obremenitev uporablja strategijo Round-robin. Če se sproži omejitev hitrosti, se uporabi 1-minutno obdobje ohlajanja.",
   "modelProvider.loadBalancingLeastKeyWarning": "Za omogočanje uravnoteženja obremenitev morata biti omogočena vsaj 2 ključa.",
+  "modelProvider.loadFailed": "Nalaganje ni uspelo. Poskusite znova.",
   "modelProvider.loadPresets": "Naloži prednastavitve",
   "modelProvider.model": "Model",
   "modelProvider.modelHasBeenDeprecated": "Ta model je zastarel",

@@ -174,6 +174,7 @@
   "common.latestPublished": "Último publicado",
   "common.learnMore": "Saiba mais",
   "common.listening": "Ouvindo",
+  "common.loadFailed": "Falha ao carregar. Tente novamente.",
   "common.loadMore": "Carregar mais fluxos de trabalho",
   "common.manageInTools": "Gerenciar nas ferramentas",
   "common.maxTreeDepth": "Limite máximo de {{depth}} nós por ramo",

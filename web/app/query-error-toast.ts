@@ -79,9 +79,21 @@ function pruneExpiredQueryToasts(now: number) {
 }
 
 /**
- * Reports a failed first load and a failed background refetch alike, so no read fails without
- * feedback. `meta.errorMessage` is the query's text for codes the catalog does not know; a query
- * whose owner renders its own error state sets `meta.errorToast: false`.
+ * Waits until React has rendered the observers' update: the cache reports a failure before it
+ * notifies them, and their notification is itself scheduled on a macrotask.
+ */
+function afterObserversRender(callback: () => void) {
+  setTimeout(() => setTimeout(callback, 0), 0)
+}
+
+/**
+ * Reports a failed first load, a failed next page and a failed background refetch, so no read
+ * fails without feedback. Each report waits for the render that follows the failure: an owner
+ * that renders the error claims it through `useOwnedQueryError` (a first load) or
+ * `useOwnedNextPageError` (a next page), and a claimed error is not toasted. A refetch keeps
+ * showing cached data, so nothing claims it and it toasts. `meta.errorMessage` is the query's
+ * text for codes the catalog does not know; a query whose owner also presents refetch failures,
+ * or a deliberately silent read, sets `meta.errorToast: false`.
  */
 function reportQueryError(error: unknown, query: AnyQuery) {
   if (query.meta?.errorToast === false) return
@@ -91,20 +103,25 @@ function reportQueryError(error: unknown, query: AnyQuery) {
   // A read nothing explains stays with its owner's error state, and with a caller that rethrows
   // it, such as a mutation awaiting this query, which reports it with its own text.
   if (!errorMessage && !isExplainedRequestError(requestError)) return
-  // Once reported, a caller that rethrows the error must not report it again.
-  markErrorHandled(requestError)
-  withRequestErrorTranslator((t) => {
-    const { message } = requestErrorMessage(requestError, t, errorMessage)
+  const report = () => {
+    // A claimed error is on screen; a caller that rethrew it has already reported it.
+    if (isErrorHandled(requestError)) return
+    // Once reported, a caller that rethrows the error must not report it again.
+    markErrorHandled(requestError)
+    withRequestErrorTranslator((t) => {
+      const { message } = requestErrorMessage(requestError, t, errorMessage)
 
-    const now = Date.now()
-    pruneExpiredQueryToasts(now)
-    const messages = queryToasts.get(query.queryHash) ?? new Map<string, number>()
-    queryToasts.set(query.queryHash, messages)
-    const expiresAt = messages.get(message)
-    if (expiresAt !== undefined && now < expiresAt) return
-    messages.set(message, now + DEDUPE_WINDOW_MS)
-    toast.error(message)
-  })
+      const now = Date.now()
+      pruneExpiredQueryToasts(now)
+      const messages = queryToasts.get(query.queryHash) ?? new Map<string, number>()
+      queryToasts.set(query.queryHash, messages)
+      const expiresAt = messages.get(message)
+      if (expiresAt !== undefined && now < expiresAt) return
+      messages.set(message, now + DEDUPE_WINDOW_MS)
+      toast.error(message)
+    })
+  }
+  afterObserversRender(report)
 }
 
 /** Shows a reportable request error's message once; a caller that rethrows it stays silent. */

@@ -2,7 +2,7 @@
 
 import type { RetrievalSettingsDraft } from './model'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertActions, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   NumberField,
   NumberFieldControls,
@@ -30,6 +31,8 @@ import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import {
   modelFingerprint,
@@ -54,7 +57,7 @@ const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
 const RERANK_MODEL_ERROR_ID = 'knowledge-rerank-model-error'
 
 export function RetrievalSettingsSection() {
-  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSettings', 'knowledgeCreate'])
   const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tSettings } = useTranslation(['datasetSettings'])
   const { t: tAppDebug } = useTranslation(['appDebug'])
@@ -63,23 +66,37 @@ export function RetrievalSettingsSection() {
   const current = useAtomValue(knowledgeSettingsRetrievalDraftAtom)
   const updateDraft = useSetAtom(updateKnowledgeSettingsRetrievalDraftAtom)
   const interactionLocked = useAtomValue(knowledgeSettingsInteractionLockedAtom)
-  const { data: reasoningModelList = [] } = useQuery(
+  const reasoningModelsQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
       select: (response) => response.data,
     }),
   )
-  const { data: embeddingModelList = [] } = useQuery(
+  const embeddingModelsQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textEmbedding } },
       select: (response) => response.data,
     }),
   )
-  const { data: rerankModelList = [] } = useQuery(
+  const rerankModelsQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.rerank } },
       select: (response) => response.data,
     }),
+  )
+  const reasoningModelList = reasoningModelsQuery.data ?? []
+  const embeddingModelList = embeddingModelsQuery.data ?? []
+  const rerankModelList = rerankModelsQuery.data ?? []
+  // Without a catalog its selector would look as if no model were configured. Nothing renders
+  // until the space and its settings are known, so only then is the load error shown.
+  const modelsLoad = useOwnedQueryErrors(
+    space && settings && current
+      ? [reasoningModelsQuery, embeddingModelsQuery, rerankModelsQuery]
+      : [],
+  )
+  const modelsLoadErrorMessage = useRequestErrorMessage(
+    modelsLoad?.error,
+    t(($) => $.modelsLoadFailed, { ns: 'knowledgeCreate' }),
   )
   const [pendingEmbeddingModel, setPendingEmbeddingModel] = useState<DefaultModel>()
   const [embeddingDialogOpen, setEmbeddingDialogOpen] = useState(false)
@@ -124,6 +141,17 @@ export function RetrievalSettingsSection() {
             )}
           </Alert>
         )}
+
+      {modelsLoad && (
+        <Alert type="error" className="mb-3">
+          <AlertTitle>{modelsLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={modelsLoad.retrying} onClick={modelsLoad.retry}>
+              {tCommon(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
 
       <div className="h-px bg-divider-subtle" />
       <section className="flex min-w-0 flex-col gap-4 sm:flex-row sm:gap-1">

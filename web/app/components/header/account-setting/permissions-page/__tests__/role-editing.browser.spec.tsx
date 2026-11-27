@@ -10,6 +10,9 @@ const fake = setupFakeApi(() => ({
     workspaces: {
       current: {
         rbac: {
+          rolePermissions: {
+            catalog: { get: async () => ({ groups: [] }) },
+          },
           roles: {
             get: async () => rolePage(roles),
             post: async ({ body }) => {
@@ -75,6 +78,46 @@ it('keeps management actions disabled for members without role management permis
   }
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('shows a failed first load of the role list with a retry', async () => {
+  const list = fake.console.workspaces.current.rbac.roles.get
+  list.mockRejectedValueOnce(apiError({ status: 503, message: 'Roles unavailable' }))
+  const screen = await setup()
+
+  const alert = screen.getByRole('alert')
+  await expect.element(alert).toBeVisible()
+  await alert.getByRole('button', { name: 'common.operation.retry' }).click()
+
+  await expect.element(screen.getByText(customRole.name)).toBeVisible()
+  await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
+  expect(list).toHaveBeenCalledTimes(2)
+})
+
+it('shows a failed permission catalog load in the role dialog with a retry', async () => {
+  const catalog = fake.console.workspaces.current.rbac.rolePermissions.catalog.get
+  catalog.mockRejectedValueOnce(apiError({ status: 503, message: 'Catalog unavailable' }))
+  const { screen, queryClient } = await renderRolePage()
+  onTestFinished(() => queryClient.clear())
+  queryClient.removeQueries({
+    queryKey: consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryKey({
+      input: {},
+    }),
+  })
+
+  await screen.getByRole('button', { name: 'permission.role.addRole' }).click()
+  const dialog = screen.getByRole('dialog')
+  const alert = dialog.getByRole('alert')
+  await expect.element(alert).toBeVisible()
+  await expect
+    .element(dialog.getByText('permission.permissionList.noPermissionsFound'))
+    .not.toBeInTheDocument()
+  await alert.getByRole('button', { name: 'common.operation.retry' }).click()
+
+  await expect
+    .element(dialog.getByText('permission.permissionList.noPermissionsFound'))
+    .toBeVisible()
+  expect(catalog).toHaveBeenCalledTimes(2)
 })
 
 it('keeps the selected built-in role read-only across grouped rows', async () => {

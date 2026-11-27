@@ -41,6 +41,7 @@ import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
 import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { toast } from '@/app/notifications'
 import { getIconClassName } from '../utils/get-icon'
@@ -48,7 +49,15 @@ import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
 
+/** A failed first load of the dataset's or the built-in metadata. */
+export type MetadataLoadError = {
+  error: unknown
+  retrying: boolean
+  onRetry: () => void
+}
+
 type Props = Readonly<{
+  loadError?: MetadataLoadError
   userMetadata: MetadataItemWithValueLength[]
   builtInMetadata: BuiltInMetadataItem[]
   isBuiltInEnabled: boolean
@@ -177,6 +186,7 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
 }
 
 const DatasetMetadataDrawer: FC<Props> = ({
+  loadError,
   userMetadata,
   builtInMetadata,
   isBuiltInEnabled,
@@ -278,6 +288,8 @@ const DatasetMetadataDrawer: FC<Props> = ({
                   hasBack
                   onSave={handleAdd}
                 />
+
+                {loadError && <DatasetLoadErrorAlert className="mt-3" {...loadError} />}
 
                 <div className="mt-3 space-y-1">
                   {userMetadata.map((payload) => (

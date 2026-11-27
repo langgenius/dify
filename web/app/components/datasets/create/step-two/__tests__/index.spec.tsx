@@ -35,6 +35,12 @@ const api = vi.hoisted(() => ({
   estimate:
     vi.fn<typeof import('@/service/console').consoleClient.datasets.indexingEstimate.post>(),
   rules: vi.fn<typeof import('@/service/console').consoleClient.datasets.processRule.get>(),
+  models:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.models.modelTypes.byModelType.get
+    >(),
+  defaultModel:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.defaultModel.get>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -46,6 +52,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       'datasets.indexingEstimate.post': api.estimate,
       'datasets.init.post': api.create,
       'datasets.byDatasetId.documents.post': api.save,
+      'workspaces.current.models.modelTypes.byModelType.get': api.models,
+      'workspaces.current.defaultModel.get': api.defaultModel,
     }),
   }
 })
@@ -74,6 +82,7 @@ async function setup(
   props: Partial<StepTwoProps> = {},
   dataset?: DatasetDetailWithPartialMembersResponse,
   defaultModels: { embedding?: boolean; rerank?: boolean } = {},
+  beforeRender?: (queryClient: ReturnType<typeof createConsoleQueryClient>) => void,
 ) {
   const queryClient = createConsoleQueryClient()
   seedModelProviderQueries(queryClient, [
@@ -115,6 +124,7 @@ async function setup(
   queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
     retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'],
   })
+  beforeRender?.(queryClient)
   const onSave = vi.fn()
   const onCancel = vi.fn()
   const tree = (
@@ -172,6 +182,9 @@ beforeEach(() => {
     preview: [{ content: 'Previewed chunk', child_chunks: ['Child chunk'] }],
   })
   api.rules.mockReset().mockResolvedValue(defaultRules)
+  // Model catalogs are seeded; a test that clears one decides how it answers.
+  api.models.mockReset().mockReturnValue(new Promise(() => {}))
+  api.defaultModel.mockReset().mockReturnValue(new Promise(() => {}))
 })
 afterEach(() => {
   act(() => toast.dismiss())
@@ -508,6 +521,55 @@ it('requires an embedding model for high-quality indexing but permits economical
     body: expect.objectContaining({ indexing_technique: 'economy' }),
   })
 })
+
+it('shows a failed embedding model list load under the model selector and retries it', async () => {
+  const embeddingModelsKey =
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'text-embedding' } },
+    })
+  api.models.mockRejectedValue(new Error('Embedding models unavailable'))
+  const { user } = await setup({}, undefined, {}, (queryClient) =>
+    queryClient.removeQueries({ queryKey: embeddingModelsKey }),
+  )
+
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('dataset.loadError')
+
+  api.models.mockResolvedValue({ data: [] })
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+})
+
+it.each([
+  { failed: 'rerank model list', key: 'models' },
+  { failed: 'default embedding model', key: 'defaultModel' },
+] as const)(
+  'shows a failed $failed load in the retrieval settings and retries it',
+  async ({ key }) => {
+    const queryKey =
+      key === 'models'
+        ? consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+            input: { params: { model_type: 'rerank' } },
+          })
+        : consoleQuery.workspaces.current.defaultModel.get.queryKey({
+            input: { query: { model_type: 'text-embedding' } },
+          })
+    api[key].mockRejectedValue(new Error('Models unavailable'))
+    const { user } = await setup({}, undefined, {}, (queryClient) =>
+      queryClient.removeQueries({ queryKey, exact: true }),
+    )
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('dataset.loadError')
+
+    if (key === 'models') api.models.mockResolvedValue({ data: [] })
+    else api.defaultModel.mockResolvedValue({ data: null })
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  },
+)
 
 it('requires a rerank model when hybrid search uses model reranking', async () => {
   const { user } = await setup({}, undefined, { rerank: false })

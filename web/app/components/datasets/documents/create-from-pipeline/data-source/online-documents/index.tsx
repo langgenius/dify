@@ -1,9 +1,12 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
@@ -16,6 +19,8 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import Header from '../base/header'
 import { runDatasourceNode } from '../run-datasource-node'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
@@ -37,6 +42,7 @@ const OnlineDocuments = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDocumentsProps) => {
+  const { t: tLoad } = useTranslation(['common', 'dataset'])
   const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -50,10 +56,17 @@ const OnlineDocuments = ({
       })),
     )
 
-  const { data: dataSourceAuth } = useQuery(
+  const dataSourceAuthQuery = useQuery(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
       input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
     }),
+  )
+  const dataSourceAuth = dataSourceAuthQuery.data
+  // Without the credentials the source looks unauthorized, so a failed load is shown instead.
+  const credentialsLoad = useOwnedQueryError(dataSourceAuthQuery)
+  const credentialsLoadErrorMessage = useRequestErrorMessage(
+    credentialsLoad?.error,
+    tLoad(($) => $.loadError, { ns: 'dataset' }),
   )
 
   const dataSourceStore = useDataSourceStore()
@@ -154,6 +167,16 @@ const OnlineDocuments = ({
         onCredentialChange={onCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
+      {credentialsLoad && (
+        <Alert type="error">
+          <AlertTitle>{credentialsLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={credentialsLoad.retrying} onClick={credentialsLoad.retry}>
+              {tLoad(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
         <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 ps-3">
           <div className="flex grow items-center">

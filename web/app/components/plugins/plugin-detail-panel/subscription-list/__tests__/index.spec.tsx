@@ -1,8 +1,9 @@
 import type { ComponentProps } from 'react'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { usePluginStore } from '../../store'
@@ -81,6 +82,22 @@ it('omits the list header and cards for an empty response', async () => {
   await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
   expect(screen.queryByText(/pluginTrigger.subscription.listNum/)).not.toBeInTheDocument()
   expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
+})
+it('shows a failed first load with a retry instead of an empty list', async () => {
+  const user = userEvent.setup()
+  list
+    .mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), {
+        message: 'Subscriptions unavailable',
+      }),
+    )
+    .mockResolvedValueOnce([subscription])
+  renderList()
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('Subscriptions unavailable')
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByText('Subscription One')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 it('selects a subscription and supplies a refresh callback that updates the real list', async () => {
   const user = userEvent.setup()

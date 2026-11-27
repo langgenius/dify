@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "किफायती",
   "indexingTechnique.high_quality": "उच्च गुणवत्ता",
   "knowledge": "ज्ञान",
+  "loadError": "डेटा लोड नहीं हो सका। फिर से प्रयास करें।",
   "metadata.addMetadata": "मेटाडेटा जोड़ें",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "चुने गए सभी दस्तावेज़ों पर लागू करें",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "सभी चयनित दस्तावेज़ों के लिए ऊपर दिए गए संपादित और नए मेटाडेटा को स्वचालित रूप से बनाएं, अन्यथा मेटाडेटा का संपादन केवल उन दस्तावेज़ों पर लागू होगा जिनमें यह मौजूद है।",

@@ -5,6 +5,8 @@ import type {
   WorkflowTriggerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -19,6 +21,8 @@ import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { canFindTool } from '@/utils'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
@@ -147,19 +151,26 @@ export function TriggerAccessPointCard({
   canManageAccessPoint,
   highlighted,
 }: TriggerAccessPointCardProps) {
-  const { t } = useTranslation(['appOverview', 'deployments', 'navigation'])
+  const { t } = useTranslation(['appOverview', 'common', 'deployments', 'navigation'])
   const docLink = useDocLink()
-  const { data: response, isLoading } = useQuery(
+  const triggersQuery = useQuery(
     consoleQuery.apps.byAppId.triggers.get.queryOptions({
       input: { params: { app_id: appInfo.id } },
       enabled: !!appInfo.id,
     }),
   )
+  const { data: response, isLoading } = triggersQuery
   const { data: triggerPlugins = [] } = useQuery(allTriggerPluginsQueryOptions())
   const setTriggerStatuses = useTriggerStatusStore((state) => state.setTriggerStatuses)
   const triggers = useMemo(() => response?.data ?? [], [response?.data])
   const loading = availability === 'loading' || isLoading
-  const active = availability === 'available' && !loading
+  const triggersLoad = useOwnedQueryErrors(availability === 'available' ? [triggersQuery] : [])
+  const triggersFailed = Boolean(triggersLoad)
+  const triggersErrorMessage = useRequestErrorMessage(
+    triggersLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'deployments' }),
+  )
+  const active = availability === 'available' && !loading && !triggersFailed
   const status = loading ? 'loading' : active ? 'inService' : 'unavailable'
   const statusLabel = useAccessPointStatusLabel(status)
   const enabledCount = triggers.filter((trigger) => trigger.status === 'enabled').length
@@ -197,7 +208,19 @@ export function TriggerAccessPointCard({
           <span className="h-10 w-full animate-pulse rounded-lg bg-text-quaternary opacity-10 motion-reduce:animate-none" />
         </div>
       )}
-      {!loading && (!active || triggers.length === 0) && (
+      {triggersLoad && triggersErrorMessage && (
+        <div className="px-4 py-3">
+          <Alert type="error">
+            <AlertTitle>{triggersErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={triggersLoad.retrying} onClick={triggersLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        </div>
+      )}
+      {!loading && !triggersFailed && (!active || triggers.length === 0) && (
         <AccessPointEmptyContent>
           <span>
             {t(($) => $['overview.triggerInfo.triggerStatusDescription'], {

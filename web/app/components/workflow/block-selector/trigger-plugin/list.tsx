@@ -2,11 +2,15 @@
 import type { BlockEnum } from '../../types'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { TriggerPluginActionPreviewPayload } from './action-item'
+import { Button } from '@langgenius/dify-ui/button'
 import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
 import { useQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { TriggerPluginActionPreviewCard } from './action-item'
 import TriggerPluginItem from './item'
 
@@ -24,7 +28,14 @@ const TriggerPluginList = ({
   onContentStateChange,
   disabled = false,
 }: TriggerPluginListProps) => {
-  const { data: triggerPluginsData } = useQuery(allTriggerPluginsQueryOptions())
+  const { t } = useTranslation(['workflow', 'common'])
+  const triggerPluginsQuery = useQuery(allTriggerPluginsQueryOptions())
+  const triggerPluginsData = triggerPluginsQuery.data
+  const triggerPluginsLoad = useOwnedQueryError(triggerPluginsQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    triggerPluginsLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
   const language = useGetLanguage()
   const [previewCardHandle] = useState(() =>
     createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),
@@ -81,11 +92,30 @@ const TriggerPluginList = ({
     }, [])
   }, [triggerPluginsData, normalizedSearch, language])
 
-  const hasContent = triggerPlugins.length > 0
+  const hasContent = triggerPlugins.length > 0 || !!triggerPluginsLoad
 
   useEffect(() => {
     onContentStateChange?.(hasContent)
   }, [hasContent, onContentStateChange])
+
+  if (triggerPluginsLoad) {
+    return (
+      <div
+        role="alert"
+        className="flex items-center gap-1 px-3 py-2 system-xs-regular text-text-destructive"
+      >
+        <span className="min-w-0 wrap-break-word">{loadErrorMessage}</span>
+        <Button
+          size="small"
+          variant="ghost"
+          loading={triggerPluginsLoad.retrying}
+          onClick={triggerPluginsLoad.retry}
+        >
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
+    )
+  }
 
   if (!hasContent) return null
 

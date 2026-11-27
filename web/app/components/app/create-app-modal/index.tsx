@@ -4,6 +4,7 @@ import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { AppType } from '@/app/components/apps/app-type'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field } from '@langgenius/dify-ui/field'
@@ -33,6 +34,8 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
@@ -52,7 +55,7 @@ const shouldExpandBeginnerAppTypes = (appMode?: AppType) => {
 }
 
 function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
-  const { t } = useTranslation(['app'])
+  const { t } = useTranslation(['app', 'common'])
   const { push } = useRouter()
   const descriptionInputId = useId()
   const contentRef = useRef<HTMLDivElement>(null)
@@ -70,13 +73,19 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   )
 
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: appQuota } = useQuery(
+  const appQuotaQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => getCountQuota(data.apps),
     }),
   )
+  const appQuota = appQuotaQuery.data
   const isAppQuotaUnavailable = appQuota === undefined
   const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
+  const appQuotaLoad = useOwnedQueryError(appQuotaQuery)
+  const appQuotaErrorMessage = useRequestErrorMessage(
+    appQuotaLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -354,6 +363,16 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
               </div>
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
+            {appQuotaLoad && appQuotaErrorMessage && (
+              <Alert type="error" className="mt-4">
+                <AlertTitle>{appQuotaErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button size="small" loading={appQuotaLoad.retrying} onClick={appQuotaLoad.retry}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            )}
             <div className="flex items-center justify-between pt-5 pb-10">
               <button
                 type="button"

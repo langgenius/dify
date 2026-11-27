@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Zmniejsz presję dzięki wielu zestawom poświadczeń.",
   "modelProvider.loadBalancingInfo": "Domyślnie równoważenie obciążenia używa strategii działania okrężnego. Jeśli zostanie uruchomione ograniczenie szybkości, zostanie zastosowany 1-minutowy okres odnowienia.",
   "modelProvider.loadBalancingLeastKeyWarning": "Aby włączyć równoważenie obciążenia, muszą być włączone co najmniej 2 klucze.",
+  "modelProvider.loadFailed": "Nie udało się załadować. Spróbuj ponownie.",
   "modelProvider.loadPresets": "Załaduj ustawienia wstępne",
   "modelProvider.model": "Model",
   "modelProvider.modelHasBeenDeprecated": "Ten model jest przestarzały",

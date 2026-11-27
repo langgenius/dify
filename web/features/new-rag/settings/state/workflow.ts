@@ -170,6 +170,7 @@ export const saveKnowledgeSettingsAtom = atom(
           spaceApi.settings.migrations.byMigrationId.get.queryOptions({
             input: { params: { ...params, migration_id: progress.id } },
             retry: false,
+            // The save flow reports a failed migration poll as its own failure.
             meta: { errorToast: false },
           }),
         )

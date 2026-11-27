@@ -2,6 +2,7 @@
 
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
@@ -31,6 +32,8 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError, useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
@@ -282,6 +285,32 @@ export function WorkspaceCard() {
   const prefetchWorkspaces = () => {
     void queryClient.query(workspacesQueryOptions).catch(noop)
   }
+  const currentWorkspaceLoad = useOwnedQueryError(currentWorkspaceQuery)
+  const currentWorkspaceErrorMessage = useRequestErrorMessage(currentWorkspaceLoad?.error)
+  // The open menu shows the list's failed first load; a hover prefetch that fails while it is closed toasts.
+  const workspacesLoad = useOwnedQueryErrors(open ? [workspacesQuery] : [])
+  const workspacesErrorMessage = useRequestErrorMessage(workspacesLoad?.error)
+
+  if (currentWorkspaceLoad) {
+    return (
+      <div
+        role="alert"
+        className="flex items-center gap-1 rounded-xl border border-components-card-border bg-components-card-bg py-1.5 ps-3 pe-1.5 shadow-xs"
+      >
+        <span className="min-w-0 grow system-xs-regular text-text-destructive">
+          {currentWorkspaceErrorMessage}
+        </span>
+        <Button
+          size="small"
+          variant="ghost"
+          loading={currentWorkspaceLoad.retrying}
+          onClick={currentWorkspaceLoad.retry}
+        >
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
+    )
+  }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
     return (
@@ -356,14 +385,33 @@ export function WorkspaceCard() {
               setSettingsDestination('members')
             }}
           />
-          <WorkspaceSwitcher
-            workspaces={workspaces}
-            isPending={workspacesQuery.isPending}
-            onSwitchWorkspace={(workspaceId) => {
-              setOpen(false)
-              void handleSwitchWorkspace(workspaceId)
-            }}
-          />
+          {workspacesLoad ? (
+            <div
+              role="alert"
+              className="flex items-center gap-1 border-t border-divider-subtle py-2 ps-3 pe-2"
+            >
+              <span className="min-w-0 grow system-xs-regular text-text-destructive">
+                {workspacesErrorMessage}
+              </span>
+              <Button
+                size="small"
+                variant="ghost"
+                loading={workspacesLoad.retrying}
+                onClick={workspacesLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          ) : (
+            <WorkspaceSwitcher
+              workspaces={workspaces}
+              isPending={workspacesQuery.isPending}
+              onSwitchWorkspace={(workspaceId) => {
+                setOpen(false)
+                void handleSwitchWorkspace(workspaceId)
+              }}
+            />
+          )}
         </PopoverContent>
       </>
     </Popover>

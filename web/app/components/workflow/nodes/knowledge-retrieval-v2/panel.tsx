@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalV2NodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQueries } from '@tanstack/react-query'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +12,8 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import { consoleQuery } from '@/service/console'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import AddKnowledgeSpace from './components/add-knowledge-space'
 import KnowledgeSpaceList from './components/knowledge-space-list'
 import RecallSettings from './components/recall-settings'
@@ -26,7 +29,7 @@ const i18nPrefix = 'nodes.knowledgeRetrievalV2'
 const SPACE_PAGE_SIZE = 50
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow', 'workflowModels'])
+  const { t } = useTranslation(['workflow', 'workflowModels', 'common'])
   const {
     readOnly,
     inputs,
@@ -70,6 +73,11 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
   })
   const metadataList = intersectKnowledgeFsMetadataFields(
     metadataQueries.map((query) => query.data ?? []),
+  )
+  const metadataLoad = useOwnedQueryErrors(metadataQueries)
+  const metadataErrorMessage = useRequestErrorMessage(
+    metadataLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
   const selectedSpacesMetadataLoaded =
     inputs.control_space_ids.length > 0 && metadataQueries.every((query) => query.isSuccess)
@@ -149,6 +157,22 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
       </div>
 
       <div className="mb-2 py-2">
+        {metadataLoad && (
+          <div
+            role="alert"
+            className="flex items-center gap-1 px-4 pb-1 system-xs-regular text-text-destructive"
+          >
+            <span className="min-w-0 wrap-break-word">{metadataErrorMessage}</span>
+            <Button
+              size="small"
+              variant="ghost"
+              loading={metadataLoad.retrying}
+              onClick={metadataLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
         <MetadataFilter
           allowedModes={KNOWLEDGE_FS_METADATA_FILTER_MODES}
           metadataList={metadataList}

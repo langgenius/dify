@@ -4,9 +4,11 @@ import type {
   AgentSkillBindingItemResponse,
   SkillResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { UIEvent } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
@@ -29,7 +31,11 @@ import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import {
+  useRequestErrorDescriber,
+  useRequestErrorMessage,
+} from '@/service/use-request-error-message'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -200,6 +206,7 @@ function WorkspaceSkillSelector({
   onSelect: (skill: SkillResponse) => void
 }) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [keyword, setKeyword] = useState('')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [previewSkillId, setPreviewSkillId] = useState<string | undefined>(undefined)
@@ -219,8 +226,8 @@ function WorkspaceSkillSelector({
     () => selectedTagIds.flatMap((tagId) => tagNameById.get(tagId) ?? []),
     [selectedTagIds, tagNameById],
   )
-  const skillsQuery = useInfiniteQuery({
-    ...consoleQuery.workspaces.current.skills.get.infiniteOptions({
+  const skillsQuery = useInfiniteQuery(
+    consoleQuery.workspaces.current.skills.get.infiniteOptions({
       input: (pageParam) => ({
         query: {
           limit: WORKSPACE_SKILLS_PAGE_SIZE,
@@ -233,13 +240,18 @@ function WorkspaceSkillSelector({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-  })
+  )
   const boundSkillIdSet = useMemo(() => new Set(boundSkillIds), [boundSkillIds])
   const skills =
     skillsQuery.data?.pages
       .flatMap((page) => page.data ?? [])
       .filter((skill) => Boolean(skill.latest_published_version_id)) ?? []
   const previewSkill = skills.find((skill) => skill.id === previewSkillId) ?? skills[0]
+  const skillsLoad = useOwnedQueryError(skillsQuery)
+  const skillsLoadErrorMessage = useRequestErrorMessage(
+    skillsLoad?.error,
+    tCommon(($) => $['api.actionFailed']),
+  )
   const hasNextPage = skillsQuery.hasNextPage ?? false
   const isFetchingNextPage = skillsQuery.isFetchingNextPage
   const fetchNextPage = skillsQuery.fetchNextPage
@@ -290,7 +302,17 @@ function WorkspaceSkillSelector({
               <SkeletonRectangle className="h-8 rounded-lg" />
             </div>
           )}
-          {!skillsQuery.isPending && skills.length === 0 && (
+          {skillsLoadErrorMessage && (
+            <Alert type="error">
+              <AlertTitle>{skillsLoadErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={skillsLoad?.retrying} onClick={skillsLoad?.retry}>
+                  {tCommon(($) => $['operation.retry'])}
+                </Button>
+              </AlertActions>
+            </Alert>
+          )}
+          {!skillsQuery.isPending && !skillsLoadErrorMessage && skills.length === 0 && (
             <div className="flex h-full items-center justify-center px-4 text-center system-xs-regular text-text-tertiary">
               {t(($) => $['agentDetail.configure.skills.workspaceSelector.empty'])}
             </div>
@@ -437,6 +459,28 @@ function WorkspaceAgentSkillItem({
   )
 }
 
+/** Rendered in the section's panel, which mounts only while expanded, so it claims only then. */
+function SkillBindingsLoadError({ query }: { query: UseQueryResult<unknown> }) {
+  const { t: tCommon } = useTranslation(['common'])
+  const skillBindingsLoad = useOwnedQueryError(query)
+  const skillBindingsErrorMessage = useRequestErrorMessage(
+    skillBindingsLoad?.error,
+    tCommon(($) => $['api.actionFailed']),
+  )
+  if (!skillBindingsLoad) return null
+
+  return (
+    <Alert type="error">
+      <AlertTitle>{skillBindingsErrorMessage}</AlertTitle>
+      <AlertActions>
+        <Button size="small" loading={skillBindingsLoad.retrying} onClick={skillBindingsLoad.retry}>
+          {tCommon(($) => $['operation.retry'])}
+        </Button>
+      </AlertActions>
+    </Alert>
+  )
+}
+
 export function AgentSkills() {
   const { t } = useTranslation(['agentV2'])
   const { t: tSkill } = useTranslation(['skill'])
@@ -477,6 +521,9 @@ export function AgentSkills() {
     enabled: enableSkill === true,
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
+  // Claimed by `SkillBindingsLoadError`, which mounts only while the section is expanded.
+  const skillBindingsFailed =
+    agentSkillBindingsQuery.isError && agentSkillBindingsQuery.data === undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
     useMutation(
       consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions({
@@ -747,11 +794,14 @@ export function AgentSkills() {
           )
         }
       >
+        <SkillBindingsLoadError query={agentSkillBindingsQuery} />
         {!hasSkills ? (
-          <ConfigureSectionEmpty
-            title={t(($) => $['agentDetail.configure.skills.empty.title'])}
-            description={t(($) => $['agentDetail.configure.skills.empty.description'])}
-          />
+          !skillBindingsFailed && (
+            <ConfigureSectionEmpty
+              title={t(($) => $['agentDetail.configure.skills.empty.title'])}
+              description={t(($) => $['agentDetail.configure.skills.empty.description'])}
+            />
+          )
         ) : (
           <>
             {workspaceSkills.map((skill) => (

@@ -26,11 +26,12 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillArchiveBlob } from '../client'
 import { getSkillErrorCode } from '../error'
-import { SkillReferencesList, SkillReferencesListSkeleton } from '../references'
+import { SkillLoadError, SkillReferencesList, SkillReferencesListSkeleton } from '../references'
 import { invalidateSkillListQueries } from './query'
 
 function SkillIcon() {
@@ -70,6 +71,16 @@ function DeleteSkillDialog({
     refetchOnMount: 'always',
   })
   const references = referencesQuery.data?.data ?? []
+  // Deleting waits for the references, so a failed first load is shown with a retry.
+  const referencesFailed = useOwnedQueryErrors(open ? [referencesQuery] : [])
+  const referencesLoadError = referencesFailed && (
+    <SkillLoadError
+      error={referencesFailed.error}
+      fallback={t(($) => $['skillManagement.detail.referencesLoadFailed'])}
+      onRetry={referencesFailed.retry}
+      retrying={referencesFailed.retrying}
+    />
+  )
   const referenceCount = Math.max(skill.reference_count ?? 0, references.length)
   const isDeleteUnavailable =
     (open && (referencesQuery.isFetching || !referencesQuery.isSuccess)) ||
@@ -124,10 +135,15 @@ function DeleteSkillDialog({
             </AlertDialogTitle>
             <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
+          {referencesFailed && referenceCount === 0 && (
+            <AlertDialogBody>{referencesLoadError}</AlertDialogBody>
+          )}
           {referenceCount > 0 && (
             <AlertDialogBody className="flex flex-col gap-2">
               {referencesQuery.isPending ? (
                 <SkillReferencesListSkeleton compact />
+              ) : referencesFailed ? (
+                referencesLoadError
               ) : (
                 <SkillReferencesList
                   compact

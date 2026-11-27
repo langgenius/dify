@@ -13,6 +13,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
@@ -34,6 +35,8 @@ type Props = Readonly<{
   isLoading: DatasetListQuery['isLoading']
   isPlaceholderData: DatasetListQuery['isPlaceholderData']
   emptyElement?: ReactNode
+  /** A failed first load, shown in place of the list so it never looks empty. */
+  loadError?: { error: unknown; onRetry: () => void }
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
   stepByStepTourActionMenuOpen?: boolean
@@ -49,6 +52,7 @@ const Datasets = ({
   isLoading,
   isPlaceholderData,
   emptyElement,
+  loadError,
   onOpenTagManagement = () => {},
   stepByStepTourActionMenuHighlightPart,
   stepByStepTourActionMenuOpen,
@@ -105,7 +109,9 @@ const Datasets = ({
       aria-busy={isFetching}
       className="relative grow px-8 pt-2 focus-visible:outline-2 focus-visible:outline-state-accent-solid"
     >
-      {showDatasetSkeleton ? (
+      {loadError ? (
+        <DatasetLoadErrorAlert {...loadError} retrying={isFetching} />
+      ) : showDatasetSkeleton ? (
         <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
           <ul aria-hidden className={DATASET_GRID_CLASS_NAME}>
             <DatasetCardSkeleton />
@@ -149,7 +155,7 @@ const Datasets = ({
           </ul>
         )
       )}
-      {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
+      {!loadError && !showDatasetSkeleton && !hasAnyDataset && emptyElement}
       {isFetchingNextPage && <LoadingPlaceholder />}
       <AlertDialog
         handle={deleteDialog}

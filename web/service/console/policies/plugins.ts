@@ -178,6 +178,7 @@ export function workspacePluginPolicies(
       readme: {
         get: {
           queryOptions: {
+            // The readme panel replaces its content with an inline error, also on a failed refetch.
             meta: { errorToast: false },
             retry: false,
           },

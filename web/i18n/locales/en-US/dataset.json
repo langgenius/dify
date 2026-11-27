@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "Knowledge",
+  "loadError": "Couldn't load the data. Try again.",
   "metadata.addMetadata": "Add Metadata",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Apply to all selected documents",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Automatically create all the above edited and new metadata for all selected documents, otherwise editing metadata will only apply to documents with it.",

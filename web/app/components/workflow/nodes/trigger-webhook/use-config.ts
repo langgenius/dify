@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import {
@@ -164,7 +165,9 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       )
       setInputs(updateWebhookUrls(inputs, response.webhook_url, response.webhook_debug_url))
     } catch (error: unknown) {
-      console.error('Failed to generate webhook URL:', error)
+      // The cache reports a failure the server explains; this also reports a network failure or
+      // another exception, and stays silent for one already reported.
+      reportRequestError(error)
       setInputs(updateWebhookUrls(inputs, ''))
     }
   }, [appId, id, inputs, setInputs, queryClient])

@@ -43,7 +43,9 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
     select: (data) => data.profile.id,
   })
   const { data, isError, isPending, refetch } = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: {},
+    }),
   )
   const triggerRef = useRef<HTMLButtonElement>(null)
   const selectionLimitId = useId()

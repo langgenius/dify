@@ -20,6 +20,8 @@ type TagFilterPopoverProps = {
   label: string
   searchLabel: string
   emptyText?: string
+  /** A failed load of the options, shown in place of the empty text. */
+  loadError?: ReactNode
   container?: PopoverPortalProps['container']
   children: ReactNode
 }
@@ -31,6 +33,7 @@ export function TagFilterPopover({
   label,
   searchLabel,
   emptyText,
+  loadError,
   container,
   children,
 }: TagFilterPopoverProps) {
@@ -88,7 +91,8 @@ export function TagFilterPopover({
               ))}
             </CheckboxGroup>
 
-            {emptyText && !filteredOptions.length && (
+            {loadError}
+            {!loadError && emptyText && !filteredOptions.length && (
               <div className="p-3 text-center system-xs-regular text-text-tertiary">
                 {emptyText}
               </div>

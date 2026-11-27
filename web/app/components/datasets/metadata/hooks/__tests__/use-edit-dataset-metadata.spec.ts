@@ -1,5 +1,6 @@
 import { act, waitFor } from '@testing-library/react'
 import { expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { DataType, isShowManageMetadataLocalStorageKey } from '../../types'
 import useEditDatasetMetadata from '../use-edit-dataset-metadata'
@@ -7,7 +8,7 @@ import useEditDatasetMetadata from '../use-edit-dataset-metadata'
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
 const mockDoRenameMetaData = vi.fn().mockResolvedValue({})
 const mockDoDeleteMetaData = vi.fn().mockResolvedValue({})
-const builtInState = vi.hoisted(() => ({ enabled: false }))
+const builtInState = vi.hoisted(() => ({ enabled: false, loadError: undefined as unknown }))
 const mockToggleBuiltInStatus = vi.fn(async ({ params }: { params: { action: string } }) => {
   builtInState.enabled = params.action === 'enable'
   return {}
@@ -19,13 +20,16 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.metadata.get': async () => ({
-        doc_metadata: [
-          { id: '1', name: 'field_one', type: DataType.string, count: 5 },
-          { id: '2', name: 'field_two', type: DataType.number, count: 3 },
-        ],
-        built_in_field_enabled: builtInState.enabled,
-      }),
+      'datasets.byDatasetId.metadata.get': async () => {
+        if (builtInState.loadError) throw builtInState.loadError
+        return {
+          doc_metadata: [
+            { id: '1', name: 'field_one', type: DataType.string, count: 5 },
+            { id: '2', name: 'field_two', type: DataType.number, count: 3 },
+          ],
+          built_in_field_enabled: builtInState.enabled,
+        }
+      },
       'datasets.byDatasetId.metadata.post': (input) => mockDoAddMetaData(input),
       'datasets.byDatasetId.metadata.byMetadataId.patch': (input) => mockDoRenameMetaData(input),
       'datasets.byDatasetId.metadata.byMetadataId.delete': (input) => mockDoDeleteMetaData(input),
@@ -55,6 +59,7 @@ vi.mock('@/app/notifications', () => ({
 
 beforeEach(() => {
   builtInState.enabled = false
+  builtInState.loadError = undefined
   localStorage.removeItem(isShowManageMetadataLocalStorageKey)
 })
 afterEach(() => localStorage.removeItem(isShowManageMetadataLocalStorageKey))
@@ -141,4 +146,21 @@ it('keeps the built-in status a failed request did not change', async () => {
     await expect(result.current.setBuiltInEnabled(true)).rejects.toThrow('Failed')
   })
   expect(result.current.builtInEnabled).toBe(false)
+})
+
+it('exposes a failed first metadata load with a retry for the drawer', async () => {
+  builtInState.loadError = createHttpError(new Response(null, { status: 503 }))
+  const { result } = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList: vi.fn() }),
+  )
+  // The drawer renders the failure, so it is claimed only while the drawer is open.
+  act(() => result.current.showEditModal())
+  await waitFor(() => expect(result.current.metadataLoadError).toBeDefined())
+  expect(result.current.datasetMetaData).toBeUndefined()
+
+  builtInState.loadError = undefined
+  act(() => result.current.metadataLoadError!.onRetry())
+
+  await waitFor(() => expect(result.current.metadataLoadError).toBeUndefined())
+  expect(result.current.datasetMetaData).toHaveLength(2)
 })

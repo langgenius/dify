@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "کاهش فشار با چندین مجموعه اعتبارنامه.",
   "modelProvider.loadBalancingInfo": "به طور پیش‌فرض، تعادل بار از استراتژی Round-robin استفاده می‌کند. اگر محدودیت نرخ فعال شود، یک دوره خنک شدن 1 دقیقه‌ای اعمال خواهد شد.",
   "modelProvider.loadBalancingLeastKeyWarning": "برای فعال کردن تعادل بار، حداقل 2 کلید باید فعال باشند.",
+  "modelProvider.loadFailed": "بارگیری ناموفق بود. لطفاً دوباره تلاش کنید.",
   "modelProvider.loadPresets": "بارگیری تنظیمات از پیش تعیین شده",
   "modelProvider.model": "مدل",
   "modelProvider.modelHasBeenDeprecated": "این مدل منسوخ شده است",

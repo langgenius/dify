@@ -174,6 +174,7 @@
   "common.latestPublished": "최신 발행본",
   "common.learnMore": "더 알아보기",
   "common.listening": "듣기",
+  "common.loadFailed": "불러오지 못했습니다. 다시 시도하세요.",
   "common.loadMore": "더 많은 워크플로우 로드",
   "common.manageInTools": "도구에서 관리",
   "common.maxTreeDepth": "분기당 최대 {{depth}} 노드 제한",

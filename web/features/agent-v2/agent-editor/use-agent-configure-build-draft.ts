@@ -160,6 +160,7 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: { agent_id: agentId },
     },
+    // The query function reports every failure itself; a missing draft is not one.
     meta: { errorToast: false },
   })
   const buildDraftQuery = useQuery(

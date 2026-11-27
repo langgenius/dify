@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { MetadataLoadError } from '@/app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer'
 import type {
   BuiltInMetadataItem,
   MetadataItemWithValueLength,
@@ -48,6 +49,7 @@ type DocumentsHeaderProps = {
   hideEditMetadataModal: () => void
   datasetMetaData?: MetadataItemWithValueLength[]
   builtInMetaData?: BuiltInMetadataItem[]
+  metadataLoadError?: MetadataLoadError
   builtInEnabled: boolean
   onAddMetaData: (payload: BuiltInMetadataItem) => Promise<void>
   onRenameMetaData: (payload: MetadataItemWithValueLength) => Promise<void>
@@ -77,6 +79,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   hideEditMetadataModal,
   datasetMetaData,
   builtInMetaData,
+  metadataLoadError,
   builtInEnabled,
   onAddMetaData,
   onRenameMetaData,
@@ -204,6 +207,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {isShowEditMetadataModal && (
             <DatasetMetadataDrawer
+              loadError={metadataLoadError}
               userMetadata={datasetMetaData ?? []}
               onClose={hideEditMetadataModal}
               onAdd={onAddMetaData}

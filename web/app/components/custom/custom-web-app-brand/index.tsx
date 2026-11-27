@@ -1,9 +1,11 @@
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
 import useWebAppBrand from './hooks/use-web-app-brand'
@@ -24,6 +26,9 @@ const CustomWebAppBrand = () => {
     webappLogo,
     webappBrandRemoved,
     isCustomConfigUnavailable,
+    customConfigLoadError,
+    customConfigRetrying,
+    retryCustomConfig,
     uploadDisabled,
     workspaceLogo,
     canManageCustomBrand,
@@ -34,9 +39,20 @@ const CustomWebAppBrand = () => {
     handleRestore,
     handleSwitch,
   } = useWebAppBrand()
+  const customConfigLoadErrorMessage = useRequestErrorMessage(customConfigLoadError)
 
   return (
     <div className="py-4">
+      {customConfigLoadErrorMessage && (
+        <Alert type="error" className="mb-2">
+          <AlertTitle>{customConfigLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={customConfigRetrying} onClick={retryCustomConfig}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
       <div className="mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 system-md-medium text-text-primary">
         <label htmlFor={brandSwitchId}>{t(($) => $['webapp.removeBrand'], { ns: 'custom' })}</label>
         <Switch

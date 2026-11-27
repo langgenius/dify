@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "経済",
   "indexingTechnique.high_quality": "高品質",
   "knowledge": "ナレッジベース",
+  "loadError": "データを読み込めませんでした。もう一度お試しください。",
   "metadata.addMetadata": "メタデータを追加",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "選択したすべてのドキュメントに適用",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "上記の編集と新しいメタデータを選択したすべてのドキュメントに自動的に適用します。チェックしない場合、既にメタデータを持つドキュメントにのみ編集が適用されます。",

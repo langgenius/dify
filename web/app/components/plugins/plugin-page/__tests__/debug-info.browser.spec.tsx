@@ -1,7 +1,9 @@
 import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import DebugInfo from '../debug-info'
@@ -15,17 +17,21 @@ async function setup(debugKey: DebugKey | Promise<DebugKey>) {
     },
   })
   onTestFinished(fake)
-  const { wrapper: Providers } = createConsoleQueryWrapper()
+  const { wrapper: Providers } = createConsoleQueryWrapper({
+    // Failed reads nothing on screen shows are reported by the app's query cache.
+    queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+  })
   const screen = await render(
     <Providers>
       <DebugInfo />
       <button type="button">After debug info</button>
+      <AppToaster />
     </Providers>,
   )
   return { screen, getDebugKey: fake.console.workspaces.current.plugin.debuggingKey.get }
 }
 
-it('disables debugging when credentials cannot be loaded', async () => {
+it('says why debugging credentials could not be loaded and retries them', async () => {
   const pending = createDeferred<DebugKey>()
   const { screen, getDebugKey } = await setup(pending.promise)
   const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
@@ -39,7 +45,21 @@ it('disables debugging when credentials cannot be loaded', async () => {
       message: 'Debug credentials unavailable',
     }),
   )
-  await expect.element(trigger).toBeDisabled()
+  await expect.element(trigger).toBeEnabled()
+  // Nothing shows the failure until the panel opens, so it is reported.
+  await expect.element(screen.getByText('Debug credentials unavailable')).toBeVisible()
+  await trigger.click()
+  const failure = screen
+    .getByRole('dialog')
+    .getByRole('alert')
+    .filter({ hasText: 'Debug credentials unavailable' })
+  await expect.element(failure).toBeVisible()
+
+  getDebugKey.mockResolvedValue({ host: '127.0.0.1', port: 5001, key: 'key' })
+  await userEvent.click(failure.getByRole('button', { name: 'common.operation.retry' }))
+
+  await expect.element(failure).not.toBeInTheDocument()
+  await expect.poll(() => getDebugKey).toHaveBeenCalledTimes(2)
 })
 
 it('opens masked debug metadata from the keyboard and returns focus after dismissal', async () => {

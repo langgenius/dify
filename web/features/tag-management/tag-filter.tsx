@@ -1,6 +1,8 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxPortalProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
 import type { PopoverPortalProps } from '@langgenius/dify-ui/popover'
+import type { UseQueryResult } from '@tanstack/react-query'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -15,6 +17,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { CompactTagFilterTrigger } from './compact-tag-filter-trigger'
 import { TagFilterPopover } from './tag-filter-popover'
 import { TagSearchContent } from './tag-search-content'
@@ -36,7 +40,7 @@ type TagFilterProps = {
   triggerClassName?: string
 }
 function useWorkspaceTags(type: TagType) {
-  return useQuery(
+  const query = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: {
         query: {
@@ -44,6 +48,34 @@ function useWorkspaceTags(type: TagType) {
         },
       },
     }),
+  )
+  return { data: query.data, query }
+}
+
+// A failed load must not look like a workspace without tags. Rendered inside the open popup, so
+// the failed first load is claimed only while it is shown.
+function TagsLoadError({
+  query,
+  className,
+}: {
+  query: UseQueryResult<unknown>
+  className: string
+}) {
+  const { t } = useTranslation(['common'])
+  const load = useOwnedQueryError(query)
+  const message = useRequestErrorMessage(
+    load?.error,
+    t(($) => $['dynamicSelect.error'], { ns: 'common' }),
+  )
+  if (!load) return null
+
+  return (
+    <div role="alert" className={cn('flex items-center gap-2', className)}>
+      <span className="min-w-0 flex-1 system-xs-regular text-text-tertiary">{message}</span>
+      <Button size="small" variant="ghost" loading={load.retrying} onClick={load.retry}>
+        {t(($) => $['operation.retry'], { ns: 'common' })}
+      </Button>
+    </div>
   )
 }
 
@@ -56,7 +88,7 @@ export function CompactTagFilter({
   container?: PopoverPortalProps['container']
 }) {
   const { t } = useTranslation(['common'])
-  const { data: tagList = [] } = useWorkspaceTags(type)
+  const { data: tagList = [], query: tagsQuery } = useWorkspaceTags(type)
   const options = tagList
     .filter((tag) => tag.type === type)
     .map((tag) => ({ name: tag.id, label: tag.name }))
@@ -75,6 +107,10 @@ export function CompactTagFilter({
       label={placeholder}
       searchLabel={t(($) => $['tag.searchTags'], { ns: 'common' })}
       emptyText={t(($) => $['tag.noTag'], { ns: 'common' })}
+      loadError={
+        tagsQuery.isError &&
+        tagsQuery.data === undefined && <TagsLoadError query={tagsQuery} className="p-3" />
+      }
       container={container}
     >
       <CompactTagFilterTrigger
@@ -103,7 +139,7 @@ export const TagFilter = ({
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
-  const { data: tagList = [] } = useWorkspaceTags(type)
+  const { data: tagList = [], query: tagsQuery } = useWorkspaceTags(type)
 
   const tagById = useMemo(() => new Map(tagList.map((tag) => [tag.id, tag])), [tagList])
   const tagOptions = useMemo(() => tagList.filter((tag) => tag.type === type), [tagList, type])
@@ -217,6 +253,7 @@ export const TagFilter = ({
               aria-label={triggerLabel}
               className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
             >
+              <TagsLoadError query={tagsQuery} className="px-3 pt-2" />
               <TagSearchContent
                 type={type}
                 canBindOrUnbindTags

@@ -52,6 +52,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
       }),
       initialPageParam: 0,
       getNextPageParam: (lastPage) => (lastPage.has_next ? lastPage.curr_page + 1 : undefined),
+      // The popup footer shows every failure, including a next page over loaded suggestions.
       meta: { errorToast: false },
     }),
     enabled: hasSearchQuery && !!debouncedSearchQuery,

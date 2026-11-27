@@ -165,3 +165,28 @@ it('appends the next search page on scroll and stops paging after filters are cl
   expect(requests.search).toHaveBeenCalledTimes(2)
   expect(result.current.plugins).toBeUndefined()
 })
+it('reports a failed installed-ids load instead of an empty catalog, and retries it', async () => {
+  requests.installed
+    .mockReset()
+    .mockRejectedValueOnce(new Error('installed ids unavailable'))
+    .mockResolvedValueOnce({ plugin_ids: ['installed-tool'] })
+  const { result } = renderMarketplace()
+  await waitFor(() => expect(result.current.isLoadFailed).toBe(true))
+  expect(requests.collections).not.toHaveBeenCalled()
+  act(() => result.current.retryLoad())
+  await waitFor(() =>
+    expect(result.current.marketplaceCollectionPluginsMap?.featured).toHaveLength(1),
+  )
+  expect(result.current.isLoadFailed).toBe(false)
+})
+it('reports a failed collections load and retries it', async () => {
+  requests.collections
+    .mockReset()
+    .mockRejectedValueOnce(new Error('collections unavailable'))
+    .mockResolvedValueOnce({ data: { collections: [collection] } })
+  const { result } = renderMarketplace()
+  await waitFor(() => expect(result.current.isLoadFailed).toBe(true))
+  act(() => result.current.retryLoad())
+  await waitFor(() => expect(result.current.marketplaceCollections).toEqual([collection]))
+  expect(result.current.isLoadFailed).toBe(false)
+})

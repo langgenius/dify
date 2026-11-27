@@ -22,6 +22,7 @@ import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 
@@ -47,10 +48,11 @@ export function KnowledgeFsApiAccessDialog({
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const apiKeyMutations = useDatasetApiKeyMutations()
-  // A failure is shown in the endpoint field.
-  const { data: apiBaseInfo, error: apiBaseInfoError } = useQuery(
-    consoleQuery.datasets.apiBaseInfo.get.queryOptions({ meta: { errorToast: false } }),
-  )
+  const apiBaseInfoQuery = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
+  const { data: apiBaseInfo } = apiBaseInfoQuery
+  // A failed first load is shown in the endpoint field while the dialog is open; a failed
+  // refresh keeps the endpoint and is the query cache's to report.
+  const apiBaseInfoLoad = useOwnedQueryErrors(open ? [apiBaseInfoQuery] : [])
   // The shared prefix of every KnowledgeFS service API route for this space; the operation
   // path (queries/admission, documents, sources, …) is appended by the caller.
   const endpoint = apiBaseInfo?.api_base_url
@@ -80,9 +82,9 @@ export function KnowledgeFsApiAccessDialog({
               <div className="mt-1 flex min-h-8 items-center gap-1 rounded-lg bg-components-input-bg-normal py-1 ps-3 pe-1">
                 <code className="min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
                   {endpoint ||
-                    (apiBaseInfoError
+                    (apiBaseInfoLoad
                       ? describeRequestError(
-                          apiBaseInfoError,
+                          apiBaseInfoLoad.error,
                           t(($) => $.unavailable, { ns: 'dataset' }),
                         )
                       : tAppApi(($) => $.loading))}

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Зменшіть тиск за допомогою кількох наборів облікових даних.",
   "modelProvider.loadBalancingInfo": "За замовчуванням для балансування навантаження використовується стратегія кругової системи. Якщо спрацьовує обмеження швидкості, буде застосовано період перезарядки тривалістю 1 хвилина.",
   "modelProvider.loadBalancingLeastKeyWarning": "Щоб увімкнути балансування навантаження, має бути ввімкнено щонайменше 2 клавіші.",
+  "modelProvider.loadFailed": "Не вдалося завантажити. Спробуйте ще раз.",
   "modelProvider.loadPresets": "Завантажити",
   "modelProvider.model": "Модель",
   "modelProvider.modelHasBeenDeprecated": "Ця модель вважається застарілою",

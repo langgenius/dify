@@ -4,6 +4,7 @@ import type {
   ListProps,
   ListRef,
 } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -25,6 +26,8 @@ import { useMarketplace } from '@/features/marketplace/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { ViewType } from '../../../block-selector/types'
 import ViewTypeSelect from '../../../block-selector/view-type-select'
 import { useStrategyInfo } from '../../agent/use-config'
@@ -113,7 +116,13 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   const icon = selectedProvider?.declaration.identity.icon
     ? getIconUrl(selectedProvider.declaration.identity.icon)
     : undefined
-  const { t } = useTranslation(['workflowAgent'])
+  const { t } = useTranslation(['workflowAgent', 'workflow', 'common'])
+  // The error renders inside the popover, so it is claimed only while that is open.
+  const providersLoad = useOwnedQueryErrors(open ? [providers] : [])
+  const providersLoadErrorMessage = useRequestErrorMessage(
+    providersLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
 
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
@@ -236,6 +245,22 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             className="relative flex w-full flex-col overflow-hidden md:max-h-75 xl:max-h-100 2xl:max-h-141"
             ref={wrapElemRef}
           >
+            {providersLoad && (
+              <div
+                role="alert"
+                className="flex items-center gap-1 px-3 py-2 system-xs-regular text-text-destructive"
+              >
+                <span className="min-w-0 wrap-break-word">{providersLoadErrorMessage}</span>
+                <Button
+                  size="small"
+                  variant="ghost"
+                  loading={providersLoad.retrying}
+                  onClick={providersLoad.retry}
+                >
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </div>
+            )}
             <AgentStrategyList
               providers={filteredProviders}
               viewType={viewType}

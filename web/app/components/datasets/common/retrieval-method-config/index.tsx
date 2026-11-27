@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -10,6 +12,8 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'
 import OptionCard from '../../settings/option-card'
@@ -28,9 +32,13 @@ const RetrievalMethodConfig: FC<Props> = ({
   showMultiModalTip = false,
   onChange,
 }) => {
-  const { t } = useTranslation(['dataset', 'datasetSettings'])
-  const { data: retrievalSetting } = useQuery(
-    consoleQuery.datasets.retrievalSetting.get.queryOptions(),
+  const { t } = useTranslation(['common', 'dataset', 'datasetSettings'])
+  const retrievalSettingQuery = useQuery(consoleQuery.datasets.retrievalSetting.get.queryOptions())
+  const retrievalSetting = retrievalSettingQuery.data
+  const retrievalSettingLoad = useOwnedQueryError(retrievalSettingQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    retrievalSettingLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
   )
   const supportedRetrievalMethods = new Set(retrievalSetting?.retrieval_method ?? [])
   const { defaultModel: rerankDefaultModel, currentModel: isRerankDefaultModelValid } =
@@ -104,6 +112,18 @@ const RetrievalMethodConfig: FC<Props> = ({
     },
     [value, rerankDefaultModel, isRerankDefaultModelValid, onChange],
   )
+
+  if (retrievalSettingLoad)
+    return (
+      <Alert type="error">
+        <AlertTitle>{loadErrorMessage}</AlertTitle>
+        <AlertActions>
+          <Button size="small" onClick={retrievalSettingLoad.retry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </AlertActions>
+      </Alert>
+    )
 
   return (
     <RadioGroup<RETRIEVE_METHOD>

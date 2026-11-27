@@ -3,6 +3,7 @@ import type { DocumentContextValue } from '../../context'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChunkingMode } from '@/models/datasets'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DocumentContext } from '../../context'
 import Completed from '../index'
@@ -109,6 +110,21 @@ beforeEach(() => {
   deleteSegments.mockReset().mockResolvedValue({ result: 'success' })
 })
 afterEach(() => vi.useRealTimers())
+
+it('shows a failed first load of the chunks instead of an empty list and retries it', async () => {
+  const user = userEvent.setup()
+  getSegments.mockRejectedValue(createHttpError(new Response(null, { status: 503 })))
+  setup()
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  expect(screen.queryByTestId('general-content')).not.toBeInTheDocument()
+
+  getSegments.mockResolvedValue(list())
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByTestId('general-content')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
 
 it('requests the selected page and resets to page one when the status filter changes', async () => {
   const user = userEvent.setup()

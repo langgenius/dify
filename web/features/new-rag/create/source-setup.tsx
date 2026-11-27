@@ -133,7 +133,7 @@ function CreateSourceSetupSession({
     parameters,
     parametersValid,
     sourceUri,
-  } = useSourceSetupInputs(draft)
+  } = useSourceSetupInputs(draft, true)
   const [selection, setSelection] = useAtom(createSourceSelectionAtom)
   const currentSelection = selection?.sessionKey === sessionKey ? selection : undefined
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')

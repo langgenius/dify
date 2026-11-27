@@ -10,6 +10,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { markErrorHandled } from '@/service/handled-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
@@ -87,7 +88,6 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const { items } = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          meta: { errorToast: false },
         }),
       )
       const list = items.filter((env) => env.value_type === 'secret')
@@ -102,6 +102,8 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         },
       } satisfies ExportSecretEnvironmentEvent)
     } catch (error) {
+      // The export reports its own failure, so the cache's report stays silent.
+      markErrorHandled(error)
       toast.error(
         t(($) => $.exportFailed, { ns: 'app' }),
         {

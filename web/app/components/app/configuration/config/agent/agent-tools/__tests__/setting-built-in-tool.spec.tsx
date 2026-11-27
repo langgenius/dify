@@ -131,6 +131,19 @@ it.each(['builtin', 'api', 'workflow'] as const)(
   },
 )
 
+it('shows a failed action load with a retry instead of an empty tool', async () => {
+  const user = userEvent.setup()
+  api.builtin.mockRejectedValueOnce(new Error('Offline'))
+  renderTool({
+    collection: selectToolProvider(createToolProviderFixture({ ...provider, tools: [] })),
+  })
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('common.api.actionFailed')
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('textbox', { name: /Setting Param/ })).toHaveValue('value')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
 it('requires settings before saving and preserves the draft across the parameter tab', async () => {
   const user = userEvent.setup()
   const { onSave } = renderTool({ setting: {} })

@@ -3,15 +3,20 @@
 import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { lastRunQueryOptions } from '@/service/workflow-queries'
 import NoData from './no-data'
 
@@ -64,10 +69,24 @@ const LastRun: FC<Props> = ({
     isOneStepRunSucceed ||
     isOneStepRunFailed ||
     (pageHasHide && hidePageOneStepRunFinished)
-  const { data: lastRunResult, isFetching } = useQuery({
+  const { t } = useTranslation(['workflow', 'common'])
+  const lastRunQuery = useQuery({
     ...lastRunQueryOptions(resource, nodeId),
     enabled: canRunLastRun,
   })
+  const { data: lastRunResult, isFetching } = lastRunQuery
+  // A single run's own result takes the place of a last run that failed to load.
+  const lastRunLoad = useOwnedQueryError({
+    data: lastRunResult,
+    error: lastRunQuery.error,
+    isError: lastRunQuery.isError && canRunLastRun && !singleRunResult,
+    isFetching,
+    refetch: lastRunQuery.refetch,
+  })
+  const lastRunErrorMessage = useRequestErrorMessage(
+    lastRunLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
   const hasAuthoritativeLastRun = canRunLastRun && !!lastRunResult
   const isRunning =
     !isPaused &&
@@ -146,6 +165,25 @@ const LastRun: FC<Props> = ({
   }
 
   if (isRunning) return <ResultPanel status="running" showSteps={false} />
+  if (lastRunLoad) {
+    return (
+      <div className="p-4">
+        <Alert type="error">
+          <AlertTitle>{lastRunErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button
+              size="small"
+              variant="secondary"
+              loading={lastRunLoad.retrying}
+              onClick={lastRunLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      </div>
+    )
+  }
   if (!isPaused && (noLastRun || !runResult)) {
     return <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />
   }

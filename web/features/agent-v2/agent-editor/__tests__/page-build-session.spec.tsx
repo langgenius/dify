@@ -51,6 +51,23 @@ async function openPersistedBuild() {
   return env.render()
 }
 
+describe('Build conversation history', () => {
+  it('shows a failed history load with a retry instead of an empty conversation', async () => {
+    const user = userEvent.setup()
+    const env = createEnvironment()
+    const loadHistory = api.history.getMockImplementation()!
+    api.history.mockRejectedValueOnce(new Error('Offline'))
+    env.render()
+    const alert = await screen.findByRole('alert')
+    expect(within(alert).getByText('common.api.actionFailed')).toBeInTheDocument()
+    expect(screen.queryByText('Earlier answer')).not.toBeInTheDocument()
+    api.history.mockImplementation(loadHistory)
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    // The answer renders through the lazily imported Markdown renderer.
+    expect(await screen.findByText('Earlier answer', {}, { timeout: 5000 })).toBeVisible()
+  })
+})
+
 describe('Starting Build', () => {
   it('keeps the composer editable while resetting the session, then saves before forcing checkout and sending', async () => {
     const user = userEvent.setup()

@@ -11,7 +11,10 @@ import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { useMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/hooks'
+import {
+  useMarketplaceLoadFailure,
+  useMarketplacePluginsByCollectionId,
+} from '@/app/components/plugins/marketplace/hooks'
 import {
   MARKETPLACE_PANEL_CACHE_OPTIONS,
   useMarketplacePlugins,
@@ -38,18 +41,24 @@ export const useDefaultModel = (
   type: ModelTypeEnum,
   { enabled = true }: ModelQueryOptions = {},
 ) => {
-  const { data, refetch, isPending } = useQuery(
+  const query = useQuery(
     consoleQuery.workspaces.current.defaultModel.get.queryOptions({
       input: { query: { model_type: type } },
       enabled,
     }),
   )
+  const { data, refetch, isFetching, isPending, isError } = query
 
   return {
     // An unset default model comes back as null.
     data: data?.data ?? undefined,
     mutate: refetch,
     isLoading: enabled && isPending,
+    // A failed first load is unknown, not unset.
+    isLoadFailed: isError && data === undefined,
+    isFetching,
+    /** For a caller that renders a failed load: pass it to `useOwnedQueryError`. */
+    query,
   }
 }
 
@@ -98,22 +107,27 @@ export const useTextGenerationCurrentProviderAndModelAndModelList = (
 }
 
 export const useModelListAndDefaultModel = (type: ModelTypeEnum) => {
-  const { data: modelList = [] } = useQuery(
+  const modelListQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: type } },
       select: (response) => response.data,
     }),
   )
-  const { data: defaultModel } = useDefaultModel(type)
+  const { data: modelList = [] } = modelListQuery
+  const defaultModelQuery = useDefaultModel(type)
+  const { data: defaultModel } = defaultModelQuery
 
   return {
     modelList,
     defaultModel,
+    // A failed first load is not an empty list or an unset default. For a caller that renders
+    // it: pass these to `useOwnedQueryErrors`.
+    loadQueries: [modelListQuery, defaultModelQuery.query] as const,
   }
 }
 
 export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: ModelTypeEnum) => {
-  const { modelList, defaultModel } = useModelListAndDefaultModel(type)
+  const { modelList, defaultModel, loadQueries } = useModelListAndDefaultModel(type)
   const { currentProvider, currentModel } = getCurrentProviderAndModel(modelList, {
     provider: defaultModel?.provider.provider || '',
     model: defaultModel?.model || '',
@@ -122,6 +136,7 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
   return {
     modelList,
     defaultModel,
+    loadQueries,
     currentProvider,
     currentModel,
   }
@@ -191,10 +206,8 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.query({
-        ...modelProviderDetailsQueryOptions(),
-        meta: { errorToast: false },
-      })
+      // The catch reports a failure, so the cache's report stays silent.
+      const response = await queryClient.query(modelProviderDetailsQueryOptions())
       const detail = response.data.find((provider) => provider.provider === providerName)
       if (!detail) toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       return detail
@@ -220,8 +233,10 @@ export const useMarketplaceAllPlugins = (
   enabled = true,
 ) => {
   const exclude = installedPluginIds
-  const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } =
-    useMarketplacePluginsByCollectionId(enabled ? '__model-settings-pinned-models' : undefined)
+  const collection = useMarketplacePluginsByCollectionId(
+    enabled ? '__model-settings-pinned-models' : undefined,
+  )
+  const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } = collection
   // Typing waits 500 ms before searching; clearing the search lists the whole category at once.
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const marketplaceSearchParams = useMemo<PluginsSearchParams | undefined>(() => {
@@ -285,6 +300,7 @@ export const useMarketplaceAllPlugins = (
         ? plugins?.filter((plugin) => !exclude.includes(plugin.plugin_id))
         : allPlugins,
     isLoading: enabled && (isCollectionLoading || pluginsQuery.isLoading),
+    ...useMarketplaceLoadFailure(enabled, collection.query, pluginsQuery),
   }
 }
 

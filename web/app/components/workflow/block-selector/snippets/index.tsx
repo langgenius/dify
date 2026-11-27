@@ -1,5 +1,6 @@
 import type { OnNodeAdd } from '../../types'
 import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -20,6 +21,8 @@ import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from '
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { snippetListInfiniteOptions } from '@/service/snippet-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'
@@ -64,7 +67,7 @@ const LoadingSkeleton = () => {
 }
 
 const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }: SnippetsProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'common'])
   const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -73,16 +76,23 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
 
   const keyword = deferredSearchText.trim() || undefined
 
+  const snippetsQuery = useInfiniteQuery(
+    snippetListInfiniteOptions({
+      page: 1,
+      limit: 30,
+      keyword,
+      ...(tagIds.length ? { tag_ids: tagIds } : {}),
+      is_published: true,
+    }),
+  )
+
   const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
-    useInfiniteQuery(
-      snippetListInfiniteOptions({
-        page: 1,
-        limit: 30,
-        keyword,
-        ...(tagIds.length ? { tag_ids: tagIds } : {}),
-        is_published: true,
-      }),
-    )
+    snippetsQuery
+  const snippetsLoad = useOwnedQueryError(snippetsQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    snippetsLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
 
   const snippets = useMemo(() => {
     return (data?.pages ?? []).flatMap(({ data }) => data)
@@ -154,6 +164,16 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
   const content =
     isLoading || (isFetching && snippets.length === 0) ? (
       <LoadingSkeleton />
+    ) : snippetsLoad ? (
+      <div
+        role="alert"
+        className="flex items-center gap-1 px-3 py-2 system-xs-regular text-text-destructive"
+      >
+        <span className="min-w-0 wrap-break-word">{loadErrorMessage}</span>
+        <Button size="small" variant="ghost" onClick={snippetsLoad.retry}>
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
     ) : !snippets.length ? (
       <SnippetEmptyState />
     ) : (

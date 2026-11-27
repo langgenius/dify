@@ -1,4 +1,6 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Menu,
@@ -36,13 +38,15 @@ import { ControlMode } from '@/app/components/workflow/types'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 type CommentFilter = 'all' | 'mine'
 
 const EMPTY_COMMENTS: WorkflowCommentBasic[] = []
 
 const CommentsPanel = () => {
-  const { t } = useTranslation(['common', 'workflowComments'])
+  const { t } = useTranslation(['common', 'workflowComments', 'workflow'])
   const activeCommentId = useStore((s) => s.activeCommentId)
   const setActiveCommentId = useStore((s) => s.setActiveCommentId)
   const setControlMode = useStore((s) => s.setControlMode)
@@ -53,13 +57,20 @@ const CommentsPanel = () => {
   const queryClient = useQueryClient()
   // Not read again on mount while a comment write to the app is running; the canvas reconciles
   // after it.
-  const { data: comments = EMPTY_COMMENTS, isLoading: loading } = useQuery({
+  const commentsQuery = useQuery({
     ...consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
       input: isCollaborationEnabled && appId ? { params: { app_id: appId } } : skipToken,
       staleTime: () => (appId && isWritingComments(queryClient, appId) ? Infinity : 0),
     }),
     select: (list) => list.data,
   })
+  const comments = commentsQuery.data ?? EMPTY_COMMENTS
+  const loading = commentsQuery.isLoading
+  const commentsLoad = useOwnedQueryError(commentsQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    commentsLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
   const resolveComment = useMutation(
     consoleQuery.apps.byAppId.workflow.comments.byCommentId.resolve.post.mutationOptions(),
   )
@@ -157,7 +168,23 @@ const CommentsPanel = () => {
           <span aria-hidden className="i-ri-close-line size-4" />
         </IconButton>
       </div>
-      {!loading && filteredSorted.length === 0 ? (
+      {commentsLoad ? (
+        <div className="p-3">
+          <Alert type="error">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button
+                size="small"
+                variant="secondary"
+                loading={commentsLoad.retrying}
+                onClick={commentsLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        </div>
+      ) : !loading && filteredSorted.length === 0 ? (
         <div className="flex grow flex-col items-center justify-center gap-2 p-3 pb-30 text-center">
           <span
             aria-hidden

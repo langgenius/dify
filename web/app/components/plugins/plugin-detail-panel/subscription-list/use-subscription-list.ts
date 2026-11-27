@@ -5,16 +5,15 @@ import { usePluginStore } from '../store'
 export const useSubscriptionList = () => {
   const detail = usePluginStore((state) => state.detail)
 
-  const {
-    data: subscriptions,
-    isLoading,
-    refetch,
-  } = useQuery(triggerSubscriptionsQueryOptions(detail?.provider || ''))
+  const subscriptionsQuery = useQuery(triggerSubscriptionsQueryOptions(detail?.provider || ''))
+  const { data: subscriptions, isLoading, refetch } = subscriptionsQuery
 
   return {
     detail,
     subscriptions,
     isLoading,
+    // A failed first load is not an empty list; the caller that renders it claims it.
+    subscriptionsQuery,
     refetch,
   }
 }

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getBillingErrorMessage } from '../billing-error'
 import PlanComp, { PlanLoading } from '../plan'
@@ -17,16 +18,17 @@ const Billing: FC = () => {
   const describeRequestError = useRequestErrorDescriber()
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  // Prefetch is silent warm-up; the plan card presents a failed vector space load.
   usePrefetchQuery(
     consoleQuery.features.vectorSpace.get.queryOptions({ meta: { errorToast: false } }),
   )
   const billingQuery = useQuery(
     consoleQuery.billing.invoices.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager,
-      meta: { errorToast: false },
     }),
   )
   const billingUrl = billingQuery.data?.url
+  const billingLoad = useOwnedQueryError(billingQuery)
 
   return (
     <div>
@@ -51,8 +53,8 @@ const Billing: FC = () => {
               {t(($) => $.viewBillingTitle, { ns: 'billing' })}
             </div>
             <div className="system-sm-regular text-text-secondary">
-              {!billingUrl && billingQuery.isError
-                ? getBillingErrorMessage(billingQuery.error, t, describeRequestError)
+              {billingLoad
+                ? getBillingErrorMessage(billingLoad.error, t, describeRequestError)
                 : t(($) => $.viewBillingDescription, { ns: 'billing' })}
             </div>
           </div>

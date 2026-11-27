@@ -122,6 +122,7 @@ const RecipientsContent = ({
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
       enabled: open,
+      // The combobox status shows a failed search with a retry, also over loaded results.
       meta: { errorToast: false },
       retry: false,
     }),

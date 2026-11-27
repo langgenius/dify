@@ -15,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -44,6 +45,7 @@ import {
 import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import { startIpPolicyForm } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError, useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState, getAccessControlStatusChipState } from './chip-status'
@@ -77,6 +79,27 @@ export function AccessControlEntry(props: AccessControlEntryProps) {
   return <AccessControlSession key={`${props.appId}:${props.canEditBinding}`} {...props} />
 }
 
+/** Takes the entry's place when its first load fails, so the control does not vanish silently. */
+function AccessControlLoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const { t } = useTranslation(['common', 'deployments'])
+  const message = useRequestErrorMessage(
+    error,
+    t(($) => $['common.loadFailed'], { ns: 'deployments' }),
+  )
+  const label = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
+  return (
+    <div role="alert" className="flex h-8 shrink-0 items-center gap-1.5">
+      <span aria-hidden className="i-ri-error-warning-line size-4 text-text-destructive" />
+      <span className="max-w-48 truncate system-xs-regular text-text-destructive" title={message}>
+        {label}: {message}
+      </span>
+      <Button size="small" variant="ghost" onClick={onRetry}>
+        {t(($) => $['operation.retry'], { ns: 'common' })}
+      </Button>
+    </div>
+  )
+}
+
 function AccessControlStatusOnlyEntry({ appId }: { appId: string }) {
   const { t } = useTranslation(['deployments'])
   const statusQuery = useQuery(
@@ -86,6 +109,9 @@ function AccessControlStatusOnlyEntry({ appId }: { appId: string }) {
       retry: false,
     }),
   )
+  const statusLoad = useOwnedQueryError(statusQuery)
+  if (statusLoad)
+    return <AccessControlLoadError error={statusLoad.error} onRetry={statusLoad.retry} />
   if (!statusQuery.data) return null
 
   const chip = getAccessControlStatusChipState(statusQuery.data)
@@ -173,6 +199,7 @@ function AccessControlSession({
         selectedPolicyId
           ? { params: { group_id: selectedPolicyId } }
           : skipToken,
+      // The config panel shows a failed check, with retry, over any earlier result.
       meta: { errorToast: false },
       retry: false,
     }),
@@ -184,11 +211,14 @@ function AccessControlSession({
     currentIpErrorFallback,
   )
   const saveCheckErrorMessage = useRequestErrorMessage(saveCheck.error, currentIpErrorFallback)
+  const accessControlLoad = useOwnedQueryErrors([groupsQuery, bindingQuery])
 
   if (!canFetchNetworkAccess) return null
-  if (groupsQuery.isPending || bindingQuery.isPending) return null
-  if (groupsQuery.isError || bindingQuery.isError || !groupsQuery.data || !bindingQuery.data)
-    return null
+  if (accessControlLoad)
+    return (
+      <AccessControlLoadError error={accessControlLoad.error} onRetry={accessControlLoad.retry} />
+    )
+  if (!groupsQuery.data || !bindingQuery.data) return null
   if (!Array.isArray(bindingQuery.data.available_access_points)) return null
   const availableAccessPoints = getAvailableAccessPoints(bindingQuery.data.available_access_points)
   if (!availableAccessPoints.length) return null

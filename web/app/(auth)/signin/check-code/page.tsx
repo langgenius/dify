@@ -11,6 +11,7 @@ import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Countdown from '@/app/components/signin/countdown'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import { reportRequestError } from '@/app/query-error-toast'
 import { TURNSTILE_SITE_KEY } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -92,7 +93,9 @@ export default function CheckCode() {
         }
       }
     } catch (error) {
-      console.error(error)
+      // The verify mutation and the profile read's cache report a failure the server explains;
+      // this also reports a network failure or another exception, and stays silent for those.
+      reportRequestError(error)
     } finally {
       setLoading(false)
       if (shouldResetTurnstile) {

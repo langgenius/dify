@@ -35,6 +35,8 @@ export function EnvironmentServiceApiCard({
   const apiQueryOptions =
     consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
       input: { params },
+      // The card shows the failed status over cached data too, so no failure needs a toast.
+      meta: { errorToast: false },
     })
   const apiQuery = useQuery(apiQueryOptions)
   const api = apiQuery.data

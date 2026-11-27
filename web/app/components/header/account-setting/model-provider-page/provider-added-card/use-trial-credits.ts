@@ -29,6 +29,11 @@ export const useTrialCredits = () => {
     isUnlimited: trialCredits?.isUnlimited ?? false,
     isExhausted: trialCredits?.isExhausted ?? true,
     isLoading: trialCreditsQuery.isPending && !trialCredits,
+    /**
+     * A failed first load leaves the credits unknown; the defaults above are not real values.
+     * For a caller that renders it: pass this to `useOwnedQueryError(s)`.
+     */
+    query: trialCreditsQuery,
     exhaustedAt: trialCredits?.exhaustedAt,
     nextCreditResetDate: trialCredits?.nextCreditResetDate,
   }

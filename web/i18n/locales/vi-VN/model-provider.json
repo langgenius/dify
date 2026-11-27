@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Giảm áp lực với nhiều bộ thông tin xác thực.",
   "modelProvider.loadBalancingInfo": "Theo mặc định, cân bằng tải sử dụng chiến lược Vòng tròn. Nếu giới hạn tốc độ được kích hoạt, thời gian hồi chiêu 1 phút sẽ được áp dụng.",
   "modelProvider.loadBalancingLeastKeyWarning": "Để bật cân bằng tải, ít nhất 2 phím phải được bật.",
+  "modelProvider.loadFailed": "Tải không thành công. Vui lòng thử lại.",
   "modelProvider.loadPresets": "Tải Cài đặt trước",
   "modelProvider.model": "Mô hình",
   "modelProvider.modelHasBeenDeprecated": "Mô hình này đã bị phản đối",

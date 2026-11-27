@@ -72,6 +72,19 @@ describe('Configure page loading and access', () => {
     expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
   })
 
+  it('explains a failed composer load and retries it', async () => {
+    const user = userEvent.setup()
+    const env = createEnvironment({ composer: null })
+    api.getComposer.mockRejectedValue(new Error('request failed'))
+    env.render('?mode=preview')
+    const alert = await screen.findByRole('alert')
+    expect(promptEditor()).toHaveAttribute('contenteditable', 'false')
+    api.getComposer.mockResolvedValue(createComposer(createSoul('Recovered instructions')))
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(promptEditor()).toHaveTextContent('Recovered instructions'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('restores Preview from the URL without querying a build draft', () => {
     createEnvironment().render('?mode=preview')
     expect(modeButton('preview')).toBeChecked()

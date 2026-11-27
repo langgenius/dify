@@ -1,4 +1,6 @@
 import type { Datasource } from '../../test-run/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -6,6 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { selectPipelineStepParameters } from '@/app/components/rag-pipeline/utils/query-select'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import DataSourceOptions from '../../test-run/preparation/data-source-options'
 import Form from './form'
 
@@ -15,9 +19,9 @@ type DatasourceProps = {
 }
 
 const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourceProps) => {
-  const { t } = useTranslation(['datasetPipeline'])
+  const { t } = useTranslation(['datasetPipeline', 'common', 'dataset'])
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
-  const { data: paramsConfig } = useQuery(
+  const paramsConfigQuery = useQuery(
     consoleQuery.rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get.queryOptions(
       {
         input:
@@ -28,6 +32,13 @@ const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourcePro
       },
     ),
   )
+  const paramsConfig = paramsConfigQuery.data
+  // A failed load must not preview the step as if it had no input fields.
+  const paramsConfigLoad = useOwnedQueryError(paramsConfigQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    paramsConfigLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
+  )
 
   return (
     <div className="flex flex-col">
@@ -37,7 +48,24 @@ const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourcePro
       <div className="px-4 py-2">
         <DataSourceOptions onSelect={setDatasource} dataSourceNodeId={dataSourceNodeId} />
       </div>
-      <Form variables={paramsConfig?.variables || []} />
+      {paramsConfigLoad ? (
+        <div className="px-4 py-2">
+          <Alert type="error">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button
+                size="small"
+                loading={paramsConfigLoad.retrying}
+                onClick={paramsConfigLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        </div>
+      ) : (
+        <Form variables={paramsConfig?.variables || []} />
+      )}
     </div>
   )
 }

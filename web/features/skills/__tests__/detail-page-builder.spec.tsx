@@ -408,6 +408,25 @@ describe('SkillDetailPage builder', () => {
     expect(sendButton).toBeDisabled()
   }, 15000)
 
+  it('shows a failed model list load in the Builder and retries it', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.textGenerationModelListGet.mockImplementationOnce(() =>
+      Promise.reject(new Error('models request failed')),
+    )
+
+    renderSkillDetailPage()
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.builder.send' }),
+    ).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(mocks.textGenerationModelListGet).toHaveBeenCalledTimes(2)
+  }, 15000)
+
   it('uses an available model instead of a default model that no longer exists', async () => {
     const user = userEvent.setup()
     mocks.defaultTextGenerationModel = {

@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "دانش",
+  "loadError": "بارگیری داده‌ها ممکن نشد. دوباره تلاش کنید.",
   "metadata.addMetadata": "متادیتا اضافه کنید",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "به تمام اسناد انتخاب شده اعمال کنید",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "به‌طور خودکار تمام متاداده‌های ویرایش شده و جدید فوق را برای تمام اسناد انتخاب شده ایجاد کنید، در غیر این صورت ویرایش متاداده فقط به اسنادی که دارای آن هستند اعمال خواهد شد.",

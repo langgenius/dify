@@ -4,6 +4,7 @@ import { noop, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -573,6 +574,33 @@ describe('CheckCode', () => {
         expect(navigationMocks.replace).toHaveBeenCalledWith('/apps')
       })
       expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('success')
+    })
+
+    it('reports a failed profile read after a successful verification', async () => {
+      const user = userEvent.setup()
+      const queryClient = createQueryClient()
+      const toastError = vi.spyOn(toast, 'error')
+      // The profile read retries server errors; skip the backoff so the final failure is quick.
+      queryClient.setQueryDefaults(userProfileQueryOptions().queryKey, { retryDelay: 0 })
+      serviceBaseMocks.request.mockRejectedValue(
+        createHttpError(
+          { status: 500, statusText: '', headers: new Headers() },
+          { message: 'Profile unavailable' },
+        ),
+      )
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <CheckCode />
+        </QueryClientProvider>,
+      )
+
+      await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+      await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+      // Reported once, by the cache or the page, and the page stays put.
+      await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Profile unavailable'))
+      expect(navigationMocks.replace).not.toHaveBeenCalled()
     })
 
     it('should keep a Cloud verification-code login on the current deployment', async () => {

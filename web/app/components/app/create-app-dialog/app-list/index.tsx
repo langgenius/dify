@@ -4,6 +4,8 @@ import type { UpdateAppPayload } from '@dify/contracts/api/console/apps/types.ge
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppType } from '@/app/components/apps/app-type'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
@@ -26,6 +28,8 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useCanImportAgents } from '@/features/agent-v2/permissions'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
@@ -69,10 +73,16 @@ const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
   const [currentType, setCurrentType] = useState<AppType[]>([])
   const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
-  const { data, isLoading } = useQuery(
+  const templatesQuery = useQuery(
     consoleQuery.explore.apps.get.queryOptions({
       input: { query: { language: locale } },
     }),
+  )
+  const { data, isLoading } = templatesQuery
+  const templatesLoad = useOwnedQueryError(templatesQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    templatesLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const allList = useMemo(
     () =>
@@ -144,6 +154,7 @@ const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
     try {
       const detail = await queryClient.query({
         ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+          // The catch below reports a failed lookup with the create action's text.
           meta: { errorToast: false },
           input: { params: { app_id: currApp.app_id } },
         }),
@@ -313,7 +324,18 @@ const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
               </div>
             </>
           )}
-          {(!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />}
+          {templatesLoad && loadErrorMessage ? (
+            <Alert type="error" className="mt-4">
+              <AlertTitle>{loadErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={templatesLoad.retrying} onClick={templatesLoad.retry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
+          ) : (
+            (!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />
+          )}
         </div>
       </div>
       <Dialog

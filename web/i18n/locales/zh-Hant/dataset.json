@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "經濟",
   "indexingTechnique.high_quality": "高品質",
   "knowledge": "知識庫",
+  "loadError": "資料載入失敗，請重試。",
   "metadata.addMetadata": "新增中繼資料",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "應用於所有選定的文件",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "自動為所有選定文件建立上述所有編輯和新中繼資料，否則編輯中繼資料將僅適用於具有該中繼資料的文件。",

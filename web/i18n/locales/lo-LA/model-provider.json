@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "ຕັ້ງຄ່າຂໍ້ມູນການຢືນຢັນຫຼາຍອັນສຳລັບໂມເດວ ແລະ ເອີ້ນໃຊ້ພວກມັນໂດຍອັດຕະໂນມັດ. ",
   "modelProvider.loadBalancingInfo": "ໂດຍເລີ່ມຕົ້ນ, ການກະຈາຍພາລະຈະໃຊ້ກົນໄກ Round-robin. ຫາກມີການຈຳກັດອັດຕາການໃຊ້ງານ, ຈະມີໄລຍະເວລາພັກ 1 ນາທີ.",
   "modelProvider.loadBalancingLeastKeyWarning": "ຕ້ອງເປີດໃຊ້ຢ່າງໜ້ອຍ 2 keys ເພື່ອເປີດໃຊ້ການກະຈາຍພາລະ.",
+  "modelProvider.loadFailed": "ໂຫຼດບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ.",
   "modelProvider.loadPresets": "ໂຫຼດຄ່າທີ່ຕັ້ງໄວ້ກ່ອນ",
   "modelProvider.model": "ໂມເດວ",
   "modelProvider.modelHasBeenDeprecated": "ໂມເດວນີ້ຖືກຍົກເລີກການໃຊ້ແລ້ວ",

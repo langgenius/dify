@@ -7,6 +7,7 @@ import { ModelCredentialDialog } from '@/app/components/header/account-setting/m
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -209,6 +210,22 @@ describe('ModelLoadBalancingModal', () => {
     await act(async () => request.resolve(credentialData))
     expect(await screen.findByRole('switch', { name: 'Default' })).toBeChecked()
     expect(saveButton()).toBeEnabled()
+  })
+
+  it('shows a failed first credentials load with a retry instead of loading forever', async () => {
+    const user = userEvent.setup()
+    api.credentials.mockRejectedValueOnce(
+      createHttpError(
+        { status: 500, statusText: '', headers: new Headers() },
+        { message: 'Backend text' },
+      ),
+    )
+    renderModal()
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('switch', { name: 'Default' })).toBeChecked()
+    expect(api.credentials).toHaveBeenCalledTimes(2)
   })
 
   it('saves an edited draft while credentials refresh in the background', async () => {

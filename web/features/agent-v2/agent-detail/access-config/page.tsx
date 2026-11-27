@@ -36,10 +36,16 @@ export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
     }),
   )
   const whitelist = useQuery(
-    resource.whitelist.get.queryOptions({ input: { params }, enabled: canAccessConfig }),
+    resource.whitelist.get.queryOptions({
+      input: { params },
+      enabled: canAccessConfig,
+    }),
   )
   const config = useQuery(
-    resource.whitelistConfig.get.queryOptions({ input: { params }, enabled: canAccessConfig }),
+    resource.whitelistConfig.get.queryOptions({
+      input: { params },
+      enabled: canAccessConfig,
+    }),
   )
   const updateScope = useMutation(resource.whitelist.put.mutationOptions())
   const updateUser = useMutation(

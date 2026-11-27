@@ -228,7 +228,9 @@ export const useWorkflowInit = () => {
         ),
       })
     } else {
-      console.error(nodesDefaultConfigsResult.reason)
+      // Nothing renders this read; this reports a failure the cache leaves, such as a network
+      // failure, and stays silent for one the cache already reported.
+      reportRequestError(nodesDefaultConfigsResult.reason)
     }
 
     if (publishedWorkflowResult.status === 'fulfilled') {

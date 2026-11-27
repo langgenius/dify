@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import Details from '../index'
 
 const getTemplate = vi.hoisted(() => vi.fn())
@@ -71,4 +72,17 @@ it.each([
   })
   await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.useTemplate' }))
   expect(apply).toHaveBeenCalledOnce()
+})
+
+it('replaces the loading state with a retryable error when the template fails to load', async () => {
+  const user = userEvent.setup()
+  getTemplate
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Template unavailable' }))
+    .mockResolvedValue(template)
+  show()
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByText('Test Pipeline')).toBeInTheDocument()
+  expect(getTemplate).toHaveBeenCalledTimes(2)
 })

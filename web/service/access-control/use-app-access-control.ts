@@ -2,6 +2,7 @@ import type {
   Subject as ApiSubject,
   WebAppAuthSearchForWhilteListCandidatesData,
 } from '@dify/contracts/enterprise/types.gen'
+import type { QueryMeta } from '@tanstack/react-query'
 import type { Subject } from '@/models/access-control'
 import { skipToken, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -11,11 +12,17 @@ import { getUserCanAccess } from '../share'
 
 const NAME_SPACE = 'access-control'
 
-export const useAppWhiteListSubjects = (appId: string | undefined, enabled: boolean) => {
+/** `meta` lets a caller that renders the error state declare itself its owner. */
+export const useAppWhiteListSubjects = (
+  appId: string | undefined,
+  enabled: boolean,
+  meta?: QueryMeta,
+) => {
   return useQuery({
     ...consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.queryOptions({
       input: { query: { appId } },
     }),
+    meta,
     enabled: !!appId && enabled,
     select: ({ groups, members }) => ({
       groups: (groups ?? []).flatMap((group) => {
@@ -109,10 +116,13 @@ export const useGetUserCanAccessApp = ({
   appId,
   isInstalledApp = true,
   enabled,
+  meta,
 }: {
   appId?: string
   isInstalledApp?: boolean
   enabled?: boolean
+  /** Lets a caller that renders the error state declare itself its owner. */
+  meta?: QueryMeta
 }) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const webappAuthEnabled = systemFeatures.webapp_auth.enabled
@@ -126,5 +136,6 @@ export const useGetUserCanAccessApp = ({
     enabled: enabled !== undefined ? enabled : !!appId,
     staleTime: 0,
     gcTime: 0,
+    meta,
   })
 }

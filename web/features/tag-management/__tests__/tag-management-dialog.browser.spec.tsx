@@ -13,6 +13,8 @@ const tags = [
 function renderModal(
   type: TagType = 'app',
   permissions = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'],
+  /** `null` leaves the tag list unseeded so it is requested. */
+  seededTags: typeof tags | null = tags,
 ) {
   function Owner() {
     const [open, setOpen] = useState(true)
@@ -23,7 +25,7 @@ function renderModal(
       </>
     )
   }
-  return renderWithTags(<Owner />, tags, permissions)
+  return renderWithTags(<Owner />, seededTags ?? undefined, permissions)
 }
 const input = () => page.getByRole('textbox', { name: 'common.tag.addNew' })
 const dialog = () => page.getByRole('dialog', { name: 'common.tag.manageTags' })
@@ -170,4 +172,18 @@ it('hides management controls without workspace permission', async () => {
   await renderModal('app', [])
   await expect.element(dialog()).not.toBeInTheDocument()
   await expect.element(input()).not.toBeInTheDocument()
+})
+
+it('shows a failed tag list load with a retry instead of an empty tag list', async () => {
+  fake.console.tags.get.mockRejectedValueOnce(
+    apiError({ status: 503, message: 'Tags unavailable' }),
+  )
+  await renderModal('app', undefined, null)
+
+  await expect
+    .element(dialog().getByRole('alert').getByText('common.dynamicSelect.error'))
+    .toBeVisible()
+  await dialog().getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(dialog().getByText('Frontend')).toBeVisible()
+  await expect.element(dialog().getByRole('alert')).not.toBeInTheDocument()
 })

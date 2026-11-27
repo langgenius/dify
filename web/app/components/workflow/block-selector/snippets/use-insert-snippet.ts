@@ -420,6 +420,7 @@ export const useInsertSnippet = () => {
       try {
         const workflow = await queryClient.query(
           consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
+            // The insert reports its own failure, also when a cached workflow fails to refresh.
             meta: { errorToast: false },
             input: {
               params: { snippet_id: snippetId },

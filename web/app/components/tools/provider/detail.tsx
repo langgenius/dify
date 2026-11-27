@@ -106,8 +106,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
           onRefreshData()
         },
       })
-    } catch {
-      // The query cache reports the failed provider lookup.
+    } catch (error) {
+      // The cache reports a failure the server explains; this also reports a network failure or
+      // another exception, and stays silent for one already reported.
+      reportRequestError(error)
     }
   }
   // custom provider

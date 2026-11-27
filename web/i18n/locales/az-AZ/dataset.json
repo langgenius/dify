@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "Qənaətcil",
   "indexingTechnique.high_quality": "Yüksək keyfiyyət",
   "knowledge": "Biliklər",
+  "loadError": "Məlumatları yükləmək mümkün olmadı. Yenidən cəhd edin.",
   "metadata.addMetadata": "Metaməlumat əlavə et",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Bütün seçilmiş sənədlərə tətbiq et",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Yuxarıda redaktə edilmiş və yeni əlavə olunmuş bütün metaməlumatlar seçilmiş sənədlərin hamısı üçün avtomatik yaradılacaq. Əks halda dəyişikliklər yalnız həmin metaməlumatların mövcud olduğu sənədlərə tətbiq ediləcək.",

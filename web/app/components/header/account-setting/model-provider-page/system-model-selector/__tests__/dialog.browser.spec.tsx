@@ -247,7 +247,10 @@ it('shows the failure of a default request instead of stale defaults and retries
   )
 
   await open()
-  await expect.element(dialog.getByRole('alert')).toHaveTextContent('Unable to refresh defaults')
+  // A code the catalog does not know shows the session's own text.
+  await expect
+    .element(dialog.getByRole('alert'))
+    .toHaveTextContent('Failed to load. Please try again.')
   await expect.element(dialog.getByRole('button', { name: 'Save' })).toBeDisabled()
   await expect.element(selector('llm', 'GPT-4')).not.toBeInTheDocument()
 
@@ -256,6 +259,27 @@ it('shows the failure of a default request instead of stale defaults and retries
   await expect.element(selector('llm', 'GPT-4o')).toBeVisible()
   await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()
   await expect.element(dialog.getByRole('button', { name: 'Save' })).toBeEnabled()
+})
+
+it('shows a failed first model list load instead of an empty selector and retries it', async () => {
+  const { dialog, selector, open } = await renderSettings({ unloadedModelList: 'text-embedding' })
+  const getModelList = fake.console.workspaces.current.models.modelTypes.byModelType.get
+  const listModels = getModelList.getMockImplementation()!
+  getModelList.mockImplementationOnce(() => {
+    throw apiError({ status: 500, message: 'Model list unavailable' })
+  })
+
+  await open()
+  await expect
+    .element(dialog.getByRole('alert'))
+    .toHaveTextContent('Failed to load. Please try again.')
+  await expect.element(selector('text-embedding', 'Configure model')).not.toBeInTheDocument()
+  await expect.element(dialog.getByRole('button', { name: 'Save' })).toBeDisabled()
+
+  getModelList.mockImplementation(listModels)
+  await dialog.getByRole('button', { name: 'Retry' }).click()
+  await expect.element(selector('text-embedding', 'Configure model')).toBeVisible()
+  await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()
 })
 
 // Stands in for the rest of the console, which keeps showing defaults and model lists after saving.

@@ -250,6 +250,29 @@ describe('useEmbeddedChatbot', () => {
       })
     })
 
+    it('should replace the chat with a load error when its messages fail on first load', async () => {
+      setSystemVariables({ conversation_id: 'conversation-1' })
+      mockFetchChatList
+        .mockRejectedValueOnce(new Error('messages unavailable'))
+        .mockResolvedValueOnce({ data: [] })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => expect(result.current.chatLoadError).toBeInstanceOf(Error))
+      act(() => result.current.retryChatLoad())
+      await waitFor(() => expect(result.current.chatLoadError).toBeUndefined())
+      expect(mockFetchChatList).toHaveBeenCalledTimes(2)
+    })
+
+    it('should keep a failed conversation list silent', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => expect(mockFetchConversations).toHaveBeenCalledTimes(2))
+      expect(result.current.chatLoadError).toBeUndefined()
+    })
+
     it('should format chat list history correctly into appPrevChatList', async () => {
       webAppState.embeddedConversationId = 'conversation-1'
       setSystemVariables({

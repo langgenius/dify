@@ -1,5 +1,7 @@
 import type { Plugin } from '@/app/components/plugins/types'
 import type { MarketplaceLinks } from '@/features/marketplace/links'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
@@ -13,6 +15,8 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
@@ -27,7 +31,7 @@ const InstallFromMarketplace = ({
   searchText,
   stepByStepTourTarget,
 }: InstallFromMarketplaceProps) => {
-  const { t } = useTranslation(['plugin', 'modelProvider'])
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const theme = useResolvedTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
@@ -37,17 +41,34 @@ const InstallFromMarketplace = ({
   const [hasBeenReopened, setHasBeenReopened] = useState(false)
   const sectionRef = useRef<HTMLDivElement>(null)
   const shouldLoadMarketplace = !collapse && (hasEnteredViewport || !!searchText || hasBeenReopened)
-  const { data: installedPluginIds, isSuccess: hasLoadedInstalledPluginIds } = useQuery({
+  const installedPluginIdsQuery = useQuery({
     ...consoleQuery.workspaces.current.plugin.installedIds.get.queryOptions({
       input: { query: { category: 'model' } },
       enabled: shouldLoadMarketplace,
     }),
     select: (data) => data.plugin_ids,
   })
-  const { plugins: allPlugins, isLoading: isAllPluginsLoading } = useMarketplaceAllPlugins(
+  const { data: installedPluginIds, isSuccess: hasLoadedInstalledPluginIds } =
+    installedPluginIdsQuery
+  const installedPluginIdsLoad = useOwnedQueryErrors(collapse ? [] : [installedPluginIdsQuery])
+  const installedPluginIdsErrorMessage = useRequestErrorMessage(
+    installedPluginIdsLoad?.error,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
+  )
+  const {
+    plugins: allPlugins,
+    isLoading: isAllPluginsLoading,
+    loadError: pluginsLoadError,
+    isRetrying: isRetryingPlugins,
+    retryLoad: retryPlugins,
+  } = useMarketplaceAllPlugins(
     searchText,
     installedPluginIds ?? [],
     shouldLoadMarketplace && hasLoadedInstalledPluginIds,
+  )
+  const pluginsLoadErrorMessage = useRequestErrorMessage(
+    pluginsLoadError,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
   )
 
   useEffect(() => {
@@ -146,21 +167,53 @@ const InstallFromMarketplace = ({
             )}
           </div>
         </div>
-        {!collapse && shouldLoadMarketplace && !hasLoadedInstalledPluginIds && (
-          <LoadingPlaceholder />
+        {!collapse && installedPluginIdsLoad && (
+          <Alert type="error">
+            <AlertTitle>{installedPluginIdsErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button
+                size="small"
+                loading={installedPluginIdsLoad.retrying}
+                onClick={installedPluginIdsLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
         )}
+        {!collapse &&
+          shouldLoadMarketplace &&
+          !hasLoadedInstalledPluginIds &&
+          !installedPluginIdsLoad && <LoadingPlaceholder />}
         {!collapse && hasLoadedInstalledPluginIds && isAllPluginsLoading && <LoadingPlaceholder />}
-        {!isAllPluginsLoading && !collapse && hasLoadedInstalledPluginIds && (
-          <List
-            marketplaceCollections={[]}
-            marketplaceCollectionPluginsMap={{}}
-            plugins={allPlugins}
-            showInstallButton={canInstallPlugin}
-            cardContainerClassName="grid grid-cols-3 gap-2"
-            cardRender={cardRender}
-            emptyClassName="h-auto"
-          />
-        )}
+        {!isAllPluginsLoading &&
+          !collapse &&
+          hasLoadedInstalledPluginIds &&
+          pluginsLoadErrorMessage && (
+            <Alert type="error">
+              <AlertTitle>{pluginsLoadErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={isRetryingPlugins} onClick={retryPlugins}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
+          )}
+        {/* With a failed load, an empty list would read as nothing to install. */}
+        {!isAllPluginsLoading &&
+          !collapse &&
+          hasLoadedInstalledPluginIds &&
+          (!pluginsLoadErrorMessage || !!allPlugins?.length) && (
+            <List
+              marketplaceCollections={[]}
+              marketplaceCollectionPluginsMap={{}}
+              plugins={allPlugins}
+              showInstallButton={canInstallPlugin}
+              cardContainerClassName="grid grid-cols-3 gap-2"
+              cardRender={cardRender}
+              emptyClassName="h-auto"
+            />
+          )}
       </div>
     </div>
   )

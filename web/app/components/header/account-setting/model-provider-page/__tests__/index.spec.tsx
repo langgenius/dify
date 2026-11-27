@@ -14,6 +14,7 @@ import {
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import {
   createDefaultModelFixture,
   createModelCatalogFixture,
@@ -86,6 +87,7 @@ const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
 const { mockSummaryState } = vi.hoisted(() => ({
   mockSummaryState: {
     isLoading: false,
+    loadSummary: undefined as (() => Promise<unknown>) | undefined,
     plugins: {} as Record<
       string,
       {
@@ -229,7 +231,7 @@ const renderModelProviderPage = (
       consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
       { queryFn: () => new Promise(() => {}) },
     )
-  } else {
+  } else if (!mockSummaryState.loadSummary) {
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
       {
@@ -325,7 +327,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.modelProviders.summary.get': () => new Promise(() => {}),
+      'workspaces.current.modelProviders.summary.get': () =>
+        mockSummaryState.loadSummary?.() ?? new Promise(() => {}),
       'workspaces.current.modelProviders.credits.get': () => new Promise(() => {}),
       'workspaces.current.defaultModel.get': mockDefaultModelQuery,
       'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [] }),
@@ -345,6 +348,7 @@ describe('ModelProviderPage', () => {
     vi.clearAllMocks()
     mockDefaultModelQuery.mockImplementation(() => new Promise(() => {}))
     mockSummaryState.isLoading = false
+    mockSummaryState.loadSummary = undefined
     mockSummaryState.plugins = {}
     mockPluginSettingsAccess.canSetPluginPreferences = true
     mockModelConfigAccess.granted = true
@@ -620,6 +624,35 @@ describe('ModelProviderPage', () => {
       screen.queryByText('modelProvider.modelProvider.emptyProviderTitle'),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('modelProvider.modelProvider.noneConfigured')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed first provider load with a retry instead of the empty provider state', async () => {
+    const loadSummary = vi
+      .fn()
+      .mockRejectedValueOnce(
+        createHttpError(
+          { status: 500, statusText: '', headers: new Headers() },
+          { message: 'Backend text' },
+        ),
+      )
+      .mockResolvedValueOnce({ data: [providerSummaryFixture], plugins: {} })
+    mockSummaryState.loadSummary = loadSummary
+
+    renderModelProviderPage()
+    await act(() => vi.advanceTimersByTimeAsync(0))
+
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.emptyProviderTitle'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('modelProvider.modelProvider.noneConfigured')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await act(() => vi.advanceTimersByTimeAsync(0))
+
+    expect(loadSummary).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByTestId('provider-card')).toHaveTextContent('openai')
   })
 
   it('should filter providers based on search text', () => {

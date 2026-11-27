@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "HQ",
   "knowledge": "База знаний",
+  "loadError": "Не удалось загрузить данные. Повторите попытку.",
   "metadata.addMetadata": "Добавить метаданные",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Применить ко всем выбранным документам",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Автоматически создайте все вышеуказанные редактируемые и новые метаданные для всех выбранных документов, иначе редактирование метаданных будет применяться только к документам с ними.",

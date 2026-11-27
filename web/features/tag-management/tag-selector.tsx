@@ -1,6 +1,7 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxProps, ComboboxTriggerProps } from '@langgenius/dify-ui/combobox'
 import type { TagComboboxItem } from './tag-option'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -18,6 +19,8 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
 import { refreshAgentTagCatalogs } from '@/service/console/policies/shared'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from './permissions'
@@ -118,7 +121,7 @@ export const TagSelector = ({
       },
     }),
   )
-  const { data: tagList = EMPTY_TAGS, isSuccess: hasLoadedTags } = useQuery({
+  const tagsQuery = useQuery({
     ...consoleQuery.tags.get.queryOptions({
       input: {
         query: {
@@ -129,6 +132,14 @@ export const TagSelector = ({
     // Agent cards already receive their tag names in the roster response.
     subscribed: open || type !== 'agent',
   })
+  const { data: tagList = EMPTY_TAGS, isSuccess: hasLoadedTags } = tagsQuery
+  // A failed load must not look like a workspace without tags. Only the open popup shows it, so
+  // a closed selector leaves the shared tag list's failure to the query cache.
+  const tagsLoad = useOwnedQueryErrors(open ? [tagsQuery] : [])
+  const tagsLoadErrorMessage = useRequestErrorMessage(
+    tagsLoad?.error,
+    t(($) => $['dynamicSelect.error'], { ns: 'common' }),
+  )
 
   const selectedTagIds = useMemo(() => value.map((tag) => tag.id), [value])
   const tagNames = useMemo(() => {
@@ -376,6 +387,21 @@ export const TagSelector = ({
             aria-label={accessibleTriggerLabel}
             className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
           >
+            {tagsLoad && (
+              <div role="alert" className="flex items-center gap-2 px-3 pt-2">
+                <span className="min-w-0 flex-1 system-xs-regular text-text-tertiary">
+                  {tagsLoadErrorMessage}
+                </span>
+                <Button
+                  size="small"
+                  variant="ghost"
+                  loading={tagsLoad.retrying}
+                  onClick={tagsLoad.retry}
+                >
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </div>
+            )}
             <TagSearchContent
               type={type}
               nameTooLong={nameTooLong}

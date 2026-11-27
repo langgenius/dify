@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Model üçün bir neçə giriş məlumatı dəstini konfiqurasiya et və onları avtomatik çağır. ",
   "modelProvider.loadBalancingInfo": "Standart olaraq yük balanslaşdırması növbəli paylama strategiyasından istifadə edir. Sorğu tezliyi məhdudiyyəti işə düşərsə, 1 dəqiqəlik gözləmə müddəti tətbiq olunacaq.",
   "modelProvider.loadBalancingLeastKeyWarning": "Yük balanslaşdırmasını aktivləşdirmək üçün ən azı 2 açar aktivləşdirilməlidir.",
+  "modelProvider.loadFailed": "Yükləmək mümkün olmadı. Yenidən cəhd edin.",
   "modelProvider.loadPresets": "Hazır parametrləri yüklə",
   "modelProvider.model": "Model",
   "modelProvider.modelHasBeenDeprecated": "Bu model köhnəlmiş hesab olunur",

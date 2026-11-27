@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -265,6 +266,28 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} />)
     await openSettings(user)
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  })
+
+  it('shows a failed first parameter rules load with a retry instead of no parameters', async () => {
+    const user = userEvent.setup()
+    seedRules = false
+    getRules
+      .mockRejectedValueOnce(
+        createHttpError(
+          { status: 500, statusText: '', headers: new Headers() },
+          { message: 'Backend text' },
+        ),
+      )
+      .mockResolvedValueOnce({ data: parameterRules })
+    render(<ModelParameterModal {...defaultProps} />)
+    await openSettings(user)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: 'Temperature' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('spinbutton', { name: 'Temperature' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(getRules).toHaveBeenCalledTimes(2)
   })
 
   it('should not render parameter loading when model is not configured and parameter rules query is pending but disabled', async () => {

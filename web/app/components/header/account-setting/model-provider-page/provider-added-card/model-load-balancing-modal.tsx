@@ -7,6 +7,7 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -34,6 +35,8 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
 import { useRefreshModel } from '../hooks'
 import { useAuth } from '../model-auth/hooks/use-auth'
@@ -73,21 +76,25 @@ const ModelLoadBalancingModal = ({
   const [removedCredentialIds, setRemovedCredentialIds] = useState<string[]>([])
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const configFrom = providerFormSchemaPredefined ? 'predefined-model' : 'custom-model'
-  const { data, refetch } = useQuery({
-    ...consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.queryOptions(
-      {
-        input: {
-          params: { provider: provider.provider },
-          query: {
-            model: model.model,
-            model_type: model.model_type,
-            config_from: configFrom,
-            credential_id: credential?.credential_id,
-          },
+  const credentialsQuery = useQuery(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.queryOptions({
+      input: {
+        params: { provider: provider.provider },
+        query: {
+          model: model.model,
+          model_type: model.model_type,
+          config_from: configFrom,
+          credential_id: credential?.credential_id,
         },
       },
-    ),
-  })
+    }),
+  )
+  const { data, refetch } = credentialsQuery
+  const credentialsLoad = useOwnedQueryError(credentialsQuery)
+  const credentialsErrorMessage = useRequestErrorMessage(
+    credentialsLoad?.error,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
+  )
   const modelCredential = useMemo<ModelCredential | undefined>(
     () =>
       data && {
@@ -370,7 +377,22 @@ const ModelLoadBalancingModal = ({
             )}
           </DialogHeader>
 
-          {!draftConfig ? (
+          {credentialsLoad ? (
+            <DialogBody>
+              <Alert type="error">
+                <AlertTitle>{credentialsErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button
+                    size="small"
+                    loading={credentialsLoad.retrying}
+                    onClick={credentialsLoad.retry}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            </DialogBody>
+          ) : !draftConfig ? (
             <DialogBody>
               <LoadingPlaceholder />
             </DialogBody>

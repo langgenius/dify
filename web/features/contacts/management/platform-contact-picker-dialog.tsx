@@ -41,6 +41,8 @@ function PlatformContactPickerContent({
   const candidates = useInfiniteQuery({
     ...availablePlatformCandidatesOptions(queryClient, context.workspaceId, search),
     enabled: canImport,
+    // The picker shows every failure, refetches and next pages included, over any loaded candidates.
+    meta: { errorToast: false },
   })
   const contacts = candidates.data?.pages.flatMap((page) => page.data) ?? []
   const pending = candidates.isPending

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Reduza a pressão com vários conjuntos de credenciais.",
   "modelProvider.loadBalancingInfo": "Por padrão, o balanceamento de carga usa a estratégia Round-robin. Se a limitação de taxa for acionada, um período de espera de 1 minuto será aplicado.",
   "modelProvider.loadBalancingLeastKeyWarning": "Para habilitar o balanceamento de carga, pelo menos 2 chaves devem estar habilitadas.",
+  "modelProvider.loadFailed": "Falha ao carregar. Tente novamente.",
   "modelProvider.loadPresets": "Carregar Predefinições",
   "modelProvider.model": "Modelo",
   "modelProvider.modelHasBeenDeprecated": "Este modelo foi preterido",

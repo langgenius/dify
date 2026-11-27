@@ -12,10 +12,12 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { PermissionLevel } from '@/models/permission'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,
 } from '../hooks/use-credential'
+import PluginAuthLoadError from '../load-error'
 import { AuthCategory } from '../types'
 import OAuthClientSettings from './oauth-client-settings'
 import OAuthVisibilityDialog from './oauth-visibility-dialog'
@@ -73,7 +75,10 @@ const AddOAuthButton = ({
   )
   const { mutateAsync: getPluginOAuthUrl, isPending: isGettingOAuthUrl } =
     useGetPluginOAuthUrlHook(pluginPayload)
-  const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload, !oAuthData)
+  const oAuthClientSchemaQuery = useGetPluginOAuthClientSchemaHook(pluginPayload, !oAuthData)
+  const { data, isLoading } = oAuthClientSchemaQuery
+  // Without the client schema the button would treat OAuth as unconfigured and open empty settings.
+  const oAuthClientSchemaLoad = useOwnedQueryError(oAuthClientSchemaQuery)
   const mergedOAuthData = useMemo<OAuthData>(() => {
     if (oAuthData) return oAuthData
 
@@ -233,7 +238,14 @@ const AddOAuthButton = ({
     }
   }, [isConfigured, is_oauth_custom_client_enabled, is_system_oauth_params_exists])
 
-  const trigger = isConfigured ? (
+  const trigger = oAuthClientSchemaLoad ? (
+    <PluginAuthLoadError
+      className={className}
+      error={oAuthClientSchemaLoad.error}
+      isRetrying={oAuthClientSchemaLoad.retrying}
+      onRetry={oAuthClientSchemaLoad.retry}
+    />
+  ) : isConfigured ? (
     <div className={cn('flex w-full', className)}>
       <Button
         variant={buttonVariant}

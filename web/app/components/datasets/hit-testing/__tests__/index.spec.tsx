@@ -14,6 +14,7 @@ import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
@@ -155,6 +156,24 @@ describe('HitTestingPage', () => {
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  })
+
+  it('shows a failed first records load inline with a retry and without a toast', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    recordsData = undefined
+    getRecords
+      .mockRejectedValueOnce(apiError({ status: 503, message: 'Records unavailable' }))
+      .mockResolvedValue({ data: [], total: 0, page: 1, limit: 10, has_more: false })
+
+    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+
+    expect(await screen.findByText('dataset.loadError')).toBeInTheDocument()
+    expect(screen.queryByText(/noRecentTip/)).not.toBeInTheDocument()
+    expect(errorToast).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByText(/noRecentTip/)).toBeInTheDocument()
+    expect(getRecords).toHaveBeenCalledTimes(2)
   })
 
   it('shows both empty history and empty result states', () => {

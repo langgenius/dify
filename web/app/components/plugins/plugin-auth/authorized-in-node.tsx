@@ -7,7 +7,9 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { memo, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { Authorized, usePluginAuth } from '.'
+import PluginAuthLoadError from './load-error'
 
 type AuthorizedInNodeProps = {
   pluginPayload: PluginPayload
@@ -30,7 +32,9 @@ const AuthorizedInNode = ({
     isLoading,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
+    credentialInfoQuery,
   } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
+  const credentialInfoLoad = useOwnedQueryError(credentialInfoQuery)
   const defaultCredentialId = credentials.find((c) => c.is_default)?.id
 
   useEffect(() => {
@@ -125,6 +129,16 @@ const AuthorizedInNode = ({
     },
     [defaultCredentialId, onDefaultCredentialChange, onAuthorizationItemClick, setIsOpen],
   )
+
+  // Without the credential list the trigger would say the credential was removed.
+  if (credentialInfoLoad)
+    return (
+      <PluginAuthLoadError
+        error={credentialInfoLoad.error}
+        isRetrying={credentialInfoLoad.retrying}
+        onRetry={credentialInfoLoad.retry}
+      />
+    )
 
   return (
     <Authorized

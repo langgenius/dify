@@ -1,5 +1,5 @@
 import type { Role } from '@/models/access-control'
-import { setupFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { builtinRole, customRole, renderRolePage, rolePage } from './role-page-fixture'
 
 let roles: Role[]
@@ -68,3 +68,24 @@ it.each([
     )
   },
 )
+
+it('shows a retryable error instead of a zero member count when role members fail to load', async () => {
+  roles = [customRole]
+  const members = fake.console.workspaces.current.rbac.roles.byRoleId.members.get
+  members.mockRejectedValueOnce(apiError({ status: 500, message: 'Members failed' }))
+  const { screen, queryClient } = await renderRolePage()
+  onTestFinished(() => queryClient.clear())
+  await screen.getByRole('button', { name: 'common.operation.moreActions' }).click()
+  await screen.getByRole('menuitem', { name: 'permission.common.duplicateAction' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  await expect.element(dialog.getByRole('alert')).toMatchTextContent('common.api.actionFailed')
+  await expect.element(dialog).not.toMatchTextContent('"count":0')
+  await dialog.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect
+    .element(dialog)
+    .toMatchTextContent(
+      `permission.role.copyMembersDescription:{"name":"${customRole.name}","count":3}`,
+    )
+  await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()
+  expect(members).toHaveBeenCalledTimes(2)
+})

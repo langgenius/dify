@@ -4,6 +4,8 @@ import type {
   ModelProviderSummaryResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -16,6 +18,8 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 import { canConfigureModelsAtom } from './atoms'
 import { ModelTypeEnum } from './declarations'
@@ -56,26 +60,46 @@ const ModelProviderPage = ({
   stickyToolbar,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
-  const { t } = useTranslation(['modelProvider'])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { canSetPluginPreferences } = usePluginSettingsAccess()
   const canConfigureModels = useAtomValue(canConfigureModelsAtom)
-  const defaultModelQueryOptions = { enabled: canConfigureModels }
+  // A failed default model load only hides the unset-model warning; the query cache toasts it.
+  const defaultModelQueryOptions = {
+    enabled: canConfigureModels,
+  }
+  const textGenerationDefault = useDefaultModel(
+    ModelTypeEnum.textGeneration,
+    defaultModelQueryOptions,
+  )
+  const embeddingsDefault = useDefaultModel(ModelTypeEnum.textEmbedding, defaultModelQueryOptions)
+  const rerankDefault = useDefaultModel(ModelTypeEnum.rerank, defaultModelQueryOptions)
+  const speech2textDefault = useDefaultModel(ModelTypeEnum.speech2text, defaultModelQueryOptions)
+  const ttsDefault = useDefaultModel(ModelTypeEnum.tts, defaultModelQueryOptions)
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.textGeneration, defaultModelQueryOptions)
+    textGenerationDefault
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.textEmbedding, defaultModelQueryOptions)
-  const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(
-    ModelTypeEnum.rerank,
-    defaultModelQueryOptions,
-  )
+    embeddingsDefault
+  const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = rerankDefault
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } =
-    useDefaultModel(ModelTypeEnum.speech2text, defaultModelQueryOptions)
-  const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(
-    ModelTypeEnum.tts,
-    defaultModelQueryOptions,
-  )
-  const { data: providerSummary, isLoading: isProviderSummaryLoading } = useQuery(
+    speech2textDefault
+  const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = ttsDefault
+  // An unknown default model is not reported as unset.
+  const isDefaultModelLoadFailed = [
+    textGenerationDefault,
+    embeddingsDefault,
+    rerankDefault,
+    speech2textDefault,
+    ttsDefault,
+  ].some((defaultModel) => defaultModel.isLoadFailed)
+  const providerSummaryQuery = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+  )
+  const { data: providerSummary, isLoading: isProviderSummaryLoading } = providerSummaryQuery
+  const providerSummaryLoad = useOwnedQueryError(providerSummaryQuery)
+  const isProviderSummaryLoadFailed = !!providerSummaryLoad
+  const providerSummaryErrorMessage = useRequestErrorMessage(
+    providerSummaryLoad?.error,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
   )
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -174,7 +198,12 @@ const ModelProviderPage = ({
       ? 'modelProvider.noneConfigured'
       : null
   const showWarning =
-    canConfigureModels && !isLoadingModelProviders && !isDefaultModelLoading && !!warningTextKey
+    canConfigureModels &&
+    !isLoadingModelProviders &&
+    !isProviderSummaryLoadFailed &&
+    !isDefaultModelLoading &&
+    !isDefaultModelLoadFailed &&
+    !!warningTextKey
   const systemModelSelector = (className: string) => {
     if (!canConfigureModels) return null
 
@@ -205,7 +234,8 @@ const ModelProviderPage = ({
 
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
-  const showEmptyProvider = !isLoadingModelProviders && !configuredProviders.length
+  const showEmptyProvider =
+    !isLoadingModelProviders && !isProviderSummaryLoadFailed && !configuredProviders.length
   const showConfiguredProviders = !isLoadingModelProviders && !!filteredConfiguredProviders?.length
   const showNotConfiguredProviders =
     !isLoadingModelProviders && !!filteredNotConfiguredProviders?.length
@@ -262,19 +292,35 @@ const ModelProviderPage = ({
   )
 
   const body = (
-    <ModelProviderPageBody
-      providers={providers}
-      filteredConfiguredProviders={filteredConfiguredProviders}
-      filteredNotConfiguredProviders={filteredNotConfiguredProviders}
-      isLoadingModelProviders={isLoadingModelProviders}
-      showEmptyProvider={showEmptyProvider}
-      showConfiguredProviders={showConfiguredProviders}
-      showNotConfiguredProviders={showNotConfiguredProviders}
-      marketplace={marketplace}
-      searchText={searchText}
-      pluginSummaryMap={pluginSummaryMap}
-      onOpenMarketplace={onOpenMarketplace}
-    />
+    <>
+      {providerSummaryLoad && (
+        <Alert type="error" className="mb-2">
+          <AlertTitle>{providerSummaryErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button
+              size="small"
+              loading={providerSummaryLoad.retrying}
+              onClick={providerSummaryLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
+      <ModelProviderPageBody
+        providers={providers}
+        filteredConfiguredProviders={filteredConfiguredProviders}
+        filteredNotConfiguredProviders={filteredNotConfiguredProviders}
+        isLoadingModelProviders={isLoadingModelProviders}
+        showEmptyProvider={showEmptyProvider}
+        showConfiguredProviders={showConfiguredProviders}
+        showNotConfiguredProviders={showNotConfiguredProviders}
+        marketplace={marketplace}
+        searchText={searchText}
+        pluginSummaryMap={pluginSummaryMap}
+        onOpenMarketplace={onOpenMarketplace}
+      />
+    </>
   )
 
   if (layout)

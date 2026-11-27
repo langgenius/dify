@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -26,6 +27,8 @@ import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { selectToolProviderTools } from '../../utils/query-select'
 import ListLoading from './list-loading'
 import OperationMenu from './operation-menu'
@@ -57,13 +60,14 @@ const MCPDetailContent: FC<Props> = ({
   const [isShowUpdateConfirm, { setTrue: showUpdateConfirm, setFalse: hideUpdateConfirm }] =
     useBoolean(false)
 
-  const { data, isFetching: isGettingTools } = useQuery(
+  const toolsQuery = useQuery(
     consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryOptions({
       input: { params: { provider_id: detail.id } },
       enabled: !!detail.is_team_authorization && !!detail.id,
       select: selectToolProviderTools,
     }),
   )
+  const { data, isFetching: isGettingTools } = toolsQuery
   const { mutate: updateTools, isPending: isUpdating } = useMutation(
     consoleQuery.workspaces.current.toolProvider.mcp.update.byProviderId.get.mutationOptions({
       onSuccess: () => {
@@ -76,6 +80,9 @@ const MCPDetailContent: FC<Props> = ({
     consoleQuery.workspaces.current.toolProvider.mcp.auth.post.mutationOptions(),
   )
   const toolList = data?.tools || []
+  // A failed tool list is not "no tools yet", which would only offer to fetch them again.
+  const toolsLoad = useOwnedQueryError(toolsQuery)
+  const toolsLoadErrorMessage = useRequestErrorMessage(toolsLoad?.error)
 
   const handleUpdateTools = useCallback(() => {
     if (!canManageMCP || !detail) return
@@ -238,21 +245,41 @@ const MCPDetailContent: FC<Props> = ({
             </div>
           </>
         )}
-        {!isUpdating && detail.is_team_authorization && !isGettingTools && !toolList.length && (
-          <div className="flex size-full flex-col items-center justify-center">
-            <div className="mb-3 system-sm-regular text-text-tertiary">
-              {t(($) => $['mcp.toolsEmpty'], { ns: 'tools' })}
+        {!isUpdating &&
+          detail.is_team_authorization &&
+          !isGettingTools &&
+          toolsLoad &&
+          toolsLoadErrorMessage && (
+            <div className="px-4 pt-2 pb-4">
+              <Alert type="error">
+                <AlertTitle>{toolsLoadErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button size="small" loading={toolsLoad.retrying} onClick={toolsLoad.retry}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
             </div>
-            <Button
-              ref={updateButtonRef}
-              variant="primary"
-              onClick={handleUpdateTools}
-              disabled={!canManageMCP}
-            >
-              {t(($) => $['mcp.getTools'], { ns: 'tools' })}
-            </Button>
-          </div>
-        )}
+          )}
+        {!isUpdating &&
+          detail.is_team_authorization &&
+          !isGettingTools &&
+          !toolsLoadErrorMessage &&
+          !toolList.length && (
+            <div className="flex size-full flex-col items-center justify-center">
+              <div className="mb-3 system-sm-regular text-text-tertiary">
+                {t(($) => $['mcp.toolsEmpty'], { ns: 'tools' })}
+              </div>
+              <Button
+                ref={updateButtonRef}
+                variant="primary"
+                onClick={handleUpdateTools}
+                disabled={!canManageMCP}
+              >
+                {t(($) => $['mcp.getTools'], { ns: 'tools' })}
+              </Button>
+            </div>
+          )}
         {!isUpdating && !isGettingTools && toolList.length > 0 && (
           <>
             <div className="flex shrink-0 justify-between gap-2 px-4 pt-2 pb-1">

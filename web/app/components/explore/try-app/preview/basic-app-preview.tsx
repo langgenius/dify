@@ -6,12 +6,15 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { Collection } from '@/app/components/tools/types'
 import type { ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { clone } from 'es-toolkit/object'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -31,6 +34,8 @@ import ConfigContext from '@/context/debug-configuration'
 import { PromptMode } from '@/models/debug'
 import { consoleQuery } from '@/service/console'
 import { tryAppDatasetsQueryOptions } from '@/service/try-app-queries'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -330,14 +335,16 @@ const normalizeAgentTool = (
 }
 
 const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
+  const { t } = useTranslation(['common'])
   const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
-  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useQuery(
+  const toolProvidersQuery = useQuery(
     consoleQuery.workspaces.current.toolProviders.get.queryOptions({
       input: { query: {} },
       select: selectToolCollections,
     }),
   )
+  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = toolProvidersQuery
   const collectionList = collectionListFromServer?.map((item) => {
     return {
       ...item,
@@ -360,9 +367,11 @@ const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
 
     return []
   })()
-  const { data: dataSetData, isLoading: isLoadingDatasets } = useQuery(
-    tryAppDatasetsQueryOptions(appId, datasetIds),
-  )
+  const datasetsQuery = useQuery(tryAppDatasetsQueryOptions(appId, datasetIds))
+  const { data: dataSetData, isLoading: isLoadingDatasets } = datasetsQuery
+  // The preview would otherwise show the app without its tools or knowledge.
+  const failedLoad = useOwnedQueryErrors([toolProvidersQuery, datasetsQuery])
+  const loadErrorMessage = useRequestErrorMessage(failedLoad?.error)
   const dataSets = dataSetData?.data || []
   const isLoading = isLoadingDatasets || isLoadingToolProviders
 
@@ -529,6 +538,20 @@ const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
     return (
       <div className="flex h-full items-center justify-center">
         <LoadingPlaceholder />
+      </div>
+    )
+  }
+  if (failedLoad && loadErrorMessage) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <Alert type="error" className="w-max max-w-105">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={failedLoad.retrying} onClick={failedLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
       </div>
     )
   }

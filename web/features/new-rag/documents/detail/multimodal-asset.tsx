@@ -58,6 +58,7 @@ function protectedDocumentAssetQueryOptions(sources: string[]) {
       }
       throw new Error('Document multimodal asset is unavailable')
     },
+    // The asset is best-effort enrichment; a failed load falls back to its placeholder.
     meta: { errorToast: false },
     queryKey: ['knowledge-fs', 'document-multimodal-asset', sources],
     retry: false,

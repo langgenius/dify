@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { apiError } from '@/test/fake-api'
 import { createPipelineVariable } from '@/test/pipeline-variables'
 import PreviewPanel from '../index'
 
@@ -102,4 +103,31 @@ it('does not request either form when the graph has no datasource', () => {
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   expect(preProcessing).not.toHaveBeenCalled()
   expect(processing).not.toHaveBeenCalled()
+})
+
+it('shows a failed form load with a retry instead of a form without fields', async () => {
+  const user = userEvent.setup()
+  const variables = (label: string) => ({
+    variables: [createPipelineVariable({ variable: label, label, default_value: '' })],
+  })
+  preProcessing
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Parameters unavailable' }))
+    .mockResolvedValue(variables('Source URL'))
+  processing
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Parameters unavailable' }))
+    .mockResolvedValue(variables('Chunk prompt'))
+  renderWorkflowFlowComponent(<PreviewPanel />, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    nodes,
+    initialStoreState: { showInputFieldPreviewPanel: true },
+  })
+  await user.click(await screen.findByRole('radio', { name: 'source-1' }))
+
+  await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
+  for (const alert of screen.getAllByRole('alert'))
+    expect(alert).toHaveTextContent('dataset.loadError')
+  for (const retry of screen.getAllByRole('button', { name: 'common.operation.retry' }))
+    await user.click(retry)
+  expect(await screen.findByRole('textbox', { name: /Source URL/ })).toBeInTheDocument()
+  expect(await screen.findByRole('textbox', { name: /Chunk prompt/ })).toBeInTheDocument()
 })

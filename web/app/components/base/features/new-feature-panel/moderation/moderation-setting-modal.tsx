@@ -1,7 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import type { CodeBasedExtensionItem } from '@/service/console/code-based-extension-query'
-import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -30,6 +30,8 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
 import { codeBasedExtensionsQueryOptions } from '@/service/console/code-based-extension-query'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
 
@@ -69,9 +71,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onSave 
   const { t } = useTranslation(['appDebug', 'common', 'navigation'])
   const docLink = useDocLink()
   const locale = useLocale()
-  const { data: modelProviders, isPending: isLoading } = useQuery(
-    modelProviderDetailsQueryOptions(),
-  )
+  const modelProvidersQuery = useQuery(modelProviderDetailsQueryOptions())
+  const { data: modelProviders, isPending: isLoading } = modelProvidersQuery
   const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -91,7 +92,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onSave 
   const handleOpenSettingsModal = () => {
     setSettingsDestination('provider')
   }
-  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
+  const codeBasedExtensionsQuery = useQuery(codeBasedExtensionsQueryOptions('moderation'))
+  const codeBasedExtensionList = codeBasedExtensionsQuery.data
+  // Without these lists the OpenAI status and the code-based providers are unknown, not missing.
+  const failedLoad = useOwnedQueryErrors([modelProvidersQuery, codeBasedExtensionsQuery])
+  const loadErrorMessage = useRequestErrorMessage(failedLoad?.error)
   const openaiProvider = modelProviders?.data.find(
     (item) => item.provider === 'langgenius/openai/openai',
   )
@@ -362,7 +367,18 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onSave 
                 </button>
               ))}
             </div>
+            {failedLoad && loadErrorMessage && (
+              <Alert type="error" className="mt-2">
+                <AlertTitle>{loadErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button size="small" loading={failedLoad.retrying} onClick={failedLoad.retry}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            )}
             {!isLoading &&
+              !!modelProviders &&
               !isOpenAIProviderConfigured &&
               localeData.type === 'openai_moderation' && (
                 <Alert type="warning" className="mt-2">

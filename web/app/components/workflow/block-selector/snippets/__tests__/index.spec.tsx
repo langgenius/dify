@@ -116,6 +116,18 @@ beforeEach(() => {
   requests.increment.mockReset().mockResolvedValue({ use_count: 4 })
 })
 
+it('shows snippets that fail to load with a retry instead of the empty state', async () => {
+  const user = userEvent.setup()
+  requests.list.mockRejectedValueOnce(new Error('network'))
+  renderSnippets()
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByText('Customer Review')).toBeInTheDocument()
+  expect(requests.list).toHaveBeenCalledTimes(2)
+})
+
 it('shows loading until the snippet query resolves', async () => {
   const pending = createDeferred<ReturnType<typeof page>>()
   requests.list.mockReturnValue(pending.promise)

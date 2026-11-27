@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Réduisez la pression grâce à plusieurs ensembles d’informations d’identification.",
   "modelProvider.loadBalancingInfo": "Par défaut, l’équilibrage de charge utilise la stratégie Round-robin. Si la limitation de vitesse est déclenchée, une période de recharge de 1 minute sera appliquée.",
   "modelProvider.loadBalancingLeastKeyWarning": "Pour activer l’équilibrage de charge, au moins 2 clés doivent être activées.",
+  "modelProvider.loadFailed": "Échec du chargement. Veuillez réessayer.",
   "modelProvider.loadPresets": "Charger les Présents",
   "modelProvider.model": "Modèle",
   "modelProvider.modelHasBeenDeprecated": "Ce modèle est obsolète",

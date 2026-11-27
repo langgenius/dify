@@ -4,7 +4,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import Filter from '../filter'
 
 const appId = '019a0000-0000-7000-8000-000000000001'
@@ -65,3 +65,20 @@ it.each([0, 20])(
     await expect.element(screen.getByRole('button', { name: 'Add annotation' })).toHaveFocus()
   },
 )
+
+it('shows a failed count load with a retry instead of hiding the filters silently', async () => {
+  let fails = true
+  const screen = await renderFilter(() => {
+    if (fails) throw apiError({ status: 500, message: 'Count unavailable' })
+    return { count: 3 }
+  })
+  const alert = screen.getByRole('alert')
+  await expect.element(alert).toBeVisible()
+  await expect.element(screen.getByRole('searchbox')).not.toBeInTheDocument()
+  fails = false
+  await alert.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect
+    .element(screen.getByRole('searchbox', { name: 'common.operation.search' }))
+    .toBeVisible()
+  await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
+})

@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Reduceți presiunea cu mai multe seturi de acreditări.",
   "modelProvider.loadBalancingInfo": "În mod implicit, echilibrarea încărcării utilizează strategia Round-robin. Dacă se declanșează limitarea ratei, se va aplica o perioadă de reactivare de 1 minut.",
   "modelProvider.loadBalancingLeastKeyWarning": "Pentru a activa echilibrarea încărcării trebuie activate cel puțin 2 chei.",
+  "modelProvider.loadFailed": "Încărcarea a eșuat. Încercați din nou.",
   "modelProvider.loadPresets": "Încarcă presetări",
   "modelProvider.model": "Model",
   "modelProvider.modelHasBeenDeprecated": "Acest model a fost depreciat",

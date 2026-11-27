@@ -9,8 +9,10 @@ import {
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 
 const { getSettings, saveSettings } = vi.hoisted(() => ({
@@ -34,6 +36,12 @@ vi.mock('@/service/base', async (importOriginal) => ({
   },
 }))
 
+const settingsLoadError = () =>
+  createHttpError(
+    { status: 503, statusText: '', headers: new Headers() },
+    { message: 'Settings unavailable' },
+  )
+
 const savedConfig: AutoUpdateConfig = {
   strategy_setting: AUTO_UPDATE_STRATEGY.disabled,
   upgrade_time_of_day: 0,
@@ -52,8 +60,12 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function renderSettings(category = PluginCategoryEnum.model) {
+function renderSettings(
+  category = PluginCategoryEnum.model,
+  { errorToasts = false }: { errorToasts?: boolean } = {},
+) {
   const client = new QueryClient({
+    ...(errorToasts && createErrorToastCaches()),
     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
   })
   client.setQueryData(userProfileQueryOptions().queryKey, {
@@ -95,6 +107,42 @@ beforeEach(() => {
       auto_upgrade: savedConfig,
     }),
   )
+})
+
+it('shows a retryable error when the settings fail to load', async () => {
+  getSettings.mockRejectedValueOnce(new Error('Request failed'))
+  const user = userEvent.setup()
+  renderSettings()
+  await user.click(screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(strategy('disabled')).toBeChecked())
+  expect(getSettings).toHaveBeenCalledTimes(2)
+})
+
+it('toasts a failed load while the dialog is closed, since nothing on screen shows it', async () => {
+  getSettings.mockRejectedValueOnce(settingsLoadError())
+  const error = vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
+  renderSettings(PluginCategoryEnum.model, { errorToasts: true })
+  await waitFor(() => expect(error).toHaveBeenCalledWith('Settings unavailable'))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('shows a load that fails while the dialog is open inline without a toast', async () => {
+  const initialSettings = deferred<never>()
+  getSettings.mockReturnValueOnce(initialSettings.promise)
+  const error = vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
+  const user = userEvent.setup()
+  renderSettings(PluginCategoryEnum.model, { errorToasts: true })
+  await user.click(screen.getByRole('button', { name: 'plugin.autoUpdate.autoUpdate' }))
+  expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+  await act(async () => {
+    initialSettings.reject(settingsLoadError())
+  })
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  // The cache reports a failure only after the render that could claim it.
+  await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
+  expect(error).not.toHaveBeenCalled()
 })
 
 it('starts a draft when settings arrive and preserves it across a background refresh', async () => {

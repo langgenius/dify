@@ -1,5 +1,7 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -9,6 +11,8 @@ import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 type SummaryIndexSettingProps = {
   entry?: 'knowledge-base' | 'dataset-settings' | 'create-document'
@@ -22,14 +26,34 @@ const SummaryIndexSetting = ({
   onSummaryIndexSettingChange,
   readonly = false,
 }: SummaryIndexSettingProps) => {
-  const { t } = useTranslation(['datasetDocuments', 'datasetSettings'])
+  const { t } = useTranslation(['datasetDocuments', 'datasetSettings', 'common', 'dataset'])
   const summaryLabelId = useId()
   const summaryModelLabelId = useId()
-  const { data: textGenerationModelList = [] } = useQuery(
+  const textGenerationModelsQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
       select: (response) => response.data,
     }),
+  )
+  const textGenerationModelList = textGenerationModelsQuery.data ?? []
+  // Without the catalog the selector would look as if no model were configured. The selector,
+  // and so its load error, shows only while the summary index is enabled.
+  const modelsLoad = useOwnedQueryErrors(
+    summaryIndexSetting?.enable ? [textGenerationModelsQuery] : [],
+  )
+  const modelsLoadErrorMessage = useRequestErrorMessage(
+    modelsLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
+  )
+  const modelsLoadError = modelsLoad && (
+    <Alert type="error" className="mt-2">
+      <AlertTitle>{modelsLoadErrorMessage}</AlertTitle>
+      <AlertActions>
+        <Button size="small" loading={modelsLoad.retrying} onClick={modelsLoad.retry}>
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </AlertActions>
+    </Alert>
   )
   const summaryIndexModelConfig = useMemo(() => {
     if (!summaryIndexSetting?.model_name || !summaryIndexSetting?.model_provider_name)
@@ -113,6 +137,7 @@ const SummaryIndexSetting = ({
               disabled={readonly}
               showDeprecatedWarnIcon
             />
+            {modelsLoadError}
             <div className="mt-3 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
             </div>
@@ -184,6 +209,7 @@ const SummaryIndexSetting = ({
                   disabled={readonly}
                   showDeprecatedWarnIcon
                 />
+                {modelsLoadError}
               </div>
             </div>
             <div className="flex min-w-0 flex-col gap-2 @3xl/settings:flex-row">
@@ -247,6 +273,7 @@ const SummaryIndexSetting = ({
               disabled={readonly}
               showDeprecatedWarnIcon
             />
+            {modelsLoadError}
           </div>
           <div>
             <div className="mb-1.5 flex h-6 items-center system-sm-medium text-text-secondary">

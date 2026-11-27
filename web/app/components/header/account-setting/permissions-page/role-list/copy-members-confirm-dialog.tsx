@@ -1,6 +1,7 @@
 'use client'
 
 import type { Role } from '@/models/access-control'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogConfirmButton,
@@ -10,9 +11,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 type CopyMembersConfirmDialogProps = {
   role: Role
@@ -28,10 +32,16 @@ export function CopyMembersConfirmDialog({
   onDuplicate,
 }: CopyMembersConfirmDialogProps) {
   const { t } = useTranslation(['common', 'permission'])
-  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useQuery(
+  const membersOfRoleQuery = useQuery(
     consoleQuery.workspaces.current.rbac.roles.byRoleId.members.get.queryOptions({
       input: { params: { role_id: role.id }, query: { page: 1, limit: 9999 } },
     }),
+  )
+  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = membersOfRoleQuery
+  const memberCountLoad = useOwnedQueryError(membersOfRoleQuery)
+  const memberCountErrorMessage = useRequestErrorMessage(
+    memberCountLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const memberCount = membersOfRole?.pagination?.total_count ?? 0
   const isLoadingMemberCount = isLoadingMembersOfRole && !membersOfRole
@@ -44,15 +54,30 @@ export function CopyMembersConfirmDialog({
           <AlertDialogTitle>
             {t(($) => $['role.copyMembersTitle'], { ns: 'permission' })}
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            {isLoadingMemberCount
-              ? t(($) => $['role.copyMembersLoading'], { ns: 'permission' })
-              : t(($) => $['role.copyMembersDescription'], {
-                  ns: 'permission',
-                  name: role.name,
-                  count: memberCount,
-                })}
-          </AlertDialogDescription>
+          {memberCountLoad ? (
+            <Alert type="error">
+              <AlertTitle>{memberCountErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button
+                  size="small"
+                  loading={memberCountLoad.retrying}
+                  onClick={memberCountLoad.retry}
+                >
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
+          ) : (
+            <AlertDialogDescription>
+              {isLoadingMemberCount
+                ? t(($) => $['role.copyMembersLoading'], { ns: 'permission' })
+                : t(($) => $['role.copyMembersDescription'], {
+                    ns: 'permission',
+                    name: role.name,
+                    count: memberCount,
+                  })}
+            </AlertDialogDescription>
+          )}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogConfirmButton

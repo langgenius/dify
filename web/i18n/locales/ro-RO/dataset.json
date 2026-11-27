@@ -95,6 +95,7 @@
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "IC",
   "knowledge": "Cunoștințe",
+  "loadError": "Datele nu au putut fi încărcate. Încercați din nou.",
   "metadata.addMetadata": "Adăugați Metadate",
   "metadata.batchEditMetadata.applyToAllSelectDocument": "Aplică la toate documentele selectate",
   "metadata.batchEditMetadata.applyToAllSelectDocumentTip": "Creează automat toate metadatele editate și noi de mai sus pentru toate documentele selectate, altfel editarea metadatelor se va aplica doar documentelor care au aceste metadate.",

@@ -13,11 +13,17 @@ export type ChatWithHistoryContextValue = {
   appData?: AppData | null
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
+  appChatListLoadError?: unknown
+  appChatListRetrying?: boolean
+  retryAppChatList?: () => void
   currentConversationId: string
   currentConversationItem?: ConversationItem
   appPrevChatTree: ChatItemInTree[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
+  conversationListLoadError?: unknown
+  conversationListRetrying?: boolean
+  retryConversationList?: () => void
   newConversationInputs: Record<string, any>
   newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void

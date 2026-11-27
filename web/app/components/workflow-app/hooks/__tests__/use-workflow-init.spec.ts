@@ -412,10 +412,15 @@ describe('useWorkflowInit', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
-  it('should keep published metadata when loading node defaults fails', async () => {
+  it('should report failed node defaults and keep published metadata', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
-    mockFetchNodesDefaultConfigs.mockRejectedValue(new Error('preload failed'))
+    mockFetchNodesDefaultConfigs.mockRejectedValue(
+      createHttpError(
+        { status: 500, statusText: '', headers: new Headers() },
+        { message: 'Defaults unavailable' },
+      ),
+    )
     mockFetchPublishedWorkflow.mockResolvedValue({
       created_at: 99,
       graph: {
@@ -432,6 +437,8 @@ describe('useWorkflowInit', () => {
         lastPublishedHasUserInput: true,
       })
     })
+    // Nothing renders the node defaults, so their failed first load is reported once.
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('Defaults unavailable')
 
     consoleErrorSpy.mockRestore()
   })

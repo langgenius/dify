@@ -162,6 +162,27 @@ describe('QuotaPanel', () => {
     expect(screen.queryByText(/modelProvider\.used/)).not.toBeInTheDocument()
   })
 
+  it('shows a failed first credits load with a retry instead of empty credits', async () => {
+    credits = undefined
+    getCredits
+      .mockRejectedValueOnce(
+        createHttpError(
+          { status: 500, statusText: '', headers: new Headers() },
+          { message: 'Backend text' },
+        ),
+      )
+      .mockResolvedValueOnce(createCredits())
+    const user = userEvent.setup()
+
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.used/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByText(/modelProvider\.used/)).toBeInTheDocument()
+    expect(getCredits).toHaveBeenCalledTimes(2)
+  })
+
   it('should show used credits, total credits, and reset date', () => {
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 

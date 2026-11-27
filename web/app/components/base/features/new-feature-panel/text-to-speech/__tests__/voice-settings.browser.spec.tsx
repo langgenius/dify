@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createWavFixture } from '@/test/browser-media'
-import { setupFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import { TtsAutoPlay } from '@/types/app'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
@@ -171,4 +171,30 @@ it('keeps voices unloaded without a route identity and honors a disabled setting
   await expect.element(trigger).toBeDisabled()
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('says why the voices failed to load and retries them', async () => {
+  fake.console.apps.byAppId.textToAudio.voices.get.mockRejectedValueOnce(
+    apiError({ status: 400, code: 'bad_request', message: 'Voices are unavailable' }),
+  )
+  const Route = routeTo({ appId })
+  const { screen } = await renderFeature(
+    <Route>
+      <Settings />
+    </Route>,
+    {
+      text2speech: { enabled: true, language: 'en-US', voice: 'alloy' },
+    },
+  )
+  await screen.getByRole('button', { name: 'Settings', exact: true }).click()
+
+  const failure = screen.getByRole('alert').filter({ hasText: 'Voices are unavailable' })
+  await expect.element(failure).toBeVisible()
+
+  await userEvent.click(failure.getByRole('button', { name: 'Retry' }))
+
+  await expect
+    .element(screen.getByRole('combobox', { name: 'Voice', exact: true }))
+    .toHaveTextContent('Alloy')
+  await expect.element(failure).not.toBeInTheDocument()
 })

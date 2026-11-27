@@ -86,6 +86,7 @@ export default function OAuthAuthorize() {
       input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
+      // The page swaps to its load-failure state with a retry on any failure, refetches included.
       meta: { errorToast: false },
     }),
   )

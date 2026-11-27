@@ -1,9 +1,11 @@
 import type { PipelineTemplateListResponse } from '@dify/contracts/api/console/rag/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import CustomizedList from '../customized-list'
 
 const { getTemplates } = vi.hoisted(() => ({ getTemplates: vi.fn() }))
@@ -57,4 +59,18 @@ it('omits the customized section when there are no saved templates', async () =>
   expect(
     screen.queryByRole('button', { name: 'datasetPipeline.operations.choose' }),
   ).not.toBeInTheDocument()
+})
+
+it('shows a failed first load in the customized section with a retry', async () => {
+  const user = userEvent.setup()
+  getTemplates
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Templates unavailable' }))
+    .mockResolvedValue({ pipeline_templates: [] })
+  render(<CustomizedList fallbackFocusRef={createRef<HTMLDivElement>()} />)
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  expect(screen.getByText('datasetPipeline.templates.customized')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  expect(getTemplates).toHaveBeenCalledTimes(2)
 })

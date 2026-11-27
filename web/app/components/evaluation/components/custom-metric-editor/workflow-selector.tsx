@@ -1,6 +1,7 @@
 'use client'
 
 import type { AvailableEvaluationWorkflowResponse as AvailableEvaluationWorkflow } from '@dify/contracts/api/console/workspaces/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
@@ -20,6 +21,8 @@ import { createWorkflowAppHref } from '@/app/components/apps/query-params'
 import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 import { useAvailableEvaluationWorkflows } from '../../queries'
 
@@ -52,19 +55,24 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
 
   const keyword = deferredSearchText.trim() || undefined
 
+  const workflowsQuery = useAvailableEvaluationWorkflows(
+    {
+      page: 1,
+      limit: PAGE_SIZE,
+      keyword,
+    },
+    { enabled: isOpen },
+  )
   const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isLoading } =
-    useAvailableEvaluationWorkflows(
-      {
-        page: 1,
-        limit: PAGE_SIZE,
-        keyword,
-      },
-      { enabled: isOpen },
-    )
+    workflowsQuery
 
   const workflows = useMemo(() => {
     return (data?.pages ?? []).flatMap((page) => page.items)
   }, [data?.pages])
+  // A failed first load is not "no evaluation workflows"; a failed next page keeps the list.
+  // A failure that settles after the popover closes is not on screen, so it is not claimed.
+  const workflowsLoad = useOwnedQueryErrors(isOpen ? [workflowsQuery] : [])
+  const loadErrorMessage = useRequestErrorMessage(workflowsLoad?.error)
 
   const currentWorkflowName = useMemo(() => {
     if (!value) return null
@@ -147,7 +155,19 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
             <SearchInput value={searchText} onValueChange={setSearchText} />
           </div>
 
-          {isLoading || (isFetching && workflows.length === 0) ? (
+          {workflowsLoad && loadErrorMessage && !isFetching ? (
+            <div
+              role="alert"
+              className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-6 py-4 text-center"
+            >
+              <div className="system-sm-regular wrap-break-word text-text-destructive">
+                {loadErrorMessage}
+              </div>
+              <Button size="small" onClick={workflowsLoad.retry}>
+                {tCommon(($) => $['operation.retry'])}
+              </Button>
+            </div>
+          ) : isLoading || (isFetching && workflows.length === 0) ? (
             <div className="flex h-[120px] items-center justify-center">
               <Spinner size="large" aria-label={tCommon(($) => $.loading)} />
             </div>

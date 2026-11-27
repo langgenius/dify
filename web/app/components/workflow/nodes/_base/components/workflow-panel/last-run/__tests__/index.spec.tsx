@@ -101,17 +101,23 @@ it('offers single run for a missing last run without reporting an error', async 
   expect(errorToast).not.toHaveBeenCalled()
 })
 
-it('reports a last run that fails to load', async () => {
-  lastRun.mockRejectedValue(
+it('shows a last run that fails to load with a retry, without a toast', async () => {
+  const user = userEvent.setup()
+  lastRun.mockRejectedValueOnce(
     createHttpError(
       { status: 500, statusText: '', headers: new Headers() },
       { message: 'Run history unavailable' },
     ),
   )
   const { errorToast } = setupWithErrorToasts()
-  await vi.waitFor(() =>
-    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Run history unavailable'),
-  )
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
+  expect(errorToast).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('button', { name: /retry/i }))
+
+  expect(await screen.findByDisplayValue(/Saved answer/)).toHaveAttribute('readonly')
+  expect(lastRun).toHaveBeenCalledTimes(2)
+  expect(errorToast).not.toHaveBeenCalled()
 })
 
 it('shows saved execution data while paused overrides its completed status', async () => {

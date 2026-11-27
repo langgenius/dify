@@ -1,4 +1,5 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { ORPCError } from '@orpc/client'
 import { act, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
@@ -47,7 +48,7 @@ describe('useTrialCredits', () => {
 
   it('returns the remaining credits and reset date', () => {
     const { result } = renderCredits(createCredits())
-    expect(result.current).toEqual({
+    expect(result.current).toMatchObject({
       credits: 60,
       usedCredits: 40,
       totalCredits: 100,
@@ -81,7 +82,7 @@ describe('useTrialCredits', () => {
     const request = createDeferred<ModelProviderCreditsResponse>()
     getCredits.mockReturnValue(request.promise)
     const { result } = renderCredits()
-    expect(result.current).toEqual({
+    expect(result.current).toMatchObject({
       credits: 0,
       usedCredits: 0,
       totalCredits: 0,
@@ -93,6 +94,30 @@ describe('useTrialCredits', () => {
     })
     await act(async () => request.resolve(createCredits()))
     await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.credits).toBe(60)
+  })
+
+  it('exposes a failed first load instead of presenting the defaults as real credits', async () => {
+    const error = new ORPCError('internal_server_error', { status: 500, message: 'Backend text' })
+    getCredits.mockRejectedValue(error)
+    const { result } = renderCredits()
+    await waitFor(() => expect(result.current.query.error).toBe(error))
+    expect(result.current.query.data).toBeUndefined()
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it('keeps cached credits when a background refetch fails', async () => {
+    getCredits.mockRejectedValue(
+      new ORPCError('internal_server_error', { status: 500, message: 'Backend text' }),
+    )
+    const { result, queryClient } = renderCredits(createCredits())
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+      })
+    })
+    await waitFor(() => expect(getCredits).toHaveBeenCalled())
+    expect(result.current.query.data).toBeDefined()
     expect(result.current.credits).toBe(60)
   })
 

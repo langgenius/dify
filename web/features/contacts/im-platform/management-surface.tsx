@@ -27,6 +27,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ContactImBindingContent } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
@@ -62,7 +63,6 @@ function ConfigurationSession({
         target.integration?.kind === 'email'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      meta: { errorToast: false },
     }),
   )
   const im = useQuery(
@@ -71,10 +71,10 @@ function ConfigurationSession({
         target.integration?.kind === 'im'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      meta: { errorToast: false },
     }),
   )
   const detail = target.integration?.kind === 'email' ? email : im
+  const detailLoad = useOwnedQueryError(detail)
   if (target.integration && !detail.data)
     return (
       <>
@@ -82,15 +82,15 @@ function ConfigurationSession({
           <DialogTitle>{target.provider.displayName}</DialogTitle>
           <DialogHeaderCloseButton aria-label={t(($) => $['action.close'])} />
         </DialogHeader>
-        {detail.isError ? (
+        {detailLoad ? (
           <div role="alert" className="p-6">
             <p>
               {describeRequestError(
-                detail.error,
+                detailLoad.error,
                 t(($) => $['imPlatform.loadError.description']),
               )}
             </p>
-            <Button onClick={() => detail.refetch()}>
+            <Button loading={detailLoad.retrying} onClick={detailLoad.retry}>
               {t(($) => $['imPlatform.action.retry'])}
             </Button>
           </div>
@@ -132,11 +132,13 @@ export function ContactsImPlatformManagementSurface() {
   })
   const api = consoleQuery.workspaces.current.humanInput.v2
   const integrationsQuery = useQuery(
+    // A failed load or refetch replaces the cards with the load error and its retry.
     api.channels.get.queryOptions({ enabled: organization.canManage, meta: { errorToast: false } }),
   )
   const providersQuery = useQuery(
     api.channelProviders.get.queryOptions({
       enabled: organization.canManage,
+      // Presented with the channels load error above.
       meta: { errorToast: false },
     }),
   )

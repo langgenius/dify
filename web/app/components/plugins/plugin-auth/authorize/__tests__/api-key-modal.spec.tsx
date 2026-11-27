@@ -10,6 +10,7 @@ import { AuthCategory } from '../../types'
 import ApiKeyModal from '../api-key-modal'
 
 const commands = vi.hoisted(() => ({ add: vi.fn(), update: vi.fn() }))
+const schemaQuery = vi.hoisted(() => vi.fn())
 const schemas: FormSchema[] = [
   { name: 'api_key', label: 'API Key', type: FormTypeEnum.secretInput, required: true },
 ]
@@ -17,10 +18,11 @@ const schemas: FormSchema[] = [
 vi.mock('../../hooks/use-credential', () => ({
   useAddPluginCredentialHook: () => ({ mutateAsync: commands.add }),
   useUpdatePluginCredentialHook: () => ({ mutateAsync: commands.update }),
-  useGetPluginCredentialSchemaHook: () => ({ data: schemas, isLoading: false }),
+  useGetPluginCredentialSchemaHook: () => schemaQuery(),
 }))
 const payload = { category: AuthCategory.tool, provider: 'test-provider' }
 beforeEach(() => {
+  schemaQuery.mockReturnValue({ data: schemas, isLoading: false })
   commands.add.mockResolvedValue({})
   commands.update.mockResolvedValue({})
 })
@@ -119,4 +121,23 @@ it('keeps the credentials popover open while editing inside its nested modal', a
   expect(screen.getByLabelText(/API Key/)).toHaveValue('secret')
   expect(onClose).not.toHaveBeenCalled()
   expect(onPopoverClose).not.toHaveBeenCalled()
+})
+
+it('shows a failed schema load with a retry and does not save a credential without fields', async () => {
+  const user = userEvent.setup()
+  const refetch = vi.fn()
+  schemaQuery.mockReturnValue({
+    data: undefined,
+    error: new Error('Schema unavailable'),
+    isError: true,
+    isFetching: false,
+    isLoading: false,
+    refetch,
+  })
+  render(<ApiKeyModal pluginPayload={payload} />)
+  const alert = screen.getByRole('alert')
+  expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+  await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+  expect(refetch).toHaveBeenCalledOnce()
+  expect(commands.add).not.toHaveBeenCalled()
 })

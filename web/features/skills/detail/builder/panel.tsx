@@ -25,8 +25,10 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { sendSkillAssistMessage, uploadSkillFile } from '../../client'
 import { isSkillErrorRecord } from '../../error'
+import { SkillLoadError } from '../../references'
 import { setSkillDetailCache } from '../cache'
 import { isDefaultSkillBuilderDraft } from '../draft'
 import { isTextFile } from '../files/file-format'
@@ -363,13 +365,15 @@ export function SkillBuilderPanel({
   const selectedFileRef = useRef(selectedFile)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
   const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
+  const textGenerationModelsQuery = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
-    useQuery(
-      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-        input: { params: { model_type: ModelTypeEnum.textGeneration } },
-        select: (response) => response.data,
-      }),
-    )
+    textGenerationModelsQuery
+  const textGenerationModelsLoad = useOwnedQueryError(textGenerationModelsQuery)
   const fallbackModel = useMemo<SkillBuilderModel | undefined>(() => {
     for (const provider of textGenerationModelList) {
       if (provider.status !== ModelStatusEnum.active) continue
@@ -1105,12 +1109,22 @@ export function SkillBuilderPanel({
               />
               <div className="mt-3 flex min-h-8 w-full min-w-0 items-center justify-between gap-2">
                 <div className="min-w-0 flex-1 overflow-hidden">
-                  <BuilderModelSelector
-                    isLoading={isTextGenerationModelListLoading}
-                    modelList={textGenerationModelList}
-                    selectedModel={activeSelectedModel}
-                    onSelect={setSelectedModel}
-                  />
+                  {textGenerationModelsLoad ? (
+                    <SkillLoadError
+                      className="py-0"
+                      error={textGenerationModelsLoad.error}
+                      fallback={t(($) => $['skillManagement.detail.builder.modelsLoadFailed'])}
+                      onRetry={textGenerationModelsLoad.retry}
+                      retrying={textGenerationModelsLoad.retrying}
+                    />
+                  ) : (
+                    <BuilderModelSelector
+                      isLoading={isTextGenerationModelListLoading}
+                      modelList={textGenerationModelList}
+                      selectedModel={activeSelectedModel}
+                      onSelect={setSelectedModel}
+                    />
+                  )}
                 </div>
                 <div className="ms-auto flex shrink-0 items-center gap-2">
                   <div className="flex items-center gap-0.5">

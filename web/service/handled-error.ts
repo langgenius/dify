@@ -21,3 +21,13 @@ export function isErrorHandled(error: unknown): boolean {
   if (handledErrors.has(error)) return true
   return 'cause' in error && isObject(error.cause) && handledErrors.has(error.cause)
 }
+
+/**
+ * For an imperative read whose caller presents the failure itself: marks the error, so the query
+ * cache's report, which waits for the next render, stays silent, and rethrows it. Unlike
+ * `meta.errorToast: false`, it leaves the query's options, and so its later refetches, alone.
+ */
+export function rethrowHandled(error: unknown): never {
+  markErrorHandled(error)
+  throw error
+}

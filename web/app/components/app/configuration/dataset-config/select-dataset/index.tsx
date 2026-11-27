@@ -1,6 +1,7 @@
 'use client'
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -27,6 +28,8 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 
 type ISelectDataSetProps = {
@@ -50,7 +53,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery(
+  const datasetsQuery = useInfiniteQuery(
     consoleQuery.datasets.get.infiniteOptions({
       input: (page: number) => ({ query: { page } }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
@@ -59,6 +62,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       staleTime: 0,
       refetchOnMount: 'always',
     }),
+  )
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = datasetsQuery
+  // A failure that settles after the dialog closes is not on screen, so it is not claimed.
+  const datasetsLoad = useOwnedQueryErrors(isShow ? [datasetsQuery] : [])
+  const loadErrorMessage = useRequestErrorMessage(
+    datasetsLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const datasets = useMemo(() => {
     const pages = data?.pages || []
@@ -72,7 +82,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       (id) => datasetMap.get(id) || ({ id } as DatasetDetailWithPartialMembersResponse),
     )
   }, [datasetMap, selectedIdsInModal])
-  const hasNoData = !isLoading && datasets.length === 0
+  const hasNoData = !isLoading && !loadErrorMessage && datasets.length === 0
 
   const listRef = useRef<HTMLDivElement>(null)
   const isNoMore = hasNextPage === false
@@ -129,6 +139,17 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
             <div className="flex h-50">
               <LoadingPlaceholder />
             </div>
+          )}
+
+          {datasetsLoad && loadErrorMessage && (
+            <Alert type="error">
+              <AlertTitle>{loadErrorMessage}</AlertTitle>
+              <AlertActions>
+                <Button size="small" loading={datasetsLoad.retrying} onClick={datasetsLoad.retry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </AlertActions>
+            </Alert>
           )}
 
           {hasNoData && (

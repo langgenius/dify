@@ -19,6 +19,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getIconClassName } from '../utils/get-icon'
 import { CreateContent } from './create-content'
 
@@ -60,13 +62,21 @@ export function DatasetMetadataPicker({
   onOpenMetadataManagement,
 }: DatasetMetadataPickerProps) {
   const { t } = useTranslation(['dataset'])
-  const { data: datasetMetaData } = useQuery(
+  const [open, setOpen] = useState(false)
+  const datasetMetaDataQuery = useQuery(
     consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
       input: { params: { dataset_id: datasetId } },
     }),
   )
+  const datasetMetaData = datasetMetaDataQuery.data
+  // A failed load must not look like a dataset without metadata. It renders inside the popover,
+  // so it is claimed only while that is open.
+  const datasetMetaDataLoad = useOwnedQueryErrors(open ? [datasetMetaDataQuery] : [])
+  const loadErrorMessage = useRequestErrorMessage(
+    datasetMetaDataLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
+  )
   const metadataItems = datasetMetaData?.doc_metadata ?? []
-  const [open, setOpen] = useState(false)
   const [view, setView] = useState<PickerView>(PickerView.select)
 
   const resetPickerState = () => {
@@ -144,6 +154,9 @@ export function DatasetMetadataPicker({
             filter={metadataFilter}
           >
             <MetadataPickerSelectPanel
+              loadErrorMessage={loadErrorMessage}
+              retrying={datasetMetaDataLoad?.retrying}
+              onRetry={() => datasetMetaDataLoad?.retry()}
               onStartMetadataCreation={handleStartMetadataCreation}
               onOpenMetadataManagement={handleOpenMetadataManagement}
             />
@@ -162,9 +175,15 @@ export function DatasetMetadataPicker({
 }
 
 function MetadataPickerSelectPanel({
+  loadErrorMessage,
+  retrying,
+  onRetry,
   onStartMetadataCreation,
   onOpenMetadataManagement,
 }: {
+  loadErrorMessage?: string
+  retrying?: boolean
+  onRetry: () => void
   onStartMetadataCreation: () => void
   onOpenMetadataManagement: () => void
 }) {
@@ -187,7 +206,18 @@ function MetadataPickerSelectPanel({
       <ComboboxList<MetadataItem>>
         {(metadata) => <MetadataOption key={metadata.id} metadata={metadata} />}
       </ComboboxList>
-      <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
+      {loadErrorMessage ? (
+        <div role="alert" className="flex items-center gap-2 px-3 py-2">
+          <span className="min-w-0 flex-1 system-xs-regular text-text-tertiary">
+            {loadErrorMessage}
+          </span>
+          <Button size="small" variant="ghost" loading={retrying} onClick={onRetry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      ) : (
+        <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
+      )}
       <ComboboxSeparator />
       <MetadataPickerActions
         onStartMetadataCreation={onStartMetadataCreation}

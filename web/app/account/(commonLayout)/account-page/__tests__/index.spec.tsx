@@ -41,6 +41,7 @@ const renderPage = ({
   isPasswordSet = false,
   passwordLoginEnabled = true,
   withFallback = false,
+  seedApps = true,
 } = {}) => {
   // `withFallback`: like the app's client, a write refreshes its domain in the background.
   const queryClient = createConsoleQueryClient(
@@ -52,12 +53,14 @@ const renderPage = ({
     }).queryKey,
     { data: [], has_more: false, limit: 20, page: 1, total: 0 },
   )
-  queryClient.setQueryData(
-    consoleQuery.apps.get.queryOptions({
-      input: { query: { page: 1, limit: 100, name: '' } },
-    }).queryKey,
-    { data: [], has_more: false, limit: 100, page: 1, total: 0 },
-  )
+  if (seedApps) {
+    queryClient.setQueryData(
+      consoleQuery.apps.get.queryOptions({
+        input: { query: { page: 1, limit: 100, name: '' } },
+      }).queryKey,
+      { data: [], has_more: false, limit: 100, page: 1, total: 0 },
+    )
+  }
 
   renderWithConsoleQuery(
     <NuqsTestingAdapter>
@@ -446,6 +449,45 @@ describe('AccountPage', () => {
       expect(error).not.toHaveBeenCalled()
     },
   )
+
+  it('shows a failed first load of the account apps in place and retries it', async () => {
+    const toastError = vi.spyOn(toast, 'error')
+    const user = userEvent.setup()
+    const appsResponse = () =>
+      new Response(
+        JSON.stringify({
+          data: [{ id: 'app-1', name: 'Support Bot', mode: 'chat', icon_type: 'emoji' }],
+          has_more: false,
+          limit: 100,
+          page: 1,
+          total: 1,
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    let failApps = true
+    mocks.request.mockImplementation(async (url: string) => {
+      if (!url.includes('/apps')) return Response.json(createAccountResponse('Alice Cooper'))
+      if (!failApps) return appsResponse()
+      throw await httpErrorFromResponse(
+        new Response(
+          JSON.stringify({ code: 'apps_unavailable', message: 'Missing', status: 500 }),
+          {
+            status: 500,
+          },
+        ),
+      )
+    })
+    renderPage({ seedApps: false })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('common.api.actionFailed')
+    expect(toastError).not.toHaveBeenCalled()
+
+    failApps = false
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(await screen.findByText(/accountSettings\.account\.showAppLength/)).toBeInTheDocument()
+  })
 
   it('does not offer password editing when password login is disabled', () => {
     renderPage({ passwordLoginEnabled: false })

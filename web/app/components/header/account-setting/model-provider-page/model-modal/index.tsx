@@ -6,6 +6,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -40,6 +41,7 @@ import ModelIcon from '@/app/components/header/account-setting/model-provider-pa
 import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { isAbortError } from '@/utils/is-abort-error'
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../declarations'
@@ -72,7 +74,13 @@ const ModelModal: FC<ModelModalProps> = ({
 }) => {
   const renderI18nObject = useRenderI18nObject()
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
-  const { isLoading, credentialData } = useCredentialData(
+  const {
+    isLoading,
+    credentialData,
+    loadError: credentialLoadError,
+    isRetrying: isRetryingCredential,
+    retry: retryCredential,
+  } = useCredentialData(
     provider,
     providerFormSchemaPredefined,
     isModelCredential,
@@ -96,6 +104,10 @@ const ModelModal: FC<ModelModalProps> = ({
 
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { t } = useTranslation(['common', 'modelProvider'])
+  const credentialLoadErrorMessage = useRequestErrorMessage(
+    credentialLoadError,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
+  )
   const language = useLanguage()
   const { formSchemas, formValues, modelNameAndTypeFormSchemas } = useModelFormSchemas(
     provider,
@@ -328,7 +340,17 @@ const ModelModal: FC<ModelModalProps> = ({
             <LoadingPlaceholder />
           </div>
         )}
-        {!isLoading && showCredentialForm && (
+        {credentialLoadErrorMessage && (
+          <Alert type="error" className="mt-3">
+            <AlertTitle>{credentialLoadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={isRetryingCredential} onClick={retryCredential}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
+        {!isLoading && !credentialLoadErrorMessage && showCredentialForm && (
           <AuthForm
             disabled={doingAction}
             id={formId}
@@ -393,7 +415,9 @@ const ModelModal: FC<ModelModalProps> = ({
           type={showCredentialForm ? 'submit' : 'button'}
           form={showCredentialForm ? formId : undefined}
           onClick={showCredentialForm ? undefined : handleSave}
-          disabled={isLoading || doingAction || !canSaveCredentialChange}
+          disabled={
+            isLoading || !!credentialLoadErrorMessage || doingAction || !canSaveCredentialChange
+          }
         >
           {saveButtonText}
         </Button>

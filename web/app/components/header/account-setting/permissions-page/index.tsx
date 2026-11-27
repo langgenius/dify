@@ -2,6 +2,7 @@
 
 import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
@@ -12,6 +13,8 @@ import { useLocale } from '#i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
@@ -30,7 +33,7 @@ type ModalState = {
 const PAGE_SIZE = 20
 
 const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
-  const { t } = useTranslation(['permission'])
+  const { t } = useTranslation(['permission', 'common'])
   const locale = useLocale()
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -45,13 +48,26 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
 
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-  const { roleGroups, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage, error } =
-    useRoleGroups({
-      page: 1,
-      limit: PAGE_SIZE,
-      include_owner: 1,
-      language,
-    })
+  const {
+    roleGroups,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+    query: roleListQuery,
+  } = useRoleGroups({
+    page: 1,
+    limit: PAGE_SIZE,
+    include_owner: 1,
+    language,
+  })
+  // A failed refetch keeps the list and toasts.
+  const load = useOwnedQueryError(roleListQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    load?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
 
   const { mutateAsync: createWorkspaceRole } = useMutation(
     consoleQuery.workspaces.current.rbac.roles.post.mutationOptions(),
@@ -147,14 +163,25 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
             </div>
           )}
         </div>
-        <RoleList
-          groups={roleGroups}
-          isLoading={isLoading}
-          isFetchingNextPage={isFetchingNextPage}
-          onView={handleView}
-          onEdit={handleEdit}
-          onDelete={openDeleteRole}
-        />
+        {load ? (
+          <Alert type="error">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={load.retrying} onClick={load.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        ) : (
+          <RoleList
+            groups={roleGroups}
+            isLoading={isLoading}
+            isFetchingNextPage={isFetchingNextPage}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={openDeleteRole}
+          />
+        )}
         <div ref={anchorRef} className="h-0" />
       </div>
       <DeleteRoleDialog

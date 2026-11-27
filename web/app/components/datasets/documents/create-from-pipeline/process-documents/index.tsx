@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
 import {
   useConfigurations,
   useInitialData,
@@ -27,23 +28,31 @@ const ProcessDocuments = ({
   onBack,
   ref,
 }: ProcessDocumentsProps) => {
-  const { isFetchingParams, paramsConfig } = useInputVariables(dataSourceNodeId)
+  const { isFetchingParams, paramsConfig, paramsLoadError } = useInputVariables(dataSourceNodeId)
   const initialData = useInitialData(paramsConfig?.variables || [])
   const configurations = useConfigurations(paramsConfig?.variables || [])
   const schema = generateZodSchema(configurations)
 
   return (
     <div className="flex flex-col gap-y-4 pt-4">
-      <Form
-        ref={ref}
-        initialData={initialData}
-        configurations={configurations}
-        schema={schema}
-        onSubmit={onSubmit}
-        onPreview={onPreview}
-        isRunning={isRunning}
+      {paramsLoadError ? (
+        <DatasetLoadErrorAlert {...paramsLoadError} />
+      ) : (
+        <Form
+          ref={ref}
+          initialData={initialData}
+          configurations={configurations}
+          schema={schema}
+          onSubmit={onSubmit}
+          onPreview={onPreview}
+          isRunning={isRunning}
+        />
+      )}
+      <Actions
+        runDisabled={isFetchingParams || isRunning || !!paramsLoadError}
+        onBack={onBack}
+        onProcess={onProcess}
       />
-      <Actions runDisabled={isFetchingParams || isRunning} onBack={onBack} onProcess={onProcess} />
     </div>
   )
 }

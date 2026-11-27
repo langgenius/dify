@@ -2,13 +2,18 @@
 import type { JsonObject } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 type Props = {
   readonly appId: string
@@ -155,16 +160,34 @@ const normalizeWorkflowPreviewGraph = (graph: JsonObject) => {
 }
 
 const FlowAppPreview: FC<Props> = ({ appId, className }) => {
-  const { data, isLoading } = useQuery(
+  const { t } = useTranslation(['common'])
+  const workflowQuery = useQuery(
     consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
       input: { params: { app_id: appId } },
     }),
   )
+  const { data, isLoading } = workflowQuery
+  const workflowLoad = useOwnedQueryError(workflowQuery)
+  const loadErrorMessage = useRequestErrorMessage(workflowLoad?.error)
 
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <LoadingPlaceholder />
+      </div>
+    )
+  }
+  if (workflowLoad && loadErrorMessage) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <Alert type="error" className="w-max max-w-105">
+          <AlertTitle>{loadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={workflowLoad.retrying} onClick={workflowLoad.retry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
       </div>
     )
   }

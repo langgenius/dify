@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { describe, expect, it } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { apiError } from '@/test/fake-api'
 import SummaryIndexSetting from '../summary-index-setting'
 
 const modelProvider = {
@@ -30,8 +31,20 @@ const modelProvider = {
   ],
 } satisfies ProviderWithModelsResponse
 
+const listModels = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': listModels,
+    }),
+  }
+})
+
 type Props = ComponentProps<typeof SummaryIndexSetting>
-const renderSettings = (props: Props) => {
+const renderSettings = (props: Props, { seedModels = true } = {}) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions().queryKey,
@@ -70,12 +83,13 @@ const renderSettings = (props: Props) => {
       quota_used: 0,
     },
   )
-  queryClient.setQueryData(
-    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: { params: { model_type: 'llm' } },
-    }).queryKey,
-    { data: [modelProvider] },
-  )
+  if (seedModels)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+        input: { params: { model_type: 'llm' } },
+      }).queryKey,
+      { data: [modelProvider] },
+    )
   for (const model_type of ['text-embedding', 'rerank', 'speech2text', 'tts'] as const) {
     queryClient.setQueryData(
       consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
@@ -112,6 +126,19 @@ const renderSettings = (props: Props) => {
 describe.each(['knowledge-base', 'dataset-settings', 'create-document'] as const)(
   'summary settings: %s',
   (entry) => {
+    it('shows a failed model catalog load with a retry next to the summary model', async () => {
+      const user = userEvent.setup()
+      listModels
+        .mockReset()
+        .mockRejectedValueOnce(apiError({ status: 503, message: 'Models unavailable' }))
+        .mockResolvedValue({ data: [modelProvider] })
+      renderSettings({ entry, summaryIndexSetting: { enable: true } }, { seedModels: false })
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      expect(listModels).toHaveBeenCalledTimes(2)
+    })
+
     it('enables summaries and saves the chosen model and instructions', async () => {
       const user = userEvent.setup()
       const { onChange } = renderSettings({ entry, summaryIndexSetting: { enable: false } })

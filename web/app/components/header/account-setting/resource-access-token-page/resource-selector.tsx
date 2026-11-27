@@ -11,6 +11,8 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { candidateKey } from './resource-key'
 
 type ResourceTab = 'all' | 'app' | 'knowledge'
@@ -55,6 +57,11 @@ export default function ResourceSelector({
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
     }),
+  )
+  const resourcesLoad = useOwnedQueryErrors([appsQuery, datasetsQuery])
+  const loadErrorMessage = useRequestErrorMessage(
+    resourcesLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const appCandidates = useMemo<ResourceCandidate[]>(() => {
     const candidates: ResourceCandidate[] =
@@ -238,6 +245,17 @@ export default function ResourceSelector({
                 <SkeletonRectangle className="h-8 w-full animate-pulse" />
               </div>
             )}
+            {resourcesLoad && (
+              <div
+                role="alert"
+                className="flex items-center justify-between gap-2 px-3 py-2 system-sm-regular text-text-destructive"
+              >
+                <span className="min-w-0">{loadErrorMessage}</span>
+                <Button size="small" loading={resourcesLoad.retrying} onClick={resourcesLoad.retry}>
+                  {t(($) => $['operation.retry'], { ns: 'common' })}
+                </Button>
+              </div>
+            )}
             {!appsQuery.isPending && !datasetsQuery.isPending && (
               <>
                 <TabsPanel value="all">
@@ -280,6 +298,7 @@ export default function ResourceSelector({
             )}
             {!appsQuery.isPending &&
               !datasetsQuery.isPending &&
+              !resourcesLoad &&
               ((resourceTab === 'all' &&
                 filteredAppCandidates.length === 0 &&
                 filteredKnowledgeCandidates.length === 0) ||

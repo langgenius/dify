@@ -1,15 +1,20 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiCloseLine } from '@remixicon/react'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
 import { formatWorkflowRunIdentifier } from '../../utils'
@@ -62,7 +67,8 @@ const ChatRecord = () => {
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const currentConversationID = historyWorkflowData?.conversation_id
 
-  const { data, isPending } = useQuery(
+  const { t } = useTranslation(['workflow', 'common'])
+  const chatMessagesQuery = useQuery(
     consoleQuery.apps.byAppId.chatMessages.get.queryOptions({
       input: currentConversationID
         ? { params: { app_id: appId }, query: { conversation_id: currentConversationID } }
@@ -70,6 +76,12 @@ const ChatRecord = () => {
       retry: false,
       refetchOnWindowFocus: false,
     }),
+  )
+  const { data, isPending } = chatMessagesQuery
+  const chatMessagesLoad = useOwnedQueryError(chatMessagesQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    chatMessagesLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
   const chatItems = useMemo(() => getFormattedChatList(data?.data ?? []), [data])
   const chatItemTree = useMemo(() => buildChatItemTree(chatItems), [chatItems])
@@ -108,7 +120,24 @@ const ChatRecord = () => {
               <RiCloseLine className="size-4 text-text-tertiary" />
             </div>
           </div>
-          <div className="h-0 grow">
+          {chatMessagesLoad && (
+            <div className="p-4">
+              <Alert type="error">
+                <AlertTitle>{loadErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    loading={chatMessagesLoad.retrying}
+                    onClick={chatMessagesLoad.retry}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            </div>
+          )}
+          <div className={chatMessagesLoad ? 'hidden' : 'h-0 grow'}>
             <Chat
               config={
                 {

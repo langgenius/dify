@@ -5,6 +5,7 @@ import { workspaceRoleListInfiniteOptions } from '../workspace-role-list-query'
 import { formatRoleGroups } from './helpers'
 
 export const useRoleGroups = (params: RoleListRequest) => {
+  const roleListQuery = useInfiniteQuery(workspaceRoleListInfiniteOptions(params))
   const {
     data: roleList,
     isFetchingNextPage,
@@ -12,7 +13,7 @@ export const useRoleGroups = (params: RoleListRequest) => {
     fetchNextPage,
     hasNextPage,
     error,
-  } = useInfiniteQuery(workspaceRoleListInfiniteOptions(params))
+  } = roleListQuery
 
   const roleGroups = useMemo(() => formatRoleGroups(roleList), [roleList])
 
@@ -23,5 +24,7 @@ export const useRoleGroups = (params: RoleListRequest) => {
     fetchNextPage,
     hasNextPage,
     error,
+    /** For a caller that renders a failed first load: pass it to `useOwnedQueryError`. */
+    query: roleListQuery,
   }
 }

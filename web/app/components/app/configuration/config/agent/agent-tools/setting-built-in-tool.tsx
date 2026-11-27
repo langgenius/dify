@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -40,6 +41,8 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 type Props = Readonly<{
   showBackButton?: boolean
@@ -82,7 +85,7 @@ const SettingBuiltInTool: FC<Props> = ({
           ? 'workflow'
           : 'api'
   const toolProvider = consoleQuery.workspaces.current.toolProvider
-  // Failures leave the list empty, as before, so they are not retried.
+  // A failed load is shown in the drawer with a retry, so requests are not retried automatically.
   const builtInTools = useQuery(
     toolProvider.builtin.byProvider.tools.get.queryOptions({
       input: { params: { provider: collection?.name } },
@@ -114,6 +117,11 @@ const SettingBuiltInTool: FC<Props> = ({
         ? workflowTools
         : customTools
   const isLoading = !!toolSource && fetchedTools.isPending
+  const toolsLoad = useOwnedQueryErrors(toolSource ? [fetchedTools] : [])
+  const toolsLoadErrorMessage = useRequestErrorMessage(
+    toolsLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const tools: Tool[] = hasPassedTools ? passedTools : toolSource ? (fetchedTools.data ?? []) : []
   const currTool = tools.find((tool) => tool.name === toolName)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
@@ -310,6 +318,16 @@ const SettingBuiltInTool: FC<Props> = ({
                       />
                     )}
                   </div>
+                  {toolsLoad && toolsLoadErrorMessage && (
+                    <Alert type="error" className="mx-4 mt-3 shrink-0">
+                      <AlertTitle>{toolsLoadErrorMessage}</AlertTitle>
+                      <AlertActions>
+                        <Button size="small" loading={toolsLoad.retrying} onClick={toolsLoad.retry}>
+                          {t(($) => $['operation.retry'], { ns: 'common' })}
+                        </Button>
+                      </AlertActions>
+                    </Alert>
+                  )}
                   <form
                     noValidate
                     className="flex min-h-0 flex-1 flex-col"

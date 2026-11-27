@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Model için birden fazla kimlik bilgisi yapılandırın ve bunları otomatik olarak çağırın. ",
   "modelProvider.loadBalancingInfo": "Varsayılan olarak, yük dengeleme Yuvarlakrobin stratejisini kullanır. Hız sınırlaması tetiklenirse, 1 dakikalık bir soğuma süresi uygulanacaktır.",
   "modelProvider.loadBalancingLeastKeyWarning": "Yük dengeleme etkinleştirmek için en az 2 anahtar etkinleştirilmelidir.",
+  "modelProvider.loadFailed": "Yüklenemedi. Lütfen tekrar deneyin.",
   "modelProvider.loadPresets": "Hazır Ayarları Yükle",
   "modelProvider.model": "Model",
   "modelProvider.modelHasBeenDeprecated": "Bu model kullanım dışıdır",

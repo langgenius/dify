@@ -12,23 +12,60 @@ import WorkflowToolStateLabel from './state-label'
 type WorkflowToolActionProps = {
   disabled: boolean
   isLoading: boolean
+  isRetrying?: boolean
+  loadError?: string
   message?: string
   outdated: boolean
   published: boolean
   onConfigure: () => void
+  onRetry?: () => void
 }
 
 const WorkflowToolAction = ({
   disabled,
   isLoading,
+  isRetrying = false,
+  loadError,
   message,
   outdated,
   published,
   onConfigure,
+  onRetry,
 }: WorkflowToolActionProps) => {
-  const { t } = useTranslation(['appApi', 'workflow', 'navigation'])
+  const { t } = useTranslation(['appApi', 'workflow', 'navigation', 'common'])
   const disabledReason = disabled ? message : undefined
   const workflowToolLabel = t(($) => $['common.workflowAsTool'], { ns: 'navigation' })
+
+  // A published tool whose detail failed to load cannot be configured from empty parameters.
+  if (published && loadError)
+    return (
+      <div className="flex w-full items-start gap-2 rounded-lg p-1">
+        <span
+          aria-hidden
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg text-text-secondary shadow-xs"
+        >
+          <span className="i-ri-hammer-line size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-h-7 items-center pe-1 pt-1 pb-1">
+            <span
+              className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary"
+              title={workflowToolLabel}
+            >
+              {workflowToolLabel}
+            </span>
+          </div>
+          <div role="alert" className="flex items-center gap-2 pe-1 pb-1">
+            <span className="min-w-0 flex-1 system-xs-regular text-text-destructive">
+              {loadError}
+            </span>
+            <Button variant="secondary" size="small" loading={isRetrying} onClick={onRetry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
 
   if (!published || isLoading)
     return (

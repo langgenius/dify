@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/features/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
+import { isErrorHandled } from '@/service/handled-error'
 import { getKnowledgeFsUploadQuotaFailure } from '../quota'
 
 const request = vi.hoisted(() => vi.fn())
@@ -39,7 +40,7 @@ describe('KnowledgeFS upload quota preflight', () => {
     vi.restoreAllMocks()
   })
 
-  it('allows uploads with remaining capacity and keeps both reads out of the error toast', async () => {
+  it('allows uploads with remaining capacity without silencing the shared reads', async () => {
     await expect(getKnowledgeFsUploadQuotaFailure(queryClient)).resolves.toBeUndefined()
 
     expect(request).toHaveBeenCalledTimes(2)
@@ -49,7 +50,8 @@ describe('KnowledgeFS upload quota preflight', () => {
     ])
     const queries = queryClient.getQueryCache().getAll()
     expect(queries).toHaveLength(2)
-    for (const query of queries) expect(query.meta).toMatchObject({ errorToast: false })
+    // The features reads are shared: an opt-out here would also silence their later refetches.
+    for (const query of queries) expect(query.meta?.errorToast).toBeUndefined()
   })
 
   it.each([
@@ -95,12 +97,16 @@ describe('KnowledgeFS upload quota preflight', () => {
   })
 
   it('reports document quota lookup failure without retrying or querying vector usage', async () => {
-    request.mockRejectedValue(new Error('Service unavailable'))
+    const failure = new Error('Service unavailable')
+    request.mockRejectedValue(failure)
 
     await expect(getKnowledgeFsUploadQuotaFailure(queryClient)).resolves.toBe(
       'taskFailure.documentCountQuotaUnavailable',
     )
     expect(request).toHaveBeenCalledTimes(1)
+    // The upload presents it as its own task failure, so the cache's report stays silent.
+    const [query] = queryClient.getQueryCache().getAll()
+    expect(isErrorHandled(query?.state.error)).toBe(true)
   })
 
   it('reports vector quota lookup failure without retrying', async () => {

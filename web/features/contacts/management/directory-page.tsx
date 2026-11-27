@@ -46,6 +46,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
@@ -248,9 +249,12 @@ export function ContactsDirectoryPage() {
         Boolean(context.workspaceId) &&
         context.permissions.canViewContacts &&
         context.imCentrallyManaged !== undefined,
-      meta: { errorToast: false },
     }),
   )
+  // A failed first load replaces the directory and a failed next page shows beside the loaded
+  // contacts; a failed refresh keeps the contacts and is the query cache's to report.
+  const directoryLoad = useOwnedQueryError(directoryQuery)
+  const directoryPage = useOwnedNextPageError(directoryQuery)
   const contacts = [
     ...new Map(
       (directoryQuery.data?.pages.flatMap((page) => page.data) ?? []).map((contact) => [
@@ -270,7 +274,6 @@ export function ContactsDirectoryPage() {
         im_binding_details: response.im_binding_details,
       }),
       retry: false,
-      meta: { errorToast: false },
     }),
   )
   const kinds = ['workspace', 'platform', 'external'] as const
@@ -303,7 +306,9 @@ export function ContactsDirectoryPage() {
   )
   const hasFilters = Boolean(search) || kind !== 'all'
   const selectedContact = detailsQuery.data
-  const detailsFailed = detailsQuery.isError && !isNotFoundError(detailsQuery.error)
+  // The details panel replaces a contact it could not load with "not found" or the load error.
+  const detailsLoad = useOwnedQueryError(detailsQuery)
+  const detailsFailed = detailsLoad && !isNotFoundError(detailsLoad.error) ? detailsLoad : undefined
   const selectedContactId = selectedContact?.id
   const removableContactIds = contacts
     .filter((contact) => contact.type !== 'workspace')
@@ -544,15 +549,15 @@ export function ContactsDirectoryPage() {
               className={cn('flex min-h-full flex-col', selectedContactIds.length > 0 && 'pb-24')}
             >
               {directoryQuery.isPending && <DirectoryLoading />}
-              {directoryQuery.isError && !contacts.length && (
+              {directoryLoad && (
                 <DirectoryState
                   action={
-                    <Button onClick={() => directoryQuery.refetch()}>
+                    <Button loading={directoryLoad.retrying} onClick={directoryLoad.retry}>
                       {t(($) => $['action.retry'])}
                     </Button>
                   }
                   description={describeRequestError(
-                    directoryQuery.error,
+                    directoryLoad.error,
                     t(($) => $['directory.errorDescription']),
                   )}
                   icon="i-ri-error-warning-line"
@@ -659,11 +664,11 @@ export function ContactsDirectoryPage() {
                   {directoryQuery.isFetchingNextPage && <LoadingPlaceholder className="py-3" />}
                   {directoryQuery.hasNextPage && (
                     <>
-                      {directoryQuery.isFetchNextPageError && (
+                      {directoryPage && (
                         <div className="flex flex-col items-center gap-2 p-3">
                           <p role="alert" className="system-xs-regular text-text-destructive">
                             {describeRequestError(
-                              directoryQuery.error,
+                              directoryPage.error,
                               t(($) => $['directory.pageError']),
                             )}
                           </p>
@@ -731,19 +736,21 @@ export function ContactsDirectoryPage() {
               </div>
             ) : (
               <p
-                role={detailsQuery.isError ? 'alert' : undefined}
+                role={detailsLoad ? 'alert' : undefined}
                 className="my-auto text-center system-sm-regular text-text-tertiary"
               >
                 {detailsFailed
                   ? describeRequestError(
-                      detailsQuery.error,
+                      detailsFailed.error,
                       t(($) => $['details.error']),
                     )
                   : t(($) => $['details.notFound'])}
               </p>
             )}
             {detailsFailed && (
-              <Button onClick={() => detailsQuery.refetch()}>{t(($) => $['action.retry'])}</Button>
+              <Button loading={detailsFailed.retrying} onClick={detailsFailed.retry}>
+                {t(($) => $['action.retry'])}
+              </Button>
             )}
           </section>
         )}

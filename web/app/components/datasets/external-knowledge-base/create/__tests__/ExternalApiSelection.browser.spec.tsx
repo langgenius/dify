@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConfigurationModalTestWrapper } from '@/test/configuration-modals-browser'
-import { setupFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import ExternalApiSelection from '../ExternalApiSelection'
 
@@ -109,3 +109,17 @@ it.each(['empty list', 'selector'] as const)(
     }
   },
 )
+
+it('shows a failed first load with a retry instead of offering to create the first API', async () => {
+  fake.console.datasets.externalKnowledgeApi.get.mockRejectedValueOnce(
+    apiError({ status: 503, message: 'APIs unavailable' }),
+  )
+  const screen = await setup()
+
+  await expect.element(screen.getByRole('alert').getByText('dataset.loadError')).toBeVisible()
+  await expect.element(screen.getByText('dataset.noExternalKnowledge')).not.toBeInTheDocument()
+  await screen.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect
+    .element(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+    .toHaveTextContent('API One')
+})

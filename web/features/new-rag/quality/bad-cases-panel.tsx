@@ -390,7 +390,7 @@ export function BadCasesPanel() {
         <div className="flex min-h-105 items-center justify-center">
           <LoadingPlaceholder />
         </div>
-      ) : query.isError ? (
+      ) : query.isError && !query.data ? (
         <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
           <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
           <p role="alert" className="system-sm-medium text-text-primary">

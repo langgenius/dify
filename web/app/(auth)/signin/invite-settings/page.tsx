@@ -1,6 +1,6 @@
 'use client'
 import type { Locale } from '@/i18n'
-import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -32,7 +32,11 @@ import { languages } from '@/i18n/language'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
-import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import {
+  useRequestErrorDescriber,
+  useRequestErrorMessage,
+} from '@/service/use-request-error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -78,12 +82,18 @@ export default function InviteSettingsPage() {
       token,
     },
   }
-  const { data: checkRes, refetch: recheck } = useQuery(
+  const checkQuery = useQuery(
     consoleQuery.activate.check.get.queryOptions({
       input: { query: checkParams.params },
       enabled: !!token,
       retry: false,
     }),
+  )
+  const { data: checkRes, refetch: recheck } = checkQuery
+  const checkLoad = useOwnedQueryError(checkQuery)
+  const checkErrorMessage = useRequestErrorMessage(
+    checkLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const isInvitationForCurrentAccount = isInvitationForAccount(
     checkRes?.data?.email,
@@ -177,6 +187,18 @@ export default function InviteSettingsPage() {
     router,
   ])
 
+  if (!isProfilePending && checkLoad) {
+    return (
+      <Alert type="error">
+        <AlertTitle>{checkErrorMessage}</AlertTitle>
+        <AlertActions>
+          <Button size="small" loading={checkLoad.retrying} onClick={checkLoad.retry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </AlertActions>
+      </Alert>
+    )
+  }
   if (isProfilePending || shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
   if (!checkRes.is_valid) {
     return (

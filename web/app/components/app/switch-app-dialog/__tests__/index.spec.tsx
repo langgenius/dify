@@ -4,7 +4,7 @@ import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFeaturesFixture, renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { SwitchAppDialogContent } from '../index'
 import { useSwitchAppMutation } from '../use-switch-app-mutation'
@@ -23,6 +23,7 @@ vi.mock('@/next/navigation', () => ({
 
 const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
 const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
+const mockFeatures = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -32,6 +33,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.convertToWorkflow.post': (input) => mockConvertToWorkflow(input),
       'apps.byAppId.delete': (input) => mockDeleteOriginalApp(input),
+      'features.get': () => mockFeatures(),
     }),
   }
 })
@@ -154,10 +156,12 @@ const renderComponent = (overrides: Partial<SwitchAppDialogProps> = {}) => {
   }
 }
 
-function render(ui: ReactElement) {
+function render(ui: ReactElement, { withFeatures = true } = {}) {
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: deploymentEdition },
-    features: { apps: { size: mockPlan.usage.buildApps, limit: mockPlan.total.buildApps } },
+    features: withFeatures
+      ? { apps: { size: mockPlan.usage.buildApps, limit: mockPlan.total.buildApps } }
+      : null,
   })
 }
 
@@ -196,6 +200,27 @@ describe('SwitchAppDialogContent', () => {
       renderComponent({ open: false })
 
       expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Quota load failure', () => {
+    it('should show a failed quota load with a retry and keep the switch disabled', async () => {
+      const user = userEvent.setup()
+      mockFeatures.mockRejectedValueOnce(new Error('Offline')).mockResolvedValue(
+        createFeaturesFixture({
+          apps: { size: mockPlan.usage.buildApps, limit: mockPlan.total.buildApps },
+        }),
+      )
+      render(<SwitchAppDialog open sourceApp={createMockApp()} onClose={vi.fn()} />, {
+        withFeatures: false,
+      })
+
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('common.api.actionFailed')
+      expect(screen.getByRole('button', { name: 'app.switchStart' })).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'app.switchStart' })).toBeEnabled()
     })
   })
 

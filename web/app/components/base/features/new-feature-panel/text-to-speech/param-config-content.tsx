@@ -1,6 +1,7 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   Select,
@@ -24,6 +25,8 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import { languages } from '@/i18n/language'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { TtsAutoPlay } from '@/types/app'
 
 type SelectOption = {
@@ -56,7 +59,7 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
     languageItem?.name || t(($) => $['placeholder.select'], { ns: 'common' })
 
   const language = languageItem?.value
-  const { data: voiceItems } = useQuery(
+  const voicesQuery = useQuery(
     params.agentId
       ? consoleQuery.agent.byAgentId.textToAudio.voices.get.queryOptions({
           input: {
@@ -73,6 +76,9 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
             : skipToken,
         }),
   )
+  const voiceItems = voicesQuery.data
+  const voicesLoad = useOwnedQueryError(voicesQuery)
+  const voicesLoadErrorMessage = useRequestErrorMessage(voicesLoad?.error)
   let voiceItem = voiceItems?.find((item) => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem) voiceItem = voiceItems[0]
   const localVoicePlaceholder =
@@ -198,6 +204,21 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
             </div>
           )}
         </div>
+        {voicesLoad && voicesLoadErrorMessage && (
+          <div role="alert" className="mt-1 flex items-center gap-1">
+            <span className="min-w-0 grow system-xs-regular text-text-destructive">
+              {voicesLoadErrorMessage}
+            </span>
+            <Button
+              size="small"
+              variant="ghost"
+              loading={voicesLoad.retrying}
+              onClick={voicesLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
       </div>
       <div>
         <div className="mb-1 py-1 system-sm-semibold text-text-secondary">

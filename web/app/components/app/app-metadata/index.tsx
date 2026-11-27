@@ -3,6 +3,7 @@
 import type { AppPartial, UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DialogBody,
@@ -40,6 +41,8 @@ import {
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
@@ -76,13 +79,19 @@ export function AppMetadataForm({
   const [source] = useState(appDetail)
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
   const isEdit = operation === 'edit'
-  const { data: quota } = useQuery(
+  const quotaQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: !isEdit,
       select: (data) => getCountQuota(data.apps),
     }),
   )
+  const quota = quotaQuery.data
   const quotaUnavailable = !isEdit && !quota
+  const quotaLoad = useOwnedQueryErrors(isEdit ? [] : [quotaQuery])
+  const quotaErrorMessage = useRequestErrorMessage(
+    quotaLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const isFull = !isEdit && !!quota && isQuotaReached(quota)
   const icon: IconPickerInputValue | undefined =
     selectedIcon ??
@@ -249,6 +258,16 @@ export function AppMetadataForm({
           <AppsFull
             loc={operation === 'duplicate' ? 'app-duplicate-create' : 'app-explore-create'}
           />
+        )}
+        {quotaLoad && quotaErrorMessage && (
+          <Alert type="error">
+            <AlertTitle>{quotaErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={quotaLoad.retrying} onClick={quotaLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
         )}
         {error && (
           <p role="alert" className="body-sm-regular text-text-destructive">

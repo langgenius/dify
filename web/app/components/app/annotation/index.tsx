@@ -3,6 +3,8 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryParam } from './filter'
 import type { AnnotationReplyConfig } from '@/models/debug'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -22,6 +24,9 @@ import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { updateAnnotationStatus } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { rethrowHandled } from '@/service/handled-error'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { sleep } from '@/utils'
 import { getErrorMessage } from '@/utils/error-message'
 import PageTitle from '../log-annotation/page-title'
@@ -56,7 +61,7 @@ function Annotation({ appDetail }: AnnotationProps) {
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   const annotationSettingInput = { params: { app_id: appDetail.id } }
-  const { data: annotationConfig } = useQuery(
+  const annotationConfigQuery = useQuery(
     consoleQuery.apps.byAppId.annotationSetting.get.queryOptions({
       input: annotationSettingInput,
       enabled: isChatApp,
@@ -65,23 +70,21 @@ function Annotation({ appDetail }: AnnotationProps) {
       select: (data) => data as AnnotationReplyConfig,
     }),
   )
+  const annotationConfig = annotationConfigQuery.data
   // Reloads after a settings change are reported by their callers.
   const fetchAnnotationConfig = async () => {
-    const res = await queryClient.query(
-      consoleQuery.apps.byAppId.annotationSetting.get.queryOptions({
-        input: annotationSettingInput,
-        meta: { errorToast: false },
-        staleTime: 0,
-      }),
-    )
+    const res = await queryClient
+      .query(
+        consoleQuery.apps.byAppId.annotationSetting.get.queryOptions({
+          input: annotationSettingInput,
+          staleTime: 0,
+        }),
+      )
+      .catch(rethrowHandled)
     return (res as AnnotationReplyConfig).id
   }
 
-  const {
-    data: annotationPage,
-    isFetching: isLoading,
-    isPlaceholderData,
-  } = useQuery(
+  const annotationsQuery = useQuery(
     consoleQuery.apps.byAppId.annotations.get.queryOptions({
       input: {
         params: { app_id: appDetail.id },
@@ -91,6 +94,12 @@ function Annotation({ appDetail }: AnnotationProps) {
       staleTime: 0,
       placeholderData: keepPreviousData,
     }),
+  )
+  const { data: annotationPage, isFetching: isLoading, isPlaceholderData } = annotationsQuery
+  const failedLoad = useOwnedQueryErrors([annotationsQuery, annotationConfigQuery])
+  const loadErrorMessage = useRequestErrorMessage(
+    failedLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const list = annotationPage?.data ?? []
   const total = annotationPage?.total ?? 0
@@ -227,14 +236,26 @@ function Annotation({ appDetail }: AnnotationProps) {
             />
           </div>
         </Filter>
-        <List
-          isLoading={isLoading}
-          appId={appDetail.id}
-          list={list}
-          selectedIds={selectedIds}
-          onSelectedIdsChange={setSelectedIds}
-          onBatchDelete={handleBatchDelete}
-        />
+        {failedLoad && loadErrorMessage && (
+          <Alert type="error" className="mt-2 shrink-0">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={failedLoad.retrying} onClick={failedLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
+        {!(annotationsQuery.isError && !annotationPage) && (
+          <List
+            isLoading={isLoading}
+            appId={appDetail.id}
+            list={list}
+            selectedIds={selectedIds}
+            onSelectedIdsChange={setSelectedIds}
+            onBatchDelete={handleBatchDelete}
+          />
+        )}
         {/* Show Pagination only if the total is more than the limit */}
         {total && total > APP_PAGE_LIMIT ? (
           <Pagination

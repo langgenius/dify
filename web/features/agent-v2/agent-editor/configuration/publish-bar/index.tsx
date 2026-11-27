@@ -140,6 +140,7 @@ export function AgentConfigurePublishBar({
           agent_id: agentId,
         },
       },
+      // A prefetch for the publish check, which reports its own failed read.
       meta: { errorToast: false },
       enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
     })

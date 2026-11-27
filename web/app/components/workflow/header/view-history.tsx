@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -10,6 +11,8 @@ import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-inpu
 import { editorResourceAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
@@ -39,10 +42,17 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) 
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
-  const { data, isLoading } = useQuery({
+  const historyQuery = useQuery({
     ...workflowRunHistoryQueryOptions(resource),
     enabled: open,
   })
+  const { data, isLoading } = historyQuery
+  // A failure that settles after the popover closes is not on screen, so it is not claimed.
+  const historyLoad = useOwnedQueryErrors(open ? [historyQuery] : [])
+  const loadErrorMessage = useRequestErrorMessage(
+    historyLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -116,7 +126,23 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) 
               <LoadingPlaceholder />
             </div>
           )}
-          {!isLoading && (
+          {!isLoading && historyLoad && (
+            <div
+              role="alert"
+              className="flex items-center gap-1 px-4 py-3 system-xs-regular text-text-destructive"
+            >
+              <span className="min-w-0 wrap-break-word">{loadErrorMessage}</span>
+              <Button
+                size="small"
+                variant="ghost"
+                loading={historyLoad.retrying}
+                onClick={historyLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          )}
+          {!isLoading && !historyLoad && (
             <div className="p-2">
               {!data?.data.length && (
                 <div className="py-12">

@@ -20,6 +20,7 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import { DatasetLoadErrorAlert } from '@/app/components/datasets/common/load-error-alert'
 import {
   MultimodalRetrievalGuidance,
   MultimodalRetrievalGuidanceLearnMore,
@@ -41,6 +42,9 @@ type IndexingModeSectionProps = {
   docForm: ChunkingMode
   embeddingModel: DefaultModel
   embeddingModelList?: ProviderWithModelsResponse[]
+  embeddingModelLoadError?: { error: unknown; retrying: boolean; onRetry: () => void }
+  /** A failed first load of the rerank models or the default models these settings start from. */
+  modelDefaultsLoadError?: { error: unknown; retrying: boolean; onRetry: () => void }
   retrievalConfig: RetrievalConfig
   showMultiModalTip: boolean
   // Flags
@@ -62,6 +66,8 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
   docForm,
   embeddingModel,
   embeddingModelList,
+  embeddingModelLoadError,
+  modelDefaultsLoadError,
   retrievalConfig,
   showMultiModalTip,
   isModelAndRetrievalConfigDisabled,
@@ -213,6 +219,9 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             models={embeddingModelList ?? []}
             onValueChange={onEmbeddingModelChange}
           />
+          {embeddingModelLoadError && (
+            <DatasetLoadErrorAlert className="mt-2" {...embeddingModelLoadError} />
+          )}
           {isModelAndRetrievalConfigDisabled && (
             <div className="mt-2 system-xs-medium text-text-tertiary">
               {t(($) => $['stepTwo.indexSettingTip'], { ns: 'datasetCreation' })}
@@ -256,6 +265,9 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           </div>
         )}
 
+        {modelDefaultsLoadError && getIndexingTechnique() === IndexingType.QUALIFIED && (
+          <DatasetLoadErrorAlert className="mb-2" {...modelDefaultsLoadError} />
+        )}
         <div>
           {getIndexingTechnique() === IndexingType.QUALIFIED ? (
             <RetrievalMethodConfig

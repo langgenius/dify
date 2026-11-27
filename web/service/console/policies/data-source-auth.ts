@@ -71,6 +71,8 @@ export function dataSourceAuthPolicies(
             preview: {
               get: {
                 queryOptions: {
+                  // The preview replaces its content with an inline error and retry, also on a
+                  // failed refetch.
                   meta: { errorToast: false },
                   retry: false,
                   staleTime: 0,

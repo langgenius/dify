@@ -4,10 +4,15 @@ import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.ge
 import type { ReactNode, Ref } from 'react'
 import type { AgentChatMessageSender, AgentPreviewChatController } from './chat-conversation'
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getFormattedAgentDebugChatTree } from './chat-history'
 import { AgentPreviewChatSession } from './chat-session'
 
@@ -72,6 +77,7 @@ export function AgentChatRuntime({
     },
     [onClearChatListChange],
   )
+  const { t } = useTranslation(['common'])
   const historyQuery = useQuery(
     consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
       input: conversationId
@@ -92,8 +98,29 @@ export function AgentChatRuntime({
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
+  // The current session's chat renders from its own state, so only another conversation's history
+  // load owns its failure.
+  const historyLoad = useOwnedQueryErrors(conversationBelongsToCurrentSession ? [] : [historyQuery])
+  const historyErrorMessage = useRequestErrorMessage(
+    historyLoad?.error,
+    t(($) => $['api.actionFailed']),
+  )
   if (conversationId && historyQuery.isPending && !conversationBelongsToCurrentSession) {
     return <LoadingPlaceholder className="h-full" />
+  }
+  if (historyErrorMessage) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <Alert type="error">
+          <AlertTitle>{historyErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={historyLoad?.retrying} onClick={historyLoad?.retry}>
+              {t(($) => $['operation.retry'])}
+            </Button>
+          </AlertActions>
+        </Alert>
+      </div>
+    )
   }
   const inputSessionKey =
     !conversationId || conversationBelongsToCurrentSession ? 'current-session' : conversationId

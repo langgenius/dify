@@ -8,6 +8,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { hasPermission } from '@/utils/permission'
 
@@ -15,11 +16,12 @@ const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
 const useWebAppBrand = () => {
   const { t } = useTranslation(['common'])
   const describeRequestError = useRequestErrorDescriber()
-  const { data: canReplaceLogo } = useQuery(
+  const featuresQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => data.can_replace_logo,
     }),
   )
+  const { data: canReplaceLogo } = featuresQuery
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
@@ -35,6 +37,12 @@ const useWebAppBrand = () => {
   const webappBrandRemoved = customConfig?.remove_webapp_brand ?? undefined
   const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
   const isCustomConfigUnavailable = customConfig === undefined || canReplaceLogo === undefined
+  // The controls stay disabled until both reads load, so a failed first load says why. The only
+  // caller renders it, so it is claimed here.
+  const customConfigLoad = useOwnedQueryErrors([customConfigQuery, featuresQuery])
+  const customConfigLoadError = customConfigLoad?.error
+  const customConfigRetrying = customConfigLoad?.retrying ?? false
+  const retryCustomConfig = () => customConfigLoad?.retry()
   const uploadDisabled =
     isCustomConfigUnavailable || !canReplaceLogo || webappBrandRemoved || !canManageCustomBrand
   const workspaceLogo = systemFeatures.branding.enabled
@@ -111,6 +119,9 @@ const useWebAppBrand = () => {
     webappLogo,
     webappBrandRemoved,
     isCustomConfigUnavailable,
+    customConfigLoadError,
+    customConfigRetrying,
+    retryCustomConfig,
     uploadDisabled,
     workspaceLogo,
     canReplaceLogo,

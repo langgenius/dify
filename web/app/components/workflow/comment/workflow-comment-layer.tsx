@@ -22,6 +22,7 @@ import {
 } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { trackCollabCommentSent } from '@/app/components/workflow/collaboration/analytics'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
@@ -31,6 +32,8 @@ import {
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { useStore, useWorkflowStore } from '../store'
 import { ControlMode } from '../types'
 import { CommentIcon } from './comment-icon'
@@ -489,6 +492,12 @@ function ShownThread({
       staleTime: () => (isWritingComments(queryClient, params.app_id) ? Infinity : 0),
     }),
   )
+  const { t } = useTranslation(['workflow'])
+  const detailLoad = useOwnedQueryError(detailQuery)
+  const detailLoadErrorMessage = useRequestErrorMessage(
+    detailLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
 
   // A saved reply keeps the key of its send row, so the row is not remounted.
   const [sentKeys, setSentKeys] = useState<ReadonlyMap<string, string>>(() => new Map())
@@ -659,6 +668,11 @@ function ShownThread({
     <CommentThread
       comment={comment}
       loading={detailQuery.isPlaceholderData}
+      loadError={
+        detailLoad && detailLoadErrorMessage
+          ? { message: detailLoadErrorMessage, onRetry: detailLoad.retry }
+          : undefined
+      }
       onResolve={() => resolveComment.mutate({ params })}
       onDelete={async () => {
         try {

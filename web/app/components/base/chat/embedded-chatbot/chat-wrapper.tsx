@@ -28,6 +28,7 @@ import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
+import ChatLoadError from '../load-error'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
 import { isDify } from './utils'
@@ -58,6 +59,9 @@ const ChatWrapper = () => {
     setIsResponding,
     allInputsHidden,
     initUserVariables,
+    chatLoadError,
+    chatLoadRetrying,
+    retryChatLoad,
     appSourceType,
   } = useEmbeddedChatbotContext()
 
@@ -450,6 +454,18 @@ const ChatWrapper = () => {
       : appId
         ? { type: 'app' as const, appId, appSourceType }
         : undefined
+
+  if (chatLoadError) {
+    return (
+      <div className="p-4">
+        <ChatLoadError
+          error={chatLoadError}
+          isRetrying={chatLoadRetrying}
+          onRetry={() => retryChatLoad?.()}
+        />
+      </div>
+    )
+  }
 
   return (
     <Chat

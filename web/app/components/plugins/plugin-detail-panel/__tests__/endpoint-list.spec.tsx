@@ -89,6 +89,24 @@ describe('Endpoint management', () => {
     expect(requestedURL.searchParams.get('page_size')).toBe('100')
   })
 
+  it('says why the endpoints failed to load, without a toast, and retries the load', async () => {
+    const user = userEvent.setup()
+    request.mockImplementationOnce(async () => {
+      throw await httpErrorFromResponse(
+        Response.json({ message: 'Endpoints unavailable' }, { status: 400 }),
+      )
+    })
+    renderEndpoints()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Endpoints unavailable')
+    expect(showError).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('Endpoint 1')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('creates through the canonical route and refreshes the list', async () => {
     const user = userEvent.setup()
     endpoints = []

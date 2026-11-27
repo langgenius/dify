@@ -4,6 +4,7 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import type { MutationFilters } from '@tanstack/react-query'
 import type { PublishedWorkflow } from '../shared/utils'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -26,6 +27,8 @@ import { selectMCPServerDetail } from '@/app/components/tools/utils/query-select
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
@@ -58,7 +61,13 @@ export function MCPAccessPointCard({
     enabled: Boolean(appInfo.id),
     select: selectMCPServerDetail,
   })
-  const { data: detail, isPending: serverDetailLoading } = useQuery(serverDetailQueryOptions)
+  const serverDetailQuery = useQuery(serverDetailQueryOptions)
+  const { data: detail, isPending: serverDetailLoading } = serverDetailQuery
+  const serverDetailLoad = useOwnedQueryError(serverDetailQuery)
+  const serverDetailErrorMessage = useRequestErrorMessage(
+    serverDetailLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'deployments' }),
+  )
   const updateServerMutation = useMutation(
     consoleQuery.apps.byAppId.server.put.mutationOptions({
       meta: { errorToast: false },
@@ -108,7 +117,7 @@ export function MCPAccessPointCard({
     : '***********'
   const workflowNodes = getPublishedWorkflowNodes(workflow)
   const loading = serverDetailLoading || availability === 'loading'
-  const unavailable = !loading && availability === 'unavailable'
+  const unavailable = !loading && (availability === 'unavailable' || Boolean(serverDetailLoad))
 
   const basicAppInputs = useMemo(() => {
     if (!basicApp || !basicAppInputForm) return []
@@ -197,6 +206,20 @@ export function MCPAccessPointCard({
           </Button>
         }
       >
+        {serverDetailLoad && serverDetailErrorMessage && (
+          <Alert type="error" className="mx-4 mt-3">
+            <AlertTitle>{serverDetailErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button
+                size="small"
+                loading={serverDetailLoad.retrying}
+                onClick={serverDetailLoad.retry}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        )}
         <AccessPointUrl
           label={t(($) => $['mcp.server.url'], { ns: 'tools' })}
           value={serverUrl}

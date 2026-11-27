@@ -13,6 +13,8 @@ import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-
 import { useMarketplace } from '@/features/marketplace/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import List from './list'
 
 type RAGToolRecommendationsProps = {
@@ -26,19 +28,29 @@ export function RAGToolRecommendations({
   onSelect,
   onLoadMore,
 }: RAGToolRecommendationsProps) {
-  const { t } = useTranslation(['common', 'pipeline'])
+  const { t } = useTranslation(['common', 'pipeline', 'workflow'])
   const [isCollapsed, setIsCollapsed] = useRAGRecommendationsCollapsed()
   const marketplace = useMarketplace()
+
+  const ragRecommendedPluginsQuery = useQuery(
+    consoleQuery.rag.pipelines.recommendedPlugins.get.queryOptions({
+      input: { query: { type: 'tool' } },
+      select: selectRAGRecommendedPlugins,
+    }),
+  )
 
   const {
     data: ragRecommendedPlugins,
     isLoading: isLoadingRAGRecommendedPlugins,
     isFetching: isFetchingRAGRecommendedPlugins,
-  } = useQuery(
-    consoleQuery.rag.pipelines.recommendedPlugins.get.queryOptions({
-      input: { query: { type: 'tool' } },
-      select: selectRAGRecommendedPlugins,
-    }),
+  } = ragRecommendedPluginsQuery
+  // The error renders in the expanded section, so it is claimed only while that is expanded.
+  const ragRecommendedPluginsLoad = useOwnedQueryErrors(
+    isCollapsed ? [] : [ragRecommendedPluginsQuery],
+  )
+  const loadErrorMessage = useRequestErrorMessage(
+    ragRecommendedPluginsLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
 
   const recommendedPlugins = useMemo(() => {
@@ -79,7 +91,19 @@ export function RAGToolRecommendations({
               <LoadingPlaceholder className="h-full" />
             </div>
           )}
+          {ragRecommendedPluginsLoad && !ragRecommendedPluginsLoad.retrying && (
+            <div
+              role="alert"
+              className="flex items-center gap-1 px-3 py-1 system-xs-regular text-text-destructive"
+            >
+              <span className="min-w-0 wrap-break-word">{loadErrorMessage}</span>
+              <Button size="small" variant="ghost" onClick={ragRecommendedPluginsLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          )}
           {marketplace &&
+            !ragRecommendedPluginsLoad &&
             !isFetchingRAGRecommendedPlugins &&
             recommendedPlugins.length === 0 &&
             unInstalledPlugins.length === 0 && (

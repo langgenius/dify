@@ -2,6 +2,7 @@ import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { ToolsContentInset } from '../content-inset'
 import type { useToolMarketplace } from './hooks'
 import type { MarketplaceLinks } from '@/features/marketplace/links'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
@@ -36,8 +37,16 @@ const Marketplace = ({
   const theme = useResolvedTheme()
   const router = useRouter()
   const { canInstallPlugin } = usePluginSettingsAccess()
-  const { isLoading, marketplaceCollections, marketplaceCollectionPluginsMap, plugins, page } =
-    marketplaceContext
+  const {
+    isLoading,
+    isLoadFailed,
+    isRetrying,
+    retryLoad,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
+    plugins,
+    page,
+  } = marketplaceContext
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const marketplaceFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
   const cardContainerClassName = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'
@@ -124,7 +133,18 @@ const Marketplace = ({
             <LoadingPlaceholder />
           </div>
         )}
-        {(!isLoading || page > 1) && (
+        {isLoadFailed && !isLoading && (
+          <div
+            role="alert"
+            className="flex min-h-60 flex-col items-center justify-center gap-3 system-sm-regular text-text-tertiary"
+          >
+            <span>{t(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
+            <Button size="small" variant="secondary" loading={isRetrying} onClick={retryLoad}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
+        {!isLoadFailed && (!isLoading || page > 1) && (
           <div className={marketplaceFrameClassName}>
             <List
               marketplaceCollections={marketplaceCollections || []}

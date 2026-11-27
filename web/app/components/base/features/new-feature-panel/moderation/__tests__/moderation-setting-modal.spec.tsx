@@ -10,7 +10,9 @@ import { buildConfigurationDatasetConfigs } from '@/app/components/app/configura
 import { createPublishHandler } from '@/app/components/app/configuration/hooks/configuration-lifecycle/publish'
 import { buildPublishedConfig } from '@/app/components/app/configuration/hooks/configuration-lifecycle/published-config'
 import { createFeaturesStore } from '@/app/components/base/features/store'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createProviderResponseFixture } from '@/test/console/model-provider'
 import {
   createConsoleQueryClient,
@@ -47,8 +49,20 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
+const { loadModelProviders } = vi.hoisted(() => ({ loadModelProviders: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.get': loadModelProviders,
+    }),
+  }
+})
+
 let extensions: CodeBasedExtensionItemResponse[] = []
-let modelProviders: ReturnType<typeof createProviderResponseFixture>[] = []
+let modelProviders: ReturnType<typeof createProviderResponseFixture>[] | undefined = []
 
 const defaultData: ModerationConfig = {
   enabled: true,
@@ -66,19 +80,21 @@ const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdat
 describe('ModerationSettingModal', () => {
   const onSave = vi.fn()
   const renderModal = async (ui: React.ReactElement) => {
-    const queryClient = createConsoleQueryClient()
+    // The app's error toasts, so a failure the modal renders is not also toasted.
+    const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
     queryClient.setQueryData(
       consoleQuery.codeBasedExtension.get.queryKey({
         input: { query: { module: 'moderation' } },
       }),
       { module: 'moderation', data: extensions },
     )
-    queryClient.setQueryData(
-      consoleQuery.workspaces.current.modelProviders.get.queryKey({ input: {} }),
-      {
-        data: modelProviders,
-      },
-    )
+    if (modelProviders)
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.modelProviders.get.queryKey({ input: {} }),
+        {
+          data: modelProviders,
+        },
+      )
     queryClient.setQueryData(consoleQuery.apiBasedExtension.get.queryKey(), [
       {
         id: 'api-ext-1',
@@ -95,6 +111,38 @@ describe('ModerationSettingModal', () => {
   beforeEach(() => {
     extensions = []
     modelProviders = [createProviderResponseFixture({ provider: 'langgenius/openai/openai' })]
+    loadModelProviders.mockReset()
+  })
+
+  it('should show a failed provider load in place of the OpenAI warning and retry it', async () => {
+    const user = userEvent.setup()
+    modelProviders = undefined
+    loadModelProviders.mockRejectedValueOnce(
+      createHttpError(
+        { status: 503, statusText: '', headers: new Headers() },
+        { message: 'Providers unavailable' },
+      ),
+    )
+    loadModelProviders.mockResolvedValueOnce({
+      data: [createProviderResponseFixture({ provider: 'langgenius/openai/openai' })],
+    })
+
+    await renderModal(
+      <ModerationSettingModal
+        data={{ ...defaultData, type: 'openai_moderation' }}
+        onCancel={vi.fn()}
+        onSave={onSave}
+      />,
+    )
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.queryByText(/settings\.provider/)).not.toBeInTheDocument()
+    expect(mockNotify).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(loadModelProviders).toHaveBeenCalledTimes(2)
   })
 
   it('should call onCancel when cancel is clicked', async () => {

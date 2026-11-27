@@ -4,6 +4,8 @@ import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RiFolder6Line } from '@remixicon/react'
@@ -22,6 +24,8 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import EmptyDatasetCreationContent from '../empty-dataset-creation-modal'
 import FileUploader from '../file-uploader'
 import Website from '../website'
@@ -103,15 +107,22 @@ const StepOne = ({
   onCrawlOptionsChange,
   authedDataSourceList,
 }: IStepOneProps) => {
-  const { t } = useTranslation(['datasetCreation'])
+  const { t } = useTranslation(['datasetCreation', 'common', 'dataset'])
   const sourceLabelId = useId()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const planQuery = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.billing.subscription.plan,
     }),
+  )
+  const plan = planQuery.data
+  // Without the plan the next step stays disabled, so its failure needs a reason and a retry.
+  const planLoad = useOwnedQueryError(planQuery)
+  const planLoadErrorMessage = useRequestErrorMessage(
+    planLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
   )
 
   // Preview state management
@@ -219,6 +230,16 @@ const StepOne = ({
         <div className="relative w-full min-w-0 xl:h-full xl:w-1/2 xl:overflow-y-auto">
           <div className="flex min-w-0 justify-end">
             <div className={cn(s.form)}>
+              {planLoad && (
+                <Alert type="error" className="mb-4 max-w-160">
+                  <AlertTitle>{planLoadErrorMessage}</AlertTitle>
+                  <AlertActions>
+                    <Button size="small" loading={planLoad.retrying} onClick={planLoad.retry}>
+                      {t(($) => $['operation.retry'], { ns: 'common' })}
+                    </Button>
+                  </AlertActions>
+                </Alert>
+              )}
               {shouldShowDataSourceTypeList && (
                 <>
                   <h1

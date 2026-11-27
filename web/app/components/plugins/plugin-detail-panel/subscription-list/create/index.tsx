@@ -23,6 +23,7 @@ import {
   triggerOAuthConfigQueryOptions,
   triggerProviderInfoQueryOptions,
 } from '@/service/trigger-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
@@ -52,7 +53,7 @@ export const CreateSubscriptionButton = ({
   buttonType = CreateButtonType.FULL_BUTTON,
   shape = 'square',
 }: Props) => {
-  const { t } = useTranslation(['plugin', 'pluginTrigger'])
+  const { t } = useTranslation(['plugin', 'pluginTrigger', 'common'])
   const describeRequestError = useRequestErrorDescriber()
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
@@ -65,7 +66,9 @@ export const CreateSubscriptionButton = ({
   const detail = usePluginStore((state) => state.detail)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const { data: providerInfo } = useQuery(triggerProviderInfoQueryOptions(detail?.provider || ''))
+  const providerInfoQuery = useQuery(triggerProviderInfoQueryOptions(detail?.provider || ''))
+  const providerInfo = providerInfoQuery.data
+  const providerInfoLoad = useOwnedQueryError(providerInfoQuery)
   const supportedMethods = useMemo(
     () => providerInfo?.supported_creation_methods || [],
     [providerInfo?.supported_creation_methods],
@@ -286,6 +289,25 @@ export const CreateSubscriptionButton = ({
     e.stopPropagation()
     e.preventDefault()
     onChooseCreateType(methodType!)
+  }
+
+  // Without the provider's creation methods the create button cannot be offered; say why.
+  if (providerInfoLoad) {
+    return (
+      <div role="alert" className="flex min-h-8 grow items-center gap-1">
+        <span className="min-w-0 grow system-xs-regular text-text-destructive">
+          {describeRequestError(providerInfoLoad.error)}
+        </span>
+        <Button
+          size="small"
+          variant="ghost"
+          loading={providerInfoLoad.retrying}
+          onClick={providerInfoLoad.retry}
+        >
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
+    )
   }
 
   if (!supportedMethods.length) return null

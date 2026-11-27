@@ -9,6 +9,7 @@ import { consoleQuery } from '@/service/console'
 import { createEmptyDataset } from '@/service/datasets'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import StepOne from '../index'
@@ -21,6 +22,9 @@ vi.mock('@/service/datasets', async (importOriginal) => ({
 const vectorSpace = vi.hoisted(() =>
   vi.fn<typeof import('@/service/console').consoleClient.features.vectorSpace.get>(),
 )
+const getFeatures = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/console').consoleClient.features.get>(),
+)
 vi.mock('@tanstack/react-virtual')
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -30,6 +34,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.vectorSpace.get': vectorSpace,
+      'features.get': getFeatures,
       'files.upload.get': async () => createFileUploadConfigFixture(),
       'files.supportType.get': async () => ({ allowed_extensions: ['txt'] }),
       'files.byFileId.preview.get': async () => ({ content: 'Uploaded file contents' }),
@@ -111,7 +116,8 @@ function setup(
     usage = { size: 50, limit: 100, usage_unknown: false },
   }: {
     cloud?: boolean
-    plan?: 'sandbox' | 'professional'
+    /** `null` leaves the workspace features unseeded so they are requested. */
+    plan?: 'sandbox' | 'professional' | null
     usage?: Awaited<ReturnType<typeof vectorSpace>>
   } = {},
 ) {
@@ -158,7 +164,7 @@ function setup(
   const view = render(<SourceStep />, {
     queryClient,
     systemFeatures: { deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY' },
-    features: { billing: { subscription: { plan } } },
+    features: plan === null ? null : { billing: { subscription: { plan } } },
   })
   return {
     ...view,
@@ -320,6 +326,18 @@ it('requires a successful usage retry before a sandbox user can continue', async
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   await user.click(nextButton())
   expect(onStepChange).toHaveBeenCalledOnce()
+})
+
+it('explains a failed plan load that keeps the next step disabled and retries it', async () => {
+  getFeatures
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Features unavailable' }))
+    .mockReturnValue(new Promise(() => {}))
+  const { user } = setup({ files: [uploadedFile()] }, { cloud: true, plan: null })
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  expect(nextButton()).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(getFeatures).toHaveBeenCalledTimes(2)
 })
 
 it('allows a paid user to proceed despite unknown vector usage', async () => {

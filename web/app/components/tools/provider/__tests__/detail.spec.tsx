@@ -9,10 +9,14 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { seedModelProviderQueries } from '@/test/console/model-provider'
+import {
+  createProviderSummaryFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { createDeferred } from '@/test/deferred'
+import { CollectionType } from '../../types'
 import { selectToolProvider } from '../../utils/query-select'
 import ProviderDetail from '../detail'
 
@@ -41,6 +45,8 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.get.get
     >(),
+  modelProviders:
+    vi.fn<typeof import('@/service/console').consoleClient.workspaces.current.modelProviders.get>(),
   workflowUpdate:
     vi.fn<
       typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.update.post
@@ -62,6 +68,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       // The action settings drawer reads the same lists through queries.
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
       'workspaces.current.toolProvider.api.tools.get': api.customTools,
+      'workspaces.current.modelProviders.get': api.modelProviders,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
@@ -142,6 +149,19 @@ const workflow = selectToolProvider(
     author: 'Workflow Author',
   }),
 )
+
+// The console lists model-backed tools under a type its contract does not enumerate.
+const modelTool: Collection = {
+  ...selectToolProvider(
+    createToolProviderFixture({
+      id: 'openai',
+      name: 'openai',
+      label: { en_US: 'OpenAI' },
+      is_team_authorization: false,
+    }),
+  ),
+  type: CollectionType.model,
+}
 
 const renderDetail = (collection: Collection, permissions = ['tool.manage']) => {
   const queryClient = createConsoleQueryClient()
@@ -424,5 +444,29 @@ it('keeps the custom tool editor closed when its provider fails to load', async 
   expect(
     screen.queryByRole('button', { name: 'tools.createTool.editAction' }),
   ).not.toBeInTheDocument()
+  toastError.mockRestore()
+})
+
+it('reports a failed credential lookup instead of leaving the setup button silent', async () => {
+  const user = userEvent.setup()
+  api.modelProviders.mockRejectedValueOnce(
+    createHttpError(
+      { status: 503, statusText: '', headers: new Headers() },
+      { message: 'Providers down' },
+    ),
+  )
+  const toastError = vi.spyOn(toast, 'error')
+  const { queryClient } = renderDetail(modelTool, ['tool.manage', 'credential.create'])
+  act(() => {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+      { data: [createProviderSummaryFixture({ provider: 'openai' })], plugins: {} },
+    )
+  })
+
+  await user.click(await screen.findByRole('button', { name: 'tools.auth.unauthorized' }))
+
+  // Reported once, by the cache or the lookup, and the dialog stays closed.
+  await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Providers down'))
   toastError.mockRestore()
 })

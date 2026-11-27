@@ -4,6 +4,8 @@ import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.ge
 import type { useAgentConfigureData } from './data'
 import type { AgentPreviewChatController } from './preview/chat-conversation'
 import type { AgentConfigureRightPanelMode } from './state'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
@@ -21,6 +23,8 @@ import {
   trackAgentPreviewModeRun,
 } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { AgentConfigurationPanel } from './configuration'
 import { AgentBuildDraftBar } from './configuration/build-draft-bar'
 import { AgentConfigureClearSessionConfirmDialog } from './confirm-clear-session-dialog'
@@ -243,6 +247,15 @@ function AgentRosterEditorContent({
   } = configureData
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['modelProvider'])
+  const { t: tShared } = useTranslation(['common'])
+  // The editor stays read-only until its configuration loads, so a failed load says why.
+  const configLoad = useOwnedQueryErrors(
+    selectedVersionId ? [composerQuery, versionQuery] : [composerQuery],
+  )
+  const configLoadErrorMessage = useRequestErrorMessage(
+    configLoad?.error,
+    tShared(($) => $['api.actionFailed']),
+  )
   const [clearChatByMode, setClearChatByMode] = useState<
     Record<AgentConfigureRightPanelMode, boolean>
   >({
@@ -475,7 +488,16 @@ function AgentRosterEditorContent({
           buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={capabilities.canReleaseAndVersion && !buildDraft.isActive}
           bottomAction={
-            showBuildDraftBar ? (
+            configLoad && configLoadErrorMessage ? (
+              <Alert type="error" className="m-3">
+                <AlertTitle>{configLoadErrorMessage}</AlertTitle>
+                <AlertActions>
+                  <Button size="small" loading={configLoad.retrying} onClick={configLoad.retry}>
+                    {tShared(($) => $['operation.retry'])}
+                  </Button>
+                </AlertActions>
+              </Alert>
+            ) : showBuildDraftBar ? (
               <AgentBuildDraftBar
                 changeSummary={buildDraft.changeSummary}
                 changesCount={buildDraft.changesCount}

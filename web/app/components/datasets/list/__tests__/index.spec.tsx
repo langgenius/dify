@@ -9,6 +9,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/list/storage'
+import { createHttpError } from '@/service/http-error'
 import { TEST_DATASET_ID } from '@/test/console/ids'
 import {
   createConsoleQueryClient,
@@ -123,6 +124,21 @@ it('renders real knowledge cards linking to their documents', async () => {
     `/datasets/${TEST_DATASET_ID}/documents`,
   )
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+})
+
+it('shows a failed first load instead of an empty knowledge list and retries it', async () => {
+  api.datasets.mockRejectedValue(createHttpError(new Response(null, { status: 503 })))
+  const { user } = setup({ workspacePermissionKeys: ['dataset.create_and_management'] })
+
+  const region = await screen.findByRole('region', { name: 'dataset.knowledge' })
+  expect(await within(region).findByRole('alert')).toHaveTextContent('dataset.loadError')
+  expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
+
+  api.datasets.mockResolvedValue(datasetPage())
+  await user.click(within(region).getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+  expect(within(region).queryByRole('alert')).not.toBeInTheDocument()
 })
 
 it('offers creation from the first empty state only when permitted', async () => {

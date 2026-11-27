@@ -5,6 +5,8 @@ import type {
   GetAppsByAppIdWorkflowAppLogsData,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -20,6 +22,8 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
@@ -86,10 +90,16 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(requestQueryParams, ['period', 'status']),
   }
 
-  const { data: workflowLogs, refetch: mutate } = useQuery(
+  const workflowLogsQuery = useQuery(
     consoleQuery.apps.byAppId.workflowAppLogs.get.queryOptions({
       input: { params: { app_id: appDetail.id }, query },
     }),
+  )
+  const { data: workflowLogs, refetch: mutate } = workflowLogsQuery
+  const failedLoad = useOwnedQueryError(workflowLogsQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    failedLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const total = workflowLogs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
@@ -109,7 +119,16 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         <RetentionUpgradeNotice />
         {showArchivedLogsNotice && <ArchivedLogsNotice />}
         {/* workflow log */}
-        {total === undefined ? (
+        {loadErrorMessage && failedLoad ? (
+          <Alert type="error" className="mt-2 shrink-0">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={failedLoad.retrying} onClick={failedLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
+        ) : total === undefined ? (
           <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />

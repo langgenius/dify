@@ -1,4 +1,5 @@
 import type { RecipientData, Recipient as RecipientItem } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
@@ -10,6 +11,8 @@ import { useTranslation } from 'react-i18next'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
 
@@ -21,15 +24,23 @@ type Props = Readonly<{
 }>
 
 const Recipient = ({ data, onChange }: Props) => {
-  const { t } = useTranslation(['workflowHumanInput'])
+  const { t } = useTranslation(['workflowHumanInput', 'workflow', 'common'])
   const wholeWorkspaceId = useId()
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const { data: members } = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  const membersQuery = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: {},
+    }),
+  )
+  const members = membersQuery.data
+  const membersLoad = useOwnedQueryError(membersQuery)
+  const membersErrorMessage = useRequestErrorMessage(
+    membersLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
   const accounts = members?.accounts || []
 
@@ -87,6 +98,22 @@ const Recipient = ({ data, onChange }: Props) => {
             />
           </div>
         </div>
+        {membersLoad && (
+          <div
+            role="alert"
+            className="flex items-center gap-1 px-3 pb-1 system-xs-regular text-text-destructive"
+          >
+            <span className="min-w-0 wrap-break-word">{membersErrorMessage}</span>
+            <Button
+              size="small"
+              variant="ghost"
+              loading={membersLoad.retrying}
+              onClick={membersLoad.retry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
         <EmailInput
           email={userProfileEmail}
           value={data.items}

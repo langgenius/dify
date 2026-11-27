@@ -16,12 +16,13 @@ export const useToolMarketplace = (
   filterPluginTags: string[],
   enabled = true,
 ) => {
-  const { data: installedPluginIds, isSuccess } = useQuery(
+  const installedIdsQuery = useQuery(
     consoleQuery.workspaces.current.plugin.installedIds.get.queryOptions({
       input: { query: { category: 'tool' } },
       enabled,
     }),
   )
+  const { data: installedPluginIds, isSuccess } = installedIdsQuery
   const exclude = installedPluginIds?.plugin_ids
   const isSearching = !!searchPluginText || filterPluginTags.length > 0
   // Collections are the default view; a search or tag filter switches to the paged plugin search.
@@ -56,6 +57,23 @@ export const useToolMarketplace = (
     ? (pluginsQuery.data?.pages.flatMap((page) => page.plugins) ??
       (pluginsQuery.isError ? [] : undefined))
     : undefined
+  // The catalog waits for the installed ids it excludes, so a failed first load of either read
+  // would otherwise leave the panel empty; a failed next page keeps the loaded plugins.
+  const failedQuery = !enabled
+    ? undefined
+    : installedIdsQuery.isError && !installedPluginIds
+      ? installedIdsQuery
+      : pluginsSearchParams
+        ? pluginsQuery.isError && !pluginsQuery.data
+          ? pluginsQuery
+          : undefined
+        : !isSearching && collectionsQuery.isError && !collectionsQuery.data
+          ? collectionsQuery
+          : undefined
+  const isLoadFailed = !!failedQuery
+  const retryLoad = useCallback(() => {
+    void failedQuery?.refetch()
+  }, [failedQuery])
   const searchPluginTextRef = useRef(searchPluginText)
   const filterPluginTagsRef = useRef(filterPluginTags)
 
@@ -85,5 +103,8 @@ export const useToolMarketplace = (
     plugins,
     handleScroll,
     page: Math.max(pluginsQuery.data?.pages.length ?? 0, 1),
+    isLoadFailed,
+    isRetrying: !!failedQuery?.isFetching,
+    retryLoad,
   }
 }

@@ -4,6 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
@@ -45,7 +46,9 @@ export const useAutoGenerateWebhookUrl = () => {
 
         if (hasUpdated) setNodes(updatedNodes)
       } catch (error: unknown) {
-        console.error('Failed to auto-generate webhook URL:', error)
+        // The cache reports a failure the server explains; this also reports a network failure or
+        // another exception, and stays silent for one already reported.
+        reportRequestError(error)
       }
     },
     [appId, collaborativeWorkflow, queryClient],

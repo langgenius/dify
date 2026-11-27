@@ -1,3 +1,4 @@
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -11,6 +12,8 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { selectPipelineTemplate } from '@/app/components/rag-pipeline/utils/query-select'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import ChunkStructureCard from './chunk-structure-card'
 import { useChunkStructureConfig } from './hooks'
 
@@ -24,12 +27,18 @@ type DetailsProps = {
 const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
   const structureLabelId = React.useId()
 
-  const { t } = useTranslation(['datasetPipeline', 'common'])
-  const { data: pipelineTemplateInfo } = useQuery(
+  const { t } = useTranslation(['datasetPipeline', 'common', 'dataset'])
+  const templateQuery = useQuery(
     consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
       input: { params: { template_id: id }, query: { type } },
       select: selectPipelineTemplate,
     }),
+  )
+  const pipelineTemplateInfo = templateQuery.data
+  const templateLoad = useOwnedQueryError(templateQuery)
+  const loadErrorMessage = useRequestErrorMessage(
+    templateLoad?.error,
+    t(($) => $.loadError, { ns: 'dataset' }),
   )
 
   const chunkStructureConfig = useChunkStructureConfig()
@@ -106,6 +115,18 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
               <ChunkStructureCard {...chunkStructureConfig[pipelineTemplateInfo.chunk_structure]} />
             </div>
           </div>
+        </div>
+      ) : templateLoad ? (
+        <div className="flex h-full flex-col items-center justify-center p-6">
+          <DialogTitle className="sr-only">{name}</DialogTitle>
+          <Alert type="error" className="w-full max-w-120">
+            <AlertTitle>{loadErrorMessage}</AlertTitle>
+            <AlertActions>
+              <Button size="small" loading={templateLoad.retrying} onClick={templateLoad.retry}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </AlertActions>
+          </Alert>
         </div>
       ) : (
         <>

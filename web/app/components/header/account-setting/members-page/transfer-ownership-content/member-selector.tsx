@@ -1,6 +1,8 @@
 'use client'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { FC } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
@@ -8,6 +10,8 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getAvatarInitial } from '@/utils/avatar'
 
 type Props = Readonly<{
@@ -16,13 +20,41 @@ type Props = Readonly<{
   exclude?: string[]
 }>
 
+// Rendered inside the open popover, so a failed first load is claimed only while it is shown.
+function MembersLoadError({ query }: { query: UseQueryResult<unknown> }) {
+  const { t } = useTranslation(['common'])
+  const load = useOwnedQueryError(query)
+  const message = useRequestErrorMessage(
+    load?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
+  if (!load) return null
+
+  return (
+    <div
+      role="alert"
+      className="flex items-center justify-between gap-2 py-1 ps-2 pe-1 system-xs-regular text-text-destructive"
+    >
+      <span className="min-w-0">{message}</span>
+      <Button size="small" variant="ghost" loading={load.retrying} onClick={load.retry}>
+        {t(($) => $['operation.retry'], { ns: 'common' })}
+      </Button>
+    </div>
+  )
+}
+
 export const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
 
-  const { data } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }))
+  const membersQuery = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: {},
+    }),
+  )
+  const { data } = membersQuery
 
   const currentValue = useMemo(() => {
     if (!data?.accounts || !value) return null
@@ -104,6 +136,7 @@ export const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => 
             </InputGroup>
           </div>
           <div className="p-1">
+            <MembersLoadError query={membersQuery} />
             {filteredList.map((account) => (
               <button
                 type="button"

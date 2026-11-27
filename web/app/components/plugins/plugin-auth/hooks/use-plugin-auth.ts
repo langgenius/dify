@@ -10,11 +10,12 @@ export const usePluginAuth = (
   enable?: boolean,
   includeCredentialIds?: string[],
 ) => {
-  const { data, isLoading } = useGetPluginCredentialInfoHook(
+  const credentialInfoQuery = useGetPluginCredentialInfoHook(
     pluginPayload,
     enable,
     includeCredentialIds,
   )
+  const { data, isLoading } = credentialInfoQuery
   const isAuthorized = !!data?.credentials.length
   const canOAuth = data?.supported_credential_types.includes(CredentialTypeEnum.OAUTH2)
   const canApiKey = data?.supported_credential_types.includes(CredentialTypeEnum.API_KEY)
@@ -25,6 +26,8 @@ export const usePluginAuth = (
     canOAuth,
     canApiKey,
     isLoading,
+    // A failed first load is not "unauthorized"; callers that render it claim it with a retry.
+    credentialInfoQuery,
     credentials: data?.credentials || [],
     notAllowCustomCredential: data?.allow_custom_token === false,
     invalidPluginCredentialInfo,

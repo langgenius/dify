@@ -7,6 +7,8 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
@@ -23,6 +25,8 @@ import { useDocLink } from '@/context/i18n'
 import { CrawlStep } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import Header from '../base/header'
 import { runDatasourceNode } from '../run-datasource-node'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
@@ -48,6 +52,7 @@ const WebsiteCrawl = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: WebsiteCrawlProps) => {
+  const { t: tLoad } = useTranslation(['common', 'dataset'])
   const { t } = useTranslation(['datasetCreation'])
   const docLink = useDocLink()
   const [totalNum, setTotalNum] = useState(0)
@@ -66,10 +71,17 @@ const WebsiteCrawl = ({
       })),
     )
 
-  const { data: dataSourceAuth } = useQuery(
+  const dataSourceAuthQuery = useQuery(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
       input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
     }),
+  )
+  const dataSourceAuth = dataSourceAuthQuery.data
+  // Without the credentials the source looks unauthorized, so a failed load is shown instead.
+  const credentialsLoad = useOwnedQueryError(dataSourceAuthQuery)
+  const credentialsLoadErrorMessage = useRequestErrorMessage(
+    credentialsLoad?.error,
+    tLoad(($) => $.loadError, { ns: 'dataset' }),
   )
 
   const dataSourceStore = useDataSourceStore()
@@ -79,7 +91,7 @@ const WebsiteCrawl = ({
       ? { params: { pipeline_id: pipelineId }, query: { node_id: nodeId } }
       : skipToken
   const workflows = consoleQuery.rag.pipelines.byPipelineId.workflows
-  const { data: paramsConfig, isFetching: isFetchingParams } = useQuery(
+  const paramsConfigQuery = useQuery(
     isInPipeline
       ? workflows.draft.preProcessing.parameters.get.queryOptions({
           input: preProcessingParamsInput,
@@ -89,6 +101,13 @@ const WebsiteCrawl = ({
           input: preProcessingParamsInput,
           select: selectPipelineStepParameters,
         }),
+  )
+  const { data: paramsConfig, isFetching: isFetchingParams } = paramsConfigQuery
+  // Without its parameters the crawl would run with an empty form.
+  const paramsLoad = useOwnedQueryError(paramsConfigQuery)
+  const paramsLoadErrorMessage = useRequestErrorMessage(
+    paramsLoad?.error,
+    tLoad(($) => $.loadError, { ns: 'dataset' }),
   )
 
   const isInit = step === CrawlStep.init
@@ -194,11 +213,31 @@ const WebsiteCrawl = ({
         onCredentialChange={handleCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
+      {credentialsLoad && (
+        <Alert type="error" className="mt-2">
+          <AlertTitle>{credentialsLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={credentialsLoad.retrying} onClick={credentialsLoad.retry}>
+              {tLoad(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
+      {paramsLoad && (
+        <Alert type="error" className="mt-2">
+          <AlertTitle>{paramsLoadErrorMessage}</AlertTitle>
+          <AlertActions>
+            <Button size="small" loading={paramsLoad.retrying} onClick={paramsLoad.retry}>
+              {tLoad(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
+      )}
       <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle">
         <Options
           variables={paramsConfig?.variables || []}
           step={step}
-          runDisabled={!currentCredentialId || isFetchingParams}
+          runDisabled={!currentCredentialId || isFetchingParams || !!paramsLoad}
           onSubmit={handleSubmit}
         />
       </div>

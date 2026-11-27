@@ -27,6 +27,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { newKnowledgeDetailPath } from '../../routes'
 import { useKnowledgeSpacePermission } from '../../space/context'
@@ -871,13 +872,13 @@ function AddSourcePageContent({
   )
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      // Failures, including a failed refetch, are shown inline with a retry.
+      meta: { errorToast: false },
       enabled: websiteSourceSelected,
     }),
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      // Failures, including a failed next page, are shown inline with a retry.
-      meta: { errorToast: false },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
@@ -891,6 +892,10 @@ function AddSourcePageContent({
       retry: false,
     }),
   )
+  // A failed first load or next page shows inline with a retry; a failed refresh keeps the
+  // loaded connections and is the query cache's to report.
+  const connectionsLoad = useOwnedQueryError(connectionsQuery)
+  const connectionsPage = useOwnedNextPageError(connectionsQuery)
   const provider = findWebsiteSourceProvider(providersQuery.data ?? [])
   const websiteProviderOptions = useMemo(
     () => discoverSourceProviderOptions('websiteCrawl', datasourcePluginsQuery.data ?? []),
@@ -1045,9 +1050,8 @@ function AddSourcePageContent({
   const queryError =
     providersQuery.error ||
     datasourcePluginsQuery.error ||
-    // A failed refresh keeps the loaded connections; the action that refreshed reports it.
-    (connectionsQuery.error && !connectionsQuery.data) ||
-    connectionsQuery.isFetchNextPageError ||
+    connectionsLoad?.error ||
+    connectionsPage?.error ||
     (difyManagedProvider ? datasourceAuthQuery.error : null)
   const websiteReady = Boolean(
     websiteSourceSelected &&
@@ -1116,7 +1120,7 @@ function AddSourcePageContent({
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">
                     {describeRequestError(
-                      queryError === true ? connectionsQuery.error : queryError,
+                      queryError,
                       t(($) => $.providerLoadFailed),
                     )}
                   </p>

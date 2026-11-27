@@ -9,6 +9,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import Documents from '../index'
 
@@ -128,6 +129,17 @@ beforeEach(() => {
   api.push.mockReset()
 })
 afterEach(() => vi.useRealTimers())
+
+it('shows a failed first load with a retry instead of the empty knowledge state', async () => {
+  api.documents.mockRejectedValueOnce(apiError({ status: 503, message: 'Documents unavailable' }))
+  const { user } = await setup()
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('dataset.loadError')
+  expect(screen.queryByText('Guide')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByText('Guide')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
 
 it('replaces initial loading with the real document rows', async () => {
   const request = createDeferred<ReturnType<typeof documentList>>()

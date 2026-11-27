@@ -75,6 +75,7 @@
   "modelProvider.loadBalancingDescription": "Снизьте нагрузку с помощью нескольких наборов учетных данных.",
   "modelProvider.loadBalancingInfo": "По умолчанию балансировка нагрузки использует стратегию Round-robin. Если срабатывает ограничение скорости, будет применен 1-минутный период охлаждения.",
   "modelProvider.loadBalancingLeastKeyWarning": "Для включения балансировки нагрузки необходимо включить не менее 2 ключей.",
+  "modelProvider.loadFailed": "Не удалось загрузить. Повторите попытку.",
   "modelProvider.loadPresets": "Загрузить предустановки",
   "modelProvider.model": "Модель",
   "modelProvider.modelHasBeenDeprecated": "Эта модель устарела",
