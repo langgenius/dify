@@ -96,6 +96,16 @@ class TestOauthCustomClientPermissionsCases:
         assert isinstance(check.locator, Workspace)
 
 
+def test_remote_schema_requires_tool_manage() -> None:
+    method = ToolApiProviderGetRemoteSchemaApi.get
+    legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
+    assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.TOOL_MANAGE
+    assert isinstance(check.locator, Workspace)
+
+
 """Unit tests for controllers.console.workspace.tool_providers endpoints."""
 
 
@@ -1414,6 +1424,7 @@ class TestToolProvidersCases:
     @staticmethod
     def test_api_provider_remote_schema_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
         user = _mock_account()
+        user.role = TenantAccountRole.OWNER
         _set_current_account(monkeypatch, controller_module, user, "tenant-10")
         openapi_schema = '{"openapi":"3.0.0","info":{"title":"Demo API","version":"1.0.0"},"paths":{}}'
         service_mock = MagicMock(return_value={"schema": openapi_schema})
@@ -1424,6 +1435,20 @@ class TestToolProvidersCases:
 
         assert resp == {"schema": openapi_schema}
         service_mock.assert_called_once_with(user.id, "tenant-10", "https://example.com/")
+
+    @staticmethod
+    def test_api_provider_remote_schema_get_rejects_member_before_fetch(
+        app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch
+    ):
+        user = _mock_account()
+        _set_current_account(monkeypatch, controller_module, user, "tenant-10")
+        service_mock = MagicMock()
+        monkeypatch.setattr(controller_module.ApiToolManageService, "get_api_tool_provider_remote_schema", service_mock)
+
+        with app.test_request_context("/remote?url=https://example.com/"), pytest.raises(Forbidden):
+            controller_module.ToolApiProviderGetRemoteSchemaApi().get()
+
+        service_mock.assert_not_called()
 
     @staticmethod
     def test_api_provider_list_tools_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
