@@ -2,6 +2,7 @@ import type {
   MutationCache,
   MutationKey,
   MutationMeta,
+  Query,
   QueryClient,
   QueryKey,
 } from '@tanstack/react-query'
@@ -71,8 +72,9 @@ function participantOf(mutation: AnyMutation): Participant | undefined {
  *
  * - It starts once the mutation's own callbacks have settled. Every matching query is marked
  *   stale and observed ones refetch, restarting a read already running (it may predate the
- *   write). Unobserved reads, such as an awaited `query()` for a download URL, are only marked
- *   stale, never cancelled. A policy that writes into the cache cancels those reads first.
+ *   write), a first load included. Unobserved reads, such as an awaited `query()` for a
+ *   download URL, are only marked stale, never cancelled. A policy that writes into the cache
+ *   cancels those reads first.
  * - A query that sets `meta.invalidateAfterWrites: false` is never refreshed by it.
  * - While another mutation of the same domain is pending, it only records what to refresh;
  *   the last one to finish refreshes everything. A refetch therefore never lands on a
@@ -114,13 +116,24 @@ export function createMutationInvalidation() {
 
         const entry = deferred.get(domain)
         deferred.delete(domain)
-        for (const target of entry ?? [])
-          void client.invalidateQueries({
-            queryKey: consolePathKey(target),
-            refetchType: 'active',
-            predicate: (query) => query.meta?.invalidateAfterWrites !== false,
-          })
+        for (const target of entry ?? []) void refresh(client, consolePathKey(target))
       })
     },
   }
+}
+
+const isRefreshed = (query: Query) => query.meta?.invalidateAfterWrites !== false
+
+// An observed first load: `invalidateQueries` would join it, since TanStack restarts a running
+// read only when the query already has data.
+const isObservedFirstLoad = (query: Query) =>
+  isRefreshed(query) &&
+  query.isActive() &&
+  query.state.fetchStatus === 'fetching' &&
+  query.state.data === undefined
+
+async function refresh(client: QueryClient, queryKey: QueryKey) {
+  if (client.isFetching({ queryKey, predicate: isObservedFirstLoad }))
+    await client.cancelQueries({ queryKey, predicate: isObservedFirstLoad })
+  return client.invalidateQueries({ queryKey, refetchType: 'active', predicate: isRefreshed })
 }

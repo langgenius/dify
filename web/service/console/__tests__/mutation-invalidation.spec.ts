@@ -158,6 +158,23 @@ describe('mutation invalidation fallback', () => {
     expect(queryFn).toHaveBeenCalledTimes(3)
   })
 
+  it('restarts an observed first load that started before the write', async () => {
+    const client = createClient()
+    const firstLoad = createDeferred<string>()
+    const queryFn = vi.fn().mockReturnValueOnce(firstLoad.promise).mockResolvedValue('after write')
+    // Such as the plan quota still loading while an annotation is deleted.
+    const observer = new QueryObserver(client, { queryKey: appsListKey(), queryFn })
+    cleanups.push(observer.subscribe(() => undefined))
+    tick()
+
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+    firstLoad.resolve('before write')
+
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('after write'))
+    expect(queryFn).toHaveBeenCalledTimes(2)
+  })
+
   it('leaves an unobserved read running instead of cancelling it', async () => {
     const client = createClient()
     const running = createDeferred<string>()
@@ -477,13 +494,20 @@ describe('mutation invalidation fallback', () => {
   it('does not refetch over the optimistic value of a newer write that cancelled the read', async () => {
     const client = createClient()
     const firstLoad = createDeferred<string>()
-    const queryFn = vi.fn().mockReturnValueOnce(firstLoad.promise).mockResolvedValue('server')
+    const restarted = createDeferred<string>()
+    const queryFn = vi
+      .fn()
+      .mockReturnValueOnce(firstLoad.promise)
+      .mockReturnValueOnce(restarted.promise)
+      .mockResolvedValue('server')
     // An observed first load still running when the first write succeeds.
     const observer = new QueryObserver(client, { queryKey: appDetailKey(), queryFn })
     cleanups.push(observer.subscribe(() => undefined))
     tick()
+    // The first write restarts that pre-write load.
     await mutate(client, { mutationKey: renameApp() })
     await settle()
+    expect(queryFn).toHaveBeenCalledTimes(2)
 
     // A newer write stops that read and shows its value, like a comment move.
     const second = createDeferred<string>()
@@ -498,13 +522,15 @@ describe('mutation invalidation fallback', () => {
     await settle()
     await settle()
 
-    expect(queryFn).toHaveBeenCalledTimes(1)
+    restarted.resolve('before the newer write')
+    await settle()
+    expect(queryFn).toHaveBeenCalledTimes(2)
     expect(client.getQueryData(appDetailKey())).toBe('optimistic')
 
     // Once it settles, its own refresh reads the server again.
     tick()
     second.resolve('ok')
     await pending
-    await vi.waitFor(() => expect(client.getQueryState(appDetailKey())?.isInvalidated).toBe(true))
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('server'))
   })
 })
