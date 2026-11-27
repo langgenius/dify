@@ -22,7 +22,19 @@ export const passthroughRequestErrorCodes = [
   'config_file_not_found',
   'config_skill_file_not_found',
   'config_skill_not_found',
+  'connection_claim_preflight_failed',
+  'connection_claim_unavailable',
+  'connection_configuration_invalid',
+  'connection_conflict',
+  'connection_credentials_invalid',
+  'connection_credentials_unavailable',
+  'connection_not_found',
+  'connection_oauth_failed',
+  'connection_reauthorization_required',
+  'connection_required',
+  'connection_revision_changed',
   'crawl_failed',
+  'credential_check_unavailable',
   'data_source_api_key_auth_credentials_rejected',
   'data_source_api_key_auth_provider_unavailable',
   'dataset_access_denied',
@@ -34,6 +46,8 @@ export const passthroughRequestErrorCodes = [
   'email_code_account_deletion_rate_limit_exceeded',
   'email_code_login_rate_limit_exceeded',
   'email_register_rate_limit_exceeded',
+  'end_user_busy',
+  'end_user_login_required',
   'evaluation_config_invalid',
   'evaluation_dataset_invalid',
   'evaluation_framework_not_configured',
@@ -108,6 +122,7 @@ export const passthroughRequestErrorCodes = [
   'skill_not_found',
   'skill_too_large',
   'skill_version_not_found',
+  'test_credentials_not_ready',
   'too_many_files',
   'trigger_oauth_client_changed',
   'trigger_oauth_client_config_invalid',
@@ -122,6 +137,8 @@ export const passthroughRequestErrorCodes = [
   'unauthorized_and_force_logout',
   'unsupported_data_source_api_key_auth_provider',
   'web_app_access_denied',
+  'web_login_unavailable',
+  'webapp_resources_changed',
   'webhook_trigger_not_found',
   'workflow_run_not_found',
 ] as const
@@ -358,6 +375,7 @@ export type TemplatedRequestErrorCode = keyof typeof requestErrorTemplates
  * fails when the backend raises a fixed `forbidden` text this table does not know.
  */
 export const forbiddenMessages = {
+  'End User login is not enabled.': 'endUserLoginDisabled',
   "You do not have permission to view this tool's internal execution details.": 'executionDetails',
   'Invalid context_id': 'invalidOAuthContext',
   'Invalid request.': 'invalidSignedRequest',
@@ -368,6 +386,7 @@ export const forbiddenMessages = {
   'Your current plan does not allow workspace ownership transfer': 'ownerTransferPlan',
   'Workspace policy prohibits ownership transfer': 'ownerTransferPolicy',
   'Personal access token has expired.': 'personalAccessTokenExpired',
+  'WebApp request origin is not allowed.': 'webAppOriginNotAllowed',
 } as const
 
 /** The description Werkzeug's `Forbidden` carries when it is raised without one. */

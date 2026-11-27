@@ -201,7 +201,8 @@ def test_lists_only_visible_workspace_credentials_without_secrets(harness):
 
 @pytest.mark.parametrize("selection", ["hidden", "elsewhere", "missing"])
 def test_saving_foreign_or_invisible_credentials_is_rejected(harness, selection):
-    identifier = str(uuid4()) if selection == "missing" else getattr(harness, selection).id
+    identifiers = {"hidden": harness.hidden.id, "elsewhere": harness.elsewhere.id, "missing": str(uuid4())}
+    identifier = identifiers[selection]
     with pytest.raises(ConnectionNotFoundError):
         harness.service.save_configuration(harness.scope, command(harness, {"root": identifier}))
 

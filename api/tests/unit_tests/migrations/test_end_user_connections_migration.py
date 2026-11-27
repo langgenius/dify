@@ -165,8 +165,9 @@ def test_revision_migration_preserves_legacy_connection_data() -> None:
         load_migration(connection).upgrade()
         table = sa.Table("end_user_connections", sa.MetaData(), autoload_with=connection)
         record = new_connection()
+        attributes = sa.inspect(record).attrs
         connection.execute(
-            sa.insert(table).values({column.name: getattr(record, column.name) for column in table.columns})
+            sa.insert(table).values({column.name: attributes[column.name].value for column in table.columns})
         )
         before = connection.execute(sa.select(table)).mappings().one()
         migration = load_migration(connection, FEATURE_MIGRATION)
@@ -190,9 +191,13 @@ def test_configuration_migration_removes_run_dependency_and_preserves_choices() 
         legacy = new_app_selection(credential)
         credentials = sa.Table("end_user_connections", sa.MetaData(), autoload_with=connection)
         defaults = sa.Table("app_connections", sa.MetaData(), autoload_with=connection)
-        credential_values = {column.name: getattr(credential, column.name) for column in credentials.columns}
+        credential_attributes = sa.inspect(credential).attrs
+        legacy_attributes = sa.inspect(legacy).attrs
+        credential_values = {column.name: credential_attributes[column.name].value for column in credentials.columns}
         legacy_values = {
-            column.name: getattr(legacy, column.name) for column in defaults.columns if column.name != "source_run_id"
+            column.name: legacy_attributes[column.name].value
+            for column in defaults.columns
+            if column.name != "source_run_id"
         }
         connection.execute(sa.insert(credentials).values(credential_values))
         connection.execute(sa.insert(defaults).values({**legacy_values, "source_run_id": str(uuid4())}))
@@ -203,9 +208,9 @@ def test_configuration_migration_removes_run_dependency_and_preserves_choices() 
         assert dict(connection.execute(sa.select(defaults)).mappings().one()) == legacy_values
         saved = new_app_selection(credential)
         saved.node_id = "new-selection"
-        connection.execute(
-            sa.insert(defaults).values({column.name: getattr(saved, column.name) for column in defaults.columns})
-        )
+        saved_attributes = sa.inspect(saved).attrs
+        saved_values = {column.name: saved_attributes[column.name].value for column in defaults.columns}
+        connection.execute(sa.insert(defaults).values(saved_values))
         assert connection.scalar(sa.select(sa.func.count()).select_from(defaults)) == 2
         migration.downgrade()
         restored = sa.Table("app_connections", sa.MetaData(), autoload_with=connection)
