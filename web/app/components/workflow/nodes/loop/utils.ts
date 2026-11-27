@@ -112,6 +112,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
         ComparisonOperator.notEmpty,
       ]
     case VarType.number:
+    case VarType.integer:
       return [
         ComparisonOperator.equal,
         ComparisonOperator.notEqual,

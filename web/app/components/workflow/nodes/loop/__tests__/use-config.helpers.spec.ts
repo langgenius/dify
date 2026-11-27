@@ -123,6 +123,17 @@ describe('loop use-config helpers', () => {
     expect(removed.break_conditions).toEqual([expect.objectContaining({ id: 'condition-2' })])
   })
 
+  it('should default an integer break condition to a numeric comparison', () => {
+    const inputs = addBreakCondition({
+      inputs: createInputs(),
+      valueSelector: ['tool-node', 'count'],
+      variable: { type: VarType.integer },
+      isVarFileAttribute: false,
+    })
+
+    expect(inputs.break_conditions?.[0]?.comparison_operator).toBe(ComparisonOperator.equal)
+  })
+
   it('should manage nested sub-variable conditions and ignore missing targets', () => {
     mockUuid.mockReturnValueOnce('sub-condition-1').mockReturnValueOnce('sub-condition-2')
 
