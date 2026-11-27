@@ -4,7 +4,8 @@ import logging
 from http import HTTPStatus
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, computed_field
+from pydantic import BaseModel, Field, TypeAdapter, computed_field, field_validator
+from pydantic_core import PydanticCustomError
 
 from controllers.common.fields import SimpleResultMessageResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -62,6 +63,19 @@ class InstalledAppsListQuery(BaseModel):
         le=100,
         description="Number of installed apps to return",
     )
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _parse_mode(cls, value: object) -> InstalledAppListMode:
+        """Accept the documented modes and keep the existing Console validation error on invalid input."""
+        if isinstance(value, str):
+            try:
+                return InstalledAppListMode(value)
+            except ValueError:
+                pass
+        *initial, last = (repr(mode.value) for mode in InstalledAppListMode)
+        expected = f"{', '.join(initial)} or {last}"
+        raise PydanticCustomError("literal_error", "Input should be {expected}", {"expected": expected})
 
 
 logger = logging.getLogger(__name__)

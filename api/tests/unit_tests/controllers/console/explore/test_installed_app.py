@@ -10,10 +10,12 @@ from uuid import UUID, uuid4
 import pytest
 from flask import Flask, got_request_exception
 from flask.testing import FlaskClient
+from pydantic import ValidationError
 from sqlalchemy import Connection, delete, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 import controllers.console.explore.installed_app as module
+from controllers.common.schema import query_params_from_model
 from controllers.console.app.app import AppListBaseQuery
 from enums import WebAppAccessMode
 from models import Account, App, InstalledApp, Tenant, TenantAccountJoin
@@ -255,8 +257,8 @@ def test_response_schema_preserves_domain_types_and_default_page_size() -> None:
 
 
 def test_list_mode_schema_matches_studio_values_and_default() -> None:
-    installed_mode = module.InstalledAppsListQuery.model_json_schema()["properties"]["mode"]
-    studio_mode = AppListBaseQuery.model_json_schema()["properties"]["mode"]
+    installed_mode = query_params_from_model(module.InstalledAppsListQuery)["mode"]
+    studio_mode = query_params_from_model(AppListBaseQuery)["mode"]
 
     assert installed_mode["enum"] == studio_mode["enum"]
     assert installed_mode["default"] == studio_mode["default"] == "all"
@@ -599,6 +601,9 @@ def test_list_rejects_invalid_mode_before_opening_sessions(management: _Manageme
     assert len(errors) == 1
     assert errors[0]["loc"] == ["mode"]
     assert errors[0]["type"] == "literal_error"
+    with pytest.raises(ValidationError) as studio_error:
+        AppListBaseQuery.model_validate({"mode": mode})
+    assert errors[0]["msg"] == studio_error.value.errors()[0]["msg"]
     assert management.sessions == []
 
 
