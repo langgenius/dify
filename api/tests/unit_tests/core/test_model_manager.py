@@ -37,8 +37,7 @@ from core.model_manager import (
     QuotaManagedModelInstance,
 )
 from core.plugin.impl.model_runtime import PluginModelRuntime
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_runtime
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -393,6 +392,7 @@ def test_disabled_zero_credit_offer_cannot_use_cached_credentials(
     assert not llm.credential_calls
 
 
+@pytest.mark.usefixtures("unbound_session_factory")
 @pytest.mark.parametrize("hosted_embedding", [False, True])
 def test_zero_credit_fallback_requires_the_requested_hosted_model_type(
     config_overrides: Callable[..., None], hosted_embedding: bool
@@ -445,11 +445,12 @@ def test_zero_credit_fallback_requires_the_requested_hosted_model_type(
         ),
         model_settings=[],
     )
-    runtime = create_plugin_model_runtime(tenant_id=config.tenant_id)
+    assembly = create_plugin_model_assembly(tenant_id=config.tenant_id)
+    runtime = assembly.model_runtime
     config.bind_model_runtime(runtime)
     catalog = ProviderConfigurations(tenant_id=config.tenant_id)
     catalog[provider] = config
-    providers = ProviderManager(model_runtime=runtime)
+    providers = assembly.provider_manager
     providers._configurations_cache[config.tenant_id] = catalog
     manager = ModelManager(providers, enable_credentials_cache=True)
     result = EmbeddingResult.model_validate(
