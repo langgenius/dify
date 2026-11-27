@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppListUrlQuery } from './query-params'
+import type { BuilderCreationMode } from '@/features/dify-builder/creation/pending-prompt'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import dynamic from 'next/dynamic'
 
@@ -16,7 +17,13 @@ const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/creat
   ssr: false,
 })
 
+const BuilderCreationPromptDialog = dynamic(
+  () => import('@/features/dify-builder/creation/prompt-dialog'),
+  { ssr: false },
+)
+
 export type AppListCreationDialog =
+  | { type: 'builder'; mode: BuilderCreationMode }
   | { type: 'blank' }
   | { type: 'template' }
   | { type: 'dsl'; droppedFile?: File }
@@ -43,6 +50,9 @@ export function AppListCreationModals({
 
   return (
     <>
+      {dialog?.type === 'builder' && (
+        <BuilderCreationPromptDialog mode={dialog.mode} onClose={onClose} />
+      )}
       {dialog?.type === 'dsl' && (
         <CreateFromDSLModal show onClose={onClose} droppedFile={dialog.droppedFile} />
       )}

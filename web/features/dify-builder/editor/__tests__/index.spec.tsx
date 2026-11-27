@@ -4,9 +4,11 @@ import type { WorkflowDraftRefreshResult } from '@/features/dify-builder/editor/
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { StrictMode, useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DifyBuilderProvider } from '..'
 import { builderModel, createBuilderQueryClient } from '../../__tests__/model-fixtures'
+import { pendingBuilderPromptAtom } from '../../creation/pending-prompt'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderSessionBusyAtom,
@@ -264,6 +266,42 @@ const renderProvider = (edgeCount = 0, difyBuilderEnabled = true, userId = 'user
     },
   )
 
+function CreationHandoff() {
+  const setPending = useSetAtom(pendingBuilderPromptAtom)
+  const [ready, setReady] = useState(false)
+  const [mounted, setMounted] = useState(true)
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setPending({ appId: 'app-1', prompt: 'Summarize support tickets' })}
+      >
+        Arrive from Studio
+      </button>
+      <button type="button" onClick={() => setReady(true)}>
+        Finish loading draft
+      </button>
+      <button type="button" onClick={() => setMounted((open) => !open)}>
+        Toggle editor
+      </button>
+      {mounted && (
+        <DifyBuilderProvider
+          appId="app-1"
+          canEdit
+          creationReady={ready}
+          getCanvasSnapshot={() => ({ nodes: [], edges: [], isChatflow: false })}
+          onRefreshCanvas={mocks.refreshCanvas}
+          onSyncDraft={mocks.syncDraft}
+          tenantId="workspace-1"
+          userId="user-1"
+        >
+          <Probe />
+        </DifyBuilderProvider>
+      )}
+    </>
+  )
+}
+
 describe('DifyBuilderProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -276,6 +314,33 @@ describe('DifyBuilderProvider', () => {
     mocks.startBuild.mockReset().mockResolvedValue(true)
     mocks.syncDraft.mockReset().mockResolvedValue(undefined)
     window.sessionStorage.clear()
+  })
+
+  it('opens Builder and sends the Studio prompt once after the app draft is ready', async () => {
+    const user = userEvent.setup()
+    renderWithConsoleQuery(
+      <StrictMode>
+        <CreationHandoff />
+      </StrictMode>,
+      {
+        queryClient: createBuilderQueryClient(),
+        features: { dify_builder_enabled: true },
+      },
+    )
+    await user.click(screen.getByRole('button', { name: 'Arrive from Studio' }))
+    expect(mocks.startBuild).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Finish loading draft' }))
+    await waitFor(() =>
+      expect(mocks.startBuild).toHaveBeenCalledExactlyOnceWith(
+        'app-1',
+        'Summarize support tickets',
+        builderModel,
+      ),
+    )
+    expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
+    await user.click(screen.getByRole('button', { name: 'Toggle editor' }))
+    await user.click(screen.getByRole('button', { name: 'Toggle editor' }))
+    expect(mocks.startBuild).toHaveBeenCalledOnce()
   })
 
   it('isolates saved session ids between collaborators on the same app', async () => {

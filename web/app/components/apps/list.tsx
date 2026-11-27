@@ -4,12 +4,14 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
+import type { BuilderCreationMode } from '@/features/dify-builder/creation/pending-prompt'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { throttle, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useDifyBuilderEnabled } from '@/features/dify-builder/use-enabled'
 import { CheckResultToast } from '@/hooks/use-pay'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
@@ -56,10 +58,14 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
   const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
   // DSL import has no URL; it holds the file dropped on the list, if any.
+  const [builderMode, setBuilderMode] = useState<BuilderCreationMode | null>(null)
+  const builderEnabled = useDifyBuilderEnabled()
   const [dslImport, setDSLImport] = useState<{ droppedFile?: File } | null>(null)
   const creationDialog: AppListCreationDialog = dslImport
     ? { type: 'dsl', ...dslImport }
-    : creationQuery.create && { type: creationQuery.create }
+    : builderEnabled && builderMode
+      ? { type: 'builder', mode: builderMode }
+      : creationQuery.create && { type: creationQuery.create }
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const hasActiveFilters =
     category !== 'all' ||
@@ -145,13 +151,15 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const closeCreationDialog = useCallback(() => {
     if (dslImport) {
       setDSLImport(null)
+    } else if (builderMode) {
+      setBuilderMode(null)
     } else if (isPushedCreationEntry()) {
       window.history.back()
     } else {
       // Opened from a link or a reload: clear the query without leaving the page.
       void setCreationQuery(null, { history: 'replace' })
     }
-  }, [dslImport, setCreationQuery])
+  }, [builderMode, dslImport, setCreationQuery])
   const openCreateFromDSLModal = useCallback(() => {
     if (canCreateApp) setDSLImport({})
   }, [canCreateApp])
@@ -190,6 +198,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             onKeywordsChange={changeKeywords}
             onCreatorIDsChange={changeCreatorIDs}
             onSortByChange={changeSortBy}
+            onCreateBuilderApp={builderEnabled ? setBuilderMode : undefined}
             onCreateBlank={openCreateBlankModal}
             onCreateTemplate={openCreateTemplateDialog}
             onImportDSL={openCreateFromDSLModal}

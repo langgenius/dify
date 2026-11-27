@@ -2,6 +2,7 @@
 
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListUrlQuery } from './query-params'
+import type { BuilderCreationMode } from '@/features/dify-builder/creation/pending-prompt'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { CreateAppMenu } from '@/app/components/app/create-app-menu'
@@ -15,6 +16,7 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { BuilderCreationMenuItems } from '@/features/dify-builder/creation/menu-items'
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
@@ -39,6 +41,7 @@ type AppListHeaderProps = {
   onKeywordsChange: (keywords: string) => void
   onCreatorIDsChange: (creatorIDs: string[]) => void
   onSortByChange: (sortBy: AppListSortBy) => void
+  onCreateBuilderApp?: (mode: BuilderCreationMode) => void
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
@@ -58,6 +61,7 @@ export function AppListHeader({
   onKeywordsChange,
   onCreatorIDsChange,
   onSortByChange,
+  onCreateBuilderApp,
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -117,6 +121,9 @@ export function AppListHeader({
           </StudioListLink>
           {showCreateButton && (
             <CreateAppMenu
+              leadingItems={
+                onCreateBuilderApp && <BuilderCreationMenuItems onChoose={onCreateBuilderApp} />
+              }
               onCreateBlank={onCreateBlank}
               onCreateTemplate={onCreateTemplate}
               onImportDSL={onImportDSL}

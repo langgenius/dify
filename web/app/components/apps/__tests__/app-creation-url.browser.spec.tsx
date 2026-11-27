@@ -7,11 +7,13 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import appMessages from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
+import builderMessages from '@/i18n/locales/en-US/dify-builder.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
 import time from '@/i18n/locales/en-US/time.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestNavigation } from '@/test/next-navigation'
 import { List } from '../list'
 
@@ -21,17 +23,28 @@ const currentUrl = () => `${window.location.pathname}${window.location.search}`
 afterEach(() => window.history.replaceState(null, '', testPageUrl))
 
 // The list renders behind the page the user came from, so Back can be checked against it.
-async function setup(listUrl: string) {
+async function setup(listUrl: string, builderEnabled = false) {
   await page.viewport(1280, 800)
   window.history.replaceState(null, '', '/previous-page')
   window.history.pushState(null, '', listUrl)
   const noApps = zAppPagination.parse({ data: [], page: 1, limit: 30, has_more: false, total: 0 })
+  const features = zGetFeaturesResponse.parse({
+    apps: { size: 0, limit: 3 },
+    dify_builder_enabled: builderEnabled,
+  })
+  const createApp = vi.fn(() =>
+    createAppDetailFixture({
+      id: 'builder-app',
+      mode: 'workflow',
+      maintainer: 'user-1',
+    }),
+  )
   onTestFinished(
     installFakeApi({
       console: {
-        apps: { get: () => noApps, starred: { get: () => noApps } },
+        apps: { get: () => noApps, starred: { get: () => noApps }, post: createApp },
         explore: { apps: { get: () => ({ recommended_apps: [], categories: [] }) } },
-        features: { get: () => zGetFeaturesResponse.parse({}) },
+        features: { get: () => features },
         tags: { get: () => [] },
         workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
       },
@@ -40,17 +53,19 @@ async function setup(listUrl: string) {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
-    resources: { 'en-US': { app: appMessages, common, navigation, time } },
+    resources: {
+      'en-US': { app: appMessages, common, difyBuilder: builderMessages, navigation, time },
+    },
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
-    features: {},
+    features,
     systemFeatures: { rbac_enabled: true, enable_learn_app: false },
   })
-  const { NavigationProvider } = createTestNavigation({ url: listUrl })
+  const { NavigationProvider, router } = createTestNavigation({ url: listUrl })
   const screen = await render(
     <NavigationProvider>
       <QueryClientTestProvider queryClient={queryClient}>
@@ -68,7 +83,7 @@ async function setup(listUrl: string) {
     window.history.back()
     await expect.poll(currentUrl).toBe(url)
   }
-  return { screen, goBack }
+  return { screen, goBack, createApp, router }
 }
 
 it('returns to the list in one Back step after closing a dialog that Forward reopened', async () => {
@@ -119,4 +134,33 @@ it('closes a dialog opened from a link in place, keeping Back to the previous pa
   await expect.element(blank).not.toBeInTheDocument()
   await expect.poll(currentUrl).toBe('/apps')
   await goBack('/previous-page')
+})
+
+it('starts Workflow creation from a Builder prompt with the ordinary app API', async () => {
+  const { screen, createApp, router } = await setup('/apps', true)
+  await screen.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect
+    .element(screen.getByRole('menuitem', { name: 'Chatflow', exact: true }))
+    .toBeVisible()
+  await screen.getByRole('menuitem', { name: 'Workflow', exact: true }).click()
+  const builder = screen.getByRole('dialog', { name: builderMessages.emptyBuildTitle })
+  await expect.element(builder).toBeVisible()
+  await builder
+    .getByRole('textbox', { name: builderMessages.messagePlaceholder })
+    .fill('Summarize support tickets')
+  await builder.getByRole('button', { name: 'Create', exact: true }).click()
+
+  await expect.poll(() => router.push.mock.calls).toEqual([['/app/builder-app/workflow']])
+  expect(createApp).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      body: {
+        mode: 'workflow',
+        name: appMessages['types.workflow'],
+        description: '',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#FFEAD5',
+      },
+    }),
+  )
 })
