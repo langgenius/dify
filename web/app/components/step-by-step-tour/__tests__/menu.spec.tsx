@@ -1,5 +1,5 @@
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { getStepByStepTourMenuContentProps, useStepByStepTourControlledMenu } from '../menu'
 
@@ -95,41 +95,7 @@ describe('useStepByStepTourControlledMenu', () => {
 })
 
 describe('getStepByStepTourMenuContentProps', () => {
-  it('blocks presentation menu interactions without letting clicks bubble through', () => {
-    const onAction = vi.fn()
-    const onBackgroundClick = vi.fn()
-
-    render(
-      <Menu open>
-        <MenuTrigger>Open menu</MenuTrigger>
-        <MenuContent
-          {...getStepByStepTourMenuContentProps({
-            highlightPart: 'tour-menu',
-            interactionMode: 'presentation',
-          })}
-        >
-          <MenuItem onClick={onAction}>Delete</MenuItem>
-        </MenuContent>
-      </Menu>,
-    )
-    document.addEventListener('click', onBackgroundClick)
-    try {
-      // Exercise capture-phase rejection even if a click is dispatched to the presentation-only menu.
-      fireEvent.click(screen.getByRole('menuitem', { name: 'Delete', hidden: true }))
-
-      expect(onAction).not.toHaveBeenCalled()
-      expect(onBackgroundClick).not.toHaveBeenCalled()
-      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
-      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute(
-        'data-step-by-step-tour-highlight-part',
-        'tour-menu',
-      )
-    } finally {
-      document.removeEventListener('click', onBackgroundClick)
-    }
-  })
-
-  it('leaves interactive menus clickable without bubbling through', async () => {
+  it('marks the highlight part and keeps menu clicks from bubbling through', async () => {
     const user = userEvent.setup()
     const onAction = vi.fn()
     const onBackgroundClick = vi.fn()
@@ -140,7 +106,6 @@ describe('getStepByStepTourMenuContentProps', () => {
         <MenuContent
           {...getStepByStepTourMenuContentProps({
             highlightPart: 'tour-menu',
-            interactionMode: 'interactive',
           })}
         >
           <MenuItem onClick={onAction}>Create</MenuItem>

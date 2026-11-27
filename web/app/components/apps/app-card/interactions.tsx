@@ -423,9 +423,8 @@ export function AppCardInteractions({
                 align="end"
                 {...getStepByStepTourMenuContentProps({
                   highlightPart: stepByStepTourActionMenuHighlightPart,
-                  interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
-                  className: OPERATIONS_MENU_POPUP_CLASS_NAME,
                 })}
+                className={OPERATIONS_MENU_POPUP_CLASS_NAME}
               >
                 <AppCardOperationsMenuItems kind="menu" {...operationsMenuItemsProps} />
               </MenuContent>

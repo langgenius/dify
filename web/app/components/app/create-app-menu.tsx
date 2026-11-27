@@ -56,11 +56,9 @@ export function CreateAppMenu({
       <MenuContent
         align="end"
         {...getStepByStepTourMenuContentProps({
-          disableMotion: menu.controlled,
           highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,
-          interactionMode: menu.controlled ? 'presentation' : 'interactive',
-          className: 'w-70 p-0',
         })}
+        className="w-70 p-0"
       >
         {(onCreateBlank || onCreateTemplate) && (
           <MenuGroup className="py-1">
