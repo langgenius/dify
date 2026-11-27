@@ -45,13 +45,11 @@ export const canFilterVariable = (varPayload: Var) => {
 export const buildFilterCondition = ({
   itemVarType,
   isFileArray,
-  existingKey,
 }: {
   itemVarType?: VarType
   isFileArray: boolean
-  existingKey?: string
 }): Condition => ({
-  key: isFileArray && !existingKey ? 'name' : '',
+  key: isFileArray ? 'name' : '',
   comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0]!,
   value: itemVarType === WorkflowVarType.boolean ? false : '',
 })
@@ -77,7 +75,6 @@ export const updateListFilterVariable = ({
       buildFilterCondition({
         itemVarType,
         isFileArray,
-        existingKey: draft.filter_by.conditions[0]?.key,
       }),
     ]
 
