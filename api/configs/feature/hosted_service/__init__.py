@@ -374,7 +374,7 @@ class HostedModerationConfig(BaseSettings):
 
     HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES: PositiveInt = Field(
         description="UTF-8 text budget per platform moderation batch; oversized segments are sent alone",
-        default=8192,
+        default=128 * 1024,
     )
 
     HOSTED_MODERATION_CACHE_TTL: NonNegativeInt = Field(

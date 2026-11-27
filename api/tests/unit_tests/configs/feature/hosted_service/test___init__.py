@@ -12,7 +12,7 @@ class _IsolatedHostedModerationConfig(InitSettingsOnly, HostedModerationConfig):
 def test_hosted_batch_limits_preserve_defaults() -> None:
     config = _IsolatedHostedModerationConfig()
     assert config.HOSTED_MODERATION_BATCH_MAX_ITEMS == 32
-    assert config.HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES == 8192
+    assert config.HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES == 131072
 
 
 def test_hosted_batch_limits_load_environment_values(monkeypatch: pytest.MonkeyPatch) -> None:

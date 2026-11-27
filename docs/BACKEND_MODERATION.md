@@ -64,7 +64,7 @@ only misses. API and worker processes accept these positive integer settings:
 | --- | ---: | --- |
 | `MODERATION_NON_STREAM_SEGMENT_SIZE` | 2000 | Characters per input or non-streaming output segment. |
 | `HOSTED_MODERATION_BATCH_MAX_ITEMS` | 32 | Segments per platform moderation request. |
-| `HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES` | 8192 | Combined UTF-8 text bytes per platform batch, excluding JSON overhead. |
+| `HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES` | 131072 (128 KiB) | Combined UTF-8 text bytes per platform batch, excluding JSON overhead. |
 
 These are local limits, not OpenAI limits. Batching never cuts a segment again:
 an individually oversized segment is sent alone. Results must contain one
