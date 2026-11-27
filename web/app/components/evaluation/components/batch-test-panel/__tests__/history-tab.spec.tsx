@@ -4,10 +4,25 @@ import type {
 } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEvaluationStore } from '../../../store'
 import HistoryTab from '../history-tab'
+
+const cancelRun = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.evaluation.runs.byRunId.cancel.post': cancelRun,
+    }),
+  }
+})
 
 const resourceId = 'dataset-1'
 
@@ -248,5 +263,50 @@ describe('evaluation history run details', () => {
     expect(
       await screen.findByText('evaluation.history.status.notCompleted: Judge model quota exceeded'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('evaluation history run actions', () => {
+  it('reports a failed cancellation with its translated failure, not the server text', async () => {
+    const user = userEvent.setup()
+    const toastError = vi.spyOn(toast, 'error')
+    cancelRun.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 404 }), {
+        code: 'not_found',
+        message: 'Server says why',
+      }),
+    )
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.datasets.byDatasetId.evaluation.logs.get.queryKey({
+        input: {
+          params: { dataset_id: resourceId },
+          query: { page: 1, page_size: 16 },
+        },
+      }),
+      {
+        data: [{ ...createRun('run-1', 1793894400), status: 'running' }],
+        page: 1,
+        page_size: 16,
+        total: 1,
+      },
+    )
+    queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+      accounts: [],
+    })
+    act(() => useEvaluationStore.getState().ensureResource('datasets', resourceId))
+
+    renderWithConsoleQuery(<HistoryTab resourceType="datasets" resourceId={resourceId} />, {
+      queryClient,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'evaluation.history.actions.open' }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'evaluation.history.actions.cancel' }),
+    )
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('evaluation.history.cancelFailed'),
+    )
   })
 })

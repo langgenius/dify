@@ -67,6 +67,22 @@ it('reports an incorrect password on the field until it is edited', async () => 
   expect(navigation.router.replace).not.toHaveBeenCalled()
 })
 
+it('sends an instance that finished setup to sign in', async () => {
+  fake.console.init.post.mockRejectedValue(
+    apiError({
+      status: 403,
+      code: 'already_setup',
+      message: 'Dify has been successfully installed.',
+    }),
+  )
+  const screen = await renderPopup()
+
+  await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'secret')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.poll(() => navigation.router.replace).toHaveBeenCalledWith('/signin')
+})
+
 it('reports other failures inside the form until the password is edited', async () => {
   fake.console.init.post.mockRejectedValue(
     apiError({ status: 500, code: 'internal_error', message: 'Internal error' }),
@@ -77,7 +93,7 @@ it('reports other failures inside the form until the password is edited', async 
   await userEvent.fill(password, 'secret')
   await userEvent.keyboard('{Enter}')
 
-  await expect.element(screen.getByRole('alert')).toHaveTextContent('Internal error')
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   await expect.element(password).not.toHaveAttribute('aria-invalid', 'true')
 
   await userEvent.type(password, '!')

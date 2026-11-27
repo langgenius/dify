@@ -26,7 +26,7 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -35,7 +35,7 @@ import {
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { streamEvents } from '@/service/event-stream'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
@@ -207,6 +207,27 @@ function getConversationMessagesData(response: unknown): ConversationMessagesRes
   return Array.isArray(data) ? data.filter(isHistoryConversationMessage) : []
 }
 
+function hasPendingAgentHistory(
+  message: HistoryConversationMessage | undefined,
+  streamedThoughts: ThoughtItem[] | undefined,
+) {
+  if (!message) return true
+  const thoughts = getHistoryAgentThoughts(message)
+  const isPending = (thought: ThoughtItem) =>
+    thought.tool_activity?.status === 'started' || thought.tool_activity?.status === 'running'
+
+  return (
+    thoughts.some(isPending) ||
+    (streamedThoughts ?? []).some(
+      (streamed) =>
+        streamed.tool_activity &&
+        !thoughts.some(
+          (thought) => thought.id === streamed.id && thought.tool_activity && !isPending(thought),
+        ),
+    )
+  )
+}
+
 function abortWorkflowEventsRequest(abortController: AbortController | null) {
   abortController?.abort(new DOMException('The user aborted a request.', 'AbortError'))
 }
@@ -225,6 +246,7 @@ export const useChat = (
   options: UseChatOptions = {},
 ) => {
   const { t } = useTranslation(['appDebug', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
@@ -233,6 +255,7 @@ export const useChat = (
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
   const stopPendingRef = useRef<number | null>(null)
+  const completeStoppedAgentRef = useRef<(() => Promise<void>) | null>(null)
   const pausedStateRef = useRef(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
@@ -550,18 +573,23 @@ export const useChat = (
 
   useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
 
-  const stopLocalResponse = useCallback(() => {
-    hasStopRespondedRef.current = true
-    handleResponding(false)
-    if (conversationMessagesAbortControllerRef.current)
-      conversationMessagesAbortControllerRef.current.abort()
-    if (suggestedQuestionsAbortControllerRef.current)
-      suggestedQuestionsAbortControllerRef.current.abort()
-    if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
-    resetWorkflowEventsSubscription()
-  }, [handleResponding, resetWorkflowEventsSubscription])
+  const stopLocalResponse = useCallback(
+    (preserveAgentRequest = false) => {
+      hasStopRespondedRef.current = true
+      handleResponding(false)
+      if (!preserveAgentRequest) conversationMessagesAbortControllerRef.current?.abort()
+      if (suggestedQuestionsAbortControllerRef.current)
+        suggestedQuestionsAbortControllerRef.current.abort()
+      if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
+      if (!preserveAgentRequest) resetWorkflowEventsSubscription()
+    },
+    [handleResponding, resetWorkflowEventsSubscription],
+  )
 
   const handleStop = useCallback(async () => {
+    const preserveAgentRequest = !!options.isNewAgent && isRespondingRef.current
+    const stoppedStream = conversationMessagesAbortControllerRef.current
+    const completeStoppedAgent = completeStoppedAgentRef.current
     if (options.isNewAgent && isRespondingRef.current) {
       const generation = workflowRequestGenerationRef.current
       if (stopPendingRef.current === generation) return
@@ -577,7 +605,10 @@ export const useChat = (
         await stopChat(taskId)
       } catch (error) {
         toast.error(
-          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${describeRequestError(
+            error,
+            t(($) => $['api.actionFailed'], { ns: 'common' }),
+          )}`,
         )
         return
       } finally {
@@ -591,13 +622,17 @@ export const useChat = (
           await stopChat(taskIdRef.current)
         } catch (error) {
           // Stopping locally must still finish; only the server stop failure is reported.
-          toastRequestError(error)
+          reportRequestError(error)
         }
       })()
     }
-    stopLocalResponse()
+    stopLocalResponse(preserveAgentRequest)
+    if (preserveAgentRequest) {
+      stoppedStream?.abort()
+      await completeStoppedAgent?.()
+    }
     return true
-  }, [stopChat, stopLocalResponse, options.isNewAgent, t])
+  }, [stopChat, stopLocalResponse, options.isNewAgent, t, describeRequestError])
 
   const handleRestart = useCallback(
     (cb?: () => void) => {
@@ -734,7 +769,7 @@ export const useChat = (
                 )
                 setSuggestedQuestions(data)
               } catch (error) {
-                toastRequestError(error)
+                reportRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -1207,6 +1242,7 @@ export const useChat = (
       let hasSettled = false
       let hasPaused = false
       let hasNotifiedConversationComplete = false
+      let completionStarted = false
       let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
         if (hasSettled || !isCurrentRequest()) return
@@ -1282,7 +1318,8 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          if (!isCurrentRequest()) return
+          if (!isCurrentRequest() || completionStarted) return
+          completionStarted = true
 
           handleResponding(false)
 
@@ -1293,28 +1330,41 @@ export const useChat = (
 
             if (
               conversationIdRef.current &&
-              !hasStopRespondedRef.current &&
+              (!hasStopRespondedRef.current || options.isNewAgent) &&
               onGetConversationMessages
             ) {
-              let conversationMessagesResponse: unknown
-              try {
-                conversationMessagesResponse = await onGetConversationMessages(
-                  conversationIdRef.current,
-                  (newAbortController) => {
-                    if (isCurrentRequest())
-                      conversationMessagesAbortControllerRef.current = newAbortController
-                    else newAbortController.abort()
-                  },
-                )
-              } catch (error) {
-                // Keep the streamed answer and its settlement when history cannot be refreshed.
-                if (isCurrentRequest()) toastRequestError(error)
-                return
-              }
-              if (!isCurrentRequest()) return
+              let newResponseItem: HistoryConversationMessage | undefined
+              // Stop acknowledges the cancellation request before terminal thoughts are persisted.
+              for (let attempt = 0; attempt < 20; attempt++) {
+                if (!isCurrentRequest()) return
+                let conversationMessagesResponse: unknown
+                try {
+                  conversationMessagesResponse = await onGetConversationMessages(
+                    conversationIdRef.current,
+                    (newAbortController) => {
+                      if (isCurrentRequest())
+                        conversationMessagesAbortControllerRef.current = newAbortController
+                      else newAbortController.abort()
+                    },
+                  )
+                } catch (error) {
+                  // Keep the streamed answer and its settlement when history cannot be refreshed.
+                  if (isCurrentRequest()) reportRequestError(error)
+                  return
+                }
+                if (!isCurrentRequest()) return
 
-              const data = getConversationMessagesData(conversationMessagesResponse)
-              const newResponseItem = data.find((item) => item.id === responseItem.id)
+                const data = getConversationMessagesData(conversationMessagesResponse)
+                newResponseItem = data.find((item) => item.id === responseItem.id)
+                if (
+                  !options.isNewAgent ||
+                  !hasStopRespondedRef.current ||
+                  !hasPendingAgentHistory(newResponseItem, responseItem.agent_thoughts)
+                )
+                  break
+                if (attempt === 19) return notifyConversationComplete(completedWorkflowRunId)
+                await new Promise<void>((resolve) => setTimeout(resolve, 500))
+              }
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
               if (!newResponseItem) return notifyConversationComplete(completedWorkflowRunId)
 
@@ -1396,7 +1446,7 @@ export const useChat = (
                 if (isCurrentRequest()) setSuggestedQuestions(data)
               } catch (error) {
                 if (isCurrentRequest()) {
-                  toastRequestError(error)
+                  reportRequestError(error)
                   setSuggestedQuestions([])
                 }
               }
@@ -1832,6 +1882,11 @@ export const useChat = (
           return otherOptions.onCompleted?.(hasError, errorMessage)
         },
       }
+      completeStoppedAgentRef.current = options.isNewAgent
+        ? async () => {
+            await otherOptions.onCompleted?.(true)
+          }
+        : null
       streamEvents((requestOptions) => send(bodyParams, requestOptions), postOptions)
       return true
     },

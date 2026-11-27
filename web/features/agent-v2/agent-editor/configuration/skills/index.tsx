@@ -29,7 +29,7 @@ import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -441,6 +441,7 @@ export function AgentSkills() {
   const { t } = useTranslation(['agentV2'])
   const { t: tSkill } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
 
   const skillsListId = 'agent-configure-skills-list'
   const readOnly = useAgentOrchestrateReadOnly()
@@ -517,8 +518,10 @@ export function AgentSkills() {
               return
             }
             toast.error(
-              getRequestErrorMessage(error) ??
+              describeRequestError(
+                error,
                 t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']),
+              ),
             )
           },
           onSuccess: () => {
@@ -529,6 +532,7 @@ export function AgentSkills() {
     },
     [
       apiContext.agentId,
+      describeRequestError,
       hasLoadedAgentSkillBindings,
       readOnly,
       replaceAgentSkillBindings,

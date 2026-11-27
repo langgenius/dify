@@ -5,7 +5,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
@@ -88,7 +88,10 @@ def _provider_manager(configuration: ProviderConfiguration | None) -> ProviderMa
     configurations = ProviderConfigurations(tenant_id="tenant-id")
     if configuration is not None:
         configurations[str(ModelProviderID(configuration.provider.provider))] = configuration
-    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
+    # The seeded catalog serves every lookup, so an unbound maker makes any database access fail loudly.
+    manager = ProviderManager(
+        model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"), session_maker=sessionmaker()
+    )
     # Exercise the documented per-manager cache and the real normalized provider lookup.
     manager._configurations_cache["tenant-id"] = configurations
     return manager

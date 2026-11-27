@@ -75,6 +75,7 @@
   "entry.checkFailed": "Dərc edilmiş versiyanı yoxlamaq mümkün olmadı. Yenidən cəhd edin.",
   "entry.duplicateNodeNames": "Dərc edilmiş versiyada eyni adlı düyünlər var ({{names}}). Qiymətləndirməyə davam edə bilərsiniz, lakin nəticələri daha asan ayırd etmək üçün adlarını dəyişdirib yeni versiya dərc edin.",
   "entry.duplicateNodeNamesTitle": "Təkrarlanan düyün adları",
+  "entry.triggerUnsupported": "Tətikləyici ilə başlayan iş axınları qiymətləndirilə bilməz. İstifadəçi girişi başlanğıc düyünü olan iş axınını dərc edin.",
   "history.actions.cancel": "İcranı ləğv et",
   "history.actions.downloadFailed": "Qiymətləndirmə faylını yükləmək mümkün olmadı.",
   "history.actions.downloadResultFile": "Nəticəni yüklə",

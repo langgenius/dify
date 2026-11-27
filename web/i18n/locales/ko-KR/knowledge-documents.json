@@ -47,6 +47,8 @@
   "noMatchingDocuments": "이 검색과 일치하는 문서가 없습니다.",
   "parentChildChunkCount": "상위 {{parentCount}}개 / 하위 {{childCount}}개",
   "partialDocumentResults": "일치하는 문서가 더 있을 수 있습니다. 검색을 계속하려면 더 불러오세요.",
+  "reindexConfirmDescription": "재인덱싱하면 원본 파일을 기준으로 모든 청크와 인덱스 항목을 다시 만듭니다. 지식 베이스에서 청크에 적용한 수정 내용(예: 충돌을 해결하면서 다른 문서의 내용을 사용한 경우)은 원본 파일의 내용으로 덮어쓰입니다. 재인덱싱이 끝날 때까지 검색은 현재 인덱스를 계속 사용합니다.",
+  "reindexConfirmTitle": "원본 파일로 재인덱싱할까요?",
   "reindexDocument": "재인덱싱",
   "retrievalCountValue": "최근 7일 동안 {{value}}회",
   "retryReindexDocument": "다시 재인덱싱",

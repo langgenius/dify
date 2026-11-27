@@ -75,6 +75,7 @@
   "entry.checkFailed": "The published version could not be checked. Please try again.",
   "entry.duplicateNodeNames": "The published version has nodes with the same name ({{names}}). You can continue evaluating, but renaming them and publishing a new version will make results easier to distinguish.",
   "entry.duplicateNodeNamesTitle": "Duplicate node names",
+  "entry.triggerUnsupported": "Trigger-started workflows cannot be evaluated. Publish a workflow with a User Input start node.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",

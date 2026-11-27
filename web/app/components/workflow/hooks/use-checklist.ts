@@ -34,7 +34,7 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { ENABLE_HITL_IM, MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
@@ -816,7 +816,7 @@ export const useChecklistBeforePublish = () => {
         }))
       } catch (error) {
         // A failed lookup blocks the publish; the callers treat `null` as not publishable.
-        toastRequestError(error)
+        reportRequestError(error)
         return null
       }
       if (currUpdateTime < updateTimeRef.current) return null

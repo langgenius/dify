@@ -38,6 +38,28 @@ const knowledgeSpacePermissionState = vi.hoisted(() => ({
 
 const multimodalAssetGet = vi.hoisted(() => vi.fn())
 
+// Confirming a reindex has its own spec; here every request to reindex is confirmed at once.
+vi.mock('../../reindex-confirm-dialog', async () => {
+  const { useEffect } = await import('react')
+  return {
+    ReindexConfirmDialog: ({
+      onConfirm,
+      onOpenChange,
+      open,
+    }: {
+      onConfirm: () => void
+      onOpenChange: (open: boolean) => void
+      open: boolean
+    }) => {
+      useEffect(() => {
+        if (!open) return
+        onOpenChange(false)
+        onConfirm()
+      }, [onConfirm, onOpenChange, open])
+      return null
+    },
+  }
+})
 vi.mock('../../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -1994,13 +2016,15 @@ describe('DocumentDetailPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows a failed task interrupt once, with the server reason in the task row', async () => {
+  it('shows a failed task interrupt once, with the translated reason in the task row', async () => {
     const user = userEvent.setup()
-    const message = 'The task has already finished'
     documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
     tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
     cancelMutation.mutateAsync.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 409 }), { message }),
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'document_already_finished',
+        message: 'The task has already finished',
+      }),
     )
 
     await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
@@ -2012,7 +2036,9 @@ describe('DocumentDetailPage', () => {
       within(taskDrawer).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
     )
 
-    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(message)
+    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.document_already_finished',
+    )
     expect(toastState.error).not.toHaveBeenCalled()
   })
 
@@ -2036,7 +2062,10 @@ describe('DocumentDetailPage', () => {
     )
 
     await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
-    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(message)
+    // A message without a cataloged code gives way to the action's own text.
+    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(
+      'knowledgeSpace.taskActionFailed',
+    )
     expect(toastState.error).not.toHaveBeenCalled()
   })
 
@@ -2834,14 +2863,17 @@ describe('DocumentDetailPage', () => {
     await waitFor(() => expect(toastState.error).toHaveBeenCalledWith('Server says why'))
   })
 
-  it('shows the server message when a detail task retry fails', async () => {
+  it('shows the translated error code when a detail task retry fails', async () => {
     const user = userEvent.setup()
     const failedTask = task({ state: 'failed' })
     taskSnapshotQuery.data = failedTask
     documentQuery.data = logicalDocument({ latestTask: failedTask })
     tasksQuery.data = { pages: [{ items: [failedTask] }] }
     retryTaskRequest.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' }),
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      }),
     )
 
     await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
@@ -2849,7 +2881,9 @@ describe('DocumentDetailPage', () => {
     const drawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     await user.click(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' }))
 
-    expect(await within(drawer).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(drawer).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.invalid_input',
+    )
   })
 
   it('refreshes the document and the drawer documents after a drawer task action', async () => {

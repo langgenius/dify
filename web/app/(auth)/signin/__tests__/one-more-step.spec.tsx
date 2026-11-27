@@ -71,16 +71,26 @@ describe('OneMoreStep', () => {
         error: createHttpError(new Response(null, { status: 400 }), {
           code: 'invalid_invitation_code',
           message: 'Invalid invitation code.',
+          status: 400,
         }),
         expected: 'login.invalidInvitationCode',
       },
       {
-        name: 'the server message for another failure',
+        name: 'the translated message for another documented failure',
         error: createHttpError(new Response(null, { status: 400 }), {
           code: 'account_already_inited',
           message: 'Server says why',
+          status: 400,
         }),
-        expected: 'Server says why',
+        expected: 'requestErrors.code.account_already_inited',
+      },
+      {
+        name: 'the action failure for an unknown code',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'bad_request',
+          message: 'Server says why',
+        }),
+        expected: 'common.api.actionFailed',
       },
       {
         name: 'a generic message without a server message',
@@ -110,10 +120,19 @@ describe('OneMoreStep', () => {
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { account } = await import('@dify/contracts/api/console/account/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ account })
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'account.init.post': (input) => mockSubmitOneMoreStep(input),
+      'account.init.post': (input) =>
+        validate({
+          context: {},
+          input,
+          path: ['account', 'init', 'post'],
+          next: () => mockSubmitOneMoreStep(input),
+        }),
     }),
   }
 })

@@ -16,6 +16,8 @@
   "settings.membersRequired": "请至少选择一名团队成员。",
   "settings.nameRequired": "Agent 知识库名称为必填项。",
   "settings.pageDescription": "管理基本信息、API 访问和检索设置。",
+  "settings.personalAgentDescription": "成员可以让自己的 Agent（Claude Code、Codex、MCP 客户端）以其权限读取此知识库。",
+  "settings.personalAgentLabel": "个人 Agent",
   "settings.reloadLatest": "重新加载最新配置",
   "settings.rerankModelRequired": "请选择 Rerank 模型。",
   "settings.retrievalDepth": "检索深度",

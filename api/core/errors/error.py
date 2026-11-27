@@ -44,6 +44,10 @@ class AppInvokeQuotaExceededError(ValueError):
     description = "App Invoke Quota Exceeded"
 
 
+class AppInvokeQuotaWaitTimeoutError(TimeoutError):
+    """Raised when a caller cannot acquire an app concurrency slot in time."""
+
+
 class ModelCurrentlyNotSupportError(ValueError):
     """
     Custom exception raised when the model not support

@@ -75,6 +75,7 @@
   "entry.checkFailed": "게시된 버전을 확인할 수 없습니다. 다시 시도하세요.",
   "entry.duplicateNodeNames": "게시된 버전에 이름이 같은 노드가 있습니다({{names}}). 평가를 계속할 수 있지만, 노드 이름을 변경하고 새 버전을 게시하면 결과를 더 쉽게 구분할 수 있습니다.",
   "entry.duplicateNodeNamesTitle": "중복된 노드 이름",
+  "entry.triggerUnsupported": "트리거로 시작하는 워크플로는 평가할 수 없습니다. 사용자 입력 시작 노드가 있는 워크플로를 게시하세요.",
   "history.actions.cancel": "실행 중지",
   "history.actions.downloadFailed": "평가 파일을 다운로드하지 못했습니다.",
   "history.actions.downloadResultFile": "결과 다운로드",

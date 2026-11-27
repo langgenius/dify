@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Er zijn geen documenten die overeenkomen met deze zoekopdracht.",
   "parentChildChunkCount": "{{parentCount}} bovenliggend / {{childCount}} onderliggend",
   "partialDocumentResults": "Er kunnen meer overeenkomende documenten zijn. Laad meer om verder te zoeken.",
+  "reindexConfirmDescription": "Bij opnieuw indexeren worden alle segmenten en indexitems opnieuw opgebouwd vanuit het bronbestand. Wijzigingen in segmenten in de kennisbank, zoals het overnemen van de bewering uit een ander document bij het oplossen van een conflict, worden overschreven door de inhoud van het bronbestand. Zoeken blijft de huidige index gebruiken totdat het opnieuw indexeren is voltooid.",
+  "reindexConfirmTitle": "Opnieuw indexeren vanuit het bronbestand?",
   "reindexDocument": "Opnieuw indexeren",
   "retrievalCountValue": "{{value}} in de afgelopen 7 dagen",
   "retryReindexDocument": "Opnieuw herindexeren",

@@ -8,13 +8,14 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import HitHistoryNoData from './hit-history-no-data'
 
 type AnnotationHitHistoryProps = { appId: string; annotationId: string }
 
 export function AnnotationHitHistory({ appId, annotationId }: AnnotationHitHistoryProps) {
   const { t } = useTranslation(['appAnnotation', 'appLog', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp()
   const [page, setPage] = useState(1)
   const history = useQuery(
@@ -32,8 +33,10 @@ export function AnnotationHitHistory({ appId, annotationId }: AnnotationHitHisto
       return (
         <div role="alert" className="space-y-2">
           <p>
-            {getRequestErrorMessage(history.error) ??
-              t(($) => $['api.actionFailed'], { ns: 'common' })}
+            {describeRequestError(
+              history.error,
+              t(($) => $['api.actionFailed'], { ns: 'common' }),
+            )}
           </p>
           <Button loading={history.isFetching} onClick={() => history.refetch()}>
             {t(($) => $['operation.retry'], { ns: 'common' })}

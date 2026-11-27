@@ -246,6 +246,11 @@ export function createReactI18nextMock(translations: TranslationMap = {}) {
     getI18n: () => ({
       ...i18nextMock,
       language: 'en-US',
+      hasLoadedNamespace: () => true,
+      getResourceBundle: () => ({}),
+      loadNamespaces: async () => {},
+      getFixedT: (_language: string | null, namespace?: TranslationNamespace) =>
+        createTFunction(translations, namespace),
     }),
   }
 }

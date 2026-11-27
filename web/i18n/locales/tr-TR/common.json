@@ -110,7 +110,6 @@
   "feedback.placeholder": "Lütfen neyin yanlış gittiğini veya nasıl iyileşebileceğimizi açıklayın...",
   "feedback.subtitle": "Lütfen bu yanıtla ilgili neyin yanlış gittiğini bize bildirin",
   "feedback.title": "Geri Bildirim Sağla",
-  "fileUploader.fileExtensionBlocked": "Bu dosya türü güvenlik nedenleriyle engellenmiştir",
   "fileUploader.fileExtensionNotSupport": "Dosya uzantısı desteklenmiyor",
   "fileUploader.pasteFileLink": "Dosya bağlantısını yapıştır",
   "fileUploader.pasteFileLinkInputPlaceholder": "URL'yi giriniz...",

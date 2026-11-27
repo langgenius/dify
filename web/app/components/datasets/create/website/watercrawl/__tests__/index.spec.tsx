@@ -531,11 +531,14 @@ describe('WaterCrawl', () => {
       consoleSpy.mockRestore()
     })
 
-    it('shows the server message when task creation fails with an HTTP error', async () => {
+    it('shows the translated error code when task creation fails with an HTTP error', async () => {
       const user = userEvent.setup()
       const mockCreateTask = createWatercrawlTask as Mock
       mockCreateTask.mockRejectedValueOnce(
-        createHttpError(new Response(null, { status: 400 }), { message: 'Crawl quota exceeded' }),
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Crawl quota exceeded',
+        }),
       )
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(vi.fn())
 
@@ -546,7 +549,7 @@ describe('WaterCrawl', () => {
       )
       await user.click(screen.getByRole('button', { name: /run/i }))
 
-      expect(await screen.findByText('Crawl quota exceeded')).toBeInTheDocument()
+      expect(await screen.findByText('requestErrors.code.limit_exceeded')).toBeInTheDocument()
       expect(
         screen.queryByText('datasetCreation.stepOne.website.unknownError'),
       ).not.toBeInTheDocument()

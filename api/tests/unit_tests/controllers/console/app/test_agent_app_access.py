@@ -13,9 +13,9 @@ from controllers.console.app import advanced_prompt_template, agent_app_access, 
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
+from services.agent.agent_app_contracts import AgentAppNotFoundError, AgentReferencingWorkflow
 from services.agent.errors import AgentNotFoundError
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
-from services.app.agent_app_contracts import AgentAppNotFoundError, AgentReferencingWorkflow
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 from tests.helpers.unit.model_factories import make_account

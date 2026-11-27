@@ -10,11 +10,13 @@ export const ReadmeEntrance = ({
   presentation = 'drawer',
   className,
   showShortTip = false,
+  showDivider = !showShortTip,
 }: {
   pluginDetail: ReadmePanelState['detail']
   presentation?: ReadmePanelPresentation
   className?: string
   showShortTip?: boolean
+  showDivider?: boolean
 }) => {
   const { t } = useTranslation(['plugin'])
   const triggerId = useId()
@@ -44,7 +46,7 @@ export const ReadmeEntrance = ({
         className,
       )}
     >
-      {!showShortTip && (
+      {showDivider && (
         <div className="relative h-1 w-8 shrink-0">
           <div className="h-px w-full bg-divider-regular"></div>
         </div>

@@ -4116,8 +4116,28 @@ Agent has not been published. Please publish the Agent before using the API.
 | position | integer |  | Yes |
 | thought | string |  | No |
 | tool | string |  | No |
+| tool_activity | [AgentToolActivity](#agenttoolactivity) |  | No |
 | tool_input | string |  | No |
 | tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
+
+#### AgentToolActivity
+
+One native tool call's application-owned, persistable display metadata.
+
+Native call identity is independent of its display name and the SQL thought
+row. Tool inputs, credentials and successful observations remain outside
+this sidecar; ``error`` is a bounded failure description for display.
+Missing metadata on older thoughts conveys no execution or quota claim.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| call_limit | [ToolCallLimitMetadata](#toolcalllimitmetadata) |  | No |
+| error | string |  | No |
+| id | string |  | Yes |
+| run_id | string |  | Yes |
+| status | string, <br>**Available values:** "cancelled", "failed", "not_executed", "running", "started", "succeeded" | *Enum:* `"cancelled"`, `"failed"`, `"not_executed"`, `"running"`, `"started"`, `"succeeded"` | Yes |
+| tool_call_id | string |  | Yes |
+| tool_name | string |  | Yes |
 
 #### AgentVersionNotFoundError
 
@@ -8004,6 +8024,18 @@ Only one file is allowed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TooManyFilesError |  | Only one file is allowed. |  |
+
+#### ToolCallLimitMetadata
+
+Usage at this call's dispatch boundary and its authoritative disposition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| execution_status | string, <br>**Available values:** "executed", "not_executed", "unconfirmed" | *Enum:* `"executed"`, `"not_executed"`, `"unconfirmed"` | Yes |
+| limit | integer |  | Yes |
+| reason | string, <br>**Available values:** "call_limit_reached", "duplicate_tool_call" |  | No |
+| tool_identity | string |  | Yes |
+| used | integer |  | Yes |
 
 #### ToolIcon
 

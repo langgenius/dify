@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Niciun document nu corespunde acestei căutări.",
   "parentChildChunkCount": "{{parentCount}} părinte / {{childCount}} copil",
   "partialDocumentResults": "Este posibil să existe mai multe documente potrivite. Încarcă mai multe pentru a continua căutarea.",
+  "reindexConfirmDescription": "Reindexarea reconstruiește toate segmentele și intrările din index pe baza fișierului sursă. Modificările aduse segmentelor în baza de cunoștințe, cum ar fi adoptarea afirmației din alt document la rezolvarea unui conflict, vor fi suprascrise de conținutul fișierului sursă. Căutarea folosește în continuare indexul curent până la finalizarea reindexării.",
+  "reindexConfirmTitle": "Reindexezi din fișierul sursă?",
   "reindexDocument": "Reindexează",
   "retrievalCountValue": "{{value}} în ultimele 7 zile",
   "retryReindexDocument": "Reindexează din nou",

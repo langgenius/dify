@@ -1,5 +1,7 @@
+import hashlib
 from decimal import Decimal
 
+import pytest
 from dify_agent.protocol import (
     AgentRunUsage,
     PydanticAIStreamRunEvent,
@@ -13,6 +15,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from pydantic_ai.messages import FinalResultEvent
 
 from clients.agent_backend import (
@@ -25,6 +28,35 @@ from clients.agent_backend import (
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
 )
+
+
+@pytest.mark.parametrize("kind", ["succeeded", "failed", "cancelled"])
+def test_terminal_adapter_preserves_authoritative_tool_reservations(kind: str) -> None:
+    summary = ToolCallLimitSnapshot(
+        tool_identity="operation",
+        limit=3,
+        used=1,
+        call_ids={hashlib.sha256(b"call").hexdigest(): 1},
+    )
+    limits = {"digest": summary}
+    if kind == "succeeded":
+        terminal = RunSucceededEvent(
+            run_id="run",
+            tool_call_limits=limits,
+            data=RunSucceededEventData(output="partial result", session_snapshot=SessionSnapshot()),
+        )
+    elif kind == "failed":
+        terminal = RunFailedEvent(run_id="run", tool_call_limits=limits, data=RunFailedEventData(error="failed"))
+    else:
+        terminal = RunCancelledEvent(run_id="run", tool_call_limits=limits)
+    adapted = AgentBackendRunEventAdapter().adapt(terminal)[0]
+    assert isinstance(
+        adapted,
+        AgentBackendRunSucceededInternalEvent
+        | AgentBackendRunFailedInternalEvent
+        | AgentBackendRunCancelledInternalEvent,
+    )
+    assert adapted.tool_call_limits == limits
 
 
 def test_event_adapter_maps_run_started() -> None:

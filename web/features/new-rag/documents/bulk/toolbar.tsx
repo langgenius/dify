@@ -14,6 +14,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ReindexConfirmDialog } from '../reindex-confirm-dialog'
 import { documentBulkPendingActionAtom } from '../state/bulk'
 import { reindexUnavailabilityAtom } from '../state/results'
 import { documentCanDownloadAtom, documentCanWriteAtom } from '../state/runtime'
@@ -29,6 +30,7 @@ import {
   selectionReindexDisabledAtom,
   validSelectedDocumentIdsAtom,
 } from '../state/selection'
+import { useReindexConfirmation } from '../use-reindex-confirmation'
 import {
   useBulkAvailabilityAction,
   useBulkDownloadAction,
@@ -45,7 +47,11 @@ function BulkReindexAction() {
   const reindexDisabled = useAtomValueRawSync(selectionReindexDisabledAtom)
   const unavailableReason = useAtomValueRawSync(reindexUnavailabilityAtom)
   const selectionLimitExceeded = useAtomValueRawSync(documentSelectionLimitExceededAtom)
+  const selectedCount = useAtomValueRawSync(validSelectedDocumentIdsAtom).size
   const { busy, pending, run } = useBulkReindexAction()
+  const unavailable = disabled || reindexDisabled || busy
+  // The selection can change behind the dialog; what is confirmed is the selection as it is then.
+  const confirmation = useReindexConfirmation(!unavailable)
   const disabledReason =
     unavailableReason === 'sources'
       ? t(($) => $.sourcesErrorDescription)
@@ -71,10 +77,17 @@ function BulkReindexAction() {
         disabled={disabled || reindexDisabled || (busy && !pending)}
         loading={pending}
         size="small"
-        onClick={() => void run()}
+        onClick={() => confirmation.setOpen(true)}
       >
         {t(($) => $.reindexDocuments)}
       </Button>
+      <ReindexConfirmDialog
+        open={confirmation.open}
+        onOpenChange={confirmation.setOpen}
+        onConfirm={() => void run()}
+        confirmLabel={t(($) => $.reindexDocuments)}
+        scope={t(($) => $.documentsSelected, { count: selectedCount })}
+      />
       {disabled && disabledReason && (
         <span
           id="document-reindex-unavailable"

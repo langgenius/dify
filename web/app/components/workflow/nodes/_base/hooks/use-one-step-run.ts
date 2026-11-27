@@ -56,7 +56,7 @@ import {
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { streamEvents } from '@/service/event-stream'
@@ -67,6 +67,13 @@ import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useWorkflow } from '../../../hooks/use-workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
+
+/** A failure this hook already toasted, so the run's catch does not report it again. */
+const handledError = (message: string) => {
+  const error = new Error(message)
+  markErrorHandled(error)
+  return error
+}
 
 // Iteration and loop runs report their progress as an event stream.
 function getContainerNodeRunRequest(
@@ -407,7 +414,7 @@ const useOneStepRun = <T>({
       try {
         vars = await fetchNodeInspectVars(resource, id)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         updateNodeInspectRunningState(id, false)
         return
       }
@@ -699,7 +706,7 @@ const useOneStepRun = <T>({
         const message = 'Plugin debug failed'
         toast.error(message)
         cancelPluginSingleRun()
-        throw new Error(message)
+        throw handledError(message)
       }
 
       if (response?.status === 'waiting') {
@@ -730,7 +737,7 @@ const useOneStepRun = <T>({
         const message = response.message || 'Plugin debug failed'
         toast.error(message)
         cancelPluginSingleRun()
-        throw new Error(message)
+        throw handledError(message)
       }
 
       handleNodeDataUpdate({
@@ -1076,7 +1083,7 @@ const useOneStepRun = <T>({
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {
       console.error(e)
-      toastRequestError(e)
+      reportRequestError(e)
       hasError = true
       invalidLastRun()
       if (!isIteration && !isLoop) {

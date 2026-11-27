@@ -19,6 +19,18 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * EvaluationDatasetInvalidError
+ *
+ * Evaluation dataset is invalid.
+ */
+export const zEvaluationDatasetInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_dataset_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * PaidPlanRequiredError
  *
  * This feature requires a paid plan.
@@ -27,6 +39,18 @@ export const zPaidPlanRequiredError = zErrorResponse.and(
   z.object({
     code: z.literal('paid_plan_required'),
     status: z.literal(403),
+  }),
+)
+
+/**
+ * EvaluationConfigInvalidError
+ *
+ * Evaluation configuration is invalid.
+ */
+export const zEvaluationConfigInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_config_invalid'),
+    status: z.literal(400),
   }),
 )
 
@@ -98,6 +122,18 @@ export const zEvaluationRunPaginationResponse = z.object({
 })
 
 /**
+ * EvaluationFrameworkNotConfiguredError
+ *
+ * Selected evaluation framework is unavailable.
+ */
+export const zEvaluationFrameworkNotConfiguredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_framework_not_configured'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * NodeInfo
  */
 export const zNodeInfo = z.object({
@@ -126,6 +162,26 @@ export const zDefaultMetric = z.object({
 export const zEvaluationDefaultMetricsResponse = z.object({
   default_metrics: z.array(zDefaultMetric),
 })
+
+/**
+ * EvaluationMaxConcurrentRunsDetails
+ */
+export const zEvaluationMaxConcurrentRunsDetails = z.object({
+  limit: z.int(),
+})
+
+/**
+ * EvaluationMaxConcurrentRunsError
+ *
+ * Maximum number of concurrent evaluation runs reached.
+ */
+export const zEvaluationMaxConcurrentRunsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_max_concurrent_runs'),
+    details: zEvaluationMaxConcurrentRunsDetails.optional(),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * EvaluationTemplateColumnResponse

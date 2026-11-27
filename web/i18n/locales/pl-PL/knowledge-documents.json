@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Żadne dokumenty nie pasują do tego wyszukiwania.",
   "parentChildChunkCount": "{{parentCount}} nadrzędnych / {{childCount}} podrzędnych",
   "partialDocumentResults": "Więcej dokumentów może pasować. Wczytaj więcej, aby kontynuować wyszukiwanie.",
+  "reindexConfirmDescription": "Ponowne indeksowanie odtwarza wszystkie fragmenty i wpisy indeksu z pliku źródłowego. Zmiany wprowadzone we fragmentach w bazie wiedzy, na przykład przyjęcie stwierdzenia z innego dokumentu podczas rozwiązywania konfliktu, zostaną nadpisane zawartością pliku źródłowego. Do czasu zakończenia ponownego indeksowania wyszukiwanie korzysta z bieżącego indeksu.",
+  "reindexConfirmTitle": "Indeksować ponownie z pliku źródłowego?",
   "reindexDocument": "Indeksuj ponownie",
   "retrievalCountValue": "{{value}} w ciągu ostatnich 7 dni",
   "retryReindexDocument": "Indeksuj ponownie",

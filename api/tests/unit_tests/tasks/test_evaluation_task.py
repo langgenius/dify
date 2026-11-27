@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
+from core.errors.error import AppInvokeQuotaWaitTimeoutError
 from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
@@ -57,6 +58,7 @@ from models.evaluation import (
 from models.model import UploadFile
 from models.workflow import WorkflowKind
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
+from services.errors.app import QuotaExceededError
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     EvaluationRunCancelledError,
@@ -321,7 +323,59 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     assert results[0].metrics[0].name == "score"
     assert results[0].metrics[0].value == 0.8
     _assert_public_error(results[1].error, EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
-    assert len(cancellation_checks) == 4
+    assert len(cancellation_checks) == 10
+
+
+def test_customized_workflow_propagates_concurrency_timeout(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from models.model import AppMode
+    from services.workflow_service import WorkflowService
+
+    account = make_account()
+    tenant = make_tenant()
+    workflow = make_workflow(
+        workflow_id="workflow-1", app_id="evaluator-app-1", version="1", kind=WorkflowKind.EVALUATION
+    )
+    app = make_app(app_id="evaluator-app-1", mode=AppMode.WORKFLOW, created_by=account.id, workflow_id=workflow.id)
+    sqlite_session.add_all(
+        [
+            account,
+            tenant,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.NORMAL),
+            app,
+            workflow,
+        ]
+    )
+    sqlite_session.commit()
+
+    @contextmanager
+    def create_session() -> Generator[Session]:
+        yield sqlite_session
+
+    def fail_run(**_kwargs: object) -> dict[str, object]:
+        raise AppInvokeQuotaWaitTimeoutError("wait expired")
+
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr(
+        "services.workflow_service.WorkflowService",
+        partial(WorkflowService, session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
+    )
+    monkeypatch.setattr(EvaluationService, "run_app_for_evaluation", fail_run)
+    metrics = CustomizedMetrics(
+        evaluation_workflow_id=app.id,
+        evaluation_workflow_version_id=workflow.id,
+        input_fields={"prompt": "{{#node.text#}}"},
+        output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+    )
+
+    with pytest.raises(AppInvokeQuotaWaitTimeoutError, match="wait expired"):
+        _evaluate_with_customized_workflow(
+            CapturingEvaluationInstance(),
+            [{"node": NodeRunResult(outputs={"text": "first"})}],
+            metrics,
+            tenant.id,
+        )
 
 
 @pytest.mark.parametrize("target_type", [EvaluationTargetType.APPS, EvaluationTargetType.SNIPPETS])
@@ -679,14 +733,32 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     assert persisted_results == [results]
 
 
-def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_error(
+@pytest.mark.parametrize(
+    ("failure", "expected_type", "expected_message"),
+    [
+        (
+            EvaluationWorkflowVersionNotFoundError("Pinned evaluation workflow version was deleted."),
+            EvaluationWorkflowVersionNotFoundError,
+            "was deleted",
+        ),
+        (
+            AppInvokeQuotaWaitTimeoutError("wait expired"),
+            AppInvokeQuotaWaitTimeoutError,
+            "wait expired",
+        ),
+    ],
+)
+def test_customized_evaluator_control_failures_are_not_materialized_as_row_errors(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    failure: Exception,
+    expected_type: type[Exception],
+    expected_message: str,
 ) -> None:
     evaluation_instance = CapturingEvaluationInstance()
 
     def customized_evaluator(**_kwargs: object) -> list[EvaluationItemResult]:
-        raise EvaluationWorkflowVersionNotFoundError("Pinned evaluation workflow version was deleted.")
+        raise failure
 
     monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
     persisted_results: list[list[EvaluationItemResult]] = []
@@ -715,7 +787,7 @@ def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_
         input_list=[EvaluationDatasetInput(index=10, inputs={"query": "hello"})],
     )
 
-    with pytest.raises(EvaluationWorkflowVersionNotFoundError, match="was deleted"):
+    with pytest.raises(expected_type, match=expected_message):
         _execute_evaluation_runner(
             session=sqlite_session,
             run_data=run_data,
@@ -1034,6 +1106,11 @@ def test_execute_evaluation_rejects_invalid_or_terminal_task_deliveries(
         (EvaluationRunCancelledError(), None),
         (EvaluationRunOwnershipLostError("stale task"), None),
         (ValueError("invalid payload"), EvaluationErrorCode.INVALID_CONFIG),
+        (
+            QuotaExceededError(feature="workflow", tenant_id="tenant-1", required=1),
+            EvaluationErrorCode.RUN_QUOTA_EXCEEDED,
+        ),
+        (AppInvokeQuotaWaitTimeoutError("wait expired"), EvaluationErrorCode.APP_CONCURRENCY_TIMEOUT),
         (RuntimeError("backend unavailable"), EvaluationErrorCode.RUN_FAILED),
     ],
 )
@@ -2288,6 +2365,44 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
     assert persisted_result.actual_output == "done"
     assert persisted_result.metrics[0].name == "score"
     assert persisted_result.overall_score == 0.8
+
+
+def test_evaluate_agent_row_propagates_customized_evaluator_concurrency_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    def customized_evaluator(**_kwargs: object) -> list[EvaluationItemResult]:
+        raise AppInvokeQuotaWaitTimeoutError("wait expired")
+
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
+    monkeypatch.setattr("tasks.evaluation_task._clear_workflow_cancellation_signals", lambda *_args: None)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        target_agent_config_snapshot_id="snapshot-1",
+        evaluation_model_provider="",
+        evaluation_model="",
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            evaluation_workflow_version_id="evaluator-version-1",
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        input_list=[EvaluationDatasetInput(index=7, inputs={"query": "hello"})],
+    )
+
+    with pytest.raises(AppInvokeQuotaWaitTimeoutError, match="wait expired"):
+        _evaluate_agent_row(
+            session=sqlite_session,
+            run_data=run_data,
+            evaluation_instance=CapturingEvaluationInstance(),
+            agent_item=AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done"),
+            target_error=None,
+            task_position=4,
+            lease=_lease("run-1"),
+        )
 
 
 def test_evaluate_agent_row_keeps_native_and_customized_failures_on_the_row(
