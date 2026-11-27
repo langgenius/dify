@@ -124,6 +124,7 @@ class OpenApiErrorCode(StrEnum):
     DRAFT_CHANGED = "draft_changed"
     APP_MODE_MISMATCH = "app_mode_mismatch"
     SERVICE_API_DISABLED = "service_api_disabled"
+    PRIVATE_APP_ACCESS_DENIED = "private_app_access_denied"
     SKILLS_DISABLED = "skills_disabled"
     SKILL_NOT_FOUND = "skill_not_found"
     SKILL_VERSION_NOT_FOUND = "skill_version_not_found"
@@ -586,6 +587,15 @@ class ServiceApiDisabled(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.SERVICE_API_DISABLED
     description = "This app's Service API is turned off."
     hint = "A workspace admin can turn it on; hints holds the op."
+
+
+class PrivateAppAccessDenied(OpenApiError):  # noqa: N818
+    """The hint names the operations that change web access; it carries no hints entry, as choosing one would tell
+    a refused caller the app's mode."""
+
+    code = 403
+    error_code = OpenApiErrorCode.PRIVATE_APP_ACCESS_DENIED
+    description = "This app's web access is private, and this login is not on its list."
 
 
 class SkillsDisabled(OpenApiError):  # noqa: N818

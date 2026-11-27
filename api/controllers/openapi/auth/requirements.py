@@ -33,6 +33,7 @@ from controllers.openapi._errors import (
     MemberLicenseExceeded,
     MemberLimitExceeded,
     PluginInstallForbidden,
+    PrivateAppAccessDenied,
     ServiceApiDisabled,
     SkillsDisabled,
     WebAppAccessRequiresEE,
@@ -119,6 +120,13 @@ def assert_license_valid() -> None:
 # The routes live in `app_info`, which imports this module, so the op ids are spelled out; a test pins them.
 SET_SERVICE_API_OP: Final = "set.service_api"
 SET_AGENT_SERVICE_API_OP: Final = "set.service_api.agent"
+# The web-access routes live in `app_webapp`, which imports this module, so their op ids are defined here.
+SET_WEBAPP_ACCESS_OP: Final = "set.webapp_access"
+SET_AGENT_WEBAPP_ACCESS_OP: Final = "set.webapp_access.agent"
+PRIVATE_APP_ACCESS_HINT: Final = (
+    f"An editor of the app can let this login in with {SET_WEBAPP_ACCESS_OP}, "
+    f"or {SET_AGENT_WEBAPP_ACCESS_OP} for an agent app."
+)
 
 
 class CheckAppApiEnabled(Requirement):
@@ -400,7 +408,7 @@ class CheckAppAccess(Requirement):
             raise Forbidden("cannot resolve user for private app check")
         app_id = load_app(ctx).id
         if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id=user_id, app_id=app_id):
-            raise Forbidden("user_not_allowed_for_private_app")
+            raise PrivateAppAccessDenied(hint=PRIVATE_APP_ACCESS_HINT)
 
 
 class ResolveCaller(Requirement):
