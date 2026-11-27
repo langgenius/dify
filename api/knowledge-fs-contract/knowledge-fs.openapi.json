@@ -151,6 +151,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -2391,6 +2394,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -3681,6 +3687,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -6282,6 +6291,9 @@
                   "MODEL_RUNTIME_TIMEOUT",
                   "MODEL_RUNTIME_UNAVAILABLE",
                   "MODEL_SELECTION_NOT_FOUND",
+                  "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                  "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                  "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                   "RESEARCH_TASK_CAPABILITY_REVOKED",
                   "RESEARCH_TASK_DISPATCH_DEAD",
                   "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -6412,6 +6424,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -6617,6 +6632,9 @@
                       "MODEL_RUNTIME_TIMEOUT",
                       "MODEL_RUNTIME_UNAVAILABLE",
                       "MODEL_SELECTION_NOT_FOUND",
+                      "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                      "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                      "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                       "RESEARCH_TASK_CAPABILITY_REVOKED",
                       "RESEARCH_TASK_DISPATCH_DEAD",
                       "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -7008,6 +7026,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -7182,6 +7203,9 @@
                   "MODEL_RUNTIME_TIMEOUT",
                   "MODEL_RUNTIME_UNAVAILABLE",
                   "MODEL_SELECTION_NOT_FOUND",
+                  "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                  "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                  "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                   "RESEARCH_TASK_CAPABILITY_REVOKED",
                   "RESEARCH_TASK_DISPATCH_DEAD",
                   "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -7695,6 +7719,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -10503,6 +10530,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -10662,6 +10692,9 @@
                   "items": {
                     "type": "object",
                     "properties": {
+                      "hasChildren": {
+                        "type": "boolean"
+                      },
                       "lastEditedTime": {
                         "type": "string"
                       },
@@ -10792,6 +10825,9 @@
                     "MODEL_RUNTIME_TIMEOUT",
                     "MODEL_RUNTIME_UNAVAILABLE",
                     "MODEL_SELECTION_NOT_FOUND",
+                    "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                    "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                    "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                     "RESEARCH_TASK_CAPABILITY_REVOKED",
                     "RESEARCH_TASK_DISPATCH_DEAD",
                     "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -10938,6 +10974,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -11712,7 +11751,7 @@
             }
           },
           "409": {
-            "description": "The event conflicts with prior monotonic authorization state",
+            "description": "Grant conflict, or CAPABILITY_SPACE_DELETED when durable Space deletion has completed",
             "content": {
               "application/json": {
                 "schema": {
@@ -16348,6 +16387,2264 @@
         ],
         "x-knowledge-fs-max-response-bytes": 1048576,
         "x-knowledge-fs-required-scope": "knowledge-spaces:read"
+      }
+    },
+    "/knowledge-spaces/{id}/tidy/settings": {
+      "get": {
+        "operationId": "getTidySettings",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tidy settings; disabled by default",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "conflicts": {
+                      "type": "boolean"
+                    },
+                    "revision": {
+                      "type": "integer"
+                    },
+                    "lastError": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "scan_failed",
+                        "authorization_failed",
+                        "model_unavailable",
+                        null
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "conflicts",
+                    "revision",
+                    "lastError",
+                    "updatedAt"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:read"
+      },
+      "patch": {
+        "operationId": "updateTidySettings",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "conflicts": {
+                    "type": "boolean"
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "acknowledgeTokenUsage": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "expectedRevision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated Tidy settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "conflicts": {
+                      "type": "boolean"
+                    },
+                    "revision": {
+                      "type": "integer"
+                    },
+                    "lastError": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "scan_failed",
+                        "authorization_failed",
+                        "model_unavailable",
+                        null
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "conflicts",
+                    "revision",
+                    "lastError",
+                    "updatedAt"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:write"
+      }
+    },
+    "/knowledge-spaces/{id}/tidy/findings": {
+      "get": {
+        "operationId": "listTidyFindings",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$/u"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "dismissed",
+                "reviewed",
+                "disabled",
+                "outdated"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "duplicate",
+                "similar",
+                "conflict"
+              ]
+            },
+            "required": false,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evidence comparison and review queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "duplicate",
+                              "similar",
+                              "conflict"
+                            ]
+                          },
+                          "left": {
+                            "type": "object",
+                            "properties": {
+                              "documentId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "revision": {
+                                "type": "integer"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "chunkId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "start": {
+                                "type": "integer"
+                              },
+                              "end": {
+                                "type": "integer"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "documentId",
+                              "revision",
+                              "title",
+                              "chunkId",
+                              "start",
+                              "end",
+                              "text"
+                            ]
+                          },
+                          "right": {
+                            "type": "object",
+                            "properties": {
+                              "documentId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "revision": {
+                                "type": "integer"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "chunkId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "start": {
+                                "type": "integer"
+                              },
+                              "end": {
+                                "type": "integer"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "documentId",
+                              "revision",
+                              "title",
+                              "chunkId",
+                              "start",
+                              "end",
+                              "text"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "similarity": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "dismissed",
+                              "reviewed",
+                              "disabled",
+                              "outdated"
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer"
+                          },
+                          "actionId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "stale": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "left",
+                          "right",
+                          "reason",
+                          "similarity",
+                          "status",
+                          "revision",
+                          "actionId",
+                          "createdAt"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "documents": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer"
+                          },
+                          "publishedAt": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "mimeType",
+                          "sizeBytes",
+                          "publishedAt",
+                          "enabled"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor",
+                    "documents"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:read"
+      }
+    },
+    "/knowledge-spaces/{id}/tidy/findings/{findingId}/actions": {
+      "post": {
+        "operationId": "actOnTidyFinding",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$/u"
+            },
+            "required": true,
+            "name": "findingId",
+            "in": "path"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedRevision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "dismiss",
+                      "review",
+                      "disable_document",
+                      "undo",
+                      "adopt"
+                    ]
+                  },
+                  "documentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "also": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "findingId": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$/u"
+                        },
+                        "expectedRevision": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "action": {
+                          "type": "string",
+                          "enum": [
+                            "dismiss",
+                            "review",
+                            "disable_document"
+                          ]
+                        },
+                        "documentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "findingId",
+                        "expectedRevision",
+                        "action"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 63
+                  },
+                  "replacement": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  }
+                },
+                "required": [
+                  "expectedRevision",
+                  "action"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atomic review action or guarded undo; `adopt` also rewrites the other document's indexed passage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "duplicate",
+                        "similar",
+                        "conflict"
+                      ]
+                    },
+                    "left": {
+                      "type": "object",
+                      "properties": {
+                        "documentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "chunkId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "start": {
+                          "type": "integer"
+                        },
+                        "end": {
+                          "type": "integer"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "revision",
+                        "title",
+                        "chunkId",
+                        "start",
+                        "end",
+                        "text"
+                      ]
+                    },
+                    "right": {
+                      "type": "object",
+                      "properties": {
+                        "documentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "chunkId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "start": {
+                          "type": "integer"
+                        },
+                        "end": {
+                          "type": "integer"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "revision",
+                        "title",
+                        "chunkId",
+                        "start",
+                        "end",
+                        "text"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "similarity": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "dismissed",
+                        "reviewed",
+                        "disabled",
+                        "outdated"
+                      ]
+                    },
+                    "revision": {
+                      "type": "integer"
+                    },
+                    "actionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "stale": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "left",
+                    "right",
+                    "reason",
+                    "similarity",
+                    "status",
+                    "revision",
+                    "actionId",
+                    "createdAt"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:write"
+      }
+    },
+    "/knowledge-spaces/{id}/tidy/summary": {
+      "get": {
+        "operationId": "getTidySummary",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review queue counts and scan progress the caller may see",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "findings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "dismissed",
+                              "reviewed",
+                              "disabled",
+                              "outdated"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "duplicate",
+                              "similar",
+                              "conflict"
+                            ]
+                          },
+                          "count": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "kind",
+                          "count"
+                        ]
+                      }
+                    },
+                    "documents": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "scanning": {
+                          "type": "integer"
+                        },
+                        "complete": {
+                          "type": "integer"
+                        },
+                        "failed": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "pending",
+                        "scanning",
+                        "complete",
+                        "failed"
+                      ]
+                    },
+                    "modelCalls": {
+                      "type": "integer"
+                    },
+                    "current": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "documentId": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "passagesDone": {
+                          "type": "integer"
+                        },
+                        "passagesTotal": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "title",
+                        "passagesDone",
+                        "passagesTotal"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "findings",
+                    "documents",
+                    "modelCalls",
+                    "current"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:read"
+      }
+    },
+    "/knowledge-spaces/{id}/tidy/scans": {
+      "get": {
+        "operationId": "listTidyScans",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "scanning",
+                "complete",
+                "failed"
+              ]
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current document scan checkpoints; completion is not proof of consistency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "documentId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "scanning",
+                              "complete",
+                              "failed"
+                            ]
+                          },
+                          "windows": {
+                            "type": "integer"
+                          },
+                          "modelCalls": {
+                            "type": "integer"
+                          },
+                          "error": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "documentId",
+                          "title",
+                          "state",
+                          "windows",
+                          "modelCalls",
+                          "error"
+                        ]
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:read"
+      }
+    },
+    "/knowledge-spaces/{id}/tidy/retry": {
+      "post": {
+        "operationId": "retryTidyScans",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resume scanning: retry up to 100 failed scans from saved checkpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "resumed": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "resumed"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:write"
       }
     },
     "/knowledge-spaces/{id}/overview/stats": {
@@ -36327,6 +38624,22 @@
                           "type": "integer",
                           "minimum": 0
                         },
+                        "researchOutlineLexicalMs": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "researchOutlineSelectedTerms": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "researchOutlineDiscardedTerms": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "researchOutlineCandidateWindowSize": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
                         "researchPlanMs": {
                           "type": "number",
                           "minimum": 0
@@ -43743,6 +46056,9 @@
                               "MODEL_RUNTIME_TIMEOUT",
                               "MODEL_RUNTIME_UNAVAILABLE",
                               "MODEL_SELECTION_NOT_FOUND",
+                              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                               "RESEARCH_TASK_CAPABILITY_REVOKED",
                               "RESEARCH_TASK_DISPATCH_DEAD",
                               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -43873,6 +46189,9 @@
                                     "MODEL_RUNTIME_TIMEOUT",
                                     "MODEL_RUNTIME_UNAVAILABLE",
                                     "MODEL_SELECTION_NOT_FOUND",
+                                    "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                                    "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                                    "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                                     "RESEARCH_TASK_CAPABILITY_REVOKED",
                                     "RESEARCH_TASK_DISPATCH_DEAD",
                                     "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -44078,6 +46397,9 @@
                                   "MODEL_RUNTIME_TIMEOUT",
                                   "MODEL_RUNTIME_UNAVAILABLE",
                                   "MODEL_SELECTION_NOT_FOUND",
+                                  "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                                  "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                                  "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                                   "RESEARCH_TASK_CAPABILITY_REVOKED",
                                   "RESEARCH_TASK_DISPATCH_DEAD",
                                   "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -44468,6 +46790,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -44598,6 +46923,9 @@
                               "MODEL_RUNTIME_TIMEOUT",
                               "MODEL_RUNTIME_UNAVAILABLE",
                               "MODEL_SELECTION_NOT_FOUND",
+                              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                               "RESEARCH_TASK_CAPABILITY_REVOKED",
                               "RESEARCH_TASK_DISPATCH_DEAD",
                               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -44803,6 +47131,9 @@
                             "MODEL_RUNTIME_TIMEOUT",
                             "MODEL_RUNTIME_UNAVAILABLE",
                             "MODEL_SELECTION_NOT_FOUND",
+                            "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                            "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                            "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                             "RESEARCH_TASK_CAPABILITY_REVOKED",
                             "RESEARCH_TASK_DISPATCH_DEAD",
                             "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -45184,6 +47515,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -45314,6 +47648,9 @@
                               "MODEL_RUNTIME_TIMEOUT",
                               "MODEL_RUNTIME_UNAVAILABLE",
                               "MODEL_SELECTION_NOT_FOUND",
+                              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                               "RESEARCH_TASK_CAPABILITY_REVOKED",
                               "RESEARCH_TASK_DISPATCH_DEAD",
                               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -45519,6 +47856,9 @@
                             "MODEL_RUNTIME_TIMEOUT",
                             "MODEL_RUNTIME_UNAVAILABLE",
                             "MODEL_SELECTION_NOT_FOUND",
+                            "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                            "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                            "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                             "RESEARCH_TASK_CAPABILITY_REVOKED",
                             "RESEARCH_TASK_DISPATCH_DEAD",
                             "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -46771,6 +49111,27 @@
             },
             "required": false,
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "required": false,
+            "name": "parentId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tree"
+              ]
+            },
+            "required": false,
+            "name": "view",
             "in": "query"
           },
           {

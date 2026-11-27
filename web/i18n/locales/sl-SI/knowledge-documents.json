@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Noben dokument ne ustreza temu iskanju.",
   "parentChildChunkCount": "{{parentCount}} nadrejenih / {{childCount}} podrejenih",
   "partialDocumentResults": "Morda se ujema več dokumentov. Naložite jih več za nadaljevanje iskanja.",
+  "reindexConfirmDescription": "Ponovno indeksiranje na podlagi izvorne datoteke znova ustvari vse odseke in vnose v indeksu. Spremembe odsekov v bazi znanja, na primer prevzem trditve iz drugega dokumenta pri reševanju neskladja, bo prepisala vsebina izvorne datoteke. Iskanje do konca ponovnega indeksiranja še naprej uporablja trenutni indeks.",
+  "reindexConfirmTitle": "Ponovno indeksiram iz izvorne datoteke?",
   "reindexDocument": "Ponovno indeksiraj",
   "retrievalCountValue": "{{value}} v zadnjih 7 dneh",
   "retryReindexDocument": "Ponovno indeksiraj",

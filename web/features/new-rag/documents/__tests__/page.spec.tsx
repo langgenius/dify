@@ -25,6 +25,28 @@ import {
   logicalDocumentsInfiniteOptions,
 } from '../queries'
 
+// Confirming a reindex has its own spec; here every request to reindex is confirmed at once.
+vi.mock('../reindex-confirm-dialog', async () => {
+  const { useEffect } = await import('react')
+  return {
+    ReindexConfirmDialog: ({
+      onConfirm,
+      onOpenChange,
+      open,
+    }: {
+      onConfirm: () => void
+      onOpenChange: (open: boolean) => void
+      open: boolean
+    }) => {
+      useEffect(() => {
+        if (!open) return
+        onOpenChange(false)
+        onConfirm()
+      }, [onConfirm, onOpenChange, open])
+      return null
+    },
+  }
+})
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))

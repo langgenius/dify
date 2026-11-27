@@ -21,6 +21,7 @@ import {
 import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import { McpConnectorButton } from '@/features/new-rag/agent-access/mcp-connector-panel'
 import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
 import { NewKnowledgeList } from '@/features/new-rag/list/new-knowledge-list'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
@@ -205,6 +206,7 @@ function KnowledgeFsList() {
             view === 'agent' ? docLink('/api-reference/guides/knowledge-base') : undefined
           }
           className={view === 'agent' ? 'px-4 sm:px-8' : 'px-8'}
+          extraActions={view === 'agent' ? <McpConnectorButton /> : undefined}
           viewSwitcher={
             <KnowledgeViewSwitcher value={view} onChange={(nextView) => void setView(nextView)} />
           }

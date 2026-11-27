@@ -55,6 +55,7 @@ export function settingsDraftFromSnapshot({
       agentEnabled: externalAccess?.agent_enabled ?? false,
       serviceApiEnabled: externalAccess?.service_api_enabled ?? false,
       workflowEnabled: externalAccess?.workflow_enabled ?? false,
+      personalAgentEnabled: externalAccess?.personal_agent_enabled ?? true,
     },
     retrieval: retrievalDraftFromSettings(settings),
   }
@@ -76,6 +77,7 @@ export function settingsDraftsMatch(left: KnowledgeSettingsDraft, right: Knowled
     left.external.agentEnabled === right.external.agentEnabled &&
     left.external.serviceApiEnabled === right.external.serviceApiEnabled &&
     left.external.workflowEnabled === right.external.workflowEnabled &&
+    left.external.personalAgentEnabled === right.external.personalAgentEnabled &&
     modelFingerprint(left.retrieval.embeddingModel) ===
       modelFingerprint(right.retrieval.embeddingModel) &&
     retrievalFingerprint(left.retrieval) === retrievalFingerprint(right.retrieval)
@@ -104,7 +106,8 @@ export function settingsDraftChanges(
     canManageAccess &&
     (draft.external.agentEnabled !== original.external.agentEnabled ||
       draft.external.serviceApiEnabled !== original.external.serviceApiEnabled ||
-      draft.external.workflowEnabled !== original.external.workflowEnabled)
+      draft.external.workflowEnabled !== original.external.workflowEnabled ||
+      draft.external.personalAgentEnabled !== original.external.personalAgentEnabled)
   const embedding =
     canEdit &&
     modelFingerprint(draft.retrieval.embeddingModel) !==
