@@ -18,6 +18,7 @@ import { ExternalTraceRow } from '@/app/components/workflow/run/external-trace-r
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getErrorMessage } from '@/utils/error-message'
 
 export function AgentLogDetailPanel({
@@ -56,6 +57,9 @@ export function AgentLogDetailPanel({
         : skipToken,
     }),
   )
+  const load = useOwnedQueryError(messagesQuery)
+  // A failed refetch keeps the loaded messages; the query cache reports it.
+  const loaded = messagesQuery.data !== undefined
   const chatList = log
     ? formatAgentLogMessages({
         conversationId: log.conversation_id,
@@ -124,17 +128,17 @@ export function AgentLogDetailPanel({
       </div>
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
         {messagesQuery.isPending && <LoadingPlaceholder className="h-full" />}
-        {messagesQuery.isError && (
+        {load && (
           <div className="flex h-full items-center justify-center text-center system-sm-regular text-text-tertiary">
             {t(($) => $['agentDetail.logs.loadFailed'], { ns: 'agentV2' })}
           </div>
         )}
-        {messagesQuery.isSuccess && chatList.length === 0 && (
+        {loaded && chatList.length === 0 && (
           <div className="flex h-full items-center justify-center text-center system-sm-regular text-text-tertiary">
             {t(($) => $['agentDetail.logs.empty'], { ns: 'agentV2' })}
           </div>
         )}
-        {messagesQuery.isSuccess && chatList.length > 0 && (
+        {loaded && chatList.length > 0 && (
           <div className="mb-4 pt-4">
             <Chat
               config={

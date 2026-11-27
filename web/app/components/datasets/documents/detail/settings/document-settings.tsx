@@ -31,6 +31,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 
 // data_source_info is written by the data source that imported the document.
 type DocumentSourceInfo = Record<string, unknown> | null | undefined
@@ -77,7 +78,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
 
   const cancelHandler = () => router.back()
 
-  const { data: documentDetail, error } = useQuery(
+  const documentDetailQuery = useQuery(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
       input: {
         params: { dataset_id: datasetId, document_id: documentId },
@@ -85,6 +86,9 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
       },
     }),
   )
+  const { data: documentDetail } = documentDetailQuery
+  // A failed first load replaces the page.
+  const documentDetailLoad = useOwnedQueryError(documentDetailQuery)
   const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
   const documentTitle =
     documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
@@ -186,7 +190,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     | undefined
   const websiteCrawlJobId = websiteInfo?.job_id ?? legacyInfo?.job_id
 
-  if (error)
+  if (documentDetailLoad)
     return (
       <AppUnavailable
         code={500}

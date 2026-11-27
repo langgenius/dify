@@ -10,6 +10,7 @@ import {
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 
 export const useToolMarketplace = (
   searchPluginText: string,
@@ -57,23 +58,18 @@ export const useToolMarketplace = (
     ? (pluginsQuery.data?.pages.flatMap((page) => page.plugins) ??
       (pluginsQuery.isError ? [] : undefined))
     : undefined
+  const isLoading = enabled && (collectionsQuery.isLoading || pluginsQuery.isLoading)
   // The catalog waits for the installed ids it excludes, so a failed first load of either read
-  // would otherwise leave the panel empty; a failed next page keeps the loaded plugins.
-  const failedQuery = !enabled
-    ? undefined
-    : installedIdsQuery.isError && !installedPluginIds
-      ? installedIdsQuery
-      : pluginsSearchParams
-        ? pluginsQuery.isError && !pluginsQuery.data
-          ? pluginsQuery
-          : undefined
-        : !isSearching && collectionsQuery.isError && !collectionsQuery.data
-          ? collectionsQuery
-          : undefined
-  const isLoadFailed = !!failedQuery
-  const retryLoad = useCallback(() => {
-    void failedQuery?.refetch()
-  }, [failedQuery])
+  // would otherwise leave the panel empty: the panel shows it in place of the list once loading
+  // settles, with a retry. A failed next page keeps the loaded plugins.
+  const loadError = useOwnedQueryErrors(
+    enabled && !isLoading
+      ? [
+          installedIdsQuery,
+          ...(pluginsSearchParams ? [pluginsQuery] : isSearching ? [] : [collectionsQuery]),
+        ]
+      : [],
+  )
   const searchPluginTextRef = useRef(searchPluginText)
   const filterPluginTagsRef = useRef(filterPluginTags)
 
@@ -97,14 +93,12 @@ export const useToolMarketplace = (
   )
 
   return {
-    isLoading: enabled && (collectionsQuery.isLoading || pluginsQuery.isLoading),
+    isLoading,
     marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
     marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
     plugins,
     handleScroll,
     page: Math.max(pluginsQuery.data?.pages.length ?? 0, 1),
-    isLoadFailed,
-    isRetrying: !!failedQuery?.isFetching,
-    retryLoad,
+    loadError,
   }
 }

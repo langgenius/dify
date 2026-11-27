@@ -30,6 +30,7 @@ import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/api'
 import { getPluginDetailPath, getTemplateDetailPath } from '@/features/marketplace/links'
 import { renderI18nObject } from '@/i18n/metadata'
 import { marketplaceQuery } from '@/service/marketplace'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import { getPluginIconInMarketplace } from '../plugin-card-adapter'
 
@@ -280,13 +281,14 @@ export function MarketplaceSearchAutocomplete({
   ]
   const isFetching = pluginQuery.isFetching || templateQuery.isFetching
   const isSearching = isDebouncing || isFetching
-  // A failed request must not read as "nothing matched"; when every source in
-  // scope errored and nothing is displayable, surface a load failure instead.
-  const hasLoadError =
-    !isDebouncing &&
-    suggestions.length === 0 &&
-    ((searchesPlugins && pluginQuery.isError) || (searchesTemplates && templateQuery.isError))
-  const emptyText = hasLoadError
+  // A failed request must not read as "nothing matched": when nothing is displayable, a failed
+  // search in scope shows as a load failure in the popup, which claims it.
+  const failedSearch = useOwnedQueryErrors(
+    !isDebouncing && suggestions.length === 0
+      ? [...(searchesPlugins ? [pluginQuery] : []), ...(searchesTemplates ? [templateQuery] : [])]
+      : [],
+  )
+  const emptyText = failedSearch
     ? tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })
     : scope === 'templates'
       ? t(($) => $['newApp.noTemplateFound'], { ns: 'app' })

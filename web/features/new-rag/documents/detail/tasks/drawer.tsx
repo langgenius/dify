@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { taskCanCancel, taskCanRetry } from '../../model'
 import { logicalDocumentListFromApi } from '../../models'
 import {
@@ -90,8 +91,13 @@ export function DocumentDetailTasksDrawer({
   const hasUnresolvedTaskDocuments = tasks.some(
     (task) => task.documentId && !documentIds.has(task.documentId),
   )
-  const documentQueryError = Boolean(documentsQuery.error)
-  const documentQueryFetching = documentsQuery.isFetching
+  // The drawer names unresolved task documents, so it shows their failed first load or next
+  // page; a failed refetch keeps the loaded pages and is reported by the query cache.
+  const showsDocumentsFailure = open && hasUnresolvedTaskDocuments
+  const documentsFirstLoad = useOwnedQueryError(documentsQuery, showsDocumentsFailure)
+  const documentsNextPage = useOwnedNextPageError(documentsQuery, showsDocumentsFailure)
+  const documentsLoad = documentsFirstLoad ?? documentsNextPage
+  const documentsRetryVisible = !!documentsLoad
   const documentsPending = Boolean(documentsQuery.isPending || documentsQuery.hasNextPage)
   const hasNextDocumentPage = Boolean(documentsQuery.hasNextPage)
   const isFetchingNextDocumentPage = documentsQuery.isFetchingNextPage
@@ -121,10 +127,6 @@ export function DocumentDetailTasksDrawer({
       }),
       refreshTasks(),
     ])
-  const retryDocuments = () => {
-    if (documentsQuery.isFetchNextPageError) return documentsQuery.fetchNextPage()
-    return documentsQuery.refetch()
-  }
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const documentQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -163,7 +165,7 @@ export function DocumentDetailTasksDrawer({
   }, [hasMoreTasks, open])
 
   useEffect(() => {
-    const queryRetryVisible = taskQueryError || (documentQueryError && hasUnresolvedTaskDocuments)
+    const queryRetryVisible = taskQueryError || documentsRetryVisible
     if (!open || !queryRetryFocusRequestedRef.current) return
     if (queryRetryVisible) {
       if (taskQueryError) taskQueryRetryButtonRef.current?.focus()
@@ -172,7 +174,7 @@ export function DocumentDetailTasksDrawer({
     }
     queryRetryFocusRequestedRef.current = false
     drawerCloseButtonRef.current?.focus()
-  }, [documentQueryError, hasUnresolvedTaskDocuments, open, taskQueryError])
+  }, [documentsRetryVisible, open, taskQueryError])
 
   return (
     <Drawer
@@ -246,7 +248,7 @@ export function DocumentDetailTasksDrawer({
                     </Button>
                   </div>
                 )}
-                {documentQueryError && hasUnresolvedTaskDocuments && (
+                {documentsLoad && (
                   <div className="mb-3 rounded-xl border border-divider-regular p-4" role="alert">
                     <p className="system-xs-regular text-text-destructive">
                       {t(($) => $.documentsErrorDescription)}
@@ -255,14 +257,14 @@ export function DocumentDetailTasksDrawer({
                       ref={documentQueryRetryButtonRef}
                       aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $.documentsErrorDescription)}`}
                       className="mt-3"
-                      loading={documentQueryFetching}
+                      loading={documentsLoad.retrying}
                       size="small"
                       onBlur={(event) => {
                         if (event.relatedTarget) queryRetryFocusRequestedRef.current = false
                       }}
                       onClick={() => {
                         queryRetryFocusRequestedRef.current = true
-                        void retryDocuments()
+                        documentsLoad.retry()
                       }}
                     >
                       {tCommon(($) => $['operation.retry'])}

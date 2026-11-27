@@ -30,6 +30,8 @@ export default function WorkflowToolTracing({
           },
         },
         refetchInterval: isActive ? 2000 : false,
+        // The panel shows every failure in place, polled refetches included, with a retry.
+        meta: { errorToast: false },
       },
     ),
   )

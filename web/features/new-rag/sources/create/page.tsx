@@ -892,10 +892,19 @@ function AddSourcePageContent({
       retry: false,
     }),
   )
-  // A failed first load or next page shows inline with a retry; a failed refresh keeps the
-  // loaded connections and is the query cache's to report.
-  const connectionsLoad = useOwnedQueryError(connectionsQuery)
-  const connectionsPage = useOwnedNextPageError(connectionsQuery)
+  // A failed first load or next page shows inline with a retry on the website setup, once the
+  // draft and provider reads have loaded without an error of their own; a failed refresh keeps
+  // the loaded connections and is the query cache's to report.
+  const connectionsShown =
+    sourceDraftResolved &&
+    websiteSourceSelected &&
+    !providersQuery.isPending &&
+    !datasourcePluginsQuery.isPending &&
+    !datasourceAuthQuery.isPending &&
+    !providersQuery.error &&
+    !datasourcePluginsQuery.error
+  const connectionsLoad = useOwnedQueryError(connectionsQuery, connectionsShown)
+  const connectionsPage = useOwnedNextPageError(connectionsQuery, connectionsShown)
   const provider = findWebsiteSourceProvider(providersQuery.data ?? [])
   const websiteProviderOptions = useMemo(
     () => discoverSourceProviderOptions('websiteCrawl', datasourcePluginsQuery.data ?? []),

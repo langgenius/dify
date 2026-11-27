@@ -24,6 +24,7 @@ import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { appListOptions } from './app-list-query'
 
 type AppPickerProps = {
@@ -74,24 +75,16 @@ export function AppPicker({ value, onSelect }: AppPickerProps) {
   const [searchText, setSearchText] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const debouncedSearchText = useDebouncedValue(searchText, 500)
-  const {
-    data,
-    isPending,
-    isError,
-    isFetching,
-    isFetchingNextPage,
-    isFetchNextPageError,
-    fetchNextPage,
-    hasNextPage,
-    refetch,
-  } = useInfiniteQuery(appListOptions(debouncedSearchText))
+  const appsQuery = useInfiniteQuery(appListOptions(debouncedSearchText))
+  const { data, isPending, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } = appsQuery
   const isDebouncing = searchText !== debouncedSearchText
   const isLoading = isDebouncing || isPending
-  const showError = !isDebouncing && isError
-  const apps =
-    isLoading || (showError && !isFetchNextPageError)
-      ? []
-      : (data?.pages.flatMap((page) => page.data) ?? [])
+  // A failed first load replaces the list and a failed next page follows it; both are shown here
+  // with a retry, so they are claimed. A failed refetch keeps the listed apps and is toasted.
+  const loadFailure = useOwnedQueryError(appsQuery, !isDebouncing)
+  const nextPageFailure = useOwnedNextPageError(appsQuery, !isDebouncing)
+  const failure = loadFailure ?? nextPageFailure
+  const apps = isLoading || loadFailure ? [] : (data?.pages.flatMap((page) => page.data) ?? [])
 
   return (
     <Combobox<AppPartial>
@@ -131,9 +124,9 @@ export function AppPicker({ value, onSelect }: AppPickerProps) {
               {(app) => <AppPickerOption key={app.id} app={app} />}
             </ComboboxList>
             <ComboboxEmpty>
-              {!isLoading && !showError ? t(($) => $.noData, { ns: 'common' }) : null}
+              {!isLoading && !failure ? t(($) => $.noData, { ns: 'common' }) : null}
             </ComboboxEmpty>
-            {showError && (
+            {failure && (
               <div className="flex flex-col items-center gap-1 px-3 py-2">
                 <span role="status" className="system-xs-regular text-text-tertiary">
                   {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
@@ -144,15 +137,14 @@ export function AppPicker({ value, onSelect }: AppPickerProps) {
                   disabled={isFetching}
                   onClick={() => {
                     inputRef.current?.focus()
-                    if (isFetchNextPageError) void fetchNextPage()
-                    else void refetch()
+                    failure.retry()
                   }}
                 >
                   {t(($) => $['operation.retry'], { ns: 'common' })}
                 </Button>
               </div>
             )}
-            {!isLoading && !showError && hasNextPage && (
+            {!isLoading && !failure && hasNextPage && (
               <div className="flex justify-center px-3 py-2">
                 <Button
                   size="small"

@@ -1,4 +1,5 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { ModelProviderPluginSummary } from '../index'
@@ -40,6 +41,38 @@ type ProviderAddedCardProps = {
   notConfigured?: boolean
   provider: ModelProviderSummaryResponse | ModelProvider
   pluginSummary?: ModelProviderPluginSummary
+}
+
+// Both card layouts render the model list's failed first load; the collapsed "show models" action
+// retries it.
+function ModelListLoadError({
+  query,
+  layout,
+}: {
+  query: UseQueryResult<unknown>
+  layout: 'list' | 'grid'
+}) {
+  const { t } = useTranslation(['modelProvider'])
+  const load = useOwnedQueryError(query)
+  const message = useRequestErrorMessage(
+    load && !load.retrying ? load.error : undefined,
+    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
+  )
+  if (!message) return null
+
+  return (
+    <p
+      role="alert"
+      // The list layout truncates the message to one line.
+      title={message}
+      className={cn(
+        'system-xs-regular text-text-destructive',
+        layout === 'grid' ? 'mt-2' : 'min-w-0 truncate',
+      )}
+    >
+      {message}
+    </p>
+  )
 }
 
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
@@ -87,12 +120,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     refetch: refetchModelList,
   } = modelListQuery
   const hasModelList = hasFetchedModelList && !!modelList.length
-  // The collapsed "show models" action retries a failed first load.
-  const modelListLoad = useOwnedQueryError(modelListQuery)
-  const modelListErrorMessage = useRequestErrorMessage(
-    modelListLoad && !modelListLoad.retrying ? modelListLoad.error : undefined,
-    t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
-  )
   const showCollapsedSection = !canConfigureModels || !expanded || !hasFetchedModelList
   const cardRef = useRef<HTMLDivElement>(null)
   const collapsedButtonRef = useRef<HTMLButtonElement>(null)
@@ -214,11 +241,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               <ModelBadge key={modelType}>{modelTypeFormat(modelType)}</ModelBadge>
             ))}
           </div>
-          {modelListErrorMessage && (
-            <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-              {modelListErrorMessage}
-            </p>
-          )}
+          <ModelListLoadError query={modelListQuery} layout="grid" />
         </div>
         <div className="absolute inset-x-0 bottom-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
           {canConfigureModels && (showModelProvider || !notConfigured) && (
@@ -330,15 +353,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               {loading && <div className="ms-0.5 i-ri-loader-2-line size-3 animate-spin" />}
             </button>
           )}
-          {modelListErrorMessage && (
-            <span
-              role="alert"
-              title={modelListErrorMessage}
-              className="min-w-0 truncate system-xs-regular text-text-destructive"
-            >
-              {modelListErrorMessage}
-            </span>
-          )}
+          <ModelListLoadError query={modelListQuery} layout="list" />
           {!showModelProvider && notConfigured && (
             <div className="flex h-6 items-center ps-1 pe-1.5">
               <div className="me-1 i-ri-information-2-fill size-4 text-text-accent" />

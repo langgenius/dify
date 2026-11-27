@@ -48,6 +48,9 @@ export type AddOAuthButtonProps = {
 }
 type OAuthData = NonNullable<AddOAuthButtonProps['oAuthData']>
 
+// Without a custom wrapper the trigger renders as is.
+const renderOwnTrigger: NonNullable<AddOAuthButtonProps['renderTrigger']> = ({ trigger }) => trigger
+
 const AddOAuthButton = ({
   pluginPayload,
   buttonVariant = 'primary',
@@ -58,7 +61,7 @@ const AddOAuthButton = ({
   dividerClassName,
   disabled,
   onUpdate,
-  renderTrigger,
+  renderTrigger = renderOwnTrigger,
   oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation(['common', 'plugin'])
@@ -303,14 +306,12 @@ const AddOAuthButton = ({
 
   return (
     <>
-      {renderTrigger
-        ? renderTrigger({
-            disabled,
-            isConfigured,
-            onClick: openVisibilityModal,
-            trigger,
-          })
-        : trigger}
+      {renderTrigger({
+        disabled,
+        isConfigured,
+        onClick: openVisibilityModal,
+        trigger,
+      })}
       {isOAuthSettingsMounted && (
         <OAuthClientSettings
           open={isOAuthSettingsOpen}

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { getUploadFileExtension } from '@/app/components/datasets/documents/document-source'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import FileIcon from '../document-file-icon'
 
 type DocumentListProps = {
@@ -40,7 +41,9 @@ export default function DocumentList({
     }),
   )
   const isSearching = keyword !== debouncedKeyword || documentsQuery.isPending
-  const isError = !isSearching && documentsQuery.isError
+  // A failed first load replaces the list; a failed refetch keeps the documents and toasts.
+  const documentsLoad = useOwnedQueryError(documentsQuery, !isSearching)
+  const isError = !!documentsLoad
   // Previous-query links must not remain actionable during the debounce window.
   const documents = isSearching || isError ? [] : (documentsQuery.data?.data ?? [])
   const statusText = isSearching
@@ -74,8 +77,8 @@ export default function DocumentList({
             </span>
           </MenuLinkItem>
         ))}
-        {isError && (
-          <MenuItem closeOnClick={false} onClick={() => documentsQuery.refetch()}>
+        {documentsLoad && (
+          <MenuItem closeOnClick={false} onClick={documentsLoad.retry}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </MenuItem>
         )}

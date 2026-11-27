@@ -1,4 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import {
@@ -27,7 +29,7 @@ const renderWithConsoleQuery = createNuqsTestRenderer(
 let dataset: ReturnType<typeof createDatasetFixture> | undefined
 const { loadDataset } = vi.hoisted(() => ({ loadDataset: vi.fn() }))
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
   queryClient.setQueryData(
     consoleQuery.workspaces.current.defaultModel.get.queryKey({
       input: { query: { model_type: 'text-embedding' } },
@@ -51,6 +53,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
 }
 
 vi.mock('@/next/navigation', () => mockNavigation)
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -191,7 +194,9 @@ describe('DatasetDetailLayout', () => {
       'should redirect to datasets page when dataset detail returns %s',
       async (status) => {
         // Arrange
-        loadDataset.mockRejectedValue(createHttpError(new Response(null, { status })))
+        loadDataset.mockRejectedValue(
+          createHttpError(new Response(null, { status }), { message: `Dataset ${status}` }),
+        )
 
         // Act
         render(
@@ -205,6 +210,8 @@ describe('DatasetDetailLayout', () => {
           expect(mockReplace).toHaveBeenCalledWith('/datasets')
         })
         expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
+        // The layout only shows the loading state while redirecting, so the cache reports it.
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith(`Dataset ${status}`))
       },
     )
   })
@@ -217,7 +224,9 @@ describe('DatasetDetailLayout', () => {
     it('should show the load failure with a retry when dataset detail fails to load', async () => {
       // The detail query retries other failures before giving up.
       vi.useFakeTimers({ shouldAdvanceTime: true })
-      loadDataset.mockRejectedValue(createHttpError(new Response(null, { status: 400 })))
+      loadDataset.mockRejectedValue(
+        createHttpError(new Response(null, { status: 400 }), { message: 'Dataset unavailable' }),
+      )
 
       render(
         <DatasetDetailLayout datasetId="dataset-1">
@@ -230,6 +239,7 @@ describe('DatasetDetailLayout', () => {
       expect(await screen.findByRole('alert')).toBeInTheDocument()
       expect(screen.queryByText('Documents content')).not.toBeInTheDocument()
       expect(mockReplace).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
 
       loadDataset.mockResolvedValue(
         createDatasetFixture({ id: 'dataset-1', name: 'Dataset 1', provider: 'vendor' }),

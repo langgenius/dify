@@ -166,8 +166,9 @@ const FormInputItem: FC<Props> = ({
     ),
   )
   const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = triggerOptionsQuery
-  // The query runs only for a trigger's dynamic select, which shows its failed first load.
-  const triggerOptionsLoad = useOwnedQueryError(triggerOptionsQuery)
+  // The query runs only for a trigger's dynamic select, which shows its failed first load while it
+  // is still a dynamic select; a cached failure of a disabled query stays the cache's to report.
+  const triggerOptionsLoad = useOwnedQueryError(triggerOptionsQuery, isDynamicSelect)
   const triggerOptionsErrorMessage = useRequestErrorMessage(
     triggerOptionsLoad?.error,
     t(($) => $['common.loadFailed'], { ns: 'workflow' }),

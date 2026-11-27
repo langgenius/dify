@@ -1,7 +1,7 @@
 'use client'
 
 import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
-import type { Ref } from 'react'
+import type { ReactNode, Ref } from 'react'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -269,26 +269,30 @@ const WorkspaceRolePicker = ({
     </>
   )
 
-  return allowMultipleRoles ? (
-    <Combobox<Role, true>
-      {...comboboxProps}
-      multiple
-      value={selectedRoleObjects}
-      onValueChange={onSelectedRolesChange}
-    >
-      {content}
-    </Combobox>
-  ) : (
-    <Combobox<Role>
-      {...comboboxProps}
-      value={selectedRoleObjects[0] ?? null}
-      onValueChange={(role) => {
-        if (role) onSelectedRolesChange([role])
-      }}
-    >
-      {content}
-    </Combobox>
-  )
+  // Both selection modes render the same content, the claimed load failure included.
+  const renderCombobox = (children: ReactNode) =>
+    allowMultipleRoles ? (
+      <Combobox<Role, true>
+        {...comboboxProps}
+        multiple
+        value={selectedRoleObjects}
+        onValueChange={onSelectedRolesChange}
+      >
+        {children}
+      </Combobox>
+    ) : (
+      <Combobox<Role>
+        {...comboboxProps}
+        value={selectedRoleObjects[0] ?? null}
+        onValueChange={(role) => {
+          if (role) onSelectedRolesChange([role])
+        }}
+      >
+        {children}
+      </Combobox>
+    )
+
+  return renderCombobox(content)
 }
 
 export default WorkspaceRolePicker

@@ -97,9 +97,6 @@ const MessageTemplateSession = ({
   const [errors, setErrors] = useState({ subject: false, body: false })
   const [showTest, setShowTest] = useState(initialShowTest)
   const [channel, setChannel] = useState<MessageTemplateTestRequest['channel']>()
-  const configured = useConfiguredChannels()
-  const selectedChannel =
-    channel && configured.channels.includes(channel) ? channel : configured.channels[0]
   const [testInputs, setTestInputs] = useState<Record<string, string>>({})
   const [testInputError, setTestInputError] = useState<{ key: string; message: string }>()
   const canRun = useHooksStore((state) => state.accessControl.canRun)
@@ -108,6 +105,9 @@ const MessageTemplateSession = ({
   const isChatMode = resource.kind === 'app' && resource.mode === 'advanced-chat'
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const canTest = !readonly && canRun && resource.kind === 'app' && !!flowId && !!nodeId
+  const configured = useConfiguredChannels(showTest && canTest)
+  const selectedChannel =
+    channel && configured.channels.includes(channel) ? channel : configured.channels[0]
   const canTestRef = useRef(canTest)
   const testContext = `${flowId}:${nodeId}:${isChatMode}:${selectedChannel}`
   const testContextRef = useRef(testContext)
@@ -390,10 +390,14 @@ const MessageTemplateSession = ({
                   {t(($) => $['imPlatform.loading'], { ns: 'contacts' })}
                 </p>
               )}
-              {configured.isError && (
+              {configured.load && (
                 <div role="alert" className="mt-1 system-xs-regular text-text-destructive">
                   {t(($) => $['imPlatform.loadError.title'], { ns: 'contacts' })}
-                  <Button size="small" onClick={() => void configured.refetch()}>
+                  <Button
+                    size="small"
+                    loading={configured.load.retrying}
+                    onClick={configured.load.retry}
+                  >
                     {t(($) => $['operation.retry'], { ns: 'common' })}
                   </Button>
                 </div>

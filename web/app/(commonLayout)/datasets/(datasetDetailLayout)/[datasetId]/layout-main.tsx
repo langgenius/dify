@@ -109,9 +109,9 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const { data: datasetRes, error, refetch: mutateDatasetRes } = datasetQuery
   const shouldRedirect = shouldRedirectToDatasetList(error)
-  // A 403/404 first load shows the loading state while redirecting to the list; any other one
-  // renders below.
-  const datasetLoad = useOwnedQueryError(datasetQuery)
+  // A 403/404 first load shows the loading state while redirecting to the list, so the cache
+  // reports it; any other one renders below.
+  const datasetLoad = useOwnedQueryError(datasetQuery, !shouldRedirect)
   const loadErrorMessage = useRequestErrorMessage(datasetLoad?.error)
   const datasetACLCapabilities = React.useMemo(
     () =>
@@ -161,11 +161,9 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const isPipelinePage =
     pathname.endsWith('/pipeline') || pathname.includes('/create-from-pipeline')
+  // Without data or a claimed failure, the dataset is loading or redirecting to the list.
   const shouldShowLoading =
-    (!datasetRes && !error) ||
-    shouldRedirect ||
-    isCheckingRouteAccess ||
-    shouldRedirectUnauthorizedRoute
+    (!datasetRes && !datasetLoad) || isCheckingRouteAccess || shouldRedirectUnauthorizedRoute
   const documentTitleOwnedByChild = isDocumentDetailPath(pathname) && !shouldShowLoading
   const content = shouldShowLoading ? (
     <LoadingPlaceholder className="h-full" />

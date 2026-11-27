@@ -64,11 +64,6 @@ function NormalForm() {
   })
 
   const { data: invitationCheckResp, isPending: isInviteCheckLoading } = inviteCheckQuery
-  const inviteCheckLoad = useOwnedQueryError(inviteCheckQuery)
-  const inviteCheckErrorMessage = useRequestErrorMessage(
-    inviteCheckLoad?.error,
-    t(($) => $['api.actionFailed'], { ns: 'common' }),
-  )
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
   const isInvitationForCurrentAccount = isInvitationForAccount(
     invitationCheckResp?.data?.email,
@@ -93,6 +88,17 @@ function NormalForm() {
   const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
     shouldRedirectLoggedInUser || (isInviteLink && (isCheckLoading || isInviteCheckLoading))
+  const licenseStatus = systemFeatures.license?.status
+  const isLicenseUnavailable =
+    licenseStatus === zLicenseStatus.enum.lost ||
+    licenseStatus === zLicenseStatus.enum.expired ||
+    licenseStatus === zLicenseStatus.enum.inactive
+  // The invite check renders only on the form, below the loading and license states.
+  const inviteCheckLoad = useOwnedQueryError(inviteCheckQuery, !isLoading && !isLicenseUnavailable)
+  const inviteCheckErrorMessage = useRequestErrorMessage(
+    inviteCheckLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
 
   useEffect(() => {
     if (!isLoggedIn) return

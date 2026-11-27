@@ -107,7 +107,7 @@ export function AgentV2Node(props: NodeProps<AgentV2NodeType>) {
     data.agent_binding?.binding_type === 'inline_agent' ? data.agent_binding.agent_id : undefined
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
   // The node panel offers the retry; the canvas node only says the agent could not load.
-  const rosterAgentLoad = useOwnedQueryError(rosterAgentQuery)
+  const rosterAgentLoad = useOwnedQueryError(rosterAgentQuery, isInlineAgent || hasValidAgent)
   const rosterAgentLoadErrorMessage = useRequestErrorMessage(
     rosterAgentLoad?.error,
     t(($) => $['common.loadFailed'], { ns: 'workflow' }),

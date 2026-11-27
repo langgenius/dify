@@ -337,7 +337,7 @@ describe('useChatWithHistory', () => {
       )
     })
 
-    it('should expose a failed first list load with a retry', async () => {
+    it('should hand failed first list loads to the sidebar, which retries them', async () => {
       mockFetchConversations
         .mockRejectedValueOnce(new Error('history unavailable'))
         .mockRejectedValueOnce(new Error('history unavailable'))
@@ -345,10 +345,15 @@ describe('useChatWithHistory', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       const { result } = await renderWithClient(() => useChatWithHistory())
 
-      await waitFor(() => expect(result.current.conversationListLoadError).toBeInstanceOf(Error))
-      act(() => result.current.retryConversationList())
-      await waitFor(() => expect(result.current.conversationListLoadError).toBeUndefined())
-      expect(result.current.conversationList.map(({ id }) => id)).toEqual(['conversation-1'])
+      await waitFor(() =>
+        expect(result.current.conversationListQueries.every((query) => query.isError)).toBe(true),
+      )
+      act(() => {
+        for (const query of result.current.conversationListQueries) void query.refetch()
+      })
+      await waitFor(() =>
+        expect(result.current.conversationList.map(({ id }) => id)).toEqual(['conversation-1']),
+      )
       expect(mockFetchConversations).toHaveBeenCalledTimes(4)
     })
 

@@ -12,6 +12,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { hasProviderForm } from './providers'
@@ -53,6 +54,7 @@ export function InheritedTracingSummary({
     }),
   )
   const policy = statusQuery.data
+  const statusLoad = useOwnedQueryError(statusQuery)
   const provider = hasProviderForm(policy?.tracing_provider) ? policy.tracing_provider : null
   const enabled = !!policy?.enabled && !!provider
   const { data: agentTracingEnabled } = useSuspenseQuery({
@@ -112,7 +114,7 @@ export function InheritedTracingSummary({
             </InfotipContent>
           </Infotip>
         </div>
-        {!policy && statusQuery.isError ? (
+        {statusLoad ? (
           <>
             <span className="system-xs-regular text-text-destructive">
               {t(($) => $['tracing.inherited.loadFailed'], { ns: 'app' })}
@@ -120,10 +122,8 @@ export function InheritedTracingSummary({
             <Button
               variant="secondary"
               size="small"
-              loading={statusQuery.isFetching}
-              onClick={() => {
-                void statusQuery.refetch()
-              }}
+              loading={statusLoad.retrying}
+              onClick={statusLoad.retry}
             >
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>

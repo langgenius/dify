@@ -26,6 +26,7 @@ import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { snippetListInfiniteOptions } from '@/service/snippet-queries'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
 import { StudioListHeader } from '../apps/studio-list-header'
@@ -102,6 +103,10 @@ const SnippetList = () => {
   }, [creatorIDs, debouncedKeywords, publishStatus, tagIDs])
   const canQuerySnippetList = canAccessSnippets(workspacePermissionKeys)
 
+  const snippetListResult = useInfiniteQuery({
+    ...snippetListInfiniteOptions(snippetListQuery),
+    enabled: canQuerySnippetList,
+  })
   const {
     data,
     isLoading,
@@ -111,10 +116,9 @@ const SnippetList = () => {
     hasNextPage,
     error,
     refetch,
-  } = useInfiniteQuery({
-    ...snippetListInfiniteOptions(snippetListQuery),
-    enabled: canQuerySnippetList,
-  })
+  } = snippetListResult
+  // A failed first page replaces the list with a retry; a failed next page keeps the loaded cards.
+  const listLoad = useOwnedQueryError(snippetListResult, canQuerySnippetList)
 
   useEffect(() => {
     if (!canQuerySnippetList) return
@@ -158,7 +162,7 @@ const SnippetList = () => {
   )
   const totalSnippetCount = pages[0]?.total ?? 0
   const hasAnySnippet = totalSnippetCount > 0
-  const hasInitialQueryError = canQuerySnippetList && Boolean(error) && pages.length === 0
+  const hasInitialQueryError = !!listLoad
   const showSkeleton =
     !hasInitialQueryError &&
     (isLoadingCurrentWorkspace ||
@@ -250,10 +254,10 @@ const SnippetList = () => {
         >
           {showSkeleton ? (
             <SnippetCardSkeleton count={6} />
-          ) : hasInitialQueryError ? (
+          ) : listLoad ? (
             <div className="col-span-full flex min-h-55 flex-col items-center justify-center gap-3 text-center">
               <p className="system-md-medium text-text-secondary">{initialQueryErrorMessage}</p>
-              <Button variant="secondary" loading={isFetching} onClick={() => refetch()}>
+              <Button variant="secondary" loading={listLoad.retrying} onClick={listLoad.retry}>
                 {t(($) => $['operation.retry'], { ns: 'common' })}
               </Button>
             </div>

@@ -11,6 +11,7 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { AgentApiKeyDialogContent } from './agent-api-key-dialog-content'
 
@@ -28,6 +29,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   })
   const apiAccessQuery = useQuery(apiAccessQueryOptions)
   const apiAccess = apiAccessQuery.data
+  const load = useOwnedQueryError(apiAccessQuery)
   const toggleServiceApiMutation = useMutation(
     consoleQuery.agent.byAgentId.apiEnable.post.mutationOptions({
       meta: { errorToast: false },
@@ -53,14 +55,14 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const endpoint = apiAccess?.service_api_base_url ?? ''
   const status = apiAccessQuery.isPending
     ? 'loading'
-    : apiAccessQuery.isError
+    : load
       ? 'unavailable'
       : optimisticEnabled
         ? 'inService'
         : 'disabled'
   const statusLabel = apiAccessQuery.isPending
     ? tCommon(($) => $.loading)
-    : apiAccessQuery.isError
+    : load
       ? t(($) => $['agentDetail.access.status.unavailable'])
       : t(
           ($) =>
@@ -72,9 +74,8 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         )
   const notAvailableLabel = t(($) => $['agentDetail.access.workflow.notAvailable'])
   const apiKeyActionDisabled =
-    !canManageAccessPoint || apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady
-  const showPublishRequiredMessage =
-    !apiAccessQuery.isPending && !apiAccessQuery.isError && !accessReady
+    !canManageAccessPoint || apiAccessQuery.isPending || !!load || !accessReady
+  const showPublishRequiredMessage = !apiAccessQuery.isPending && !load && !accessReady
 
   function handleEnabledChange(enabled: boolean) {
     if (!canManageAccessPoint) return
@@ -165,13 +166,12 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
             {t(($) => $['agentDetail.access.serviceApi.actions.apiReference'])}
             <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
           </a>
-          {apiAccessQuery.isError && (
+          {load && (
             <Button
               variant="secondary"
               className="flex items-center gap-1 px-3"
-              onClick={() => {
-                void apiAccessQuery.refetch()
-              }}
+              loading={load.retrying}
+              onClick={load.retry}
             >
               <span aria-hidden className="i-ri-refresh-line size-4" />
               {tCommon(($) => $['operation.retry'])}
@@ -186,7 +186,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         enabled={optimisticEnabled}
         copyDisabled={!endpoint}
         loading={apiAccessQuery.isPending}
-        unavailable={apiAccessQuery.isError}
+        unavailable={!!load}
         unavailableLabel={notAvailableLabel}
         copyLabel={t(($) => $['agentDetail.access.copyServiceEndpoint'])}
         copiedLabel={tCommon(($) => $['operation.copied'])}

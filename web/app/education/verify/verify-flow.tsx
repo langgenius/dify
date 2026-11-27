@@ -113,8 +113,9 @@ export function EducationVerifyFlow() {
   }, [canVerify, startVerification])
 
   const featuresLoad = useOwnedQueryError(featuresQuery)
-  // A failed refetch keeps the cached status on screen; the query cache reports it.
-  const educationStatusLoad = useOwnedQueryError(educationStatusQuery)
+  // A failed refetch keeps the cached status on screen; the query cache reports it. The status
+  // renders only once the features say the education plan is on.
+  const educationStatusLoad = useOwnedQueryError(educationStatusQuery, enableEducationPlan)
 
   if (featuresQuery.isPending) return <EducationVerifyLoading />
 

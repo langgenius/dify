@@ -75,24 +75,29 @@ const LastRun: FC<Props> = ({
     enabled: canRunLastRun,
   })
   const { data: lastRunResult, isFetching } = lastRunQuery
-  // A single run's own result takes the place of a last run that failed to load.
-  const lastRunLoad = useOwnedQueryError({
-    data: lastRunResult,
-    error: lastRunQuery.error,
-    isError: lastRunQuery.isError && canRunLastRun && !singleRunResult,
-    isFetching,
-    refetch: lastRunQuery.refetch,
-  })
-  const lastRunErrorMessage = useRequestErrorMessage(
-    lastRunLoad?.error,
-    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
-  )
   const hasAuthoritativeLastRun = canRunLastRun && !!lastRunResult
   const isRunning =
     !isPaused &&
     (isRunAfterSingleRun
       ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
+  // The loading and running states show in place of the alert, so they do not render the failure.
+  const isLoadingLastRun = isFetching && !isRunAfterSingleRun
+  // A single run's own result takes the place of a last run that failed to load.
+  const lastRunLoad = useOwnedQueryError(
+    {
+      data: lastRunResult,
+      error: lastRunQuery.error,
+      isError: lastRunQuery.isError && canRunLastRun && !singleRunResult,
+      isFetching,
+      refetch: lastRunQuery.refetch,
+    },
+    !isLoadingLastRun && !isRunning,
+  )
+  const lastRunErrorMessage = useRequestErrorMessage(
+    lastRunLoad?.error,
+    t(($) => $['common.loadFailed'], { ns: 'workflow' }),
+  )
 
   const noLastRun = lastRunResult === null
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
@@ -156,7 +161,7 @@ const LastRun: FC<Props> = ({
     }
   }, [handlePageVisibilityChange])
 
-  if (isFetching && !isRunAfterSingleRun) {
+  if (isLoadingLastRun) {
     return (
       <div className="flex h-0 grow flex-col items-center justify-center">
         <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />

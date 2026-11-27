@@ -23,6 +23,8 @@ export function useDeploymentConfigurationQueries({
           }
         : skipToken,
       retry: false,
+      // The dialog shows every failed precheck, refetches included, in place of the result.
+      meta: { errorToast: false },
     })
   const precheckQuery = useQuery(precheckQueryOptions)
   const precheck = precheckQuery.data
@@ -42,6 +44,8 @@ export function useDeploymentConfigurationQueries({
         : skipToken,
       enabled: precheckPassed,
       retry: false,
+      // The dialog shows every failed load, refetches included, in place of the options.
+      meta: { errorToast: false },
     })
   const deploymentOptionsQuery = useQuery(deploymentOptionsQueryOptions)
 

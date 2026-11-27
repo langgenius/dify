@@ -11,6 +11,7 @@ import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 
 export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
   const { t } = useTranslation(['common', 'permission', 'navigation'])
@@ -59,7 +60,8 @@ export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
     : config.data?.automatic_include_workspace_members
   const pagination = users.data?.pagination
   const totalPages = pagination?.total_pages ?? 0
-  const error = rules.error || users.error || whitelist.error || config.error
+  // A failed refetch keeps the editor on its cached data; the query cache reports it.
+  const load = useOwnedQueryErrors(canAccessConfig ? [rules, users, whitelist, config] : [])
   const isBusy = isRemoving || updateScope.isPending || updateUser.isPending
   const canChangeMembership = canAccessConfig && automaticIncludeWorkspaceMembers === false
 
@@ -115,19 +117,10 @@ export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
         </p>
       </header>
       <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:ps-12.5 sm:pe-20">
-        {error ? (
+        {load ? (
           <div role="alert" className="flex items-center justify-center gap-3 py-8">
             <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>
-            <Button
-              onClick={() => {
-                void Promise.all([
-                  rules.refetch(),
-                  users.refetch(),
-                  whitelist.refetch(),
-                  config.refetch(),
-                ])
-              }}
-            >
+            <Button loading={load.retrying} onClick={load.retry}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
           </div>

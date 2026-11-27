@@ -53,11 +53,9 @@ it('starts the installation lookup only after the caller enables it', async () =
   expect(request).toHaveBeenCalledOnce()
 })
 
-it('exposes lookup failures without manufacturing an installed result', async () => {
-  const error = new Error('lookup failed')
-  request.mockRejectedValue(error)
+it('settles a failed lookup without manufacturing an installed result', async () => {
+  request.mockRejectedValue(new Error('lookup failed'))
   const { result } = renderHook(() => useCheckInstalled({ pluginIds: ['plugin-1'], enabled: true }))
-  await waitFor(() => expect(result.current.error).toBe(error))
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
   expect(result.current.installedInfo).toBeUndefined()
-  expect(result.current.isLoading).toBe(false)
 })

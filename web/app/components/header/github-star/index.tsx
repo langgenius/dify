@@ -21,19 +21,19 @@ const getStar = async () => {
 }
 
 const GithubStar: FC<{ className: string }> = (props) => {
-  const { isFetching, isError, data } = useQuery<GithubStarResponse>({
+  const { isFetching, data } = useQuery<GithubStarResponse>({
     queryKey: ['github-star'],
     queryFn: getStar,
     retry: false,
     placeholderData: defaultData,
+    // A decorative count: a failed fetch silently falls back to the bundled one.
+    meta: { errorToast: false },
   })
 
   if (isFetching)
     return <span className="i-ri-loader-2-line size-3 shrink-0 animate-spin text-text-tertiary" />
 
-  if (isError) return <span {...props}>{defaultData.repo.stars.toLocaleString()}</span>
-
-  return <span {...props}>{data?.repo.stars.toLocaleString()}</span>
+  return <span {...props}>{(data ?? defaultData).repo.stars.toLocaleString()}</span>
 }
 
 export default GithubStar

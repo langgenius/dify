@@ -203,8 +203,6 @@ function ConnectedSourceEditDialogContent({
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions(),
   )
-  // Without the plugins there is no provider to edit; a failed refetch keeps the cached ones.
-  const datasourcePluginsLoad = useOwnedQueryError(datasourcePluginsQuery)
   const {
     data: connectionsData,
     error: connectionsQueryError,
@@ -233,6 +231,9 @@ function ConnectedSourceEditDialogContent({
       retry: false,
     }),
   )
+  // Without the plugins there is no provider to edit, shown once the connections have loaded; a
+  // failed refetch keeps the cached ones.
+  const datasourcePluginsLoad = useOwnedQueryError(datasourcePluginsQuery, !connectionsPending)
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(initialDraft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, initialDraft.sourceType],
@@ -583,7 +584,13 @@ function WebsiteSourceEditDialogContent({
     typeof pluginId === 'string' &&
     typeof provider === 'string'
   const providerLoading = usesProviderDeclaration && datasourcePluginsQuery.isPending
-  const providerLoadFailed = usesProviderDeclaration && datasourcePluginsQuery.isError
+  // The web form shows a failed first load of the provider declaration in place of its fields; a
+  // failed refetch keeps the cached plugins and is the query cache's to report.
+  const providerLoad = useOwnedQueryError(
+    datasourcePluginsQuery,
+    usesProviderDeclaration && initialSource.type === 'web',
+  )
+  const providerLoadFailed = !!providerLoad
   const providerConfigurationReady =
     !usesProviderDeclaration || (!providerLoading && !providerLoadFailed && Boolean(providerOption))
   const parameterSchemas = useMemo(() => {
@@ -798,8 +805,11 @@ function WebsiteSourceEditDialogContent({
                     </div>
                   ) : (
                     <p role="alert" className="pt-7 system-sm-regular text-text-destructive">
-                      {providerLoadFailed
-                        ? t(($) => $.providerLoadFailed)
+                      {providerLoad
+                        ? describeRequestError(
+                            providerLoad.error,
+                            t(($) => $.providerLoadFailed),
+                          )
                         : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
                     </p>
                   )

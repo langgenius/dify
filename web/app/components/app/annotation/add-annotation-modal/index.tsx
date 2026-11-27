@@ -26,7 +26,11 @@ import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
-import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import {
+  useRequestErrorDescriber,
+  useRequestErrorMessage,
+} from '@/service/use-request-error-message'
 import robotAvatar from '../assets/robot-avatar.svg'
 
 type AddAnnotationDialogProps = {
@@ -56,6 +60,11 @@ function AddAnnotationDialogPopup({
   )
   const quotaUnavailable = quota.data === undefined
   const quotaFull = quota.data !== undefined && isQuotaReached(quota.data)
+  const quotaLoad = useOwnedQueryError(quota)
+  const quotaErrorMessage = useRequestErrorMessage(
+    quotaLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
   const formId = useId()
   const formRef = useRef<HTMLFormElement>(null)
   const questionRef = useRef<HTMLTextAreaElement>(null)
@@ -131,12 +140,10 @@ function AddAnnotationDialogPopup({
               </p>
             )}
             {quotaFull && <AnnotationFull />}
-            {quotaUnavailable && quota.isError && (
+            {quotaLoad && quotaErrorMessage && (
               <div role="alert" className="space-y-2">
-                <p className="system-sm-regular text-text-destructive">
-                  {t(($) => $['api.actionFailed'], { ns: 'common' })}
-                </p>
-                <Button loading={quota.isFetching} onClick={() => quota.refetch()}>
+                <p className="system-sm-regular text-text-destructive">{quotaErrorMessage}</p>
+                <Button loading={quotaLoad.retrying} onClick={quotaLoad.retry}>
                   {t(($) => $['operation.retry'], { ns: 'common' })}
                 </Button>
               </div>

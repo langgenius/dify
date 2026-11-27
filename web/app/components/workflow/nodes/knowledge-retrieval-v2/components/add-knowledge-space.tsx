@@ -20,6 +20,7 @@ import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { canBindControlSpace, toControlSpaceSummary } from '../config-helpers'
 
 const SPACE_PAGE_SIZE = 50
@@ -53,6 +54,9 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
     () => spacesQuery.data?.pages.flatMap((page) => page.data) ?? [],
     [spacesQuery.data?.pages],
   )
+  // The dialog shows a failed first page in place of the list, and a failed next page below it.
+  const spacesLoad = useOwnedQueryError(spacesQuery, isOpen)
+  const nextPageLoad = useOwnedNextPageError(spacesQuery, isOpen && spaces.length > 0)
   const summaryMap = useMemo(
     () =>
       new Map([
@@ -157,7 +161,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                 </div>
               )}
 
-              {spacesQuery.isError && spaces.length === 0 && (
+              {spacesLoad && (
                 <div
                   role="alert"
                   className="flex flex-col items-center justify-center gap-2 rounded-lg border border-divider-subtle bg-components-panel-on-panel-item-bg p-4 text-center text-[13px] text-text-destructive"
@@ -165,11 +169,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                   <p>
                     {t(($) => $['nodes.knowledgeRetrievalV2.loadSpacesError'], { ns: 'workflow' })}
                   </p>
-                  <Button
-                    size="small"
-                    loading={spacesQuery.isFetching}
-                    onClick={() => void spacesQuery.refetch()}
-                  >
+                  <Button size="small" loading={spacesLoad.retrying} onClick={spacesLoad.retry}>
                     {t(($) => $['operation.retry'], { ns: 'common' })}
                   </Button>
                 </div>
@@ -239,7 +239,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                     })}
                   </fieldset>
                   {spacesQuery.isFetchingNextPage && <LoadingPlaceholder />}
-                  {spacesQuery.isFetchNextPageError && !spacesQuery.isFetchingNextPage && (
+                  {nextPageLoad && !nextPageLoad.retrying && (
                     <div
                       role="alert"
                       className="mt-2 flex items-center justify-between gap-2 px-2 text-[13px] text-text-destructive"
@@ -249,7 +249,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
                           ns: 'workflow',
                         })}
                       </p>
-                      <Button size="small" onClick={() => void spacesQuery.fetchNextPage()}>
+                      <Button size="small" onClick={nextPageLoad.retry}>
                         {t(($) => $['operation.retry'], { ns: 'common' })}
                       </Button>
                     </div>

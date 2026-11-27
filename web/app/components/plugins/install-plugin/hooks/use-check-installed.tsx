@@ -8,7 +8,7 @@ type Props = Readonly<{
   enabled: boolean
 }>
 const useCheckInstalled = (props: Props) => {
-  const { data, isLoading, error } = useQuery(installedPluginsByIdsQueryOptions(props))
+  const { data, isLoading } = useQuery(installedPluginsByIdsQueryOptions(props))
 
   const installedInfo = useMemo(() => {
     if (!data) return undefined
@@ -26,7 +26,6 @@ const useCheckInstalled = (props: Props) => {
   return {
     installedInfo,
     isLoading,
-    error,
   }
 }
 

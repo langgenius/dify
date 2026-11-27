@@ -49,6 +49,14 @@ type ProviderListProps = {
 
 const EMPTY_COLLECTIONS: Collection[] = []
 
+// Without a host layout the toolbar sits above the list.
+const renderOwnLayout: NonNullable<ProviderListProps['layout']> = ({ body, toolbar }) => (
+  <>
+    {toolbar}
+    {body}
+  </>
+)
+
 const ProviderList = ({ category, contentInset = 'default', layout }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
@@ -285,14 +293,8 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
     </>
   )
 
-  if (layout) return layout({ body, toolbar })
-
-  return (
-    <>
-      {toolbar}
-      {body}
-    </>
-  )
+  const renderLayout = layout ?? renderOwnLayout
+  return renderLayout({ body, toolbar })
 }
 ProviderList.displayName = 'ToolProviderList'
 export default ProviderList

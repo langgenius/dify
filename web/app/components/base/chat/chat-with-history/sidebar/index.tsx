@@ -23,6 +23,7 @@ import ChatLoadError from '@/app/components/base/chat/load-error'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import TextGenerationMenu from '@/app/components/share/text-generation/text-generation-menu'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
@@ -39,9 +40,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     handleNewConversation,
     pinnedConversationList,
     conversationList,
-    conversationListLoadError,
-    conversationListRetrying,
-    retryConversationList,
+    conversationListQueries,
     currentConversationId,
     handleChangeConversation,
     handlePinConversation,
@@ -55,6 +54,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
+  const conversationListLoad = useOwnedQueryErrors(conversationListQueries ?? [])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
@@ -137,11 +137,11 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         </Button>
       </div>
       <div className="h-0 grow space-y-2 overflow-y-auto px-3 pt-4">
-        {!!conversationListLoadError && (
+        {conversationListLoad && (
           <ChatLoadError
-            error={conversationListLoadError}
-            isRetrying={conversationListRetrying}
-            onRetry={() => retryConversationList?.()}
+            error={conversationListLoad.error}
+            isRetrying={conversationListLoad.retrying}
+            onRetry={conversationListLoad.retry}
           />
         )}
         {/* pinned list */}

@@ -132,7 +132,8 @@ export function useInstallMultiState({
   )
   const { isLoading: isFetchingById, data: infoGetById } = marketplaceQuery
   // The list renders a failed first load as error rows in place of the marketplace plugins.
-  const isMarketplaceLoadFailed = !!useOwnedQueryError(marketplaceQuery)
+  const marketplaceLoad = useOwnedQueryError(marketplaceQuery)
+  const isMarketplaceLoadFailed = marketplaceLoad !== undefined
 
   // Derive marketplace plugin data and errors from API responses
   const { marketplacePluginMap, marketplaceErrorIndexes } = useMemo(() => {

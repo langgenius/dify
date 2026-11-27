@@ -10,6 +10,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { scanIsActive } from './use-tidy'
 
 const PAUSE_REASONS = {
@@ -71,6 +72,8 @@ export function SettingsCard({
   const { t: common } = useTranslation(['common'])
   const enabledLabelId = useId()
   const conflictsLabelId = useId()
+  // A failed first load is shown in the card; a failed refresh keeps the settings.
+  const settingsLoad = useOwnedQueryError(settings)
   const progress = summary && progressOf(summary)
   const lastError = settings.data?.enabled ? settings.data.lastError : null
   return (
@@ -89,7 +92,7 @@ export function SettingsCard({
       </div>
       <p className="mt-2 body-sm-regular text-text-tertiary">{t(($) => $['tidy.schedule'])}</p>
       {settings.isPending && <p role="status">{common(($) => $.loading)}</p>}
-      {settings.isError && <p role="alert">{t(($) => $['tidy.error'])}</p>}
+      {settingsLoad && <p role="alert">{t(($) => $['tidy.error'])}</p>}
       {settings.data?.enabled && (
         <div className="mt-4 flex flex-col gap-3 border-t border-divider-subtle pt-4">
           <div className="flex items-start justify-between gap-4">

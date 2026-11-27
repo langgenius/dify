@@ -4,6 +4,7 @@ import type { KnowledgeFsTidyScanResponse } from '@dify/contracts/api/console/kn
 import type { I18nKeysWithoutVariables } from '@/types/i18n'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useTidyScans } from './use-tidy'
 
 const SCAN_STATES = {
@@ -37,13 +38,15 @@ export function ScanList({
   const { t } = useTranslation(['knowledgeSpace'])
   const { t: common } = useTranslation(['common'])
   const { scans, paged, previousPage, nextPage } = useTidyScans(spaceId, live)
+  // A failed first load is shown in place of the list; a failed refresh keeps the scans.
+  const scansLoad = useOwnedQueryError(scans)
   return (
     <details className="mb-5 rounded-xl border border-divider-regular p-4">
       <summary className="cursor-pointer system-sm-semibold text-text-primary">
         {t(($) => $['tidy.progress'])}
       </summary>
       {scans.isPending && <p role="status">{common(($) => $.loading)}</p>}
-      {scans.isError && <p role="alert">{t(($) => $['tidy.error'])}</p>}
+      {scansLoad && <p role="alert">{t(($) => $['tidy.error'])}</p>}
       <ul className="my-3 space-y-2">
         {scans.data?.items.map((scan) => (
           <li

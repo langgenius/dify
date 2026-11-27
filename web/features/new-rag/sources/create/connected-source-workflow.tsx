@@ -1957,10 +1957,18 @@ function ConnectedSourceWorkflowSession({
       retry: false,
     }),
   )
-  // A failed first load or next page shows inline with a retry; a failed refresh keeps the
-  // loaded connections and is the query cache's to report.
-  const connectionsLoad = useOwnedQueryError(connectionsQuery)
-  const connectionsPage = useOwnedNextPageError(connectionsQuery)
+  // A failed first load or next page shows inline with a retry once the provider reads have
+  // loaded without an error of their own; a failed refresh keeps the loaded connections and is the
+  // query cache's to report.
+  const connectionsShown =
+    !providersQuery.isPending &&
+    !datasourcePluginsQuery.isPending &&
+    !datasourceAuthQuery.isPending &&
+    !providersQuery.error &&
+    !datasourcePluginsQuery.error &&
+    !datasourceAuthQuery.error
+  const connectionsLoad = useOwnedQueryError(connectionsQuery, connectionsShown)
+  const connectionsPage = useOwnedNextPageError(connectionsQuery, connectionsShown)
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, draft.sourceType],

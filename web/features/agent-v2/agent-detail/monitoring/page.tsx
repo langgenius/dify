@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './metrics'
@@ -88,7 +89,7 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
   ]
   const metrics = getAgentMonitoringMetrics(statisticsQuery.data, period.query)
   const shouldShowInitialSkeleton = statisticsQuery.isPending && !statisticsQuery.data
-  const shouldShowError = statisticsQuery.isError && !statisticsQuery.data
+  const load = useOwnedQueryError(statisticsQuery)
 
   return (
     <AgentDetailSectionSurface label={t(($) => $['agentDetail.sections.monitoring'])}>
@@ -127,23 +128,22 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
             </header>
             <div className="px-6 pt-2">
               {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
-              {shouldShowError && (
+              {load && (
                 <AgentMonitoringState>
                   <div className="flex items-center justify-center gap-2">
                     <span role="alert">{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
                     <Button
                       variant="secondary"
                       size="small"
-                      onClick={() => {
-                        void statisticsQuery.refetch()
-                      }}
+                      loading={load.retrying}
+                      onClick={load.retry}
                     >
                       {tCommon(($) => $['operation.retry'])}
                     </Button>
                   </div>
                 </AgentMonitoringState>
               )}
-              {!shouldShowInitialSkeleton && !shouldShowError && (
+              {!shouldShowInitialSkeleton && !load && (
                 <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
                   {metrics.map((metric) => (
                     <AgentMonitoringChart

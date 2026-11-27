@@ -30,6 +30,7 @@ import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentLogDetailPanel } from './components/log-detail-panel'
 import { AgentLogsTable } from './components/logs-table'
@@ -79,6 +80,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(25)
   const [selectedLog, setSelectedLog] = useState<AgentLogConversationItemResponse>()
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false)
   const periodItems = periodOptions.map((option) => ({
     value: option.value,
     name: t(($) => $[option.labelKey]),
@@ -111,6 +113,9 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
     }),
     placeholderData: keepPreviousData,
   })
+  // The picker shows a failed source load only in its open popup.
+  const sourcesLoad = useOwnedQueryError(logSourcesQuery, sourcePickerOpen)
+  const logsLoad = useOwnedQueryError(logsQuery)
   const logs = logsQuery.data?.data ?? []
   const totalPages = Math.max(Math.ceil((logsQuery.data?.total ?? 0) / limit), 1)
   const currentPage = logsQuery.data?.page ?? page
@@ -165,10 +170,9 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
             value={source}
             groups={logSourcesQuery.data?.groups ?? []}
             isLoading={logSourcesQuery.isPending}
-            isError={logSourcesQuery.isError}
-            onRetry={() => {
-              void logSourcesQuery.refetch()
-            }}
+            load={sourcesLoad}
+            open={sourcePickerOpen}
+            onOpenChange={setSourcePickerOpen}
             onChange={(nextSource) => {
               setPage(1)
               setSource(nextSource)
@@ -212,14 +216,11 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
         <AgentLogsTable
           logs={logs}
           isPending={logsQuery.isPending}
-          isError={logsQuery.isError}
-          isSuccess={logsQuery.isSuccess}
+          load={logsLoad}
+          loaded={logsQuery.data !== undefined}
           selectedLogId={selectedLog?.id}
           sort={sort}
           onOpenLog={setSelectedLog}
-          onRetry={() => {
-            void logsQuery.refetch()
-          }}
         />
       </div>
 

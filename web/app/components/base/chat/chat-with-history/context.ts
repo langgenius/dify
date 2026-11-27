@@ -1,5 +1,6 @@
 'use client'
 
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { RefObject } from 'react'
 import type { ChatProps } from '../chat'
 import type { Theme } from '../embedded-chatbot/theme/theme'
@@ -21,9 +22,8 @@ export type ChatWithHistoryContextValue = {
   appPrevChatTree: ChatItemInTree[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
-  conversationListLoadError?: unknown
-  conversationListRetrying?: boolean
-  retryConversationList?: () => void
+  /** The sidebar claims their failed first loads where it replaces the list with them. */
+  conversationListQueries?: readonly UseQueryResult<unknown>[]
   newConversationInputs: Record<string, any>
   newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void

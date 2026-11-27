@@ -10,6 +10,8 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import Cloud from './assets/cloud'
 import NoiseBottom from './assets/noise-bottom'
 import NoiseTop from './assets/noise-top'
@@ -35,15 +37,20 @@ export function PricingContent() {
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isEducationDiscountEligible = educationEnabled ? educationQuery.data : false
   const isCheckoutReady = features !== undefined && isEducationDiscountEligible !== undefined
-  const pricingError =
-    (!features && featuresQuery.isError) ||
-    (educationEnabled && educationQuery.data === undefined && educationQuery.isError)
   const defaultBillingInterval: BillingInterval =
     canManageBilling && isEducationDiscountEligible ? 'year' : 'month'
   const [activeCategory, setActiveCategory] = React.useState<'cloud' | 'self-hosted'>('cloud')
   const [selectedBillingInterval, setSelectedBillingInterval] = React.useState<BillingInterval>()
   const billingInterval = selectedBillingInterval ?? defaultBillingInterval
   const isCloud = activeCategory === 'cloud'
+  // The cloud panel, mounted only while its tab is active, shows a failed first load in place of checkout.
+  const pricingLoad = useOwnedQueryErrors(
+    isCloud ? [featuresQuery, ...(educationEnabled ? [educationQuery] : [])] : [],
+  )
+  const pricingErrorMessage = useRequestErrorMessage(
+    pricingLoad?.error,
+    t(($) => $.error, { ns: 'common' }),
+  )
   const currentCloudPlan = features?.billing.subscription.plan
   const billing = currentCloudPlan
     ? {
@@ -116,18 +123,13 @@ export function PricingContent() {
           value="cloud"
           className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row xl:flex-wrap"
         >
-          {pricingError ? (
+          {pricingLoad ? (
             <div
               role="alert"
               className="flex w-full items-center justify-center gap-3 border-b border-divider-accent p-3"
             >
-              <p>{t(($) => $.error, { ns: 'common' })}</p>
-              <Button
-                onClick={() => {
-                  if (!features) void featuresQuery.refetch()
-                  else void educationQuery.refetch()
-                }}
-              >
+              <p>{pricingErrorMessage}</p>
+              <Button loading={pricingLoad.retrying} onClick={pricingLoad.retry}>
                 {t(($) => $['operation.retry'], { ns: 'common' })}
               </Button>
             </div>

@@ -1,6 +1,8 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { useToolMarketplace } from '../hooks'
@@ -11,6 +13,7 @@ const requests = vi.hoisted(() => ({
   collections: vi.fn(),
   collectionPlugins: vi.fn(),
 }))
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -42,7 +45,9 @@ const collection: MarketplaceCollection = {
 }
 const response = (plugins = [plugin], total = plugins.length) => ({ data: { plugins, total } })
 function renderMarketplace(initial = { search: '', tags: [] as string[], enabled: true }) {
-  const { wrapper } = createConsoleQueryWrapper()
+  // The app's query cache: it toasts every failed read the panel does not claim.
+  const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
+  const { wrapper } = createConsoleQueryWrapper({ queryClient })
   return renderHook(({ search, tags, enabled }) => useToolMarketplace(search, tags, enabled), {
     wrapper,
     initialProps: initial,
@@ -60,6 +65,7 @@ const scrollToEnd = (handleScroll: (event: Event) => void) => {
   container.removeEventListener('scroll', handleScroll)
 }
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear()
   requests.installed.mockReset().mockResolvedValue({ plugin_ids: ['installed-tool'] })
   requests.search.mockReset().mockResolvedValue(response())
   requests.collections.mockReset().mockResolvedValue({ data: { collections: [collection] } })
@@ -171,13 +177,15 @@ it('reports a failed installed-ids load instead of an empty catalog, and retries
     .mockRejectedValueOnce(new Error('installed ids unavailable'))
     .mockResolvedValueOnce({ plugin_ids: ['installed-tool'] })
   const { result } = renderMarketplace()
-  await waitFor(() => expect(result.current.isLoadFailed).toBe(true))
+  await waitFor(() => expect(result.current.loadError).toBeDefined())
   expect(requests.collections).not.toHaveBeenCalled()
-  act(() => result.current.retryLoad())
+  // The panel renders the failure in place of the catalog, so the cache does not also toast it.
+  expect(toast.error).not.toHaveBeenCalled()
+  act(() => result.current.loadError?.retry())
   await waitFor(() =>
     expect(result.current.marketplaceCollectionPluginsMap?.featured).toHaveLength(1),
   )
-  expect(result.current.isLoadFailed).toBe(false)
+  expect(result.current.loadError).toBeUndefined()
 })
 it('reports a failed collections load and retries it', async () => {
   requests.collections
@@ -185,8 +193,9 @@ it('reports a failed collections load and retries it', async () => {
     .mockRejectedValueOnce(new Error('collections unavailable'))
     .mockResolvedValueOnce({ data: { collections: [collection] } })
   const { result } = renderMarketplace()
-  await waitFor(() => expect(result.current.isLoadFailed).toBe(true))
-  act(() => result.current.retryLoad())
+  await waitFor(() => expect(result.current.loadError).toBeDefined())
+  expect(toast.error).not.toHaveBeenCalled()
+  act(() => result.current.loadError?.retry())
   await waitFor(() => expect(result.current.marketplaceCollections).toEqual([collection]))
-  expect(result.current.isLoadFailed).toBe(false)
+  expect(result.current.loadError).toBeUndefined()
 })

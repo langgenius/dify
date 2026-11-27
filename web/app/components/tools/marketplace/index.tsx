@@ -39,9 +39,7 @@ const Marketplace = ({
   const { canInstallPlugin } = usePluginSettingsAccess()
   const {
     isLoading,
-    isLoadFailed,
-    isRetrying,
-    retryLoad,
+    loadError,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     plugins,
@@ -133,18 +131,23 @@ const Marketplace = ({
             <LoadingPlaceholder />
           </div>
         )}
-        {isLoadFailed && !isLoading && (
+        {loadError && (
           <div
             role="alert"
             className="flex min-h-60 flex-col items-center justify-center gap-3 system-sm-regular text-text-tertiary"
           >
             <span>{t(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
-            <Button size="small" variant="secondary" loading={isRetrying} onClick={retryLoad}>
+            <Button
+              size="small"
+              variant="secondary"
+              loading={loadError.retrying}
+              onClick={loadError.retry}
+            >
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
           </div>
         )}
-        {!isLoadFailed && (!isLoading || page > 1) && (
+        {!loadError && (!isLoading || page > 1) && (
           <div className={marketplaceFrameClassName}>
             <List
               marketplaceCollections={marketplaceCollections || []}

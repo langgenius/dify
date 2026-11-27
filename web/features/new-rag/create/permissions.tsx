@@ -8,6 +8,7 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 
 type KnowledgeCreationPermissionsProps = {
   canConfigureAccess: boolean
@@ -41,6 +42,8 @@ export function KnowledgeCreationPermissions({
       enabled: canConfigureAccess,
     }),
   )
+  // A failed first load is shown below the selector; a failed refetch keeps the members.
+  const membersLoad = useOwnedQueryError(membersQuery, canConfigureAccess)
   const membersInvalid = visibility === 'partial_members' && selectedMemberIds.length === 0
 
   return (
@@ -73,13 +76,18 @@ export function KnowledgeCreationPermissions({
           {t(($) => $['settings.membersRequired'], { ns: 'knowledgeSettings' })}
         </p>
       )}
-      {canConfigureAccess && membersQuery.isError && (
+      {canConfigureAccess && membersLoad && (
         <div
           className="flex items-center gap-2 system-xs-regular text-text-destructive"
           role="alert"
         >
           <span>{tCommon(($) => $['api.actionFailed'])}</span>
-          <Button type="button" disabled={disabled} onClick={() => void membersQuery.refetch()}>
+          <Button
+            type="button"
+            disabled={disabled}
+            loading={membersLoad.retrying}
+            onClick={membersLoad.retry}
+          >
             {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>

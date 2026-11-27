@@ -14,6 +14,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
 import { AppInfoHeader } from './app-info/app-info-header'
@@ -180,9 +181,9 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     isEvaluationVisible,
   ])
 
-  const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
-    (query) => query.isError && !query.data,
-  )
+  // The sidebar shows a failed first load of its reads with a retry; a failed refresh keeps the
+  // loaded navigation and is the query cache's to report.
+  const sidebarLoad = useOwnedQueryErrors([detailQuery, featuresQuery, profileQuery])
   const appTitle = appDetail?.name ?? t(($) => $['menus.appDetail'], { ns: 'navigation' })
 
   const hasLogsNavigation = navigation.some(isLogsNavItem)
@@ -215,14 +216,14 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
           />
         )}
       </div>
-      {failedQuery && (
+      {sidebarLoad && (
         <div role="alert" className="flex flex-col gap-2 px-1 py-2">
           {expand && (
             <p className="system-xs-regular text-text-tertiary">
               {t(($) => $['errorBoundary.message'], { ns: 'common' })}
             </p>
           )}
-          <Button variant="secondary" onClick={() => void failedQuery.refetch()}>
+          <Button variant="secondary" loading={sidebarLoad.retrying} onClick={sidebarLoad.retry}>
             {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
           </Button>
         </div>

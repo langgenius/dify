@@ -27,11 +27,15 @@ const EvaluationTargetWorkflowGuard = ({
     ...appWorkflowQueryOptions(resourceType === 'apps' ? resourceId : undefined),
     refetchOnMount: 'always',
     retry: false,
+    // The guard replaces Evaluation with every failed check, refetches over cached data included.
+    meta: { errorToast: false },
   })
   const snippetWorkflow = useQuery({
     ...snippetPublishedWorkflowQueryOptions(resourceType === 'snippets' ? resourceId : ''),
     refetchOnMount: 'always',
     retry: false,
+    // The guard replaces Evaluation with every failed check, refetches over cached data included.
+    meta: { errorToast: false },
   })
   const workflowQuery = resourceType === 'apps' ? appWorkflow : snippetWorkflow
   const workflow = workflowQuery.data

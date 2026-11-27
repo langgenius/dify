@@ -106,11 +106,11 @@ export function CompactTagFilter({
       onValueChange={onChange}
       label={placeholder}
       searchLabel={t(($) => $['tag.searchTags'], { ns: 'common' })}
-      emptyText={t(($) => $['tag.noTag'], { ns: 'common' })}
-      loadError={
-        tagsQuery.isError &&
-        tagsQuery.data === undefined && <TagsLoadError query={tagsQuery} className="p-3" />
+      // Without loaded tags there is nothing to call empty; a failed load shows its own state.
+      emptyText={
+        tagsQuery.data === undefined ? undefined : t(($) => $['tag.noTag'], { ns: 'common' })
       }
+      loadError={<TagsLoadError query={tagsQuery} className="p-3" />}
       container={container}
     >
       <CompactTagFilterTrigger

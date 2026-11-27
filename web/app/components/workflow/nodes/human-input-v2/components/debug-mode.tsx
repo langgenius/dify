@@ -24,7 +24,7 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
   const { t } = useTranslation(['workflow', 'contacts', 'common'])
   const errorId = useId()
   const [open, setOpen] = useState(false)
-  const configured = useConfiguredChannels()
+  const configured = useConfiguredChannels(open)
   const channels = value.channels as string[]
   const unsupported = channels.filter((channel) => !isHumanInputV2DebugChannel(channel))
   const selected = channels
@@ -113,10 +113,14 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
                 {t(($) => $['imPlatform.loading'], { ns: 'contacts' })}
               </p>
             )}
-            {configured.isError && (
+            {configured.load && (
               <div role="alert" className="px-2 py-1 system-xs-regular text-text-destructive">
                 {t(($) => $['imPlatform.loadError.title'], { ns: 'contacts' })}
-                <Button size="small" onClick={() => void configured.refetch()}>
+                <Button
+                  size="small"
+                  loading={configured.load.retrying}
+                  onClick={configured.load.retry}
+                >
                   {t(($) => $['operation.retry'], { ns: 'common' })}
                 </Button>
               </div>

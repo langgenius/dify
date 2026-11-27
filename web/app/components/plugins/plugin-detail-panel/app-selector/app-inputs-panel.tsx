@@ -17,7 +17,7 @@ const AppInputsPanel = ({ inputs, appDetail, onFormChange }: AppInputsPanelProps
   const { t } = useTranslation(['app', 'common'])
   const inputsRef = useRef(inputs)
 
-  const { inputFormSchema, isError, isLoading, retry } = useAppInputsFormSchema({ appDetail })
+  const { inputFormSchema, loadError, isLoading, retry } = useAppInputsFormSchema({ appDetail })
 
   const handleFormChange = (newValue: Record<string, unknown>) => {
     inputsRef.current = newValue
@@ -33,7 +33,7 @@ const AppInputsPanel = ({ inputs, appDetail, onFormChange }: AppInputsPanelProps
           <LoadingPlaceholder className="h-full" />
         </div>
       )}
-      {!isLoading && isError && (
+      {!isLoading && loadError && (
         <div
           className="flex h-20 flex-col items-center justify-center gap-2 px-4 system-xs-regular text-text-tertiary"
           role="alert"
@@ -44,19 +44,19 @@ const AppInputsPanel = ({ inputs, appDetail, onFormChange }: AppInputsPanelProps
           </Button>
         </div>
       )}
-      {!isLoading && !isError && (
+      {!isLoading && !loadError && (
         <div className="mt-3 mb-2 flex h-6 shrink-0 items-center px-4 system-sm-semibold text-text-secondary">
           {t(($) => $['appSelector.params'], { ns: 'app' })}
         </div>
       )}
-      {!isLoading && !isError && !hasInputs && (
+      {!isLoading && !loadError && !hasInputs && (
         <div className="flex h-16 flex-col items-center justify-center">
           <div className="system-sm-regular text-text-tertiary">
             {t(($) => $['appSelector.noParams'], { ns: 'app' })}
           </div>
         </div>
       )}
-      {!isLoading && !isError && hasInputs && (
+      {!isLoading && !loadError && hasInputs && (
         <div className="grow overflow-y-auto">
           <AppInputsForm
             inputs={inputs}

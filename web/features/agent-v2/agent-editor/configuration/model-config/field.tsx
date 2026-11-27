@@ -10,6 +10,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { isAgentCompatibleModel, isAgentSuggestedModel } from '../../model-compatibility'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
@@ -36,9 +37,10 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
   const modelListUnavailable = modelListQuery.data === undefined
   const providerUnavailable = !!currentModel?.provider && providerQuery.data === undefined
   const modelStatusUnavailable = modelListUnavailable || providerUnavailable
-  const hasLoadError =
-    (modelListUnavailable && modelListQuery.isError) ||
-    (providerUnavailable && providerQuery.isError)
+  // Read-only fields fetch nothing and so show no load failure.
+  const load = useOwnedQueryErrors(
+    readOnly ? [] : currentModel?.provider ? [modelListQuery, providerQuery] : [modelListQuery],
+  )
 
   return (
     <Fieldset className="grid gap-1 py-3">
@@ -92,16 +94,10 @@ export function AgentModelField({ currentModel, onSelect }: AgentModelFieldProps
           }}
         />
       )}
-      {!readOnly && hasLoadError && (
+      {load && (
         <div role="alert" className="flex items-center gap-2 text-text-warning">
           <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>
-          <Button
-            size="small"
-            onClick={() => {
-              if (modelListUnavailable) void modelListQuery.refetch()
-              if (providerUnavailable) void providerQuery.refetch()
-            }}
-          >
+          <Button size="small" loading={load.retrying} onClick={load.retry}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>
         </div>

@@ -45,6 +45,13 @@ type Props = Readonly<{
   stickyToolbar?: boolean
 }>
 
+const defaultLayout: NonNullable<Props['layout']> = ({ body, toolbar }) => (
+  <>
+    {toolbar}
+    {body}
+  </>
+)
+
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
 export type ModelProviderPluginSummary = ModelProviderPluginSummaryResponse & {
@@ -96,7 +103,8 @@ const ModelProviderPage = ({
   )
   const { data: providerSummary, isLoading: isProviderSummaryLoading } = providerSummaryQuery
   const providerSummaryLoad = useOwnedQueryError(providerSummaryQuery)
-  const isProviderSummaryLoadFailed = !!providerSummaryLoad
+  // The warning and empty states need the summary; without it the claimed failure shows instead.
+  const hasProviderSummary = providerSummary !== undefined
   const providerSummaryErrorMessage = useRequestErrorMessage(
     providerSummaryLoad?.error,
     t(($) => $['modelProvider.loadFailed'], { ns: 'modelProvider' }),
@@ -200,7 +208,7 @@ const ModelProviderPage = ({
   const showWarning =
     canConfigureModels &&
     !isLoadingModelProviders &&
-    !isProviderSummaryLoadFailed &&
+    hasProviderSummary &&
     !isDefaultModelLoading &&
     !isDefaultModelLoadFailed &&
     !!warningTextKey
@@ -235,7 +243,7 @@ const ModelProviderPage = ({
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
   const showEmptyProvider =
-    !isLoadingModelProviders && !isProviderSummaryLoadFailed && !configuredProviders.length
+    !isLoadingModelProviders && hasProviderSummary && !configuredProviders.length
   const showConfiguredProviders = !isLoadingModelProviders && !!filteredConfiguredProviders?.length
   const showNotConfiguredProviders =
     !isLoadingModelProviders && !!filteredNotConfiguredProviders?.length
@@ -323,13 +331,11 @@ const ModelProviderPage = ({
     </>
   )
 
-  if (layout)
-    return <div className="relative flex min-h-0 flex-1 flex-col">{layout({ body, toolbar })}</div>
-
+  // One render path, so the claimed load failure renders under either layout.
+  const renderLayout = layout ?? defaultLayout
   return (
-    <div className="relative">
-      {toolbar}
-      {body}
+    <div className={layout ? 'relative flex min-h-0 flex-1 flex-col' : 'relative'}>
+      {renderLayout({ body, toolbar })}
     </div>
   )
 }

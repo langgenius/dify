@@ -131,11 +131,20 @@ describe('overview activity drawer', () => {
       data: [task('completed')],
       next_cursor: null,
     })
+    const loads = drawerActivity.mock.calls.length
     await vi.advanceTimersByTimeAsync(2000)
 
+    // The failed refresh is the query cache's to report; the drawer keeps its rows.
+    await expect.poll(() => drawerActivity.mock.calls.length).toBeGreaterThan(loads)
     await expect
-      .element(drawer.getByRole('alert'))
-      .toMatchTextContent('knowledgeSpace.tasksErrorDescription')
+      .poll(() =>
+        client
+          .getQueryCache()
+          .getAll()
+          .some((query) => query.state.status === 'error'),
+      )
+      .toBe(true)
     await expect.element(drawer.getByText(/Synced 1 documents/)).toBeVisible()
+    await expect.element(drawer.getByRole('alert')).not.toBeInTheDocument()
   })
 })

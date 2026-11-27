@@ -39,6 +39,7 @@ import {
   startIpPolicyForm,
 } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { DeletePolicyDialog } from './delete-policy-dialog'
 import {
   policyActionsColClassName,
@@ -144,7 +145,11 @@ export default function IpPoliciesPage() {
     enabled: canReadPolicies,
     retry: false,
   })
-  const { data, isPending, isError } = useQuery(groupsQuery)
+  const groupsResult = useQuery(groupsQuery)
+  const { data, isPending } = groupsResult
+  // A failed first load replaces the list; a failed refetch keeps it and the cache reports it.
+  // The page renders nothing without read access.
+  const groupsLoad = useOwnedQueryError(groupsResult, canReadPolicies)
   // Fail offline saves instead of queueing a write behind a locked dialog.
   const createGroup = useMutation(
     consoleQuery.workspaces.current.networkAccessGroups.post.mutationOptions({
@@ -163,7 +168,7 @@ export default function IpPoliciesPage() {
   const createButtonRef = useRef<HTMLButtonElement>(null)
   const formAnalyticsRef = useRef<IpPolicyFormSession | null>(null)
   const groups = data?.groups ?? []
-  const isEmpty = !isPending && !isError && groups.length === 0
+  const isEmpty = !isPending && !groupsLoad && groups.length === 0
   const entitled = data?.entitled === true
   const canMutate = canManagePolicies && entitled
   const isSaving = createGroup.isPending || updateGroup.isPending
@@ -357,13 +362,12 @@ export default function IpPoliciesPage() {
         </div>
         {canManagePolicies &&
           !isPending &&
-          !isError &&
           groups.length > 0 &&
           renderCreateButton('list_add_button')}
       </div>
 
       {isPending && <IpPoliciesListSkeleton />}
-      {!isPending && isError && (
+      {groupsLoad && (
         <p className="py-10 text-center system-sm-regular text-text-tertiary">
           <Suspense fallback={null}>
             <IpPoliciesStatusMessage reason="error" />

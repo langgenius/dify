@@ -27,6 +27,7 @@ import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
@@ -86,11 +87,14 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   )
   const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
 
-  const {
-    data: dataSourceList,
-    isLoading: isLoadingAuthedDataSourceList,
-    isError: fetchingAuthedDataSourceListError,
-  } = useQuery(consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions())
+  const dataSourceListQuery = useQuery(
+    consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions(),
+  )
+  const { data: dataSourceList, isLoading: isLoadingAuthedDataSourceList } = dataSourceListQuery
+  const isCheckingAccess =
+    (!!datasetId && isLoadingWorkspacePermissionKeys) || shouldRedirectToDocuments
+  // A failed first load replaces the page once access is settled.
+  const dataSourceListLoad = useOwnedQueryError(dataSourceListQuery, !isCheckingAccess)
 
   const updateNotionPages = useCallback((value: NotionPage[]) => {
     setNotionPages(value)
@@ -142,10 +146,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     if (shouldRedirectToDocuments && datasetId) router.replace(`/datasets/${datasetId}/documents`)
   }, [datasetId, router, shouldRedirectToDocuments])
 
-  if ((!!datasetId && isLoadingWorkspacePermissionKeys) || shouldRedirectToDocuments)
-    return <LoadingPlaceholder className="h-full" />
+  if (isCheckingAccess) return <LoadingPlaceholder className="h-full" />
 
-  if (fetchingAuthedDataSourceListError)
+  if (dataSourceListLoad)
     return (
       <AppUnavailable
         code={500}

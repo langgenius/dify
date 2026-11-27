@@ -20,6 +20,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { memo, useDeferredValue, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { emojiCatalogOptions } from './emoji-data'
 import { recommendedEmojis } from './emoji-styles'
 import { useRecentEmojisValue } from './recent-emojis'
@@ -124,6 +125,7 @@ export const EmojiPicker = memo(({ value, onValueChange, className, ref }: Emoji
   const recent = useRecentEmojisValue()
   const catalog = useQuery(emojiCatalogOptions)
   const categories = catalog.data ?? emptyGroups
+  const catalogLoad = useOwnedQueryError(catalog)
   const groups = useMemo(() => {
     const byEmoji = new Map(
       categories.flatMap((group) => group.items.map((item) => [item.emoji, item] as const)),
@@ -223,14 +225,14 @@ export const EmojiPicker = memo(({ value, onValueChange, className, ref }: Emoji
         <AutocompleteStatus className="sr-only">
           {catalog.isPending
             ? t(($) => $.loading, { ns: 'common' })
-            : catalog.isError
+            : catalogLoad
               ? t(($) => $.error, { ns: 'common' })
               : null}
         </AutocompleteStatus>
-        {catalog.isError && (
+        {catalogLoad && (
           <div className="p-3">
             <p>{t(($) => $.error, { ns: 'common' })}</p>
-            <Button onClick={() => void catalog.refetch()}>
+            <Button loading={catalogLoad.retrying} onClick={catalogLoad.retry}>
               {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
             </Button>
           </div>
@@ -238,7 +240,7 @@ export const EmojiPicker = memo(({ value, onValueChange, className, ref }: Emoji
         {catalog.isPending && (
           <div className="p-3 text-text-tertiary">{t(($) => $.loading, { ns: 'common' })}</div>
         )}
-        {!catalog.isPending && !catalog.isError && (
+        {!catalog.isPending && !catalogLoad && (
           <AutocompleteEmpty className="p-3 text-text-tertiary">
             {t(($) => $.noData, { ns: 'common' })}
           </AutocompleteEmpty>

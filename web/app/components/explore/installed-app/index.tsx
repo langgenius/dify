@@ -14,6 +14,8 @@ import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { getErrorMessage } from '@/utils/error-message'
 import AppUnavailable from '../../base/app-unavailable'
 import { toInstalledAppAccessMode, toInstalledAppMeta, toInstalledAppParameters } from './runtime'
 
@@ -56,11 +58,7 @@ const getInstalledAppSurface = (
 const InstalledApp = ({ id }: { id: string }) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const webappAuthEnabled = systemFeatures.webapp_auth.enabled
-  const {
-    data: installedApp,
-    isPending: isPendingInstalledApp,
-    error: installedAppError,
-  } = useQuery(
+  const installedAppQuery = useQuery(
     consoleQuery.installedApps.byInstalledAppId.get.queryOptions({
       input: {
         params: {
@@ -69,53 +67,50 @@ const InstalledApp = ({ id }: { id: string }) => {
       },
     }),
   )
+  const { data: installedApp, isPending: isPendingInstalledApp } = installedAppQuery
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateWebAppAccessMode = useWebAppStore((s) => s.updateWebAppAccessMode)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore((s) => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore((s) => s.updateUserCanAccessApp)
-  const {
-    isPending: isPendingWebAppAccessMode,
-    data: webAppAccessMode,
-    error: webAppAccessModeError,
-  } = useQuery({
+  const webAppAccessModeQuery = useQuery({
     ...consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.queryOptions({
       input: { query: { appId: id } },
     }),
     enabled: webappAuthEnabled,
     select: toInstalledAppAccessMode,
   })
-  const {
-    isPending: isPendingAppParams,
-    data: appParams,
-    error: appParamsError,
-  } = useQuery({
+  const { isPending: isPendingWebAppAccessMode, data: webAppAccessMode } = webAppAccessModeQuery
+  const appParamsQuery = useQuery({
     ...consoleQuery.installedApps.byInstalledAppId.parameters.get.queryOptions({
       input: { params: { installed_app_id: id } },
     }),
     select: toInstalledAppParameters,
   })
-  const {
-    isPending: isPendingAppMeta,
-    data: appMeta,
-    error: appMetaError,
-  } = useQuery({
+  const { isPending: isPendingAppParams, data: appParams } = appParamsQuery
+  const appMetaQuery = useQuery({
     ...consoleQuery.installedApps.byInstalledAppId.meta.get.queryOptions({
       input: { params: { installed_app_id: id } },
     }),
     select: toInstalledAppMeta,
   })
+  const { isPending: isPendingAppMeta, data: appMeta } = appMetaQuery
   const resolvedWebAppAccessMode = webappAuthEnabled
     ? webAppAccessMode?.accessMode
     : AccessMode.PUBLIC
-  const {
-    data: userCanAccessApp,
-    error: useCanAccessAppError,
-    isPending: isPendingUserCanAccessApp,
-  } = useGetUserCanAccessApp({
+  const userCanAccessAppQuery = useGetUserCanAccessApp({
     appId: installedApp?.app.id,
     isInstalledApp: true,
   })
+  const { data: userCanAccessApp, isPending: isPendingUserCanAccessApp } = userCanAccessAppQuery
+  // A failed first load replaces the app; a failed refetch keeps it and is reported by the cache.
+  const appLoad = useOwnedQueryErrors([
+    appParamsQuery,
+    appMetaQuery,
+    userCanAccessAppQuery,
+    webAppAccessModeQuery,
+    installedAppQuery,
+  ])
 
   useEffect(() => {
     if (!installedApp) {
@@ -157,51 +152,14 @@ const InstalledApp = ({ id }: { id: string }) => {
     updateWebAppAccessMode,
   ])
 
-  if (appParamsError) {
+  if (appLoad) {
     return (
       <InstalledAppFrame>
         <div className="flex h-full items-center justify-center">
-          <AppUnavailable unknownReason={appParamsError.message} />
-        </div>
-      </InstalledAppFrame>
-    )
-  }
-  if (appMetaError) {
-    return (
-      <InstalledAppFrame>
-        <div className="flex h-full items-center justify-center">
-          <AppUnavailable unknownReason={appMetaError.message} />
-        </div>
-      </InstalledAppFrame>
-    )
-  }
-  if (useCanAccessAppError) {
-    return (
-      <InstalledAppFrame>
-        <div className="flex h-full items-center justify-center">
-          <AppUnavailable unknownReason={useCanAccessAppError.message} />
-        </div>
-      </InstalledAppFrame>
-    )
-  }
-  if (webAppAccessModeError) {
-    return (
-      <InstalledAppFrame>
-        <div className="flex h-full items-center justify-center">
-          <AppUnavailable unknownReason={webAppAccessModeError.message} />
-        </div>
-      </InstalledAppFrame>
-    )
-  }
-  if (installedAppError) {
-    const isNotFound = isNotFoundError(installedAppError)
-    return (
-      <InstalledAppFrame>
-        <div className="flex h-full items-center justify-center">
-          {isNotFound ? (
+          {isNotFoundError(appLoad.error) ? (
             <AppUnavailable code={404} isUnknownReason />
           ) : (
-            <AppUnavailable unknownReason={installedAppError.message} />
+            <AppUnavailable unknownReason={getErrorMessage(appLoad.error)} />
           )}
         </div>
       </InstalledAppFrame>

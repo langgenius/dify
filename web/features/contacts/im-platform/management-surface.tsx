@@ -74,7 +74,8 @@ function ConfigurationSession({
     }),
   )
   const detail = target.integration?.kind === 'email' ? email : im
-  const detailLoad = useOwnedQueryError(detail)
+  // Only a saved integration loads its detail and so can fail to.
+  const detailLoad = useOwnedQueryError(detail, !!target.integration)
   if (target.integration && !detail.data)
     return (
       <>

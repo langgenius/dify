@@ -7,11 +7,13 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { OwnedQueryError } from '@/service/use-owned-query-error'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { Resolution } from '@/types/app'
 
@@ -168,7 +170,8 @@ type UseAppInputsFormSchemaParams = {
 
 type UseAppInputsFormSchemaResult = {
   inputFormSchema: InputSchemaItem[]
-  isError: boolean
+  /** The failed first load of the app or its workflow, which the panel shows in place of the form. */
+  loadError: OwnedQueryError | undefined
   isLoading: boolean
   retry: () => void
   fileUploadConfig?: UploadConfig
@@ -191,7 +194,7 @@ export function useAppInputsFormSchema({
   const { data: currentWorkflow } = workflowQuery
 
   const isLoading = appQuery.isFetching || workflowQuery.isFetching
-  const isError = appQuery.isError || workflowQuery.isError
+  const loadError = useOwnedQueryErrors(isBasicApp ? [appQuery] : [appQuery, workflowQuery])
 
   const inputFormSchema = useMemo(() => {
     if (!currentApp) return []
@@ -227,7 +230,7 @@ export function useAppInputsFormSchema({
 
   return {
     inputFormSchema,
-    isError,
+    loadError,
     isLoading,
     retry,
     fileUploadConfig,

@@ -18,6 +18,7 @@ import ProviderCard from '@/app/components/plugins/provider-card'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getCategoryMarketplaceId } from './category-marketplace'
 
 const MARKETPLACE_PAGE_SIZE = 30
@@ -37,18 +38,16 @@ const CategoryMarketplacePanel = ({
   const theme = useResolvedTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapsed, setCollapsed] = useState(false)
-  const {
-    data: installedPluginIds,
-    isError: hasInstalledPluginIdsError,
-    isFetching: isFetchingInstalledPluginIds,
-    isPending: isLoadingInstalledPluginIds,
-    refetch: refetchInstalledPluginIds,
-  } = useQuery({
+  const installedPluginIdsQuery = useQuery({
     ...consoleQuery.workspaces.current.plugin.installedIds.get.queryOptions({
       input: { query: { category } },
     }),
     select: (data) => data.plugin_ids,
   })
+  const { data: installedPluginIds, isPending: isLoadingInstalledPluginIds } =
+    installedPluginIdsQuery
+  // The expanded panel shows a failed first load in place of the marketplace list, with a retry.
+  const installedPluginIdsLoad = useOwnedQueryError(installedPluginIdsQuery, !collapsed)
   const hasLoadedInstalledPluginIds = installedPluginIds !== undefined
   const marketplaceSearchParams = useMemo<PluginsSearchParams | undefined>(() => {
     if (!hasLoadedInstalledPluginIds || collapsed) return undefined
@@ -75,8 +74,8 @@ const CategoryMarketplacePanel = ({
   )
 
   const marketplaceLink = marketplace.category(category, { theme })
-  const showInstalledPluginIdsError = hasInstalledPluginIdsError && !hasLoadedInstalledPluginIds
-  const showLoading = isLoadingInstalledPluginIds || !!(marketplaceSearchParams && isPending)
+  const showLoading =
+    isLoadingInstalledPluginIds || (marketplaceSearchParams !== undefined && isPending)
   const cardRender = useCallback(
     (plugin: Plugin) => {
       if (plugin.type === 'bundle') return null
@@ -133,20 +132,20 @@ const CategoryMarketplacePanel = ({
       {!collapsed && (
         <div>
           {showLoading && <LoadingPlaceholder />}
-          {showInstalledPluginIdsError && (
+          {installedPluginIdsLoad && (
             <div className="flex flex-col items-center gap-2 py-4">
               <span className="system-sm-regular text-text-tertiary" role="alert">
                 {t(($) => $['errorBoundary.title'], { ns: 'common' })}
               </span>
               <Button
-                loading={isFetchingInstalledPluginIds}
-                onClick={() => refetchInstalledPluginIds()}
+                loading={installedPluginIdsLoad.retrying}
+                onClick={installedPluginIdsLoad.retry}
               >
                 {t(($) => $['operation.retry'], { ns: 'common' })}
               </Button>
             </div>
           )}
-          {!showLoading && !showInstalledPluginIdsError && (
+          {!showLoading && !installedPluginIdsLoad && (
             <List
               cardContainerClassName="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
               emptyClassName="h-auto"

@@ -27,8 +27,10 @@ const skippedDirectories = new Set([
 const baseHooks = new Set(['useQuery', 'useInfiniteQuery'])
 const errorReads = new Set(['error', 'isError', 'failureReason', 'isLoadingError'])
 const ownedHooks = new Set(['useOwnedQueryError', 'useOwnedQueryErrors'])
-// The error itself, or a field derived from it such as `loadError`; not a flag such as `isError`.
-const errorAccess = /^(?:error|failureReason)$|^(?!is)[A-Za-z]*Error$/
+// The error, its flags (`isError`, `isFetchNextPageError`, ...), or a field derived from them
+// such as `loadError` or `isLoadFailed`.
+const errorAccess =
+  /^(?:error|failureReason|isError|isLoadingError|isRefetchError|isFetchNextPageError|isFetchPreviousPageError)$|^(?!is)[A-Za-z]*Error$|^is[A-Za-z]*(?:LoadFailed|Error)$|LoadFailed$/
 
 type Site = {
   file: string
@@ -96,6 +98,8 @@ type Definition = { file: string; node: ts.Node }
 const localDefinitions = new Map<string, Map<string, ts.Node>>()
 const imports = new Map<string, Map<string, { module: string; name: string }>>()
 const reexports = new Map<string, Map<string, { module: string; name: string }>>()
+// `export * from './module'`
+const starReexports = new Map<string, string[]>()
 for (const [file, sf] of sources) {
   const defs = new Map<string, ts.Node>()
   const fileImports = new Map<string, { module: string; name: string }>()
@@ -153,6 +157,15 @@ for (const [file, sf] of sources) {
       ts.isExportDeclaration(statement) &&
       statement.moduleSpecifier &&
       ts.isStringLiteral(statement.moduleSpecifier) &&
+      !statement.exportClause
+    ) {
+      const module = resolveModule(file, statement.moduleSpecifier.text)
+      if (module) starReexports.set(file, [...(starReexports.get(file) ?? []), module])
+    }
+    if (
+      ts.isExportDeclaration(statement) &&
+      statement.moduleSpecifier &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
       statement.exportClause &&
       ts.isNamedExports(statement.exportClause)
     ) {
@@ -176,6 +189,11 @@ function exportedDefinition(file: string, name: string, depth = 0): Definition |
   if (node) return { file, node }
   const next = reexports.get(file)?.get(name) ?? imports.get(file)?.get(name)
   if (next && depth < 4) return exportedDefinition(next.module, next.name, depth + 1)
+  if (depth < 4)
+    for (const module of starReexports.get(file) ?? []) {
+      const found = exportedDefinition(module, name, depth + 1)
+      if (found) return found
+    }
   return undefined
 }
 
@@ -494,15 +512,22 @@ function derivedErrorFields(fn: ts.SignatureDeclaration | undefined) {
   return fields
 }
 
+// Origins computed for nodes, cleared whenever the set of wrapper hooks grows.
+const originCache = new Map<ts.Node, 'queryError' | 'queryResult' | 'none'>()
+
+// The properties of each wrapper's returned object that hold a query result.
+const producerCarriers = new Map<string, ReadonlySet<string>>()
+
 // The wrapper hooks found so far; `collectSites` fills it while it walks to a fixed point.
 const producers = new Map<string, Definition>()
 
 function collectSites() {
   const producerReads = new Map<string, ReadonlySet<string>>()
-  const producerCarriers = new Map<string, ReadonlySet<string>>()
   let sites: Site[] = []
   for (let round = 0; round < 8; round++) {
     const before = producers.size
+    // Origins depend on the wrappers found so far.
+    originCache.clear()
     sites = []
     for (const [file, sf] of sources) {
       const visit = (node: ts.Node) => {
@@ -608,6 +633,7 @@ type Origin = 'queryError' | 'queryResult' | 'none'
 const rank: Record<Origin, number> = { none: 0, queryResult: 1, queryError: 2 }
 const strongest = (origins: Origin[]) =>
   origins.reduce<Origin>((best, origin) => (rank[origin] > rank[best] ? origin : best), 'none')
+const errorReadText = /\.(?:error|isError|isLoadingError|failureReason)\b|\bstatus\s*===\s*'error'/
 const elementMethods = new Set(['filter', 'find', 'at', 'slice', 'concat', 'flat', 'toSorted'])
 
 // The declaration a name refers to in the functions around `node`, innermost first.
@@ -690,10 +716,36 @@ function usagesOf(declaration: ts.Node) {
   return usageIndex.get(declaration) ?? []
 }
 
-const propertyOrigin = (base: Origin, property: string): Origin => {
+const propertyOrigin = (base: Origin, property: string, carriers?: ReadonlySet<string>): Origin => {
   if (base !== 'queryResult') return 'none'
   if (errorAccess.test(property)) return 'queryError'
-  return property === 'data' ? 'none' : 'queryResult'
+  if (property === 'data') return 'none'
+  // A wrapper's object result holds queries only under its carrier properties; the rest are its
+  // own values, such as a selected id.
+  if (carriers && !carriers.has(property)) return 'none'
+  return 'queryResult'
+}
+
+// The carrier properties of the wrapper whose call a value comes from, directly or through a
+// variable.
+function wrapperCarriers(node: ts.Node, file: string, depth = 0): ReadonlySet<string> | undefined {
+  let value: ts.Node = node
+  while (
+    ts.isParenthesizedExpression(value) ||
+    ts.isAsExpression(value) ||
+    ts.isNonNullExpression(value)
+  )
+    value = value.expression
+  if (ts.isCallExpression(value) && ts.isIdentifier(value.expression)) {
+    const definition = definitionOf(file, value.expression.text)
+    return definition ? producerCarriers.get(keyOf(definition)) : undefined
+  }
+  if (ts.isIdentifier(value) && depth < 3) {
+    const declaration = declarationOf(value)
+    if (declaration && ts.isVariableDeclaration(declaration) && declaration.initializer)
+      return wrapperCarriers(declaration.initializer, file, depth + 1)
+  }
+  return undefined
 }
 
 // What the callers of a function pass for one of its parameters, or one property of it.
@@ -766,7 +818,16 @@ function sourceOf(declaration: ts.Node): { init?: ts.Expression; property?: stri
   return {}
 }
 
-function originOf(node: ts.Node, file: string, seen = new Set<ts.Node>()): Origin {
+function originOf(node: ts.Node, file: string, seen?: Set<ts.Node>): Origin {
+  if (seen) return computeOrigin(node, file, seen)
+  const cached = originCache.get(node)
+  if (cached) return cached
+  const origin = computeOrigin(node, file, new Set())
+  originCache.set(node, origin)
+  return origin
+}
+
+function computeOrigin(node: ts.Node, file: string, seen: Set<ts.Node>): Origin {
   if (
     ts.isParenthesizedExpression(node) ||
     ts.isAsExpression(node) ||
@@ -783,12 +844,33 @@ function originOf(node: ts.Node, file: string, seen = new Set<ts.Node>()): Origi
     if (
       ts.isPropertyAccessExpression(node.expression) &&
       elementMethods.has(node.expression.name.text)
-    )
-      return originOf(node.expression.expression, file, seen) === 'queryResult'
-        ? 'queryResult'
-        : 'none'
-    return 'none'
+    ) {
+      const elements = originOf(node.expression.expression, file, seen)
+      if (elements !== 'queryResult') return elements === 'queryError' ? 'queryError' : 'none'
+      // `queries.find((query) => query.isError)` picks the failure itself.
+      const [predicate] = node.arguments
+      return predicate && errorReadText.test(predicate.getText()) ? 'queryError' : 'queryResult'
+    }
+    // A value computed from a query's error, such as `getErrorMessage(query.error)`.
+    return node.arguments.some((argument) => originOf(argument, file, seen) === 'queryError')
+      ? 'queryError'
+      : 'none'
   }
+  // `!query.isError` renders the content, not the error; `!!failedQuery` is the failure itself.
+  if (ts.isPrefixUnaryExpression(node))
+    return node.operator === ts.SyntaxKind.ExclamationToken
+      ? ts.isPrefixUnaryExpression(node.operand) &&
+        node.operand.operator === ts.SyntaxKind.ExclamationToken &&
+        originOf(node.operand.operand, file, seen) === 'queryError'
+        ? 'queryError'
+        : 'none'
+      : originOf(node.operand, file, seen) === 'queryError'
+        ? 'queryError'
+        : 'none'
+  if (ts.isTemplateExpression(node))
+    return node.templateSpans.some((span) => originOf(span.expression, file, seen) === 'queryError')
+      ? 'queryError'
+      : 'none'
   if (ts.isPropertyAccessExpression(node)) {
     // `props.loadError`: what the callers pass for that prop.
     if (ts.isIdentifier(node.expression)) {
@@ -802,28 +884,45 @@ function originOf(node: ts.Node, file: string, seen = new Set<ts.Node>()): Origi
       }
     }
     const base = originOf(node.expression, file, seen)
-    if (base !== 'queryResult') return 'none'
-    const name = node.name.text
-    if (errorAccess.test(name)) return 'queryError'
-    return name === 'data' ? 'none' : 'queryResult'
+    // Anything read off a failure, such as `failedQuery.error`, is the failure.
+    if (base === 'queryError') return node.name.text === 'data' ? 'none' : 'queryError'
+    return propertyOrigin(base, node.name.text, wrapperCarriers(node.expression, file))
   }
   if (ts.isElementAccessExpression(node))
     return originOf(node.expression, file, seen) === 'queryResult' ? 'queryResult' : 'none'
+  // What is chosen by a query's error is rendered because of it: `query.isError ? a : b`.
   if (ts.isConditionalExpression(node))
-    return strongest([originOf(node.whenTrue, file, seen), originOf(node.whenFalse, file, seen)])
+    return strongest([
+      originOf(node.condition, file, seen) === 'queryError' ? 'queryError' : 'none',
+      originOf(node.whenTrue, file, seen),
+      originOf(node.whenFalse, file, seen),
+    ])
   if (ts.isBinaryExpression(node)) {
     const operator = node.operatorToken.kind
-    if (
-      operator === ts.SyntaxKind.QuestionQuestionToken ||
-      operator === ts.SyntaxKind.BarBarToken ||
-      operator === ts.SyntaxKind.AmpersandAmpersandToken
-    )
+    if (operator === ts.SyntaxKind.QuestionQuestionToken || operator === ts.SyntaxKind.BarBarToken)
+      return strongest([originOf(node.left, file, seen), originOf(node.right, file, seen)])
+    if (operator === ts.SyntaxKind.AmpersandAmpersandToken)
       return strongest([
-        operator === ts.SyntaxKind.AmpersandAmpersandToken
-          ? 'none'
-          : originOf(node.left, file, seen),
+        originOf(node.left, file, seen) === 'queryError' ? 'queryError' : 'none',
         originOf(node.right, file, seen),
       ])
+    // `query.status === 'error'`
+    if (
+      operator === ts.SyntaxKind.EqualsEqualsEqualsToken ||
+      operator === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      const [status, literal] = ts.isStringLiteral(node.right)
+        ? [node.left, node.right]
+        : [node.right, node.left]
+      if (
+        ts.isStringLiteral(literal) &&
+        literal.text === 'error' &&
+        ts.isPropertyAccessExpression(status) &&
+        status.name.text === 'status' &&
+        originOf(status.expression, file, seen) === 'queryResult'
+      )
+        return 'queryError'
+    }
     return 'none'
   }
   if (ts.isArrayLiteralExpression(node))
@@ -868,9 +967,7 @@ function originOf(node: ts.Node, file: string, seen = new Set<ts.Node>()): Origi
     if (!init) return 'none'
     const base = originOf(init, file, seen)
     if (property === undefined) return base
-    if (base !== 'queryResult') return 'none'
-    if (errorAccess.test(property)) return 'queryError'
-    return property === 'data' ? 'none' : 'queryResult'
+    return propertyOrigin(base, property, wrapperCarriers(init, file))
   }
   return 'none'
 }
@@ -890,6 +987,26 @@ const messageModules = new Set([
 ])
 
 type Sink = { id: string; text: string; argument: ts.Node; file: string }
+
+// Props that only set element state, never what is shown.
+const renderNeutralProps =
+  /^(?:disabled|className|key|ref|loading|hidden|readOnly|aria-.*|data-.*)$/
+
+function returnsJsx(statement: ts.Statement) {
+  let found = false
+  const visit = (node: ts.Node) => {
+    if (found || ts.isFunctionLike(node)) return
+    if (ts.isReturnStatement(node) && node.expression) {
+      let value: ts.Node = node.expression
+      while (ts.isParenthesizedExpression(value)) value = value.expression
+      if (ts.isJsxElement(value) || ts.isJsxSelfClosingElement(value) || ts.isJsxFragment(value))
+        found = true
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(statement)
+  return found
+}
 
 // Where an error is rendered: its message, a describer, or a component's error prop.
 function sinks() {
@@ -927,8 +1044,15 @@ function sinks() {
         )
           add(node, node.arguments[0])
       }
-      if (ts.isJsxAttribute(node) && ts.isIdentifier(node.name) && /error/i.test(node.name.text))
-        add(node, node.initializer)
+      // Anything a component renders: its children and props, except plain DOM state props.
+      if (ts.isJsxExpression(node) && node.expression) {
+        const attribute = node.parent
+        const exempt =
+          ts.isJsxAttribute(attribute) && renderNeutralProps.test(attribute.name.getText())
+        if (!exempt) add(ts.isJsxAttribute(attribute) ? attribute : node, node.expression)
+      }
+      // `if (query.isError && !query.data) return <ErrorState />`
+      if (ts.isIfStatement(node) && returnsJsx(node.thenStatement)) add(node, node.expression)
       if (ts.isJsxSpreadAttribute(node)) {
         const tag = node.parent.parent
         if (
@@ -944,9 +1068,256 @@ function sinks() {
   return found
 }
 
-const { sites } = collectSites()
+type ClaimProblem = { id: string; problem: 'unrendered' | 'ungated' }
 
-describe('query error claims', () => {
+const isClaimGated = (call: ts.CallExpression) => {
+  // `useOwnedQueryErrors(open ? [query] : [])`, `useOwnedQueryError(query, shown)`
+  if (call.arguments.length > 1) return true
+  const [first] = call.arguments
+  return !!first && ts.isConditionalExpression(first)
+}
+
+function claimProblems() {
+  const problems: ClaimProblem[] = []
+  for (const [file, sf] of sources) {
+    const visit = (node: ts.Node) => {
+      if (isOwnedCall(node) && ts.isCallExpression(node)) {
+        const problem = claimProblem(node)
+        if (problem) {
+          const line = sf.getLineAndCharacterOfPosition(node.getStart()).line + 1
+          problems.push({ id: `${path.relative(webRoot, file)}:${line}`, problem })
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+  return problems
+}
+
+// A claim hides the error from the cache, so it must be rendered, under no condition that the
+// claim does not share.
+function claimProblem(call: ts.CallExpression): ClaimProblem['problem'] | undefined {
+  const declaration = unwrap(call).parent
+  const fn = enclosingFunction(call)
+  if (!fn || !('body' in fn) || !fn.body) return undefined
+  // A claim inside a hook hands its result on; its caller renders it.
+  if (isReturnedWhole(call)) return undefined
+  if (!ts.isVariableDeclaration(declaration) || !ts.isIdentifier(declaration.name))
+    return 'unrendered'
+  const own = new Set([declaration.name.text])
+  for (const argument of call.arguments) {
+    const visitArgument = (node: ts.Node) => {
+      if (ts.isIdentifier(node) && !isPropertyName(node)) own.add(node.text)
+      ts.forEachChild(node, visitArgument)
+    }
+    visitArgument(argument)
+  }
+  // Values derived from the claim or its queries judge the conditions; values derived from the
+  // claim alone, such as `const message = useRequestErrorMessage(load?.error)`, are what renders it.
+  const derived = derivedFrom(fn.body, own)
+  const claimDerived = derivedFrom(fn.body, new Set([declaration.name.text]))
+  const claimName = declaration.name.text
+  let rendered = false
+  let external = false
+  for (const reference of usesOf(fn.body, declaration.name)) {
+    const renderedAt = renderingOf(reference, fn)
+    if (!renderedAt && !isReturnedWhole(reference) && !followsIntoRender(reference)) continue
+    rendered = true
+    for (const condition of conditionsOf(reference, fn))
+      if (!onlyMentions(condition, derived)) external = true
+  }
+  // Also values derived from the claim that are rendered, such as its message.
+  for (const name of claimDerived) {
+    if (name === claimName) continue
+    const binding = findBinding(fn.body, name)
+    if (!binding) continue
+    for (const reference of usesOf(fn.body, binding)) {
+      if (!renderingOf(reference, fn) && !isReturnedWhole(reference) && !inReturn(reference))
+        continue
+      rendered = true
+      for (const condition of conditionsOf(reference, fn))
+        if (!onlyMentions(condition, derived)) external = true
+    }
+  }
+  if (!rendered) return 'unrendered'
+  if (external && !isClaimGated(call)) return 'ungated'
+  return undefined
+}
+
+// A reference inside another derived value is checked through that value, and one in the
+// hook's returned value is its caller's to render.
+function derivedFrom(body: ts.Node, seed: Set<string>) {
+  const derived = new Set(seed)
+  let grew = true
+  while (grew) {
+    grew = false
+    const visit = (node: ts.Node) => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        node.initializer &&
+        mentions(node.initializer, derived)
+      ) {
+        for (const name of boundNames(node.name))
+          if (!derived.has(name)) {
+            derived.add(name)
+            grew = true
+          }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(body)
+  }
+  return derived
+}
+
+function followsIntoRender(reference: ts.Identifier) {
+  let current: ts.Node = reference
+  while (current.parent && !ts.isStatement(current)) current = current.parent
+  return ts.isVariableStatement(current) || ts.isReturnStatement(current)
+}
+
+function inReturn(reference: ts.Node) {
+  let current: ts.Node = reference
+  while (current.parent && !ts.isStatement(current)) current = current.parent
+  return ts.isReturnStatement(current)
+}
+
+function boundNames(name: ts.BindingName): string[] {
+  if (ts.isIdentifier(name)) return [name.text]
+  return name.elements.flatMap((element) =>
+    ts.isBindingElement(element) ? boundNames(element.name) : [],
+  )
+}
+
+function findBinding(body: ts.Node, name: string): ts.Identifier | undefined {
+  let found: ts.Identifier | undefined
+  const visit = (node: ts.Node) => {
+    if (found) return
+    if (ts.isVariableDeclaration(node) || ts.isBindingElement(node)) {
+      if (ts.isIdentifier(node.name) && node.name.text === name) found = node.name
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(body)
+  return found
+}
+
+function mentions(node: ts.Node, names: Set<string>) {
+  let found = false
+  const visit = (current: ts.Node) => {
+    if (found) return
+    if (ts.isIdentifier(current) && !isPropertyName(current) && names.has(current.text))
+      found = true
+    ts.forEachChild(current, visit)
+  }
+  visit(node)
+  return found
+}
+
+// Whether a condition depends only on the claim and its queries.
+function onlyMentions(condition: ts.Node, names: Set<string>) {
+  let only = true
+  const visit = (node: ts.Node) => {
+    if (!only) return
+    if (ts.isIdentifier(node) && !isPropertyName(node) && !names.has(node.text)) {
+      const declaration = declarationOf(node)
+      // Module constants, imports and functions do not change what is rendered, and a callback's
+      // own parameters pick the item it renders, such as a row.
+      if (
+        declaration &&
+        !ts.isImportSpecifier(declaration) &&
+        isLocalState(declaration) &&
+        !isNestedCallbackParameter(declaration, condition)
+      )
+        only = false
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(condition)
+  return only
+}
+
+function isNestedCallbackParameter(declaration: ts.Node, at: ts.Node) {
+  let parameter: ts.Node | undefined = declaration
+  while (parameter && !ts.isParameter(parameter)) {
+    if (ts.isFunctionLike(parameter)) return false
+    parameter = parameter.parent
+  }
+  if (!parameter) return false
+  const owner = parameter.parent
+  // A parameter of a function that the condition sits inside, other than the component itself.
+  for (let node: ts.Node | undefined = at.parent; node; node = node.parent) {
+    if (node === owner) return ts.isArrowFunction(owner) || ts.isFunctionExpression(owner)
+  }
+  return false
+}
+
+// A value the component computes or receives, rather than a module-level constant.
+function isLocalState(declaration: ts.Node) {
+  for (let node: ts.Node | undefined = declaration.parent; node; node = node.parent)
+    if (ts.isFunctionLike(node)) return true
+  return false
+}
+
+// The JSX that renders a reference, if it reaches one directly.
+function renderingOf(reference: ts.Node, fn: ts.Node) {
+  for (let node: ts.Node | undefined = reference.parent; node && node !== fn; node = node.parent) {
+    if (ts.isFunctionLike(node)) return undefined
+    if (ts.isJsxExpression(node)) return node
+    if (ts.isIfStatement(node) && returnsJsx(node.thenStatement)) return node
+    if (ts.isReturnStatement(node)) {
+      let value: ts.Node | undefined = node.expression
+      while (value && ts.isParenthesizedExpression(value)) value = value.expression
+      if (value && (ts.isJsxElement(value) || ts.isJsxSelfClosingElement(value))) return node
+    }
+  }
+  return undefined
+}
+
+// The conditions under which a reference is rendered: the branches around it and the early
+// returns before the statement that holds it.
+function conditionsOf(reference: ts.Node, fn: ts.Node): ts.Node[] {
+  const conditions: ts.Node[] = []
+  let child: ts.Node = reference
+  for (let node: ts.Node | undefined = reference.parent; node && node !== fn; node = node.parent) {
+    if (ts.isConditionalExpression(node) && node.condition !== child)
+      conditions.push(node.condition)
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
+      node.right === child
+    )
+      conditions.push(node.left)
+    if (ts.isIfStatement(node) && node.expression !== child) conditions.push(node.expression)
+    if (ts.isBlock(node) || ts.isSourceFile(node)) {
+      for (const statement of node.statements) {
+        if (statement === child) break
+        if (ts.isIfStatement(statement) && returnsSomething(statement.thenStatement))
+          conditions.push(statement.expression)
+      }
+    }
+    child = node
+  }
+  return conditions
+}
+
+function returnsSomething(statement: ts.Statement) {
+  let found = false
+  const visit = (node: ts.Node) => {
+    if (found || ts.isFunctionLike(node)) return
+    if (ts.isReturnStatement(node)) found = true
+    ts.forEachChild(node, visit)
+  }
+  visit(statement)
+  return found
+}
+
+const { sites } = collectSites()
+originCache.clear()
+
+// Tracing every query error through the app's sources takes a while.
+describe('query error claims', { timeout: 120_000 }, () => {
   it('finds the query hooks and the wrappers that hand their results on', () => {
     expect(sites.length).toBeGreaterThan(500)
     expect(producers.size).toBeGreaterThan(10)
@@ -957,6 +1328,11 @@ describe('query error claims', () => {
       .filter((sink) => originOf(sink.argument, sink.file) === 'queryError')
       .map((sink) => `${sink.id} ${sink.text}`)
     expect(unclaimed).toEqual([])
+  })
+
+  it('renders every claim, gated on any condition its render depends on', () => {
+    const problems = claimProblems().map((problem) => `${problem.id} ${problem.problem}`)
+    expect(problems).toEqual([])
   })
 
   it('declares no errorOwner, which the query cache no longer reads', () => {

@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import s from './index.module.css'
 
 type IProps = {
@@ -19,7 +20,7 @@ type IProps = {
 
 const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IProps) => {
   const { t } = useTranslation(['common', 'datasetCreation'])
-  const { data, isLoading, isError, isFetching, isFetchedAfterMount, refetch } = useQuery(
+  const previewQuery = useQuery(
     consoleQuery.notion.pages.byPageId.byPageType.preview.get.queryOptions({
       input:
         currentPage && notionCredentialId
@@ -30,7 +31,10 @@ const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IPr
           : skipToken,
     }),
   )
-  const hasLoadError = isError || (!data && isFetchedAfterMount)
+  const { data, isLoading, isFetching, isFetchedAfterMount, refetch } = previewQuery
+  // A failed preview replaces the content, as does a preview that came back empty.
+  const previewLoad = useOwnedQueryError(previewQuery)
+  const hasLoadError = !!previewLoad || (!data && isFetchedAfterMount)
 
   return (
     <div className={cn(s.filePreview, 'h-full')}>

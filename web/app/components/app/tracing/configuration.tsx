@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
@@ -97,6 +98,8 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       : updateAppTrace.variables?.params.app_id) === resourceId
   const pending = isCurrentMutation && updateTracingStatus.isPending
   const tracingStatus = pending ? updateTracingStatus.variables.body : statusQuery.data
+  // The control is replaced by a retry while the status has never loaded.
+  const statusLoad = useOwnedQueryError(statusQuery)
   const enabled = tracingStatus?.enabled ?? false
   const inUseTracingProvider =
     providers.find((provider) => provider === tracingStatus?.tracing_provider) ?? null
@@ -143,16 +146,9 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       }
     }
   })
-  const statusFailed = statusQuery.isError && !tracingStatus
-  if (statusFailed) {
+  if (statusLoad) {
     return (
-      <Button
-        variant="secondary"
-        disabled={statusQuery.isFetching}
-        onClick={() => {
-          void statusQuery.refetch()
-        }}
-      >
+      <Button variant="secondary" disabled={statusLoad.retrying} onClick={statusLoad.retry}>
         {t(($) => $['tracing.title'], { ns: 'app' })}
         {' · '}
         {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}

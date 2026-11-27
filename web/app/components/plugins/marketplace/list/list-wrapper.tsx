@@ -39,8 +39,7 @@ const ListWrapper = ({
     marketplaceCollectionPluginsMap,
     isLoading,
     isRefreshing,
-    isError,
-    refetch,
+    loadError,
     isFetchingNextPage,
     page,
   } = useMarketplaceData(activePluginType)
@@ -62,11 +61,11 @@ const ListWrapper = ({
   }, [searchPluginText])
 
   useEffect(() => {
-    if (isLoading || isError || pluginsTotal === undefined) return
+    if (isLoading || loadError || pluginsTotal === undefined) return
 
     flushMarketplaceSiteSearch(pluginsTotal)
     flushMarketplaceSiteFilter(pluginsTotal)
-  }, [isLoading, isError, pluginsTotal])
+  }, [isLoading, loadError, pluginsTotal])
 
   return (
     <div
@@ -86,7 +85,7 @@ const ListWrapper = ({
       <div role="status" aria-atomic="true" className="sr-only">
         {isLoading || isRefreshing || isFetchingNextPage
           ? t(($) => $.loading, { ns: 'common' })
-          : isError
+          : loadError
             ? tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })
             : plugins
               ? tPlugin(($) => $['marketplace.pluginsResult'], {
@@ -108,10 +107,15 @@ const ListWrapper = ({
             <SortMenu />
           </div>
         )}
-        {isError && !plugins?.length ? (
+        {loadError ? (
           <div className="flex min-h-60 flex-col items-center justify-center gap-3 text-sm text-text-tertiary">
             <span>{tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
-            <Button size="small" variant="secondary" onClick={() => void refetch()}>
+            <Button
+              size="small"
+              variant="secondary"
+              loading={loadError.retrying}
+              onClick={loadError.retry}
+            >
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>
           </div>

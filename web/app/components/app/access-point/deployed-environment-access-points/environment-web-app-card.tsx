@@ -22,6 +22,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
@@ -77,6 +78,10 @@ export function EnvironmentWebAppCard({
     })
   const siteQuery = useQuery(siteQueryOptions)
   const site = siteQuery.data
+  // The card's failed status replaces the site it could not load.
+  const siteLoad = useOwnedQueryError(siteQuery)
+  // A failed refetch keeps the loaded site usable; the query cache reports that failure.
+  const siteLoaded = site !== undefined
   const siteAccessMode = site?.access_mode
   const apiQuery = useQuery(
     consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
@@ -91,7 +96,7 @@ export function EnvironmentWebAppCard({
   const subjectsQuery = useQuery({
     ...subjectsQueryOptions,
     enabled:
-      siteQuery.isSuccess &&
+      siteLoaded &&
       canManageAccessPoint &&
       (showAccess || accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS),
   })
@@ -134,11 +139,11 @@ export function EnvironmentWebAppCard({
   const pendingEnabled = siteMutation.variables?.body.enabled
   const optimisticEnabled =
     siteMutation.isPending && pendingEnabled !== undefined ? pendingEnabled : Boolean(site?.enabled)
-  const running = siteQuery.isSuccess && optimisticEnabled
+  const running = siteLoaded && optimisticEnabled
   const actionsAvailable = running && !siteMutation.isPending
   const status = siteQuery.isPending
     ? 'loading'
-    : siteQuery.isError
+    : siteLoad
       ? 'unavailable'
       : running
         ? 'inService'
@@ -180,7 +185,7 @@ export function EnvironmentWebAppCard({
         highlighted={highlighted}
         switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
-        onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
+        onEnabledChange={siteLoaded ? handleEnabledChange : undefined}
         actions={
           <>
             <CustomizeDialog
@@ -198,7 +203,7 @@ export function EnvironmentWebAppCard({
                   ? { id: appInfo.id, mode: appInfo.mode, site: appInfo.site }
                   : undefined
               }
-              disabled={!siteQuery.isSuccess || !canManageAccessPoint}
+              disabled={!siteLoaded || !canManageAccessPoint}
               onSave={actions.saveSiteConfig}
             />
           </>
@@ -209,7 +214,7 @@ export function EnvironmentWebAppCard({
           value={webAppUrl}
           enabled={running}
           loading={siteQuery.isPending}
-          unavailable={siteQuery.isError}
+          unavailable={Boolean(siteLoad)}
           unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
             ns: 'deployments',
           })}
@@ -226,7 +231,7 @@ export function EnvironmentWebAppCard({
           onRegenerate={() => setShowRegenerate(true)}
         />
         {systemFeatures.webapp_auth.enabled &&
-          (siteQuery.isSuccess ? (
+          (siteLoaded ? (
             <WebAppAccessControlEntry
               accessConfigured={accessConfigured}
               accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}

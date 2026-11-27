@@ -139,7 +139,7 @@ describe('CreatorFilter', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('offers a retry for initial and cached refresh failures', async () => {
+  it('offers a retry for an initial failure and keeps the members over a failed refresh', async () => {
     const user = userEvent.setup()
     members.get.mockRejectedValueOnce(new Error('members unavailable'))
     const { queryClient } = render(<ControlledCreatorFilter />)
@@ -152,16 +152,15 @@ describe('CreatorFilter', () => {
     await user.click(within(initialError).getByRole('button', { name: 'common.operation.retry' }))
     expect(await screen.findAllByRole('option')).toHaveLength(3)
 
-    // A later background refresh fails while the loaded members stay visible.
+    // A later background refresh fails while the loaded members stay visible; the query cache
+    // reports it.
     members.get.mockRejectedValueOnce(new Error('members unavailable'))
     await act(() =>
       queryClient.refetchQueries({ queryKey: consoleQuery.workspaces.current.members.get.key() }),
     )
 
-    const refreshError = await screen.findByRole('alert')
+    await waitFor(() => expect(members.get).toHaveBeenCalledTimes(3))
     expect(screen.getAllByRole('option')).toHaveLength(3)
-    await user.click(within(refreshError).getByRole('button', { name: 'common.operation.retry' }))
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
-    expect(members.get).toHaveBeenCalledTimes(4)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

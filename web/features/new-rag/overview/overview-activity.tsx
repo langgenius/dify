@@ -3,6 +3,7 @@
 import type { KnowledgeFsOverviewActivityResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ActivityDateRange, ActivityOperator, ActivityRange } from './overview-activity-types'
+import type { OwnedQueryError } from '@/service/use-owned-query-error'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -39,6 +40,7 @@ import {
 } from '@/app/components/base/date-time-picker/date-picker'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getAvatarInitial } from '@/utils/avatar'
 import { activityDatesForRange } from './overview-activity-types'
 import { EmptyInline, Panel, Skeleton } from './overview-panel'
@@ -462,13 +464,12 @@ function ActivityDrawer({
   const activities = activityQuery.data?.pages.flatMap((page) => page.data) ?? []
   // Background refreshes, including task-completion invalidation, keep the loaded rows visible.
   const loading = activityQuery.isPending
-  const retryButton = (
-    <Button
-      loading={activityQuery.isRefetching}
-      size="small"
-      variant="secondary"
-      onClick={() => void activityQuery.refetch()}
-    >
+  // The open drawer shows a failed first load in place of the rows and a failed next page above
+  // them; a failed refetch keeps the rows and is reported by the query cache.
+  const activityLoad = useOwnedQueryError(activityQuery, open)
+  const activityNextPage = useOwnedNextPageError(activityQuery, open)
+  const retryButton = (failure: OwnedQueryError) => (
+    <Button loading={failure.retrying} size="small" variant="secondary" onClick={failure.retry}>
       {tCommon(($) => $['operation.retry'])}
     </Button>
   )
@@ -662,7 +663,7 @@ function ActivityDrawer({
                   </div>
                 ) : activities.length ? (
                   <>
-                    {activityQuery.isError && (
+                    {activityNextPage && (
                       <div
                         role="alert"
                         className="mx-5 mt-3 flex items-center justify-between gap-3 rounded-lg bg-background-section px-3 py-2"
@@ -670,7 +671,7 @@ function ActivityDrawer({
                         <p className="min-w-0 system-xs-regular text-text-tertiary">
                           {t(($) => $.tasksErrorDescription)}
                         </p>
-                        {retryButton}
+                        {retryButton(activityNextPage)}
                       </div>
                     )}
                     {Object.entries(groups).map(([key, group]) => (
@@ -731,7 +732,7 @@ function ActivityDrawer({
                       )}
                     </div>
                   </>
-                ) : activityQuery.isError ? (
+                ) : activityLoad ? (
                   <div
                     role="alert"
                     className="flex h-72.25 flex-col items-center justify-end pb-0 text-center"
@@ -743,7 +744,7 @@ function ActivityDrawer({
                     <p className="mt-3 body-sm-regular text-text-tertiary">
                       {t(($) => $.tasksErrorDescription)}
                     </p>
-                    <div className="mt-4">{retryButton}</div>
+                    <div className="mt-4">{retryButton(activityLoad)}</div>
                   </div>
                 ) : (
                   <div className="flex h-72.25 flex-col items-center justify-end pb-0 text-center">

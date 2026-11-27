@@ -7,6 +7,7 @@ import { useEffect, useMemo } from 'react'
 import { consoleQuery } from '@/service/console'
 import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import Loading from '../../base/loading'
+import LoadingError from '../../base/loading-error'
 import { pluginDeclarationToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
 
@@ -41,8 +42,10 @@ const Item: FC<Props> = ({
     }),
   )
   const { data } = githubQuery
-  // The bundle list renders a failed first load as an error row in place of this item.
-  const isLoadFailed = !!useOwnedQueryError(githubQuery)
+  // A failed first load shows as an error row in place of this item, which the bundle list keeps
+  // once it learns of the failure.
+  const githubLoad = useOwnedQueryError(githubQuery)
+  const isLoadFailed = githubLoad !== undefined
   const fetchedPayload = useMemo<Plugin | null>(
     () => (data ? pluginDeclarationToCardPluginProps(data.manifest, data.unique_identifier) : null),
     [data],
@@ -58,6 +61,7 @@ const Item: FC<Props> = ({
   useEffect(() => {
     if (isLoadFailed) onFetchError()
   }, [isLoadFailed])
+  if (isLoadFailed) return <LoadingError />
   if (!payload) return <Loading />
   return (
     <LoadedItem

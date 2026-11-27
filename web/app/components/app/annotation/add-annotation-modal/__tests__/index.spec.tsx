@@ -2,6 +2,8 @@ import type { consoleClient } from '@/service/console'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import {
@@ -27,6 +29,11 @@ vi.mock('@/service/console', async (importOriginal) => {
       'features.get': () => api.features(),
     }),
   }
+})
+
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
+  return { ...actual, toast: { ...actual.toast, error: vi.fn() } }
 })
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
@@ -203,4 +210,25 @@ it('blocks saving until quota loads and lets a failed quota request retry', asyn
   await waitFor(() => expect(submit()).toBeEnabled())
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   expect(api.add).not.toHaveBeenCalled()
+})
+
+it('shows a failed quota load in place without also toasting it', async () => {
+  api.features.mockRejectedValueOnce(
+    createHttpError(
+      { status: 503, statusText: '', headers: new Headers() },
+      { message: 'Quota unavailable' },
+    ),
+  )
+  const user = userEvent.setup()
+  renderWithConsoleQuery(<AddAnnotationDialog appId="app-id" onAdded={vi.fn()} />, {
+    // The app's error toasts, so the failure the dialog renders is not also toasted.
+    queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+    features: null,
+  })
+  await user.click(trigger())
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  // The cache reports a failure two macrotasks after the render that follows it.
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  expect(toast.error).not.toHaveBeenCalled()
 })

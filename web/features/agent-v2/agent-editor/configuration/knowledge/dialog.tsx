@@ -42,6 +42,7 @@ import {
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { getVisibleKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { consoleQuery } from '@/service/console'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useClassicKnowledgeCatalog } from './classic-catalog'
 import { ClassicKnowledgeSettings } from './classic-settings'
 
@@ -165,20 +166,19 @@ function CatalogState({
   retryLabel,
   loadMoreLabel,
 }: {
-  query: {
+  query: Parameters<typeof useOwnedNextPageError>[0] & {
     isPending: boolean
-    isError: boolean
-    isFetching: boolean
     hasNextPage: boolean
-    isFetchingNextPage: boolean
-    refetch: () => Promise<unknown>
-    fetchNextPage: () => Promise<unknown>
   }
   loadingLabel: string
   errorLabel: string
   retryLabel: string
   loadMoreLabel: string
 }) {
+  // A failed refetch keeps the loaded catalog; the query cache reports it.
+  const load = useOwnedQueryError(query)
+  const nextPage = useOwnedNextPageError(query)
+  const failure = load ?? nextPage
   return (
     <>
       {query.isPending && (
@@ -196,15 +196,15 @@ function CatalogState({
           ))}
         </div>
       )}
-      {query.isError && (
+      {failure && (
         <div role="alert" className="space-y-2 py-3 system-sm-regular text-text-destructive">
           <p>{errorLabel}</p>
-          <Button onClick={() => void query.refetch()} loading={query.isFetching}>
+          <Button onClick={failure.retry} loading={failure.retrying}>
             {retryLabel}
           </Button>
         </div>
       )}
-      {query.hasNextPage && (
+      {!nextPage && query.hasNextPage && (
         <Button onClick={() => void query.fetchNextPage()} loading={query.isFetchingNextPage}>
           {loadMoreLabel}
         </Button>

@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { workspaceRoleListInfiniteOptions } from '../../workspace-role-list-query'
 
 type RoleSelectorProps = {
@@ -59,6 +60,13 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
   const [observerReadyKey, setObserverReadyKey] = useState(0)
   const language = getAccessControlTemplateLanguage(locale)
 
+  const rolesQuery = useInfiniteQuery(
+    workspaceRoleListInfiniteOptions({
+      page: 1,
+      limit: PAGE_SIZE,
+      language,
+    }),
+  )
   const {
     data: rolesData,
     isLoading: rolesLoading,
@@ -66,13 +74,9 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useInfiniteQuery(
-    workspaceRoleListInfiniteOptions({
-      page: 1,
-      limit: PAGE_SIZE,
-      language,
-    }),
-  )
+  } = rolesQuery
+  // The open list shows a failed first load; one that fails while it is closed toasts.
+  const rolesLoad = useOwnedQueryError(rolesQuery, open)
 
   useEffect(() => {
     const hasMore = hasNextPage ?? true
@@ -169,7 +173,7 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
                   <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
                     {t(($) => $.loading, { ns: 'common' })}
                   </div>
-                ) : rolesError && roles.length === 0 ? (
+                ) : rolesLoad ? (
                   <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
                     {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
                   </div>

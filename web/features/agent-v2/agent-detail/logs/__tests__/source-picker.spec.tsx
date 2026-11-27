@@ -42,24 +42,13 @@ describe('AgentLogSourcePicker', () => {
   const commonProps = {
     groups,
     isLoading: false,
-    isError: false,
-    onRetry: vi.fn(),
     onChange: vi.fn(),
   }
 
   it('should filter sources across groups and only show empty when no source matches', async () => {
     const user = userEvent.setup()
 
-    render(
-      <AgentLogSourcePicker
-        value={[]}
-        groups={groups}
-        isLoading={false}
-        isError={false}
-        onRetry={vi.fn()}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<AgentLogSourcePicker value={[]} groups={groups} isLoading={false} onChange={vi.fn()} />)
 
     await user.click(
       screen.getByRole('combobox', {
@@ -149,8 +138,7 @@ describe('AgentLogSourcePicker', () => {
         value={[]}
         groups={[]}
         isLoading={false}
-        isError
-        onRetry={onRetry}
+        load={{ error: new Error('sources failed'), retry: onRetry, retrying: false }}
         onChange={vi.fn()}
       />,
     )

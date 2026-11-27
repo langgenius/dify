@@ -19,6 +19,8 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getAvatarInitial } from '@/utils/avatar'
 import { DEFAULT_ACCESS_POLICY_ID } from './constants'
 
@@ -43,14 +45,16 @@ function AddAccessSubjectMenuContent({
   onAddAccessSubject,
 }: AddAccessSubjectMenuContentProps) {
   const { t } = useTranslation(['common', 'permission'])
-  const {
-    data: membersData,
-    isPending: isLoading,
-    error,
-  } = useQuery(
+  const membersQuery = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions({
       input: {},
     }),
+  )
+  const { data: membersData, isPending: isLoading } = membersQuery
+  const membersLoad = useOwnedQueryError(membersQuery)
+  const membersErrorMessage = useRequestErrorMessage(
+    membersLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const existingAccountIdSet = new Set(existingAccountIds)
   const members = membersData?.accounts ?? []
@@ -70,13 +74,13 @@ function AddAccessSubjectMenuContent({
           placeholder={t(($) => $['placeholder.search'], { ns: 'common' })}
         />
       </MenuInputGroup>
-      {error && (
+      {membersLoad && (
         <div role="alert" className="px-3 py-2 system-sm-regular text-text-tertiary">
-          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          {membersErrorMessage}
         </div>
       )}
       {isLoading && <LoadingPlaceholder className="h-20 p-1" />}
-      {!isLoading && !error && (
+      {!isLoading && !membersLoad && (
         <MenuEmpty>{t(($) => $['accessRule.noAvailableMembers'], { ns: 'permission' })}</MenuEmpty>
       )}
       {/* ARIA requires a `menu` that has no items yet because they are loading to be marked busy. */}

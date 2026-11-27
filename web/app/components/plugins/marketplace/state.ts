@@ -2,6 +2,7 @@ import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from './constants'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import {
   useActivePluginType,
   useFilterPluginTags,
@@ -50,6 +51,9 @@ export function useMarketplaceData(activePluginTypeOverride?: ActivePluginType) 
   // Scroll pagination
   useMarketplaceContainerScroll(handlePageChange)
 
+  // The list shows a failed first load of the active read in place of its results, with a retry.
+  const loadError = useOwnedQueryError(isSearchMode ? pluginsQuery : collectionsQuery)
+
   const pages = pluginsQuery.data?.pages
   // Meilisearch resolves ties in `install_count DESC` by internal document
   // order, and the sync task rewrites those documents every minute, so
@@ -80,8 +84,7 @@ export function useMarketplaceData(activePluginTypeOverride?: ActivePluginType) 
     // affordance; unmounting the grid instead collapses layout and jumps scroll.
     isRefreshing:
       pluginsQuery.isPlaceholderData || searchPluginTextOriginal.trim() !== searchPluginText.trim(),
-    isError: collectionsQuery.isError || pluginsQuery.isError,
-    refetch: isSearchMode ? pluginsQuery.refetch : collectionsQuery.refetch,
+    loadError,
     isFetchingNextPage,
   }
 }

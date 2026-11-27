@@ -22,10 +22,11 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useId, useMemo, useRef } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getAvatarInitial } from '@/utils/avatar'
 import { CREATOR_FILTER_MAX_SELECTION } from './creator-filter-query'
 
@@ -42,17 +43,20 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
-  const { data, isError, isPending, refetch } = useQuery(
+  const membersQuery = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions({
       input: {},
     }),
   )
+  const { data, isPending } = membersQuery
+  const [open, setOpen] = useState(false)
+  // The open popup shows a failed first load in place of the creators; a failed refetch keeps
+  // them and is reported by the query cache.
+  const membersLoad = useOwnedQueryError(membersQuery, open)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const selectionLimitId = useId()
   const label = t(($) => $['creatorFilter.creators'])
   const triggerLabel = value.length > 0 ? `${label}: ${value.length}` : label
-  const hasInitialError = isError && data === undefined
-  const hasRefetchError = isError && data !== undefined
   const selectionAtLimit = value.length >= CREATOR_FILTER_MAX_SELECTION
 
   const creators = useMemo(() => {
@@ -92,6 +96,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
       autoHighlight
       items={creatorItems}
       value={value}
+      onOpenChange={setOpen}
       onValueChange={(nextValue) => {
         if (nextValue.length <= CREATOR_FILTER_MAX_SELECTION) onChange(nextValue)
       }}
@@ -151,20 +156,9 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
                 enterKeyHint="search"
                 aria-label={tApp(($) => $['studio.filters.searchCreators'])}
                 placeholder={tApp(($) => $['studio.filters.searchCreators'])}
-                disabled={isPending || hasInitialError}
+                disabled={isPending || !!membersLoad}
               />
             </ComboboxInputGroup>
-            {hasRefetchError && (
-              <div
-                role="alert"
-                className="mx-2 mt-1 flex items-center justify-between gap-2 rounded-md bg-state-destructive-hover px-2 py-1 system-sm-regular text-text-tertiary"
-              >
-                <span>{tCommon(($) => $.error)}</span>
-                <Button size="small" variant="ghost" onClick={() => void refetch()}>
-                  {tCommon(($) => $['operation.retry'])}
-                </Button>
-              </div>
-            )}
             {selectionAtLimit && (
               <div
                 id={selectionLimitId}
@@ -182,7 +176,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
                 />
                 {tCommon(($) => $.loading)}
               </ComboboxStatus>
-            ) : hasInitialError ? (
+            ) : membersLoad ? (
               <div
                 role="alert"
                 className="flex h-20 flex-col items-center justify-center gap-1 px-3 text-center"
@@ -190,7 +184,12 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
                 <span className="system-sm-regular text-text-tertiary">
                   {tCommon(($) => $.error)}
                 </span>
-                <Button size="small" variant="ghost" onClick={() => void refetch()}>
+                <Button
+                  size="small"
+                  variant="ghost"
+                  loading={membersLoad.retrying}
+                  onClick={membersLoad.retry}
+                >
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               </div>

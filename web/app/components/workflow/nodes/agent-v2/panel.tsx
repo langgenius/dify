@@ -177,15 +177,20 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       ? inlineAgentBinding.agent_id
       : sourceInlineAgentId
   const isInlineAgentCreated = isInlineAgentReady && !!inlineAgent
-  const isInlineAgentLoadError = isInlineAgentReady && inlineAgentQuery.isError
+  // The composer state can load before its agent is created: the field shows the failure in
+  // place of the agent while there is none, and a failed refetch over a loaded agent still toasts.
+  const inlineAgentLoad = useOwnedQueryError(
+    { ...inlineAgentQuery, data: inlineAgentQuery.data?.agent },
+    isInlineAgentReady,
+  )
   // A failed refetch keeps the cached roster agent; only a failed first load has none to show.
-  const rosterAgentLoad = useOwnedQueryError(rosterAgentQuery)
+  const rosterAgentLoad = useOwnedQueryError(rosterAgentQuery, !inlineAgentLoad)
   const rosterAgentLoadErrorMessage = useRequestErrorMessage(
     rosterAgentLoad?.error,
     t(($) => $['common.loadFailed'], { ns: 'workflow' }),
   )
   const isInlineAgentWaitingForCreation =
-    isInlineAgentReady && !isInlineAgentCreated && !isInlineAgentLoadError
+    isInlineAgentReady && !isInlineAgentCreated && !inlineAgentLoad
   const isInlineAgentPanelOpen =
     (isInlineAgentCreated || isInlineAgentPending) && openInlineAgentPanelNodeId === id
   const { isPending: isAppCopyingFromRoster, mutate: copyFromRosterApp } = useMutation(
@@ -669,13 +674,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       )}
       <div className="divide-y divide-divider-subtle">
         <AgentRosterField
-          agent={
-            isInlineAgentWaitingForCreation || isInlineAgentLoadError ? undefined : displayedAgent
-          }
+          agent={isInlineAgentWaitingForCreation || inlineAgentLoad ? undefined : displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? (isInlineAgentPending ? id : undefined)}
           canOpenPanel={!isInlineAgentWaitingForCreation}
           errorMessage={
-            isInlineAgentLoadError
+            inlineAgentLoad
               ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' })
               : rosterAgentLoadErrorMessage
           }
@@ -684,9 +687,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           isPanelCopyPending={isCopyingFromRoster}
           isPanelOpen={isAgentPanelOpen}
           isPending={isAgentBindingPending}
-          isRetrying={
-            isInlineAgentLoadError ? inlineAgentQuery.isFetching : !!rosterAgentLoad?.retrying
-          }
+          isRetrying={inlineAgentLoad ? inlineAgentLoad.retrying : !!rosterAgentLoad?.retrying}
           panelBody={
             isAgentPanelOpen && displayedAgent ? (
               isInlineAgentReady || isInlineAgentPending ? (
@@ -721,9 +722,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onChange={handleRosterChange}
           onMakeCopy={rosterAgentId ? handleMakeRosterCopy : undefined}
           onPanelOpenChange={handleAgentPanelOpenChange}
-          onRetry={
-            isInlineAgentLoadError ? () => void inlineAgentQuery.refetch() : rosterAgentLoad?.retry
-          }
+          onRetry={inlineAgentLoad?.retry ?? rosterAgentLoad?.retry}
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />

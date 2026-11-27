@@ -14,7 +14,8 @@ type ContactsPermissions = {
 export type ContactsFeatureContextValue = {
   deployment: ContactsDeployment
   imCentrallyManaged: boolean | undefined
-  imCapabilityError?: Error | null
+  /** The failed first capability read, claimed by the runtime provider. */
+  imCapabilityError?: unknown
   retryIMCapability?: () => void
   permissions: ContactsPermissions
   workspaceId: string

@@ -35,6 +35,7 @@ import { API_PREFIX } from '@/config'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -124,11 +125,11 @@ export default function WorkflowLogArchivesPage() {
   const archiveMonths = archiveData?.months ?? []
   const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
   const summary = archiveData?.summary
-  const isPlanLoadFailed = planQuery.isError && plan === undefined
-  const isLoadFailed = isPlanLoadFailed || archiveListQuery.isError
+  // The table, shown only on Cloud, renders the plan's failed first load in place of the archives.
+  const planLoad = useOwnedQueryError(planQuery, deploymentEdition === 'CLOUD')
+  const isLoadFailed = !!planLoad || archiveListQuery.isError
   const isLoading =
-    (deploymentEdition === 'CLOUD' && plan === undefined && !isPlanLoadFailed) ||
-    archiveListQuery.isLoading
+    (deploymentEdition === 'CLOUD' && plan === undefined && !planLoad) || archiveListQuery.isLoading
   const isEmpty = !isLoading && !isLoadFailed && archiveMonths.length === 0
   const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
 
@@ -275,9 +276,9 @@ export default function WorkflowLogArchivesPage() {
                       </div>
                       <Button
                         size="small"
-                        loading={planQuery.isFetching || archiveListQuery.isFetching}
+                        loading={planLoad ? planLoad.retrying : archiveListQuery.isFetching}
                         onClick={() => {
-                          if (isPlanLoadFailed) void planQuery.refetch()
+                          if (planLoad) planLoad.retry()
                           else void archiveListQuery.refetch()
                         }}
                       >

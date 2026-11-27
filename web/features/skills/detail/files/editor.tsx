@@ -19,6 +19,7 @@ import { toast } from '@/app/notifications'
 import { reportRequestError } from '@/app/query-error-toast'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
@@ -300,7 +301,9 @@ export function SkillFileEditor({
   })
   const isTextContentUnavailable = shouldFetchTextFileContent && textContentQuery.data == null
   const isTextContentPending = isTextContentUnavailable && textContentQuery.isPending
-  const isTextContentError = isTextContentUnavailable && textContentQuery.isError
+  // A failed first load replaces the editor; a failed refresh keeps the loaded content and is the
+  // query cache's to report.
+  const textContentLoad = useOwnedQueryError(textContentQuery, shouldFetchTextFileContent)
   const canEdit = !!file && isTextFile(file) && !readonly && !isTextContentUnavailable
   const canPreviewBinaryFile =
     !!file && !isTextFile(file) && (isSkillImageFile(file) || isSkillPdfFile(file))
@@ -1112,10 +1115,10 @@ export function SkillFileEditor({
       <div className="mt-px min-h-0 flex-1 overflow-hidden">
         {isTextContentPending ? (
           <div aria-busy="true" className="h-full cursor-not-allowed" />
-        ) : isTextContentError ? (
+        ) : textContentLoad ? (
           <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-divider-regular bg-background-default">
             <p className="system-sm-regular text-text-tertiary">
-              {getErrorMessage(textContentQuery.error) ??
+              {getErrorMessage(textContentLoad.error) ??
                 t(($) => $['skillManagement.detail.loadFailed'])}
             </p>
           </div>

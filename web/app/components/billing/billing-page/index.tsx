@@ -22,13 +22,14 @@ const Billing: FC = () => {
   usePrefetchQuery(
     consoleQuery.features.vectorSpace.get.queryOptions({ meta: { errorToast: false } }),
   )
+  const showsBilling = deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager
   const billingQuery = useQuery(
     consoleQuery.billing.invoices.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager,
+      enabled: showsBilling,
     }),
   )
   const billingUrl = billingQuery.data?.url
-  const billingLoad = useOwnedQueryError(billingQuery)
+  const billingLoad = useOwnedQueryError(billingQuery, showsBilling)
 
   return (
     <div>
@@ -37,7 +38,7 @@ const Billing: FC = () => {
           <PlanComp loc="billing-page" />
         </React.Suspense>
       </div>
-      {deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager && (
+      {showsBilling && (
         <a
           className={cn(
             'mt-3 flex w-full items-center justify-between rounded-xl bg-background-section-burn px-4 py-3 outline-hidden',

@@ -3,7 +3,9 @@ import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, setupFakeApi } from '@/test/fake-api'
 import AddKnowledgeSpace from '../add-knowledge-space'
@@ -79,7 +81,10 @@ async function setup(initial: KnowledgeRetrievalV2SpaceSummary[] = []) {
       </>
     )
   }
-  const { queryClient } = createConsoleQueryWrapper()
+  const { queryClient } = createConsoleQueryWrapper({
+    // The app's query cache reports a failed read that nothing on screen shows.
+    queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+  })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <Selection />
@@ -160,6 +165,8 @@ it.each([
 )
 
 it('recovers the initial catalog through its retry action', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  onTestFinished(() => toastError.mockRestore())
   fake.console.knowledgeFs.spaces.get.mockRejectedValueOnce(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'spaces unavailable' }),
   )
@@ -174,9 +181,13 @@ it('recovers the initial catalog through its retry action', async () => {
   await alert.getByRole('button', { name: 'common.operation.retry' }).click()
   await expect.element(dialog.getByRole('checkbox', { name: 'Product docs' })).toBeVisible()
   await expect.element(alert).not.toBeInTheDocument()
+  // The dialog showed the failure, so the query cache did not also toast it.
+  expect(toastError).not.toHaveBeenCalled()
 })
 
 it('retains the loaded page and its selection while retrying the failed next page', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  onTestFinished(() => toastError.mockRestore())
   const requestedPages: unknown[] = []
   fake.use({
     console: {
@@ -227,4 +238,6 @@ it('retains the loaded page and its selection while retrying the failed next pag
   await later.click()
   await dialog.getByRole('button', { name: 'common.operation.add', exact: true }).click()
   await expect.element(saved).toHaveTextContent('Product docs, Later docs')
+  // The list showed the failed page below the loaded ones, so it was not also toasted.
+  expect(toastError).not.toHaveBeenCalled()
 })

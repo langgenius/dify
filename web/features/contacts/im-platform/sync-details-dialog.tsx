@@ -88,8 +88,9 @@ function SyncDetailsContent({ runId }: { runId: string }) {
     }),
   )
   // A failed first load replaces the results and a failed next page shows below them; a failed
-  // refresh keeps the loaded results and is the query cache's to report.
-  const itemsLoad = useOwnedQueryError(itemsQuery)
+  // refresh keeps the loaded results and is the query cache's to report. A failed run read takes
+  // the results' place, so their failure is shown only without it.
+  const itemsLoad = useOwnedQueryError(itemsQuery, !runQuery.isError)
   const itemsPage = useOwnedNextPageError(itemsQuery)
   const items = itemsQuery.data?.pages.flatMap((page) => page.data) ?? []
   const labels = {
@@ -333,7 +334,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
                 loading={itemsQuery.isFetchingNextPage}
                 onClick={() => itemsQuery.fetchNextPage()}
               >
-                {itemsQuery.isFetchNextPageError
+                {itemsPage
                   ? t(($) => $['imPlatform.action.retry'])
                   : t(($) => $['imPlatform.action.loadMore'])}
               </Button>

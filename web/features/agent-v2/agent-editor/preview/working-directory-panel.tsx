@@ -330,7 +330,12 @@ function AgentWorkingDirectoryContent({
     setPendingOpenFolderPaths([])
   }
   const fileListQueryOptions = getFileListQueryOptions(directoryPath)
-  const fileListQuery = useQuery({ ...fileListQueryOptions, retry: false })
+  const fileListQuery = useQuery({
+    ...fileListQueryOptions,
+    retry: false,
+    // Both listings opt out above: the preview shows a failed listing, refreshes included.
+    meta: { errorToast: false },
+  })
   const hasNoActiveBinding = isNoActiveBindingError(fileListQuery.error)
   const expandedFolderQueries = useQueries({
     queries: loadedFolderPaths.map((path) => ({
@@ -341,16 +346,20 @@ function AgentWorkingDirectoryContent({
       meta: {},
     })),
   })
-  useOwnedQueryErrors(expandedFolderQueries)
+  const folderLoad = useOwnedQueryErrors(expandedFolderQueries)
   const expandedFolders = expandedFolderQueries.map((query) => ({
     entries: query.data?.entries,
     isLoaded: query.isSuccess,
   }))
+  // The claimed folders: each one whose first load failed is marked in the tree.
   const failedFolderPaths = new Set(
-    loadedFolderPaths.filter(
-      (_path, index) =>
-        expandedFolderQueries[index]?.isError && expandedFolderQueries[index].data === undefined,
-    ),
+    folderLoad
+      ? loadedFolderPaths.filter(
+          (_path, index) =>
+            expandedFolderQueries[index]?.isError &&
+            expandedFolderQueries[index].data === undefined,
+        )
+      : [],
   )
   const workingDirectoryFiles = expandedFolders.reduce(
     (files, folder, index) => {
@@ -490,6 +499,8 @@ function AgentWorkingDirectoryContent({
     enabled: open && isFileDataPreview,
     refetchOnWindowFocus: false,
     retry: false,
+    // The file preview shows a failed download URL, including a failed refresh.
+    meta: { errorToast: false },
   })
   const handleDownloadFile = useCallback(
     async (action: AgentSkillDetailDownloadAction) => {

@@ -1,5 +1,6 @@
 import type { AgentLogConversationItemResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react'
+import type { OwnedQueryError } from '@/service/use-owned-query-error'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,21 +22,21 @@ export type AgentLogsSort = {
 export function AgentLogsTable({
   logs,
   isPending,
-  isError,
-  isSuccess,
+  load,
+  loaded,
   selectedLogId,
   sort,
   onOpenLog,
-  onRetry,
 }: {
   logs: AgentLogConversationItemResponse[]
   isPending: boolean
-  isError: boolean
-  isSuccess: boolean
+  /** The failed first load of the logs, claimed by the owner. */
+  load?: OwnedQueryError
+  /** Whether logs are loaded; a failed refetch keeps showing them. */
+  loaded: boolean
   selectedLogId?: string
   sort: AgentLogsSort
   onOpenLog: (log: AgentLogConversationItemResponse) => void
-  onRetry: () => void
 }) {
   const { t } = useTranslation(['agentV2'])
   const tableHeaderLabels = {
@@ -73,11 +74,10 @@ export function AgentLogsTable({
               <AgentLogsTableBody
                 logs={logs}
                 isPending={isPending}
-                isError={isError}
-                isSuccess={isSuccess}
+                load={load}
+                loaded={loaded}
                 selectedLogId={selectedLogId}
                 onOpenLog={onOpenLog}
-                onRetry={onRetry}
               />
             </table>
           </ScrollAreaContent>
@@ -96,19 +96,17 @@ export function AgentLogsTable({
 function AgentLogsTableBody({
   logs,
   isPending,
-  isError,
-  isSuccess,
+  load,
+  loaded,
   selectedLogId,
   onOpenLog,
-  onRetry,
 }: {
   logs: AgentLogConversationItemResponse[]
   isPending: boolean
-  isError: boolean
-  isSuccess: boolean
+  load?: OwnedQueryError
+  loaded: boolean
   selectedLogId?: string
   onOpenLog: (log: AgentLogConversationItemResponse) => void
-  onRetry: () => void
 }) {
   const { t } = useTranslation(['agentV2', 'agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
@@ -125,20 +123,20 @@ function AgentLogsTableBody({
   return (
     <tbody className="system-sm-regular text-text-secondary">
       {isPending && <LogsSkeletonRows />}
-      {isError && (
+      {load && (
         <LogsStateRow>
           <div className="flex items-center justify-start gap-2 lg:justify-center">
             <span>{t(($) => $['agentDetail.logs.loadFailed'])}</span>
-            <Button variant="secondary" size="small" onClick={onRetry}>
+            <Button variant="secondary" size="small" loading={load.retrying} onClick={load.retry}>
               {tCommon(($) => $['operation.retry'])}
             </Button>
           </div>
         </LogsStateRow>
       )}
-      {isSuccess && logs.length === 0 && (
+      {loaded && logs.length === 0 && (
         <LogsStateRow>{t(($) => $['agentDetail.logs.empty'])}</LogsStateRow>
       )}
-      {isSuccess &&
+      {loaded &&
         logs.map((log) => {
           const isSelected = selectedLogId === log.id
 

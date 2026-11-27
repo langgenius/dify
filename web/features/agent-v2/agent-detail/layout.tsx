@@ -10,6 +10,7 @@ import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { isNotFoundError } from '@/service/http-error'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 
 type AgentDetailLayoutProps = {
   agentId: string
@@ -48,6 +49,9 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
         : '/agents'
       : undefined
 
+  // A missing agent redirects to the roster, and the query cache reports why.
+  const load = useOwnedQueryError(agentQuery, !redirectPath)
+
   useDocumentTitle(`${sectionTitle} · ${agentTitle}`)
 
   useEffect(() => {
@@ -56,11 +60,11 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
 
   if (agentQuery.isPending) return <LoadingPlaceholder className="h-full" />
   if (redirectPath) return null
-  if (agentQuery.isError) {
+  if (load) {
     return (
       <div role="alert" className="flex h-full items-center justify-center gap-3">
         <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
-        <Button onClick={() => void agentQuery.refetch()}>
+        <Button loading={load.retrying} onClick={load.retry}>
           {tCommon(($) => $['operation.retry'])}
         </Button>
       </div>

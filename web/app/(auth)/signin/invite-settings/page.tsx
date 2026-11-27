@@ -60,11 +60,7 @@ export default function InviteSettingsPage() {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
-  const {
-    data: userResp,
-    isPending: isProfilePending,
-    error: profileError,
-  } = useQuery({
+  const { data: userResp, isPending: isProfilePending } = useQuery({
     ...userProfileQueryOptions(),
     throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
@@ -90,7 +86,8 @@ export default function InviteSettingsPage() {
     }),
   )
   const { data: checkRes, refetch: recheck } = checkQuery
-  const checkLoad = useOwnedQueryError(checkQuery)
+  // The check's failure renders once the profile has settled.
+  const checkLoad = useOwnedQueryError(checkQuery, !isProfilePending)
   const checkErrorMessage = useRequestErrorMessage(
     checkLoad?.error,
     t(($) => $['api.actionFailed'], { ns: 'common' }),
@@ -99,12 +96,10 @@ export default function InviteSettingsPage() {
     checkRes?.data?.email,
     userResp?.profile.email,
   )
+  // Any profile failure other than a 401 throws to the error boundary, so a settled profile
+  // without data means the visitor is signed out; either way they sign in again.
   const shouldReturnToSignIn =
-    !isProfilePending &&
-    Boolean(
-      checkRes?.is_valid &&
-      (isUnauthorizedError(profileError) || (userResp && !isInvitationForCurrentAccount)),
-    )
+    !isProfilePending && Boolean(checkRes?.is_valid && !isInvitationForCurrentAccount)
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
   const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })

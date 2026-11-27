@@ -125,7 +125,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { data: completionConversations, refetch: mutateCompletionList } =
     completionConversationsQuery
   const conversationsQuery = isChatMode ? chatConversationsQuery : completionConversationsQuery
-  const failedLoad = useOwnedQueryError(conversationsQuery)
+  // The page renders nothing until its translations are ready.
+  const failedLoad = useOwnedQueryError(conversationsQuery, ready)
   const loadErrorMessage = useRequestErrorMessage(
     failedLoad?.error,
     t(($) => $['api.actionFailed'], { ns: 'common' }),

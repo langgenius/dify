@@ -33,6 +33,7 @@ import {
   shareConversationsQueryOptions,
   shareQueryKeys,
 } from '@/service/share-queries'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
@@ -201,12 +202,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const {
-    data: appPinnedConversationData,
-    error: appPinnedConversationError,
-    isFetching: appPinnedConversationFetching,
-    refetch: refetchPinnedConversations,
-  } = useQuery(
+  const pinnedConversationsQuery = useQuery(
     shareConversationsQueryOptions(
       {
         appSourceType,
@@ -234,35 +230,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       refetchOnReconnect: false,
     },
   )
-  const {
-    data: appConversationData,
-    error: appConversationError,
-    isFetching: appConversationFetching,
-    isLoading: appConversationDataLoading,
-    refetch: refetchConversations,
-  } = useQuery(conversationListQueryOptions)
-  // A failed first load replaces the list in the sidebar; a failed refetch keeps the cached list.
-  const conversationListLoadError =
-    (!appPinnedConversationData && appPinnedConversationError) ||
-    (!appConversationData && appConversationError) ||
-    undefined
-  const conversationListRetrying = appPinnedConversationFetching || appConversationFetching
-  const retryConversationList = useCallback(() => {
-    if (!appPinnedConversationData) refetchPinnedConversations()
-    if (!appConversationData) refetchConversations()
-  }, [
-    appConversationData,
-    appPinnedConversationData,
-    refetchConversations,
-    refetchPinnedConversations,
-  ])
-  const {
-    data: appChatListData,
-    error: appChatListError,
-    isFetching: appChatListRetrying,
-    isLoading: appChatListDataLoading,
-    refetch: refetchAppChatList,
-  } = useQuery(
+  const appPinnedConversationData = pinnedConversationsQuery.data
+  const conversationsQuery = useQuery(conversationListQueryOptions)
+  const { data: appConversationData, isLoading: appConversationDataLoading } = conversationsQuery
+  // The sidebar replaces the list with a failed first load wherever it renders, so it claims them.
+  const conversationListQueries = [pinnedConversationsQuery, conversationsQuery]
+  const appChatListQuery = useQuery(
     shareChatListQueryOptions(
       {
         conversationId: chatShouldReloadKey,
@@ -276,6 +249,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       },
     ),
   )
+  const {
+    data: appChatListData,
+    error: appChatListError,
+    isLoading: appChatListDataLoading,
+  } = appChatListQuery
   const queryClient = useQueryClient()
   const invalidateShareConversations = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations })
@@ -292,14 +270,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     setClearChatList(true)
   }, [appChatListError, handleConversationIdInfoChange])
   // A missing Environment conversation resets to a new chat instead; any other failed first load
-  // replaces the chat it would fill.
-  const appChatListLoadError =
-    !appChatListData && !(appChatListError instanceof EnvironmentConversationNotFoundError)
-      ? appChatListError || undefined
-      : undefined
-  const retryAppChatList = useCallback(() => {
-    refetchAppChatList()
-  }, [refetchAppChatList])
+  // replaces the chat it would fill, which the chat always renders.
+  const appChatListLoad = useOwnedQueryErrors(
+    appChatListError instanceof EnvironmentConversationNotFoundError ? [] : [appChatListQuery],
+  )
+  const appChatListLoadError = appChatListLoad?.error
+  const appChatListRetrying = appChatListLoad?.retrying ?? false
+  const retryAppChatList = appChatListLoad?.retry ?? noop
   const appPrevChatTree = useMemo(
     () =>
       currentConversationId && appChatListData?.data.length
@@ -719,9 +696,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     appPrevChatTree,
     pinnedConversationList,
     conversationList,
-    conversationListLoadError,
-    conversationListRetrying,
-    retryConversationList,
+    conversationListQueries,
     setShowNewConversationItemInList,
     newConversationInputs,
     newConversationInputsRef,

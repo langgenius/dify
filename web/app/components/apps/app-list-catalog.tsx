@@ -32,7 +32,7 @@ import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-se
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useOwnedNextPageError, useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AppCard } from './app-card'
@@ -77,8 +77,8 @@ type AppListCatalogContentProps = Omit<AppListCatalogProps, 'appListQuery'> &
   Readonly<{
     appListPages: AppPagination[]
     hasNextPage: boolean
-    isFetchNextPageError: boolean
-    isError: boolean
+    /** The next page failed to load; the list shows it below the loaded pages with a retry. */
+    nextPageFailed: boolean
     isFetching: boolean
     isFetchingNextPage: boolean
     isPlaceholderData: boolean
@@ -127,8 +127,7 @@ function AppListCatalogContent({
   dragging,
   hasActiveFilters,
   hasNextPage,
-  isFetchNextPageError,
-  isError,
+  nextPageFailed,
   isFetching,
   isFetchingNextPage,
   isPlaceholderData,
@@ -194,7 +193,7 @@ function AppListCatalogContent({
   const hasAnyApp = (appListPages[0]?.total ?? 0) > 0
   const emptyMessage = t(($) => $['filterEmpty.noApps'], { ns: 'app' })
   const resultStatusMessage =
-    !isError && !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp ? emptyMessage : ''
+    !isPlaceholderData && hasResolvedFirstPage && !hasAnyApp ? emptyMessage : ''
   const showFirstEmptyState = isFirstEmptyState({
     appListPages,
     canCreateApp,
@@ -330,7 +329,7 @@ function AppListCatalogContent({
             )}
             {hasNextPage && (
               <>
-                {isFetchNextPageError && (
+                {nextPageFailed && (
                   <div
                     className="absolute inset-x-0 bottom-0 flex h-40 items-center justify-center gap-2 bg-background-body system-xs-regular text-text-tertiary"
                     role="alert"
@@ -347,7 +346,7 @@ function AppListCatalogContent({
                   </div>
                 )}
                 <InfiniteScrollSentinel
-                  canLoadMore={!isFetching && !isFetchNextPageError}
+                  canLoadMore={!isFetching && !nextPageFailed}
                   className="absolute inset-x-0 bottom-0"
                   onLoadMore={() => {
                     void onFetchNextPage()
@@ -480,6 +479,14 @@ export function AppListCatalog(props: AppListCatalogProps) {
     isPlaceholderData: appList.isPlaceholderData,
   })
   const starredAppsLoad = useOwnedQueryErrors(showFirstEmptyState ? [] : [starredAppList])
+  // The catalog shows a failed next page below its loaded pages, once it replaces the skeleton.
+  const nextPageLoad = useOwnedNextPageError(
+    appList,
+    appList.data !== undefined &&
+      (starredAppList.data !== undefined || starredAppList.error != null) &&
+      !showFirstEmptyState &&
+      appList.hasNextPage,
+  )
 
   if (appList.data === undefined && appList.error) throw appList.error
 
@@ -493,8 +500,7 @@ export function AppListCatalog(props: AppListCatalogProps) {
       dragging={dragging}
       hasActiveFilters={hasActiveFilters}
       hasNextPage={appList.hasNextPage}
-      isFetchNextPageError={appList.isFetchNextPageError}
-      isError={appList.isError}
+      nextPageFailed={Boolean(nextPageLoad)}
       isFetching={appList.isFetching}
       isFetchingNextPage={appList.isFetchingNextPage}
       isPlaceholderData={appList.isPlaceholderData}

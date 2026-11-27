@@ -25,6 +25,11 @@ import { TagManagementDialog } from '@/features/tag-management/tag-management-di
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import {
+  useOwnedNextPageError,
+  useOwnedQueryError,
+  useOwnedQueryErrors,
+} from '@/service/use-owned-query-error'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
 import { DeleteKnowledgeForm } from '../delete-knowledge-form'
@@ -148,8 +153,6 @@ export function NewKnowledgeList() {
   )
   const upgradeRecoveryPending =
     upgradeJobsQuery.isPending || upgradeDatasetsQueries.some((query) => query.isPending)
-  const upgradeRecoveryError =
-    upgradeJobsQuery.error ?? upgradeDatasetsQueries.find((query) => query.error)?.error
   const activeUpgradeDatasetIds = new Set(
     upgradeRecoveryJobs.flatMap((job) =>
       job.status === 'queued' || job.status === 'running' ? [job.old_dataset_id] : [],
@@ -210,11 +213,19 @@ export function NewKnowledgeList() {
     (knowledgeSpace) => !pendingUpgradeControlSpaceIds.has(knowledgeSpace.control_space_id),
   )
   const hasVisibleKnowledge = visibleKnowledgeSpaces.length > 0 || pendingUpgradeCards.length > 0
-
-  const refetchUpgradeRecovery = () => {
-    void upgradeJobsQuery.refetch()
-    upgradeDatasetsQueries.forEach((query) => void query.refetch())
-  }
+  // A failed first load replaces the list. Upgrade recovery and the next page show their failures
+  // once the list has loaded; a failed refetch keeps the loaded data and is reported by the cache.
+  const spacesLoad = useOwnedQueryError(knowledgeSpacesQuery)
+  const spacesLoaded = knowledgeSpacesQuery.data !== undefined
+  const upgradeRecoveryLoad = useOwnedQueryErrors(
+    spacesLoaded && !(upgradeRecoveryPending && !hasVisibleKnowledge)
+      ? [upgradeJobsQuery, ...upgradeDatasetsQueries]
+      : [],
+  )
+  const nextPageLoad = useOwnedNextPageError(
+    knowledgeSpacesQuery,
+    spacesLoaded && hasVisibleKnowledge,
+  )
 
   useEffect(() => {
     const visibleControlSpaceIds = new Set(
@@ -287,13 +298,13 @@ export function NewKnowledgeList() {
         </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
-        {knowledgeSpacesQuery.isPending || (upgradeRecoveryPending && !hasVisibleKnowledge) ? (
+        {knowledgeSpacesQuery.isPending ? (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <NewKnowledgeLoadingState />
           </div>
-        ) : knowledgeSpacesQuery.error && !knowledgeSpacesQuery.data ? (
+        ) : spacesLoad ? (
           <div className="px-4 pt-2 pb-8 sm:px-8">
-            {isUnavailableError(knowledgeSpacesQuery.error) ? (
+            {isUnavailableError(spacesLoad.error) ? (
               <NewKnowledgePageState
                 title={t(($) => $.unavailableTitle)}
                 description={t(($) => $.unavailableDescription)}
@@ -303,20 +314,24 @@ export function NewKnowledgeList() {
                 title={t(($) => $.errorTitle)}
                 description={t(($) => $.errorDescription)}
                 action={
-                  <Button onClick={() => void knowledgeSpacesQuery.refetch()}>
+                  <Button loading={spacesLoad.retrying} onClick={spacesLoad.retry}>
                     {tCommon(($) => $['operation.retry'])}
                   </Button>
                 }
               />
             )}
           </div>
-        ) : upgradeRecoveryError && !hasVisibleKnowledge ? (
+        ) : upgradeRecoveryPending && !hasVisibleKnowledge ? (
+          <div className="px-4 pt-2 pb-8 sm:px-8">
+            <NewKnowledgeLoadingState />
+          </div>
+        ) : upgradeRecoveryLoad && !hasVisibleKnowledge ? (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <NewKnowledgePageState
               title={t(($) => $.errorTitle)}
               description={t(($) => $.errorDescription)}
               action={
-                <Button onClick={refetchUpgradeRecovery}>
+                <Button loading={upgradeRecoveryLoad.retrying} onClick={upgradeRecoveryLoad.retry}>
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               }
@@ -350,10 +365,10 @@ export function NewKnowledgeList() {
           </div>
         ) : (
           <div className="px-4 pt-2 pb-8 sm:px-8">
-            {upgradeRecoveryError && (
+            {upgradeRecoveryLoad && (
               <div className="mb-4 flex items-center justify-center gap-3" role="alert">
                 <span>{t(($) => $.errorDescription)}</span>
-                <Button onClick={refetchUpgradeRecovery}>
+                <Button loading={upgradeRecoveryLoad.retrying} onClick={upgradeRecoveryLoad.retry}>
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               </div>
@@ -394,10 +409,10 @@ export function NewKnowledgeList() {
                 />
               ))}
             </ul>
-            {knowledgeSpacesQuery.isFetchNextPageError ? (
+            {nextPageLoad ? (
               <div className="mt-6 flex items-center justify-center gap-3" role="alert">
                 <span>{t(($) => $.errorDescription)}</span>
-                <Button onClick={() => void knowledgeSpacesQuery.fetchNextPage()}>
+                <Button loading={nextPageLoad.retrying} onClick={nextPageLoad.retry}>
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               </div>

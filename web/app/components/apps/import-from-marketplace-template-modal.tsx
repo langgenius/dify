@@ -19,7 +19,11 @@ import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,
 } from '@/service/marketplace-templates'
-import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import {
+  useRequestErrorDescriber,
+  useRequestErrorMessage,
+} from '@/service/use-request-error-message'
 
 type ImportFromMarketplaceTemplateModalProps = {
   templateId: string
@@ -34,7 +38,13 @@ const ImportFromMarketplaceTemplateModal = ({
 }: ImportFromMarketplaceTemplateModalProps) => {
   const { t } = useTranslation(['app', 'common'])
   const describeRequestError = useRequestErrorDescriber()
-  const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
+  const detailQuery = useMarketplaceTemplateDetail(templateId)
+  const { data, isLoading } = detailQuery
+  const detailLoad = useOwnedQueryError(detailQuery)
+  const detailErrorMessage = useRequestErrorMessage(
+    detailLoad?.error,
+    t(($) => $['marketplace.template.fetchFailed'], { ns: 'app' }),
+  )
   const template = data?.data
   const [importing, setImporting] = useState(false)
   const isImportingRef = useRef(false)
@@ -101,11 +111,9 @@ const ImportFromMarketplaceTemplateModal = ({
             </div>
           )}
 
-          {isError && (
+          {detailLoad && detailErrorMessage && (
             <div className="flex items-center justify-center py-8" role="alert">
-              <div className="system-md-regular text-text-destructive">
-                {t(($) => $['marketplace.template.fetchFailed'], { ns: 'app' })}
-              </div>
+              <div className="system-md-regular text-text-destructive">{detailErrorMessage}</div>
             </div>
           )}
 
@@ -170,7 +178,7 @@ const ImportFromMarketplaceTemplateModal = ({
           <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
           <Button
             variant="primary"
-            disabled={isLoading || isError}
+            disabled={isLoading || !template}
             loading={importing}
             onClick={handleConfirm}
           >

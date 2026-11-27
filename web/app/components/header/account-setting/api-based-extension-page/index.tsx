@@ -32,6 +32,13 @@ type ApiBasedExtensionPageProps = {
   layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
 }
 
+const defaultLayout: NonNullable<ApiBasedExtensionPageProps['layout']> = ({ body, toolbar }) => (
+  <>
+    <div className="mb-3">{toolbar}</div>
+    {body}
+  </>
+)
+
 function ApiBasedExtensionListSkeleton() {
   const { t } = useTranslation(['common'])
 
@@ -186,12 +193,7 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
     </>
   )
 
-  if (layout) return layout({ body, toolbar })
-
-  return (
-    <>
-      <div className="mb-3">{toolbar}</div>
-      {body}
-    </>
-  )
+  // One render path, so the claimed load failure renders under either layout.
+  const renderLayout = layout ?? defaultLayout
+  return renderLayout({ body, toolbar })
 }

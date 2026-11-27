@@ -211,7 +211,10 @@ function AccessControlSession({
     currentIpErrorFallback,
   )
   const saveCheckErrorMessage = useRequestErrorMessage(saveCheck.error, currentIpErrorFallback)
-  const accessControlLoad = useOwnedQueryErrors([groupsQuery, bindingQuery])
+  // Shown only while the app's network access can be read, as the reads themselves are.
+  const accessControlLoad = useOwnedQueryErrors(
+    canFetchNetworkAccess ? [groupsQuery, bindingQuery] : [],
+  )
 
   if (!canFetchNetworkAccess) return null
   if (accessControlLoad)

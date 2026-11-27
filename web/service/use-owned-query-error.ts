@@ -22,8 +22,12 @@ const failedFirstLoad = (query: OwnableQuery) =>
  * a failed refetch keeps the cached data and still toasts. Call it only where the result is
  * rendered: a claimed error is shown nowhere else.
  */
-export function useOwnedQueryError(query: OwnableQuery): OwnedQueryError | undefined {
-  return useOwnedQueryErrors([query])
+export function useOwnedQueryError(
+  query: OwnableQuery,
+  /** `false` while the owner does not render the failure, such as a closed popup or a redirect. */
+  shown = true,
+): OwnedQueryError | undefined {
+  return useOwnedQueryErrors(shown ? [query] : [])
 }
 
 /**

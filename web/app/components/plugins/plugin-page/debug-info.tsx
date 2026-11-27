@@ -33,7 +33,7 @@ function DebugInfo({
   const debuggingKeyQuery = useQuery(
     consoleQuery.workspaces.current.plugin.debuggingKey.get.queryOptions(),
   )
-  const { data: info, isError, isLoading } = debuggingKeyQuery
+  const { data: info, isLoading, isPending } = debuggingKeyQuery
   const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })
   const trigger = triggerContent ?? <span aria-hidden className="i-ri-bug-line size-4" />
   const triggerClassNames = cn(
@@ -46,8 +46,9 @@ function DebugInfo({
 
   if (isLoading) return null
 
-  // The trigger still opens so the panel can say why the debugging key is missing.
-  if (isError && info === undefined) {
+  // A settled read without a key failed; the cache toasts it, and the trigger still opens so the
+  // panel can say why the debugging key is missing.
+  if (info === undefined && !isPending) {
     return (
       <Popover>
         <PopoverTrigger

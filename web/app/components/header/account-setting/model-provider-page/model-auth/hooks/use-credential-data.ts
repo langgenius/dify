@@ -4,6 +4,7 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMemo } from 'react'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { useGetCredential } from './use-auth-service'
 
 export const useCredentialData = (
@@ -26,15 +27,15 @@ export const useCredentialData = (
   )
 
   const { isLoading, data: credentialData = {} } = credentialQuery
+  // Only a failed first load leaves no credential to edit; a failed refetch keeps it and the cache
+  // reports it. The model modal, the only caller, renders this failure in place of the form.
+  const credentialLoad = useOwnedQueryError(credentialQuery)
 
   return {
     isLoading,
     credentialData,
-    // Only a failed first load leaves no credential to edit; a failed refetch keeps it.
-    loadError: credentialQuery.isError && !credentialQuery.data ? credentialQuery.error : undefined,
-    isRetrying: credentialQuery.isFetching,
-    retry: () => {
-      void credentialQuery.refetch()
-    },
+    loadError: credentialLoad?.error,
+    isRetrying: credentialLoad?.retrying ?? false,
+    retry: () => credentialLoad?.retry(),
   }
 }

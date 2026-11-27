@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from '../constants'
 import { KnowledgeSettingsMembers } from './members'
@@ -63,10 +64,12 @@ export function BasicInformationSection() {
     }),
   )
   const [nameTouched, setNameTouched] = useState(false)
+  // A failed first load replaces the section once there is a space to show it for.
+  const membersLoad = useOwnedQueryError(membersQuery, !!space && !!current)
 
   if (!space || !current) return null
   if (membersQuery.isPending) return <BasicInformationSkeleton />
-  if (membersQuery.isError && !membersQuery.data) {
+  if (membersLoad) {
     return (
       <div
         className="flex items-center gap-3 rounded-xl border border-components-panel-border bg-background-section p-4"
@@ -76,7 +79,7 @@ export function BasicInformationSection() {
         <p className="min-w-0 flex-1 system-sm-regular text-text-secondary">
           {tCommon(($) => $['api.actionFailed'])}
         </p>
-        <Button type="button" onClick={() => void membersQuery.refetch()}>
+        <Button type="button" loading={membersLoad.retrying} onClick={membersLoad.retry}>
           {tCommon(($) => $['operation.retry'])}
         </Button>
       </div>

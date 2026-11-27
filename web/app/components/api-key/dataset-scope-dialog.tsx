@@ -182,6 +182,8 @@ function DatasetScopeContent({
       enabled: scope === 'specific',
       staleTime: 0,
       refetchOnMount: 'always',
+      // The picker shows every failed page, refetches included, with its own retry.
+      meta: { errorToast: false },
     }),
   )
   const datasets = useMemo<SelectedKb[]>(
@@ -206,6 +208,8 @@ function DatasetScopeContent({
       initialPageParam: 1,
     }),
     enabled: scope === 'specific' && knowledgeFsEnabled,
+    // The picker shows every failed page, refetches included, with its own retry.
+    meta: { errorToast: false },
   })
   const knowledgeSpaces = useMemo<SelectedKb[]>(
     () =>

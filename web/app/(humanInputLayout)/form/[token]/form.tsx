@@ -39,9 +39,9 @@ const FormContent = () => {
 
   const formQuery = useQuery(humanInputFormQueryOptions(token))
   const { data: formData, isLoading, error } = formQuery
-  // Every failed first load replaces the form with a status card.
-  const formLoad = useOwnedQueryError(formQuery)
   const { isSubmitting, submit, success } = useFormSubmit(token)
+  // Every failed first load replaces the form with a status card, unless the thanks card shows.
+  const formLoad = useOwnedQueryError(formQuery, !success)
 
   const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
   const replaceWebappLogo =

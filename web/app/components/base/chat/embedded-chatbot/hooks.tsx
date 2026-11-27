@@ -22,6 +22,7 @@ import {
   shareQueryKeys,
 } from '@/service/share-queries'
 import { tryAppParamsQueryOptions } from '@/service/try-app-queries'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
@@ -80,12 +81,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const webAppInfo = useWebAppStore((s) => s.appInfo)
   const appInfo = isTryApp ? tryAppInfo : webAppInfo
   const appMeta = useWebAppStore((s) => s.appMeta)
-  const {
-    data: tryAppParams,
-    error: tryAppParamsError,
-    isFetching: tryAppParamsFetching,
-    refetch: refetchTryAppParams,
-  } = useQuery(tryAppParamsQueryOptions(isTryApp ? tryAppId! : ''))
+  const tryAppParamsQuery = useQuery(tryAppParamsQueryOptions(isTryApp ? tryAppId! : ''))
+  const tryAppParams = tryAppParamsQuery.data
   const webAppParams = useWebAppStore((s) => s.appParams)
   const appParams = isTryApp ? tryAppParams : webAppParams
   const appId = useMemo(() => {
@@ -161,30 +158,24 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
     conversationListQueryOptions,
   )
-  const {
-    data: appChatListData,
-    error: appChatListError,
-    isFetching: appChatListFetching,
-    isLoading: appChatListDataLoading,
-    refetch: refetchAppChatList,
-  } = useQuery(
+  const appChatListQuery = useQuery(
     shareChatListQueryOptions({
       conversationId: chatShouldReloadKey,
       appSourceType,
       appId,
     }),
   )
+  const { data: appChatListData, isLoading: appChatListDataLoading } = appChatListQuery
   // The chat cannot start without its app parameters or show a conversation without its messages,
   // so a failed first load replaces the chat. The conversation lists only add the current
   // conversation's introduction and inputs, so their failure stays silent.
-  const tryAppParamsLoadError = isTryApp && !tryAppParams ? tryAppParamsError : null
-  const appChatListLoadError = appChatListData ? null : appChatListError
-  const chatLoadError = tryAppParamsLoadError || appChatListLoadError || undefined
-  const chatLoadRetrying = tryAppParamsFetching || appChatListFetching
-  const retryChatLoad = useCallback(() => {
-    if (tryAppParamsLoadError) refetchTryAppParams()
-    if (appChatListLoadError) refetchAppChatList()
-  }, [appChatListLoadError, refetchAppChatList, refetchTryAppParams, tryAppParamsLoadError])
+  // The chat wrapper renders it wherever the chat shows.
+  const chatLoad = useOwnedQueryErrors(
+    isTryApp ? [tryAppParamsQuery, appChatListQuery] : [appChatListQuery],
+  )
+  const chatLoadError = chatLoad?.error
+  const chatLoadRetrying = chatLoad?.retrying ?? false
+  const retryChatLoad = chatLoad?.retry ?? noop
   const queryClient = useQueryClient()
   const invalidateShareConversations = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations })

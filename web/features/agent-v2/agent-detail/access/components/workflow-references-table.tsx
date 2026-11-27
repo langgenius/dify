@@ -9,6 +9,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 
 type WorkflowReferencesTableProps = {
   agentId: string
@@ -33,6 +34,9 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
       enabled,
     }),
   )
+  const load = useOwnedQueryError(workflowReferencesQuery, enabled)
+  // A failed refetch keeps the loaded rows; the query cache reports it.
+  const loaded = workflowReferencesQuery.data !== undefined
   const workflowReferences = workflowReferencesQuery.data?.data ?? []
 
   return (
@@ -70,23 +74,22 @@ export function WorkflowReferencesTable({ agentId, enabled = true }: WorkflowRef
               {t(($) => $['agentDetail.access.workflow.loading'])}
             </WorkflowAccessStateRow>
           )}
-          {enabled && workflowReferencesQuery.isError && (
+          {load && (
             <WorkflowAccessStateRow>
               <div className="flex items-center justify-center gap-2">
                 <span>{t(($) => $['agentDetail.access.workflow.loadFailed'])}</span>
                 <Button
                   variant="secondary"
                   size="small"
-                  onClick={() => {
-                    void workflowReferencesQuery.refetch()
-                  }}
+                  loading={load.retrying}
+                  onClick={load.retry}
                 >
                   {tCommon(($) => $['operation.retry'])}
                 </Button>
               </div>
             </WorkflowAccessStateRow>
           )}
-          {enabled && workflowReferencesQuery.isSuccess && workflowReferences.length === 0 && (
+          {enabled && loaded && workflowReferences.length === 0 && (
             <WorkflowAccessStateRow>
               {t(($) => $['agentDetail.access.workflow.empty'])}
             </WorkflowAccessStateRow>

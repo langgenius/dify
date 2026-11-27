@@ -24,6 +24,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { ProviderTypeIcon } from './provider-type-icon'
 import { isFileScanProviderType, useFileScanProviderTypeLabel } from './provider-types'
@@ -197,6 +198,8 @@ export function FileScanProvidersPage({ layout }: FileScanProvidersPageProps) {
   const { t: tCommon } = useTranslation(['common'])
   const { canManageCredential: canManage } = useCredentialPermissions()
   const providersQuery = useQuery(consoleQuery.fileScan.providers.get.queryOptions())
+  // A failed first load replaces the list; a failed refetch keeps it and is reported by the cache.
+  const providersLoad = useOwnedQueryError(providersQuery)
   const { data: providerTypes } = useQuery(
     consoleQuery.fileScan.providerTypes.get.queryOptions({ enabled: canManage }),
   )
@@ -228,7 +231,7 @@ export function FileScanProvidersPage({ layout }: FileScanProvidersPageProps) {
       )}
 
       {providersQuery.isPending && <LoadingPlaceholder className="py-10" />}
-      {providersQuery.isError && (
+      {providersLoad && (
         <div
           role="alert"
           className="flex items-center gap-3 rounded-xl border border-components-panel-border bg-background-section p-4"
@@ -237,7 +240,7 @@ export function FileScanProvidersPage({ layout }: FileScanProvidersPageProps) {
           <p className="min-w-0 flex-1 system-sm-regular text-text-secondary">
             {t(($) => $['scanner.loadFailed'])}
           </p>
-          <Button onClick={() => void providersQuery.refetch()}>
+          <Button loading={providersLoad.retrying} onClick={providersLoad.retry}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>

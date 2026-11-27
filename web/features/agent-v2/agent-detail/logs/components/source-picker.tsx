@@ -3,6 +3,7 @@ import type {
   AgentLogSourceResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { TFunction } from 'i18next'
+import type { OwnedQueryError } from '@/service/use-owned-query-error'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -47,15 +48,18 @@ export function AgentLogSourcePicker({
   value,
   groups,
   isLoading,
-  isError,
-  onRetry,
+  load,
+  open,
+  onOpenChange,
   onChange,
 }: {
   value: SourceFilterValue
   groups: AgentLogSourceGroupResponse[]
   isLoading: boolean
-  isError: boolean
-  onRetry: () => void
+  /** The failed load of the sources, claimed by the owner while the popup is open. */
+  load?: OwnedQueryError
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onChange: (value: SourceFilterValue) => void
 }) {
   const { t } = useTranslation(['agentV2', 'common'])
@@ -90,6 +94,8 @@ export function AgentLogSourcePicker({
       }}
       inputValue={inputValue}
       onInputValueChange={setInputValue}
+      open={open}
+      onOpenChange={onOpenChange}
     >
       <ComboboxTrigger
         aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
@@ -131,7 +137,7 @@ export function AgentLogSourcePicker({
             </ComboboxInputGroup>
             <div
               className={cn(
-                isLoading || isError
+                isLoading || load
                   ? 'flex items-center justify-center gap-2 px-3 py-3 text-center system-xs-regular text-text-tertiary'
                   : 'h-0',
               )}
@@ -139,17 +145,22 @@ export function AgentLogSourcePicker({
               <ComboboxStatus className="p-0 system-xs-regular">
                 {isLoading
                   ? t(($) => $['agentDetail.logs.filters.source.loading'])
-                  : isError
+                  : load
                     ? t(($) => $['agentDetail.logs.filters.source.loadFailed'])
                     : null}
               </ComboboxStatus>
-              {isError && (
-                <Button variant="secondary" size="small" onClick={onRetry}>
+              {load && (
+                <Button
+                  variant="secondary"
+                  size="small"
+                  loading={load.retrying}
+                  onClick={load.retry}
+                >
                   {t(($) => $['operation.retry'], { ns: 'common' })}
                 </Button>
               )}
             </div>
-            {!isLoading && !isError && (
+            {!isLoading && !load && (
               <ComboboxList<AgentLogSourceComboboxGroup> className="max-h-69">
                 {(group) => (
                   <ComboboxGroup<AgentLogSourceResponse> key={group.type} items={group.items}>
@@ -179,7 +190,7 @@ export function AgentLogSourcePicker({
               </ComboboxList>
             )}
             <ComboboxEmpty className="px-3 py-3 text-center system-xs-regular">
-              {!isLoading && !isError ? t(($) => $['agentDetail.logs.filters.source.empty']) : null}
+              {!isLoading && !load ? t(($) => $['agentDetail.logs.filters.source.empty']) : null}
             </ComboboxEmpty>
           </ComboboxPopup>
         </ComboboxPositioner>

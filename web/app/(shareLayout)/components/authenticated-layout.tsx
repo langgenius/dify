@@ -15,6 +15,8 @@ import {
   webAppMetaQueryOptions,
   webAppParamsQueryOptions,
 } from '@/service/share-queries'
+import { useOwnedQueryErrors } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
@@ -23,25 +25,25 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore((s) => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore((s) => s.updateUserCanAccessApp)
-  const {
-    isLoading: isLoadingAppParams,
-    data: appParams,
-    error: appParamsError,
-  } = useQuery(webAppParamsQueryOptions())
-  const {
-    isLoading: isLoadingAppInfo,
-    data: appInfo,
-    error: appInfoError,
-  } = useQuery(webAppInfoQueryOptions())
-  const {
-    isLoading: isLoadingAppMeta,
-    data: appMeta,
-    error: appMetaError,
-  } = useQuery(webAppMetaQueryOptions())
-  const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({
+  const appParamsQuery = useQuery(webAppParamsQueryOptions())
+  const { isLoading: isLoadingAppParams, data: appParams } = appParamsQuery
+  const appInfoQuery = useQuery(webAppInfoQueryOptions())
+  const { isLoading: isLoadingAppInfo, data: appInfo } = appInfoQuery
+  const appMetaQuery = useQuery(webAppMetaQueryOptions())
+  const { isLoading: isLoadingAppMeta, data: appMeta } = appMetaQuery
+  const userCanAccessAppQuery = useGetUserCanAccessApp({
     appId: appInfo?.app_id,
     isInstalledApp: false,
   })
+  const { data: userCanAccessApp } = userCanAccessAppQuery
+  // The first failed read replaces the app; a failed refetch keeps it and the cache reports it.
+  const appLoad = useOwnedQueryErrors([
+    appInfoQuery,
+    appParamsQuery,
+    appMetaQuery,
+    userCanAccessAppQuery,
+  ])
+  const appLoadErrorMessage = useRequestErrorMessage(appLoad?.error)
 
   useEffect(() => {
     if (appInfo) updateAppInfo(appInfo)
@@ -82,31 +84,10 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     router.replace(url)
   }, [getSigninUrl, router])
 
-  if (appInfoError) {
+  if (appLoad) {
     return (
       <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={appInfoError.message} />
-      </div>
-    )
-  }
-  if (appParamsError) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={appParamsError.message} />
-      </div>
-    )
-  }
-  if (appMetaError) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={appMetaError.message} />
-      </div>
-    )
-  }
-  if (useCanAccessAppError) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={useCanAccessAppError.message} />
+        <AppUnavailable unknownReason={appLoadErrorMessage} />
       </div>
     )
   }

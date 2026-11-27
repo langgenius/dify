@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { newKnowledgeSettingsReturnPath } from '../routes'
 
 export function KnowledgeModelReadinessBanner({
@@ -31,18 +32,20 @@ export function KnowledgeModelReadinessBanner({
     }),
   )
   const readiness = query.data
+  // A failed first load takes the banner's place; a failed refetch keeps the readiness it had.
+  const load = useOwnedQueryError(query)
   const configurationComplete =
     readiness?.configuration_state === 'active' ||
     readiness?.configuration_state === 'pending-validation'
-  if (query.isPending || (!query.isError && configurationComplete)) return null
+  if (query.isPending || (!load && configurationComplete)) return null
 
-  const isFailure = query.isError || readiness?.configuration_state === 'validation-failed'
-  const title = query.isError
+  const isFailure = !!load || readiness?.configuration_state === 'validation-failed'
+  const title = load
     ? tCommon(($) => $['api.actionFailed'])
     : readiness?.configuration_state === 'validation-failed'
       ? tCommon(($) => $['api.actionFailed'])
       : t(($) => $['overview.attention.modelReadiness.title'])
-  const description = query.isError
+  const description = load
     ? undefined
     : readiness?.active_profile_available
       ? t(($) => $['overview.attention.modelReadiness.description'])
@@ -53,8 +56,8 @@ export function KnowledgeModelReadinessBanner({
       <AlertTitle>{title}</AlertTitle>
       {description && <AlertDescription>{description}</AlertDescription>}
       <AlertActions>
-        {query.isError ? (
-          <Button size="small" onClick={() => void query.refetch()}>
+        {load ? (
+          <Button size="small" loading={load.retrying} onClick={load.retry}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
         ) : (

@@ -124,7 +124,11 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     draftMutationCoordinator.latestDetail = detail
   const draftFiles = detail?.files ?? []
   const readonlyFiles = versionDetailQuery.data?.files ?? []
-  const versionDetailFailed = useOwnedQueryError(versionDetailQuery)
+  // The version's failure replaces the editor, which renders only once the skill itself loads.
+  const versionDetailFailed = useOwnedQueryError(
+    versionDetailQuery,
+    !detailQuery.isPending && detail !== undefined,
+  )
   // The versions panel, while open, replaces the list with a failed first load.
   const versionsLoad = useOwnedQueryErrors(rightPanelMode === 'versions' ? [versionsQuery] : [])
   const activeFiles = activeVersionId ? readonlyFiles : draftFiles

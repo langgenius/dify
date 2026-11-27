@@ -31,6 +31,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedNextPageError, useOwnedQueryError } from '@/service/use-owned-query-error'
 import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
@@ -86,6 +87,10 @@ const WebAppsSectionContent = () => {
     }),
   )
   const installedApps = installedAppsQuery.data ?? emptyInstalledApps
+  // The expanded list shows a failed first load or next page in place; a failed refetch keeps the
+  // list and the cache reports it, as it does any failure while the section is collapsed.
+  const installedAppsLoad = useOwnedQueryError(installedAppsQuery, appsExpanded)
+  const installedAppsNextPageLoad = useOwnedNextPageError(installedAppsQuery, appsExpanded)
   const updatePinStatusMutation = useMutation(
     consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
   )
@@ -239,7 +244,7 @@ const WebAppsSectionContent = () => {
               <div className="sr-only" role="status">
                 {showNoResults ? noResultsMessage : ''}
               </div>
-              {installedAppsQuery.isError && !installedAppsQuery.isFetchNextPageError && (
+              {installedAppsLoad && (
                 <div
                   className="flex flex-col items-start gap-1 px-2 py-2 system-xs-regular text-text-tertiary"
                   role="alert"
@@ -248,9 +253,8 @@ const WebAppsSectionContent = () => {
                   <Button
                     size="small"
                     variant="secondary"
-                    onClick={() => {
-                      void installedAppsQuery.refetch()
-                    }}
+                    loading={installedAppsLoad.retrying}
+                    onClick={installedAppsLoad.retry}
                   >
                     {t(($) => $['operation.retry'], { ns: 'common' })}
                   </Button>
@@ -317,14 +321,14 @@ const WebAppsSectionContent = () => {
                     scrollContainerRef={scrollRef}
                   />
                   <InstalledAppPaginationSkeleton />
-                  {installedAppsQuery.isFetchNextPageError && (
+                  {installedAppsNextPageLoad && (
                     <div
                       className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body px-2 system-xs-regular text-text-tertiary"
                       role="alert"
                     >
                       <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
                       <Button
-                        loading={installedAppsQuery.isFetchingNextPage}
+                        loading={installedAppsNextPageLoad.retrying}
                         size="small"
                         variant="secondary"
                         onClick={() => {

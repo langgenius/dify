@@ -100,7 +100,6 @@ export const usePluginSettingsAccess = () => {
       permissionQuery.isFetching ||
       !!isLoadingCurrentWorkspace ||
       !!isLoadingWorkspacePermissionKeys,
-    permissionError: permissionQuery.error,
     isPermissionUpdatePending,
   }
 }
@@ -142,9 +141,7 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     canSetPluginPreferences: permissionAccess.canSetPluginPreferences,
     currentDifyVersion: permissionAccess.currentDifyVersion,
     isPermissionLoading: permissionAccess.isPermissionLoading,
-    permissionError: permissionAccess.permissionError,
     isReferenceSettingLoading: autoUpgradeQuery.isLoading || autoUpgradeQuery.isFetching,
-    referenceSettingError: autoUpgradeQuery.error,
     isUpdatePending,
   }
 }

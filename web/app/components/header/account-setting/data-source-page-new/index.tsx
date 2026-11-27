@@ -44,6 +44,13 @@ function DataSourceCardSkeleton() {
   )
 }
 
+const defaultLayout: NonNullable<DataSourcePageProps['layout']> = ({ body, toolbar }) => (
+  <>
+    {toolbar}
+    {body}
+  </>
+)
+
 function DataSourceListSkeleton() {
   const { t } = useTranslation(['common'])
 
@@ -210,13 +217,11 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     </>
   )
 
-  if (layout)
-    return <div className="relative flex min-h-0 flex-1 flex-col">{layout({ body, toolbar })}</div>
-
+  // One render path, so the claimed load failure renders under either layout.
+  const renderLayout = layout ?? defaultLayout
   return (
-    <div>
-      {toolbar}
-      {body}
+    <div className={layout ? 'relative flex min-h-0 flex-1 flex-col' : undefined}>
+      {renderLayout({ body, toolbar })}
     </div>
   )
 }

@@ -17,6 +17,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
 import LeftHeader from './left-header'
 import ProcessDocuments from './process-documents'
@@ -35,16 +36,15 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
 
-  const {
-    data: lastRunData,
-    isFetching: isFetchingLastRunData,
-    isError,
-  } = useQuery(
+  const lastRunQuery = useQuery(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.pipelineExecutionLog.get.queryOptions({
       input: { params: { dataset_id: datasetId, document_id: documentId } },
       select: selectPipelineExecutionLog,
     }),
   )
+  const { data: lastRunData, isFetching: isFetchingLastRunData } = lastRunQuery
+  // A failed first load replaces the page once it stops fetching.
+  const lastRunLoad = useOwnedQueryError(lastRunQuery, !isFetchingLastRunData)
 
   const files = useMemo(() => {
     const files: CustomFile[] = []
@@ -208,7 +208,7 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
     return <LoadingPlaceholder className="h-full" />
   }
 
-  if (isError)
+  if (lastRunLoad)
     return (
       <AppUnavailable
         code={500}

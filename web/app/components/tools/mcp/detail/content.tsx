@@ -80,8 +80,12 @@ const MCPDetailContent: FC<Props> = ({
     consoleQuery.workspaces.current.toolProvider.mcp.auth.post.mutationOptions(),
   )
   const toolList = data?.tools || []
-  // A failed tool list is not "no tools yet", which would only offer to fetch them again.
-  const toolsLoad = useOwnedQueryError(toolsQuery)
+  // A failed tool list is not "no tools yet", which would only offer to fetch them again. It shows
+  // for an authorized server while no tool update is running.
+  const toolsLoad = useOwnedQueryError(
+    toolsQuery,
+    !isUpdating && !!detail && !!detail.is_team_authorization,
+  )
   const toolsLoadErrorMessage = useRequestErrorMessage(toolsLoad?.error)
 
   const handleUpdateTools = useCallback(() => {

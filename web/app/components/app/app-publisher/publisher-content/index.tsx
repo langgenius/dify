@@ -11,6 +11,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { upgradeHighlightStyle } from '../built-in-publisher/constants'
 import { WorkflowKindChangeDialog } from '../built-in-publisher/workflow-kind-change-dialog'
 import { PublisherEnvironmentTabs } from '../environment-tabs'
@@ -194,6 +195,16 @@ export function PublisherContent({
   ) : undefined
   const showBuiltInPublisher =
     !supportsMultiEnvironment || selectedEnvironmentId === BUILT_IN_ENVIRONMENT_ID
+  // An environment without a deployment shows the latest published version, so the environment
+  // flow renders its failed load in place.
+  const publishedWorkflowLoad = useOwnedQueryError(
+    publish.publishedWorkflowQuery,
+    open &&
+      !showBuiltInPublisher &&
+      selectedEnvironment?.in_use === false &&
+      !selectedEnvironmentDeployment &&
+      !isSelectedEnvironmentDeploymentLoading,
+  )
 
   return (
     <>
@@ -272,7 +283,7 @@ export function PublisherContent({
           isEnvironmentInUse: selectedEnvironment?.in_use === true,
           isDeploymentError:
             isSelectedEnvironmentDeploymentError ||
-            (selectedEnvironment?.in_use === false && publish.isPublishedWorkflowError),
+            (selectedEnvironment?.in_use === false && Boolean(publishedWorkflowLoad)),
           isDeploymentLoading:
             isSelectedEnvironmentDeploymentLoading ||
             (selectedEnvironment?.in_use === false && publish.isPublishedWorkflowLoading),

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { DeleteTokenDialogContent } from './delete-token-dialog'
@@ -86,11 +87,12 @@ export default function ResourceAccessTokenPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const lastPage = Math.max(1, totalPages)
   if (tokensQuery.isSuccess && !tokensQuery.isPlaceholderData && page > lastPage) setPage(lastPage)
-  const hasLoadError = tokensQuery.isError && !tokensQuery.data
+  // A failed page load replaces the list; a failed refetch keeps it and the cache reports it.
+  const tokensLoad = useOwnedQueryError(tokensQuery)
   const isEmptyList =
     !tokensQuery.isPending &&
     !tokensQuery.isPlaceholderData &&
-    !hasLoadError &&
+    !tokensLoad &&
     total === 0 &&
     !debouncedSearchText
 
@@ -118,7 +120,7 @@ export default function ResourceAccessTokenPage() {
         </Button>
       </div>
 
-      {hasLoadError ? (
+      {tokensLoad ? (
         <div
           role="alert"
           className="flex min-h-90 flex-col items-center justify-center gap-3 text-center"
@@ -126,7 +128,7 @@ export default function ResourceAccessTokenPage() {
           <div className="system-sm-regular text-text-tertiary">
             {t(($) => $['resourceAccessToken.loadError'], { ns: 'accountSettings' })}
           </div>
-          <Button onClick={() => void tokensQuery.refetch()}>
+          <Button loading={tokensLoad.retrying} onClick={tokensLoad.retry}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>
         </div>
@@ -163,7 +165,7 @@ export default function ResourceAccessTokenPage() {
       >
         {({ payload }) => (
           <>
-            {!hasLoadError && !isEmptyList && (
+            {!tokensLoad && !isEmptyList && (
               <ResourceAccessTokenTable
                 rows={rows}
                 deletionDisabled={isSwitchingTokenList}
@@ -191,7 +193,7 @@ export default function ResourceAccessTokenPage() {
         )}
       </AlertDialog>
 
-      {!hasLoadError && !isEmptyList && (
+      {!tokensLoad && !isEmptyList && (
         <div className="flex items-center gap-4 system-xs-regular text-text-tertiary">
           <span className="shrink-0">
             {t(($) => $['resourceAccessToken.total'], { ns: 'accountSettings', total })}

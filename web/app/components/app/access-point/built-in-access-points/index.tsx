@@ -73,10 +73,15 @@ export function BuiltInAccessPoints({
     }),
   )
   const actions = useAccessPointActions(appId, canManageAccessPoint)
-  const failedLoad = useOwnedQueryErrors([
-    ...(shouldFetchWorkflow ? [workflowQuery] : []),
-    ...(needsPublishedTriggers ? [triggersQuery] : []),
-  ])
+  // The alert renders once the app detail replaces the loading placeholder.
+  const failedLoad = useOwnedQueryErrors(
+    appInfo
+      ? [
+          ...(shouldFetchWorkflow ? [workflowQuery] : []),
+          ...(needsPublishedTriggers ? [triggersQuery] : []),
+        ]
+      : [],
+  )
   const loadErrorMessage = useRequestErrorMessage(
     failedLoad?.error,
     t(($) => $['common.loadFailed'], { ns: 'deployments' }),

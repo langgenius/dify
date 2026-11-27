@@ -1,6 +1,6 @@
 'use client'
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
+import type { QueryKey, UseQueryOptions, UseQueryResult } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'
 import type { ReactNode } from 'react'
@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { echarts } from '@/app/components/base/line-chart/echarts'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
@@ -216,9 +217,8 @@ type BizChartConfig<TData extends ChartResponse> = {
 }
 
 function ChartCard({
-  response,
+  query,
   pending,
-  failed,
   retry,
   period,
   config: {
@@ -234,13 +234,15 @@ function ChartCard({
   },
 }: {
   config: BizChartConfig<ChartResponse>
-  response: ChartResponse | undefined
+  query: UseQueryResult<ChartResponse>
   pending: boolean
-  failed: boolean
   retry: () => void
   period: PeriodParams
 }) {
   const { t } = useTranslation(['appOverview', 'common'])
+  const response = query.data
+  // The card shows its failed load once every chart has settled.
+  const load = useOwnedQueryError(query, !pending)
   const fallbackKey = emptyValueKey ?? valueKey
   const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
   const explanationSelector: SelectorParam<'appOverview'> =
@@ -254,7 +256,7 @@ function ChartCard({
   if (pending || !response) {
     return (
       <ChartFrame title={title} explanation={explanation} className={className} busy={pending}>
-        {!pending && failed ? (
+        {load ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6">
             <p role="alert" className="system-sm-regular text-text-tertiary">
               {t(($) => $['api.actionFailed'], { ns: 'common' })}
@@ -521,9 +523,8 @@ export function AppCharts({ id, period, appMode }: AppChartsProps) {
           <ChartCard
             key={config.titleKey}
             config={config}
-            response={query.data}
+            query={query}
             pending={pending}
-            failed={query.isError}
             retry={retryFailedQueries}
             period={period}
           />

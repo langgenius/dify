@@ -233,6 +233,9 @@ export function ContactsDirectoryPage() {
   const rowTriggersRef = useRef(new Map<string, HTMLButtonElement>())
   const selectedContactIdRef = useRef<string | null>(null)
   const api = consoleQuery.workspaces.current.humanInput.v2.contacts
+  // The directory renders only with access and once the IM capability resolves.
+  const directoryShown =
+    context.permissions.canViewContacts && context.imCentrallyManaged !== undefined
   const directoryQuery = useInfiniteQuery(
     api.get.infiniteOptions({
       input: (page: number) => ({
@@ -245,15 +248,12 @@ export function ContactsDirectoryPage() {
       }),
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
-      enabled:
-        Boolean(context.workspaceId) &&
-        context.permissions.canViewContacts &&
-        context.imCentrallyManaged !== undefined,
+      enabled: Boolean(context.workspaceId) && directoryShown,
     }),
   )
   // A failed first load replaces the directory and a failed next page shows beside the loaded
   // contacts; a failed refresh keeps the contacts and is the query cache's to report.
-  const directoryLoad = useOwnedQueryError(directoryQuery)
+  const directoryLoad = useOwnedQueryError(directoryQuery, directoryShown)
   const directoryPage = useOwnedNextPageError(directoryQuery)
   const contacts = [
     ...new Map(
@@ -307,7 +307,7 @@ export function ContactsDirectoryPage() {
   const hasFilters = Boolean(search) || kind !== 'all'
   const selectedContact = detailsQuery.data
   // The details panel replaces a contact it could not load with "not found" or the load error.
-  const detailsLoad = useOwnedQueryError(detailsQuery)
+  const detailsLoad = useOwnedQueryError(detailsQuery, directoryShown && !!contactId)
   const detailsFailed = detailsLoad && !isNotFoundError(detailsLoad.error) ? detailsLoad : undefined
   const selectedContactId = selectedContact?.id
   const removableContactIds = contacts

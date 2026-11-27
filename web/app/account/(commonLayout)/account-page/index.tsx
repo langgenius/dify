@@ -44,14 +44,15 @@ export default function AccountPage() {
     }),
   )
   const apps = appListQuery.data?.data || []
-  const appListLoad = useOwnedQueryError(appListQuery)
+  // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
+  const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
+  const userProfile = userProfileResp.profile
+  // The page renders nothing until the profile is there.
+  const appListLoad = useOwnedQueryError(appListQuery, !!userProfile)
   const appListErrorMessage = useRequestErrorMessage(
     appListLoad?.error,
     t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
-  // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
-  const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
-  const userProfile = userProfileResp.profile
   const { data: enableEducationPlan } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.education.enabled,

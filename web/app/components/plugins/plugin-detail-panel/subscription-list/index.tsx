@@ -29,10 +29,10 @@ export const SubscriptionList = withErrorBoundary(
     pluginDetail,
   }: SubscriptionListProps) => {
     const { t } = useTranslation(['common'])
-    const { isLoading, subscriptionsQuery, refetch } = useSubscriptionList()
+    const { subscriptionsQuery, refetch } = useSubscriptionList()
     const subscriptionsLoad = useOwnedQueryError(subscriptionsQuery)
     const loadErrorMessage = useRequestErrorMessage(subscriptionsLoad?.error)
-    if (isLoading) {
+    if (subscriptionsQuery.isLoading) {
       return (
         <div className="flex items-center justify-center py-4">
           <LoadingPlaceholder />

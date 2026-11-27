@@ -89,7 +89,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     }),
   )
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = recordsQuery
-  const recordsLoad = useOwnedQueryError(recordsQuery)
+  const recordsLoad = useOwnedQueryError(recordsQuery, canRunRetrievalRecall)
 
   const total = recordsRes?.total || 0
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1

@@ -67,12 +67,14 @@ export function usePublishController({
   const workflowStore = use(WorkflowContext)
   const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
   const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
+  const publishedWorkflowQuery = useQuery(
+    appWorkflowQueryOptions(isWorkflowApp ? (appId ?? '') : ''),
+  )
   const {
     data: publishedWorkflow,
-    isError: isPublishedWorkflowError,
     isLoading: isPublishedWorkflowLoading,
     isSuccess: isPublishedWorkflowSuccess,
-  } = useQuery(appWorkflowQueryOptions(isWorkflowApp ? (appId ?? '') : ''))
+  } = publishedWorkflowQuery
   const currentPublishedAt =
     isWorkflowApp && isPublishedWorkflowSuccess
       ? publishedWorkflow?.created_at
@@ -185,12 +187,13 @@ export function usePublishController({
     hasPublishedVersion,
     isChatApp,
     isPublishing,
-    isPublishedWorkflowError,
     isPublishedWorkflowLoading,
     isPublishedWorkflowSuccess,
     isWorkflowApp,
     published,
     publishedWorkflow,
+    // Its owner claims a failed load where it renders one.
+    publishedWorkflowQuery,
     publishWorkflowTool,
     resetPublished: () => setPublished(false),
   }

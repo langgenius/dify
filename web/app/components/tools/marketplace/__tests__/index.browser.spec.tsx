@@ -53,9 +53,7 @@ const context = (
   plugins: [plugin],
   handleScroll: () => {},
   page: 1,
-  isLoadFailed: false,
-  isRetrying: false,
-  retryLoad: () => {},
+  loadError: undefined,
   ...overrides,
 })
 function renderMarketplace(props: Partial<Props> = {}, canInstall = true) {
@@ -111,7 +109,10 @@ it('opens the caller panel and exposes a marketplace link with the current filte
 it('shows a failed catalog load with a retry instead of an empty list', async () => {
   const retryLoad = vi.fn()
   const screen = await renderMarketplace({
-    marketplaceContext: context({ plugins: undefined, isLoadFailed: true, retryLoad }),
+    marketplaceContext: context({
+      plugins: undefined,
+      loadError: { error: new Error('unavailable'), retry: retryLoad, retrying: false },
+    }),
   })
   const alert = screen.getByRole('alert')
   await expect.element(alert.getByText('plugin.marketplace.loadError')).toBeVisible()

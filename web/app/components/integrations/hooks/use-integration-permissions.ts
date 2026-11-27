@@ -22,7 +22,6 @@ export function useIntegrationPermissions(section: IntegrationSection) {
     canSetPermissions,
     canUpdatePlugin,
     isPermissionLoading,
-    permissionError,
     setPluginPermissionSettings,
     isPermissionUpdatePending,
   } = usePluginSettingsAccess()
@@ -53,7 +52,6 @@ export function useIntegrationPermissions(section: IntegrationSection) {
     isPluginCategory,
     isReferenceSettingLoading: isPermissionLoading,
     permission,
-    referenceSettingError: permissionError,
     showPermissionQuickPanel,
     showPluginCategorySetting,
   }

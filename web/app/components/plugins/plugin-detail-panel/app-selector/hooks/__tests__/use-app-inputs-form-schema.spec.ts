@@ -134,7 +134,7 @@ it('reports an unavailable app without exposing input fields', async () => {
   const { result } = renderHookWithConsoleQuery(() =>
     useAppInputsFormSchema({ appDetail: { id: 'missing-app', mode: 'chat' } }),
   )
-  await waitFor(() => expect(result.current.isError).toBe(true))
+  await waitFor(() => expect(result.current.loadError).toBeDefined())
   expect(result.current.inputFormSchema).toEqual([])
 })
 
@@ -144,7 +144,7 @@ it('keeps text inputs usable when the upload-limit request fails', async () => {
     useAppInputsFormSchema({ appDetail: { id: 'app-1', mode: 'chat' } }),
   )
   await waitFor(() => expect(result.current.isLoading).toBe(false))
-  expect(result.current.isError).toBe(false)
+  expect(result.current.loadError).toBeUndefined()
   expect(result.current.inputFormSchema).toEqual([
     expect.objectContaining({ type: 'text-input', variable: 'question' }),
   ])
@@ -161,7 +161,7 @@ it('retries all workflow panel queries and replaces the failed state with inputs
   )
   await waitFor(() => {
     expect(result.current.isLoading).toBe(false)
-    expect(result.current.isError).toBe(true)
+    expect(result.current.loadError).toBeDefined()
   })
   act(() => result.current.retry())
   await waitFor(() =>
@@ -169,7 +169,7 @@ it('retries all workflow panel queries and replaces the failed state with inputs
       expect.objectContaining({ variable: 'attachments', fileUploadConfig: uploadConfig }),
     ]),
   )
-  expect(result.current.isError).toBe(false)
+  expect(result.current.loadError).toBeUndefined()
   expect(fetchApp).toHaveBeenCalledTimes(2)
   expect(fetchWorkflow).toHaveBeenCalledTimes(2)
   expect(fetchUploadConfig).toHaveBeenCalledTimes(2)

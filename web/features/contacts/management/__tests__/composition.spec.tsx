@@ -6,7 +6,10 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { ContactsManagementRuntimeProvider } from '../composition'
 import { useContactsFeatureContext } from '../composition-context'
@@ -15,6 +18,8 @@ const service = vi.hoisted(() => ({
   getFeatures: vi.fn<() => Promise<GetFeaturesResponse>>(),
   getWorkspace: vi.fn<() => Promise<CurrentWorkspaceSummaryResponse>>(),
 }))
+
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
@@ -47,7 +52,9 @@ function CapabilityProbe() {
       </output>
       {context.imCapabilityError && (
         <>
-          <p role="alert">{context.imCapabilityError.message}</p>
+          <p role="alert">
+            {context.imCapabilityError instanceof Error && context.imCapabilityError.message}
+          </p>
           <button type="button" onClick={context.retryIMCapability}>
             Retry capabilities
           </button>
@@ -59,6 +66,7 @@ function CapabilityProbe() {
 
 function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE', hydrateWorkspace = true) {
   const queryClient = new QueryClient({
+    ...createErrorToastCaches(),
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
   queryClient.setQueryData(
@@ -94,6 +102,7 @@ function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE', hydrateWor
 describe('ContactsManagementRuntimeProvider capability', () => {
   beforeEach(() => {
     service.getFeatures.mockReset()
+    vi.mocked(toast.error).mockClear()
     service.getWorkspace.mockResolvedValue({
       id: 'workspace-1',
       name: 'Workspace',
@@ -174,10 +183,15 @@ describe('ContactsManagementRuntimeProvider capability', () => {
 
   it('keeps normal content mounted after a features failure and retries without authorizing a fallback mode', async () => {
     const user = userEvent.setup()
-    service.getFeatures.mockRejectedValueOnce(new Error('Capabilities unavailable'))
+    service.getFeatures.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'Capabilities unavailable' }),
+    )
     renderRuntime('COMMUNITY')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Capabilities unavailable')
+    // The claimed failure is on screen, so the query cache does not also toast it.
+    await act(async () => {})
+    expect(toast.error).not.toHaveBeenCalled()
     expect(screen.getByText('Home content')).toBeInTheDocument()
     expect(screen.getByLabelText('Contacts management capability')).toHaveTextContent(
       'Loading capabilities',

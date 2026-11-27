@@ -8,6 +8,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import s from './index.module.css'
 
 type IProps = {
@@ -19,12 +20,16 @@ const FilePreview = ({ file, hidePreview }: IProps) => {
   const { t } = useTranslation(['common', 'datasetCreation'])
   const headingId = useId()
   const fileID = file?.id
-  const { data, isPending, isError } = useQuery(
+  const previewQuery = useQuery(
     consoleQuery.files.byFileId.preview.get.queryOptions({
       input: fileID ? { params: { file_id: fileID } } : skipToken,
       retry: false,
     }),
   )
+  const { data, isPending } = previewQuery
+  // The status line reports a failed preview in place of the content.
+  const previewLoad = useOwnedQueryError(previewQuery)
+  const isError = !!previewLoad
   const loading = !!fileID && isPending
   const statusText = !fileID
     ? ''

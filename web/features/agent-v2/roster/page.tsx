@@ -102,6 +102,8 @@ export default function RosterPage() {
       initialPageParam: 1,
     }),
     placeholderData: keepPreviousData,
+    // The list shows every failure itself: a failed first load, next page or refresh.
+    meta: { errorToast: false },
   })
 
   const rosterItems = rosterPages?.pages.flatMap((page) => page.data) ?? []

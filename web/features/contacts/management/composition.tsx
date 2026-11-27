@@ -8,6 +8,7 @@ import { useMemo } from 'react'
 import { currentWorkspaceIdAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
 import { selectIMCentrallyManaged } from '../im-capability'
 import { ContactsFeatureContext } from './composition-context'
 
@@ -31,30 +32,40 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
       retry: false,
     }),
   )
-  const { error: capabilityError, refetch: refetchCapability } = capability
-  const imCentrallyManaged = capability.isSuccess ? capability.data : undefined
+  const canViewContacts = Boolean(workspaceId) && canManage
+  // The directory replaces itself with a failed first capability read; a failed refresh keeps the
+  // resolved capability and is the query cache's to report.
+  const capabilityLoad = useOwnedQueryError(capability, canViewContacts)
+  const imCentrallyManaged = capability.data
   const deployment =
     deploymentEdition === 'ENTERPRISE'
       ? 'ee'
       : deploymentEdition === 'CLOUD'
         ? 'saas'
         : ('ce' as const)
+  const capabilityError = capabilityLoad?.error
+  const retryIMCapability = capabilityLoad?.retry
   const context = useMemo<ContactsFeatureContextValue>(
     () => ({
       deployment,
       imCentrallyManaged,
       imCapabilityError: capabilityError,
-      retryIMCapability: () => {
-        void refetchCapability()
-      },
+      retryIMCapability,
       workspaceId,
       permissions: {
-        canViewContacts: Boolean(workspaceId) && canManage,
-        canManageContacts: Boolean(workspaceId) && canManage,
-        canManageMembers: Boolean(workspaceId) && canManage,
+        canViewContacts,
+        canManageContacts: canViewContacts,
+        canManageMembers: canViewContacts,
       },
     }),
-    [canManage, capabilityError, refetchCapability, deployment, imCentrallyManaged, workspaceId],
+    [
+      canViewContacts,
+      capabilityError,
+      retryIMCapability,
+      deployment,
+      imCentrallyManaged,
+      workspaceId,
+    ],
   )
   return <ContactsManagementProvider context={context}>{children}</ContactsManagementProvider>
 }

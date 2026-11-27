@@ -17,6 +17,8 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { consoleQuery } from '@/service/console'
+import { useOwnedQueryError } from '@/service/use-owned-query-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import Header from '../../datasets/create/website/base/header'
 import NotionConnector from '../notion-connector'
 import WorkspaceSelector from './credential-selector'
@@ -128,12 +130,7 @@ const NotionPageSelector = ({
     selectedCredentialId,
   ])
 
-  const {
-    data: notionsPages,
-    isFetching: isFetchingNotionPages,
-    isError: isFetchingNotionPagesError,
-    refetch: refetchNotionPages,
-  } = useQuery(
+  const notionPagesQuery = useQuery(
     consoleQuery.notion.preImport.pages.get.queryOptions({
       input: currentCredentialId
         ? {
@@ -146,6 +143,13 @@ const NotionPageSelector = ({
       retry: 0,
       select: toNotionWorkspaces,
     }),
+  )
+  const { data: notionsPages, isFetching: isFetchingNotionPages } = notionPagesQuery
+  // A failed first load replaces the page list, which renders once a credential is selected.
+  const notionPagesLoad = useOwnedQueryError(notionPagesQuery, Boolean(currentCredentialId))
+  const notionPagesErrorMessage = useRequestErrorMessage(
+    notionPagesLoad?.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
   )
   const notionPages = notionsPages?.flatMap((workspace) => workspace.pages) || []
 
@@ -241,15 +245,15 @@ const NotionPageSelector = ({
           <SearchInput value={searchValue} onChange={handleSearchValueChange} />
         </div>
         <div className="overflow-hidden rounded-b-xl">
-          {isFetchingNotionPagesError ? (
+          {notionPagesLoad ? (
             <div className="flex h-74 flex-col items-center justify-center gap-3">
               <p role="alert" className="text-text-secondary">
-                {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                {notionPagesErrorMessage}
               </p>
               <Button
                 size="small"
-                loading={isFetchingNotionPages}
-                onClick={() => void refetchNotionPages()}
+                loading={notionPagesLoad.retrying}
+                onClick={notionPagesLoad.retry}
               >
                 {t(($) => $['operation.retry'], { ns: 'common' })}
               </Button>
