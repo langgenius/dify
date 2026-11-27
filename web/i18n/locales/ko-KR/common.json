@@ -110,7 +110,6 @@
   "feedback.placeholder": "문제가 무엇인지 또는 어떻게 개선할 수 있는지 설명해 주십시오...",
   "feedback.subtitle": "이 응답에서 무엇이 잘못되었는지 말씀해 주세요.",
   "feedback.title": "피드백 제공하기",
-  "fileUploader.fileExtensionBlocked": "보안상의 이유로 이 파일 형식은 차단되었습니다",
   "fileUploader.fileExtensionNotSupport": "지원되지 않는 파일 확장자",
   "fileUploader.pasteFileLink": "파일 링크 붙여넣기",
   "fileUploader.pasteFileLinkInputPlaceholder": "URL 입력...",

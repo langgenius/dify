@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
@@ -52,6 +52,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm import model_access
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
+from core.tools.entities.common_entities import I18nObjectDict
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod, FileType, file_manager
@@ -157,6 +158,8 @@ class WorkflowAgentRuntimeRequest:
     node_job: WorkflowNodeJobConfig
     metadata: dict[str, Any]
     available_tools: tuple[AgentRuntimeToolDefinition, ...] = ()
+    # Display labels belong to the prepared API run, never the native request.
+    tool_labels: Mapping[str, I18nObjectDict] = field(default_factory=dict)
 
 
 class WorkflowAgentRuntimeRequestBuilder:
@@ -175,6 +178,12 @@ class WorkflowAgentRuntimeRequestBuilder:
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
+        """Prepare a validated node invocation and its detached display labels.
+
+        Existing binding, model and tool validation errors still abort prepare.
+        Returned labels describe the resolved exposed names without changing
+        native configuration, request metadata or tool/call identity.
+        """
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
         node_job = WorkflowNodeJobConfig.model_validate(context.binding.node_job_config_dict)
         node_job.output_routes.validate_for_execution()
@@ -322,6 +331,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 if context.dify_context.capture_agent_evaluation_trace
                 else ()
             ),
+            tool_labels={name: label.copy() for name, label in tool_layers.tool_labels.items()},
         )
 
     @staticmethod

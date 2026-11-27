@@ -37,6 +37,7 @@ from models.agent_config_entities import (
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
+from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.config_service import (
     AgentConfigService,
     AgentConfigServiceError,
@@ -46,7 +47,6 @@ from services.agent.config_service import (
     ConfigPushSkillItem,
 )
 from services.agent.skill_package_service import SkillPackageError
-from services.agent_config_contracts import AgentConfigVersionKind
 
 MODULE = "services.agent.config_service"
 TENANT = "11111111-1111-1111-1111-111111111111"

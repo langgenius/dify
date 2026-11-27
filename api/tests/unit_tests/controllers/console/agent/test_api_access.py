@@ -1,7 +1,7 @@
 """Exercise Agent Console routes with real admission and persistence."""
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field, replace
 from functools import partial
 from http import HTTPStatus
@@ -66,7 +66,16 @@ from controllers.console.app.agent_config_inspector import (
     AgentConfigManifestByAgentApi,
     AgentConfigSkillFileDownloadByAgentApi,
 )
+from controllers.console.app.audio import AgentChatMessageAudioApi, AgentChatMessageTextApi, AgentTextToSpeechVoicesApi
+from controllers.console.app.completion import (
+    _BUILD_CHAT_FINALIZATION_QUERY,
+    AgentBuildChatFinalizeApi,
+    AgentChatMessageApi,
+    AgentChatMessageStopApi,
+)
+from controllers.console.app.message import AgentChatMessageListApi
 from controllers.console.wraps import _is_setup_completed
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.impl import base as plugin_http
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
@@ -115,17 +124,21 @@ from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, U
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowType
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from services.agent.app_composer import AgentAppComposer
 from services.agent.composer_tools import list_workspace_dify_tools
+from services.agent.console_runtime import AgentConsoleRuntime
 from services.agent.knowledge_spaces import authorize_composer_knowledge
+from services.app_task_service import AppTaskControlService
 from services.enterprise.base import EnterpriseRequest
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.app_entities import AppEvent
 from services.evaluation_service import EvaluationService
+from services.feature_service import FeatureService
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_app, make_upload_file, make_workflow
 from tests.helpers.unit.rbac_fakes import RBACDomain
+from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
 
 @dataclass(frozen=True)
@@ -238,6 +251,12 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(
             AgentConfigSkillFileDownloadByAgentApi, "/agent/<uuid:agent_id>/config/skills/<string:name>/files/download"
         )
+        api.add_resource(AgentChatMessageApi, "/agent/<uuid:agent_id>/chat-messages")
+        api.add_resource(AgentBuildChatFinalizeApi, "/agent/<uuid:agent_id>/build-chat/finalize")
+        api.add_resource(AgentChatMessageStopApi, "/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop")
+        api.add_resource(AgentChatMessageAudioApi, "/agent/<uuid:agent_id>/audio-to-text")
+        api.add_resource(AgentChatMessageTextApi, "/agent/<uuid:agent_id>/text-to-audio")
+        api.add_resource(AgentTextToSpeechVoicesApi, "/agent/<uuid:agent_id>/text-to-audio/voices")
         api.add_resource(AgentComposerApi, "/agent/<uuid:agent_id>/composer")
         api.add_resource(AgentComposerCandidatesApi, "/agent/<uuid:agent_id>/composer/candidates")
         api.add_resource(AgentComposerValidateApi, "/agent/<uuid:agent_id>/composer/validate")
@@ -247,6 +266,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
+        api.add_resource(AgentChatMessageListApi, "/agent/<uuid:agent_id>/chat-messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
         api.add_resource(AgentAppCopyApi, "/agent/<uuid:agent_id>/copy")
@@ -1425,6 +1445,281 @@ def test_workflow_config_validates_request_before_resolving_missing_app(harness:
     upload = harness.client.post(f"{path}/files/batch", headers=harness.headers, json={"upload_file_ids": []})
     assert upload.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, upload.get_json()
     assert upload.get_json()["code"] == "unprocessable_entity"
+
+
+@dataclass(frozen=True)
+class _AgentGenerationCall:
+    app_id: str
+    account_id: str
+    args: dict[str, object]
+    invoke_from: InvokeFrom
+    streaming: bool
+
+
+@dataclass
+class _AgentGenerator:
+    calls: list[_AgentGenerationCall] = field(default_factory=list)
+    events: list[str] = field(default_factory=list)
+    closed_streams: int = 0
+
+    def __call__(
+        self,
+        *,
+        app_model: App,
+        user: Account,
+        args: Mapping[str, object],
+        invoke_from: InvokeFrom,
+        session: Session,
+        streaming: bool,
+    ) -> Iterator[str]:
+        """Record the call and stage a write that requires the runtime's final commit."""
+        conversation_id = args["conversation_id"]
+        assert isinstance(conversation_id, str)
+        self.calls.append(_AgentGenerationCall(app_model.id, user.id, dict(args), invoke_from, streaming))
+        session.get_one(Conversation, conversation_id).name = f"Generation {len(self.calls)}"
+        return self._stream(conversation_id)
+
+    def _stream(self, conversation_id: str) -> Iterator[str]:
+        """Emit a complete SSE reply and distinguish draining through the terminal event from exhaustion."""
+        try:
+            self.events.append("ping")
+            yield "event: ping\n\n"
+            for event_name in ("message", "message_end"):
+                self.events.append(event_name)
+                payload = {"event": event_name, "conversation_id": conversation_id}
+                yield f"data: {json.dumps(payload)}\n\n"
+            self.events.append("exhausted")
+        finally:
+            self.closed_streams += 1
+
+
+@pytest.fixture
+def agent_generator(harness: Harness) -> _AgentGenerator:
+    """Keep the admitted runtime and database real while substituting its generation engine."""
+    app = harness.client.application
+    with app.app_context():
+        services = application_services()
+    generator = _AgentGenerator()
+    runtime = AgentConsoleRuntime(
+        session_factory=harness.sessions,
+        preview_enabled=FeatureService.is_agent_preview_enabled,
+        generate=generator,
+    )
+    app.extensions["application_services"] = replace(services, agent_apps=replace(services.agent_apps, runtime=runtime))
+    return generator
+
+
+def test_agent_preview_chat_creates_and_reuses_conversation(harness: Harness, agent_generator: _AgentGenerator) -> None:
+    """Start and resume Preview over SSE, committing generation work in the selected conversation."""
+    agent_id, app_id = harness.create_agent()
+    path = f"/console/api/agent/{agent_id}/chat-messages"
+    headers = {**harness.headers, "X-Trace-Id": "preview-trace"}
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
+        started = harness.client.post(path, headers=headers, json={"inputs": {}, "query": "Start"}, buffered=True)
+        assert started.status_code == HTTPStatus.OK, started.get_data(as_text=True)
+        with harness.sessions() as session:
+            preview = session.scalars(
+                select(AgentDebugConversation).where(AgentDebugConversation.agent_id == agent_id)
+            ).one()
+            assert preview.draft_type == AgentConfigDraftType.DRAFT
+            assert preview.tenant_id == harness.tenant_id
+            assert (preview.account_id, preview.app_id) == (harness.account_id, app_id)
+            conversation_id = preview.conversation_id
+            assert session.get_one(Conversation, conversation_id).name == "Generation 1"
+        resumed = harness.client.post(
+            path,
+            headers=headers,
+            json={"inputs": {}, "query": "Resume", "conversation_id": conversation_id},
+            buffered=True,
+        )
+
+    for response in (started, resumed):
+        assert response.status_code == HTTPStatus.OK, response.get_data(as_text=True)
+        assert response.mimetype == "text/event-stream"
+        ping, message, end, trailing = response.get_data(as_text=True).split("\n\n")
+        assert (ping, trailing) == ("event: ping", "")
+        assert json.loads(message.removeprefix("data: ")) == {"event": "message", "conversation_id": conversation_id}
+        assert json.loads(end.removeprefix("data: ")) == {"event": "message_end", "conversation_id": conversation_id}
+
+    assert len(agent_generator.calls) == 2
+    for call, query in zip(agent_generator.calls, ("Start", "Resume"), strict=True):
+        assert (call.app_id, call.account_id, call.invoke_from, call.streaming) == (
+            app_id,
+            harness.account_id,
+            InvokeFrom.DEBUGGER,
+            True,
+        )
+        assert call.args["draft_type"] == "draft"
+        assert call.args["conversation_id"] == conversation_id
+        assert call.args["query"] == query
+        assert call.args["external_trace_id"] == "preview-trace"
+    with harness.sessions() as session:
+        assert session.get_one(Conversation, conversation_id).name == "Generation 2"
+
+
+def test_agent_build_finalize_reuses_build_conversation_and_drains_message(
+    harness: Harness, agent_generator: _AgentGenerator
+) -> None:
+    """Finalize with the fixed Build inputs and close the stream immediately after message_end."""
+    agent_id, app_id = harness.create_agent()
+    path = f"/console/api/agent/{agent_id}"
+    started = harness.client.post(
+        f"{path}/chat-messages",
+        headers=harness.headers,
+        json={"inputs": {}, "query": "Build", "draft_type": "debug_build"},
+        buffered=True,
+    )
+    assert started.status_code == HTTPStatus.OK, started.get_data(as_text=True)
+    with harness.sessions() as session:
+        build = session.scalars(select(AgentDebugConversation).where(AgentDebugConversation.agent_id == agent_id)).one()
+        assert build.draft_type == AgentConfigDraftType.DEBUG_BUILD
+        assert (build.tenant_id, build.account_id, build.app_id) == (harness.tenant_id, harness.account_id, app_id)
+        conversation_id = build.conversation_id
+    agent_generator.events.clear()
+    closed_streams = agent_generator.closed_streams
+
+    response = harness.client.post(
+        f"{path}/build-chat/finalize",
+        headers={**harness.headers, "X-Trace-Id": "finalize-trace"},
+        json={"query": "Client-supplied query", "draft_type": "draft"},
+    )
+
+    assert response.status_code == HTTPStatus.OK, response.get_json()
+    assert response.get_json() == {"result": "success"}
+    assert len(agent_generator.calls) == 2
+    assert agent_generator.calls[-1] == _AgentGenerationCall(
+        app_id=app_id,
+        account_id=harness.account_id,
+        args={
+            "query": _BUILD_CHAT_FINALIZATION_QUERY,
+            "inputs": {},
+            "response_mode": "streaming",
+            "draft_type": "debug_build",
+            "auto_generate_name": False,
+            "external_trace_id": "finalize-trace",
+            "conversation_id": conversation_id,
+        },
+        invoke_from=InvokeFrom.DEBUGGER,
+        streaming=True,
+    )
+    assert agent_generator.events == ["ping", "message", "message_end"]
+    assert agent_generator.closed_streams == closed_streams + 1
+    with harness.sessions() as session:
+        assert session.get_one(Conversation, conversation_id).name == "Generation 2"
+
+
+@pytest.mark.parametrize("foreign_agent", [False, True], ids=["missing-agent", "foreign-workspace"])
+def test_agent_chat_validates_payload_before_resolving_unavailable_agent(harness: Harness, foreign_agent: bool) -> None:
+    """After Console admission, reject invalid chat input before resolving an unavailable Agent."""
+    agent_id = harness.create_agent(tenant_id=str(uuid4()))[0] if foreign_agent else str(uuid4())
+    url = f"/console/api/agent/{agent_id}/chat-messages"
+    inputs: dict[str, object] = {}
+    for payload, status, code in (
+        ({"inputs": inputs}, HTTPStatus.BAD_REQUEST, "invalid_param"),
+        ({"inputs": inputs, "query": "Hello", "response_mode": "blocking"}, HTTPStatus.BAD_REQUEST, "bad_request"),
+        (
+            {"inputs": inputs, "query": "Hello", "response_mode": "streaming"},
+            HTTPStatus.NOT_FOUND,
+            "agent_not_found_error",
+        ),
+    ):
+        response = harness.client.post(url, headers=harness.headers, json=payload)
+
+        assert response.status_code == status, response.get_json()
+        assert response.get_json()["code"] == code
+
+
+def test_agent_chat_checks_conversation_ownership_before_invoking_generation(harness: Harness) -> None:
+    """Send an unowned conversation through real admission and runtime selection."""
+    agent_id, _ = harness.create_agent()
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
+        response = harness.client.post(
+            f"/console/api/agent/{agent_id}/chat-messages",
+            headers=harness.headers,
+            json={"inputs": {}, "query": "Hello", "conversation_id": str(uuid4())},
+        )
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["message"].startswith("Conversation Not Exists.")
+
+
+def test_agent_chat_rejects_preview_without_preparing_a_conversation(harness: Harness) -> None:
+    """Community preview attempts return the public policy error before creating a conversation."""
+    agent_id, _ = harness.create_agent()
+    response = harness.client.post(
+        f"/console/api/agent/{agent_id}/chat-messages",
+        headers=harness.headers,
+        json={"inputs": {}, "query": "Hello"},
+    )
+    assert response.status_code == HTTPStatus.FORBIDDEN, response.get_json()
+    assert response.get_json()["code"] == "agent_preview_unavailable"
+    with harness.sessions() as session:
+        conversation = session.scalar(
+            select(AgentDebugConversation.id).where(AgentDebugConversation.agent_id == agent_id)
+        )
+        assert conversation is None
+
+
+@pytest.mark.parametrize(
+    ("agent_exists", "task_owned"),
+    [(True, True), (True, False), (False, True)],
+    ids=["owned-task", "another-accounts-task", "missing-agent"],
+)
+def test_agent_chat_stop_requires_an_agent_before_setting_the_accounts_stop_flag(
+    harness: Harness, agent_exists: bool, task_owned: bool
+) -> None:
+    """Resolve the Agent before checking task ownership and set the stop flag only for its owner."""
+    agent_id = harness.create_agent()[0] if agent_exists else str(uuid4())
+    task_id = "task-with-non-uuid-id"
+    owner_key = f"generate_task_belong:{task_id}"
+    flag_key = f"generate_task_stopped:{task_id}"
+    owner_id = harness.account_id if task_owned else str(uuid4())
+    redis = _StopRedis(values={owner_key: f"account-{owner_id}".encode()})
+    app = harness.client.application
+    with app.app_context():
+        services = application_services()
+    app.extensions["application_services"] = replace(services, app_tasks=AppTaskControlService(redis_client=redis))
+    try:
+        response = harness.client.post(
+            f"/console/api/agent/{agent_id}/chat-messages/{task_id}/stop", headers=harness.headers
+        )
+    finally:
+        app.extensions["application_services"] = services
+
+    if agent_exists:
+        assert response.status_code == HTTPStatus.OK
+        assert response.get_json() == {"result": "success"}
+    else:
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert response.get_json()["code"] == "agent_not_found_error"
+    assert redis.reads == ([owner_key] if agent_exists else [])
+    if agent_exists and task_owned:
+        assert redis.values[flag_key] == b"1"
+        assert redis.expirations[flag_key] == 600
+    else:
+        assert flag_key not in redis.values
+
+
+def test_agent_asr_uses_account_owned_build_configuration(harness: Harness) -> None:
+    """Reject a missing Build draft and enforce that draft's ASR feature before upload handling."""
+    agent_id, _ = harness.create_agent()
+    path = f"/console/api/agent/{agent_id}/audio-to-text"
+    missing = harness.client.post(path, headers=harness.headers, data={"draft_type": "debug_build"})
+    assert missing.status_code == HTTPStatus.NOT_FOUND
+    assert missing.get_json()["code"] == "agent_version_not_found_error"
+    with harness.sessions.begin() as session:
+        session.add(
+            AgentConfigDraft(
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=harness.account_id,
+                draft_owner_key=harness.account_id,
+                config_snapshot=AgentSoulConfig(),
+            )
+        )
+    disabled = harness.client.post(path, headers=harness.headers, data={"draft_type": "debug_build"})
+    assert disabled.status_code == HTTPStatus.BAD_REQUEST
+    assert disabled.get_json()["code"] == "speech_to_text_disabled"
 
 
 def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness: Harness) -> None:

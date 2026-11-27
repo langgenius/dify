@@ -18,7 +18,7 @@ import {
 } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { getModelLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { useExpandModelProviderList } from './atoms'
@@ -200,7 +200,7 @@ export const useLazyModelProviderDetail = (providerName: string) => {
       return detail
     } catch (error) {
       // An HTTP failure carries the server's reason; a request that got no response does not.
-      if (error instanceof ORPCError) toastRequestError(error)
+      if (error instanceof ORPCError) reportRequestError(error)
       else toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       return undefined
     }

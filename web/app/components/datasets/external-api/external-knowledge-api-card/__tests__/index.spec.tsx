@@ -165,14 +165,19 @@ it('shows the usage count before deleting a connected API', async () => {
   expect(deleteExternalAPI).not.toHaveBeenCalled()
 })
 
-it('shows the server message when the usage check fails', async () => {
+it('shows the translated error code when the usage check fails', async () => {
   const user = userEvent.setup()
   checkUsageExternalAPI.mockRejectedValue(
-    createHttpError(new Response(null, { status: 503 }), { message: 'Server says why' }),
+    createHttpError(new Response(null, { status: 503 }), {
+      code: 'invalid_input',
+      message: 'Server says why',
+    }),
   )
   setup()
   await user.click(remove())
-  await waitFor(() => expect(screen.getByRole('alertdialog')).toHaveTextContent('Server says why'))
+  await waitFor(() =>
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('requestErrors.code.invalid_input'),
+  )
   expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
 })
 

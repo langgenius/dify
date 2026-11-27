@@ -209,19 +209,28 @@ describe('Invitation activation', () => {
 
   it.each([
     {
-      name: 'the server message',
+      name: 'its translated code',
+      error: createHttpError(new Response(null, { status: 403 }), {
+        code: 'already_activate',
+        message: 'Server says why',
+        status: 403,
+      }),
+      expected: 'requestErrors.code.already_activate',
+    },
+    {
+      name: 'the action failure for an unknown code',
       error: createHttpError(new Response(null, { status: 400 }), {
         code: 'invalid_token',
         message: 'Server says why',
       }),
-      expected: 'Server says why',
+      expected: 'common.api.actionFailed',
     },
     {
       name: 'a generic message',
       error: new TypeError('Failed to fetch'),
       expected: 'common.api.actionFailed',
     },
-  ])('reports an undeclared activation failure with $name', async ({ error, expected }) => {
+  ])('reports an activation failure with $name', async ({ error, expected }) => {
     const toastError = vi.spyOn(toast, 'error')
     const user = userEvent.setup()
     mocks.activate.mockRejectedValueOnce(error)

@@ -22,7 +22,7 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
 from services.agent.version_service import AgentVersionService
 from services.agent.version_store import AgentVersionPlanRequiredError
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness

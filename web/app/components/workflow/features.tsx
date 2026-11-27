@@ -9,7 +9,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { editorAppIdAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { updateFeatures } from '@/service/workflow'
 import { useNodesReadOnly } from './hooks/use-workflow'
 import useConfig from './nodes/start/use-config'
@@ -76,7 +76,7 @@ const Features = () => {
       }
     } catch (error) {
       console.error('Failed to update features:', error)
-      toastRequestError(error)
+      reportRequestError(error)
     }
 
     setShowFeaturesPanel(true)

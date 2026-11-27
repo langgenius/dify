@@ -4,7 +4,7 @@ import type { EvaluationResourceProps } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { useEvaluationActions } from '../queries'
 import {
   getIncompleteConditionIds,
@@ -18,6 +18,7 @@ import { buildEvaluationConfigPayload } from '../store-utils'
 const EvaluationConfigActions = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const { t } = useTranslation(['evaluation'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const resource = useEvaluationResource(resourceType, resourceId)
   const isDirty = useIsEvaluationConfigDirty(resourceType, resourceId)
   const resetResourceConfig = useEvaluationStore((state) => state.resetResourceConfig)
@@ -50,7 +51,12 @@ const EvaluationConfigActions = ({ resourceType, resourceId }: EvaluationResourc
       markResourceConfigSaved(resourceType, resourceId)
       toast.success(tCommon(($) => $['api.saved']))
     } catch (error) {
-      toast.error(getRequestErrorMessage(error) ?? t(($) => $['config.saveFailed']))
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['config.saveFailed']),
+        ),
+      )
     }
   }
 

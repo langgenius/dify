@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import robotAvatar from '../assets/robot-avatar.svg'
 
 type AddAnnotationDialogProps = {
@@ -48,6 +48,7 @@ function AddAnnotationDialogPopup({
   onClose,
 }: AddAnnotationDialogPopupProps) {
   const { t } = useTranslation(['appAnnotation', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const quota = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => getCountQuota(data.annotation_quota_limit),
@@ -123,7 +124,10 @@ function AddAnnotationDialogPopup({
             </Field>
             {error != null && (
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+                {describeRequestError(
+                  error,
+                  t(($) => $['api.actionFailed'], { ns: 'common' }),
+                )}
               </p>
             )}
             {quotaFull && <AnnotationFull />}

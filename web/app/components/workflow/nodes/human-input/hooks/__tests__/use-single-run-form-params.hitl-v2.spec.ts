@@ -166,7 +166,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     )
   })
 
-  it('reports the server message when the V2 draft save fails', async () => {
+  it('reports the translated reason when the V2 draft save fails', async () => {
     const subject = renderSubject(
       createPayload({ version: '2' }),
       vi.fn(async (_notRefresh, callbacks) => {
@@ -180,7 +180,9 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       }),
     )
     await act(async () => subject.result.current.form.handleShowGeneratedForm({}))
-    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Server says why'))
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith('requestErrors.code.draft_workflow_not_sync'),
+    )
     expect(mockFetchHumanInputNodeStepRunForm).not.toHaveBeenCalled()
   })
 

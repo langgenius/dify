@@ -18,6 +18,7 @@ import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getBillingErrorMessage } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
@@ -49,6 +50,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const currentPlan = billing?.currentPlan
   const isEducationDiscountEligible = billing?.isEducationDiscountEligible
   const { t } = useTranslation(['billing', 'common', 'education'])
+  const describeRequestError = useRequestErrorDescriber()
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
   const isYearly = billingInterval === 'year'
@@ -111,7 +113,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
           },
           {
             onError: (error) => {
-              toast.error(getBillingErrorMessage(error, t))
+              toast.error(getBillingErrorMessage(error, t, describeRequestError))
             },
           },
         )
@@ -136,7 +138,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
     } catch (error) {
-      toast.error(getBillingErrorMessage(error, t))
+      toast.error(getBillingErrorMessage(error, t, describeRequestError))
     } finally {
       setIsPlanActionPending(false)
     }

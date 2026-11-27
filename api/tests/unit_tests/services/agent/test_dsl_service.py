@@ -150,6 +150,7 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets(inc
                         "tool_name": "search",
                         "credential_type": "api-key",
                         "credential_ref": {"type": "tool", "id": "tool-secret"},
+                        "max_calls_per_run": 3,
                         "runtime_parameters": {
                             "query": "hello",
                             "upload_file_id": "upload-1",
@@ -199,6 +200,8 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets(inc
     assert package.soul.model.credential_ref is None
     assert package.soul.tools.dify_tools[0].credential_type == "unauthorized"
     assert package.soul.tools.dify_tools[0].credential_ref is None
+    assert package.soul.tools.dify_tools[0].max_calls_per_run == 3
+    assert AgentPackage.model_validate_json(package.model_dump_json()).soul.tools.dify_tools[0].max_calls_per_run == 3
     assert package.soul.tools.dify_tools[0].runtime_parameters["upload_file_id"] is None
     assert package.soul.tools.dify_tools[0].runtime_parameters["api_key"] is None
     assert package.soul.config_skills[0].name == "research"
@@ -325,9 +328,28 @@ def test_export_agent_app_requires_backing_agent(sqlite_session: Session) -> Non
 def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session, use_draft: bool) -> None:
     agent = _agent(app_id="app-1")
     agent.active_config_snapshot_id = "snapshot-1"
-    snapshot = _snapshot(soul=AgentSoulConfig(config_note="snapshot"))
+    soul = AgentSoulConfig.model_validate(
+        {
+            "config_note": "snapshot",
+            "tools": {
+                "dify_tools": [
+                    {
+                        "provider_type": "plugin",
+                        "provider_id": "langgenius/search/search",
+                        "tool_name": "search",
+                        "credential_type": "unauthorized",
+                        "max_calls_per_run": 3,
+                    }
+                ]
+            },
+        }
+    )
+    snapshot = _snapshot(soul=soul)
     rows: list[object] = [agent, snapshot]
     if use_draft:
+        draft_soul = soul.model_copy(deep=True)
+        draft_soul.config_note = "draft"
+        draft_soul.tools.dify_tools[0].max_calls_per_run = 5
         rows.append(
             AgentConfigDraft(
                 id="draft-1",
@@ -336,7 +358,7 @@ def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session,
                 draft_type=AgentConfigDraftType.DRAFT,
                 account_id=None,
                 draft_owner_key="",
-                config_snapshot=AgentSoulConfig(config_note="draft"),
+                config_snapshot=draft_soul,
             )
         )
     sqlite_session.add_all(rows)
@@ -346,6 +368,7 @@ def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session,
 
     assert package_ref == "agent_1"
     assert packages[package_ref].soul.config_note == ("draft" if use_draft else "snapshot")
+    assert packages[package_ref].soul.tools.dify_tools[0].max_calls_per_run == (5 if use_draft else 3)
 
 
 def test_export_workflow_packages_deduplicates_shared_agent(sqlite_session: Session) -> None:

@@ -258,11 +258,11 @@ describe('SkillDetailPage autosave', () => {
     expect(screen.getByText(/skill\.skillManagement\.detail\.saveFailed/)).toBeInTheDocument()
   })
 
-  it('shows the server message when a non-conflict save fails', async () => {
+  it('shows the save failure when a non-conflict save fails with an unknown code', async () => {
     const user = userEvent.setup()
     mocks.saveDraftFileMutationFn.mockRejectedValue(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'unknown_failure',
         message: 'Server says why',
       }),
     )
@@ -282,7 +282,7 @@ describe('SkillDetailPage autosave', () => {
       })
       await act(() => vi.advanceTimersByTimeAsync(1000))
 
-      expect(mocks.toastError).toHaveBeenCalledWith('Server says why')
+      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.saveFailed')
     } finally {
       vi.useRealTimers()
     }

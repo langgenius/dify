@@ -239,10 +239,17 @@ it.each([0, 100])(
 it.each([
   {
     error: createHttpError(new Response(null, { status: 403 }), {
-      code: 'forbidden',
+      code: 'bad_request',
       message: 'Workspace upload denied',
     }),
-    message: 'Workspace upload denied',
+    message: 'common.imageUploader.uploadFromComputerUploadError',
+  },
+  {
+    error: createHttpError(new Response(null, { status: 415 }), {
+      code: 'unsupported_file_type',
+      message: 'File type not allowed.',
+    }),
+    message: 'requestErrors.code.unsupported_file_type',
   },
   {
     error: createHttpError(new Response(null, { status: 413 }), {
@@ -255,16 +262,19 @@ it.each([
     error: new Error('Network unavailable'),
     message: 'common.imageUploader.uploadFromComputerUploadError',
   },
-])('shows $message and allows retry after an upload failure', async ({ error, message }) => {
-  upload.mockRejectedValueOnce(error)
-  const { user } = renderBrand()
-  const file = logoFile()
-  await user.upload(uploadInput(), file)
-  expect(await screen.findByText(message)).toBeVisible()
-  expect(screen.getByText('custom.uploadedFail')).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
-  expect(updateConfig).not.toHaveBeenCalled()
-  await user.upload(uploadInput(), file)
-  expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
-  expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
-})
+])(
+  'shows $message for $error.message and allows retry after an upload failure',
+  async ({ error, message }) => {
+    upload.mockRejectedValueOnce(error)
+    const { user } = renderBrand()
+    const file = logoFile()
+    await user.upload(uploadInput(), file)
+    expect(await screen.findByText(message)).toBeVisible()
+    expect(screen.getByText('custom.uploadedFail')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+    expect(updateConfig).not.toHaveBeenCalled()
+    await user.upload(uploadInput(), file)
+    expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
+    expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
+  },
+)

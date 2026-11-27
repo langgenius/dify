@@ -3,7 +3,7 @@ import type { ToolWithProvider } from '../../types'
 import type { VarInInspect } from '@/types/workflow'
 import { act } from '@testing-library/react'
 import { useReactFlow } from 'reactflow'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -24,7 +24,7 @@ const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   },
 ]
 
-vi.mock('@/app/query-error-toast', () => ({ toastRequestError: vi.fn() }))
+vi.mock('@/app/query-error-toast', () => ({ reportRequestError: vi.fn() }))
 vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: (...args: unknown[]) => mockFetchAllInspectVars(...args),
 }))
@@ -156,7 +156,7 @@ describe('use-fetch-workflow-inspect-vars', () => {
       await expect(result.current.fetchInspectVars({})).rejects.toBe(error)
     })
 
-    expect(toastRequestError).toHaveBeenCalledExactlyOnceWith(error)
+    expect(reportRequestError).toHaveBeenCalledExactlyOnceWith(error)
   })
 
   it('accepts passed-in vars and plugin metadata without refetching from the API', async () => {
