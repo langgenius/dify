@@ -74,6 +74,7 @@ function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE', hydrateWor
       plan: null,
       role: 'owner',
       credits: null,
+      max_active_requests: 0,
     })
   const store = createStore()
   store.set(queryClientAtom, queryClient)
@@ -100,6 +101,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
       plan: null,
       role: 'owner',
       credits: null,
+      max_active_requests: 0,
     })
   })
 
@@ -121,6 +123,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
         plan: null,
         role: 'owner',
         credits: null,
+        max_active_requests: 0,
       }),
     )
     await waitFor(() => expect(screen.getByLabelText('Workspace')).toHaveTextContent('workspace-1'))

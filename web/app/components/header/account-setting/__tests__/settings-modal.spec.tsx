@@ -121,10 +121,8 @@ const expectMembers = () =>
 
 beforeAll(async () => {
   // Load the real dialogs before the tests so cold module transforms run during suite setup.
-  await Promise.all([
-    import('@/app/components/header/account-setting'),
-    import('@/app/components/integrations/modal'),
-  ])
+  await import('@/app/components/header/account-setting')
+  await import('@/app/components/integrations/modal')
 })
 
 it('exposes the Members content title as a heading', async () => {
@@ -206,6 +204,25 @@ it('opens preferences from the URL control, switches real pages, and closes with
   expect(update?.searchParams.has('settings')).toBe(false)
   expect(update?.searchParams.get('keep')).toBe('value')
   expect(update?.options).toMatchObject({ history: 'replace', shallow: true })
+})
+
+it('opens workspace usage limits from the settings navigation', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate } = renderSettings(TAB.MEMBERS, {
+    currentWorkspace: { max_active_requests: 5 },
+  })
+  const dialog = await findSettings()
+
+  await user.click(within(dialog).getByRole('button', { name: 'navigation.settings.usageLimits' }))
+
+  expect(
+    await within(dialog).findByRole('spinbutton', {
+      name: 'common.usageLimits.maxActiveRequests.label',
+    }),
+  ).toHaveValue(5)
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(TAB.USAGE_LIMITS),
+  )
 })
 
 it.each([

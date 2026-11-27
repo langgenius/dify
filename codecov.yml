@@ -26,6 +26,8 @@ flag_management:
     - name: api
       paths:
         - "api/"
+      # Two unit shards, controller tests, and integration tests upload under this flag.
+      after_n_builds: 4
 
     - name: cli
       paths:

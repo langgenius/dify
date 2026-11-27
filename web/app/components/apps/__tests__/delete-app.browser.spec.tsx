@@ -12,6 +12,7 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import time from '@/i18n/locales/en-US/time.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { installFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -46,6 +47,7 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
   await page.viewport(1024, 768)
   let apps = initialApps
   let starredApps = initialStarredApps
+  const systemFeatures = { rbac_enabled: true, enable_learn_app: false }
   const fake = installFakeApi({
     console: {
       apps: {
@@ -59,6 +61,7 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
         },
       },
       features: { get: () => zGetFeaturesResponse.parse({}) },
+      systemFeatures: { get: () => createSystemFeaturesFixture(systemFeatures) },
       tags: { get: () => [] },
       workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
     },
@@ -75,10 +78,7 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
     accountProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
     features: {},
-    systemFeatures: {
-      rbac_enabled: true,
-      enable_learn_app: false,
-    },
+    systemFeatures,
   })
   const { NavigationProvider } = createTestNavigation({ url: '/apps' })
   const screen = await render(

@@ -5,9 +5,10 @@ import type {
 import { onlineManager, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createDeferred } from '@/test/deferred'
 import { hold, networkError, setupFakeApi } from '@/test/fake-api'
+import { createTestQueryClient } from '@/test/query-client'
 import MenuDialog from '../../menu-dialog'
 import ResourceAccessTokenPage from '../index'
 
@@ -52,15 +53,21 @@ const listTokens = () => fake.console.resourceAccessTokens.get
 const deleteToken = () => fake.console.resourceAccessTokens.byTokenId.relations.byRelationId.delete
 
 async function renderPage() {
-  const client = createAccountProfileQueryClient()
-  onTestFinished(() => client.clear())
-  return render(
+  const client = createTestQueryClient()
+  const { profile } = seedAccountProfileQuery(client)
+  fake.use({ console: { account: { profile: { get: () => profile } } } })
+  const screen = await render(
     <QueryClientProvider client={client}>
       <MenuDialog title="Account settings" onClose={closeSettings}>
         <ResourceAccessTokenPage />
       </MenuDialog>
     </QueryClientProvider>,
   )
+  onTestFinished(() => {
+    screen.unmount()
+    client.clear()
+  })
+  return screen
 }
 
 async function setup() {
@@ -218,15 +225,15 @@ it('returns to the preceding page when deletion removes the last page', async ()
 
 it('prevents deleting a retained row while a different search is loading', async () => {
   listTokens().mockResolvedValueOnce(listResponse([first]))
-  const search = hold(listTokens())
   const screen = await renderPage()
   const opener = screen
     .getByRole('row', { name: /First token/ })
     .getByRole('button', { name: deleteLabel })
   await expect.element(opener).toBeEnabled()
+  const search = hold(listTokens())
   await screen.getByRole('searchbox').fill('Next')
   await expect.element(opener).toBeDisabled()
-  await search.arrived
+  expect(await search.arrived).toEqual({ query: { keyword: 'Next', limit: 20, page: 1 } })
   expect(listTokens()).toHaveBeenCalledTimes(2)
   await expect.element(opener).toBeDisabled()
   expect(deleteToken()).not.toHaveBeenCalled()

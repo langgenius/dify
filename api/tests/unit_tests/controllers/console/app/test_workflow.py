@@ -31,6 +31,7 @@ from controllers.console.app.workflow import (
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
+from extensions.ext_redis import RedisClientWrapper
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
@@ -1226,7 +1227,15 @@ class TestWorkflowCases:
         mocker: MockerFixture,
         unbound_session: Session,
         account_application_services: ApplicationServices,
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
     ) -> None:
+        """Keep presence reads scoped to workflows admitted for this actor.
+
+        Preconditions: the session and isolated Redis transport belong to this test.
+        Postconditions: only accessible workflows and valid user metadata are returned.
+        """
+        redis, _commands = redis_transport
+        monkeypatch.setattr(workflow_module, "redis_client", redis)
         app_id_1 = "11111111-1111-1111-1111-111111111111"
         app_id_2 = "22222222-2222-2222-2222-222222222222"
         current_avatar_urls = {
@@ -1350,7 +1359,18 @@ class TestWorkflowCases:
         assert actors == [("tenant-1", "account-1")]
 
     @staticmethod
-    def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_online_users_batches_redis_reads(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+    ) -> None:
+        """Verify bounded presence pipelines without a shared Redis mock's state.
+
+        Preconditions: the isolated Redis transport belongs to this test.
+        Postconditions: each batch executes one pipeline and every requested app is returned.
+        """
+        redis, _commands = redis_transport
+        monkeypatch.setattr(workflow_module, "redis_client", redis)
         app_ids = [f"wf-{index}" for index in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE + 1)]
         monkeypatch.setattr(
             workflow_module,
