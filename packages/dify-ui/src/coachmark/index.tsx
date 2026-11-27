@@ -13,7 +13,6 @@ import { useMergedRefs } from '../use-merged-refs'
 import {
   createGeometryStore,
   HIDDEN_BOUNDARY_SELECTOR,
-  isBehindHiddenBoundary,
   isVisibleRect,
   measure,
   useShownStep,
@@ -235,9 +234,7 @@ function applyGeometry(element: HTMLElement, { highlight, target }: Geometry) {
 type CoachmarkPortalProps = BasePopover.Portal.Props
 
 function CoachmarkPortal({ ref, ...props }: CoachmarkPortalProps) {
-  const { detach, open, step, store } = useCoachmarkContext()
-  const { target } = step
-  const portalRef = React.useRef<HTMLDivElement>(null)
+  const { detach, store } = useCoachmarkContext()
   const geometryRef = React.useCallback(
     (element: HTMLDivElement | null) => {
       if (!element) return
@@ -255,21 +252,9 @@ function CoachmarkPortal({ ref, ...props }: CoachmarkPortalProps) {
     },
     [detach, store],
   )
-  const mergedRef = useMergedRefs(portalRef, geometryRef, ref)
+  const mergedRef = useMergedRefs(geometryRef, ref)
 
-  const [portalKey, setPortalKey] = React.useState(0)
-  React.useLayoutEffect(() => {
-    const portal = portalRef.current
-    if (
-      open &&
-      portal &&
-      (!portal.closest(HIDDEN_BOUNDARY_SELECTOR) || !isBehindHiddenBoundary(target)) &&
-      portal.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING
-    )
-      setPortalKey((key) => key + 1)
-  }, [open, target])
-
-  return <BasePopover.Portal key={portalKey} ref={mergedRef} {...props} />
+  return <BasePopover.Portal ref={mergedRef} {...props} />
 }
 
 type CoachmarkSpotlightProps = BasePopover.Backdrop.Props

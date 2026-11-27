@@ -44,7 +44,7 @@ export type GeometryStore = {
 
 export const HIDDEN_BOUNDARY_SELECTOR = '[aria-hidden="true"], [inert]'
 
-export const isBehindHiddenBoundary = (element: Element) =>
+const isBehindHiddenBoundary = (element: Element) =>
   !!element.parentElement?.closest(HIDDEN_BOUNDARY_SELECTOR)
 const LAYOUT_ATTRIBUTES = ['class', 'hidden', 'style']
 
