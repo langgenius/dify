@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "أو ابدأ بـ Learn Dify",
   "stepByStepTour.guides.studio.empty.template.description": "تصفّح قوالب Dify واختر ما يناسب ما تريد بناءه. طريقة ممتازة للبدء دون كتابة كل شيء من الصفر.",
   "stepByStepTour.guides.studio.empty.template.title": "الإنشاء من قالب",
+  "stepByStepTour.guides.studio.empty.workflow.description": "ابدأ بسير عمل ينفّذ المهمة مرة واحدة ثم ينتهي.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "أنشئ سير عمل",
   "stepByStepTour.guides.studio.noCreate.empty.description": "يمكنك عرض التطبيقات في مساحة العمل هذه، لكن لا توجد تطبيقات هنا بعد. لإنشاء التطبيقات أو تعديلها، بدّل مساحة العمل أو اطلب الوصول من مالك مساحة العمل أو المسؤول.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "لا توجد تطبيقات لعرضها بعد",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "يمكنك تصفح التطبيقات وفتحها في مساحة العمل هذه، لكن إنشاء التطبيقات أو تعديلها يتطلب صلاحية. بدّل إلى مساحة عمل لديك فيها وصول، أو تواصل مع مالك مساحة العمل أو المسؤول.",

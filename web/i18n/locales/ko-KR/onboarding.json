@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "또는 Learn Dify로 시작하기",
   "stepByStepTour.guides.studio.empty.template.description": "Dify의 템플릿을 둘러보고 만들려는 것과 맞는 템플릿을 선택하세요. 처음부터 아무것도 작성하지 않고 시작하기에 좋은 방법입니다.",
   "stepByStepTour.guides.studio.empty.template.title": "템플릿으로 만들기",
+  "stepByStepTour.guides.studio.empty.workflow.description": "한 번 실행한 뒤 종료되는 워크플로로 시작하세요.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "워크플로 만들기",
   "stepByStepTour.guides.studio.noCreate.empty.description": "이 워크스페이스의 앱을 볼 수 있지만 아직 앱이 없습니다. 앱을 만들거나 편집하려면 권한이 있는 워크스페이스로 전환하거나 Workspace Owner 또는 Admin에게 접근 권한을 요청하세요.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "아직 볼 수 있는 앱이 없습니다",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "이 워크스페이스의 앱을 둘러보고 열 수 있지만, 앱을 만들거나 편집하려면 권한이 필요합니다. 접근 권한이 있는 워크스페이스로 전환하거나 Workspace Owner 또는 Admin에게 문의하세요.",

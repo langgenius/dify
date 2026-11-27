@@ -44,6 +44,8 @@
   "stepByStepTour.guides.studio.empty.learnDify.title": "Albo zacznij od Learn Dify",
   "stepByStepTour.guides.studio.empty.template.description": "Przeglądaj szablony Dify i wybierz ten, który pasuje do tego, co chcesz zbudować. Świetny sposób, aby zacząć bez pisania wszystkiego od zera.",
   "stepByStepTour.guides.studio.empty.template.title": "Utwórz z szablonu",
+  "stepByStepTour.guides.studio.empty.workflow.description": "Zacznij od workflow, który uruchamia się raz i kończy.",
+  "stepByStepTour.guides.studio.empty.workflow.title": "Utwórz workflow",
   "stepByStepTour.guides.studio.noCreate.empty.description": "Mozesz przegladac aplikacje w tym workspace, ale jeszcze ich tu nie ma. Aby tworzyc lub edytowac aplikacje, zmien workspace albo popros Workspace Owner lub Admin o dostep.",
   "stepByStepTour.guides.studio.noCreate.empty.title": "Brak aplikacji do wyswietlenia",
   "stepByStepTour.guides.studio.noCreate.withApps.description": "Mozesz przegladac i otwierac aplikacje w tym workspace, ale tworzenie lub edycja wymaga uprawnien. Przejdz do workspace z dostepem albo skontaktuj sie z Workspace Owner lub Admin.",
