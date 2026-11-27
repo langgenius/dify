@@ -14,7 +14,6 @@ import {
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
-import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { markErrorHandled } from './handled-error'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { captureRequestGuard } from './request-guard'
@@ -47,26 +46,19 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
-/** Error feedback belongs to the query cache; this hook keeps only the transport's own outcomes. */
+/**
+ * Error feedback belongs to the query cache and the request's owners; the transport only marks
+ * failures a request guard presented, or that settle after the guarded surface is gone.
+ */
 const afterResponseErrorCode = (requestGuard: RequestGuard | undefined): AfterResponseHook => {
-  return async ({ request, response }) => {
+  return async ({ response }) => {
     if (!isHttpErrorStatus(response.status)) return
     const error = await httpErrorFromResponse(response)
-    const errorData = error.data
     if (
-      requestGuard?.handleError(response.status, errorData, error) ||
+      requestGuard?.handleError(response.status, error.data, error) ||
       requestGuard?.isActive() === false
-    ) {
+    )
       markErrorHandled(error)
-      throw error
-    }
-    // A late 404 for an app being deleted is expected, so nothing reports it.
-    if (shouldSuppressAppDeletionErrorToast(request.url, response.status)) markErrorHandled(error)
-
-    if (response.status === 403 && errorData?.code === 'already_setup') {
-      markErrorHandled(error)
-      globalThis.location.href = `${globalThis.location.origin}/signin`
-    }
     throw error
   }
 }

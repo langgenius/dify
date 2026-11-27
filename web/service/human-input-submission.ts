@@ -1,7 +1,11 @@
+import { markErrorHandled } from './handled-error'
+
+/** The Human Input form renders this failure inline, so no reporter shows it again. */
 export class HumanInputSubmissionPreparationError extends Error {
   constructor() {
     super('Human Input submission could not establish the workflow connection')
     this.name = 'HumanInputSubmissionPreparationError'
+    markErrorHandled(this)
   }
 }
 

@@ -336,7 +336,9 @@ describe('MembersPage', () => {
         }),
       )
     })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.invalid_role',
+    )
     expect(within(dialog).getByText('Next role')).toBeInTheDocument()
     await user.click(save)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

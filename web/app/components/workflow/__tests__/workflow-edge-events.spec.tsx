@@ -226,20 +226,22 @@ it('reports a persistent error when the final save fails', async () => {
   expect(toast.error).toHaveBeenCalledWith('workflow.common.draftSaveFailed', { timeout: 0 })
 })
 
-it('reports the server message when the final save fails', async () => {
+it('reports the translated reason when the final save fails', async () => {
   const { saveDraft, unmount } = renderSubject({
     initialStoreState: { isWorkflowDataLoaded: true },
   })
   saveDraft.mockImplementation(async (_skipRefresh, callback) =>
     callback?.onError?.(
       createHttpError(
-        { status: 400, statusText: '', headers: new Headers() },
-        { message: 'Draft is invalid' },
+        { status: 409, statusText: '', headers: new Headers() },
+        { code: 'draft_workflow_not_sync', message: 'Draft is invalid' },
       ),
     ),
   )
   await act(async () => unmount())
-  expect(toast.error).toHaveBeenCalledWith('Draft is invalid', { timeout: 0 })
+  expect(toast.error).toHaveBeenCalledWith('requestErrors.code.draft_workflow_not_sync', {
+    timeout: 0,
+  })
 })
 
 it('cancels the queued debounce and saves exactly once on unmount', async () => {

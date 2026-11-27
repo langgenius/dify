@@ -27,7 +27,7 @@ import {
 } from '@/features/network-access/ip-policy'
 import { PolicyReferencedApps } from '@/features/network-access/policy-references'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import { AllowlistField } from './allowlist-field'
 import { createAllowlistRow } from './allowlist-row'
 import { recordPolicyValidation } from './policy-form-analytics'
@@ -117,6 +117,10 @@ export function IpPolicyForm({
       retry: false,
       meta: { errorToast: false },
     }),
+  )
+  const currentIpErrorMessage = useRequestErrorMessage(
+    currentIpQuery.error,
+    t(($) => $['settings.ipPolicyCurrentIpError']),
   )
   const resolvedCurrentIp =
     currentIp ?? (currentIpQuery.isSuccess ? currentIpQuery.data.client_ip : undefined)
@@ -224,7 +228,7 @@ export function IpPolicyForm({
                 entries={entries}
                 currentIp={resolvedCurrentIp}
                 currentIpStatus={currentIpStatus}
-                currentIpErrorMessage={getRequestErrorMessage(currentIpQuery.error)}
+                currentIpErrorMessage={currentIpErrorMessage}
                 isRetryingCurrentIp={
                   currentIpStatus !== undefined &&
                   currentIpQuery.isFetched &&

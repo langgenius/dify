@@ -7458,6 +7458,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7528,7 +7529,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
@@ -7580,7 +7583,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/template/download
@@ -19674,6 +19679,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19712,6 +19718,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19825,7 +19832,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
@@ -19880,7 +19889,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
@@ -19902,6 +19913,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -21478,6 +21490,7 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | No |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
@@ -21912,7 +21925,9 @@ run request to Agent backend. ``plugin`` providers keep the direct
 ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
 ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
 keeps compatibility with existing Agent tool config payloads; new callers
-should send ``plugin_id`` + ``provider`` when available.
+should send ``plugin_id`` + ``provider`` when available. A per-run call
+limit is either absent/unlimited or a strict positive integer for one
+concrete operation; provider-wide entries cannot define a call limit.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21920,6 +21935,7 @@ should send ``plugin_id`` + ``provider`` when available.
 | credential_type | string, <br>**Available values:** "api-key", "oauth2", "unauthorized", <br>**Default:** api-key | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
 | description | string |  | No |
 | enabled | boolean, <br>**Default:** true |  | No |
+| max_calls_per_run | integer | Maximum dispatches of this operation per logical run; null or omitted means unlimited. | No |
 | name | string |  | No |
 | plugin_id | string |  | No |
 | provider | string |  | No |
@@ -22219,6 +22235,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | position | integer |  | Yes |
 | thought | string |  | No |
 | tool | string |  | No |
+| tool_activity | [AgentToolActivity](#agenttoolactivity) |  | No |
 | tool_input | string |  | No |
 | tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
 
@@ -22237,6 +22254,25 @@ Legacy Chat App model config used only for follow-up question generation.
 | ---- | ---- | ----------- | -------- |
 | date | string |  | Yes |
 | tps | number |  | Yes |
+
+#### AgentToolActivity
+
+One native tool call's application-owned, persistable display metadata.
+
+Native call identity is independent of its display name and the SQL thought
+row. Tool inputs, credentials and successful observations remain outside
+this sidecar; ``error`` is a bounded failure description for display.
+Missing metadata on older thoughts conveys no execution or quota claim.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| call_limit | [ToolCallLimitMetadata](#toolcalllimitmetadata) |  | No |
+| error | string |  | No |
+| id | string |  | Yes |
+| run_id | string |  | Yes |
+| status | string, <br>**Available values:** "cancelled", "failed", "not_executed", "running", "started", "succeeded" | *Enum:* `"cancelled"`, `"failed"`, `"not_executed"`, `"running"`, `"started"`, `"succeeded"` | Yes |
+| tool_call_id | string |  | Yes |
+| tool_name | string |  | Yes |
 
 #### AgentToolCallResponse
 
@@ -27283,6 +27319,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | metrics | [ string ] |  | Yes |
 
+#### EvaluationConfigInvalidError
+
+Evaluation configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationConfigInvalidError |  | Evaluation configuration is invalid. |  |
+
 #### EvaluationConfigPayload
 
 | Name | Type | Description | Required |
@@ -27305,6 +27349,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | evaluation_model_provider | string |  | No |
 | judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
 
+#### EvaluationDatasetInvalidError
+
+Evaluation dataset is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationDatasetInvalidError |  | Evaluation dataset is invalid. |  |
+
 #### EvaluationDefaultMetricsResponse
 
 | Name | Type | Description | Required |
@@ -27323,11 +27375,33 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | name | string |  | Yes |
 | size | integer |  | Yes |
 
+#### EvaluationFrameworkNotConfiguredError
+
+Selected evaluation framework is unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationFrameworkNotConfiguredError |  | Selected evaluation framework is unavailable. |  |
+
 #### EvaluationFrameworkQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+
+#### EvaluationMaxConcurrentRunsDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+
+#### EvaluationMaxConcurrentRunsError
+
+Maximum number of concurrent evaluation runs reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationMaxConcurrentRunsError |  | Maximum number of concurrent evaluation runs reached. |  |
 
 #### EvaluationMetric
 
@@ -37604,6 +37678,18 @@ Only one file is allowed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolApiListResponse | array |  |  |
+
+#### ToolCallLimitMetadata
+
+Usage at this call's dispatch boundary and its authoritative disposition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| execution_status | string, <br>**Available values:** "executed", "not_executed", "unconfirmed" | *Enum:* `"executed"`, `"not_executed"`, `"unconfirmed"` | Yes |
+| limit | integer |  | Yes |
+| reason | string, <br>**Available values:** "call_limit_reached", "duplicate_tool_call" |  | No |
+| tool_identity | string |  | Yes |
+| used | integer |  | Yes |
 
 #### ToolEmojiIcon
 

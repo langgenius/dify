@@ -23,7 +23,7 @@ import {
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { ContactChannelIcon } from '../management/channel-icon'
 import { loadContactImSyncReport, syncResults } from './sync-report'
@@ -62,6 +62,7 @@ export function ContactImSyncDetailsDialog({
 function SyncDetailsContent({ runId }: { runId: string }) {
   const { t, i18n } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const [result, setResult] = useContactImSyncResultUrlState()
   const titleId = useId()
@@ -186,8 +187,10 @@ function SyncDetailsContent({ runId }: { runId: string }) {
         {runQuery.isError || (itemsQuery.isError && !itemsQuery.data) ? (
           <div role="alert">
             <p>
-              {getRequestErrorMessage(runQuery.error ?? itemsQuery.error) ??
-                t(($) => $['imPlatform.details.loadError'])}
+              {describeRequestError(
+                runQuery.error ?? itemsQuery.error,
+                t(($) => $['imPlatform.details.loadError']),
+              )}
             </p>
             <Button
               onClick={() => {
@@ -243,8 +246,10 @@ function SyncDetailsContent({ runId }: { runId: string }) {
                 {report.error instanceof ContactImRepositoryError &&
                 report.error.code === ContactImRepositoryErrorCode.SyncRunNotFound
                   ? t(($) => $['imPlatform.details.reportChanged'])
-                  : (getRequestErrorMessage(report.error) ??
-                    t(($) => $['imPlatform.details.downloadFailed']))}
+                  : describeRequestError(
+                      report.error,
+                      t(($) => $['imPlatform.details.downloadFailed']),
+                    )}
               </div>
             )}
             <table
@@ -310,8 +315,10 @@ function SyncDetailsContent({ runId }: { runId: string }) {
             )}
             {itemsQuery.isFetchNextPageError && (
               <p role="alert" className="mt-3 text-text-destructive">
-                {getRequestErrorMessage(itemsQuery.error) ??
-                  t(($) => $['imPlatform.details.pageError'])}
+                {describeRequestError(
+                  itemsQuery.error,
+                  t(($) => $['imPlatform.details.pageError']),
+                )}
               </p>
             )}
             <div className="mt-4 flex justify-center">

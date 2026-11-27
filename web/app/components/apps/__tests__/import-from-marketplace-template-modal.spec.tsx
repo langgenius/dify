@@ -120,12 +120,12 @@ describe('ImportFromMarketplaceTemplateModal', () => {
 
   it.each([
     [
-      'the server message',
+      'the localized fallback over a generic server message',
       createHttpError(new Response(null, { status: 404 }), {
         code: 'not_found',
         message: 'Server says why',
       }),
-      'Server says why',
+      'app.marketplace.template.importFailed',
     ],
     [
       'the localized fallback',

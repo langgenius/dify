@@ -245,7 +245,7 @@ it('explains cross-workspace deployment access without labeling it revoked or ex
   await expect.element(dialog.getByText(/Expired on/)).not.toBeInTheDocument()
 })
 
-it('reports why the saved scope could not load', async () => {
+it('reports that the saved scope could not load', async () => {
   onTestFinished(
     installFakeApi({
       console: {
@@ -274,5 +274,5 @@ it('reports why the saved scope could not load', async () => {
   )
   await expect
     .element(screen.getByRole('dialog').getByRole('alert'))
-    .toMatchTextContent(/Token not found/)
+    .toMatchTextContent(/Could not load access tokens/)
 })

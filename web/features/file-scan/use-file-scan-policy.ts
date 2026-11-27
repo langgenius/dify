@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { useFileScanEnabled } from './provider-types'
 
 export type FileScanProduct = 'dataset' | 'knowledge-fs'
@@ -26,8 +27,8 @@ type FileScanPolicyControllerOptions = {
 /**
  * - `unchanged`: there was nothing to save.
  * - `invalid`: the draft cannot be saved as it is; the section shows what is missing.
- * - `failed`: the request failed; the section shows the reason, and `errorMessage` carries the
- *   server's message.
+ * - `failed`: the request failed; the section shows the reason, and `errorMessage` describes the
+ *   failure.
  */
 export type FileScanPolicySaveResult =
   | { status: 'failed'; errorMessage: string | undefined }
@@ -104,6 +105,8 @@ export function useFileScanPolicyController({
   readonly,
   resourceId,
 }: FileScanPolicyControllerOptions) {
+  const { t } = useTranslation(['fileScan'])
+  const describeRequestError = useRequestErrorDescriber()
   const featureEnabled = useFileScanEnabled()
   const active = featureEnabled && requested
   const { isError, isPending, isSaving, policy, refetch, resetSaveError, save, saveError } =
@@ -143,7 +146,13 @@ export function useFileScanPolicyController({
       try {
         await save(current)
       } catch (error) {
-        return { status: 'failed', errorMessage: getRequestErrorMessage(error) }
+        return {
+          status: 'failed',
+          errorMessage: describeRequestError(
+            error,
+            t(($) => $['policy.saveFailed']),
+          ),
+        }
       }
       setDraft(undefined)
       return { status: 'saved' }

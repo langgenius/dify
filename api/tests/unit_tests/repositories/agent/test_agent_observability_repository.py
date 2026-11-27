@@ -1,16 +1,19 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from sqlite3 import Connection
 
 import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
-from sqlalchemy import Select, select
+from dify_agent.protocol.tool_call_limits import AGENT_TOOL_ACTIVITY_META_KEY, AgentToolActivity, ToolCallLimitMetadata
+from sqlalchemy import Connection as SQLAlchemyConnection
+from sqlalchemy import Engine, Select, event, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
+from fields.agent_fields import AgentLogMessageListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -23,7 +26,7 @@ from models.enums import (
     MessageStatus,
 )
 from models.enums import InvokeFrom as _workflow_tool_agent_statistics_InvokeFrom
-from models.model import App, AppMode, Conversation, Message, MessageFeedback
+from models.model import App, AppMode, Conversation, Message, MessageAgentThought, MessageFeedback
 from models.workflow import (
     Workflow,
     WorkflowExecutionStatus,
@@ -41,6 +44,116 @@ from repositories.agent.agent_observability_repository import (
 )
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
+
+
+def test_log_message_thoughts_are_page_scoped_batched_and_detached(
+    sqlite_session: Session, sqlite_engine: Engine
+) -> None:
+    app = _agent_observability_service_app()
+    conversation = _agent_observability_service_conversation()
+    sqlite_session.add_all([app, conversation])
+    for index in range(5):
+        message = _agent_observability_service_message(
+            message_id=f"message-{index}", created_at=datetime(2026, 1, 1) + timedelta(minutes=index)
+        )
+        activity = AgentToolActivity(
+            id=f"run-{index}:call-4",
+            run_id=f"run-{index}",
+            tool_call_id="call-4",
+            tool_name="search",
+            status="not_executed",
+            error="Quota reached",
+            call_limit=ToolCallLimitMetadata(
+                tool_identity="provider-operation",
+                limit=3,
+                used=3,
+                execution_status="not_executed",
+                reason="call_limit_reached",
+            ),
+        )
+        sqlite_session.add_all(
+            [
+                message,
+                MessageAgentThought(
+                    message_id=message.id,
+                    position=2,
+                    tool="search",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by="account-1",
+                    tool_meta_str=json.dumps({AGENT_TOOL_ACTIVITY_META_KEY: activity.model_dump(mode="json")}),
+                ),
+                MessageAgentThought(
+                    message_id=message.id,
+                    position=1,
+                    tool="legacy",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by="account-1",
+                    observation="3/3 not executed",
+                ),
+            ]
+        )
+    sqlite_session.commit()
+    thought_queries: list[str] = []
+
+    def capture_thought_query(
+        _connection: SQLAlchemyConnection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        if "FROM message_agent_thoughts" in statement:
+            thought_queries.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", capture_thought_query)
+    try:
+        repository = AgentObservabilityQueries(sqlite_session)
+        payload = repository.list_log_messages(
+            app=app,
+            agent_id="agent-1",
+            conversation_id=conversation.id,
+            params=AgentLogQueryParams(limit=2, sources=("console",)),
+        )
+        assert len(thought_queries) == 1
+        response = AgentLogMessageListResponse.model_validate(payload)
+        assert [message.id for message in response.data] == ["message-4", "message-3"]
+        assert [thought.position for thought in response.data[0].agent_thoughts] == [1, 2]
+        assert response.data[0].agent_thoughts[0].tool_activity is None
+        activity = response.data[0].agent_thoughts[1].tool_activity
+        assert activity is not None
+        assert activity.call_limit is not None
+        assert activity.tool_call_id == "call-4"
+        assert activity.status == "not_executed"
+        assert (activity.call_limit.limit, activity.call_limit.used, activity.call_limit.reason) == (
+            3,
+            3,
+            "call_limit_reached",
+        )
+        assert response.data[0].status == "success"
+
+        thought_queries.clear()
+        larger = repository.list_log_messages(
+            app=app,
+            agent_id="agent-1",
+            conversation_id=conversation.id,
+            params=AgentLogQueryParams(limit=5, sources=("console",)),
+        )
+        assert len(thought_queries) == 1
+        assert len(larger["data"]) == 5
+        foreign = make_app(app_id=app.id, tenant_id="another-tenant", name="Foreign", mode=AppMode.AGENT_CHAT)
+        assert (
+            repository._list_agent_thoughts(app=foreign, conversation_id=conversation.id, message_ids=["message-4"])
+            == {}
+        )
+        assert (
+            repository._list_agent_thoughts(app=app, conversation_id="another-conversation", message_ids=["message-4"])
+            == {}
+        )
+        sqlite_session.expunge_all()
+        assert len(AgentLogMessageListResponse.model_validate(payload).data[0].agent_thoughts) == 2
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", capture_thought_query)
 
 
 def _agent_observability_service_app(
@@ -434,10 +547,10 @@ class TestAgentObservabilityQueriesCases:
     ) -> None:
         service = AgentObservabilityQueries(sqlite_session)
         webapp_message = _agent_observability_service_message(message_id="shared")
-        webapp_row = {"id": "shared", "created_at": 10, "updated_at": 30}
+        webapp_row = {"id": "shared", "message_id": "shared", "created_at": 10, "updated_at": 30}
         workflow_rows = [
-            {"id": "shared", "created_at": 10, "updated_at": 20},
-            {"id": "workflow-only", "created_at": 20, "updated_at": 10},
+            {"id": "shared", "message_id": "shared", "created_at": 10, "updated_at": 20},
+            {"id": "workflow-only", "message_id": "workflow-only", "created_at": 20, "updated_at": 10},
         ]
         monkeypatch.setattr(service, "_list_webapp_messages", lambda **kwargs: [webapp_message])
         monkeypatch.setattr(service, "_list_message_feedbacks", lambda **kwargs: {})
@@ -456,7 +569,7 @@ class TestAgentObservabilityQueriesCases:
         )
 
         assert payload == {
-            "data": [workflow_rows[0], workflow_rows[1]],
+            "data": [row | {"agent_thoughts": []} for row in workflow_rows],
             "page": 1,
             "limit": 20,
             "total": 2,
