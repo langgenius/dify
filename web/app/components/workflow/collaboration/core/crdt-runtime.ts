@@ -1,6 +1,6 @@
 'use client'
 
-import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
+import { LoroDoc, LoroList, LoroMap, UndoManager, VersionVector } from 'loro-crdt'
 import { CRDTProvider } from './crdt-provider'
 
 /**
@@ -18,4 +18,5 @@ export const crdtRuntime = {
   LoroList,
   LoroMap,
   UndoManager,
+  VersionVector,
 }

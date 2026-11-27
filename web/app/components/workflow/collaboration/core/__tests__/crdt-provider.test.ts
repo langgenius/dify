@@ -14,13 +14,7 @@ const connect = (
   onSnapshotImported?: () => void,
   shouldImportSnapshot?: () => boolean,
 ) => {
-  const provider = new CRDTProvider(
-    socket,
-    doc,
-    undefined,
-    onSnapshotImported,
-    shouldImportSnapshot,
-  )
+  const provider = new CRDTProvider(socket, doc, { onSnapshotImported, shouldImportSnapshot })
   providers.push(provider)
   return provider
 }

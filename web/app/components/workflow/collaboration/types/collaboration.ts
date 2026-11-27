@@ -1,5 +1,7 @@
 export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable'
 
+export type GraphUpdateMetadata = { historyId: string; requestId?: string }
+
 export type OnlineUser = {
   user_id: string
   username: string
@@ -47,6 +49,7 @@ type CollaborationEventType =
   | 'node_panel_presence'
   | 'app_publish_update'
   | 'graph_resync_request'
+  | 'graph_missing_request'
   | 'workflow_restore_intent'
   | 'workflow_restore_complete'
   | 'workflow_history_action'

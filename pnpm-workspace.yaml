@@ -242,7 +242,7 @@ catalog:
   ky: 2.2.0
   lexical: 0.53.0
   lockfile: 1.0.4
-  loro-crdt: 1.17.1
+  loro-crdt: 1.19.1
   mediabunny: 1.66.0
   mime: 4.1.2
   mitt: 3.0.1

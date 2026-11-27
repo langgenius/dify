@@ -2,71 +2,84 @@
 
 import type { LoroDoc } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
+import type { GraphUpdateMetadata } from '../types/collaboration'
 import { decodeImportBlobMeta } from 'loro-crdt'
 import { emitWithAuthGuard } from './websocket-manager'
 
+type CRDTProviderCallbacks = {
+  onUnauthorized?: () => void
+  onSnapshotImported?: () => void
+  shouldImportSnapshot?: () => boolean
+  shouldImport?: (data: Uint8Array, isSnapshot: boolean, metadata?: GraphUpdateMetadata) => boolean
+  sendUpdate?: (data: Uint8Array) => void
+  /** An update was stored but waits for operations this replica has not received. */
+  onMissingDependencies?: () => void
+  /** Loro rejected an incoming update, so this replica may no longer match its peers. */
+  onImportFailed?: (error: unknown) => void
+}
+
+/**
+ * Relays Loro updates over the collaboration socket.
+ *
+ * Outbound: each local commit sends only the bytes of that commit (`subscribeLocalUpdates`).
+ * Inbound: an update counts as integrated only when `ImportStatus.pending` is empty; otherwise the
+ * caller recovers the missing range. Saving is a separate step that the collaboration manager
+ * acknowledges with the persisted draft hash.
+ */
 export class CRDTProvider {
   private doc: LoroDoc
   private socket: Socket
-  private onUnauthorized?: () => void
-  private onSnapshotImported?: () => void
-  private shouldImportSnapshot?: () => boolean
-  private unsubscribeDoc?: () => void
+  private callbacks: CRDTProviderCallbacks
+  private unsubscribeLocalUpdates?: () => void
 
-  constructor(
-    socket: Socket,
-    doc: LoroDoc,
-    onUnauthorized?: () => void,
-    onSnapshotImported?: () => void,
-    shouldImportSnapshot?: () => boolean,
-  ) {
+  constructor(socket: Socket, doc: LoroDoc, callbacks: CRDTProviderCallbacks = {}) {
     this.socket = socket
     this.doc = doc
-    this.onUnauthorized = onUnauthorized
-    this.onSnapshotImported = onSnapshotImported
-    this.shouldImportSnapshot = shouldImportSnapshot
-    this.setupEventListeners()
-  }
-
-  private setupEventListeners(): void {
-    const unsubscribe = this.doc.subscribe((event: { by?: string }) => {
-      if (event.by === 'local') {
-        if (!this.socket.connected) return
-
-        const update = this.doc.export({ mode: 'update' })
-        emitWithAuthGuard(this.socket, 'graph_event', update, {
-          onUnauthorized: this.onUnauthorized,
-        })
-      }
-    })
-    if (typeof unsubscribe === 'function') this.unsubscribeDoc = unsubscribe
-
+    this.callbacks = callbacks
+    this.unsubscribeLocalUpdates = this.doc.subscribeLocalUpdates(this.handleLocalUpdate)
     this.socket.on('graph_update', this.handleGraphUpdate)
   }
 
-  private handleGraphUpdate = (updateData: Uint8Array): void => {
-    try {
-      const data = new Uint8Array(updateData)
-      let isSnapshot = false
-      try {
-        const metadata = decodeImportBlobMeta(data, false)
-        isSnapshot = metadata.mode === 'snapshot' || metadata.mode === 'outdated-snapshot'
-      } catch {
-        // Import remains backward compatible with payloads whose metadata cannot be decoded.
-      }
+  private handleLocalUpdate = (update: Uint8Array): void => {
+    if (!this.socket.connected) return
 
-      if (isSnapshot && this.shouldImportSnapshot?.() === false) return
-
-      this.doc.import(data)
-      if (isSnapshot) this.onSnapshotImported?.()
-    } catch (error) {
-      console.error('Error importing graph update:', error)
+    if (this.callbacks.sendUpdate) {
+      this.callbacks.sendUpdate(update)
+      return
     }
+    emitWithAuthGuard(this.socket, 'graph_event', update, {
+      onUnauthorized: this.callbacks.onUnauthorized,
+    })
+  }
+
+  private handleGraphUpdate = (updateData: Uint8Array, metadata?: GraphUpdateMetadata): void => {
+    const data = new Uint8Array(updateData)
+    let isSnapshot = false
+    try {
+      const metadata = decodeImportBlobMeta(data, false)
+      isSnapshot = metadata.mode === 'snapshot' || metadata.mode === 'outdated-snapshot'
+    } catch {
+      // `import` reports undecodable payloads below.
+    }
+
+    if (isSnapshot && this.callbacks.shouldImportSnapshot?.() === false) return
+
+    let status: ReturnType<LoroDoc['import']>
+    try {
+      if (this.callbacks.shouldImport?.(data, isSnapshot, metadata) === false) return
+      status = this.doc.import(data)
+    } catch (error) {
+      this.callbacks.onImportFailed?.(error)
+      return
+    }
+
+    if (status.pending && status.pending.size > 0) this.callbacks.onMissingDependencies?.()
+    else if (isSnapshot) this.callbacks.onSnapshotImported?.()
   }
 
   destroy(): void {
-    this.unsubscribeDoc?.()
-    this.unsubscribeDoc = undefined
+    this.unsubscribeLocalUpdates?.()
+    this.unsubscribeLocalUpdates = undefined
     this.socket.off('graph_update', this.handleGraphUpdate)
   }
 }

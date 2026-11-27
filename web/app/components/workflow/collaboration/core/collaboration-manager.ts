@@ -8,6 +8,7 @@ import type {
   CollaborationUpdate,
   CursorPosition,
   GraphReloadRequest,
+  GraphUpdateMetadata,
   JoinFailure,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
@@ -136,6 +137,8 @@ type GraphSyncDiagnosticEvent = {
   }
 }
 
+const MISSING_UPDATES_REQUEST_INTERVAL = 1000
+const GRAPH_VERSION_CHECK_INTERVAL = 30_000
 const GRAPH_IMPORT_LOG_LIMIT = 20
 const SET_NODES_ANOMALY_LOG_LIMIT = 100
 const GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT = 400
@@ -167,6 +170,9 @@ export class CollaborationManager {
   private targetAppId: string | null = null
   private connectGeneration = 0
   private doc: LoroDoc | null = null
+  private historyId: string | undefined
+  private snapshotRequestId: string | undefined
+  private bufferedGraphUpdates: Array<{ historyId: string; data: Uint8Array }> = []
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
   private nodesMap: LoroMap<Record<string, Value>> | null = null
@@ -185,21 +191,20 @@ export class CollaborationManager {
   private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
   private initialSyncRetryAttempt = 0
   private rejoinInProgress = false
+  private rejoiningLeaderSid: string | undefined
   private joinFailure: JoinFailure | null = null
   private joinPending = false
   private hasJoinedRoom = false
   private joinAttempt = 0
   private receivedConnectionStatus = false
   private pendingGraphImportEmit = false
-  private pendingGraphResyncBroadcast = false
   private graphViewActive: boolean | null = null
   private graphViewSequence = 0
   private visibilityListenerAttached = false
   private crdtTrusted = false
   private hasEstablishedConnection = false
   private localDraftFallbackActive = false
-  private rebuildCrdtOnNextConnect = false
-  private reconnectedWithFreshDoc = false
+  private reconnecting = false
   private awaitingSnapshotImport = false
   private graphReloadRequired = false
   private crdtGeneration = 0
@@ -216,6 +221,11 @@ export class CollaborationManager {
   private graphImportLogs: GraphImportLogEntry[] = []
   private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
   private graphSyncDiagnostics: GraphSyncDiagnosticEvent[] = []
+  private lastMissingUpdatesRequestAt = 0
+  private importFailureCount = 0
+  private missingUpdatesRequestTimer: ReturnType<typeof setTimeout> | null = null
+  private graphVersionCheckTimer: ReturnType<typeof setInterval> | null = null
+  private lastImportFailureBroadcastAt = 0
   private pendingImportLog: {
     timestamp: number
     sources: Set<'nodes' | 'edges'>
@@ -247,6 +257,7 @@ export class CollaborationManager {
     else return
 
     this.joinPending = false
+    this.rejoiningLeaderSid = undefined
     this.crdtTrusted = false
     this.eventEmitter.emit('joinFailure', this.joinFailure)
     this.emitGraphReadyState()
@@ -287,6 +298,7 @@ export class CollaborationManager {
     if (
       this.joinFailure ||
       this.rejoinInProgress ||
+      this.rejoiningLeaderSid !== undefined ||
       (this.joinPending && !this.receivedConnectionStatus)
     )
       return
@@ -296,6 +308,9 @@ export class CollaborationManager {
     if (!socket?.connected) return
 
     this.rejoinInProgress = true
+    this.receivedConnectionStatus = false
+    this.prepareGraphReconnect(this.crdtTrusted && this.isLeader ? socket.id : undefined)
+    this.emitGraphReadyState()
     console.warn('Collaboration session expired, attempting to rejoin workflow.')
     this.joinWorkflow(socket)
   }
@@ -309,10 +324,11 @@ export class CollaborationManager {
     })
   }
 
-  private sendGraphEvent(payload: Uint8Array): void {
+  private sendGraphEvent(data: Uint8Array, requestId?: string): void {
     const socket = this.getActiveSocket()
     if (!socket) return
 
+    const payload = this.historyId ? { historyId: this.historyId, data, requestId } : data
     emitWithAuthGuard(socket, 'graph_event', payload, {
       onUnauthorized: this.handleSessionUnauthorized,
     })
@@ -618,16 +634,15 @@ export class CollaborationManager {
     return this.crdtRuntime
   }
 
-  private initializeCrdt(socket: Socket): void {
+  private initializeCrdt(socket: Socket, document?: LoroDoc): void {
     const { CRDTProvider, LoroDoc, UndoManager } = this.getCrdtRuntime()
     this.provider?.destroy()
     this.undoManager = null
-    this.doc = new LoroDoc()
+    this.doc = document ?? new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
     this.edgesMap = this.doc.getMap('edges') as LoroMap<Record<string, Value>>
     this.crdtGeneration += 1
     this.pendingGraphImportEmit = false
-    this.pendingGraphResyncBroadcast = false
     this.pendingImportLog = null
 
     this.undoManager = new UndoManager(this.doc, {
@@ -685,32 +700,233 @@ export class CollaborationManager {
       },
     })
 
-    this.provider = new CRDTProvider(
-      socket,
-      this.doc,
-      this.handleSessionUnauthorized,
-      this.handleSnapshotImported,
-      this.shouldImportSnapshot,
-    )
+    this.provider = new CRDTProvider(socket, this.doc, {
+      onSnapshotImported: this.handleSnapshotImported,
+      shouldImport: this.shouldImportGraph,
+      sendUpdate: (data) => this.sendGraphEvent(data),
+      onMissingDependencies: this.handleMissingDependencies,
+      onImportFailed: this.handleImportFailed,
+    })
     this.setupSubscriptions()
+  }
+
+  private prepareGraphReconnect(rejoiningLeaderSid?: string): void {
+    this.crdtTrusted = false
+    this.reconnecting = true
+    this.rejoiningLeaderSid = rejoiningLeaderSid
+    this.awaitingSnapshotImport = false
+    this.snapshotRequestId = undefined
+    this.bufferedGraphUpdates = []
+    this.clearMissingUpdatesRequest()
+    this.clearInitialSyncRetry()
+  }
+
+  private shouldImportGraph = (
+    data: Uint8Array,
+    isSnapshot: boolean,
+    metadata?: GraphUpdateMetadata,
+  ): boolean => {
+    const historyId = metadata?.historyId
+    if (!isSnapshot) {
+      if (this.crdtTrusted) return historyId === this.historyId
+      if (
+        historyId &&
+        (this.joinPending || this.reconnecting || this.awaitingSnapshotImport) &&
+        this.getActiveSocket()?.connected
+      )
+        this.bufferedGraphUpdates.push({ historyId, data })
+      return false
+    }
+
+    if (!this.receivedConnectionStatus || (this.isLeader && !this.awaitingSnapshotImport))
+      return false
+    if (!this.awaitingSnapshotImport) {
+      if (this.crdtTrusted && historyId === this.historyId) return true
+      if (this.crdtTrusted && metadata?.historyId && !metadata.requestId)
+        this.requestGraphCheckpoint()
+      return false
+    }
+
+    // A delayed response to an earlier join must never select the current history.
+    if (!this.snapshotRequestId || (metadata && metadata.requestId !== this.snapshotRequestId))
+      return false
+    if (!historyId && this.historyId) return false
+    if (historyId && historyId === this.historyId) return true
+
+    const socket = this.getActiveSocket()
+    if (!socket) return false
+    // A new history starts from this snapshot. Merging the old document can revive deleted nodes.
+    const recovered = this.getCrdtRuntime().LoroDoc.fromSnapshot(data)
+    this.historyId = historyId
+    this.initializeCrdt(socket, recovered)
+    this.handleSnapshotImported()
+    return false
+  }
+
+  private requestGraphCheckpoint(): void {
+    this.crdtTrusted = false
+    this.awaitingSnapshotImport = true
+    this.pendingInitialSync = true
+    this.emitGraphReadyState()
+    this.requestInitialSyncIfNeeded()
+  }
+
+  /**
+   * An imported update depends on operations this replica never received, for example after the
+   * relay dropped a message. Ask peers for everything after this replica's version; a peer that
+   * holds more answers with exactly that range.
+   */
+  private handleMissingDependencies = (): void => {
+    const doc = this.doc
+    if (
+      !doc ||
+      !this.crdtTrusted ||
+      !this.receivedConnectionStatus ||
+      !this.getActiveSocket()?.connected
+    )
+      return
+
+    const now = Date.now()
+    const wait = this.lastMissingUpdatesRequestAt + MISSING_UPDATES_REQUEST_INTERVAL - now
+    if (wait > 0) {
+      // Send once more when the interval ends, so a request made meanwhile is not lost.
+      this.missingUpdatesRequestTimer ??= setTimeout(() => {
+        this.missingUpdatesRequestTimer = null
+        this.handleMissingDependencies()
+      }, wait)
+      return
+    }
+    this.lastMissingUpdatesRequestAt = now
+
+    this.sendCollaborationEvent({
+      type: 'graph_missing_request',
+      data: {
+        historyId: this.historyId,
+        version: doc.oplogVersion().encode(),
+        isLeader: this.isLeader,
+      },
+      timestamp: now,
+    })
+  }
+
+  private updateGraphVersionCheck(): void {
+    const socket = this.getActiveSocket()
+    const shouldCheck =
+      socket?.connected &&
+      this.isLeader &&
+      this.crdtTrusted &&
+      this.onlineUsers.some(({ sid }) => sid && sid !== socket.id)
+
+    if (shouldCheck) {
+      // A lone lost edit or repair reply may leave no further pending import to trigger recovery.
+      this.graphVersionCheckTimer ??= setInterval(
+        this.handleMissingDependencies,
+        GRAPH_VERSION_CHECK_INTERVAL,
+      )
+    } else if (this.graphVersionCheckTimer !== null) {
+      clearInterval(this.graphVersionCheckTimer)
+      this.graphVersionCheckTimer = null
+    }
+  }
+
+  private clearMissingUpdatesRequest(): void {
+    if (this.missingUpdatesRequestTimer !== null) clearTimeout(this.missingUpdatesRequestTimer)
+    this.missingUpdatesRequestTimer = null
+    this.lastMissingUpdatesRequestAt = 0
+  }
+
+  /**
+   * Answers with the operations the requester lacks, and asks back when the requester holds
+   * operations this replica lacks, such as a local update the relay dropped.
+   */
+  private answerMissingUpdatesRequest(data: Record<string, unknown>): void {
+    const doc = this.doc
+    const encodedVersion = toUint8Array(data.version)
+    if (!doc || !encodedVersion || !this.crdtTrusted) return
+    if (data.historyId !== this.historyId) {
+      // A periodic leader probe can recover a missed announcement of a new history.
+      if (!this.isLeader && data.isLeader === true && typeof data.historyId === 'string')
+        this.requestGraphCheckpoint()
+      return
+    }
+
+    try {
+      const { VersionVector } = this.getCrdtRuntime()
+      const peerVersion = VersionVector.decode(encodedVersion)
+      const comparison = doc.oplogVersion().compare(peerVersion)
+      if (comparison === 1 || comparison === undefined)
+        this.sendGraphEvent(doc.export({ mode: 'update', from: peerVersion }))
+      if (comparison === -1 || comparison === undefined) this.handleMissingDependencies()
+    } catch (error) {
+      console.error('Failed to answer missing graph updates request:', error)
+    }
+  }
+
+  /**
+   * Loro rejected an incoming update, so this replica may have diverged.
+   * A follower requests the leader's checkpoint before it resumes editing.
+   * The leader compares versions with its peers and republishes its snapshot.
+   */
+  private handleImportFailed = (error: unknown): void => {
+    console.error('Error importing graph update:', error)
+    const socket = this.getActiveSocket()
+    if (!socket?.connected || !this.doc) return
+
+    // Back off successive recovery attempts until a snapshot imports successfully.
+    const failures = this.importFailureCount
+    this.importFailureCount += 1
+
+    if (this.isLeader) {
+      this.handleMissingDependencies()
+      const now = Date.now()
+      if (now - this.lastImportFailureBroadcastAt < GRAPH_RESYNC_RETRY_MAX_DELAY) return
+      this.lastImportFailureBroadcastAt = now
+      this.broadcastCurrentGraph()
+      return
+    }
+
+    this.crdtTrusted = false
+    this.awaitingSnapshotImport = true
+    this.emitGraphReadyState()
+    this.clearInitialSyncRetry()
+    this.initialSyncRetryAttempt = failures
+    this.scheduleInitialSyncRetry()
   }
 
   private handleSnapshotImported = (): void => {
     if (!this.awaitingSnapshotImport) return
 
-    const shouldBroadcastSnapshot = this.isLeader && this.pendingGraphResyncBroadcast
-    this.clearInitialSyncRetry()
-    this.refreshGraphSynchronously()
-    this.awaitingSnapshotImport = false
-    this.crdtTrusted = true
-    this.reconnectedWithFreshDoc = false
-    this.graphReloadRequired = false
+    this.finishGraphRecovery()
     this.emitGraphReadyState()
-    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
+    // The snapshot may predate local commits that peers still need.
+    this.handleMissingDependencies()
   }
 
-  private shouldImportSnapshot = (): boolean => {
-    return !this.isLeader || this.awaitingSnapshotImport
+  private finishGraphRecovery(): void {
+    this.importFailureCount = 0
+    if (this.doc) {
+      for (const { historyId, data } of this.bufferedGraphUpdates) {
+        if (historyId !== this.historyId) continue
+        try {
+          this.doc.import(data)
+        } catch (error) {
+          console.error('Error importing buffered graph update:', error)
+        }
+      }
+    }
+    this.refreshGraphSynchronously()
+    this.markGraphTrusted()
+  }
+
+  private markGraphTrusted(): void {
+    this.clearInitialSyncRetry()
+    this.pendingInitialSync = false
+    this.awaitingSnapshotImport = false
+    this.snapshotRequestId = undefined
+    this.bufferedGraphUpdates = []
+    this.crdtTrusted = true
+    this.reconnecting = false
+    this.graphReloadRequired = false
   }
 
   async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
@@ -795,18 +1011,22 @@ export class CollaborationManager {
     this.graphViewActive = null
     this.graphViewSequence = 0
     this.crdtTrusted = false
-    this.rebuildCrdtOnNextConnect = false
-    this.reconnectedWithFreshDoc = false
+    this.reconnecting = false
+    this.historyId = undefined
+    this.snapshotRequestId = undefined
+    this.bufferedGraphUpdates = []
     this.awaitingSnapshotImport = false
     this.graphReloadRequired = false
     this.graphReloadToken += 1
     this.graphReloadAttempt = 0
-    this.pendingGraphResyncBroadcast = false
     this.emitGraphReadyState()
     this.crdtGeneration += 1
     this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection closed.'))
     this.provider?.destroy()
     this.undoManager = null
+    this.importFailureCount = 0
+    this.clearMissingUpdatesRequest()
+    this.lastImportFailureBroadcastAt = 0
     this.doc = null
     this.provider = null
     this.nodesMap = null
@@ -818,6 +1038,7 @@ export class CollaborationManager {
     this.nodePanelPresence = {}
     this.isUndoRedoInProgress = false
     this.rejoinInProgress = false
+    this.rejoiningLeaderSid = undefined
     this.clearGraphImportLog()
 
     // Only reset leader status when actually disconnecting
@@ -899,6 +1120,7 @@ export class CollaborationManager {
   }
 
   private emitGraphReadyState(): void {
+    this.updateGraphVersionCheck()
     this.eventEmitter.emit('graphReadyChange', this.canApplyLocalGraphMutation())
   }
 
@@ -953,18 +1175,19 @@ export class CollaborationManager {
   replaceGraphFromReactFlow(request: GraphReloadRequest): boolean {
     if (!this.doc || !this.reactFlowStore || !this.isGraphReloadCurrent(request)) return false
 
-    const shouldBroadcastSnapshot = this.pendingGraphResyncBroadcast
+    const socket = this.getActiveSocket()
+    if (!socket) return false
     const state = this.reactFlowStore.getState()
-    this.syncNodes(this.getNodes(), state.getNodes())
-    this.syncEdges(this.getEdges(), state.getEdges())
-    this.doc.commit()
-    this.clearInitialSyncRetry()
-    this.crdtTrusted = true
-    this.awaitingSnapshotImport = false
-    this.reconnectedWithFreshDoc = false
-    this.graphReloadRequired = false
+    this.historyId = uuid4()
+    this.initializeCrdt(socket)
+    this.syncNodes([], state.getNodes())
+    this.syncEdges([], state.getEdges())
+    this.doc?.commit()
+    this.clearUndoStack()
+    this.markGraphTrusted()
     this.emitGraphReadyState()
-    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
+    this.handleMissingDependencies()
+    this.broadcastCurrentGraph()
     return true
   }
 
@@ -1023,7 +1246,7 @@ export class CollaborationManager {
         'collaboration_event',
         {
           type: 'sync_request',
-          data: { requestId, graphSnapshot },
+          data: { requestId, graphSnapshot, historyId: this.historyId },
           timestamp: Date.now(),
         } satisfies CollaborationEventPayload,
         {
@@ -1623,7 +1846,7 @@ export class CollaborationManager {
     const payload = {
       appId: this.currentAppId,
       generatedAt: new Date().toISOString(),
-      entries: this.graphImportLogs,
+      entries: this.getGraphImportLog(),
       setNodesAnomalies: this.setNodesAnomalyLogs,
       syncDiagnostics: this.graphSyncDiagnostics,
       summary: {
@@ -1747,10 +1970,12 @@ export class CollaborationManager {
       }
     }
 
+    // React Flow replaces node and edge objects on change, so keeping references records the
+    // graph at this moment without copying it on every import. Readers clone on export.
     const state = this.reactFlowStore.getState()
     return {
-      nodes: cloneDeep(state.getNodes()),
-      edges: cloneDeep(state.getEdges()),
+      nodes: [...state.getNodes()],
+      edges: [...state.getEdges()],
     }
   }
 
@@ -1763,10 +1988,7 @@ export class CollaborationManager {
       this.pendingImportLog = {
         timestamp: Date.now(),
         sources: new Set([source]),
-        before: {
-          nodes: cloneDeep(snapshot.nodes),
-          edges: cloneDeep(snapshot.edges),
-        },
+        before: snapshot,
       }
       this.recordGraphSyncDiagnostic('start_import_log', 'snapshot', 'created', {
         source,
@@ -1797,10 +2019,7 @@ export class CollaborationManager {
         nodes: this.pendingImportLog.before.nodes,
         edges: this.pendingImportLog.before.edges,
       },
-      after: {
-        nodes: cloneDeep(afterSnapshot.nodes),
-        edges: cloneDeep(afterSnapshot.edges),
-      },
+      after: afterSnapshot,
       meta: {
         leaderId: this.leaderId,
         isLeader: this.isLeader,
@@ -1876,6 +2095,7 @@ export class CollaborationManager {
 
           if (
             !this.canPersistLocalGraph() ||
+            update.data.historyId !== this.historyId ||
             !this.importWorkflowSyncSnapshot(update.data.graphSnapshot)
           ) {
             acknowledge({ success: false, error: 'Collaborative graph is not ready to save.' })
@@ -1888,10 +2108,14 @@ export class CollaborationManager {
             requestId,
             acknowledge,
           } satisfies WorkflowSyncRequest)
+        } else if (update.type === 'graph_missing_request') {
+          this.answerMissingUpdatesRequest(update.data)
         } else if (update.type === 'graph_resync_request') {
           // The server sends this only to its selected snapshot source. Its routing decision is
           // authoritative even if the preceding local leader status event is still in flight.
-          this.broadcastCurrentGraph()
+          const requestId =
+            typeof update.data?.requestId === 'string' ? update.data.requestId : undefined
+          this.broadcastCurrentGraph(requestId)
         } else if (update.type === 'workflow_restore_intent') {
           this.eventEmitter.emit('restoreIntent', update.data as RestoreIntentData)
         } else if (update.type === 'workflow_restore_complete') {
@@ -1929,6 +2153,7 @@ export class CollaborationManager {
         if (data.leader && typeof data.leader === 'string') this.leaderId = data.leader
 
         this.onlineUsers = data.users
+        this.updateGraphVersionCheck()
         this.eventEmitter.emit('onlineUsers', data.users)
         this.eventEmitter.emit('cursors', { ...this.cursors })
       } catch (error) {
@@ -1936,13 +2161,19 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: { isLeader: boolean }) => {
+    socket.on('status', (data: { isLeader: boolean; retainedLeadership?: boolean }) => {
       try {
         if (this.joinFailure && !this.joinPending) return
         if (!data || typeof data.isLeader !== 'boolean') {
           console.warn('Invalid status data:', data)
           return
         }
+
+        const rejoiningLeader =
+          this.rejoiningLeaderSid !== undefined && this.rejoiningLeaderSid === socket.id
+        // A role broadcast can precede the join response, which confirms whether leadership was retained.
+        if (rejoiningLeader && data.isLeader && data.retainedLeadership === undefined) return
+        this.rejoiningLeaderSid = undefined
 
         this.hasJoinedRoom = true
         this.receivedConnectionStatus = true
@@ -1951,9 +2182,11 @@ export class CollaborationManager {
         const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
         this.isLeader = data.isLeader
 
-        if (
+        if (rejoiningLeader && this.isLeader && data.retainedLeadership === true) {
+          this.finishGraphRecovery()
+        } else if (
           this.isLeader &&
-          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
+          (this.reconnecting || this.awaitingSnapshotImport || this.graphReloadRequired)
         ) {
           this.clearInitialSyncRetry()
           this.pendingInitialSync = false
@@ -1961,13 +2194,11 @@ export class CollaborationManager {
           this.graphReloadRequired = true
           if (shouldNotifyReload) this.emitGraphReloadRequired()
         } else if (this.isLeader) {
-          this.clearInitialSyncRetry()
+          if (!this.crdtTrusted) this.historyId = uuid4()
           this.seedCrdtGraphFromReactFlowIfNeeded()
-          this.crdtTrusted = true
-          this.pendingInitialSync = false
+          this.markGraphTrusted()
         } else {
           this.awaitingSnapshotImport = !this.crdtTrusted
-          this.pendingGraphResyncBroadcast = false
           if (!this.awaitingSnapshotImport) {
             this.clearInitialSyncRetry()
             this.pendingInitialSync = false
@@ -1981,6 +2212,9 @@ export class CollaborationManager {
         if (wasLeader !== this.isLeader) this.eventEmitter.emit('leaderChange', this.isLeader)
 
         this.emitGraphReadyState()
+        // A rejoin keeps a trusted document; updates sent while the session was lost may be
+        // missing on either side, so compare versions with the room.
+        if (this.crdtTrusted) this.handleMissingDependencies()
 
         // The server recreates the session on every (re)join. Re-report both visible and hidden
         // states with a monotonically increasing sequence so stale deliveries cannot win.
@@ -1993,13 +2227,6 @@ export class CollaborationManager {
     socket.on('connect', () => {
       this.receivedConnectionStatus = false
       this.hasEstablishedConnection = true
-      if (this.rebuildCrdtOnNextConnect) {
-        this.initializeCrdt(socket)
-        this.rebuildCrdtOnNextConnect = false
-        this.reconnectedWithFreshDoc = true
-        this.awaitingSnapshotImport = false
-        this.crdtTrusted = false
-      }
       this.pendingInitialSync = true
       this.joinWorkflow(socket)
       this.emitGraphReadyState()
@@ -2007,19 +2234,17 @@ export class CollaborationManager {
     })
 
     socket.on('disconnect', (reason) => {
+      this.importFailureCount = 0
       this.joinPending = false
       this.rejoinInProgress = false
       this.joinAttempt += 1
       this.receivedConnectionStatus = false
-      this.clearInitialSyncRetry()
+      this.prepareGraphReconnect()
       this.cursors = {}
       this.onlineUsers = []
       this.isLeader = false
       this.leaderId = null
-      this.crdtTrusted = false
-      this.rebuildCrdtOnNextConnect = true
-      this.reconnectedWithFreshDoc = false
-      this.awaitingSnapshotImport = false
+      // Keep the document and its local commits while blocking edits and saves until recovery.
       this.graphReloadRequired = false
       this.pendingInitialSync = false
       this.emitGraphReadyState()
@@ -2040,9 +2265,8 @@ export class CollaborationManager {
     })
   }
 
-  // We currently only relay CRDT updates; the server doesn't persist them.
-  // When a follower joins mid-session, it might miss earlier broadcasts and render stale data.
-  // This lightweight checkpoint asks the leader to rebroadcast the latest graph snapshot once.
+  // The server relays graph updates without persisting them, so followers retry leader
+  // snapshot requests until a usable graph arrives.
   private clearInitialSyncRetry(): void {
     if (this.initialSyncRetryTimer) clearTimeout(this.initialSyncRetryTimer)
     this.initialSyncRetryTimer = null
@@ -2088,22 +2312,19 @@ export class CollaborationManager {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return false
     if (this.getActiveSocket()?.connected !== true) return false
 
+    this.snapshotRequestId ??= uuid4()
     this.sendCollaborationEvent({
       type: 'graph_resync_request',
-      data: { timestamp: Date.now() },
+      data: { requestId: this.snapshotRequestId },
       timestamp: Date.now(),
     })
     return true
   }
 
   private seedCrdtGraphFromReactFlowIfNeeded(): void {
-    if (!this.doc) return
+    // A graph deleted to empty still has history. Only seed a pristine document.
+    if (!this.doc || this.doc.opCount() !== 0) return
     if (!this.reactFlowStore) return
-
-    // CRDT may still be empty when the canvas was initially loaded from HTTP draft data
-    // before collaboration finished connecting, and no local mutation has been written yet.
-    // Seed once from the current ReactFlow graph so leader resync can broadcast a full snapshot.
-    if (this.getNodes().length > 0 || this.getEdges().length > 0) return
 
     const state = this.reactFlowStore.getState()
     const nodes = state.getNodes()
@@ -2116,14 +2337,11 @@ export class CollaborationManager {
     this.doc.commit()
   }
 
-  private broadcastCurrentGraph(): void {
+  private broadcastCurrentGraph(requestId?: string): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
     if (!this.doc) return
 
-    if (!this.crdtTrusted || this.graphReloadRequired) {
-      this.pendingGraphResyncBroadcast = true
-      return
-    }
+    if (!this.crdtTrusted || this.graphReloadRequired) return
 
     const socket = webSocketClient.getSocket(this.currentAppId)
     if (!socket) return
@@ -2132,8 +2350,7 @@ export class CollaborationManager {
       this.seedCrdtGraphFromReactFlowIfNeeded()
 
       const snapshot = this.doc.export({ mode: 'snapshot' })
-      this.sendGraphEvent(snapshot)
-      this.pendingGraphResyncBroadcast = false
+      this.sendGraphEvent(snapshot, requestId)
     } catch (error) {
       console.error('Failed to broadcast graph snapshot:', error)
     }

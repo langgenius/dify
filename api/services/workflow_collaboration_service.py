@@ -6,8 +6,9 @@ import socket
 import time
 import uuid
 from collections.abc import Mapping
-from typing import Any, override
+from typing import Annotated, Any, NotRequired, TypedDict, override
 
+from pydantic import StrictBytes, StringConstraints, TypeAdapter, ValidationError
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError  # type: ignore[reportMissingTypeStubs]
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,6 +28,18 @@ SERVER_HEARTBEAT_INTERVAL_SECONDS = 30
 SYNC_REQUEST_TIMEOUT_SECONDS = 15
 _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
+
+
+type _GraphUpdateId = Annotated[str, StringConstraints(strict=True, pattern=r"\S")]
+
+
+class _TaggedGraphUpdate(TypedDict):
+    data: StrictBytes
+    historyId: _GraphUpdateId
+    requestId: NotRequired[_GraphUpdateId]
+
+
+_TAGGED_GRAPH_UPDATE = TypeAdapter(_TaggedGraphUpdate)
 
 
 class WorkflowCollaborationNotEntitledError(Exception):
@@ -115,6 +128,7 @@ class WorkflowCollaborationService:
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
         `App.id`. Missing access returns `None`; an ineligible workspace raises
         `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
+        The join status tells the session whether it retained active leadership so it can keep its live graph.
         """
         socket_session = self._socketio.get_session(sid)
         user_id = socket_session.get("user_id")
@@ -151,13 +165,13 @@ class WorkflowCollaborationService:
 
         self._repository.set_session_info(workflow_id, session_info)
 
-        leader_sid = self.get_or_set_leader(workflow_id, sid)
+        leader_sid, retained_leadership = self.get_or_set_leader(workflow_id, sid)
         is_leader = leader_sid == sid
 
         self._socketio.enter_room(sid, workflow_id)
         self.broadcast_online_users(workflow_id)
 
-        self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
+        self._socketio.emit("status", {"isLeader": is_leader, "retainedLeadership": retained_leadership}, room=sid)
 
         return str(user_id), is_leader
 
@@ -346,9 +360,24 @@ class WorkflowCollaborationService:
         return {"msg": "event_broadcasted"}, 200
 
     def relay_graph_event(self, sid: str, data: object) -> tuple[dict[str, str], int]:
+        """Broadcast a joined socket's update, sending tagged metadata as a second Socket.IO argument.
+
+        Legacy payloads pass through unchanged. A malformed tagged payload returns 400 without broadcasting.
+        """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return {"msg": "unauthorized"}, 401
+
+        if isinstance(data, Mapping) and any(key in data for key in ("data", "historyId", "requestId")):
+            try:
+                update = _TAGGED_GRAPH_UPDATE.validate_python(data)
+            except ValidationError:
+                return {"msg": "invalid graph_event"}, 400
+
+            metadata = {"historyId": update["historyId"]}
+            if "requestId" in update:
+                metadata["requestId"] = update["requestId"]
+            data = (update["data"], metadata)
 
         workflow_id = mapping["workflow_id"]
         self.refresh_session_state(workflow_id, sid)
@@ -357,12 +386,13 @@ class WorkflowCollaborationService:
 
         return {"msg": "graph_update_broadcasted"}, 200
 
-    def get_or_set_leader(self, workflow_id: str, sid: str) -> str:
+    def get_or_set_leader(self, workflow_id: str, sid: str) -> tuple[str, bool]:
+        """Resolve a joined session's leader and whether it already held active leadership."""
         current_leader = self._repository.get_current_leader(workflow_id)
 
         if current_leader:
             if self.is_session_active(workflow_id, current_leader):
-                return current_leader
+                return current_leader, current_leader == sid
             self._repository.delete_session(workflow_id, current_leader)
             self._repository.delete_leader(workflow_id)
 
@@ -371,13 +401,10 @@ class WorkflowCollaborationService:
         if was_set:
             if current_leader:
                 self.broadcast_leader_change(workflow_id, sid)
-            return sid
+            return sid, False
 
         current_leader = self._repository.get_current_leader(workflow_id)
-        if current_leader:
-            return current_leader
-
-        return sid
+        return current_leader or sid, False
 
     def handle_leader_disconnect(self, workflow_id: str, disconnected_sid: str) -> None:
         current_leader = self._repository.get_current_leader(workflow_id)

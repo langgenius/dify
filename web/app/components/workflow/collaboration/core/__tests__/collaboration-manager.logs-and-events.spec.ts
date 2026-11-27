@@ -119,8 +119,9 @@ it('exports diagnostic logs from a remote graph change and clears the exported h
     role: 'follower',
     nodes: [node, target],
     edges: [edge],
+    preserveEmits: true,
   })
-  local.receive('graph_update', remote.snapshot())
+  local.receive('graph_update', remote.snapshot(local))
   await vi.runAllTimersAsync()
   local.manager.clearGraphImportLog()
   local.receive('online_users', {

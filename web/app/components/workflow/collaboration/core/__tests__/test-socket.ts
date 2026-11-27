@@ -1,5 +1,15 @@
-import type { CollaborationUpdate } from '../../types/collaboration'
+import type { CollaborationUpdate, GraphUpdateMetadata } from '../../types/collaboration'
 import { Manager } from 'socket.io-client'
+
+export type GraphPacket = GraphUpdateMetadata & { data: Uint8Array }
+
+const isGraphPacket = (value: unknown): value is GraphPacket =>
+  !!value &&
+  typeof value === 'object' &&
+  'data' in value &&
+  value.data instanceof Uint8Array &&
+  'historyId' in value &&
+  typeof value.historyId === 'string'
 
 // Keep Socket's public listener contract, but never open a transport.
 export const createSocket = (id: string, connected = true) => {
@@ -13,7 +23,13 @@ export const createSocket = (id: string, connected = true) => {
   const receive = (event: string, ...args: unknown[]) => {
     if (event === 'connect') socket.connected = true
     if (event === 'disconnect') socket.connected = false
-    for (const listener of socket.listeners(event)) listener(...args)
+    const packet = args[0]
+    for (const listener of socket.listeners(event)) {
+      if (event === 'graph_update' && isGraphPacket(packet)) {
+        const { data, ...metadata } = packet
+        listener(data, metadata)
+      } else listener(...args)
+    }
   }
   const update = (
     type: CollaborationUpdate['type'],
@@ -42,11 +58,13 @@ export const createSocket = (id: string, connected = true) => {
       throw new TypeError(`No acknowledgement callback for ${event}`)
     callback(body, status)
   }
-  const snapshot = () => {
-    update('graph_resync_request', {})
-    const data = emit.mock.calls.filter(([event]) => event === 'graph_event').at(-1)?.[1]
-    if (!(data instanceof Uint8Array)) throw new TypeError('No graph snapshot was broadcast')
-    return data
+  const snapshot = (requester?: { messages: typeof messages }) => {
+    const request = requester?.messages('graph_resync_request').at(-1)?.[1].data
+    const before = emit.mock.calls.length
+    update('graph_resync_request', request ?? {})
+    const packet = emit.mock.calls.slice(before).find(([event]) => event === 'graph_event')?.[1]
+    if (!isGraphPacket(packet)) throw new Error('No graph snapshot was broadcast')
+    return packet
   }
   return { socket, emit, receive, update, messages, acknowledge, snapshot }
 }

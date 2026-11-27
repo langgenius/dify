@@ -14,8 +14,8 @@ afterEach(cleanup)
 
 const createReplicas = async (node: Node) => {
   const a = await createSession({ nodes: [node] })
-  const b = await createSession({ role: 'follower' })
-  b.receive('graph_update', a.snapshot())
+  const b = await createSession({ role: 'follower', preserveEmits: true })
+  b.receive('graph_update', a.snapshot(b))
   a.emit.mockClear()
   b.emit.mockClear()
   const exchange = () => {

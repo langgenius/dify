@@ -163,15 +163,19 @@ it('keeps the existing canvas blocked when an established session cannot rejoin'
   expect(manager.canPersistLocalGraph()).toBe(false)
 })
 
-it('does not start concurrent rejoins and accepts status before the successful acknowledgement', async () => {
+it('does not start concurrent rejoins and reloads if the join required a fresh election', async () => {
   const { manager, acknowledge, receive, emit } = await createSession()
   manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
   acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   manager.emitCursorMove({ x: 2, y: 3, userId: 'user-1', timestamp: 2 })
   acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(1)
-  receive('status', { isLeader: true })
+  receive('status', { isLeader: true, retainedLeadership: false })
   acknowledge('user_connect', { msg: 'connected' })
+  const reload = vi.fn<(request: GraphReloadRequest) => void>()
+  manager.onGraphReloadRequired(reload)
+  expect(reload).toHaveBeenCalledOnce()
+  expect(manager.replaceGraphFromReactFlow(reload.mock.calls[0]![0])).toBe(true)
   expect(manager.canPersistLocalGraph()).toBe(true)
 })
 
@@ -194,10 +198,13 @@ it.each(['before', 'after'] as const)(
     expect(emit.mock.calls.filter(([event]) => event === 'user_connect')).toHaveLength(2)
 
     if (oldAckOrder === 'before') initialAck({ msg: 'not_entitled' }, 403)
-    receive('status', { isLeader: true })
+    receive('status', { isLeader: true, retainedLeadership: true })
     acknowledge('user_connect', { msg: 'connected' })
     if (oldAckOrder === 'after') initialAck({ msg: 'not_entitled' }, 403)
     expect(failures).toHaveBeenLastCalledWith(null)
+    const reload = vi.fn<(request: GraphReloadRequest) => void>()
+    manager.onGraphReloadRequired(reload)
+    expect(reload).not.toHaveBeenCalled()
     expect(manager.canPersistLocalGraph()).toBe(true)
   },
 )
@@ -311,7 +318,11 @@ it('includes a graph snapshot and resolves the workflow save acknowledgement', a
     [
       'collaboration_event',
       expect.objectContaining({
-        data: { requestId: expect.any(String), graphSnapshot: expect.any(Uint8Array) },
+        data: {
+          requestId: expect.any(String),
+          graphSnapshot: expect.any(Uint8Array),
+          historyId: expect.any(String),
+        },
       }),
       expect.any(Function),
     ],
@@ -332,14 +343,15 @@ it('imports a directed save snapshot even when the local leader flag is stale an
     appId: 'requester',
     nodes: [createNode('requester-node', 'Requester edit')],
   })
-  const snapshot = remote.snapshot()
-  const { manager, receive, update } = await createSession({ role: 'follower' })
-  receive('graph_update', snapshot)
+  const local = await createSession({ role: 'follower', preserveEmits: true })
+  const { manager, receive, update } = local
+  receive('graph_update', remote.snapshot(local))
   const requests = vi.fn<(request: WorkflowSyncRequest) => void>()
   manager.onSyncRequest(requests)
   const acknowledge = vi.fn()
   remote.manager.setNodes(remote.manager.getNodes(), [createNode('requester-node', 'Latest edit')])
-  update('sync_request', { requestId: 'request-1', graphSnapshot: remote.snapshot() }, acknowledge)
+  const { data: graphSnapshot, historyId } = remote.snapshot()
+  update('sync_request', { requestId: 'request-1', graphSnapshot, historyId }, acknowledge)
   expect(manager.getIsLeader()).toBe(false)
   expect(manager.getNodes()[0]?.data.title).toBe('Latest edit')
   expect(requests).toHaveBeenCalledOnce()
@@ -355,11 +367,15 @@ it('imports a directed save snapshot even when the local leader flag is stale an
 })
 
 it('rejects a directed save without a valid snapshot', async () => {
-  const { manager, update } = await createSession()
+  const { manager, update, snapshot } = await createSession()
   const requested = vi.fn()
   const acknowledge = vi.fn()
   manager.onSyncRequest(requested)
-  update('sync_request', { requestId: 'request-without-snapshot' }, acknowledge)
+  update(
+    'sync_request',
+    { requestId: 'request-without-snapshot', historyId: snapshot().historyId },
+    acknowledge,
+  )
   expect(requested).not.toHaveBeenCalled()
   expect(acknowledge).toHaveBeenCalledWith({
     success: false,
@@ -519,10 +535,11 @@ it('imports remote edits while retaining local selection and editor metadata', a
   const local = await createSession({
     role: 'follower',
     nodes: [selectedNode, second],
+    preserveEmits: true,
   })
   const imported = vi.fn()
   local.manager.onGraphImport(imported)
-  local.receive('graph_update', remote.snapshot())
+  local.receive('graph_update', remote.snapshot(local))
   remote.manager.setNodes(remote.manager.getNodes(), [
     { ...node, data: { ...node.data, title: 'Remote title' } },
     second,
@@ -562,14 +579,22 @@ it('shares workflow connections and ignores old releases after switching workflo
   expect(manager.isConnected()).toBe(false)
 })
 
-it('reloads a re-elected leader from the authoritative graph before broadcasting', async () => {
-  const { manager, receive, update, emit, state } = await createSession({
-    nodes: [createNode('stale')],
+it('reloads a re-elected leader into a new history before broadcasting', async () => {
+  const saved = createNode('n-1', 'Saved title')
+  const edited = createNode(saved.id, 'Unsaved title')
+  const { manager, receive, update, emit, state, snapshot } = await createSession({
+    nodes: [saved],
   })
+  const { historyId } = snapshot()
+  expect(historyId).toEqual(expect.any(String))
+  manager.setNodes([saved], [edited])
+  state.setNodes([edited])
+  emit.mockClear()
+
   receive('disconnect', 'transport close')
   expect(manager.canPersistLocalGraph()).toBe(false)
   receive('connect')
-  expect(manager.getNodes()).toEqual([])
+  expect(manager.getNodes()).toEqual([expect.objectContaining(edited)])
   receive('status', { isLeader: true })
   const reload = vi.fn<(request: GraphReloadRequest) => void>()
   manager.onGraphReloadRequired(reload)
@@ -579,12 +604,17 @@ it('reloads a re-elected leader from the authoritative graph before broadcasting
   expect(manager.canPersistLocalGraph()).toBe(false)
   update('graph_resync_request', {})
   expect(emit.mock.calls.filter(([event]) => event === 'graph_event')).toHaveLength(0)
-  const latest = createNode('latest', 'Latest HTTP draft')
-  state.setNodes([latest])
+  state.setNodes([saved])
   expect(manager.replaceGraphFromReactFlow(request)).toBe(true)
-  expect(manager.getNodes()).toEqual([expect.objectContaining(latest)])
+  expect(manager.getNodes()).toEqual([expect.objectContaining(saved)])
+  expect(state.getNodes()).toEqual([expect.objectContaining(saved)])
   expect(manager.canPersistLocalGraph()).toBe(true)
-  expect(emit).toHaveBeenCalledWith('graph_event', expect.any(Uint8Array), expect.any(Function))
+  expect(emit).toHaveBeenCalledWith(
+    'graph_event',
+    expect.objectContaining({ data: expect.any(Uint8Array), historyId: expect.any(String) }),
+    expect.any(Function),
+  )
+  expect(snapshot().historyId).not.toBe(historyId)
 })
 
 it('keeps a promoted follower blocked until an authoritative snapshot or reload arrives', async () => {
@@ -598,19 +628,32 @@ it('keeps a promoted follower blocked until an authoritative snapshot or reload 
   receive('status', { isLeader: true })
   expect(reload).toHaveBeenCalledOnce()
   manager.setNodes([], [createNode('must-not-save')])
-  expect(manager.getNodes()).toEqual([])
+  expect(manager.getNodes()[0]?.id).toBe('stale')
   expect(manager.canPersistLocalGraph()).toBe(false)
+})
+
+it('keeps sending untagged updates when a follower of a legacy leader takes over', async () => {
+  const node = createNode('n-1', 'Original')
+  const leader = await createSession({ nodes: [node] })
+  const { manager, receive, emit } = await createSession({ role: 'follower' })
+  receive('graph_update', leader.snapshot().data)
+  receive('status', { isLeader: true })
+  expect(manager.canPersistLocalGraph()).toBe(true)
+
+  manager.setNodes([node], [createNode(node.id, 'Edited')])
+  expect(emit).toHaveBeenCalledWith('graph_event', expect.any(Uint8Array), expect.any(Function))
 })
 
 it('retries follower resync until a snapshot arrives and then stops', async () => {
   vi.useFakeTimers()
   const remote = await createSession({ appId: 'remote', nodes: [createNode('snapshot')] })
-  const { manager, receive, messages } = await createSession({ role: 'pending' })
+  const local = await createSession({ role: 'pending' })
+  const { manager, receive, messages } = local
   receive('status', { isLeader: false })
   expect(messages('graph_resync_request')).toHaveLength(1)
   await vi.advanceTimersByTimeAsync(1000)
   expect(messages('graph_resync_request')).toHaveLength(2)
-  receive('graph_update', remote.snapshot())
+  receive('graph_update', remote.snapshot(local))
   await vi.advanceTimersByTimeAsync(20_000)
   expect(messages('graph_resync_request')).toHaveLength(2)
   expect(manager.canPersistLocalGraph()).toBe(true)
@@ -618,8 +661,12 @@ it('retries follower resync until a snapshot arrives and then stops', async () =
 })
 
 it('lets the requested snapshot win over an outstanding HTTP reload after promotion', async () => {
-  const remote = await createSession({ appId: 'remote', nodes: [createNode('latest', 'Latest')] })
-  const { manager, receive, state } = await createSession({ nodes: [createNode('stale')] })
+  const stale = createNode('stale')
+  const remote = await createSession({ appId: 'remote', nodes: [stale] })
+  const local = await createSession({ role: 'follower', nodes: [stale], preserveEmits: true })
+  const { manager, receive, state } = local
+  receive('graph_update', remote.snapshot(local))
+  remote.manager.setNodes([stale], [createNode('latest', 'Latest')])
   receive('disconnect', 'transport close')
   receive('connect')
   receive('status', { isLeader: false })
@@ -628,13 +675,13 @@ it('lets the requested snapshot win over an outstanding HTTP reload after promot
   receive('status', { isLeader: true })
   expect(reload).toHaveBeenCalledOnce()
   const request = reload.mock.calls[0]![0]
-  receive('graph_update', remote.snapshot())
-  expect(manager.getNodes()[0]?.id).toBe('latest')
+  receive('graph_update', remote.snapshot(local))
+  expect(manager.getNodes().map(({ id }) => id)).toEqual(['latest'])
   expect(manager.canPersistLocalGraph()).toBe(true)
   expect(manager.isGraphReloadCurrent(request)).toBe(false)
   state.setNodes([createNode('stale-http-result')])
   expect(manager.replaceGraphFromReactFlow(request)).toBe(false)
-  expect(manager.getNodes()[0]?.id).toBe('latest')
+  expect(manager.getNodes().map(({ id }) => id)).toEqual(['latest'])
 })
 
 it('rejects an old HTTP reload token after another reconnect', async () => {
@@ -655,8 +702,8 @@ it('rejects an old HTTP reload token after another reconnect', async () => {
 it('drops a queued remote graph update after disconnecting', async () => {
   vi.useFakeTimers()
   const remote = await createSession({ appId: 'remote', nodes: [createNode('initial')] })
-  const local = await createSession({ role: 'follower' })
-  local.receive('graph_update', remote.snapshot())
+  const local = await createSession({ role: 'follower', preserveEmits: true })
+  local.receive('graph_update', remote.snapshot(local))
   await vi.runAllTimersAsync()
   const before = local.state.getNodes()
   remote.manager.setNodes(remote.manager.getNodes(), [createNode('late')])

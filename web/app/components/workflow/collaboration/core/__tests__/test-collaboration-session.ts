@@ -1,3 +1,4 @@
+import type { GraphPacket } from './test-socket'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
@@ -100,3 +101,13 @@ export const createCollaborationTestEnvironment = () => {
 
   return { createSession, connect, transports, setup, cleanup }
 }
+
+export const withData = (node: Node, data: Record<string, unknown>): Node => ({
+  ...node,
+  data: { ...node.data, ...data },
+})
+
+export const graphUpdates = (emit: { mock: { calls: unknown[][] } }) =>
+  emit.mock.calls
+    .filter(([event]) => event === 'graph_event')
+    .map(([, payload]) => payload as GraphPacket)
