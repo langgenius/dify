@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class MailClient(Protocol):
     """Transport accepting validated mail messages and propagating delivery failures."""
 
-    def send(self, message: dict[str, str], /) -> object:
+    def send(self, message: dict[str, str], /) -> None:
         """Deliver a complete message, or raise before reporting success."""
         ...
 
