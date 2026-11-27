@@ -162,7 +162,12 @@ class LindormVectorStore(BaseVector):
     @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         query: dict[str, Any] = {
-            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}}
+            # Without an explicit size the search returns the default page of 10 hits,
+            # so a metadata-field delete would leave most of the matching documents
+            # behind (e.g. an app with more than 10 annotations). 10000 is the default
+            # index.max_result_window, the most a single search can return.
+            "size": 10000,
+            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}},
         }
         if self._using_ugc:
             query["query"]["bool"]["must"].append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})

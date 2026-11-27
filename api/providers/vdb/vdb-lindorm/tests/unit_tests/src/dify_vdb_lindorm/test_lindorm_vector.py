@@ -190,6 +190,25 @@ def test_metadata_lookup_and_delete_by_metadata(lindorm_module):
     vector.delete_by_ids.assert_not_called()
 
 
+def test_delete_by_metadata_field_covers_more_than_the_default_page(lindorm_module) -> None:
+    """An app with more annotations than the server's default page size of 10 must be fully cleared."""
+    vector = lindorm_module.LindormVectorStore("collection", _config(lindorm_module), using_ugc=False)
+    hits = [{"_id": f"id-{index}"} for index in range(25)]
+    vector._client.search.return_value = {"hits": {"hits": hits}}
+
+    ids = vector.get_ids_by_metadata_field("app_id", "app-1")
+    assert ids == [f"id-{index}" for index in range(25)]
+
+    body = vector._client.search.call_args.kwargs["body"]
+    assert body["size"] > 10
+
+    vector._client.indices.exists.return_value = True
+    lindorm_module.helpers.bulk.reset_mock()
+    vector.delete_by_metadata_field("app_id", "app-1")
+    actions = lindorm_module.helpers.bulk.call_args.args[1]
+    assert [action["_id"] for action in actions] == [f"id-{index}" for index in range(25)]
+
+
 def test_delete_by_ids_paths(lindorm_module):
     vector = lindorm_module.LindormVectorStore(
         "collection", _config(lindorm_module), using_ugc=True, routing_value="route"
