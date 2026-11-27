@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import hashlib
 import json
 import keyword
 import logging
@@ -51,7 +52,7 @@ GENERATOR = "api/dev/generate_billing_client.py"
 logger = logging.getLogger("generate_billing_client")
 
 type Service = Literal["billing", "saas"]
-type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "SAAS", "NETWORK_ACCESS", "TOKENER_CHECKOUT"]
+type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "SAAS", "NETWORK_ACCESS", "TOKENER_CHECKOUT", "TOKENER_TOPUP"]
 type JsonObject = dict[str, Any]
 
 SERVICES: tuple[Service, ...] = ("billing", "saas")
@@ -65,6 +66,16 @@ BASE_MODEL_ATTRIBUTES = frozenset(dir(BaseModel))
 ERROR_SCHEMA = "Error"
 ERROR_REASON_SUFFIX = "ErrorReason"
 ERROR_CLASS_SUFFIXES = ("UpstreamError", "UpstreamUnavailableError", "UpstreamInvalidResponseError")
+TOKENER_TOPUP_PATH = "/internal/v1/tokener/tenants/{tenant_id}/topup/handoff"
+TOKENER_TOPUP_REASON_SCHEMA: JsonObject = {
+    "type": "string",
+    "enum": [
+        "INVALID_TOKENER_TOPUP_IDENTITY",
+        "TOKENER_INVALID_SECRET_KEY",
+        "TOKENER_TOPUP_INELIGIBLE",
+        "TOKENER_TOPUP_UNAVAILABLE",
+    ],
+}
 
 
 @dataclass(frozen=True)
@@ -97,6 +108,7 @@ ALLOWED_OPERATIONS: dict[Service, tuple[AllowedOperation, ...]] = {
         AllowedOperation("POST", "/v1/quota/release", "BILLING_QUOTA"),
         AllowedOperation("GET", "/v1/quota/balance", "BILLING_QUOTA"),
         AllowedOperation("POST", "/v1/quota/consume-capped", "BILLING_QUOTA"),
+        AllowedOperation("POST", TOKENER_TOPUP_PATH, "TOKENER_TOPUP"),
     ),
     "saas": (
         AllowedOperation("DELETE", "/v1/account", "SAAS"),
@@ -234,6 +246,8 @@ def build_snapshot(service: Service, source: JsonObject, commit: str) -> JsonObj
         name.removeprefix(prefix): _rewrite_refs(schema, prefix)
         for name, schema in source.get("components", {}).get("schemas", {}).items()
     }
+    if service == "billing":
+        source_schemas.setdefault("BillingTokenerErrorReason", TOKENER_TOPUP_REASON_SCHEMA)
     error_schemas = {ERROR_SCHEMA}
     for allowed in ALLOWED_OPERATIONS[service]:
         operation_id = paths[allowed.path][allowed.method.lower()].get("operationId", "")
@@ -278,16 +292,56 @@ def take_snapshots() -> dict[Service, JsonObject]:
     return snapshots
 
 
+def import_tokener_topup_snapshot(snapshot: JsonObject, spec: Path) -> None:
+    """Import only the private agent-dev handoff contract from the Go OpenAPI.
+
+    The agent dev Billing baseline is older than the public client snapshot.
+    Preserve those existing operations rather than replacing their contracts.
+    """
+    raw = spec.read_bytes()
+    source = yaml.safe_load(raw)
+    operation = source.get("paths", {}).get(TOKENER_TOPUP_PATH, {}).get("post")
+    if not operation or operation.get("operationId") != "BillingTokener_CreateTenantTopupHandoff":
+        raise GenerationError("Billing spec has no Tokener handoff operation")
+    prefix = SCHEMA_PREFIXES["billing"]
+    operation = _rewrite_refs(operation, prefix)
+    source_schemas = {
+        name.removeprefix(prefix): _rewrite_refs(schema, prefix)
+        for name, schema in source["components"]["schemas"].items()
+    }
+    schemas = snapshot["components"]["schemas"]
+    pending = _ref_names(operation)
+    seen: set[str] = set()
+    while pending:
+        name = pending.pop()
+        if name not in seen:
+            schema = source_schemas.get(name)
+            if schema is None:
+                raise GenerationError(f"Tokener handoff references missing schema {name}")
+            normalized = _annotate_presence(schema)
+            if name in schemas and schemas[name] != normalized:
+                raise GenerationError(f"Tokener handoff would alter existing schema {name}")
+            schemas[name] = normalized
+            seen.add(name)
+            pending |= _ref_names(schema)
+    schemas["BillingTokenerErrorReason"] = source_schemas.get("BillingTokenerErrorReason", TOKENER_TOPUP_REASON_SCHEMA)
+    snapshot["components"]["schemas"] = dict(sorted(schemas.items()))
+    snapshot["paths"][TOKENER_TOPUP_PATH] = {"post": operation}
+    snapshot["x-tokener-topup-spec-sha256"] = hashlib.sha256(raw).hexdigest()
+
+
 def render_snapshot(snapshot: JsonObject) -> str:
     return json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n"
 
 
-def load_snapshot(service: Service) -> JsonObject:
+def load_snapshot(service: Service, *, importing_topup: bool = False) -> JsonObject:
     snapshot: JsonObject = json.loads(snapshot_path(service).read_text())
     operations = {
         (method.upper(), path) for path, item in snapshot["paths"].items() for method in item if method in HTTP_METHODS
     }
     allowed = {(op.method, op.path) for op in ALLOWED_OPERATIONS[service]}
+    if importing_topup and service == "billing" and ("POST", TOKENER_TOPUP_PATH) not in operations:
+        allowed.discard(("POST", TOKENER_TOPUP_PATH))
     if operations != allowed:
         raise GenerationError(
             f"{service} snapshot operations differ from ALLOWED_OPERATIONS: "
@@ -627,12 +681,18 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--from-snapshot", action="store_true", help="generate from the committed snapshots")
     mode.add_argument("--check", action="store_true", help="fail if regenerating the committed snapshots differs")
+    mode.add_argument("--import-tokener-topup-spec", type=Path, help="import only the private Tokener handoff OpenAPI")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     try:
-        if args.check or args.from_snapshot:
-            snapshots = {service: load_snapshot(service) for service in SERVICES}
+        if args.check or args.from_snapshot or args.import_tokener_topup_spec:
+            snapshots = {
+                service: load_snapshot(service, importing_topup=bool(args.import_tokener_topup_spec))
+                for service in SERVICES
+            }
+            if args.import_tokener_topup_spec:
+                import_tokener_topup_snapshot(snapshots["billing"], args.import_tokener_topup_spec)
         else:
             snapshots = take_snapshots()
         files = expected_files(snapshots)

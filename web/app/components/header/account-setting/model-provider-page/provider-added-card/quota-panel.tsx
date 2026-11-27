@@ -33,6 +33,7 @@ import {
 import styles from './quota-panel.module.css'
 import { TokenerAllowanceDetails } from './tokener-allowance-details'
 import { formatUsdMicro, formatUtcAllowancePeriod } from './tokener-amount-format'
+import { TokenerBillingActions } from './tokener-billing-actions'
 import { useTrialCredits } from './use-trial-credits'
 
 const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map((key) => ({
@@ -83,12 +84,18 @@ const formatDecimalInteger = (value: string) => {
 
 type TokenerQuotaPanelProps = {
   bootstrapStatus?: ModelProviderCreditsResponse['tokener_bootstrap_status']
+  billingLinkEnabled: boolean
   metering: TokenerMetering | null
 }
 
-const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, metering }) => {
+const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({
+  bootstrapStatus,
+  billingLinkEnabled,
+  metering,
+}) => {
   const { t } = useTranslation(['modelProvider'])
   const tipText = t(($) => $['modelProvider.tokenerUsageTip'], { ns: 'modelProvider' })
+  const showBillingActions = billingLinkEnabled && bootstrapStatus === 'ready'
 
   if (!metering) {
     const isSetupInProgress = Boolean(
@@ -104,7 +111,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
       <div
         role="group"
         aria-label={t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'modelProvider' })}
-        className="flex min-h-16 items-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default px-4 py-3 shadow-xs"
+        className="flex min-h-16 flex-wrap items-center justify-between gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default px-4 py-3 shadow-xs"
       >
         <div>
           <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
@@ -115,6 +122,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             {t(($) => $[statusMessageKey], { ns: 'modelProvider' })}
           </div>
         </div>
+        {showBillingActions && <TokenerBillingActions />}
       </div>
     )
   }
@@ -144,6 +152,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
     >
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
+        {showBillingActions && <TokenerBillingActions />}
         {showLegacySummary && (
           <>
             <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
@@ -271,6 +280,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     modelBillingSource,
     modelBillingMigrationStatus,
     tokenerBootstrapStatus,
+    tokenerBillingLinkEnabled,
     tokenerMetering,
     usedCredits,
     totalCredits,
@@ -374,7 +384,13 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   }
 
   if (modelBillingSource === 'tokener') {
-    return <TokenerQuotaPanel bootstrapStatus={tokenerBootstrapStatus} metering={tokenerMetering} />
+    return (
+      <TokenerQuotaPanel
+        bootstrapStatus={tokenerBootstrapStatus}
+        billingLinkEnabled={isCloud && tokenerBillingLinkEnabled}
+        metering={tokenerMetering}
+      />
+    )
   }
 
   if (isLoading || (isCloud && isTrialModelsPending)) {

@@ -461,6 +461,8 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
             or credits.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY.value
         ):
             return credits
+        if credits.model_billing_migration_status == "none" and dify_config.is_agent_dev_tokener_topup_enabled():
+            credits = replace(credits, tokener_billing_link_enabled=True)
         try:
             metering = BillingService.get_tokener_metering(workspace_id)
         except BillingError:

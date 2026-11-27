@@ -653,6 +653,47 @@
           }
         }
       }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/topup/handoff": {
+      "post": {
+        "tags": [
+          "BillingTokener"
+        ],
+        "description": "The authenticated Dify API must authorize the actor in the current\n workspace before requesting this short-lived billing credential.",
+        "operationId": "BillingTokener_CreateTenantTopupHandoff",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenerTopupHandoffPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTokenerTenantTopupHandoffReply"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -886,6 +927,15 @@
           "paid_period_end"
         ]
       },
+      "BillingTokenerErrorReason": {
+        "type": "string",
+        "enum": [
+          "INVALID_TOKENER_TOPUP_IDENTITY",
+          "TOKENER_INVALID_SECRET_KEY",
+          "TOKENER_TOPUP_INELIGIBLE",
+          "TOKENER_TOPUP_UNAVAILABLE"
+        ]
+      },
       "CreateEducationIdentityReply": {
         "type": "object",
         "properties": {
@@ -923,6 +973,22 @@
           "role",
           "token"
         ]
+      },
+      "CreateTokenerTenantTopupHandoffReply": {
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "This is a single-use browser credential and must not be logged or cached."
+          },
+          "expires_at": {
+            "type": "string"
+          }
+        }
       },
       "DownloadComplianceDocumentReply": {
         "type": "object",
@@ -1555,6 +1621,17 @@
           "limit"
         ]
       },
+      "TokenerTopupHandoffPayload": {
+        "required": [
+          "actor_account_id"
+        ],
+        "type": "object",
+        "properties": {
+          "actor_account_id": {
+            "type": "string"
+          }
+        }
+      },
       "VectorSpaceQuota": {
         "type": "object",
         "properties": {
@@ -1599,5 +1676,6 @@
         ]
       }
     }
-  }
+  },
+  "x-tokener-topup-spec-sha256": "dbe5420f4cc4b2457bd05a5fa368a09ed75ff8edf5951d8fab54b0f6a50f4139"
 }

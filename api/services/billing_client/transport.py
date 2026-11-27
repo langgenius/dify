@@ -55,6 +55,7 @@ ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
         "/subscription/vector-space",
         "/subscription/knowledge-rate-limit",
         "/subscription/payment-link",
+        "/internal/v1/tokener/tenants/{tenant_id}/topup/handoff",
         "/subscription/cleanup/whitelist",
         "/model-provider/payment-link",
         "/invoices",
@@ -98,6 +99,7 @@ class Upstream(StrEnum):
     SAAS = "saas"
     NETWORK_ACCESS = "network_access"
     TOKENER_CHECKOUT = "tokener_checkout"
+    TOKENER_TOPUP = "tokener_topup"
 
 
 @dataclass(frozen=True)
@@ -116,13 +118,13 @@ class BillingModel(BaseModel):
 
 
 def _base_url(upstream: Upstream) -> str:
-    if upstream == Upstream.TOKENER_CHECKOUT:
+    if upstream in {Upstream.TOKENER_CHECKOUT, Upstream.TOKENER_TOPUP}:
         # Only the trusted agent-dev shared Billing origin may receive a
         # managed Checkout or the Billing secret. No fallback to the gateway.
         origin = dify_config.get_agent_dev_staging_tokener_billing_url()
         if origin != TokenerSignupBillingCandidate.SHARED_STAGING:
             raise BillingUpstreamUnavailableError("Managed Tokener Checkout is not configured")
-        return f"{origin}/v1"
+        return str(origin) if upstream == Upstream.TOKENER_TOPUP else f"{origin}/v1"
     billing_url = dify_config.BILLING_API_URL
     if upstream == Upstream.BILLING_QUOTA:
         return dify_config.BILLING_QUOTA_API_URL or billing_url
@@ -131,13 +133,7 @@ def _base_url(upstream: Upstream) -> str:
     return billing_url
 
 
-@retry(
-    wait=wait_fixed(2),
-    stop=stop_before_delay(10),
-    retry=retry_if_exception_type(httpx.RequestError),
-    reraise=True,
-)
-def _send(
+def _send_once(
     method: HTTPMethod,
     url: str,
     *,
@@ -154,6 +150,14 @@ def _send(
     )
 
 
+_send = retry(
+    wait=wait_fixed(2),
+    stop=stop_before_delay(10),
+    retry=retry_if_exception_type(httpx.RequestError),
+    reraise=True,
+)(_send_once)
+
+
 def request[ResponseT: BillingModel](
     upstream: Upstream,
     method: HTTPMethod,
@@ -167,12 +171,17 @@ def request[ResponseT: BillingModel](
 ) -> ResponseT:
     resolved_path = path.format_map({name: quote(value, safe="") for name, value in path_params.items()})
     tokener_checkout = upstream == Upstream.TOKENER_CHECKOUT
+    tokener_topup = upstream == Upstream.TOKENER_TOPUP
     if tokener_checkout and (method != "GET" or path != "/subscription/payment-link"):
         raise errors.unavailable("Unsupported managed Tokener Checkout operation")
+    if tokener_topup and (method != "POST" or path != "/internal/v1/tokener/tenants/{tenant_id}/topup/handoff"):
+        raise errors.unavailable("Unsupported Tokener top-up operation")
     url = f"{_base_url(upstream)}{resolved_path}"
     request_json = body.model_dump(mode="json") if body is not None else None
     try:
-        if tokener_checkout:
+        if tokener_topup:
+            response = _send_once(method, url, params=params, json=request_json, follow_redirects=False)
+        elif tokener_checkout:
             response = _send(method, url, params=params, json=request_json, follow_redirects=False)
         else:
             response = _send(method, url, params=params, json=request_json)
@@ -182,7 +191,9 @@ def request[ResponseT: BillingModel](
     if response.status_code != httpx.codes.OK:
         message = f"{method} {path} returned {response.status_code}"
         status_code = response.status_code
-        error_body, reason = _error_details(response, errors.is_reason, upstream, method, path)
+        error_body, reason = (
+            (None, None) if tokener_topup else _error_details(response, errors.is_reason, upstream, method, path)
+        )
         error_type = (
             errors.unavailable
             if status_code in _UNAVAILABLE_STATUSES or status_code >= 500
@@ -198,6 +209,8 @@ def request[ResponseT: BillingModel](
     try:
         return response_model.model_validate(payload)
     except ValidationError as error:
+        if tokener_topup:
+            raise errors.invalid_response(invalid_body) from None
         if path in ENFORCED_RESPONSE_PATHS or not isinstance(payload, dict):
             raise errors.invalid_response(invalid_body) from error
         logger.exception("Billing response failed validation: %s %s", method, path)

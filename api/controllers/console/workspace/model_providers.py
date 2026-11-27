@@ -2,14 +2,16 @@ import io
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from flask import send_file
+from flask import make_response, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, BeforeValidator, Field, field_validator
+from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.billing.error import BillingUnavailableError
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -20,11 +22,13 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from enums.account import TenantAccountRole
 from enums.model_billing import TokenerPlanKind
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from libs.login import login_required
 from models import Account
@@ -35,6 +39,7 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
 )
 from services.entities.tokener_metering import TokenerPlanAmount, TokenerPurchasedAvailable
+from services.errors.billing import BillingError, TokenerBillingLinkNotAllowedError
 from services.model_provider.service import ModelProviderService
 
 
@@ -181,6 +186,12 @@ class ModelProviderCreditsResponse(ResponseModel):
     exhausted_at: int | None
     next_credit_reset_date: int | None
     tokener_metering: TokenerMeteringResponse | None = None
+    tokener_billing_link_enabled: bool = False
+
+
+class TokenerBillingLinkResponse(ResponseModel):
+    url: str
+    expires_at: str
 
 
 class ProviderCredentialsResponse(ResponseModel):
@@ -208,6 +219,7 @@ register_response_schema_models(
     ModelProviderListResponse,
     ModelProviderSummaryListResponse,
     ModelProviderCreditsResponse,
+    TokenerBillingLinkResponse,
     ProviderCredentialsResponse,
     ValidationResultResponse,
     ModelProviderPaymentCheckoutUrlResponse,
@@ -263,6 +275,30 @@ class ModelProviderCreditsApi(Resource):
     def get(self, tenant_id: str):
         credit_pool = application_services().workspaces.management.get_model_provider_credits(tenant_id)
         return dump_response(ModelProviderCreditsResponse, credit_pool)
+
+
+@console_ns.route("/workspaces/current/model-providers/tokener-billing-link")
+class TokenerBillingLinkApi(Resource):
+    @error_responses(BillingUnavailableError)
+    @console_ns.response(200, "Scoped Tokener billing link", console_ns.models[TokenerBillingLinkResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
+        """Mint a link for the admitted owner/admin's active workspace, not a caller-supplied organization."""
+        if current_user.role not in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}:
+            raise Forbidden()
+        try:
+            link = BillingService.create_tokener_billing_link(current_tenant_id, current_user.id)
+        except TokenerBillingLinkNotAllowedError as error:
+            raise Forbidden() from error
+        except BillingError as error:
+            raise BillingUnavailableError() from error
+        response = make_response(dump_response(TokenerBillingLinkResponse, link))
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")

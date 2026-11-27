@@ -421,6 +421,11 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
+    TOKENER_TOPUP_LINK_ENABLED: bool = Field(
+        description="Allow agent-dev owners and admins to open the scoped Tokener staging billing page",
+        default=False,
+    )
+
     AGENT_DEV_TOKENER_ENVIRONMENT: AgentDevTokenerEnvironment = Field(
         default=AgentDevTokenerEnvironment.INHERIT,
         description="Agent dev only: staging selects one shared Billing route for all Tokener signups and metering",
@@ -494,6 +499,13 @@ class PluginConfig(BaseSettings):
         ):
             return TokenerSignupBillingCandidate.SHARED_STAGING
         return None
+
+    def is_agent_dev_tokener_topup_enabled(self) -> bool:
+        """Admit top-up links only for the explicitly enabled shared staging profile."""
+        return (
+            self.TOKENER_TOPUP_LINK_ENABLED
+            and self.get_agent_dev_staging_tokener_billing_url() == TokenerSignupBillingCandidate.SHARED_STAGING
+        )
 
     @property
     def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:

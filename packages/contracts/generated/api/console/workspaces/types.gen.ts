@@ -564,6 +564,7 @@ export type ModelProviderCreditsResponse = {
   quota_limit: number | null
   quota_used: number | null
   remaining_credits: number | null
+  tokener_billing_link_enabled?: boolean
   tokener_bootstrap_status?:
     | 'configuring_provider'
     | 'failed'
@@ -580,6 +581,16 @@ export type ModelProviderSummaryListResponse = {
   plugins: {
     [key: string]: ModelProviderPluginSummaryResponse
   }
+}
+
+export type TokenerBillingLinkResponse = {
+  expires_at: string
+  url: string
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status: 503
 }
 
 export type ModelProviderPaymentCheckoutUrlResponse = {
@@ -735,11 +746,6 @@ export type NetworkAccessRoleDeniedError = ErrorResponse & {
 export type BillingOperationFailedError = ErrorResponse & {
   code: 'billing_operation_failed'
   status: 502
-}
-
-export type BillingUnavailableError = ErrorResponse & {
-  code: 'billing_unavailable'
-  status: 503
 }
 
 export type NetworkAccessGroupCreatePayload = {
@@ -6228,6 +6234,28 @@ export type GetWorkspacesCurrentModelProvidersSummaryResponses = {
 
 export type GetWorkspacesCurrentModelProvidersSummaryResponse =
   GetWorkspacesCurrentModelProvidersSummaryResponses[keyof GetWorkspacesCurrentModelProvidersSummaryResponses]
+
+export type PostWorkspacesCurrentModelProvidersTokenerBillingLinkData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/tokener-billing-link'
+}
+
+export type PostWorkspacesCurrentModelProvidersTokenerBillingLinkErrors = {
+  503: BillingUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersTokenerBillingLinkError =
+  PostWorkspacesCurrentModelProvidersTokenerBillingLinkErrors[keyof PostWorkspacesCurrentModelProvidersTokenerBillingLinkErrors]
+
+export type PostWorkspacesCurrentModelProvidersTokenerBillingLinkResponses = {
+  200: TokenerBillingLinkResponse
+}
+
+export type PostWorkspacesCurrentModelProvidersTokenerBillingLinkResponse =
+  PostWorkspacesCurrentModelProvidersTokenerBillingLinkResponses[keyof PostWorkspacesCurrentModelProvidersTokenerBillingLinkResponses]
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
   body?: never

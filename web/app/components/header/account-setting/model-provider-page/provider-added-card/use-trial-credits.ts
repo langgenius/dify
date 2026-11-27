@@ -9,6 +9,7 @@ const selectTrialCredits = (creditPool: ModelProviderCreditsResponse) => {
     modelBillingSource,
     modelBillingMigrationStatus: creditPool.model_billing_migration_status,
     tokenerBootstrapStatus: creditPool.tokener_bootstrap_status ?? null,
+    tokenerBillingLinkEnabled: creditPool.tokener_billing_link_enabled === true,
     tokenerMetering: usesLegacyMessageCredits ? null : (creditPool.tokener_metering ?? null),
     credits: usesLegacyMessageCredits ? (creditPool.remaining_credits ?? 0) : 0,
     usedCredits: usesLegacyMessageCredits ? (creditPool.quota_used ?? 0) : 0,
@@ -36,6 +37,16 @@ export const useTrialCredits = ({ pollTokenerMetering = false }: UseTrialCredits
                 ? 30_000
                 : false
         : false,
+      // The restricted billing tab returns to Tokener, not to a Dify success URL.
+      // Re-read the same workspace balance on return even while its cache is fresh.
+      refetchOnWindowFocus: pollTokenerMetering
+        ? (query) =>
+            query.state.data?.model_billing_source === 'tokener' &&
+            query.state.data.tokener_bootstrap_status === 'ready' &&
+            query.state.data.tokener_billing_link_enabled === true
+              ? 'always'
+              : true
+        : undefined,
     }),
   )
   const trialCredits = trialCreditsQuery.data
@@ -44,6 +55,7 @@ export const useTrialCredits = ({ pollTokenerMetering = false }: UseTrialCredits
     modelBillingSource: trialCredits?.modelBillingSource ?? 'legacy_message_credits',
     modelBillingMigrationStatus: trialCredits?.modelBillingMigrationStatus,
     tokenerBootstrapStatus: trialCredits?.tokenerBootstrapStatus,
+    tokenerBillingLinkEnabled: trialCredits?.tokenerBillingLinkEnabled ?? false,
     tokenerMetering: trialCredits?.tokenerMetering ?? null,
     credits: trialCredits?.credits ?? 0,
     usedCredits: trialCredits?.usedCredits ?? 0,

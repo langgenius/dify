@@ -17,6 +17,7 @@ import json
 import logging
 from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, patch
@@ -28,6 +29,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from configs.feature import AgentDevTokenerEnvironment, TokenerSignupBillingCandidate
+from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
 from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant
 from models.model_billing import TenantModelBillingProfile
@@ -39,12 +41,72 @@ from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
     LegacyCreditPoolManagedByTokenerError,
+    TokenerBillingLinkNotAllowedError,
     TokenerEducationCheckoutUnsupportedError,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
+
+
+@pytest.mark.parametrize("result", ["accepted", "unsafe", "timeout", "redirect", "legacy", "disabled"])
+def test_agent_dev_tokener_billing_link_is_scoped_and_single_shot(result: str) -> None:
+    """Use the real generated request and fail closed instead of retrying link issuance."""
+    requests: list[httpx.Request] = []
+    url = "https://console-staging.tokener.dev/partner-billing#code=fixture_only_1234"
+    expires_at = (datetime.now(UTC) + timedelta(seconds=45)).isoformat()
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "POST"
+        assert (
+            str(request.url) == f"http://dify-saas-billing:8081/internal/v1/tokener/tenants/{TENANT_ID}/topup/handoff"
+        )
+        assert json.loads(request.content) == {"actor_account_id": ACCOUNT_ID}
+        if result == "timeout":
+            raise httpx.ReadTimeout("indeterminate outcome", request=request)
+        if result == "redirect":
+            return httpx.Response(302, headers={"Location": "https://other.example.test"})
+        return httpx.Response(
+            200,
+            json={
+                "url": url if result != "unsafe" else url.replace("console-staging", "console"),
+                "expires_at": expires_at,
+            },
+        )
+
+    source = ModelBillingSource.LEGACY_MESSAGE_CREDITS if result == "legacy" else ModelBillingSource.TOKENER
+    profile = TenantModelBillingResolution(
+        model_billing_source=source, tokener_bootstrap_status=TenantTokenerIntegrationStatus.READY
+    )
+    with (
+        config_overrides_context(
+            TOKENER_TOPUP_LINK_ENABLED=result != "disabled",
+            AGENT_DEV_TOKENER_ENVIRONMENT=AgentDevTokenerEnvironment.STAGING,
+            TOKENER_BILLING_API_URL="http://dify-saas-billing:8081",
+            TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER="langgenius/tokener-staging:1.2.3@" + "a" * 64,
+        ),
+        patch("core.model_billing_profile.ModelBillingProfileService.resolve", return_value=profile),
+        patch("core.model_invocation_routing.migration_display_status", return_value="none"),
+        httpx.Client(transport=httpx.MockTransport(handle)) as client,
+        patch.object(billing_transport, "_http_client", client),
+    ):
+        if result in {"legacy", "disabled"}:
+            with pytest.raises(TokenerBillingLinkNotAllowedError):
+                BillingService.create_tokener_billing_link(TENANT_ID, ACCOUNT_ID)
+            assert not requests
+            return
+        if result == "accepted":
+            assert BillingService.create_tokener_billing_link(TENANT_ID, ACCOUNT_ID) == {
+                "url": url,
+                "expires_at": expires_at,
+            }
+        else:
+            error = BillingUpstreamUnavailableError if result == "timeout" else BillingUpstreamInvalidResponseError
+            with pytest.raises(error):
+                BillingService.create_tokener_billing_link(TENANT_ID, ACCOUNT_ID)
+    assert len(requests) == 1
 
 
 def _tokener_metering_payload() -> dict[str, object]:

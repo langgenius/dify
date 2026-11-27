@@ -481,6 +481,26 @@ export const zRoleAlreadyAssignedError = zErrorResponse.and(
 )
 
 /**
+ * TokenerBillingLinkResponse
+ */
+export const zTokenerBillingLinkResponse = z.object({
+  expires_at: z.string(),
+  url: z.string(),
+})
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * ModelProviderPaymentCheckoutUrlResponse
  */
 export const zModelProviderPaymentCheckoutUrlResponse = z.object({
@@ -600,18 +620,6 @@ export const zBillingOperationFailedError = zErrorResponse.and(
   z.object({
     code: z.literal('billing_operation_failed'),
     status: z.literal(502),
-  }),
-)
-
-/**
- * BillingUnavailableError
- *
- * This operation is temporarily unavailable. Please try again later.
- */
-export const zBillingUnavailableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('billing_unavailable'),
-    status: z.literal(503),
   }),
 )
 
@@ -4903,6 +4911,7 @@ export const zModelProviderCreditsResponse = z.object({
   quota_limit: z.int().nullable(),
   quota_used: z.int().nullable(),
   remaining_credits: z.int().nullable(),
+  tokener_billing_link_enabled: z.boolean().optional().default(false),
   tokener_bootstrap_status: z
     .enum([
       'configuring_provider',
@@ -7331,6 +7340,12 @@ export const zGetWorkspacesCurrentModelProvidersCreditsResponse = zModelProvider
  * Model provider summaries retrieved successfully
  */
 export const zGetWorkspacesCurrentModelProvidersSummaryResponse = zModelProviderSummaryListResponse
+
+/**
+ * Scoped Tokener billing link
+ */
+export const zPostWorkspacesCurrentModelProvidersTokenerBillingLinkResponse =
+  zTokenerBillingLinkResponse
 
 export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath = z.object({
   provider: z.string(),

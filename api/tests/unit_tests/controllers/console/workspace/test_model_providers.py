@@ -31,6 +31,7 @@ from controllers.console.workspace.model_providers import (
     ParserModelList,
     ParserPreferredProviderType,
     PreferredProviderTypeUpdateApi,
+    TokenerBillingLinkApi,
 )
 from controllers.console.workspace.models import ModelProviderModelCredentialApi
 from controllers.console.workspace.tool_providers import (
@@ -50,7 +51,6 @@ from libs.external_api import ExternalApi
 from models import Account
 from models.account import TenantAccountRole
 from models.provider import ProviderType
-from services.billing_client import billing
 from services.billing_service import TokenerTenantMeteringResponse
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
@@ -357,6 +357,42 @@ class TestModelProviderSummaryListApi:
         assert result["plugins"]["langgenius/openai"]["installation_id"] == "installation-1"
 
 
+class TestTokenerBillingLinkApi:
+    @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.NORMAL])
+    def test_handoff_uses_the_admitted_workspace_and_requires_a_manager(self, role: TenantAccountRole) -> None:
+        app = Flask(__name__)
+        account = Account(name="Manager", email="viewer@example.test")
+        account.id = "11111111-1111-4111-8111-111111111111"
+        account.role = role
+        workspace_id = "22222222-2222-4222-8222-222222222222"
+        api = TokenerBillingLinkApi()
+        create = unwrap(api.post)
+        expected = {
+            "url": "https://console-staging.tokener.dev/partner-billing#code=fixture_only_1234",
+            "expires_at": "2026-11-27T00:01:00Z",
+        }
+        with (
+            app.test_request_context(
+                "/workspaces/current/model-providers/tokener-billing-link",
+                method="POST",
+                json={"tenant_id": "untrusted", "org": "untrusted", "return_url": "https://example.test"},
+            ),
+            patch(
+                "controllers.console.workspace.model_providers.BillingService.create_tokener_billing_link",
+                return_value=expected,
+            ) as handoff,
+        ):
+            if role == TenantAccountRole.NORMAL:
+                with pytest.raises(Forbidden):
+                    create(api, workspace_id, account)
+                handoff.assert_not_called()
+            else:
+                response = create(api, workspace_id, account)
+                assert response.get_json() == expected
+                assert response.headers["Cache-Control"] == "no-store"
+                handoff.assert_called_once_with(workspace_id, account.id)
+
+
 class TestModelProviderCreditsApi:
     def test_get_success(self) -> None:
         api = ModelProviderCreditsApi()
@@ -390,6 +426,7 @@ class TestModelProviderCreditsApi:
             "exhausted_at": None,
             "next_credit_reset_date": 1775001600,
             "tokener_metering": None,
+            "tokener_billing_link_enabled": False,
         }
 
     def test_get_without_effective_pool(self) -> None:
@@ -415,6 +452,7 @@ class TestModelProviderCreditsApi:
             "exhausted_at": None,
             "next_credit_reset_date": None,
             "tokener_metering": None,
+            "tokener_billing_link_enabled": False,
         }
 
     def test_get_tokener_metering_keeps_decimal_strings_and_nested_partial_status(self) -> None:
@@ -863,7 +901,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
-                return_value=billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider"),
+                return_value={"url": "https://payment.example.com/provider"},
             ) as get_model_provider_payment_link,
         ):
             result = method(api, "tenant1", user, provider="anthropic")

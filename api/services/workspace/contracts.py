@@ -128,6 +128,7 @@ class EffectiveCreditPool:
     model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
     tokener_bootstrap_status: str | None = None
     tokener_metering: "TokenerTenantMeteringResponse | None" = None
+    tokener_billing_link_enabled: bool = False
 
     @property
     def remaining_credits(self) -> int | None:

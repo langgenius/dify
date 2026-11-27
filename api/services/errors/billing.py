@@ -70,3 +70,7 @@ class LegacyCreditPoolManagedByTokenerError(BillingError):
 
 class TokenerEducationCheckoutUnsupportedError(BillingError):
     pass
+
+
+class TokenerBillingLinkNotAllowedError(BillingError):
+    """This workspace cannot open the scoped Tokener billing page."""

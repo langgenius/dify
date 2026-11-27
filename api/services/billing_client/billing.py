@@ -157,6 +157,14 @@ class BillingSubscriptionPlan(BillingModel):
     paid_period_end: int
 
 
+type BillingTokenerErrorReason = Literal[
+    "INVALID_TOKENER_TOPUP_IDENTITY",
+    "TOKENER_INVALID_SECRET_KEY",
+    "TOKENER_TOPUP_INELIGIBLE",
+    "TOKENER_TOPUP_UNAVAILABLE",
+]
+
+
 class CreateEducationIdentityReply(BillingModel):
     message: str
 
@@ -167,6 +175,11 @@ class CreateEducationIdentityReq(BillingModel):
     institution: str
     role: str
     token: str
+
+
+class CreateTokenerTenantTopupHandoffReply(BillingModel):
+    url: str
+    expires_at: str
 
 
 class DownloadComplianceDocumentReply(BillingModel):
@@ -328,6 +341,10 @@ class QuotaReserveReq(BillingModel):
     amount: int
     meta: dict[str, str]
     bucket: str
+
+
+class TokenerTopupHandoffPayload(BillingModel):
+    actor_account_id: str
 
 
 class VerifyEducationIdentityReply(BillingModel):
@@ -536,6 +553,39 @@ BILLING_QUOTA_ERRORS = ServiceErrors(
     is_reason=_is_billing_quota_error_reason,
     unavailable=BillingQuotaUpstreamUnavailableError,
     invalid_response=BillingQuotaUpstreamInvalidResponseError,
+)
+
+
+def _is_billing_tokener_error_reason(value: str) -> TypeIs[BillingTokenerErrorReason]:
+    return value in get_args(BillingTokenerErrorReason.__value__)
+
+
+class BillingTokenerUpstreamError(BillingUpstreamError):
+    """A failed BillingTokener call, with its reason typed by `BillingTokenerErrorReason`."""
+
+    def __init__(
+        self,
+        *args: object,
+        status_code: int | None = None,
+        body: UpstreamErrorBody | None = None,
+        reason: BillingTokenerErrorReason | UnknownErrorReason | None = None,
+    ) -> None:
+        super().__init__(*args, status_code=status_code, body=body)
+        self.reason = reason
+
+
+class BillingTokenerUpstreamUnavailableError(BillingTokenerUpstreamError, BillingUpstreamUnavailableError):
+    pass
+
+
+class BillingTokenerUpstreamInvalidResponseError(BillingTokenerUpstreamError, BillingUpstreamInvalidResponseError):
+    pass
+
+
+BILLING_TOKENER_ERRORS = ServiceErrors(
+    is_reason=_is_billing_tokener_error_reason,
+    unavailable=BillingTokenerUpstreamUnavailableError,
+    invalid_response=BillingTokenerUpstreamInvalidResponseError,
 )
 
 
@@ -816,6 +866,22 @@ def quota_consume_capped(*, body: QuotaConsumeCappedReq) -> QuotaConsumeCappedRe
         response_model=QuotaConsumeCappedReply,
         errors=BILLING_QUOTA_ERRORS,
         path_params={},
+        params={},
+        body=body,
+    )
+
+
+def tokener_create_tenant_topup_handoff(
+    *, tenant_id: str, body: TokenerTopupHandoffPayload
+) -> CreateTokenerTenantTopupHandoffReply:
+    """POST /internal/v1/tokener/tenants/{tenant_id}/topup/handoff (BillingTokener_CreateTenantTopupHandoff)."""
+    return request(
+        Upstream.TOKENER_TOPUP,
+        "POST",
+        "/internal/v1/tokener/tenants/{tenant_id}/topup/handoff",
+        response_model=CreateTokenerTenantTopupHandoffReply,
+        errors=BILLING_TOKENER_ERRORS,
+        path_params={"tenant_id": tenant_id},
         params={},
         body=body,
     )

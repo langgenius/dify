@@ -1,8 +1,9 @@
 import json
 import logging
 import os
+import re
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal, NotRequired, TypedDict
 from warnings import deprecated
 
@@ -33,6 +34,7 @@ from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
     LegacyCreditPoolManagedByTokenerError,
+    TokenerBillingLinkNotAllowedError,
     TokenerEducationCheckoutUnsupportedError,
 )
 
@@ -311,6 +313,43 @@ class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
+
+    @classmethod
+    def create_tokener_billing_link(cls, tenant_id: str, actor_account_id: str) -> dict[str, str]:
+        """Issue a one-time scoped link after the Console has admitted the current workspace manager."""
+        from core.model_billing_profile import ModelBillingProfileResolutionError, ModelBillingProfileService
+        from core.model_invocation_routing import migration_display_status
+        from models.tokener import TenantTokenerIntegrationStatus
+
+        if not dify_config.is_agent_dev_tokener_topup_enabled():
+            raise TokenerBillingLinkNotAllowedError
+        try:
+            profile = ModelBillingProfileService.resolve(tenant_id)
+            migration_status = migration_display_status(tenant_id)
+        except ModelBillingProfileResolutionError:
+            raise BillingUpstreamUnavailableError from None
+        if (
+            not profile.uses_tokener
+            or profile.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY
+            or migration_status != "none"
+        ):
+            raise TokenerBillingLinkNotAllowedError
+
+        result = billing.tokener_create_tenant_topup_handoff(
+            tenant_id=tenant_id, body=billing.TokenerTopupHandoffPayload(actor_account_id=actor_account_id)
+        )
+        if not re.fullmatch(
+            r"https://console-staging\.tokener\.dev/partner-billing#code=[A-Za-z0-9_-]{16,256}", result.url
+        ):
+            raise BillingUpstreamInvalidResponseError
+        try:
+            expires_at = datetime.fromisoformat(result.expires_at)
+        except ValueError:
+            raise BillingUpstreamInvalidResponseError from None
+        now = datetime.now(UTC)
+        if expires_at.utcoffset() is None or not now < expires_at <= now + timedelta(seconds=90):
+            raise BillingUpstreamInvalidResponseError
+        return {"url": result.url, "expires_at": result.expires_at}
 
     # Redis key prefix for tenant plan cache
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
