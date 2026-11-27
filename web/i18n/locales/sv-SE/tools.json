@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Alla arbetsflöden som verktyg",
   "auth.authorized": "Auktoriserad",
   "auth.setup": "Konfigurera auktorisering för att använda",
-  "auth.setupModalTitle": "Konfigurera auktorisering",
-  "auth.setupModalTitleDescription": "Efter att inloggningsuppgifter har konfigurerats kan alla medlemmar i arbetsytan använda verktyget vid orkestrering av appar.",
   "auth.unauthorized": "Inte auktoriserad",
   "author": "av",
   "builtInPromptTitle": "Prompt",
