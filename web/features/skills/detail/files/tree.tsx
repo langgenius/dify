@@ -158,6 +158,7 @@ export function SkillFileTree({
   detail,
   draftMutationCoordinator,
   files,
+  onBeforeExport,
   onCollapsedChange,
   onSelect,
   readonly,
@@ -170,6 +171,7 @@ export function SkillFileTree({
   detail: SkillDetailResponse | undefined
   draftMutationCoordinator: SkillDraftMutationCoordinator
   files: SkillFileResponse[]
+  onBeforeExport: () => Promise<boolean>
   onCollapsedChange: (collapsed: boolean) => void
   onSelect: (path: string, files?: SkillFileResponse[], mode?: 'pinned' | 'preview') => void
   readonly: boolean
@@ -1333,6 +1335,7 @@ export function SkillFileTree({
                     canDelete={canDelete}
                     canEdit={canEdit}
                     detail={detail}
+                    onBeforeExport={onBeforeExport}
                     onRename={() => setSkillRenameEditing(true)}
                   />
                 )}
