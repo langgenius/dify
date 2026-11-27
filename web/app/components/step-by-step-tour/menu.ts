@@ -1,23 +1,11 @@
 import type { MenuChangeEventDetails, MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { SyntheticEvent } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 
 const STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR = 'data-step-by-step-tour-highlight-part'
-const STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME =
-  'transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100'
-const STEP_BY_STEP_TOUR_MENU_PRESENTATION_CLASS_NAME = 'pointer-events-none cursor-default'
 
 type StepByStepTourMenuContentProps = {
   highlightPart?: string
-  disableMotion?: boolean
-  interactionMode?: 'interactive' | 'presentation'
-  className?: string
-}
-
-const blockPresentationMenuEvent = (event: SyntheticEvent) => {
-  event.preventDefault()
-  event.stopPropagation()
 }
 
 const stopMenuEventPropagation = (event: SyntheticEvent) => {
@@ -26,43 +14,12 @@ const stopMenuEventPropagation = (event: SyntheticEvent) => {
 
 export const getStepByStepTourMenuContentProps = ({
   highlightPart,
-  disableMotion = false,
-  interactionMode = 'interactive',
-  className,
-}: StepByStepTourMenuContentProps): Pick<
-  MenuContentProps,
-  | 'aria-hidden'
-  | 'className'
-  | 'onClick'
-  | 'onClickCapture'
-  | 'onKeyDownCapture'
-  | 'onMouseDownCapture'
-  | 'onPointerDownCapture'
-> & {
+}: StepByStepTourMenuContentProps): Pick<MenuContentProps, 'onClick'> & {
   [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]?: string
-} => {
-  const isPresentation = interactionMode === 'presentation'
-
-  return {
-    ...(highlightPart
-      ? { [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]: highlightPart }
-      : undefined),
-    className: cn(
-      className,
-      disableMotion && STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME,
-      isPresentation && STEP_BY_STEP_TOUR_MENU_PRESENTATION_CLASS_NAME,
-    ),
-    ...(isPresentation
-      ? {
-          'aria-hidden': true,
-          onClickCapture: blockPresentationMenuEvent,
-          onMouseDownCapture: blockPresentationMenuEvent,
-          onPointerDownCapture: blockPresentationMenuEvent,
-          onKeyDownCapture: blockPresentationMenuEvent,
-        }
-      : { onClick: stopMenuEventPropagation }),
-  }
-}
+} => ({
+  ...(highlightPart ? { [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]: highlightPart } : undefined),
+  onClick: stopMenuEventPropagation,
+})
 
 type StepByStepTourControlledMenuOptions = {
   allowTriggerCloseWhileControlled?: boolean

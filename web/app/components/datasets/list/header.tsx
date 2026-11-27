@@ -110,13 +110,11 @@ const DatasetListHeader = ({
             <MenuContent
               align="end"
               {...getStepByStepTourMenuContentProps({
-                disableMotion: createMenu.controlled,
                 highlightPart: createMenu.controlled
                   ? stepByStepTourCreateMenuHighlightPart
                   : undefined,
-                interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
-                className: 'w-80',
               })}
+              className="w-80"
             >
               {canCreateDataset && (
                 <>

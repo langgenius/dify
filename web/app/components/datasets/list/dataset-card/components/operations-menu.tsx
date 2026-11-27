@@ -106,11 +106,8 @@ const OperationsMenu = ({
         </MenuTrigger>
         <MenuContent
           align="end"
-          {...getStepByStepTourMenuContentProps({
-            highlightPart: stepByStepTourHighlightPart,
-            interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
-            className: 'min-w-44',
-          })}
+          {...getStepByStepTourMenuContentProps({ highlightPart: stepByStepTourHighlightPart })}
+          className="min-w-44"
         >
           {canUpgrade && (
             <>

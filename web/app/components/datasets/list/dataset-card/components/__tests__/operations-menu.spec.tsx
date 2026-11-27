@@ -2,7 +2,7 @@ import type {
   DatasetListItemResponse,
   KnowledgeFsUpgradeJobResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
@@ -249,26 +249,6 @@ describe('OperationsMenu', () => {
       await user.click(screen.getByRole('button', { name: 'Outside action' }))
 
       expect(onOutsideClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should keep tour-opened operations menu items from running actions', async () => {
-      const onDelete = vi.fn()
-
-      render(
-        <OperationsMenu
-          {...defaultProps}
-          onDelete={onDelete}
-          stepByStepTourHighlightPart="knowledge-card-actions-menu"
-          stepByStepTourOpen
-        />,
-      )
-
-      fireEvent.click(
-        await screen.findByRole('menuitem', { name: 'common.operation.delete', hidden: true }),
-      )
-
-      expect(onDelete).not.toHaveBeenCalled()
-      expect(screen.getByRole('menu', { hidden: true })).toBeInTheDocument()
     })
   })
 })
