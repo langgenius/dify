@@ -19,16 +19,15 @@ Implementation Notes:
 - Maintains data consistency with proper transaction handling
 """
 
-import json
 import logging
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, NamedTuple, cast, override
+from typing import Annotated, Any, NamedTuple, cast, override
 
 import sqlalchemy as sa
-from pydantic import ValidationError
+from pydantic import BeforeValidator, TypeAdapter, ValidationError, ValidationInfo
 from sqlalchemy import and_, delete, func, null, or_, select, tuple_, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
@@ -148,11 +147,25 @@ def _workflow_run_id_shard_expr() -> sa.ColumnElement[int]:
     )
 
 
+def _with_legacy_form_expiration(value: object, info: ValidationInfo) -> object:
+    """Fill an omitted expiration from the row supplied as validation context.
+
+    Pass non-objects and explicitly stored expiration values through to form validation.
+    """
+    if isinstance(value, dict) and "expiration_time" not in value:
+        return {**value, "expiration_time": info.context}
+    return value
+
+
+_stored_form_definition = TypeAdapter(Annotated[FormDefinition, BeforeValidator(_with_legacy_form_expiration)])
+
+
 def _build_human_input_required_reason(
     reason_model: WorkflowPauseReason,
     form_model: HumanInputForm | None,
     recipients: Sequence[HumanInputFormRecipient] = (),
 ) -> HumanInputRequired:
+    """Rebuild the pause reason, retaining its identifiers if the form is unreadable."""
     form_content = ""
     inputs = []
     actions = []
@@ -164,10 +177,9 @@ def _build_human_input_required_reason(
         form_id = form_model.id
         node_id = node_id or form_model.node_id
         try:
-            definition_payload = json.loads(form_model.form_definition)
-            if "expiration_time" not in definition_payload:
-                definition_payload["expiration_time"] = form_model.expiration_time
-            definition = FormDefinition.model_validate(definition_payload)
+            definition = _stored_form_definition.validate_json(
+                form_model.form_definition, context=form_model.expiration_time
+            )
         except ValidationError:
             definition = None
 

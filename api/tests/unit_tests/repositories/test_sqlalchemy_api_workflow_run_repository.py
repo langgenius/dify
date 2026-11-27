@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -220,6 +221,37 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
     assert reason.node_id == "workflow-tool-node"
     assert reason.actions[0].id == "approve"
     assert not hasattr(reason, "form_token")
+
+
+@pytest.mark.parametrize("stored_definition", ['{"inputs":', "null", "42", "[]", '"form"', '{"inputs":{}}'])
+def test_pause_reason_preserves_ids_when_stored_form_cannot_be_read(stored_definition: str) -> None:
+    """Unavailable form content must not hide a persisted workflow pause."""
+    form = _build_form_model()
+    form.form_definition = stored_definition
+
+    reason = _build_human_input_required_reason(_build_reason_model(), form)
+
+    assert reason.form_id == "form-1"
+    assert reason.node_id == "node-1"
+    assert reason.form_content == ""
+    assert reason.node_title == "Human Input"
+    assert reason.inputs == []
+    assert reason.actions == []
+    assert reason.resolved_default_values == {}
+
+
+def test_pause_reason_loads_legacy_form_without_inline_expiration() -> None:
+    """Legacy form JSON can omit expiration when the row has it."""
+    form = _build_form_model()
+    definition = FormDefinition.model_validate_json(form.form_definition)
+    form.form_definition = json.dumps(definition.model_dump(mode="json", exclude={"expiration_time"}))
+
+    reason = _build_human_input_required_reason(_build_reason_model(), form)
+
+    assert reason.node_title == "Ask Name"
+    assert reason.form_content == "rendered"
+    assert reason.actions == definition.user_actions
+    assert reason.resolved_default_values == {"name": "Alice"}
 
 
 def test_workflow_pause_reason_from_entity_persists_hitl_type_for_dify_human_input() -> None:
