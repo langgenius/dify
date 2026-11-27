@@ -19,7 +19,7 @@ import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
-import { toastActionError, toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
@@ -163,7 +163,7 @@ function Popup({
             }))
           } catch (error) {
             // The install request is a mutation and reports its own failure; the status poll is not.
-            toastRequestError(error)
+            reportRequestError(error)
             return
           }
           if (status !== TaskStatus.success) return
@@ -171,7 +171,7 @@ function Popup({
         refreshPluginList({ category: PluginCategoryEnum.model })
       } catch (error) {
         // The marketplace lookup is a plain request; the install mutation already reported itself.
-        toastActionError(error)
+        reportRequestError(error)
       } finally {
         setInstallingProvider(null)
       }

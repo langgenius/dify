@@ -40,7 +40,7 @@ from models.evaluation import EvaluationTargetType
 from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Tag, TagBinding
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository

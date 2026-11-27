@@ -1,10 +1,7 @@
-import type { TFunction } from 'i18next'
 import type { FileEntity } from '../types'
 import type { ConsoleClient } from '@/service/console'
 import type { FileResponse } from '@/types/workflow'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { createHttpError } from '@/service/http-error'
-import { withSelectorKey } from '@/test/i18n-mock'
 import { TransferMethod } from '@/types/app'
 import { FileAppearanceTypeEnum } from '../types'
 import {
@@ -13,7 +10,6 @@ import {
   getFileAppearanceType,
   getFileExtension,
   getFilesInLogs,
-  getFileUploadErrorMessage,
   getProcessedFiles,
   getProcessedFilesFromResponse,
   getSupportFileExtensionList,
@@ -46,55 +42,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 describe('file-uploader utils', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-  })
-
-  describe('getFileUploadErrorMessage', () => {
-    const createMockT = () =>
-      withSelectorKey(
-        (key: string, _options?: Record<string, unknown>) => key,
-      ) as unknown as TFunction<['common']>
-
-    it('should return forbidden message when error code is forbidden', () => {
-      const error = createHttpError(new Response(null, { status: 400 }), {
-        code: 'forbidden',
-        message: 'Access denied',
-      })
-      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe('Access denied')
-    })
-
-    it('should return file_extension_blocked translation when error code matches', () => {
-      const error = createHttpError(new Response(null, { status: 400 }), {
-        code: 'file_extension_blocked',
-      })
-      expect(getFileUploadErrorMessage(error, 'default', createMockT())).toBe(
-        'fileUploader.fileExtensionBlocked',
-      )
-    })
-
-    it('should return the server message for other errors', () => {
-      const error = createHttpError(new Response(null, { status: 413 }), {
-        code: 'file_too_large',
-        message: 'File size exceeded. 15 MB maximum.',
-      })
-      expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe(
-        'File size exceeded. 15 MB maximum.',
-      )
-    })
-
-    it('should return default message when the server returned no message', () => {
-      const error = createHttpError(new Response(null, { status: 400 }), { code: 'unknown_error' })
-      expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe('Upload failed')
-    })
-
-    it('should return default message for client-side failures', () => {
-      expect(
-        getFileUploadErrorMessage(new TypeError('Failed to fetch'), 'Upload failed', createMockT()),
-      ).toBe('Upload failed')
-    })
-
-    it('should return default message when error has no response', () => {
-      expect(getFileUploadErrorMessage(null, 'Upload failed', createMockT())).toBe('Upload failed')
-    })
   })
 
   describe('fileUpload', () => {

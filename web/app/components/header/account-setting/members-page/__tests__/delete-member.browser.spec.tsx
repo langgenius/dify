@@ -139,7 +139,7 @@ it('keeps focus and blocks Escape/cancel during removal, then reports a retryabl
     .poll(() => fake.console.workspaces.current.members.byMemberId.delete)
     .toHaveBeenCalledTimes(1)
   request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Server says why' }))
-  await expect.element(screen.getByRole('alert')).toHaveTextContent('Server says why')
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   await confirm.click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
   await expect.element(screen.getByRole('region')).toHaveFocus()

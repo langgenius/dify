@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
 import { useParams } from '@/next/navigation'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ALLOW_FILE_EXTENSIONS, TransferMethod } from '@/types/app'
 import { isAbortError } from '@/utils/is-abort-error'
-import { getImageUploadErrorMessage, imageUpload } from './utils'
+import { imageUpload } from './utils'
 
 export const useImageFiles = () => {
   const params = useParams()
   const { t } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const [files, setFiles] = useState<ImageFile[]>([])
   const filesRef = useRef<ImageFile[]>([])
   const handleUpload = (imageFile: ImageFile) => {
@@ -93,10 +95,9 @@ export const useImageFiles = () => {
             updateCurrentFile({ fileId: res.id, progress: 100 })
           },
           onErrorCallback: (error) => {
-            const errorMessage = getImageUploadErrorMessage(
+            const errorMessage = describeRequestError(
               error,
               t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-              t,
             )
             if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
             updateCurrentFile({ progress: -1 })
@@ -135,6 +136,7 @@ export const useLocalFileUploader = ({
 }: useLocalUploaderProps) => {
   const params = useParams()
   const { t } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const handleLocalFileUpload = useCallback(
     (file: File) => {
       if (disabled) {
@@ -172,10 +174,9 @@ export const useLocalFileUploader = ({
                 onUpload({ ...imageFile, fileId: res.id, progress: 100 })
               },
               onErrorCallback: (error) => {
-                const errorMessage = getImageUploadErrorMessage(
+                const errorMessage = describeRequestError(
                   error,
                   t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-                  t,
                 )
                 if (!isAppAccessError(error) && !isAbortError(error)) toast.error(errorMessage)
                 onUpload({ ...imageFile, progress: -1 })
@@ -195,7 +196,7 @@ export const useLocalFileUploader = ({
       )
       reader.readAsDataURL(file)
     },
-    [disabled, limit, t, onUpload, params?.token],
+    [disabled, limit, t, onUpload, params?.token, describeRequestError],
   )
   return { disabled, handleLocalFileUpload }
 }

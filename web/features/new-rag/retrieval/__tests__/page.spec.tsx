@@ -2219,11 +2219,11 @@ describe('RetrievalTestPage', () => {
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
   })
 
-  it('shows a failed golden promotion once, with the server reason in the dialog', async () => {
+  it('shows a failed golden promotion once, with the translated reason in the dialog', async () => {
     const errorToast = vi.spyOn(toast, 'error')
     const message = 'This workspace cannot save more golden questions'
     apiMock.createGolden.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 403 }), { message }),
+      createHttpError(new Response(null, { status: 403 }), { code: 'limit_exceeded', message }),
     )
     apiMock.traces = [
       {
@@ -2264,7 +2264,7 @@ describe('RetrievalTestPage', () => {
       within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }),
     )
 
-    expect(await within(dialog).findByText(message)).toBeVisible()
+    expect(await within(dialog).findByText('requestErrors.code.limit_exceeded')).toBeVisible()
     expect(errorToast).not.toHaveBeenCalled()
   })
 
@@ -2323,9 +2323,11 @@ describe('RetrievalTestPage', () => {
     expect(dialog).toBeInTheDocument()
 
     await act(async () =>
-      rejectCreate(createHttpError(new Response(null, { status: 403 }), { message })),
+      rejectCreate(
+        createHttpError(new Response(null, { status: 403 }), { code: 'limit_exceeded', message }),
+      ),
     )
-    expect(await within(dialog).findByText(message)).toBeVisible()
+    expect(await within(dialog).findByText('requestErrors.code.limit_exceeded')).toBeVisible()
     expect(errorToast).not.toHaveBeenCalled()
   })
 

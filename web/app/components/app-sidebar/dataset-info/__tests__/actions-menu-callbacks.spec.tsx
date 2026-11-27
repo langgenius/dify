@@ -279,14 +279,23 @@ describe('ActionsMenu callback coverage', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('check failed')
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
     expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
     expect(mockDeleteDataset).not.toHaveBeenCalled()
   })
 
   it.each([
-    ['the server message', { message: 'Server says why' }, 'Server says why'],
-    ['the fallback text without one', undefined, 'common.api.actionFailed'],
+    [
+      'the translated text of a cataloged code',
+      { code: 'archived_document_immutable', message: 'Dataset access denied.' },
+      'requestErrors.code.archived_document_immutable',
+    ],
+    [
+      'the fallback text for an uncataloged message',
+      { message: 'Server says why' },
+      'common.api.actionFailed',
+    ],
+    ['the fallback text without a message', undefined, 'common.api.actionFailed'],
   ])('shows %s when deletion fails', async (_, body, expected) => {
     const user = userEvent.setup()
     mockDeleteDataset.mockRejectedValueOnce(

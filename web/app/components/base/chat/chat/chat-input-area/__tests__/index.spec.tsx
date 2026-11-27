@@ -418,11 +418,12 @@ describe('ChatInputArea', () => {
       expect(recorderCancel).not.toHaveBeenCalled()
     })
 
-    it('should toast the server message when transcription fails with an HTTP error', async () => {
+    it('should toast the translated reason when transcription fails with an HTTP error', async () => {
       const user = userEvent.setup({ delay: null })
       vi.mocked(transcribeAudio).mockRejectedValueOnce(
-        createHttpError(new Response(null, { status: 400 }), {
-          message: 'Audio file is too large',
+        createHttpError(new Response(null, { status: 415 }), {
+          code: 'unsupported_audio_type',
+          message: 'Audio type not allowed.',
         }),
       )
       render(
@@ -439,7 +440,7 @@ describe('ChatInputArea', () => {
       await waitFor(() =>
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Audio file is too large',
+          message: 'requestErrors.code.unsupported_audio_type',
         }),
       )
     })

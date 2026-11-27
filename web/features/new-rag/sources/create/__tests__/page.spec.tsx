@@ -622,11 +622,12 @@ describe('AddSourcePage', () => {
       },
     ],
   ] as const)(
-    'shows the server message when a %s connection page fails',
+    'shows the translated error code when a %s connection page fails',
     async (_, initialSourceDraft) => {
       if (initialSourceDraft) enableConnectedSources()
       server.connections.data = [{ items: [] }, { items: [] }]
       server.connections.nextPageError = createHttpError(new Response(null, { status: 503 }), {
+        code: 'knowledge_fs_space_not_found',
         message: 'Server says why',
       })
 
@@ -634,7 +635,9 @@ describe('AddSourcePage', () => {
         <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
       )
 
-      expect(await screen.findByText('Server says why')).toBeInTheDocument()
+      expect(
+        await screen.findByText('requestErrors.code.knowledge_fs_space_not_found'),
+      ).toBeInTheDocument()
       expect(screen.queryByText('knowledgeSpace.providerLoadFailed')).not.toBeInTheDocument()
     },
   )
@@ -1302,11 +1305,11 @@ describe('AddSourcePage', () => {
     expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
   })
 
-  it('shows a rejected connection once, with the server reason next to the connect button', async () => {
+  it('shows a rejected connection once, with the translated reason next to the connect button', async () => {
     const user = userEvent.setup()
     const message = 'The Firecrawl API key is invalid'
     clientMock.createConnection.mockRejectedValue(
-      createHttpError(new Response(null, { status: 400 }), { message }),
+      createHttpError(new Response(null, { status: 400 }), { code: 'invalid_input', message }),
     )
 
     await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />, { errorToasts: true })
@@ -1315,7 +1318,7 @@ describe('AddSourcePage', () => {
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
     expect(toastErrorMock).not.toHaveBeenCalled()
   })
 
@@ -1452,18 +1455,18 @@ describe('AddSourcePage', () => {
     await screen.findByText(/knowledgeSources\.providerConnected/)
   })
 
-  it('shows a failed connection refresh once, with the server reason next to the retry button', async () => {
+  it('shows a failed connection refresh once, with the translated reason next to the retry button', async () => {
     const user = userEvent.setup()
     const message = 'The Firecrawl credential was revoked'
     server.connections.data = [{ items: [connection('error')] }]
     clientMock.refreshConnection.mockRejectedValue(
-      createHttpError(new Response(null, { status: 400 }), { message }),
+      createHttpError(new Response(null, { status: 400 }), { code: 'invalid_input', message }),
     )
 
     await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />, { errorToasts: true })
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
     expect(toastErrorMock).not.toHaveBeenCalled()
   })
 
@@ -1576,19 +1579,22 @@ describe('AddSourcePage', () => {
     )
     expect(screen.queryByText('knowledgeSpace.providerLoadFailed')).not.toBeInTheDocument()
   })
-  it('shows the server message when provisioning reconciliation fails', async () => {
+  it('shows the translated error code when provisioning reconciliation fails', async () => {
     const user = userEvent.setup()
     server.connections.data = [{ items: [connection('provisioning')] }]
 
     await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
     server.connections.error = createHttpError(new Response(null, { status: 503 }), {
+      code: 'knowledge_fs_space_not_found',
       message: 'Server says why',
     })
     await user.click(
       screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
     )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.knowledge_fs_space_not_found',
+    )
   })
   it('shows a retryable error when provisioning reconciliation finds no connection', async () => {
     const user = userEvent.setup()

@@ -9,7 +9,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
 import { goldenQuestionQueriesKey } from '../quality/quality-model'
@@ -48,6 +49,7 @@ function goldenQuestionEvidenceOptions(
 
 export function RetrievalQualityWorkflow() {
   const { t } = useTranslation(['dataset'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const { mutateAsync: createBadCase } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post.mutationOptions({
@@ -77,7 +79,7 @@ export function RetrievalQualityWorkflow() {
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [goldenPromotion, setGoldenPromotion] = useState<GoldenQuestionPromotion>()
-  const [goldenPromotionError, setGoldenPromotionError] = useState<string>()
+  const [goldenPromotionError, setGoldenPromotionError] = useState<{ error: unknown }>()
 
   const startGoldenPromotion = () => {
     if (!resultKey || !selectedQuery) return
@@ -150,9 +152,7 @@ export function RetrievalQualityWorkflow() {
       setQualityDecisions((current) => ({ ...current, [promotion.resultKey]: 'golden' }))
       setGoldenPromotion(undefined)
     } catch (error) {
-      setGoldenPromotionError(
-        getRequestErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }),
-      )
+      setGoldenPromotionError({ error })
     } finally {
       setQualityPendingKey(undefined)
     }
@@ -191,7 +191,13 @@ export function RetrievalQualityWorkflow() {
         <GoldenQuestionDialog
           key={goldenPromotion.resultKey}
           evidenceOptions={goldenPromotion.evidenceOptions}
-          error={goldenPromotionError}
+          error={
+            goldenPromotionError &&
+            describeRequestError(
+              goldenPromotionError.error,
+              t(($) => $.unknownError, { ns: 'dataset' }),
+            )
+          }
           initialValue={goldenPromotion.value}
           knowledgeSpaceId={knowledgeSpaceId}
           mode="promote"

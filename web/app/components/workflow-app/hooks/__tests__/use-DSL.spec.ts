@@ -161,12 +161,12 @@ describe('useDSLByCanEdit', () => {
     expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
   })
 
-  it('shows the server message when the draft sync before export fails', async () => {
+  it('shows the translated reason when the draft sync before export fails', async () => {
     mockDoSyncWorkflowDraft.mockImplementation(async (_options, callback) => {
       callback.onError(
         createHttpError(
-          { status: 400, statusText: '', headers: new Headers() },
-          { message: 'Draft is invalid' },
+          { status: 409, statusText: '', headers: new Headers() },
+          { code: 'draft_workflow_not_sync', message: 'Draft is invalid' },
         ),
       )
       return null
@@ -180,7 +180,7 @@ describe('useDSLByCanEdit', () => {
     })
     expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
       type: 'error',
-      message: 'Draft is invalid',
+      message: 'requestErrors.code.draft_workflow_not_sync',
     })
   })
 
