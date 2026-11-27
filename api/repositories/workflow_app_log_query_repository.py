@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import override
 
-from sqlalchemy import Select, and_, case, func, literal, or_, select, tuple_
+from sqlalchemy import CTE, Select, and_, case, func, literal, or_, select, tuple_
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session, aliased, sessionmaker
 from sqlalchemy.orm.util import AliasedClass
@@ -65,7 +65,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                     self._matching_export_logs(scope=scope, filters=filters).exists(),
                 )
             )
-            statement = self._filter_runs(statement, WorkflowRun, keyword=filters.keyword, status=filters.status)
+            statement = statement.where(*self._run_filters(WorkflowRun, keyword=filters.keyword, status=filters.status))
             result = execute_log_export_count(session, statement)
             return result[0] if result is not None else None
 
@@ -75,7 +75,8 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
     ) -> Iterator[WorkflowLogExportRow]:
         """Yield one row per matching run in log order.
 
-        Retry eligible standby failures at the same cursor and close the read session before yielding each page.
+        Bound each query by a page of log candidates. Retry at the same cursor and release the session
+        before yielding rows. Advance past candidates without a matching run as well.
         """
         end_before = naive_utc_now()
         matching_log = (
@@ -85,66 +86,51 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             .limit(1)
             .scalar_subquery()
         )
-        statement = (
-            select(
-                WorkflowAppLog.created_at,
-                WorkflowAppLog.id,
-                WorkflowRun.id,
-                WorkflowRun.inputs,
-                WorkflowRun.outputs,
-                WorkflowRun.status,
-                WorkflowRun.triggered_from,
-                WorkflowAppLog.created_from,
-                EndUser.session_id,
-                case((WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT, WorkflowAppLog.created_by)),
-                Account.name,
-            )
-            .select_from(WorkflowAppLog)
-            .join(
-                WorkflowRun,
-                and_(
-                    WorkflowRun.id == WorkflowAppLog.workflow_run_id,
-                    WorkflowRun.tenant_id == WorkflowAppLog.tenant_id,
-                    WorkflowRun.app_id == WorkflowAppLog.app_id,
-                ),
-            )
-            .outerjoin(
-                EndUser,
-                and_(
-                    WorkflowAppLog.created_by_role == CreatorUserRole.END_USER,
-                    WorkflowAppLog.created_by == EndUser.id,
-                    EndUser.tenant_id == scope.tenant_id,
-                ),
-            )
-            .outerjoin(
-                Account,
-                and_(
-                    WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT, WorkflowAppLog.created_by == Account.id
-                ),
-            )
-            .where(
-                WorkflowRun.tenant_id == scope.tenant_id,
-                WorkflowRun.app_id == scope.app_id,
-                WorkflowRun.created_at < end_before,
-                WorkflowAppLog.created_at < end_before,
-                WorkflowAppLog.id == matching_log,
-            )
-            .order_by(WorkflowAppLog.created_at, WorkflowAppLog.id)
+        candidates = self._filter_export_logs(
+            select(WorkflowAppLog).where(WorkflowAppLog.created_at < end_before), scope=scope, filters=filters
         )
-        statement = self._filter_export_logs(statement, scope=scope, filters=filters)
-        statement = self._filter_runs(statement, WorkflowRun, keyword=filters.keyword, status=filters.status)
+        run_filters = self._run_filters(WorkflowRun, keyword=filters.keyword, status=filters.status)
         cursor: tuple[datetime, str] | None = None
         has_more = True
         while has_more:
-            page = statement.limit(_LOG_EXPORT_BATCH_SIZE)
-            if cursor is not None:
-                page = page.where(
-                    tuple_(WorkflowAppLog.created_at, WorkflowAppLog.id)
-                    > tuple_(
-                        literal(cursor[0], type_=WorkflowAppLog.created_at.type),
-                        literal(cursor[1], type_=WorkflowAppLog.id.type),
-                    )
+            log = aliased(WorkflowAppLog, self._page_export_logs(candidates, cursor))
+            page = (
+                select(
+                    log.created_at,
+                    log.id,
+                    WorkflowRun.id,
+                    WorkflowRun.inputs,
+                    WorkflowRun.outputs,
+                    WorkflowRun.status,
+                    WorkflowRun.triggered_from,
+                    log.created_from,
+                    EndUser.session_id,
+                    case((log.created_by_role == CreatorUserRole.ACCOUNT, log.created_by)),
+                    Account.name,
                 )
+                .select_from(log)
+                .outerjoin(
+                    WorkflowRun,
+                    and_(
+                        WorkflowRun.id == log.workflow_run_id,
+                        WorkflowRun.tenant_id == scope.tenant_id,
+                        WorkflowRun.app_id == scope.app_id,
+                        WorkflowRun.created_at < end_before,
+                        log.id == matching_log,
+                        *run_filters,
+                    ),
+                )
+                .outerjoin(
+                    EndUser,
+                    and_(
+                        log.created_by_role == CreatorUserRole.END_USER,
+                        log.created_by == EndUser.id,
+                        EndUser.tenant_id == scope.tenant_id,
+                    ),
+                )
+                .outerjoin(Account, and_(log.created_by_role == CreatorUserRole.ACCOUNT, log.created_by == Account.id))
+                .order_by(log.created_at, log.id)
+            )
             batch = read_log_export_with_retry(
                 self._session_factory,
                 scope.app_id,
@@ -165,22 +151,52 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                 account_id,
                 name,
             ) in batch:
-                yield WorkflowLogExportRow(
-                    run_id=run_id,
-                    created_at=created_at,
-                    inputs=inputs,
-                    outputs=outputs,
-                    status=status,
-                    trigger_by=created_from
-                    if trigger is None or trigger == WorkflowRunTriggeredFrom.APP_RUN
-                    else trigger,
-                    end_user_id=user_id,
-                    account_id=account_id,
-                    account_name=name,
-                )
+                if run_id is not None:
+                    yield WorkflowLogExportRow(
+                        run_id=run_id,
+                        created_at=created_at,
+                        inputs=inputs,
+                        outputs=outputs,
+                        status=status,
+                        trigger_by=created_from
+                        if trigger is None or trigger == WorkflowRunTriggeredFrom.APP_RUN
+                        else trigger,
+                        end_user_id=user_id,
+                        account_id=account_id,
+                        account_name=name,
+                    )
             has_more = len(batch) == _LOG_EXPORT_BATCH_SIZE
             if has_more:
                 cursor = (batch[-1][0], batch[-1][1])
+
+    @staticmethod
+    def _page_export_logs(candidates: Select[tuple[WorkflowAppLog]], cursor: tuple[datetime, str] | None) -> CTE:
+        """Select a bounded, ordered page from the app's eligible log entries after the cursor."""
+        if cursor is not None:
+            cursor_at, cursor_id = cursor
+            candidates = candidates.where(
+                WorkflowAppLog.created_at >= cursor_at,
+                tuple_(WorkflowAppLog.created_at, WorkflowAppLog.id)
+                > tuple_(
+                    literal(cursor_at, type_=WorkflowAppLog.created_at.type),
+                    literal(cursor_id, type_=WorkflowAppLog.id.type),
+                ),
+            )
+        # Find the page's time ceiling using the timestamp index before sorting tied IDs.
+        candidate_times = (
+            candidates.with_only_columns(WorkflowAppLog.created_at)
+            .order_by(WorkflowAppLog.created_at)
+            .limit(_LOG_EXPORT_BATCH_SIZE)
+            .subquery()
+        )
+        page_end = select(func.max(candidate_times.c.created_at)).scalar_subquery()
+        return (
+            candidates.where(WorkflowAppLog.created_at <= page_end)
+            .order_by(WorkflowAppLog.created_at, WorkflowAppLog.id)
+            .limit(_LOG_EXPORT_BATCH_SIZE)
+            .cte("workflow_export_candidates")
+            .prefix_with("MATERIALIZED", dialect="postgresql")
+        )
 
     @override
     def search_log_export_identities(
@@ -357,7 +373,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             else:
                 stmt = stmt.add_columns(literal(None).label("trigger_metadata"))
 
-            stmt = self._filter_runs(stmt, workflow_run, keyword=keyword, status=status)
+            stmt = stmt.where(*self._run_filters(workflow_run, keyword=keyword, status=status))
             stmt = self._filter_log_dates(stmt, created_at_before=created_at_before, created_at_after=created_at_after)
             stmt = self._filter_log_identities(stmt, end_user_ids=end_user_ids, account_ids=account_ids)
 
@@ -444,15 +460,15 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                 ),
             )
 
-    def _filter_runs[RowT: tuple[object, ...]](
+    def _run_filters(
         self,
-        statement: Select[RowT],
         workflow_run: type[WorkflowRun] | AliasedClass[WorkflowRun],
         *,
         keyword: str | None,
         status: WorkflowExecutionStatus | None,
-    ) -> Select[RowT]:
-        """Apply the Logs page's run keyword and status filters to a scoped statement."""
+    ) -> list[ColumnElement[bool]]:
+        """Build the Logs page's predicates for the given run alias and optional filters."""
+        conditions: list[ColumnElement[bool]] = []
         if keyword:
             keyword_like_value = f"%{escape_like_pattern(keyword[:30])}%"
             run_creator = aliased(EndUser)
@@ -470,10 +486,10 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             ]
             if keyword_uuid := self._safe_parse_uuid(keyword):
                 keyword_conditions.append(workflow_run.id == str(keyword_uuid))
-            statement = statement.where(or_(*keyword_conditions))
+            conditions.append(or_(*keyword_conditions))
         if status is not None:
-            statement = statement.where(workflow_run.status == status)
-        return statement
+            conditions.append(workflow_run.status == status)
+        return conditions
 
     @staticmethod
     def _filter_log_dates[RowT: tuple[object, ...]](

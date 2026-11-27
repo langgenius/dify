@@ -94,14 +94,25 @@ def test_export_counts_and_reads_live_runs_once_across_batches(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Match the Logs filters while excluding orphan logs and runs outside the app."""
+    """Cross empty pages and use the earliest matching log for each live run."""
     monkeypatch.setattr(workflow_app_log_query_repository, "_LOG_EXPORT_BATCH_SIZE", 1)
     timestamp = datetime(2026, 1, 1)
     user_log = _log("user", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    user_log.created_from = WorkflowAppLogCreatedFrom.WEB_APP
     duplicate_log = _log(
         "duplicate", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp
     )
     duplicate_log.workflow_run_id = user_log.workflow_run_id
+    old_log = _log(
+        "old", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp - timedelta(days=1)
+    )
+    old_log.workflow_run_id = user_log.workflow_run_id
+    wrong_actor_log = _log(
+        "a-other", created_by="other-user", created_by_role=CreatorUserRole.END_USER, created_at=timestamp
+    )
+    wrong_actor_log.workflow_run_id = user_log.workflow_run_id
+    wrong_actor_log.created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+    orphan_log = _log("a-orphan", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
     account_log = _log(
         "account",
         created_by="account-id",
@@ -112,12 +123,16 @@ def test_export_counts_and_reads_live_runs_once_across_batches(
     foreign_run = _run(foreign_log.workflow_run_id, tenant_id="other-workspace")
     account_run = _run(account_log.workflow_run_id, triggered_from=WorkflowRunTriggeredFrom.SCHEDULE)
     account_run.status = WorkflowExecutionStatus.FAILED
+    account_run.outputs = json.dumps({"output": "account-search-token"})
 
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
                 user_log,
                 duplicate_log,
+                old_log,
+                wrong_actor_log,
+                orphan_log,
                 account_log,
                 foreign_log,
                 foreign_run,
@@ -128,22 +143,28 @@ def test_export_counts_and_reads_live_runs_once_across_batches(
         )
     scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
     repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
-    filters = WorkflowLogExportFilters(end_user_ids=("user-id",), account_ids=("account-id",))
+    filters = WorkflowLogExportFilters(
+        created_at_after=timestamp, end_user_ids=("user-id",), account_ids=("account-id",)
+    )
     assert repository.count_log_export_rows(scope=scope, filters=filters) == 2
     assert isinstance(sqlite_engine.pool, QueuePool)
     rows = []
     for row in repository.iter_log_export_rows(scope=scope, filters=filters):
         assert sqlite_engine.pool.checkedout() == 0
         rows.append(row)
-    assert [(row.run_id, row.status, row.trigger_by) for row in rows] == [
-        (user_log.workflow_run_id, "succeeded", "service-api"),
-        (account_log.workflow_run_id, "failed", "schedule"),
+    assert [(row.run_id, row.created_at, row.status, row.trigger_by) for row in rows] == [
+        (user_log.workflow_run_id, timestamp, "succeeded", "service-api"),
+        (account_log.workflow_run_id, account_log.created_at, "failed", "schedule"),
     ]
     assert rows[1].account_id == "account-id"
     assert json.loads(rows[0].inputs or "{}") == {"input": "value"}
 
     failed = WorkflowLogExportFilters(status=WorkflowExecutionStatus.FAILED)
     assert [row.run_id for row in repository.iter_log_export_rows(scope=scope, filters=failed)] == [
+        account_log.workflow_run_id
+    ]
+    keyword = WorkflowLogExportFilters(keyword="account-search-token")
+    assert [row.run_id for row in repository.iter_log_export_rows(scope=scope, filters=keyword)] == [
         account_log.workflow_run_id
     ]
     after = WorkflowLogExportFilters(created_at_after=timestamp + timedelta(days=1))
@@ -217,7 +238,7 @@ def test_workflow_csv_retries_the_same_page_without_rewriting_rows(
         _context: object,
         _executemany: object,
     ) -> None:
-        if "FROM workflow_app_logs JOIN workflow_runs" not in statement:
+        if "WITH workflow_export_candidates AS" not in statement:
             return
         attempts.append((statement, parameters, len(progress)))
         connections.append(connection.connection.dbapi_connection)
