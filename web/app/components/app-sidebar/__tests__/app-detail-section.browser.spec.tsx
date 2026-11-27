@@ -1,5 +1,4 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
@@ -8,42 +7,34 @@ import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
-
-// boundary: Next.js pathname/router context is not mounted in a focused Browser Mode render.
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/app/app-1/logs',
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
-  useSelectedLayoutSegment: () => 'logs',
-}))
 
 async function renderSection({
   mode = 'chat',
   permissions = [],
   rbacEnabled = true,
-  deploymentEdition = 'COMMUNITY',
+  evaluation = 'unavailable',
   publishedWorkflow = false,
-  cloudPlan = 'professional',
 }: {
   mode?: AppDetailWithSite['mode']
   permissions?: string[]
   rbacEnabled?: boolean
-  deploymentEdition?: DeploymentEdition
+  evaluation?: 'enabled' | 'upgrade' | 'unavailable'
   publishedWorkflow?: boolean
-  cloudPlan?: 'sandbox' | 'professional'
 } = {}) {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, {
-    deployment_edition: deploymentEdition,
     rbac_enabled: rbacEnabled,
     enable_app_deploy: false,
   })
-  if (deploymentEdition === 'CLOUD')
-    seedFeatures(queryClient, { billing: { subscription: { plan: cloudPlan } } })
+  seedFeatures(queryClient, {
+    evaluation_enabled: evaluation === 'enabled',
+    evaluation_upgrade_available: evaluation === 'upgrade',
+  })
   seedWorkspacePermissionsQuery(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
@@ -55,10 +46,16 @@ async function renderSection({
       workflow: publishedWorkflow ? { id: 'workflow-1', type: 'workflow' } : null,
     }),
   )
+  const { NavigationProvider } = createTestNavigation({
+    url: '/app/app-1/logs',
+    segments: ['logs'],
+  })
   return render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <AppDetailSection />
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <AppDetailSection />
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -153,7 +150,7 @@ describe('AppDetailSection', () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'ENTERPRISE',
+      evaluation: 'enabled',
       publishedWorkflow: true,
     })
 
@@ -166,7 +163,7 @@ describe('AppDetailSection', () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'ENTERPRISE',
+      evaluation: 'enabled',
     })
 
     const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
@@ -178,33 +175,31 @@ describe('AppDetailSection', () => {
     await expect.element(screen.getByText('evaluation.unavailableUntilPublished')).toBeVisible()
   })
 
-  it('explains why evaluation is disabled on a Cloud plan without access', async () => {
+  it('links evaluation when the workspace can upgrade into it so it can preview the page', async () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'CLOUD',
+      evaluation: 'upgrade',
       publishedWorkflow: true,
-      cloudPlan: 'sandbox',
     })
 
-    const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
-    await expect.element(evaluation).toHaveAttribute('aria-disabled', 'true')
-    await userEvent.hover(evaluation)
-    await expect.element(screen.getByText('common.compliance.sandboxUpgradeTooltip')).toBeVisible()
+    await expect
+      .element(screen.getByRole('link', { name: 'evaluation.title' }))
+      .toHaveAttribute('href', '/app/app-1/evaluation')
   })
 
   it('omits evaluation for non-workflow apps', async () => {
     const screen = await renderSection({
       mode: 'advanced-chat',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'ENTERPRISE',
+      evaluation: 'enabled',
       publishedWorkflow: true,
     })
 
     await expect.element(screen.getByText('evaluation.title')).not.toBeInTheDocument()
   })
 
-  it('omits evaluation in Community edition', async () => {
+  it('omits evaluation when the workspace cannot use or upgrade into it', async () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],

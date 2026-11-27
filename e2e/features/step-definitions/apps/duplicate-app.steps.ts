@@ -44,7 +44,10 @@ When('I confirm the app duplication', async function (this: DifyWorld) {
       new URL(response.url()).pathname.endsWith(`/console/api/apps/${sourceAppId}/copy`),
   )
 
-  await page.getByRole('button', { exact: true, name: 'Duplicate' }).click()
+  await page
+    .getByRole('dialog', { name: 'Duplicate App' })
+    .getByRole('button', { name: /^Duplicate/ })
+    .click()
   const response = await responsePromise
   expect(response.ok()).toBe(true)
   const copiedApp = zPostAppsByAppIdCopyResponse.parse(await response.json())

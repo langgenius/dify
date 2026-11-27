@@ -26,7 +26,8 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import RunFinalizationResult, RunStreamSealedError
-from dify_agent.storage.redis_keys import run_idempotency_key, run_record_key
+from dify_agent.runtime.tool_call_limits import InMemoryToolCallLimitStore
+from dify_agent.storage.redis_keys import run_cancel_intent_key, run_idempotency_key, run_record_key
 from dify_agent.storage.redis_run_store import (
     DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
     DEFAULT_RUN_RETENTION_SECONDS,
@@ -34,6 +35,85 @@ from dify_agent.storage.redis_run_store import (
     RedisRunStore,
     RunNotFoundError,
 )
+
+
+@pytest.mark.parametrize("terminal", ["succeeded", "failed", "cancelled"])
+def test_terminal_preserves_the_owners_snapshot_without_live_run_record_counters(terminal: str) -> None:
+    async def scenario() -> None:
+        async with AsyncFakeRedis() as redis:
+            store = RedisRunStore(redis)
+            record = await store.create_run()
+            counter = InMemoryToolCallLimitStore()
+            large_limit = 2**53 + 123
+            await counter.reserve(
+                run_id=record.run_id, tool_identity="operation", tool_call_id="pending", limit=large_limit
+            )
+            snapshot = counter.seal()
+            session = SessionSnapshot(layers={"output": {"empty": {}, "large": large_limit}})
+            if terminal == "cancelled":
+                await store.request_cancellation(record.run_id, CancelRunRequest(reason="stop"))
+                intent = await store.get_cancellation_intent(record.run_id)
+                assert intent is not None
+                result = await store.finalize_cancellation(
+                    record.run_id, intent, session_snapshot=session, tool_call_limits=snapshot
+                )
+            elif terminal == "succeeded":
+                result = await store.finalize_run(
+                    RunSucceededEvent(
+                        run_id=record.run_id,
+                        data=RunSucceededEventData(
+                            output={"empty": {}, "large": large_limit}, session_snapshot=session
+                        ),
+                        tool_call_limits=snapshot,
+                    )
+                )
+            else:
+                result = await store.finalize_run(
+                    RunFailedEvent(
+                        run_id=record.run_id,
+                        data=RunFailedEventData(error="failed", session_snapshot=session),
+                        tool_call_limits=snapshot,
+                    )
+                )
+            assert result.applied
+            events = (await store.get_events(record.run_id)).events
+            stored = events[-1]
+            assert isinstance(stored, (RunSucceededEvent, RunFailedEvent, RunCancelledEvent))
+            assert stored.tool_call_limits == snapshot
+            assert next(iter(stored.tool_call_limits.values())).limit == large_limit
+            assert stored.data.session_snapshot == session
+            if isinstance(stored, RunSucceededEvent):
+                assert stored.data.output == {"empty": {}, "large": large_limit}
+            raw = await redis.get(run_record_key(store.prefix, record.run_id))
+            assert raw is not None and b"tool_call_limits" not in raw
+            competing = await store.finalize_run(
+                RunFailedEvent(run_id=record.run_id, data=RunFailedEventData(error="late"), tool_call_limits={})
+            )
+            assert not competing.applied
+            assert (await store.get_events(record.run_id)).events == events
+
+    asyncio.run(scenario())
+
+
+def test_retained_legacy_records_replay_without_restoring_or_rewriting_live_quota() -> None:
+    async def scenario() -> None:
+        async with AsyncFakeRedis() as redis:
+            store = RedisRunStore(redis)
+            record, created = await store.create_run_idempotent(idempotency_key="legacy", request_fingerprint="same")
+            assert created
+            legacy = record.model_dump(mode="json")
+            legacy["tool_call_limits"] = {
+                "operation": {"tool_identity": "search", "limit": "3", "used": 1, "call_ids": {"old": 1}}
+            }
+            await redis.set(run_record_key(store.prefix, record.run_id), json.dumps(legacy), ex=60)
+            loaded = await store.get_run(record.run_id)
+            assert "tool_call_limits" not in loaded.model_dump(mode="json")
+            replay, created = await store.create_run_idempotent(idempotency_key="legacy", request_fingerprint="same")
+            assert not created and replay == loaded
+            raw = await redis.get(run_record_key(store.prefix, record.run_id))
+            assert raw is not None and json.loads(raw)["tool_call_limits"] == legacy["tool_call_limits"]
+
+    asyncio.run(scenario())
 
 
 class FakeRedis:
@@ -517,11 +597,12 @@ def test_append_event_maps_eval_script_arguments_and_result() -> None:
     assert event_id == "7-0"
     eval_commands = [command for command in redis.commands if command[0] == "eval"]
     assert len(eval_commands) == 1
-    script, numkeys, record_key, events_key, payload, maxlen, ttl = eval_commands[0][1:]
-    assert numkeys == 2
-    assert (record_key, events_key) == (
+    script, numkeys, record_key, events_key, cancel_key, payload, maxlen, ttl = eval_commands[0][1:]
+    assert numkeys == 3
+    assert (record_key, events_key, cancel_key) == (
         "test:runs:run-1:record",
         "test:runs:run-1:events",
+        "test:runs:run-1:cancel-intent",
     )
     assert '"id"' not in payload
     assert '"type":"run_started"' in payload
@@ -546,6 +627,26 @@ def test_append_event_persists_while_running_and_refreshes_ttls() -> None:
         record_ttl = await client.ttl(f"test:runs:{record.run_id}:record")
         assert 0 < events_ttl <= 60
         assert 0 < record_ttl <= 60
+        assert not await client.exists(run_cancel_intent_key("test", record.run_id))
+
+    asyncio.run(scenario())
+
+
+def test_append_event_refreshes_pending_cancellation_retention() -> None:
+    async def scenario() -> None:
+        async with AsyncFakeRedis() as client:
+            store = RedisRunStore(client, prefix="test", run_retention_seconds=60)
+            record = await store.create_run()
+            await store.request_cancellation(record.run_id, CancelRunRequest(reason="user"))
+            key = run_cancel_intent_key("test", record.run_id)
+            assert await client.expire(key, 10)
+
+            await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+            assert 10 < await client.ttl(key) <= 60
+            intent = await store.get_cancellation_intent(record.run_id)
+            assert intent is not None
+            assert intent.reason == "user"
 
     asyncio.run(scenario())
 

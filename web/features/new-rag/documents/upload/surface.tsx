@@ -13,6 +13,7 @@ import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availabili
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
 import {
@@ -74,6 +75,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeDocuments'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const deploymentEdition = useAtomValueRawSync(deploymentEditionAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -187,14 +189,13 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
 
   const checkUploadQuota = useCallback(
     async (isActive?: () => boolean) => {
-      if (deploymentEdition !== 'CLOUD') return true
       const failureKey = await getKnowledgeFsUploadQuotaFailure(queryClient)
       if (isActive && !isActive()) return false
       if (!failureKey) return true
       toast.error(tError(($) => $[failureKey]))
       return false
     },
-    [deploymentEdition, queryClient, tError],
+    [queryClient, tError],
   )
 
   const uploadFiles = useCallback(
@@ -264,7 +265,10 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           const failureKey = await knowledgeFsRequestFailureMessageKey(error)
           const reason = failureKey
             ? tError(($) => $[failureKey])
-            : t(($) => $.documentUploadFailed)
+            : describeRequestError(
+                error,
+                t(($) => $.documentUploadFailed),
+              )
           toast.error(
             completed
               ? t(($) => $.documentUploadIncomplete, {
@@ -280,13 +284,14 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       }
     },
     [
-      canUpload,
       cancel,
+      canUpload,
       checkUploadQuota,
       completedUploadCount,
+      denyWrite,
+      describeRequestError,
       ensureModelReady,
       formatExclusionDetails,
-      denyWrite,
       refreshDocuments,
       stageFiles,
       supportBatchUpload,
@@ -300,15 +305,22 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const onFilesAdded = useCallback(
     async (files: File[]) => {
       try {
-        await stageFiles(files, deploymentEdition === 'CLOUD' ? checkUploadQuota : undefined)
+        await stageFiles(files, checkUploadQuota)
       } catch (error) {
         if (error instanceof DocumentStagingCanceledError) return
         const failureKey = await knowledgeFsRequestFailureMessageKey(error)
-        toast.error(failureKey ? tError(($) => $[failureKey]) : t(($) => $.documentUploadFailed))
+        toast.error(
+          failureKey
+            ? tError(($) => $[failureKey])
+            : describeRequestError(
+                error,
+                t(($) => $.documentUploadFailed),
+              ),
+        )
         throw error
       }
     },
-    [checkUploadQuota, deploymentEdition, stageFiles, t, tError],
+    [checkUploadQuota, describeRequestError, stageFiles, t, tError],
   )
 
   const onSubmit = useCallback(

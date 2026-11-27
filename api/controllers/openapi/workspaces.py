@@ -25,6 +25,7 @@ from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
@@ -50,6 +51,7 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
+from machinery.scope import scope_admits
 from services.account_errors import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
@@ -58,6 +60,8 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
+    WorkspaceInvitationQuotaError,
+    WorkspaceMemberLicenseQuotaError,
     WorkspaceNotLinkedError,
 )
 from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRecord, WorkspaceSnapshot
@@ -92,9 +96,9 @@ class WorkspacesApi(Resource):
             item = WorkspaceSummaryResponse(id=str(tenant.id), name=tenant.name, role="", status=tenant.status)
             return WorkspaceListResponse.page_of([item], query=query)
         rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
-        if ctx.personal_workspace_ids is not None:
-            rows = tuple(row for row in rows if row.id in ctx.personal_workspace_ids)
-        return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
+        return WorkspaceListResponse.page_of(
+            [_workspace_summary(row) for row in rows if scope_admits(ctx.personal_workspace_ids, row.id)], query=query
+        )
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
@@ -217,6 +221,12 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc)) from exc
         except SeatsLimitExceededError as caught_error:
             raise BadRequest("licensed seats limit exceeded") from caught_error
+        except WorkspaceMemberLicenseQuotaError as caught_error:
+            raise MemberLicenseExceeded() from caught_error
+        except WorkspaceInvitationQuotaError as caught_error:
+            if caught_error.seats:
+                raise BadRequest("licensed seats limit exceeded") from caught_error
+            raise MemberLimitExceeded() from caught_error
         except AccountRegisterError as exc:
             raise BadRequest(str(exc)) from exc
 

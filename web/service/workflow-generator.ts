@@ -4,24 +4,17 @@ import type {
   WorkflowGenerateResponse,
   WorkflowInstructionSuggestionsPayload,
 } from '@dify/contracts/api/console/workflow-generate/types.gen'
-// The generated client handles JSON endpoints. Streaming remains on the
-// generator-specific SSE adapter until oRPC supports this event framing.
 import { consoleClient } from '@/service/console'
-// oxlint-disable-next-line no-restricted-imports
-import { sseGeneratorPost } from './base'
+import { streamGeneratorEvents } from './event-stream'
 
 export type GenerateWorkflowOptions = {
   getAbortController?: (controller: AbortController) => void
-  silent?: boolean
 }
 
 export function generateWorkflow(body: WorkflowGeneratePayload, options?: GenerateWorkflowOptions) {
   const controller = new AbortController()
   options?.getAbortController?.(controller)
-  return consoleClient.workflowGenerate.post(
-    { body },
-    { signal: controller.signal, context: { silent: options?.silent } },
-  )
+  return consoleClient.workflowGenerate.post({ body }, { signal: controller.signal })
 }
 
 export type GenerateWorkflowStreamCallbacks = {
@@ -36,13 +29,10 @@ export function generateWorkflowStream(
   body: WorkflowGeneratePayload,
   callbacks: GenerateWorkflowStreamCallbacks,
 ) {
-  return sseGeneratorPost('/workflow-generate/stream', body, {
-    onPlan: (data) => callbacks.onPlan?.(data as WorkflowGeneratePlanEventResponse),
-    onResult: (data) => callbacks.onResult?.(data as WorkflowGenerateResponse),
-    onError: callbacks.onError,
-    onCompleted: callbacks.onCompleted,
-    getAbortController: callbacks.getAbortController,
-  })
+  return streamGeneratorEvents<WorkflowGeneratePlanEventResponse, WorkflowGenerateResponse>(
+    (options) => consoleClient.workflowGenerate.stream.post({ body }, options),
+    callbacks,
+  )
 }
 
 export function fetchWorkflowInstructionSuggestions(

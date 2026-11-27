@@ -20,10 +20,28 @@ class AgentInviteOptionsService:
         self._visibility = visibility
 
     def list(
-        self, context: RequestContext, *, page: int, limit: int, keyword: str | None, app_id: str | None
+        self,
+        context: RequestContext,
+        *,
+        page: int,
+        limit: int,
+        keyword: str | None,
+        app_id: str | None,
+        tag_ids: tuple[str, ...] = (),
     ) -> AgentInviteOptionsPage:
-        """Return an admitted tenant's visible invite options without retaining a session."""
+        """Return visible invite options matching every selected Agent tag.
+
+        Preconditions: page, limit and IDs are transport-validated. Postconditions:
+        existing visibility and callable rules still apply; an empty tag tuple
+        preserves the original candidates and no database session is retained.
+        """
         visible = self._visibility.visible_ids(context)
         return self._store.list_invite_options(
-            context, page=page, limit=limit, keyword=keyword, app_id=app_id, accessible_agent_ids=visible
+            context,
+            page=page,
+            limit=limit,
+            keyword=keyword,
+            app_id=app_id,
+            accessible_agent_ids=visible,
+            tag_ids=tag_ids,
         )

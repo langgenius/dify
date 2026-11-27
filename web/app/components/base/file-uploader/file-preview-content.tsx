@@ -73,7 +73,7 @@ function FilePreviewPopup({ file, kind }: FilePreviewContentProps) {
               ref={closeRef}
               size="lg"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-6 right-6 rounded-lg bg-white/8 backdrop-blur-[2px]"
+              className="absolute inset-e-6 top-6 rounded-lg bg-white/8 backdrop-blur-[2px]"
             >
               <span className="i-ri-close-line size-4 text-gray-500" aria-hidden />
             </IconButton>

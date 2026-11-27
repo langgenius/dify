@@ -1,7 +1,8 @@
 import type { SnippetListItem } from '@/types/snippet'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
+import { snippetPublishedWorkflowQueryOptions } from '@/service/snippet-queries'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
@@ -12,7 +13,7 @@ type SnippetDetailCardProps = {
 function SnippetDetailCard({ snippet }: SnippetDetailCardProps) {
   const { author_name, description, name } = snippet
   const { t } = useTranslation(['snippet'])
-  const { data: workflow } = useSnippetPublishedWorkflow(snippet.id)
+  const { data: workflow } = useQuery(snippetPublishedWorkflowQueryOptions(snippet.id))
   const creatorName = author_name || t(($) => $.unknownUser)
 
   const blockTypes = useMemo(() => {

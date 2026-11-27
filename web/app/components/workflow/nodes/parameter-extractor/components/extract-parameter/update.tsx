@@ -69,7 +69,7 @@ export function ParameterDialog(props: Props) {
     : `${t(($) => $['operation.edit'], { ns: 'common' })} ${props.payload.name}`
 
   return (
-    <Dialog actionsRef={actionsRef}>
+    <Dialog actionsRef={actionsRef} disablePointerDismissal>
       <DialogTrigger
         render={
           <IconButton aria-label={triggerLabel} className={isAdd ? 'mx-1' : undefined}>

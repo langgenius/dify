@@ -122,7 +122,7 @@ const IndexMethod = ({
               </div>
               <Slider
                 disabled={readonly}
-                className="mr-3 w-24 shrink-0"
+                className="me-3 w-24 shrink-0"
                 value={keywordNumber}
                 onValueChange={onKeywordNumberChange}
               >

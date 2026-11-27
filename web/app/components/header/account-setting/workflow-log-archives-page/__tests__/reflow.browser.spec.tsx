@@ -10,22 +10,11 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
-
-const archiveListRequest = vi.hoisted(() => vi.fn())
-
-// boundary: workflow-archive reads stop at the generated console transport.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[], input: unknown) => {
-      if (path.join('.') === 'workflowRunArchives.get') return archiveListRequest(input)
-      throw new Error(`Unexpected console request: ${path.join('.')}`)
-    },
-  },
-}))
 
 async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
   await page.viewport(320, 800)
@@ -40,7 +29,8 @@ async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
     features: { billing: { subscription: { plan: 'team' } } },
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
-  queryClient.setQueryData(consoleQuery.workflowRunArchives.get.queryKey(), archives)
+  const fake = installFakeApi({ console: { workflowRunArchives: { get: () => archives } } })
+  onTestFinished(fake)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -54,7 +44,7 @@ async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
       </I18nextProvider>
     </QueryClientTestProvider>,
   )
-  return { dialog: screen.getByRole('dialog', { name: 'Settings' }), queryClient }
+  return { dialog: screen.getByRole('dialog', { name: 'Settings' }), queryClient, fake }
 }
 
 it('keeps the complete empty message readable without horizontal scrolling at 320 CSS pixels', async () => {
@@ -89,7 +79,7 @@ it('keeps the complete empty message readable without horizontal scrolling at 32
 })
 
 it('keeps a refresh error above retained rows and readable while scrolling a narrow table', async () => {
-  const { dialog, queryClient } = await renderSettings({
+  const { dialog, queryClient, fake } = await renderSettings({
     summary: {
       archived_month_count: 1,
       workflow_run_count: 125,
@@ -112,7 +102,10 @@ it('keeps a refresh error above retained rows and readable while scrolling a nar
   })
 
   try {
-    archiveListRequest.mockRejectedValue(new Error('Archives unavailable'))
+    await expect.element(dialog.getByRole('row', { name: /2025-03/ })).toBeVisible()
+    fake.console.workflowRunArchives.get.mockRejectedValue(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Archives unavailable' }),
+    )
     await queryClient.refetchQueries({ queryKey: consoleQuery.workflowRunArchives.get.queryKey() })
     const title = dialog.getByText('Could not load archived logs')
     const description = dialog.getByText('Refresh the page or try again later.')

@@ -2,12 +2,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleQuery } from '@/service/console'
-import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
 
 export default function AppSelector() {
@@ -27,7 +27,7 @@ export default function AppSelector() {
     }),
   )
 
-  const { mutate: logout } = useLogout()
+  const { mutate: logout } = useMutation(logoutMutationOptions())
 
   if (!userProfile) return null
 
@@ -52,8 +52,8 @@ export default function AppSelector() {
               <div className="system-md-medium break-all text-text-primary">
                 {userProfile.name}
                 {isEducationAccount && (
-                  <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                    <span aria-hidden="true" className="mr-1 i-ri-graduation-cap-fill size-3" />
+                  <PremiumBadge size="s" color="blue" className="ms-1 px-2!">
+                    <span aria-hidden="true" className="me-1 i-ri-graduation-cap-fill size-3" />
                     <span className="system-2xs-medium">EDU</span>
                   </PremiumBadge>
                 )}
@@ -72,7 +72,7 @@ export default function AppSelector() {
           <MenuItem className="h-9 justify-start px-3" onClick={() => logout()}>
             <span
               aria-hidden="true"
-              className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"
+              className="me-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"
             />
             <span className="text-[14px] font-normal text-text-secondary">
               {t(($) => $['userProfile.logout'], { ns: 'common' })}

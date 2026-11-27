@@ -8,6 +8,7 @@ import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -20,7 +21,7 @@ import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AppSourceType } from '@/service/share'
-import { useGetTryAppParams } from '@/service/use-try-app'
+import { tryAppParamsQueryOptions } from '@/service/try-app-queries'
 import { Resolution, TransferMethod } from '@/types/app'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import RunOnce from '../../../share/text-generation/run-once'
@@ -49,7 +50,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   }, [])
 
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
-  const { data: tryAppParams } = useGetTryAppParams(appId)
+  const { data: tryAppParams } = useQuery(tryAppParamsQueryOptions(appId))
 
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const appParams = useWebAppStore((s) => s.appParams)

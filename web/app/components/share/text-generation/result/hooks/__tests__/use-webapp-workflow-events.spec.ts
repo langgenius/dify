@@ -15,9 +15,16 @@ import { useWebAppWorkflowEvents } from '../use-webapp-workflow-events'
 const sseGetMock = vi.hoisted(() =>
   vi.fn<(url: string, options: object, handlers: WorkflowEventsHandlers) => Promise<void>>(),
 )
-vi.mock('@/service/base', async () => ({
-  ...(await vi.importActual<typeof import('@/service/base')>('@/service/base')),
-  sseGet: sseGetMock,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: vi.fn(), get: sseGetMock })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
 }))
 
 const form: HumanInputFormData = {

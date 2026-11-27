@@ -677,7 +677,7 @@ export type ParserDeleteModels = {
 
 export type LoadBalancingCredentialPayload = {
   credentials: {
-    [key: string]: unknown
+    [key: string]: string | boolean
   }
   model: string
   model_type: ModelType
@@ -1209,6 +1209,8 @@ export type SkillAssistMessagePayload = {
   model?: SkillAssistModelPayload | null
   target_path?: string | null
 }
+
+export type BinaryFileResponse = Blob | File
 
 export type SkillDraftFileOperationPayload = {
   content?: string | null
@@ -1788,6 +1790,19 @@ export type SwitchWorkspaceResponse = {
 export type AccountNotLinkTenantError = ErrorResponse & {
   code: 'account_not_link_tenant'
   status: 403
+}
+
+export type PendingWorkspaceInvitationListResponse = {
+  invitations: Array<PendingWorkspaceInvitationResponse>
+}
+
+export type PendingInvitationRevokePayload = {
+  email: string
+}
+
+export type PendingInvitationNotFoundError = ErrorResponse & {
+  code: 'pending_invitation_not_found'
+  status: 404
 }
 
 export type TenantListItemResponse = {
@@ -2838,6 +2853,12 @@ export type TenantInfoResponse = {
   trial_credits_exhausted_at?: number | null
   trial_credits_used?: number | null
   trial_end_reason?: string | null
+}
+
+export type PendingWorkspaceInvitationResponse = {
+  email: string
+  expires_at: string
+  role: TenantAccountRole
 }
 
 export type AgentStrategyProviderIdentity = {
@@ -7555,7 +7576,9 @@ export type PostWorkspacesCurrentPluginUpgradeMarketplaceResponse =
   PostWorkspacesCurrentPluginUpgradeMarketplaceResponses[keyof PostWorkspacesCurrentPluginUpgradeMarketplaceResponses]
 
 export type PostWorkspacesCurrentPluginUploadBundleData = {
-  body?: never
+  body: {
+    bundle: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/plugin/upload/bundle'
@@ -9371,9 +9394,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdExportError =
   GetWorkspacesCurrentSkillsBySkillIdExportErrors[keyof GetWorkspacesCurrentSkillsBySkillIdExportErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportResponse =
@@ -11140,3 +11161,52 @@ export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangRespo
 
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse =
   GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses[keyof GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses]
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/pending-invitations'
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors = {
+  403: ForbiddenError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsError =
+  GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors[keyof GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors]
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses = {
+  200: PendingWorkspaceInvitationListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse =
+  GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses[keyof GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses]
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeData = {
+  body: PendingInvitationRevokePayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/pending-invitations/revoke'
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors = {
+  403: ForbiddenError | ErrorResponse
+  404: PendingInvitationNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeError =
+  PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors[keyof PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors]
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse =
+  PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses[keyof PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses]

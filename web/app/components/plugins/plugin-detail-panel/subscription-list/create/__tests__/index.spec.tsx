@@ -1,12 +1,15 @@
-import type {
-  TriggerOAuthConfig,
-  TriggerProviderApiEntity,
-  TriggerSubscription,
-} from '@/app/components/workflow/block-selector/types'
+import type { ReactElement } from 'react'
+import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createTriggerOAuthConfigResponseFixture,
+  createTriggerProviderResponseFixture,
+} from '@/test/console/trigger-plugins'
 import { CreateSubscriptionButton } from '../index'
 import { CreateButtonType } from '../types'
 
@@ -42,26 +45,30 @@ vi.mock('../../use-subscription-list', () => ({
   useSubscriptionList: () => ({ subscriptions: mockSubscriptions, refetch: vi.fn() }),
 }))
 
-let mockProviderInfo: TriggerProviderApiEntity | undefined
-let mockOAuthConfig: TriggerOAuthConfig | undefined
-const mockRefetchOAuthConfig = vi.fn()
-const { mockInitiateOAuth, mockCreateBuilder, mockBuildSubscription } = vi.hoisted(() => ({
-  mockInitiateOAuth: vi.fn(),
-  mockCreateBuilder: vi.fn(),
-  mockBuildSubscription: vi.fn(),
-}))
-
-vi.mock('@/service/use-triggers', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-triggers')>()),
-  useTriggerProviderInfo: () => ({ data: mockProviderInfo }),
-  useTriggerOAuthConfig: () => ({ data: mockOAuthConfig, refetch: mockRefetchOAuthConfig }),
-}))
+let mockProviderInfo: ReturnType<typeof createTriggerProviderResponseFixture> | undefined
+let mockOAuthConfig: ReturnType<typeof createTriggerOAuthConfigResponseFixture> | undefined
+const { mockInitiateOAuth, mockCreateBuilder, mockBuildSubscription, mockGetOAuthConfig } =
+  vi.hoisted(() => ({
+    mockGetOAuthConfig: vi.fn(),
+    mockInitiateOAuth: vi.fn(),
+    mockCreateBuilder: vi.fn(),
+    mockBuildSubscription: vi.fn(),
+  }))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggerProvider.byProvider.oauth.client.get': async () => {
+        mockGetOAuthConfig()
+        return mockOAuthConfig
+      },
+      'workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get':
+        async () => ({ logs: [] }),
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get':
         mockInitiateOAuth,
@@ -69,8 +76,6 @@ vi.mock('@/service/console', async (importOriginal) => {
         mockCreateBuilder,
       'workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post':
         mockBuildSubscription,
-      'workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get':
-        async () => ({ logs: [] }),
     }),
   }
 })
@@ -80,16 +85,33 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: (...args: unknown[]) => mockOpenOAuthPopup(...args),
 }))
 
-const providerInfo = (
-  supported_creation_methods: SupportedCreationMethods[],
-): TriggerProviderApiEntity =>
-  ({
+const providerInfo = (supported_creation_methods: SupportedCreationMethods[]) =>
+  createTriggerProviderResponseFixture({
     name: 'test-provider',
     supported_creation_methods,
-  }) as TriggerProviderApiEntity
+  })
 
-const oauthConfig = (configured: boolean): TriggerOAuthConfig =>
-  ({ configured, custom_configured: false, custom_enabled: false }) as TriggerOAuthConfig
+const oauthConfig = (configured: boolean) => createTriggerOAuthConfigResponseFixture({ configured })
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  const input = { params: { provider: 'test-provider' } }
+  if (mockProviderInfo) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({ input }),
+      mockProviderInfo,
+    )
+  }
+  if (mockOAuthConfig) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.get.queryKey({
+        input,
+      }),
+      mockOAuthConfig,
+    )
+  }
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 describe('CreateSubscriptionButton', () => {
   beforeEach(() => {
@@ -128,13 +150,10 @@ describe('CreateSubscriptionButton', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.manual.title' })
     await waitFor(() =>
-      expect(mockCreateBuilder).toHaveBeenCalledWith(
-        {
-          params: { provider: 'test-provider' },
-          body: { credential_type: 'unauthorized' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mockCreateBuilder).toHaveBeenCalledWith({
+        params: { provider: 'test-provider' },
+        body: { credential_type: 'unauthorized' },
+      }),
     )
     expect(
       within(dialog).getByRole('textbox', { name: /subscriptionName.label/ }),
@@ -164,13 +183,10 @@ describe('CreateSubscriptionButton', () => {
       within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.verify' }),
     ).toBeInTheDocument()
     await waitFor(() =>
-      expect(mockCreateBuilder).toHaveBeenCalledWith(
-        {
-          params: { provider: 'test-provider' },
-          body: { credential_type: 'api-key' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mockCreateBuilder).toHaveBeenCalledWith({
+        params: { provider: 'test-provider' },
+        body: { credential_type: 'api-key' },
+      }),
     )
   })
 
@@ -206,7 +222,7 @@ describe('CreateSubscriptionButton', () => {
     const settings = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.oauth.title' })
     await user.click(within(settings).getByRole('button', { name: 'common.operation.cancel' }))
 
-    expect(mockRefetchOAuthConfig).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockGetOAuthConfig).toHaveBeenCalledTimes(1))
   })
 
   it('continues configured OAuth into the create modal', async () => {
@@ -247,15 +263,44 @@ describe('CreateSubscriptionButton', () => {
       within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.create' }),
     )
     await waitFor(() =>
-      expect(mockBuildSubscription).toHaveBeenCalledWith(
-        {
-          params: { provider: 'test-provider', subscription_builder_id: 'builder-1' },
-          body: { name: 'OAuth updates' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mockBuildSubscription).toHaveBeenCalledWith({
+        params: { provider: 'test-provider', subscription_builder_id: 'builder-1' },
+        body: { name: 'OAuth updates' },
+      }),
     )
     expect(toastMocks.success).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    [
+      'the translated reason',
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'paid_plan_required',
+        message: 'Server says why',
+      }),
+      'requestErrors.code.paid_plan_required',
+    ],
+    [
+      'the localized fallback',
+      new TypeError('Failed to fetch'),
+      'pluginTrigger.modal.oauth.authorization.authFailed',
+    ],
+  ])('reports %s when OAuth cannot start', async (_case, error, message) => {
+    const user = userEvent.setup()
+    mockProviderInfo = providerInfo([SupportedCreationMethods.OAUTH])
+    mockOAuthConfig = oauthConfig(true)
+    mockInitiateOAuth.mockRejectedValueOnce(error)
+    render(<CreateSubscriptionButton />)
+
+    await user.click(screen.getByRole('button', { name: /subscription\.createButton\.oauth/ }))
+    await user.click(
+      within(await screen.findByRole('listbox')).getByRole('option', {
+        name: /subscription\.addType\.options\.oauth\.title/,
+      }),
+    )
+
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(message))
+    expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
   })
 
   it('does not create more than ten subscriptions', async () => {

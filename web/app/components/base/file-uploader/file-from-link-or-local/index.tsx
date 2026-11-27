@@ -61,7 +61,7 @@ const FileFromLinkOrLocal = ({
                 )}
               >
                 <input
-                  className="mr-0.5 block grow appearance-none bg-transparent px-1 system-sm-regular outline-hidden"
+                  className="me-0.5 block grow appearance-none bg-transparent px-1 system-sm-regular outline-hidden"
                   placeholder={fileLinkPlaceholderText}
                   value={url}
                   onChange={(e) => {
@@ -89,9 +89,9 @@ const FileFromLinkOrLocal = ({
           )}
           {showFromLink && showFromLocal && (
             <div className="flex h-7 items-center p-2 system-2xs-medium-uppercase text-text-quaternary">
-              <div className="mr-2 h-px w-23.25 bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
+              <div className="me-2 h-px w-23.25 bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
               OR
-              <div className="ml-2 h-px w-23.25 bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
+              <div className="ms-2 h-px w-23.25 bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
             </div>
           )}
           {showFromLocal && (

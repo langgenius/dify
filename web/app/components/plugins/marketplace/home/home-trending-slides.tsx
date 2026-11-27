@@ -19,6 +19,7 @@ import Partner from '@/app/components/plugins/base/badges/partner'
 import Verified from '@/app/components/plugins/base/badges/verified'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { resolveMarketplaceAssetUrl } from '@/features/marketplace/api'
 import {
   getPluginDetailPath,
@@ -365,7 +366,7 @@ function CloudRecommendPluginCard({
       <button
         type="button"
         aria-label={card.display_name}
-        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
+        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-start')}
         onClick={() => {
           trackRecommendCardClick(banner, card, page, href)
           setOpen(true)
@@ -382,7 +383,8 @@ function CloudRecommendPluginCard({
                 category: (info.category as Plugin['category']) ?? current.category,
               }))
             })
-            .catch(() => {})
+            // The dialog stays open without an installable version, so the lookup failure is reported.
+            .catch(reportRequestError)
         }}
       >
         <RecommendCardFace card={card} />
@@ -437,7 +439,7 @@ function CloudRecommendTemplateCard({
       <button
         type="button"
         aria-label={card.display_name}
-        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
+        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-start')}
         onClick={() => {
           trackRecommendCardClick(banner, card, page, href)
           if (templateDetailRoute) templateDetailRoute.open(template)
@@ -554,7 +556,7 @@ function TrendingRecommendationSlide({
           aria-hidden
           className={cn(
             styles.recommendBackdrop,
-            'absolute top-[-173px] left-[-990px] h-[1201px] w-[2135px] max-w-none opacity-80',
+            'absolute inset-s-[-990px] top-[-173px] h-[1201px] w-[2135px] max-w-none opacity-80',
           )}
         />
         <div

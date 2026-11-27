@@ -8,8 +8,6 @@ import Answer from '../index'
 import { filledForm, pendingForm } from './answer-form-preset'
 
 vi.unmock('react-i18next')
-// boundary: attachment controls read route params without an application router.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 beforeEach(async () => {
   await page.viewport(1000, 800)

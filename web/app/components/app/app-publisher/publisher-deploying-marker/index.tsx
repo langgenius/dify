@@ -11,7 +11,7 @@ export function PublisherDeployingMarker() {
       <span aria-hidden className="relative block size-4 overflow-hidden text-text-accent">
         <span
           className={cn(
-            'absolute top-[3.224px] left-[3.862px] block h-[5.081px] w-[8.276px]',
+            'absolute inset-s-[3.862px] top-[3.224px] block h-[5.081px] w-[8.276px]',
             styles.deployingChevronTop,
           )}
         >
@@ -19,7 +19,7 @@ export function PublisherDeployingMarker() {
         </span>
         <span
           className={cn(
-            'absolute top-[6.99px] left-[3.862px] block h-[5.081px] w-[8.276px]',
+            'absolute inset-s-[3.862px] top-[6.99px] block h-[5.081px] w-[8.276px]',
             styles.deployingChevronBottom,
           )}
         >

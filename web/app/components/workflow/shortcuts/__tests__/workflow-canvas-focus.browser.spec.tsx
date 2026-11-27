@@ -3,8 +3,6 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { ControlMode } from '../../types'
 import { initialNodes, mod, redo, setupWorkflowCanvas, undo } from './workflow-canvas-test-env'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-
 describe('Workflow canvas focus and shortcut ownership', () => {
   it('admits and releases keyboard focus while keeping mode and zoom shortcuts inside the canvas', async () => {
     const screen = await setupWorkflowCanvas({}, true)
@@ -72,6 +70,44 @@ describe('Workflow canvas focus and shortcut ownership', () => {
     await userEvent.keyboard(`{${mod}>}s{/${mod}}`)
     screen.store.getState().flushPendingSync()
     expect(screen.save).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ['pointer', 'v'],
+    ['hand', 'h'],
+    ['comment', 'c'],
+  ])('pans without zooming while the %s tool is active', async (_, key) => {
+    const screen = await setupWorkflowCanvas({}, true)
+    const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
+    const node = screen.getByRole('button', { name: 'Workflow node' })
+    await canvas.click({ position: { x: 650, y: 400 } })
+    await expect.element(canvas).toHaveFocus()
+    await expect.element(node).toBeVisible()
+
+    const bounds = () => node.element().getBoundingClientRect()
+    await userEvent.keyboard(key)
+    const before = bounds()
+    await canvas.wheel({ delta: { x: 40, y: 24 } })
+    await expect.poll(() => bounds().left).toBeLessThan(before.left)
+    expect(bounds().top).toBeLessThan(before.top)
+    expect(bounds().width).toBeCloseTo(before.width)
+  })
+
+  it('zooms when scrolling with the platform modifier', async () => {
+    const screen = await setupWorkflowCanvas()
+    const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
+    const node = screen.getByRole('button', { name: 'Workflow node' })
+    await canvas.click({ position: { x: 650, y: 400 } })
+    await expect.element(canvas).toHaveFocus()
+    const width = () => node.element().getBoundingClientRect().width
+    const before = width()
+    await userEvent.keyboard(`{${mod}>}`)
+    try {
+      await canvas.wheel({ delta: { x: 0, y: -100 } })
+      await expect.poll(width).toBeGreaterThan(before)
+    } finally {
+      await userEvent.keyboard(`{/${mod}}`)
+    }
   })
 
   it('lets the production Note editor own text undo and redo', async () => {

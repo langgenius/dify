@@ -45,7 +45,7 @@ export function EnvironmentTableEmpty(props: EnvironmentTableEmptyProps) {
           </div>
           {props.state === 'error' ? (
             <Button variant="secondary" loading={props.isRetrying} onClick={props.onRetry}>
-              <span aria-hidden className="mr-1.5 i-ri-reset-left-line" />
+              <span aria-hidden className="me-1.5 i-ri-reset-left-line" />
               {tCommon(($) => $['operation.retry'])}
             </Button>
           ) : (

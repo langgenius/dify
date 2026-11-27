@@ -75,7 +75,7 @@ const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
       {(canCreate || canViewApp) && (
         <div
           className={cn(
-            'pointer-events-none absolute right-0 bottom-0 left-0 flex bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+            'pointer-events-none absolute inset-s-0 inset-e-0 bottom-0 flex bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
           )}
         >
           <div

@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "エージェントバージョンの公開と管理",
   "agent.acl.test_and_run": "エージェントのテストと実行",
   "agent.create": "エージェントを作成",
+  "agent.tag.manage": "Agent タグを管理",
   "api_extension.manage": "API拡張設定を管理",
   "app.access_config": "アプリアクセス権限を設定",
   "app.acl.access_config": "アクセス権限の表示と管理",

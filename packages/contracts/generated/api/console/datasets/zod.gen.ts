@@ -230,6 +230,13 @@ export const zDocumentBatchDownloadZipPayload = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * GenerateSummaryPayload
  */
 export const zGenerateSummaryPayload = z.object({
@@ -448,6 +455,18 @@ export const zPaidPlanRequiredError = zErrorResponse.and(
 )
 
 /**
+ * EvaluationConfigInvalidError
+ *
+ * Evaluation configuration is invalid.
+ */
+export const zEvaluationConfigInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_config_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * EvaluationFileResponse
  */
 export const zEvaluationFileResponse = z.object({
@@ -469,6 +488,8 @@ export const zEvaluationMetricsResponse = z.object({
 
 /**
  * EvaluationRunResponse
+ *
+ * Expose the model pinned in the run snapshot, independent of later config edits.
  */
 export const zEvaluationRunResponse = z.object({
   completed_at: z.int().nullish(),
@@ -478,6 +499,8 @@ export const zEvaluationRunResponse = z.object({
   dataset_file_id: z.string().nullish(),
   error: z.string().nullish(),
   evaluation_config_id: z.string(),
+  evaluation_model: z.string().nullish(),
+  evaluation_model_provider: z.string().nullish(),
   failed_items: z.int(),
   id: z.string(),
   metrics_summary: z.record(z.string(), z.unknown()).optional(),
@@ -502,6 +525,30 @@ export const zEvaluationRunPaginationResponse = z.object({
   page_size: z.int(),
   total: z.int(),
 })
+
+/**
+ * EvaluationDatasetInvalidError
+ *
+ * Evaluation dataset is invalid.
+ */
+export const zEvaluationDatasetInvalidError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_dataset_invalid'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EvaluationFrameworkNotConfiguredError
+ *
+ * Selected evaluation framework is unavailable.
+ */
+export const zEvaluationFrameworkNotConfiguredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_framework_not_configured'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ExternalHitTestingPayload
@@ -919,6 +966,26 @@ export const zDocumentSummaryStatusResponse = z.object({
   summary_status: zSummaryStatusResponse,
   total_segments: z.int(),
 })
+
+/**
+ * EvaluationMaxConcurrentRunsDetails
+ */
+export const zEvaluationMaxConcurrentRunsDetails = z.object({
+  limit: z.int(),
+})
+
+/**
+ * EvaluationMaxConcurrentRunsError
+ *
+ * Maximum number of concurrent evaluation runs reached.
+ */
+export const zEvaluationMaxConcurrentRunsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('evaluation_max_concurrent_runs'),
+    details: zEvaluationMaxConcurrentRunsDetails.optional(),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * ExternalHitTestingQueryResponse
@@ -2596,10 +2663,7 @@ export const zPostDatasetsByDatasetIdDocumentsDownloadZipPath = z.object({
 /**
  * ZIP archive downloaded successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = zBinaryFileResponse
 
 export const zPostDatasetsByDatasetIdDocumentsGenerateSummaryBody = zGenerateSummaryPayload
 

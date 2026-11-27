@@ -26,7 +26,6 @@ from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredOutputConfig,
 )
-from services.agent.knowledge_datasets import list_agent_soul_knowledge_dataset_ids
 
 MAX_CANDIDATES_PER_LIST = 200
 
@@ -141,7 +140,7 @@ def soul_candidates(
 
     cli_tools = [tool.model_dump(exclude_none=True) for tool in soul.tools.cli_tools if tool.enabled]
 
-    dataset_ids = list_agent_soul_knowledge_dataset_ids(soul)
+    dataset_ids = soul.knowledge.dataset_ids()
     dataset_rows = dataset_lookup(dataset_ids) if dataset_ids else {}
     knowledge_sets: list[dict[str, Any]] = [
         {

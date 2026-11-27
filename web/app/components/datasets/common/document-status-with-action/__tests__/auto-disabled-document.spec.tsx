@@ -1,6 +1,10 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import AutoDisabledDocument from '../auto-disabled-document'
 
@@ -31,7 +35,10 @@ it('offers enable only after disabled documents load, then refreshes their statu
   const pending = createDeferred<typeof response>()
   getLogs.mockReturnValueOnce(pending.promise).mockResolvedValue({ document_ids: [], count: 0 })
   enable.mockResolvedValue({ result: 'success' })
-  render(<AutoDisabledDocument datasetId="dataset-1" />)
+  // The invalidation fallback refreshes the dataset's notice after the enable.
+  render(<AutoDisabledDocument datasetId="dataset-1" />, {
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
+  })
   expect(screen.queryByRole('button', { name: 'dataset.enable' })).not.toBeInTheDocument()
   await act(async () => pending.resolve(response))
   await user.click(await screen.findByRole('button', { name: 'dataset.enable' }))

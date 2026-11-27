@@ -1,7 +1,6 @@
 {
   "appCard.try": "รายละเอียด",
   "appCustomize.nameRequired": "ต้องใช้ชื่อแอป",
-  "appCustomize.subTitle": "ไอคอนและชื่อแอป",
   "appCustomize.title": "สร้างแอปจาก {{name}}",
   "apps.allCategories": "ทั้งหมด",
   "apps.description": "เทมเพลตพร้อมใช้งานจากชุมชนและทีม Dify",

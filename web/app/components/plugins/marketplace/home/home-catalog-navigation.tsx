@@ -7,7 +7,11 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import PluginTypeSwitch from '../plugin-type-switch'
-import { focusCatalogTab, getFocusedCatalogTabHref } from './home-catalog-focus'
+import {
+  focusCatalogTab,
+  getFocusedCatalogTabHref,
+  getHiddenCatalogTabHref,
+} from './home-catalog-focus'
 import { HOME_HEADER_HEIGHT_PX } from './home-constants'
 import { homeCatalogPinnedAtom } from './home-sticky-state'
 import styles from './home-sticky.module.css'
@@ -50,6 +54,7 @@ function HomeCatalogNavigation({
       isMarketplacePlatform && typeof window.matchMedia === 'function'
         ? window.matchMedia('(min-width: 880px)')
         : null
+    let hiddenHeaderTabHref: string | null = null
 
     const updatePinnedState = () => {
       const catalogTabsRegion = catalogTabsRegionRef.current
@@ -63,19 +68,27 @@ function HomeCatalogNavigation({
         canUseHeaderSlot && catalogTabsRegionBottom <= containerTop + HOME_HEADER_HEIGHT_PX
       if (nextIsPinned === isPinnedRef.current) return
 
-      pendingFocusedTabHrefRef.current = getFocusedCatalogTabHref(
-        nextIsPinned ? 'content' : 'header',
-      )
+      const hiddenTabHref =
+        !nextIsPinned && document.activeElement === document.body ? hiddenHeaderTabHref : null
+      hiddenHeaderTabHref = null
+      pendingFocusedTabHrefRef.current =
+        getFocusedCatalogTabHref(nextIsPinned ? 'content' : 'header') ?? hiddenTabHref
       isPinnedRef.current = nextIsPinned
       setIsPinned(nextIsPinned)
     }
 
+    const trackHiddenHeaderTab = (event: FocusEvent) => {
+      hiddenHeaderTabHref = getHiddenCatalogTabHref('header', event)
+    }
+
     updatePinnedState()
+    document.addEventListener('focusout', trackHiddenHeaderTab)
     scrollContainer.addEventListener('scroll', updatePinnedState, { passive: true })
     desktopHeaderSlotQuery?.addEventListener('change', updatePinnedState)
     window.addEventListener('resize', updatePinnedState)
 
     return () => {
+      document.removeEventListener('focusout', trackHiddenHeaderTab)
       scrollContainer.removeEventListener('scroll', updatePinnedState)
       desktopHeaderSlotQuery?.removeEventListener('change', updatePinnedState)
       window.removeEventListener('resize', updatePinnedState)

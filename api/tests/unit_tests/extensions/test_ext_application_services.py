@@ -2,7 +2,6 @@
 
 import json
 import logging
-import sys
 from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
@@ -21,8 +20,6 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
-from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
-from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks, ModerationFactory
 from core.plugin.impl import base as plugin_http
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
@@ -98,7 +95,6 @@ from services.account.oauth_adapters import (
     RedisOAuthAccountClaimLock,
     WorkspaceProvisioningOAuthGateway,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
@@ -205,48 +201,6 @@ def _redis() -> RedisClientWrapper:
     return client
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="Existing tracing composition requires POSIX os.register_at_fork")
-def test_init_app_binds_api_moderation_to_real_factory(sqlite_session_factory: sessionmaker[Session]) -> None:
-    """The actual root registers the callbacks consumed by input/output/form dispatch."""
-    from models.api_based_extension import APIBasedExtension
-
-    tenant_id = str(uuid4())
-    extension_id = str(uuid4())
-    extension = APIBasedExtension(
-        tenant_id=tenant_id,
-        name="Moderation",
-        api_endpoint="https://moderation.example.test",
-        api_key="ciphertext",
-    )
-    extension.id = extension_id
-    with sqlite_session_factory.begin() as session:
-        session.add(extension)
-    app = Flask(__name__)
-    ext_application_services.init_app(app)
-    callbacks = app.extensions[API_MODERATION_EXTENSION_KEY]
-    assert isinstance(callbacks, APIModerationCallbacks)
-    with app.app_context():
-        assert (
-            callbacks.validate_config == ext_application_services.application_services().api_moderation.validate_config
-        )
-        ModerationFactory.validate_config(
-            "api",
-            tenant_id,
-            {
-                "inputs_config": {"enabled": True},
-                "outputs_config": {"enabled": False},
-                "api_based_extension_id": extension_id,
-            },
-        )
-        disabled = ModerationFactory(
-            "api", "app", tenant_id, {"inputs_config": {"enabled": False}, "outputs_config": {"enabled": False}}
-        )
-        assert disabled.moderation_for_inputs({}) == ModerationInputsResult(action=ModerationAction.DIRECT_OUTPUT)
-        assert disabled.moderation_for_outputs("text") == ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
-        with pytest.raises(ValueError, match=r"^The config is not set\.$"):
-            ModerationFactory("api", "app", tenant_id, None).moderation_for_inputs({})
-
-
 @pytest.mark.parametrize(
     ("deployment_edition", "initialization_password", "session_validated", "setup_exists", "expected"),
     [
@@ -317,6 +271,7 @@ def test_init_app_registers_services_for_the_current_app(
     with app.app_context():
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
+        assert services.api_moderation is app.extensions["api_moderation"]
         assert services.init_validation.is_validated(session_validated=False) is False
         assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
         assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)
@@ -1045,9 +1000,7 @@ def test_build_application_services_wires_account_profile_repository(
     assert oauth._sessions is not oauth._workspaces
     assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
     assert oauth._workspace_policy is oauth._registration_policy
-    avatar_files = services.accounts.avatar._files
-    assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
-    assert avatar_files._session_factory is sqlite_session_factory
+    assert services.accounts.avatar._avatars is accounts
 
 
 def test_build_application_services_requires_invitation_for_cloud_initialization(

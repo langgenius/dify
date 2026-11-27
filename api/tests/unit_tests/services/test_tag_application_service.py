@@ -8,6 +8,7 @@ from services.tag_application_service import (
     TagApplicationService,
     TagBindingInput,
     TagBindingTargetNotFoundError,
+    TagKind,
     TagSummary,
     UpdateTagInput,
 )
@@ -26,21 +27,21 @@ def test_service_passes_stable_identity_to_store(context: RequestContext) -> Non
     service = TagApplicationService(tags=store)
 
     assert service.list_tags(context, "app", "search") == (TagSummary("tag-1", "Tag", "app", 1),)
-    service.create_tag(context, CreateTagInput("New", "app"))
+    service.create_tag(context, CreateTagInput("New", TagKind.APP))
     service.update_tag(context, "tag-2", UpdateTagInput("Updated"))
     service.delete_tag(context, "tag-2")
-    service.create_bindings(context, TagBindingInput(("tag-1",), "app-1", "app"))
-    service.delete_bindings(context, TagBindingInput(("tag-1",), "app-1", "app"))
+    service.create_bindings(context, TagBindingInput(("tag-1",), "app-1", TagKind.APP))
+    service.delete_bindings(context, TagBindingInput(("tag-1",), "app-1", TagKind.APP))
 
     store.list_tags.assert_called_once_with("workspace-1", "app", "search")
-    store.create_tag.assert_called_once_with("workspace-1", "account-1", CreateTagInput("New", "app"))
+    store.create_tag.assert_called_once_with("workspace-1", "account-1", CreateTagInput("New", TagKind.APP))
     store.update_tag.assert_called_once_with("workspace-1", "tag-2", UpdateTagInput("Updated"))
     store.delete_tag.assert_called_once_with("workspace-1", "tag-2")
     store.create_bindings.assert_called_once_with(
-        "workspace-1", "account-1", TagBindingInput(("tag-1",), "app-1", "app")
+        "workspace-1", "account-1", TagBindingInput(("tag-1",), "app-1", TagKind.APP)
     )
-    store.delete_bindings.assert_called_once_with("workspace-1", TagBindingInput(("tag-1",), "app-1", "app"))
+    store.delete_bindings.assert_called_once_with("workspace-1", TagBindingInput(("tag-1",), "app-1", TagKind.APP))
 
 
 def test_skill_binding_target_error_message() -> None:
-    assert str(TagBindingTargetNotFoundError("skill")) == "Skill not found"
+    assert str(TagBindingTargetNotFoundError(TagKind.SKILL)) == "Skill not found"

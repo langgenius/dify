@@ -1,5 +1,6 @@
 """Account test composition with real persistence and explicit external ports."""
 
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from unittest.mock import Mock, create_autospec
@@ -50,7 +51,14 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     access.rbac_enabled = False
     access.permission_keys.return_value = {"workspace.member.manage", "workspace.role.manage"}
     access.is_owner.return_value = False
-    members = WorkspaceMemberService(workspaces=workspaces, accounts=repository, access=access)
+    delivery = create_autospec(WorkspaceInvitationDelivery, instance=True)
+    delivery.requires_capacity_check = False
+    delivery.create.return_value = "invitation-token"
+    delivery.list_pending.return_value = ()
+    delivery.acquire.return_value = nullcontext()
+    members = WorkspaceMemberService(
+        workspaces=workspaces, accounts=repository, access=access, invitation_links=delivery
+    )
     provisioning = WorkspaceProvisioningService(
         owners=repository,
         provisioning=workspaces,
@@ -70,9 +78,6 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
         security=security,
         now=lambda: datetime(2026, 1, 1),
     )
-    delivery = create_autospec(WorkspaceInvitationDelivery, instance=True)
-    delivery.requires_capacity_check = False
-    delivery.create.return_value = "invitation-token"
     invitations = WorkspaceInvitationService(
         accounts=accounts, workspaces=workspaces, members=members, invitations=delivery
     )

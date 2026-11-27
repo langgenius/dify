@@ -17,6 +17,7 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -44,6 +45,7 @@ const mocks = vi.hoisted(() => {
     state,
     push: vi.fn(),
     detailRefetch: vi.fn(),
+    deleteDocuments: vi.fn(),
     checkProgress:
       vi.fn<
         typeof import('@/service/console').consoleClient.datasets.batchImportStatus.byJobId.get
@@ -52,7 +54,7 @@ const mocks = vi.hoisted(() => {
       vi.fn<
         typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post
       >(),
-    upload: vi.fn(),
+    upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
     indexing:
       vi.fn<
         typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.byDocumentId.indexingStatus.get
@@ -70,11 +72,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/datasets/ds-1/documents/doc-1',
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
-}))
-
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload: mocks.upload,
 }))
 
 const render = (ui: ReactElement) => {
@@ -170,7 +167,8 @@ const indexingStatus = (
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.upload.mockResolvedValue({ id: 'file-1', name: 'chunks.csv' })
+    mocks.upload.mockResolvedValue({ id: 'file-1', name: 'chunks.csv', size: 10 })
+    mocks.deleteDocuments.mockResolvedValue({ result: 'success' })
     mocks.detailRefetch.mockImplementation(
       async () => mocks.state.documentDetail ?? new Promise(() => {}),
     )
@@ -401,6 +399,32 @@ describe('DocumentDetail', () => {
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
+    it('shows the translated error code in the dialog when deletion fails', async () => {
+      mocks.state.dataset = {
+        embedding_available: true,
+        permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.DeleteFile],
+      }
+      mocks.deleteDocuments.mockRejectedValue(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'archived_document_immutable',
+          message: 'Server says why',
+        }),
+      )
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.delete' }),
+      )
+      const dialog = screen.getByRole('alertdialog')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'requestErrors.code.archived_document_immutable',
+      )
+      expect(mocks.push).not.toHaveBeenCalled()
+    })
+
     it('invalidates chunk lists after disabling the document', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -409,7 +433,12 @@ describe('DocumentDetail', () => {
       await user.click(screen.getByRole('switch'))
       await act(async () => vi.advanceTimersByTimeAsync(600))
 
-      expectDocumentListInvalidated(queryClient)
+      // The document list refreshes with the invalidation fallback, not from the page.
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: 'ds-1' } },
+        }),
+      })
       expect(mocks.detailRefetch).toHaveBeenCalledTimes(1)
       expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
         queryKey: segmentListKey,
@@ -572,6 +601,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': mocks.upload,
       'datasets.byDatasetId.documents.byDocumentId.indexingStatus.get': (input) =>
         mocks.indexing(input),
       'datasets.byDatasetId.documents.byDocumentId.processing.resume.patch': (input) =>
@@ -609,7 +639,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         doc_metadata: [],
         built_in_field_enabled: false,
       }),
-      'datasets.byDatasetId.documents.delete': async () => ({ result: 'success' }),
+      'datasets.byDatasetId.documents.delete': (input: unknown) => mocks.deleteDocuments(input),
       'datasets.byDatasetId.documents.status.byAction.batch.patch': async () => ({
         result: 'success',
       }),

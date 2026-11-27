@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from './dsl-confirm-modal'
 import { CreateFromDSLModalTab, useDSLImport } from './hooks/use-dsl-import'
@@ -88,6 +88,7 @@ const CreateFromDSLModal = ({
                 <TabsTab value={CreateFromDSLModalTab.FROM_URL} className="h-full py-0">
                   {t(($) => $.importFromDSLUrl, { ns: 'app' })}
                 </TabsTab>
+                <TabsIndicator />
               </TabsList>
               <TabsPanel
                 value={CreateFromDSLModalTab.FROM_FILE}

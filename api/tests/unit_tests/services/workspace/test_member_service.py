@@ -1,10 +1,12 @@
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
+from hashlib import sha256
 from unittest.mock import Mock, create_autospec
 
 import pytest
+from redis import RedisError
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,11 +19,25 @@ from models.account import TenantAccountRole as _member_service_TenantAccountRol
 from models.dataset import Dataset
 from models.human_input_v2 import HumanInputContactIdentity
 from models.model import App, AppMode
-from services.account.adapters import RedisInvitationTokenStore
-from services.account_errors import AccountNotFoundError
+from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from services.account.adapters import (
+    BillingAccountActivationEligibility,
+    BillingWorkspaceMembershipCache,
+    DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
+    RedisInvitationTokenStore,
+)
+from services.account_activation_service import AccountActivationService
+from services.account_errors import AccountNotFoundError, InvalidInvitationError
 from services.enterprise.rbac_service import RBACService
+from services.entities.account_activation_entities import (
+    ActivationCommand,
+    InvitationLookup,
+    InvitationToken,
+    PendingWorkspaceInvitation,
+)
 from services.entities.account_entities import AccountSnapshot
-from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel
+from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel, LimitationModel
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
     AccountAlreadyInTenantError,
@@ -31,6 +47,7 @@ from services.errors.workspace import (
     InvalidOwnerTransferTokenError,
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
+    PendingInvitationNotFoundError,
     RoleAlreadyAssignedError,
     WorkspaceAlreadyHasOwnerError,
     WorkspaceInvitationQuotaError,
@@ -58,8 +75,25 @@ from services.workspace.member_service import (
     WorkspaceOwnerTransferService,
 )
 from tests.helpers.unit.account_domain import AccountDomain
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 """Membership and invitation behavior across the application/persistence boundary."""
+
+
+class _StoreInvitationLinks:
+    def __init__(self, tokens: RedisInvitationTokenStore) -> None:
+        self._tokens = tokens
+        self.locked: list[str] = []
+
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
+        self.locked.append(workspace_id)
+        return nullcontext()
+
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None) -> None:
+        self._tokens.revoke_pending(workspace_id, email, account_id=account_id, keep_token=keep_token)
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool:
+        return bool(workspace_id and account_id)
 
 
 @dataclass(frozen=True)
@@ -118,39 +152,83 @@ class TestMemberServiceCases:
         account_domain.access.membership_changed.assert_not_called()
 
     @staticmethod
-    @pytest.mark.parametrize(
-        ("status", "other_workspace", "deleted"),
-        [("pending", False, True), ("pending", True, False), ("active", False, False)],
-    )
-    def test_removal_deletes_only_orphaned_pending_accounts(
+    @pytest.mark.parametrize("status", ["pending", "active"])
+    def test_removal_keeps_the_account(
         account_domain: AccountDomain,
         sqlite_session: Session,
         members: tuple[str, str, str],
         status: str,
-        other_workspace: bool,
-        deleted: bool,
     ) -> None:
         workspace_id, owner_id, member_id = members
         member = sqlite_session.get(Account, member_id)
         assert member is not None
         member.status = AccountStatus(status)
-        if other_workspace:
-            tenant = Tenant(name="Other")
-            sqlite_session.add_all(
-                [
-                    tenant,
-                    TenantAccountJoin(
-                        account_id=member_id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.NORMAL
-                    ),
-                ]
-            )
         sqlite_session.commit()
         sqlite_session.expunge_all()
+
         account_domain.members.remove(workspace_id, member_id, owner_id)
-        assert (sqlite_session.get(Account, member_id) is None) == deleted
+
+        assert sqlite_session.get(Account, member_id) is not None
         assert account_domain.members.get_role(workspace_id, member_id) is None
         account_domain.access.member_removed.assert_called_once()
-        assert account_domain.access.member_removed.call_args.args[1].account_deleted == deleted
+
+    @staticmethod
+    def test_removing_a_pending_member_retires_only_this_workspaces_links(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        members: tuple[str, str, str],
+        redis_transport: tuple[RedisClientWrapper, Mock],
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        member = sqlite_session.get(Account, member_id)
+        assert member is not None
+        member.status = AccountStatus.PENDING
+        other = Tenant(name="Other workspace")
+        sqlite_session.add(other)
+        sqlite_session.commit()
+        other_id, email = other.id, member.email
+        redis = RedisCommandEmulator()
+        redis_transport[1].side_effect = redis
+        tokens = RedisInvitationTokenStore(redis=redis_transport[0])
+        indexed_link = tokens.create(InvitationToken(member_id, email, workspace_id, "editor", True))
+        email_hash = sha256(email.encode()).hexdigest()
+        redis.values[f"member_invite_token:{workspace_id}, {email_hash}:legacy"] = member_id.encode()
+        other_link = tokens.create(InvitationToken(member_id, email, other_id, "editor", True))
+        links = _StoreInvitationLinks(tokens)
+        service = WorkspaceMemberService(
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=account_domain.access,
+            invitation_links=links,
+        )
+        activation = AccountActivationService(
+            tokens=tokens,
+            accounts=SQLAlchemyAccountActivationRepository(sqlite_session_factory),
+            workspace_policy=DeploymentWorkspaceInvitePolicy(),
+            eligibility=BillingAccountActivationEligibility(enabled=False),
+            membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+            member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+            capacity=links,
+        )
+
+        def accept(lookup: InvitationLookup) -> None:
+            activation.activate(
+                ActivationCommand(invitation=lookup, name="Member", interface_language="en-US", timezone="UTC"),
+                authenticated_account_id=None,
+            )
+
+        service.remove(workspace_id, member_id, owner_id)
+
+        assert links.locked == [workspace_id]
+        with pytest.raises(InvalidInvitationError):
+            accept(InvitationLookup(workspace_id=None, email=None, token=indexed_link))
+        with pytest.raises(InvalidInvitationError):
+            accept(InvitationLookup(workspace_id=workspace_id, email=email, token="legacy"))
+        assert service.get_role(workspace_id, member_id) is None
+        assert [invitation.email for invitation in tokens.list_pending(other_id)] == [email]
+        accept(InvitationLookup(workspace_id=None, email=None, token=other_link))
+        assert service.get_role(other_id, member_id) == TenantAccountRole.EDITOR
 
     @staticmethod
     @pytest.mark.parametrize("action", ["add", "remove", "update"])
@@ -254,7 +332,7 @@ class TestMemberServiceCases:
                 account_domain.members.remove(workspace_id, member_id, owner_id)
 
     @staticmethod
-    def test_new_invitation_normalizes_email_and_sets_current_workspace(
+    def test_new_email_invitation_does_not_join_until_activation(
         account_domain: AccountDomain, members: tuple[str, str, str]
     ) -> None:
         workspace_id, owner_id, _ = members
@@ -269,23 +347,160 @@ class TestMemberServiceCases:
         assert invitee is not None
         assert result.account_id == invitee.id
         assert invitee.status == "pending"
-        assert account_domain.members.get_role(workspace_id, invitee.id) == _member_service_TenantAccountRole.EDITOR
-        membership = account_domain.workspaces.find_membership(invitee.id, workspace_id)
-        assert membership is not None
-        assert membership.current
+        assert account_domain.members.get_role(workspace_id, invitee.id) is None
+        assert account_domain.workspaces.find_membership(invitee.id, workspace_id) is None
         invitation = account_domain.delivery.create.call_args.args[0]
         assert invitation.requires_setup is True
+        assert invitation.role == "editor"
         assert invitation.email == "new@example.com"
+        account_domain.delivery.create.assert_called_once()
+        account_domain.delivery.acquire.assert_called_once_with(workspace_id)
+
+    @staticmethod
+    def test_reinvitation_retires_earlier_links_after_the_new_one_is_sent(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        account_domain.invitations.invite(owner, "new@example.com", None, "normal")
+        account_domain.delivery.reset_mock()
+
+        account_domain.invitations.invite(owner, "New@Example.com", None, "editor")
+
+        names = [name for name, *_ in account_domain.delivery.mock_calls]
+        assert names.index("create") < names.index("send") < names.index("revoke_pending")
+        invitee = account_domain.repository.find_by_email("new@example.com")
+        assert invitee is not None
+        account_domain.delivery.revoke_pending.assert_called_once_with(
+            workspace_id, "new@example.com", account_id=invitee.id, keep_token="invitation-token"
+        )
+        assert account_domain.delivery.create.call_args.args[0].role == "editor"
+
+    @staticmethod
+    @pytest.mark.parametrize("failing_step", ["create", "send"])
+    def test_failed_resend_keeps_the_earlier_link(
+        account_domain: AccountDomain,
+        members: tuple[str, str, str],
+        redis_transport: tuple[RedisClientWrapper, Mock],
+        failing_step: str,
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        redis = RedisCommandEmulator()
+        redis_transport[1].side_effect = redis
+        gateway = WorkspaceInvitationGateway(
+            tokens=RedisInvitationTokenStore(redis=redis_transport[0]), redis=redis_transport[0]
+        )
+        tokens = RedisInvitationTokenStore(redis=redis_transport[0])
+        account_domain.delivery.create.side_effect = gateway.create
+        account_domain.delivery.revoke_pending.side_effect = gateway.revoke_pending
+        account_domain.delivery.discard.side_effect = gateway.discard
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        earlier = account_domain.invitations.invite(owner, "new@example.com", None, "normal").token
+        if failing_step == "create":
+            redis.failing.add("ZADD")
+        else:
+            account_domain.delivery.send.side_effect = RuntimeError("mail queue unavailable")
+
+        with pytest.raises((RedisError, RuntimeError)):
+            account_domain.invitations.invite(owner, "new@example.com", None, "editor")
+
+        live = tokens.find(InvitationLookup(workspace_id=None, email=None, token=earlier))
+        assert live is not None
+        assert [invitation.role for invitation in tokens.list_pending(workspace_id)] == [TenantAccountRole.NORMAL]
+
+    @staticmethod
+    def test_pending_invitations_include_new_email_invitations(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        result = account_domain.invitations.invite(owner, "new@example.com", None, "normal")
+        invitation = PendingWorkspaceInvitation(
+            result.account_id, "new@example.com", TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+        )
+        account_domain.delivery.list_pending.return_value = (invitation,)
+
+        assert account_domain.invitations.list_pending(owner) == (invitation,)
+
+    @staticmethod
+    def test_revoking_a_live_invitation_requires_member_management(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        account_domain.delivery.acquire.return_value = nullcontext()
+        result = account_domain.invitations.invite(owner, "new@example.com", None, "normal")
+        account_domain.delivery.list_pending.return_value = (
+            PendingWorkspaceInvitation(
+                result.account_id, "new@example.com", TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+            ),
+        )
+        account_domain.delivery.revoke_pending.reset_mock()
+
+        with pytest.raises(NoPermissionError):
+            account_domain.invitations.revoke_pending(
+                RequestContext("request", None, member_id, workspace_id), "new@example.com"
+            )
+        account_domain.delivery.revoke_pending.assert_not_called()
+
+        with pytest.raises(PendingInvitationNotFoundError):
+            account_domain.invitations.revoke_pending(owner, "unknown@example.com")
+        account_domain.delivery.revoke_pending.assert_not_called()
+
+        account_domain.invitations.revoke_pending(owner, "New@Example.com")
+        account_domain.delivery.revoke_pending.assert_called_once_with(
+            workspace_id, "new@example.com", account_id=result.account_id, keep_token=None
+        )
 
     @staticmethod
     def test_active_invitee_must_accept_before_joining(
         account_domain: AccountDomain, members: tuple[str, str, str]
     ) -> None:
-        workspace_id, owner_id, _ = members
+        workspace_id, owner_id, regular_member_id = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
         account = account_domain.accounts.create_account("new@example.com", "New", "en-US")
-        account_domain.invitations.invite(RequestContext("request", None, owner_id, workspace_id), account.email, None)
+        account_domain.invitations.invite(owner, account.email, None, "editor")
+        account_domain.delivery.create.assert_called_once()
         assert account_domain.members.get_role(workspace_id, account.id) is None
         assert account_domain.delivery.create.call_args.args[0].requires_setup is False
+
+        invitation = PendingWorkspaceInvitation(
+            account.id, account.email, TenantAccountRole.EDITOR, datetime(2026, 12, 1, tzinfo=UTC)
+        )
+        account_domain.delivery.list_pending.return_value = (invitation,)
+        with pytest.raises(NoPermissionError):
+            account_domain.invitations.list_pending(RequestContext("request", None, regular_member_id, workspace_id))
+        account_domain.delivery.list_pending.assert_not_called()
+        assert account_domain.invitations.list_pending(owner) == (invitation,)
+        account_domain.delivery.list_pending.assert_called_once_with(workspace_id)
+
+        account_domain.members.join_member(
+            workspace_id=workspace_id,
+            account_id=account.id,
+            email=account.email,
+            role=TenantAccountRole.EDITOR,
+            operator_account_id=None,
+        )
+        assert account_domain.invitations.list_pending(owner) == ()
+        account_domain.delivery.list_pending.return_value = ()
+        assert account_domain.invitations.list_pending(owner) == ()
+
+    @staticmethod
+    def test_pending_invitation_disappears_when_recipient_email_changes(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        account = account_domain.accounts.create_account("previous@example.com", "Invitee", "en-US")
+        invitation = PendingWorkspaceInvitation(
+            account.id, account.email, TenantAccountRole.EDITOR, datetime(2026, 12, 1, tzinfo=UTC)
+        )
+        account_domain.delivery.list_pending.return_value = (invitation,)
+        assert account_domain.invitations.list_pending(owner) == (invitation,)
+
+        account_domain.accounts.set_email(account.id, "updated@example.com")
+
+        assert account_domain.invitations.list_pending(owner) == ()
 
     @staticmethod
     def test_pending_member_can_be_reinvited(
@@ -400,10 +615,138 @@ class TestMemberServiceCases:
 
         assert error.value.seats is True
         account_domain.delivery.check_capacity.assert_called_once_with(
-            workspace_id, current_members=2, new_members=2, new_accounts=1
+            workspace_id, current_members=2, pending_invitations=0, new_members=2, new_accounts=1
         )
         assert account_domain.repository.find_by_email("new@example.com") is None
         account_domain.delivery.create.assert_not_called()
+
+    @staticmethod
+    def test_bulk_invitation_reserves_seats_for_live_invitations(
+        account_domain: AccountDomain,
+        members: tuple[str, str, str],
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+        def get_features(*, tenant_id: str, exclude_vector_space: bool) -> FeatureModel:
+            assert exclude_vector_space
+            assert tenant_id == workspace_id
+            return FeatureModel(members=LimitationModel(limit=4))
+
+        monkeypatch.setattr(FeatureService, "get_features", get_features)
+        redis = create_autospec(RedisClientWrapper, instance=True)
+        gateway = WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+        workspace_id, owner_id, _ = members
+        reinvited = account_domain.accounts.create_account("reinvited@example.com", "Reinvited", "en-US")
+        waiting = account_domain.accounts.create_account("waiting@example.com", "Waiting", "en-US")
+        account_domain.delivery.list_pending.return_value = tuple(
+            PendingWorkspaceInvitation(
+                account.id, account.email, TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+            )
+            for account in (reinvited, waiting)
+        )
+        account_domain.delivery.acquire.return_value = nullcontext()
+        account_domain.delivery.check_capacity.side_effect = gateway.check_capacity
+        account_domain.delivery.requires_capacity_check = True
+        owner = RequestContext("request", None, owner_id, workspace_id)
+
+        results = account_domain.invitations.invite_many(
+            owner, emails=["Reinvited@example.com"], language=None, role="normal"
+        )
+        assert [result.status for result in results] == ["success"]
+        account_domain.delivery.check_capacity.assert_not_called()
+
+        with pytest.raises(WorkspaceInvitationQuotaError):
+            account_domain.invitations.invite_many(
+                owner, emails=["reinvited@example.com", "new@example.com"], language=None, role="normal"
+            )
+        account_domain.delivery.check_capacity.assert_called_once_with(
+            workspace_id, current_members=2, pending_invitations=2, new_members=1, new_accounts=1
+        )
+        assert account_domain.repository.find_by_email("new@example.com") is None
+
+    @staticmethod
+    def test_revoking_a_legacy_pending_member_removes_the_membership_and_its_links(
+        account_domain: AccountDomain, members: tuple[str, str, str], sqlite_session: Session
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        member = sqlite_session.get(Account, member_id)
+        assert member is not None
+        member.status = AccountStatus.PENDING
+        sqlite_session.commit()
+
+        account_domain.invitations.revoke_pending(
+            RequestContext("request", None, owner_id, workspace_id), "Member@Example.com"
+        )
+
+        account_domain.delivery.acquire.assert_called_once_with(workspace_id)
+        account_domain.delivery.revoke_pending.assert_called_once_with(
+            workspace_id, "member@example.com", account_id=member_id, keep_token=None
+        )
+        assert account_domain.members.get_role(workspace_id, member_id) is None
+        assert account_domain.repository.get(member_id) is not None
+
+    @staticmethod
+    def test_revoking_never_removes_an_active_member(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+
+        with pytest.raises(PendingInvitationNotFoundError):
+            account_domain.invitations.revoke_pending(
+                RequestContext("request", None, owner_id, workspace_id), "member@example.com"
+            )
+
+        account_domain.delivery.revoke_pending.assert_not_called()
+        assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+
+    @staticmethod
+    def test_single_invitation_uses_the_locked_invitation_aware_admission(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        waiting = account_domain.accounts.create_account("waiting@example.com", "Waiting", "en-US")
+        account_domain.delivery.list_pending.return_value = (
+            PendingWorkspaceInvitation(
+                waiting.id, waiting.email, TenantAccountRole.NORMAL, datetime(2026, 12, 1, tzinfo=UTC)
+            ),
+        )
+        account_domain.delivery.requires_capacity_check = True
+        account_domain.delivery.check_capacity.side_effect = WorkspaceInvitationQuotaError()
+
+        with pytest.raises(WorkspaceInvitationQuotaError):
+            account_domain.invitations.invite(
+                RequestContext("request", None, owner_id, workspace_id), "new@example.com", None, "normal"
+            )
+
+        account_domain.delivery.acquire.assert_called_once_with(workspace_id)
+        account_domain.delivery.check_capacity.assert_called_once_with(
+            workspace_id, current_members=2, pending_invitations=1, new_members=1, new_accounts=1
+        )
+        account_domain.delivery.create.assert_not_called()
+        assert account_domain.repository.find_by_email("new@example.com") is None
+
+    @staticmethod
+    def test_link_that_cannot_be_indexed_is_reported_failed_and_not_mailed(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        account_domain.delivery.create.side_effect = [RedisError("index unavailable"), "invitation-token"]
+
+        results = account_domain.invitations.invite_many(
+            RequestContext("request", None, owner_id, workspace_id),
+            emails=["first@example.com", "second@example.com"],
+            language=None,
+            role="normal",
+        )
+
+        assert [(result.email, result.status) for result in results] == [
+            ("first@example.com", "failed"),
+            ("second@example.com", "success"),
+        ]
+        assert account_domain.delivery.send.call_args.kwargs["email"] == "second@example.com"
+        account_domain.delivery.send.assert_called_once()
 
     @staticmethod
     def test_bulk_invitation_retains_partial_results_under_workspace_lock(
@@ -630,7 +973,10 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(sync_joined_workspace_member_rbac_access_task, "delay", sync)
         member_service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=access
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=access,
+            invitation_links=account_domain.delivery,
         )
         invitations = WorkspaceInvitationService(
             accounts=account_domain.accounts,
@@ -650,7 +996,7 @@ class TestMemberServiceCases:
         invited = account_domain.repository.find_by_email(email)
         assert invited is not None
         assert member_service.get_role(workspace_id, invited.id) == _member_service_TenantAccountRole.NORMAL
-        if status == AccountStatus.ACTIVE and already_joined:
+        if already_joined:
             assert replace.calls == []
         else:
             assignments = [item for item in replace.calls if item.tenant_id == workspace_id]
@@ -723,7 +1069,10 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         with pytest.raises(NoPermissionError):
@@ -794,7 +1143,10 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         service.update_role(workspace_id, target.id, "editor", operator_id)
@@ -836,7 +1188,10 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
         if remote_fails:
             replace.failure = RuntimeError("RBAC unavailable")
@@ -882,7 +1237,10 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         service.update_role(workspace_id, member_id, "owner", owner_id)
@@ -948,7 +1306,10 @@ class TestMemberServiceCases:
         )
         replace.on_apply = replace_roles
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         event.listen(sqlite_session_factory, "before_commit", fail_commit)
@@ -996,7 +1357,10 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
         service = WorkspaceMemberService(
-            workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+            workspaces=account_domain.workspaces,
+            accounts=account_domain.repository,
+            access=gateway,
+            invitation_links=account_domain.delivery,
         )
 
         with pytest.raises(RuntimeError, match="RBAC unavailable"):

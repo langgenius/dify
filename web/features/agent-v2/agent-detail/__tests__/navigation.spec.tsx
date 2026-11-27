@@ -1,9 +1,9 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
@@ -13,8 +13,7 @@ const mocks = vi.hoisted(() => ({
   deleteAgent: vi.fn(),
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
-  deploymentEdition: 'ENTERPRISE' as DeploymentEdition,
-  cloudPlan: 'professional' as 'sandbox' | 'professional',
+  evaluation: { evaluation_enabled: true, evaluation_upgrade_available: false },
   queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
@@ -76,8 +75,8 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: mocks.deploymentEdition, rbac_enabled: true },
-    features: { billing: { subscription: { plan: mocks.cloudPlan } } },
+    systemFeatures: { rbac_enabled: true },
+    features: mocks.evaluation,
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -95,8 +94,7 @@ describe('AgentDetailSection', () => {
     mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
-    mocks.deploymentEdition = 'ENTERPRISE'
-    mocks.cloudPlan = 'professional'
+    mocks.evaluation = { evaluation_enabled: true, evaluation_upgrade_available: false }
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -206,7 +204,12 @@ describe('AgentDetailSection', () => {
 
   it('keeps the current agent open when deletion fails', async () => {
     const user = userEvent.setup()
-    mocks.deleteAgent.mockRejectedValue(new Error('Delete failed'))
+    mocks.deleteAgent.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'agent_not_found_error',
+        message: 'Server says why',
+      }),
+    )
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
@@ -219,7 +222,7 @@ describe('AgentDetailSection', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'agentRoster.roster.deleteFailed',
+      'requestErrors.code.agent_not_found_error',
     )
     expect(mocks.replace).not.toHaveBeenCalled()
     expect(dialog).toBeInTheDocument()
@@ -260,19 +263,18 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 
-  it('disables evaluation on a Cloud plan without evaluation instead of redirecting', async () => {
-    mocks.deploymentEdition = 'CLOUD'
-    mocks.cloudPlan = 'sandbox'
+  it('links evaluation when the workspace can upgrade into it so it can preview the page', async () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: true }
 
     renderAgentDetailSection()
 
     expect(
-      await screen.findByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
-    ).toBeDisabled()
+      await screen.findByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toHaveAttribute('href', '/agents/agent-1/evaluation')
   })
 
-  it('hides evaluation in the community edition', () => {
-    mocks.deploymentEdition = 'COMMUNITY'
+  it('hides evaluation when the workspace cannot use or upgrade into it', () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: false }
 
     renderAgentDetailSection()
 

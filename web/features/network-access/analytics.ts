@@ -18,7 +18,7 @@ export type AccessControlAnalyticsContext = {
   access_point_total: number
 }
 
-export type IpPolicySource =
+type IpPolicySource =
   | 'list_add_button'
   | 'list_empty_state'
   | 'list_row'

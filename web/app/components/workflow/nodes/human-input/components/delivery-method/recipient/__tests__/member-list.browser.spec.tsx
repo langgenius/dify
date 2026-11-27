@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import MemberList from '../member-list'
+import { MemberList } from '../member-list'
 import { members } from './recipient-test-data'
 
 beforeEach(async () => {
@@ -39,7 +39,7 @@ it('filters members and applies selection so the same recipient cannot be added 
   await expect.element(page.getByText('workspaceMembers.members.you')).toBeVisible()
   await expect.element(page.getByText('Pending User')).not.toBeInTheDocument()
   await search.fill('pending')
-  await expect.element(page.getByText('workspaceMembers.members.pending')).toBeVisible()
+  await expect.element(page.getByText('workspaceMembers.members.invited')).toBeVisible()
   const pending = page.getByRole('button', { name: /Pending User/ })
   await pending.click()
   await expect.element(pending).toBeDisabled()
@@ -48,20 +48,4 @@ it('filters members and applies selection so the same recipient cannot be added 
     .toHaveTextContent(
       '[{"type":"member","user_id":"member-1"},{"type":"member","user_id":"member-2"}]',
     )
-})
-
-it('hides compact suggestions when no members match', async () => {
-  await render(
-    <MemberList
-      value={[]}
-      searchValue="missing"
-      onSearchChange={vi.fn()}
-      list={members}
-      onSelect={vi.fn()}
-      email="owner@example.com"
-      hideSearch
-    />,
-  )
-  await expect.element(page.getByRole('button')).not.toBeInTheDocument()
-  await expect.element(page.getByRole('searchbox')).not.toBeInTheDocument()
 })

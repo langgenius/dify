@@ -28,6 +28,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "pydantic-ai-slim[anthropic,google,openai]==2.53.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
+    "referencing>=0.37.0,<0.38.0",
     "uvicorn[standard]==0.46.0",
 }
 

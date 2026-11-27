@@ -14,7 +14,6 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.moderation.factory as moderation_factory
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
@@ -26,6 +25,7 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import (
     AgentAppServices,
+    build_agent_app_repository,
     build_agent_app_services,
     build_agent_invite_options_service,
     build_agent_observability,
@@ -71,7 +71,6 @@ from repositories.annotation_import_job_repository import RedisAnnotationImportJ
 from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
 from repositories.annotation_repository import AnnotationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
-from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
@@ -122,22 +121,19 @@ from services.account.forgot_password_service import (
 from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
+from services.agent.agent_tracing_config_service import AgentTracingConfigService
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.observability_contracts import AgentObservability
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.version_service import AgentVersionService
-from services.agent_tracing_config_service import AgentTracingConfigService
+from services.agent.workflow_composer_gateway import WorkflowComposerGateway
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
 from services.annotation_query import AnnotationQuery
 from services.annotation_reply_service import AnnotationReplyService
-from services.api_based_extension_adapters import (
-    APIBasedExtensionPingProbe,
-    APIModerationGateway,
-    WorkspaceTokenCipher,
-    request_api_based_extension,
-)
+from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
+from services.api_moderation_adapters import request_inputs, request_outputs
 from services.api_moderation_service import APIModerationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
@@ -323,18 +319,19 @@ class AppScopedEndUserServices:
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
     moderation: ModerationService
+    api_moderation: APIModerationService
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
     annotation_reply: AnnotationReplyService
     rbac: RBACServices
     agent_apps: AgentAppServices
+    workflow_composer: WorkflowComposerGateway
     agent_versions: AgentVersionService
     agent_invite_options: AgentInviteOptionsService
     agent_observability: AgentObservability
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
-    api_moderation: APIModerationService
     credential_queries: CredentialQuery
     accounts: AccountServices
     app_api_keys: AppApiKeyService
@@ -494,9 +491,6 @@ def build_application_services(
     initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
-    api_based_extensions = APIBasedExtensionRepository(session_factory=database_client)
-    workspace_token_cipher = WorkspaceTokenCipher()
-    api_moderation_gateway = APIModerationGateway(request=request_api_based_extension)
     installation_state = InstallationStateRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
@@ -529,9 +523,12 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_repository = WorkspaceRepository(session_factory=database_client)
+    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     workspace_members, workspace_provisioning = build_workspace_membership_services(
         workspaces=workspace_repository,
         accounts=accounts,
+        invitation_tokens=invitation_tokens,
+        redis=redis,
     )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
@@ -556,6 +553,7 @@ def build_application_services(
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
     console_apps = ConsoleAppRepository(session_factory=database_client)
+    agent_app_repository = build_agent_app_repository(database_client=database_client)
     rbac = build_rbac_services(
         workspaces=workspace_repository,
         workspace_members=workspace_members,
@@ -601,7 +599,6 @@ def build_application_services(
         ),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
-    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -673,6 +670,12 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        api_moderation=APIModerationService(
+            find_extension=APIBasedExtensionRepository(session_factory=database_client).find_extension,
+            decrypt_key=WorkspaceTokenCipher().decrypt,
+            request_inputs=request_inputs,
+            request_outputs=request_outputs,
+        ),
         moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
@@ -707,7 +710,10 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
-        agent_apps=build_agent_app_services(database_client=database_client, rbac_members=rbac.members),
+        workflow_composer=WorkflowComposerGateway(session_factory=database_client),
+        agent_apps=build_agent_app_services(
+            database_client=database_client, rbac_members=rbac.members, apps=agent_app_repository
+        ),
         agent_versions=build_agent_version_service(database_client=database_client),
         agent_invite_options=build_agent_invite_options_service(
             database_client=database_client, rbac_members=rbac.members
@@ -743,7 +749,7 @@ def build_application_services(
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=tracing_configs,
         agent_tracing_configs=AgentTracingConfigService(
-            owners=AgentAppRepository(session_factory=database_client),
+            owners=agent_app_repository,
             settings=apps.console,
             configs=tracing_configs,
         ),
@@ -899,7 +905,7 @@ def build_application_services(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
         ),
         app_tasks=AppTaskControlService(redis_client=redis),
-        app_audio=AppAudioRuntime(session_factory=database_client),
+        app_audio=AppAudioRuntime(session_factory=database_client, agent_audio=agent_app_repository),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
@@ -916,7 +922,10 @@ def build_application_services(
         workspaces=workspace_services,
         triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+            logs=WorkflowAppLogQueryRepository(
+                session_factory=database_client,
+                include_evaluation=dify_config.ENABLE_EVALUATION,
+            ),
         ),
         workflow_comments=WorkflowCommentService(
             threads=workflow_comment_repository,
@@ -940,15 +949,9 @@ def build_application_services(
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),
         api_based_extensions=APIBasedExtensionApplicationService(
-            extensions=api_based_extensions,
-            secrets=workspace_token_cipher,
+            extensions=APIBasedExtensionRepository(session_factory=database_client),
+            secrets=WorkspaceTokenCipher(),
             probe=APIBasedExtensionPingProbe(),
-        ),
-        api_moderation=APIModerationService(
-            find_extension=api_based_extensions.find_extension,
-            decrypt_key=workspace_token_cipher.decrypt,
-            request_inputs=api_moderation_gateway.inputs,
-            request_outputs=api_moderation_gateway.outputs,
         ),
         tags=tags,
         workflow_statistics=WorkflowStatisticQueryService(
@@ -978,16 +981,12 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    app.extensions["api_moderation"] = services.api_moderation
     app_moderation: AppModerationPort = AppModeration()
     app.extensions["app_moderation"] = app_moderation
-    app.extensions[moderation_factory.API_MODERATION_EXTENSION_KEY] = moderation_factory.APIModerationCallbacks(
-        validate_config=services.api_moderation.validate_config,
-        moderate_inputs=services.api_moderation.moderate_inputs,
-        moderate_outputs=services.api_moderation.moderate_outputs,
-    )
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
-    bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
+    bind_account_only_loader(app, services.accounts.identity.load_account)
 
 
 def application_services() -> ApplicationServices:

@@ -114,6 +114,8 @@
   "collaboration.joinDenied": "ไม่สามารถเข้าร่วมการแก้ไขร่วมกันได้ โปรดตรวจสอบสิทธิ์การเข้าถึงและแพ็กเกจพื้นที่ทำงาน แล้วเปิดตัวแก้ไขอีกครั้ง",
   "collaboration.joinUnavailable": "ไม่สามารถเชื่อมต่อการทำงานร่วมกันได้ การเปลี่ยนแปลงบนพื้นที่นี้อาจยังไม่ได้รับการบันทึก",
   "collaboration.reloadPage": "โหลดหน้าใหม่",
+  "collaboration.userEditing": "{{name}} กำลังแก้ไข",
+  "collaboration.viewCollaborators": "ดูผู้ทำงานร่วมกัน {{count}} คน",
   "common.accessAPIReference": "การอ้างอิง API การเข้าถึง",
   "common.accessPointDescription": "กำหนดค่าเว็บแอป, API, MCP และทริกเกอร์",
   "common.addBlock": "เพิ่มโนด",

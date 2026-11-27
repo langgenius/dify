@@ -71,7 +71,7 @@ function CountdownContent({ onResend, resendDisabled, restartOnResend }: Countdo
       {time <= 0 && (
         <button
           type="button"
-          className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled"
+          className="cursor-pointer border-none bg-transparent p-0 text-start system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled"
           disabled={resendDisabled}
           onClick={resend}
         >

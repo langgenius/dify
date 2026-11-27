@@ -24,6 +24,30 @@ const toolLog = (overrides: Partial<AgentLogStreamData> = {}): AgentLogStreamDat
 const chatItem = (): ChatItem => ({ id: 'answer-1', content: '', isAnswer: true })
 
 describe('upsertWorkflowToolActivity', () => {
+  it('retains frozen quota metadata for a rejection and updates it without duplicating the call', () => {
+    const item = chatItem()
+    const event = toolLog({
+      status: 'not_executed',
+      data: {
+        ...toolLog().data,
+        call_limit: {
+          tool_identity: 'operation',
+          limit: 3,
+          used: 3,
+          execution_status: 'not_executed',
+          reason: 'call_limit_reached',
+        },
+      },
+    })
+    upsertWorkflowToolActivity(item, event)
+    upsertWorkflowToolActivity(item, event)
+    expect(item.workflowAgentActivities).toHaveLength(1)
+    expect(item.workflowAgentActivities?.[0]).toMatchObject({
+      status: 'not_executed',
+      data: { call_limit: event.data.call_limit },
+    })
+  })
+
   it('stores a started snapshot keyed by node execution and wire id', () => {
     const item = chatItem()
     upsertWorkflowToolActivity(item, toolLog())

@@ -1,7 +1,10 @@
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { lastRunQueryKey } from '@/service/workflow-queries'
+import { createTestQueryClient } from '@/test/query-client'
 import { TabType } from '../../types'
 import useLastRun from '../use-last-run'
 
@@ -9,7 +12,6 @@ const mockHandleSyncWorkflowDraft = vi.fn()
 const mockShowSingleRun = vi.fn()
 const mockHandleRun = vi.fn()
 const mockHideSingleRun = vi.fn()
-const mockInvalidLastRun = vi.fn()
 const mockFetchInspectVars = vi.fn()
 
 vi.mock('@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params', () => ({
@@ -61,9 +63,12 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-one-step-run', () => ({
   }),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateLastRun: () => mockInvalidLastRun,
-}))
+const resource: EditorResource = {
+  kind: 'app',
+  collaborationEnabled: false,
+  appId: 'flow-id',
+  mode: 'workflow',
+}
 
 const humanInputData = (version?: string) => ({
   ...HumanInputDefault.defaultValue,
@@ -82,6 +87,11 @@ describe('useLastRun', () => {
   it.each([undefined, '2'])(
     'shows persisted variables after V2 form submission and preserves V1 last-run behavior (%s)',
     async (version) => {
+      const queryClient = createTestQueryClient()
+      const lastRunKey = lastRunQueryKey(resource, 'human-input-node')
+      const otherLastRunKey = lastRunQueryKey(resource, 'other-node')
+      queryClient.setQueryData(lastRunKey, { id: 'run-1' })
+      queryClient.setQueryData(otherLastRunKey, { id: 'run-2' })
       const { result, store } = renderWorkflowHook(
         () =>
           useLastRun({
@@ -97,7 +107,7 @@ describe('useLastRun', () => {
             defaultRunInputData: {},
             isPaused: false,
           }),
-        { hooksStoreProps: { fetchInspectVars: mockFetchInspectVars } },
+        { queryClient, hooksStoreProps: { fetchInspectVars: mockFetchInspectVars } },
       )
       await act(async () => {
         store.getState().setNodesWithInspectVars([
@@ -118,11 +128,12 @@ describe('useLastRun', () => {
         expect(store.getState().currentFocusNodeId).toBeNull()
         expect(mockFetchInspectVars).toHaveBeenCalledWith({})
         expect(result.current.tabType).toBe(TabType.settings)
-        expect(mockInvalidLastRun).not.toHaveBeenCalled()
+        expect(queryClient.getQueryState(lastRunKey)?.isInvalidated).toBe(false)
       } else {
         expect(result.current.tabType).toBe(TabType.lastRun)
         expect(store.getState().nodesWithInspectVars[0]?.isValueFetched).toBe(true)
-        expect(mockInvalidLastRun).toHaveBeenCalledOnce()
+        expect(queryClient.getQueryState(lastRunKey)?.isInvalidated).toBe(true)
+        expect(queryClient.getQueryState(otherLastRunKey)?.isInvalidated).toBe(false)
         expect(mockFetchInspectVars).not.toHaveBeenCalled()
       }
     },

@@ -14,6 +14,9 @@ const config: KnipConfig = {
         'bin/**/*.{js,ts,mjs}',
         'tsslint.config.ts',
         'dev-proxy.config.ts',
+        // Cloudflare Workers build (`build:cloudflare`), passed to Vite with --config.
+        // A production build target, so it stays an entry under `knip --production`.
+        'vite.cloudflare.config.ts!',
         // Public surface consumed by the standalone Marketplace host.
         // The `!` suffix keeps these entries in `knip --production`.
         'app/components/plugins/marketplace/detail-dialog/image-preview-message.ts!',

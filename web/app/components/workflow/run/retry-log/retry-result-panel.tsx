@@ -24,7 +24,7 @@ function RetryResultPanel({ list, onBack }: Props) {
           onBack()
         }}
       >
-        <span aria-hidden className="mr-1 i-ri-arrow-left-line size-4" />
+        <span aria-hidden className="me-1 i-ri-arrow-left-line size-4" />
         {t(($) => $['singleRun.back'], { ns: 'workflow' })}
       </button>
       <div className="bg-background-section-burn py-2">

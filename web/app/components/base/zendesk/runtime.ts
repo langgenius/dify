@@ -1,4 +1,7 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ZendeskTheme } from './theme'
+import type { ResolvedTheme } from '@/features/theme/theme'
+import { zendeskThemes } from './theme'
 
 export type ZendeskConversationField = {
   id: string
@@ -8,7 +11,7 @@ export type ZendeskConversationField = {
 type ZendeskApi = (
   command: string,
   value: string,
-  payload?: ZendeskConversationField[] | string | string[] | (() => unknown),
+  payload?: ZendeskConversationField[] | { theme: ZendeskTheme },
   callback?: () => unknown,
 ) => void
 
@@ -38,6 +41,7 @@ export function createZendeskRuntime(getApi: () => ZendeskApi | undefined) {
   let snapshot = idleSnapshot
   let loadDeferred: LoadDeferred | undefined
   let openPromise: Promise<void> | undefined
+  let appliedTheme: ResolvedTheme | undefined
   const listeners = new Set<() => void>()
   const pendingFields = new Map<string, ZendeskConversationField>()
   const pendingFieldsCallbacks: Array<() => unknown> = []
@@ -71,7 +75,23 @@ export function createZendeskRuntime(getApi: () => ZendeskApi | undefined) {
     deferred?.reject(error)
   }
 
-  const markReady = () => {
+  const applyTheme = (api: ZendeskApi, theme: ResolvedTheme) => {
+    if (appliedTheme === theme) return
+    try {
+      api('messenger:set', 'customization', { theme: zendeskThemes[theme] })
+      appliedTheme = theme
+    } catch (error) {
+      console.warn('Failed to apply the Zendesk theme', error)
+    }
+  }
+
+  const syncTheme = (theme: ResolvedTheme) => {
+    if (snapshot.status !== 'ready') return
+    const api = getApi()
+    if (api) applyTheme(api, theme)
+  }
+
+  const markReady = (theme?: ResolvedTheme) => {
     if (snapshot.status !== 'loading') return
 
     const api = getApi()
@@ -79,6 +99,8 @@ export function createZendeskRuntime(getApi: () => ZendeskApi | undefined) {
       rejectLoad(new Error('Zendesk loaded without exposing its client API'))
       return
     }
+
+    if (theme) applyTheme(api, theme)
 
     const deferred = loadDeferred
     loadDeferred = undefined
@@ -140,6 +162,7 @@ export function createZendeskRuntime(getApi: () => ZendeskApi | undefined) {
     open,
     requestLoad,
     setConversationFields,
+    syncTheme,
     subscribe: (listener: () => void) => {
       listeners.add(listener)
       return () => listeners.delete(listener)

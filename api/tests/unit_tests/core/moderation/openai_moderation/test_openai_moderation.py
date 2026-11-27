@@ -413,20 +413,7 @@ class TestOpenAIModeration:
 
         openai_moderation.moderation_for_inputs(inputs, query)
 
-        # Verify invoke_moderation was called with correct content
-        mock_instance.invoke_moderation.assert_called_once()
-        call_args = mock_instance.invoke_moderation.call_args.kwargs
-        moderated_text = call_args["text"]
-        # The implementation uses "\n".join(str(inputs.values())) which joins each character
-        # Verify the moderated text is not empty and was constructed from inputs
-        assert len(moderated_text) > 0
-        # Check that the text contains characters from our input values
-        assert "v" in moderated_text
-        assert "a" in moderated_text
-        assert "l" in moderated_text
-        assert "q" in moderated_text
-        assert "u" in moderated_text
-        assert "e" in moderated_text
+        mock_instance.invoke_moderation.assert_called_once_with(text="value1\ntest query")
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
     def test_moderation_for_inputs_disabled(self, mock_model_manager: Mock) -> None:
@@ -505,6 +492,7 @@ class TestOpenAIModeration:
         assert call_kwargs["tenant_id"] == "test-tenant-456"
         assert call_kwargs["provider"] == "openai"
         assert call_kwargs["model"] == "omni-moderation-latest"
+        assert call_kwargs["require_custom_credentials"] is True
 
     def test_config_not_set_raises_error(self) -> None:
         """Test that moderation fails when config is None."""
@@ -536,6 +524,46 @@ class TestModerationRuleStructure:
         assert rule.type == "keywords"
         assert rule.config["outputs_config"]["enabled"] is True
         assert rule.config["outputs_config"]["preset_response"] == "Blocked"
+
+
+class TestModerationFactoryIntegration:
+    """Test suite for ModerationFactory integration."""
+
+    @patch("core.moderation.factory.code_based_extension", autospec=True)
+    def test_factory_delegates_to_extension(self, mock_extension: Mock) -> None:
+        """Test ModerationFactory delegates to extension system."""
+        from core.moderation.factory import ModerationFactory
+
+        mock_instance = MagicMock()
+        mock_instance.moderation_for_inputs.return_value = ModerationInputsResult(
+            flagged=False,
+            action=ModerationAction.DIRECT_OUTPUT,
+        )
+        mock_class = MagicMock(return_value=mock_instance)
+        mock_extension.extension_class.return_value = mock_class
+
+        factory = ModerationFactory(
+            name="keywords",
+            app_id="app",
+            tenant_id="tenant",
+            config={},
+        )
+
+        result = factory.moderation_for_inputs({"field": "value"}, "query")
+        assert result.flagged is False
+        mock_instance.moderation_for_inputs.assert_called_once()
+
+    @patch("core.moderation.factory.code_based_extension", autospec=True)
+    def test_factory_validate_config_delegates(self, mock_extension: Mock) -> None:
+        """Test ModerationFactory.validate_config delegates to extension."""
+        from core.moderation.factory import ModerationFactory
+
+        mock_class = MagicMock()
+        mock_extension.extension_class.return_value = mock_class
+
+        ModerationFactory.validate_config("keywords", "tenant", {"test": "config"})
+
+        mock_class.validate_config.assert_called_once()
 
 
 class TestModerationBase:
@@ -1071,20 +1099,7 @@ class TestOpenAIModerationAdvanced:
         # Should flag as violation
         assert result.flagged is True
 
-        # Verify API was called with all input values and query
-        mock_instance.invoke_moderation.assert_called_once()
-        call_args = mock_instance.invoke_moderation.call_args.kwargs
-        moderated_text = call_args["text"]
-        # The implementation uses "\n".join(str(inputs.values())) which joins each character
-        # Verify the moderated text is not empty and was constructed from inputs
-        assert len(moderated_text) > 0
-        # Check that the text contains characters from our input values and query
-        assert "v" in moderated_text
-        assert "a" in moderated_text
-        assert "l" in moderated_text
-        assert "q" in moderated_text
-        assert "u" in moderated_text
-        assert "e" in moderated_text
+        mock_instance.invoke_moderation.assert_called_once_with(text="value1\nvalue2\nvalue3\nquery")
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
     def test_openai_empty_text_handling(self, mock_model_manager: Mock) -> None:

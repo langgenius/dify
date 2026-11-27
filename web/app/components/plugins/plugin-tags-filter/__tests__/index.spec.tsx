@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginTagsFilter } from '..'
 
@@ -76,5 +77,41 @@ describe('PluginTagsFilter', () => {
     rerender(<PluginTagsFilter value={['agent']} onValueChange={onTagsChange} />)
     await user.click(screen.getByRole('checkbox', { name: 'RAG' }))
     expect(onTagsChange).toHaveBeenCalledWith(['agent', 'rag'])
+  })
+
+  it('renders selected tag labels and overflow count', () => {
+    render(<PluginTagsFilter value={['agent', 'rag', 'search']} onValueChange={vi.fn()} />)
+
+    expect(screen.getByText('Agent,RAG')).toBeInTheDocument()
+    expect(screen.getByText('+1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Agent, RAG, Search' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps clear as a separate action from the popover trigger', async () => {
+    const user = userEvent.setup()
+    function Harness() {
+      const [tags, setTags] = useState(['agent'])
+      return <PluginTagsFilter value={tags} onValueChange={setTags} />
+    }
+
+    render(<Harness />)
+
+    const trigger = screen.getByRole('button', { name: 'Agent' })
+    const clearButton = screen.getByRole('button', { name: /^pluginTags\.clearSelectedTags/ })
+
+    expect(trigger).not.toContainElement(clearButton)
+    trigger.focus()
+    await user.tab()
+    expect(clearButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(
+      screen.queryByRole('button', { name: /^pluginTags\.clearSelectedTags/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'pluginTags.allTags' })).toHaveFocus()
   })
 })

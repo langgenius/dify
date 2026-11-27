@@ -445,11 +445,13 @@ def test_wired_publication_handler_uses_the_publishers_transaction(harness: _Har
 
 
 def test_wired_schedule_tasks_enqueue_workflow_with_tenant_owner(
-    harness: _Harness, broker: SimpleQueue, caplog: pytest.LogCaptureFixture
+    harness: _Harness, broker: SimpleQueue, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Given one due plan, the wired tasks enqueue one workflow as its tenant owner."""
     caplog.set_level(logging.INFO, logger="services.trigger.schedule_service")
     from celery import current_app
 
+    from extensions.ext_application_services import application_services
     from models.enums import CreatorUserRole, WorkflowTriggerStatus
     from models.model import AppMode
     from models.trigger import WorkflowTriggerLog
@@ -470,7 +472,7 @@ def test_wired_schedule_tasks_enqueue_workflow_with_tenant_owner(
         node_id="schedule",
         cron_expression="* * * * *",
         timezone="UTC",
-        next_run_at=ensure_naive_utc(datetime.now(UTC) - timedelta(minutes=1)),
+        next_run_at=ensure_naive_utc(_NOW - timedelta(minutes=1)),
     )
     with harness.session_factory.begin() as session:
         session.add_all(
@@ -493,6 +495,8 @@ def test_wired_schedule_tasks_enqueue_workflow_with_tenant_owner(
         current_app.connection_for_write() as connection,
         SimpleQueue(connection.channel(), "schedule_executor") as schedules,
     ):
+        # Keep the next cron occurrence in the future throughout this poll.
+        monkeypatch.setattr(application_services().triggers.schedules, "_now", lambda: _NOW)
         schedules.clear()
         try:
             poll_workflow_schedules()

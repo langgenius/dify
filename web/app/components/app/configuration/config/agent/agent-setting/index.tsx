@@ -42,13 +42,13 @@ export function AgentSettingDialog({ disabled, onSave, ...props }: Props) {
 
   return (
     <Dialog actionsRef={actionsRef}>
-      <DialogTrigger render={<Button className="mr-2 shrink-0" disabled={disabled} />}>
+      <DialogTrigger render={<Button className="me-2 shrink-0" disabled={disabled} />}>
         <span aria-hidden className="i-ri-settings-2-line size-4 text-text-tertiary" />
         {t(($) => $['agent.setting.name'])}
       </DialogTrigger>
       <DialogPortal>
         <DialogBackdrop />
-        <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 max-w-[calc(100vw-1rem)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
+        <DialogPopup className="fixed inset-e-2 top-2 bottom-2 flex w-160 max-w-[calc(100vw-1rem)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
           <AgentSettingsForm
             {...props}
             onSave={(payload) => {
@@ -92,7 +92,7 @@ function AgentSettingsForm({
         handleSave()
       }}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular ps-6 pe-5">
         <DialogTitle>{t(($) => $['agent.setting.name'], { ns: 'appDebug' })}</DialogTitle>
         <DialogClose
           render={
@@ -148,7 +148,7 @@ function AgentSettingsForm({
           <Fieldset className="flex items-center">
             <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
             <Slider
-              className="mr-3 w-39"
+              className="me-3 w-39"
               min={maxIterationsMin}
               max={MAX_ITERATIONS_NUM}
               value={sliderValue}
@@ -174,7 +174,7 @@ function AgentSettingsForm({
               min={maxIterationsMin}
               max={MAX_ITERATIONS_NUM}
               step={1}
-              className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:inset-ring-1 focus:inset-ring-primary-600"
+              className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 ps-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:inset-ring-1 focus:inset-ring-primary-600"
               value={Number.isFinite(tempPayload.max_iteration) ? tempPayload.max_iteration : ''}
               onChange={(e) => {
                 let value = Number.parseInt(e.target.value, 10)
@@ -207,7 +207,7 @@ function AgentSettingsForm({
         )}
       </div>
       <div className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4">
-        <DialogClose render={<Button className="mr-2" />}>
+        <DialogClose render={<Button className="me-2" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
         <Button type="submit" variant="primary">

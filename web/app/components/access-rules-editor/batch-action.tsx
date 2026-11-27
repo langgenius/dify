@@ -59,7 +59,7 @@ export default function AccessRulesBatchAction({
         })}
         className="pointer-events-auto flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5"
       >
-        <div className="inline-flex items-center gap-2 py-1 pr-3 pl-2">
+        <div className="inline-flex items-center gap-2 py-1 ps-2 pe-3">
           <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedCount}
           </span>

@@ -153,13 +153,13 @@ const ConditionItem = ({
       >
         <div className="flex items-center p-1">
           <div className="w-0 grow">
-            <div className="flex h-6 min-w-0 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-1 shadow-xs">
-              <div className="mr-0.5 p-px">
+            <div className="flex h-6 min-w-0 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark ps-1 pe-1.5 shadow-xs">
+              <div className="me-0.5 p-px">
                 <MetadataIcon type={currentMetadata?.type} className="size-3" />
               </div>
               <div
                 id={metadataLabelId}
-                className="mr-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary"
+                className="me-0.5 min-w-0 flex-1 truncate system-xs-medium text-text-secondary"
               >
                 {currentMetadata?.name}
               </div>
@@ -217,7 +217,7 @@ const ConditionItem = ({
         </div>
       </div>
       <IconButton
-        className="mt-1 ml-1 shrink-0"
+        className="ms-1 mt-1 shrink-0"
         aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
         disabled={disabled}
         tone="destructive"

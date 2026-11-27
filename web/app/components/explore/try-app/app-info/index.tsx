@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { getFileIconType } from '@/features/agent-v2/file-icon'
+import { getFileIconType } from '@/utils/file-icon'
 import useGetRequirements from './use-get-requirements'
 
 type Props = Readonly<{

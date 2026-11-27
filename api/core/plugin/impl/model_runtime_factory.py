@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from core.db.session_factory import session_factory
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -124,7 +125,10 @@ class PluginModelAssembly:
         if self._provider_manager is None:
             from core.provider_manager import ProviderManager
 
-            self._provider_manager = ProviderManager(model_runtime=self.model_runtime)
+            self._provider_manager = ProviderManager(
+                model_runtime=self.model_runtime,
+                session_maker=session_factory.get_session_maker(),
+            )
         return self._provider_manager
 
     @property

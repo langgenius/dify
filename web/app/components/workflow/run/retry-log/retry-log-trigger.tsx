@@ -24,7 +24,7 @@ const RetryLogTrigger = ({ nodeInfo, onShowRetryResultList }: RetryLogTriggerPro
       onClick={handleShowRetryResultList}
     >
       <div className="flex items-center">
-        <RiRestartFill className="mr-0.5 size-4 shrink-0 text-components-button-tertiary-text" />
+        <RiRestartFill className="me-0.5 size-4 shrink-0 text-components-button-tertiary-text" />
         {t(($) => $['nodes.common.retry.retries'], {
           ns: 'workflow',
           num: retryDetail?.length ?? 0,

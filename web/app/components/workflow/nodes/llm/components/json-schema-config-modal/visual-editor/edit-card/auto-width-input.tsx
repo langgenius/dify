@@ -45,7 +45,7 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
       {/* Hidden measurement span */}
       <span
         ref={textRef}
-        className="invisible absolute top-0 left-0 -z-10 px-1 system-sm-semibold whitespace-pre"
+        className="invisible absolute inset-s-0 top-0 -z-10 px-1 system-sm-semibold whitespace-pre"
         aria-hidden="true"
       >
         {value || placeholder}

@@ -17,6 +17,7 @@ import { IndexingType } from '../../../../create/step-two'
 import ExternalKnowledgeSection from '../external-knowledge-section'
 import IndexingSection from '../indexing-section'
 
+// boundary: load the real en-US copy so reflow checks measure production text lengths.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: settings } = await import('@/i18n/locales/en-US/dataset-settings.json')

@@ -44,6 +44,9 @@ def get_metadata():
     return TypeBase.metadata
 
 def include_object(object, name, type_, reflected, compare_to):
+    # Keep the retired credit pool as a migration and rollback artifact.
+    if type_ == "table" and name == "tenant_credit_pools" and reflected and compare_to is None:
+        return False
     if type_ == "foreign_key_constraint":
         return False
     else:

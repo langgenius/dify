@@ -1,15 +1,21 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AdvancedChatWorkflowRunPayload,
+  AppMode,
+  DraftWorkflowRunPayload,
+  DraftWorkflowTriggerRunAllPayload,
+  DraftWorkflowTriggerRunPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { StreamCallbacks, StreamRequest } from '@/service/event-stream'
 import { noop } from 'es-toolkit/function'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toFeaturesData, toGraphNodes } from '@/app/components/workflow/utils/published-workflow'
 import { toast } from '@/app/notifications'
-import { handleStream, post } from '@/service/base'
-import { ContentType } from '@/service/fetch'
+import { consoleClient } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 
 export type HandleRunOptions = {
   mode?: TriggerType
@@ -48,9 +54,8 @@ type ListeningStateActions = {
 
 type TriggerDebugRunnerOptions = {
   debugType: DebuggableTriggerType
-  url: string
-  requestBody: unknown
-  baseSseOptions: IOtherOptions
+  request: StreamRequest
+  baseSseOptions: StreamCallbacks
   controllerTarget: Record<string, unknown>
   setAbortController: (controller: AbortController | null) => void
   clearAbortController: () => void
@@ -113,17 +118,16 @@ const createFailedWorkflowState = (error: string) => {
   }
 }
 
-export const buildRunHistoryUrl = (appDetail?: AppDetailLike) => {
-  return appDetail?.mode === 'advanced-chat'
-    ? `/apps/${appDetail.id}/advanced-chat/workflow-runs`
-    : `/apps/${appDetail?.id}/workflow-runs`
-}
-
-export const resolveWorkflowRunUrl = (
+/**
+ * Picks the run endpoint for the trigger mode and app; the body comes from
+ * `buildWorkflowRunRequestBody`.
+ */
+export const resolveWorkflowRunRequest = (
   appDetail: AppDetailLike | undefined,
   runMode: TriggerType,
   isInWorkflowDebug: boolean,
-) => {
+  requestBody: unknown,
+): StreamRequest | undefined => {
   if (
     runMode === TriggerType.Plugin ||
     runMode === TriggerType.Webhook ||
@@ -131,27 +135,45 @@ export const resolveWorkflowRunUrl = (
   ) {
     if (!appDetail?.id) {
       console.error('handleRun: missing app id for trigger plugin run')
-      return ''
+      return undefined
     }
 
-    return `/apps/${appDetail.id}/workflows/draft/trigger/run`
+    const params = { app_id: appDetail.id }
+    // `validateWorkflowRunRequest` checks the trigger node id before the request is sent.
+    const body = requestBody as DraftWorkflowTriggerRunPayload
+    return (options) =>
+      consoleClient.apps.byAppId.workflows.draft.trigger.run.post({ params, body }, options)
   }
 
   if (runMode === TriggerType.All) {
     if (!appDetail?.id) {
       console.error('handleRun: missing app id for trigger run all')
-      return ''
+      return undefined
     }
 
-    return `/apps/${appDetail.id}/workflows/draft/trigger/run-all`
+    const params = { app_id: appDetail.id }
+    const body = requestBody as DraftWorkflowTriggerRunAllPayload
+    return (options) =>
+      consoleClient.apps.byAppId.workflows.draft.trigger.runAll.post({ params, body }, options)
   }
 
-  if (appDetail?.mode === 'advanced-chat')
-    return `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
+  if (appDetail?.mode === 'advanced-chat') {
+    const params = { app_id: appDetail.id! }
+    // The run params come from the editor's start form and the chat input.
+    const body = requestBody as AdvancedChatWorkflowRunPayload
+    return (options) =>
+      consoleClient.apps.byAppId.advancedChat.workflows.draft.run.post({ params, body }, options)
+  }
 
-  if (isInWorkflowDebug && appDetail?.id) return `/apps/${appDetail.id}/workflows/draft/run`
+  if (isInWorkflowDebug && appDetail?.id) {
+    const params = { app_id: appDetail.id }
+    // The run params come from the editor's start form.
+    const body = requestBody as DraftWorkflowRunPayload
+    return (options) =>
+      consoleClient.apps.byAppId.workflows.draft.run.post({ params, body }, options)
+  }
 
-  return ''
+  return undefined
 }
 
 export const buildWorkflowRunRequestBody = (
@@ -292,28 +314,15 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
   }
 }
 
-export const mapPublishedWorkflowFeatures = (
-  publishedWorkflow: FetchWorkflowDraftResponse,
-): FeaturesData => {
-  return {
-    opening: {
-      enabled:
-        !!publishedWorkflow.features.opening_statement ||
-        !!publishedWorkflow.features.suggested_questions.length,
-      opening_statement: publishedWorkflow.features.opening_statement,
-      suggested_questions: publishedWorkflow.features.suggested_questions,
-    },
-    suggested: publishedWorkflow.features.suggested_questions_after_answer,
-    text2speech: publishedWorkflow.features.text_to_speech,
-    speech2text: publishedWorkflow.features.speech_to_text,
-    citation: publishedWorkflow.features.retriever_resource,
-    moderation: publishedWorkflow.features.sensitive_word_avoidance,
-    file: publishedWorkflow.features.file_upload,
-  }
-}
+// Published versions store features and graph as free-form JSON; narrow them for the editor.
+export const mapPublishedWorkflowFeatures = (publishedWorkflow: {
+  features: Record<string, unknown>
+}): FeaturesData => toFeaturesData(publishedWorkflow.features)
 
-export const normalizePublishedWorkflowNodes = (publishedWorkflow: FetchWorkflowDraftResponse) => {
-  return publishedWorkflow.graph.nodes.map((node) => ({
+export const normalizePublishedWorkflowNodes = (publishedWorkflow: {
+  graph: Record<string, unknown>
+}) => {
+  return toGraphNodes(publishedWorkflow.graph).map((node) => ({
     ...node,
     selected: false,
     data: {
@@ -336,10 +345,35 @@ const waitWithAbort = (signal: AbortSignal, delay: number) =>
     )
   })
 
+/**
+ * The trigger stream used to hand its events straight to the stream parser, so stream errors
+ * reached `onData` only, without the run's error handler or a notification.
+ */
+const toTriggerStreamCallbacks = ({
+  onError: _onError,
+  onNotifyError: _onNotifyError,
+  getAbortController: _getAbortController,
+  onReasoning: _onReasoning,
+  onUnhandledEvent: _onUnhandledEvent,
+  isPublicAPI: _isPublicAPI,
+  ...callbacks
+}: StreamCallbacks): StreamCallbacks => ({
+  ...callbacks,
+  onNotifyError: noop,
+  onError: (_message, _code, moreInfo) => {
+    if (moreInfo) callbacks.onData?.('', false, moreInfo)
+  },
+})
+
+const isEventStream = (value: unknown): value is AsyncIterable<unknown> =>
+  typeof value === 'object' && value !== null && Symbol.asyncIterator in value
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
 export const runTriggerDebug = async ({
   debugType,
-  url,
-  requestBody,
+  request,
   baseSseOptions,
   controllerTarget,
   setAbortController,
@@ -357,45 +391,17 @@ export const runTriggerDebug = async ({
 
   const poll = async (): Promise<void> => {
     try {
-      const response = await post<Response>(
-        url,
-        {
-          body: requestBody,
-          signal: controller.signal,
-        },
-        {
-          needAllResponseContent: true,
-          silent: true,
-        },
-      )
+      // The endpoint answers with JSON while it waits for a trigger event, then with the run's
+      // event stream.
+      const response = await request({
+        signal: controller.signal,
+        context: { stream: true },
+      })
 
       if (controller.signal.aborted) return
 
-      if (!response) {
-        const message = `${debugLabel} debug request failed`
-        toast.error(message)
-        clearAbortController()
-        return
-      }
-
-      const contentType = response.headers.get('content-type') || ''
-
-      if (contentType.includes(ContentType.json)) {
-        let data: Record<string, unknown> | null = null
-        try {
-          data = (await response.json()) as Record<string, unknown>
-        } catch (jsonError) {
-          console.error(
-            `handleRun: ${debugLabel.toLowerCase()} debug response parse error`,
-            jsonError,
-          )
-          toast.error(`${debugLabel} debug request failed`)
-          clearAbortController()
-          clearListeningState()
-          return
-        }
-
-        if (controller.signal.aborted) return
+      if (!isEventStream(response)) {
+        const data = isRecord(response) ? response : null
 
         if (data?.status === 'waiting') {
           const delay = Number(data.retry_in) || 2000
@@ -415,40 +421,8 @@ export const runTriggerDebug = async ({
       }
 
       clearListeningState()
-      handleStream(
-        response,
-        baseSseOptions.onData ?? noop,
-        baseSseOptions.onCompleted,
-        baseSseOptions.onThought,
-        baseSseOptions.onMessageEnd,
-        baseSseOptions.onMessageReplace,
-        baseSseOptions.onFile,
-        baseSseOptions.onWorkflowStarted,
-        baseSseOptions.onWorkflowFinished,
-        baseSseOptions.onNodeStarted,
-        baseSseOptions.onNodeFinished,
-        baseSseOptions.onIterationStart,
-        baseSseOptions.onIterationNext,
-        baseSseOptions.onIterationFinish,
-        baseSseOptions.onLoopStart,
-        baseSseOptions.onLoopNext,
-        baseSseOptions.onLoopFinish,
-        baseSseOptions.onNodeRetry,
-        baseSseOptions.onParallelBranchStarted,
-        baseSseOptions.onParallelBranchFinished,
-        baseSseOptions.onTextChunk,
-        baseSseOptions.onTTSChunk,
-        baseSseOptions.onTTSEnd,
-        baseSseOptions.onTextReplace,
-        baseSseOptions.onAgentLog,
-        baseSseOptions.onHumanInputRequired,
-        baseSseOptions.onHumanInputFormFilled,
-        baseSseOptions.onHumanInputFormTimeout,
-        baseSseOptions.onWorkflowPaused,
-        baseSseOptions.onDataSourceNodeProcessing,
-        baseSseOptions.onDataSourceNodeCompleted,
-        baseSseOptions.onDataSourceNodeError,
-      )
+      // The request was sent with `controller`, which still aborts the stream.
+      streamEvents(() => Promise.resolve(response), toTriggerStreamCallbacks(baseSseOptions))
     } catch (error) {
       if (controller.signal.aborted) return
 

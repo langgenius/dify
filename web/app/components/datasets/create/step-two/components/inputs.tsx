@@ -53,7 +53,7 @@ export const DelimiterInput: FC<
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <label id={labelId} htmlFor={inputId} className="mr-0.5 system-sm-semibold">
+          <label id={labelId} htmlFor={inputId} className="me-0.5 system-sm-semibold">
             {t(($) => $['stepTwo.separator'], { ns: 'datasetCreation' })}
           </label>
           <Infotip>

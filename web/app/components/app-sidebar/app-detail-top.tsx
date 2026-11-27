@@ -1,12 +1,5 @@
 'use client'
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from '@langgenius/dify-ui/breadcrumb'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -44,62 +37,43 @@ export function AppDetailTop({ expand = true, onToggle }: AppDetailTopProps) {
   }
 
   return (
-    <div className="flex items-center py-2 ps-1 pe-2">
-      <Breadcrumb aria-label={t(($) => $['menus.apps'], { ns: 'navigation' })} className="flex-1">
-        <BreadcrumbList className="gap-px">
-          <BreadcrumbItem className="shrink-0">
-            <BreadcrumbLink
-              render={<Link href="/" />}
-              aria-label={t(($) => $['mainNav.home'], { ns: 'navigation' })}
-              className="gap-0 rounded-lg py-2 ps-0.5 pe-1.5 hover:bg-background-default-hover"
-            >
-              <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-              <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          {expand && (
-            <>
-              <BreadcrumbSeparator className="system-md-regular" />
-              <BreadcrumbItem className="shrink-0">
-                <BreadcrumbLink
-                  render={<Link href={appsHref} />}
-                  className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+    <div className="flex items-center p-2">
+      <Link
+        href={appsHref}
+        className="me-auto inline-flex h-8 min-w-18.5 items-center rounded-lg py-2 ps-0.5 pe-1.5 system-sm-semibold-uppercase whitespace-nowrap text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      >
+        <span
+          aria-hidden
+          className="i-ri-arrow-left-s-line size-4 shrink-0 text-text-tertiary rtl:rotate-180"
+        />
+        {t(($) => $['menus.apps'], { ns: 'navigation' })}
+      </Link>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DialogTrigger
+              handle={gotoAnythingDialogHandle}
+              render={
+                <button
+                  type="button"
+                  aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                 >
-                  {t(($) => $['menus.apps'], { ns: 'navigation' })}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </>
-          )}
-        </BreadcrumbList>
-      </Breadcrumb>
-      {expand && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <DialogTrigger
-                handle={gotoAnythingDialogHandle}
-                render={
-                  <button
-                    type="button"
-                    aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-                    className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
-                  >
-                    <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-                  </button>
-                }
-              />
-            }
-          />
-          <TooltipContent side="bottom" className="flex items-center gap-1">
-            <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
-            <KbdGroup>
-              {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
-                <Kbd key={key}>{key}</Kbd>
-              ))}
-            </KbdGroup>
-          </TooltipContent>
-        </Tooltip>
-      )}
+                  <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+                </button>
+              }
+            />
+          }
+        />
+        <TooltipContent side="bottom" className="flex items-center gap-1">
+          <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
+          <KbdGroup>
+            {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
+            ))}
+          </KbdGroup>
+        </TooltipContent>
+      </Tooltip>
       {onToggle && (
         <DetailSidebarToggleButton
           expand={expand}

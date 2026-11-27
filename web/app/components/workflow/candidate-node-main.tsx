@@ -117,7 +117,7 @@ const CandidateNodeMain: FC<Props> = ({ candidateNode }) => {
 
   return (
     <div
-      className="absolute z-10"
+      className="absolute"
       style={{
         left: mousePosition.elementX,
         top: mousePosition.elementY,

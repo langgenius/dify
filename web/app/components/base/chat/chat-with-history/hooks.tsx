@@ -1,10 +1,10 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ExtraContent } from '../chat/type'
 import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
-import type { AppData, ConversationItem } from '@/models/share'
+import type { AppData } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -14,6 +14,7 @@ import {
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { changeLanguage } from '@/i18n/client'
@@ -27,11 +28,11 @@ import {
 } from '@/service/share'
 import {
   EnvironmentConversationNotFoundError,
-  useInvalidateShareConversations,
-  useShareChatList,
-  useShareConversationName,
-  useShareConversations,
-} from '@/service/use-share'
+  shareChatListQueryOptions,
+  shareConversationNameQueryOptions,
+  shareConversationsQueryOptions,
+  shareQueryKeys,
+} from '@/service/share-queries'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
@@ -41,6 +42,8 @@ import {
   getProcessedSystemVariablesFromUrlParams,
   getRawInputsFromUrlParams,
   getRawUserVariablesFromUrlParams,
+  updateConversationList,
+  writeGeneratedConversation,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -198,11 +201,26 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const { data: appPinnedConversationData } = useShareConversations(
+  const { data: appPinnedConversationData } = useQuery(
+    shareConversationsQueryOptions(
+      {
+        appSourceType,
+        appId,
+        pinned: true,
+        limit: 100,
+      },
+      {
+        enabled: !!appId,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+      },
+    ),
+  )
+  const conversationListQueryOptions = shareConversationsQueryOptions(
     {
       appSourceType,
       appId,
-      pinned: true,
+      pinned: false,
       limit: 100,
     },
     {
@@ -211,37 +229,31 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       refetchOnReconnect: false,
     },
   )
-  const { data: appConversationData, isLoading: appConversationDataLoading } =
-    useShareConversations(
-      {
-        appSourceType,
-        appId,
-        pinned: false,
-        limit: 100,
-      },
-      {
-        enabled: !!appId,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false,
-      },
-    )
+  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
+    conversationListQueryOptions,
+  )
   const {
     data: appChatListData,
     error: appChatListError,
     isLoading: appChatListDataLoading,
-  } = useShareChatList(
-    {
-      conversationId: chatShouldReloadKey,
-      appSourceType,
-      appId,
-    },
-    {
-      enabled: !!chatShouldReloadKey,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
+  } = useQuery(
+    shareChatListQueryOptions(
+      {
+        conversationId: chatShouldReloadKey,
+        appSourceType,
+        appId,
+      },
+      {
+        enabled: !!chatShouldReloadKey,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+      },
+    ),
   )
-  const invalidateShareConversations = useInvalidateShareConversations()
+  const queryClient = useQueryClient()
+  const invalidateShareConversations = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations })
+  }, [queryClient])
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   useEffect(() => {
@@ -367,25 +379,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const { data: newConversation } = useShareConversationName(
-    {
-      conversationId: newConversationId,
-      appSourceType,
-      appId,
-    },
-    {
-      refetchOnWindowFocus: false,
-      enabled: !!newConversationId,
-    },
-  )
-  const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
-  useEffect(() => {
-    if (appConversationData?.data && !appConversationDataLoading)
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Conversation query results intentionally replace the local editable list.
-      setOriginConversationList(appConversationData?.data)
-  }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
-    const data = originConversationList.slice()
+    const data = (appConversationData?.data ?? []).slice()
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
@@ -395,19 +390,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       })
     }
     return data
-  }, [originConversationList, showNewConversationItemInList, t])
-  useEffect(() => {
-    if (newConversation) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Newly resolved conversation names intentionally patch the local list cache.
-      setOriginConversationList(
-        produce((draft) => {
-          const index = draft.findIndex((item) => item.id === newConversation.id)
-          if (index > -1) draft[index] = newConversation
-          else draft.unshift(newConversation)
-        }),
-      )
-    }
-  }, [newConversation])
+  }, [appConversationData, showNewConversationItemInList, t])
   const currentConversationItem = useMemo(() => {
     let conversationItem = conversationList.find((item) => item.id === currentConversationId)
     if (!conversationItem && pinnedConversationList.length)
@@ -490,9 +473,21 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const currentChatInstanceRef = useRef<{
     handleStop: () => void
   }>({ handleStop: noop })
+  // The conversation whose generated name is still loading. Leaving it drops the late name,
+  // so a conversation pinned or deleted meanwhile does not come back to this list.
+  const pendingNameConversationIdRef = useRef('')
+  useEffect(
+    () => () => {
+      // A name that arrives after this chat unmounts must not edit the shared list cache.
+      pendingNameConversationIdRef.current = ''
+    },
+    [],
+  )
   const handleChangeConversation = useCallback(
     (conversationId: string) => {
       currentChatInstanceRef.current.handleStop()
+      if (conversationId !== pendingNameConversationIdRef.current)
+        pendingNameConversationIdRef.current = ''
       setNewConversationId('')
       handleConversationIdInfoChange(conversationId)
       if (conversationId) setClearChatList(false)
@@ -521,7 +516,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   }, [invalidateShareConversations])
   const handlePinConversation = useCallback(
     async (conversationId: string) => {
-      await pinConversation(appSourceType, appId, conversationId)
+      try {
+        await pinConversation(appSourceType, appId, conversationId)
+      } catch (error) {
+        reportRequestError(error)
+        return
+      }
+      if (conversationId === pendingNameConversationIdRef.current)
+        pendingNameConversationIdRef.current = ''
       toast.success(t(($) => $['api.success'], { ns: 'common' }))
       handleUpdateConversationList()
     },
@@ -529,7 +531,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   )
   const handleUnpinConversation = useCallback(
     async (conversationId: string) => {
-      await unpinConversation(appSourceType, appId, conversationId)
+      try {
+        await unpinConversation(appSourceType, appId, conversationId)
+      } catch (error) {
+        reportRequestError(error)
+        return
+      }
       toast.success(t(($) => $['api.success'], { ns: 'common' }))
       handleUpdateConversationList()
     },
@@ -544,6 +551,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         await delConversation(appSourceType, appId, conversationId)
         toast.success(t(($) => $['api.success'], { ns: 'common' }))
         onSuccess()
+      } catch (error) {
+        reportRequestError(error)
+        return
       } finally {
         setConversationDeleting(false)
       }
@@ -571,22 +581,32 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       setConversationRenaming(true)
       try {
         await renameConversation(appSourceType, appId, conversationId, newName)
-        setOriginConversationList(
-          produce((draft) => {
-            const index = originConversationList.findIndex((item) => item.id === conversationId)
-            const item = draft[index]!
-            draft[index] = {
-              ...item,
-              name: newName,
-            }
-          }),
+        updateConversationList(
+          queryClient,
+          conversationListQueryOptions.queryKey,
+          (data) =>
+            data && {
+              ...data,
+              data: data.data.map((item) =>
+                item.id === conversationId ? { ...item, name: newName } : item,
+              ),
+            },
         )
         onSuccess()
+      } catch (error) {
+        reportRequestError(error)
       } finally {
         setConversationRenaming(false)
       }
     },
-    [appSourceType, appId, t, conversationRenaming, originConversationList],
+    [
+      appSourceType,
+      appId,
+      t,
+      conversationRenaming,
+      queryClient,
+      conversationListQueryOptions.queryKey,
+    ],
   )
   const handleNewConversationCompleted = useCallback(
     (newConversationId: string) => {
@@ -594,19 +614,53 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       handleConversationIdInfoChange(newConversationId)
       setShowNewConversationItemInList(false)
       invalidateShareConversations()
+      // The generated name stays in the list cache until the list is loaded again after it.
+      pendingNameConversationIdRef.current = newConversationId
+      queryClient
+        .query({
+          ...shareConversationNameQueryOptions({
+            conversationId: newConversationId,
+            appSourceType,
+            appId,
+          }),
+          // Imperative queries do not retry by default; keep the retries the name query observer had.
+          retry: 3,
+        })
+        .then((conversation) => {
+          if (pendingNameConversationIdRef.current !== newConversationId) return
+          pendingNameConversationIdRef.current = ''
+          writeGeneratedConversation(
+            queryClient,
+            conversationListQueryOptions.queryKey,
+            conversation,
+          )
+        })
+        .catch(noop)
     },
-    [handleConversationIdInfoChange, invalidateShareConversations],
+    [
+      handleConversationIdInfoChange,
+      invalidateShareConversations,
+      queryClient,
+      appSourceType,
+      appId,
+      conversationListQueryOptions.queryKey,
+    ],
   )
   const handleFeedback: OnFeedback = useCallback(
     async (messageId, feedback) => {
-      await updateFeedback(
-        {
-          messageId,
-          body: { rating: feedback.rating, content: feedback.content },
-        },
-        appSourceType,
-        appId,
-      )
+      try {
+        await updateFeedback(
+          {
+            messageId,
+            body: { rating: feedback.rating, content: feedback.content },
+          },
+          appSourceType,
+          appId,
+        )
+      } catch (error) {
+        reportRequestError(error)
+        throw error
+      }
     },
     [appSourceType, appId],
   )

@@ -5,7 +5,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, networkError, route, setupFakeApi } from '@/test/fake-api'
 import { createImageFile, readImagePixels } from '@/test/fixtures/image-files'
 import fixtureUrl from '@/test/fixtures/media/preview.svg?url&no-inline'
 import ImagePreview from '../image-preview'
@@ -13,11 +13,16 @@ import ImagePreview from '../image-preview'
 let png: File
 let dataImage: string
 let copied: Blob | undefined
-let fetchImage: MockInstance<typeof fetch>
 let clipboardWrite: MockInstance<Clipboard['write']>
-let unexpectedFetches: string[]
 const button = (action: string) => page.getByRole('button', { name: `common.operation.${action}` })
 const fullUrl = () => new URL(fixtureUrl, window.location.href).href
+const imagePath = () => new URL(fixtureUrl, window.location.href).pathname
+
+// Served images are fetched from the page origin; data/blob decoding stays native.
+const fake = setupFakeApi(() => ({
+  routes: [route('GET', 'origin', imagePath(), () => new Response(png))],
+}))
+const servedImage = () => fake.route('GET', 'origin', imagePath())
 
 beforeEach(async () => {
   png = await createImageFile()
@@ -27,24 +32,13 @@ beforeEach(async () => {
     reader.readAsDataURL(png)
   })
   copied = undefined
-  unexpectedFetches = []
-  const nativeFetch = globalThis.fetch.bind(globalThis)
-  // boundary: remote image transport is isolated; native data/blob decoding remains real.
-  fetchImage = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const url = String(input)
-    if (url.startsWith('data:') || url.startsWith('blob:')) return nativeFetch(input, init)
-    if (url === fixtureUrl || url === fullUrl()) return new Response(png)
-    unexpectedFetches.push(url)
-    throw new Error(`Unexpected image request: ${url}`)
-  })
-  // boundary: the system clipboard is external; ClipboardItem, decoding and conversion stay real.
+  // boundary: the system clipboard is shared by spec files running in parallel; ClipboardItem, decoding and conversion stay real.
   clipboardWrite = vi.spyOn(navigator.clipboard, 'write').mockImplementation(async (items) => {
     copied = await items[0]!.getType('image/png')
   })
 })
 afterEach(() => {
   toast.dismiss()
-  expect(unexpectedFetches).toEqual([])
   vi.restoreAllMocks()
 })
 
@@ -147,8 +141,8 @@ it.each(['permission', 'fetch'] as const)(
     vi.spyOn(console, 'error').mockImplementation(() => {})
     if (failure === 'permission')
       clipboardWrite.mockRejectedValueOnce(new DOMException('Denied', 'NotAllowedError'))
-    else fetchImage.mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    await setup()
+    else servedImage().mockRejectedValueOnce(networkError())
+    await setup(failure === 'fetch' ? { url: fullUrl() } : {})
     await button('copyImage').click()
     await expect.element(page.getByText('common.operation.imageCopyFailed')).toBeVisible()
     await expect.element(page.getByRole('dialog', { name: 'Preview Image' })).toBeVisible()
@@ -158,8 +152,7 @@ it.each(['permission', 'fetch'] as const)(
 
 it('starts clipboard writing during the native click before the PNG request settles', async () => {
   await page.viewport(640, 480)
-  const request = createDeferred<Response>()
-  fetchImage.mockReturnValueOnce(request.promise)
+  const request = hold(servedImage())
   let activeGesture = false
   clipboardWrite.mockImplementationOnce(async (items) => {
     activeGesture = navigator.userActivation.isActive
@@ -169,6 +162,7 @@ it('starts clipboard writing during the native click before the PNG request sett
   await button('copyImage').click()
   expect(clipboardWrite).toHaveBeenCalledOnce()
   expect(activeGesture).toBe(true)
+  await request.arrived
   expect(copied).toBeUndefined()
   await expect.element(page.getByText('common.operation.imageCopied')).not.toBeInTheDocument()
   request.resolve(new Response(png))
@@ -183,10 +177,9 @@ it('starts clipboard writing during the native click before the PNG request sett
 
 it('converts real JPEG pixels into a decodable PNG for the clipboard', async () => {
   await page.viewport(640, 480)
-  fetchImage.mockResolvedValueOnce(
-    new Response(await createImageFile({ name: 'photo.jpg', type: 'image/jpeg' })),
-  )
-  await setup()
+  const jpeg = await createImageFile({ name: 'photo.jpg', type: 'image/jpeg' })
+  servedImage().mockResolvedValueOnce(new Response(jpeg))
+  await setup({ url: fullUrl() })
   await button('copyImage').click()
   await expect.element(page.getByText('common.operation.imageCopied')).toBeVisible()
   expect(copied!.type).toBe('image/png')
@@ -245,11 +238,11 @@ it.each(['network', 'http'])(
   'keeps the preview open after a %s download failure',
   async (failure) => {
     await page.viewport(640, 480)
-    if (failure === 'network') fetchImage.mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    else fetchImage.mockResolvedValueOnce(new Response(null, { status: 403 }))
+    if (failure === 'network') servedImage().mockRejectedValueOnce(networkError())
+    else servedImage().mockRejectedValueOnce(apiError({ status: 403, message: 'Forbidden' }))
     // boundary: the browser download handoff must not activate after transport failure.
     const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-    await setup()
+    await setup({ url: fullUrl() })
     await button('download').click()
     await expect.element(page.getByText('common.operation.downloadFailed')).toBeVisible()
     await expect.element(page.getByRole('dialog', { name: 'Preview Image' })).toBeVisible()

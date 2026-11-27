@@ -19,6 +19,7 @@ from constants.personal_access_token import PersonalAccessTokenPolicy
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from machinery.context import AccountRequestContext, RequestContext
+from machinery.scope import UNRESTRICTED, IdScope
 from services.app.console_service import ConsoleAppService
 from services.entities.app_entities import AppListParams
 from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
@@ -56,13 +57,13 @@ class PersonalAccessTokenSigningKeyUnavailableError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class PersonalAccessTokenGrant:
-    """Discovery filters: None leaves that domain unrestricted by the PAT;
-    an empty set denies every object; a nonempty set permits only those IDs.
+    """Discovery filters: ``UNRESTRICTED`` leaves that domain unrestricted by the
+    PAT; an empty set denies every object; a nonempty set permits only those IDs.
     Current account permissions remain mandatory for all three cases.
     """
 
-    app_ids: frozenset[str] | None = None
-    workspace_ids: frozenset[str] | None = None
+    app_ids: IdScope = UNRESTRICTED
+    workspace_ids: IdScope = UNRESTRICTED
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +78,22 @@ class PersonalAccessTokenScopes:
     resources: tuple[PersonalAccessTokenResourceRef, ...] = ()
     workspace_mode: Literal["all", "selected", "none"] = "all"
     workspace_ids: tuple[str, ...] = ()
+
+
+def workspace_scope_ids(scopes: PersonalAccessTokenScopes) -> IdScope:
+    if scopes.workspace_mode == "all":
+        return UNRESTRICTED
+    if scopes.workspace_mode == "selected":
+        return frozenset(scopes.workspace_ids)
+    return frozenset()
+
+
+def workspace_discovery_ids(scopes: PersonalAccessTokenScopes, resource_workspace_ids: frozenset[str]) -> IdScope:
+    """Include owner workspaces of selected resources so a resource-only PAT can still discover a usable workspace."""
+    scoped = workspace_scope_ids(scopes)
+    if scopes.resource_mode == "all" or scoped is UNRESTRICTED:
+        return UNRESTRICTED
+    return scoped | resource_workspace_ids if scopes.resource_mode == "selected" else scoped
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +181,8 @@ class PersonalAccessTokenRecord:
     creation_fingerprint: str | None = None
     scopes: PersonalAccessTokenScopes = PersonalAccessTokenScopes()
     validated_resources: tuple[PersonalAccessTokenResourceView, ...] = field(default=(), repr=False)
+    # Populated by store reads (`get`/`authenticate`); empty on create inputs.
+    resource_workspace_ids: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -378,16 +397,11 @@ class PersonalAccessTokenService:
         record = self._tokens.get(account_id, token_id)
         if record.summary.expires_at is not None and record.summary.expires_at <= naive_utc_now():
             raise PersonalAccessTokenInvalidError()
-        if policy in {PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY, PersonalAccessTokenPolicy.IDENTITY_DISCOVERY}:
-            mode = record.scopes.workspace_mode
+        if policy is PersonalAccessTokenPolicy.IDENTITY_DISCOVERY:
+            return PersonalAccessTokenGrant(workspace_ids=workspace_scope_ids(record.scopes))
+        if policy is PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY:
             return PersonalAccessTokenGrant(
-                workspace_ids=(
-                    None
-                    if mode == "all"
-                    else frozenset(record.scopes.workspace_ids)
-                    if mode == "selected"
-                    else frozenset()
-                )
+                workspace_ids=workspace_discovery_ids(record.scopes, record.resource_workspace_ids)
             )
         if policy is PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS:
             scopes = record.scopes
@@ -410,7 +424,7 @@ class PersonalAccessTokenService:
             # Endpoint guards own account RBAC, WebApp access and API switches.
             # A PAT only restricts the resources those existing guards may admit.
             return PersonalAccessTokenGrant(
-                app_ids=None
+                app_ids=UNRESTRICTED
                 if scopes.resource_mode == "all"
                 else selected
                 if scopes.resource_mode == "selected"

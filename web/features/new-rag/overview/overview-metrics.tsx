@@ -45,7 +45,7 @@ function MetricCard({
         <h2 className="system-xs-medium">{title}</h2>
         {help && (
           <Infotip>
-            <InfotipTrigger aria-label={help} className="size-4" />
+            <InfotipTrigger aria-label={help} />
             <InfotipContent className="max-w-[260px]">{help}</InfotipContent>
           </Infotip>
         )}
@@ -193,7 +193,7 @@ export function QueryOutcomesChart() {
             <Infotip>
               <InfotipTrigger
                 aria-label={t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
-                className="ms-1 inline-flex size-4 align-middle"
+                className="ms-1 align-middle"
               />
               <InfotipContent className="max-w-[260px]">
                 {t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
@@ -221,7 +221,7 @@ export function QueryOutcomesChart() {
           <Infotip>
             <InfotipTrigger
               aria-label={t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}
-              className="ms-1 inline-flex size-4 align-middle"
+              className="ms-1 align-middle"
             />
             <InfotipContent className="max-w-[260px]">
               {t(($) => $['overview.answerRateHelp'], { ns: 'knowledgeOverview' })}

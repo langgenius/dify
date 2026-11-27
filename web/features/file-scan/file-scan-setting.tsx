@@ -22,11 +22,10 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
@@ -113,7 +112,7 @@ function FileScanPolicyEditor({ className, controller }: FileScanSettingProps) {
   const typeLabel = useFileScanProviderTypeLabel()
   const titleId = useId()
   const enableDescriptionId = useId()
-  const canManageScanners = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { canManageCredential: canManageScanners } = useCredentialPermissions()
   const { current, disabled, isError, product, refetch, saveError, scannerMissing, update } =
     controller
   const providersQuery = useQuery(consoleQuery.fileScan.providers.get.queryOptions())

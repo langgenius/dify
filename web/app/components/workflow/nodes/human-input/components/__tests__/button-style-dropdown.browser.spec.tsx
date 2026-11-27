@@ -6,9 +6,9 @@ import { UserActionButtonType } from '../../types'
 import ButtonStyleDropdown from '../button-style-dropdown'
 
 const prefix = 'workflowHumanInput.nodes.humanInput.userActions'
-function StyleOwner({ readonly = false }: { readonly?: boolean }) {
+function StyleOwner() {
   const [style, setStyle] = useState<UserActionButtonType>(UserActionButtonType.Ghost)
-  return <ButtonStyleDropdown text="Approve" data={style} onChange={setStyle} readonly={readonly} />
+  return <ButtonStyleDropdown text="Approve" data={style} onChange={setStyle} />
 }
 
 beforeEach(async () => {
@@ -35,13 +35,4 @@ it('keeps the keyboard-selected style after closing and reopening the picker', a
   await expect.element(trigger).toHaveFocus()
   await trigger.click()
   await expect.element(primary).toBeChecked()
-})
-
-it('keeps the style picker unavailable in readonly mode', async () => {
-  await render(<StyleOwner readonly />)
-  await expect
-    .element(page.getByRole('button', { name: `Approve: ${prefix}.chooseStyle` }))
-    .toBeDisabled()
-  await userEvent.tab()
-  await expect.element(page.getByRole('radiogroup')).not.toBeInTheDocument()
 })

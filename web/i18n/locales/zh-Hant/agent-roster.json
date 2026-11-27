@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "清除篩選",
   "roster.createAgent": "建立 Agent",
   "roster.createDialog.description": "在目前工作區建立一個可複用 Agent。",
   "roster.createDialog.title": "建立 Agent",
@@ -24,6 +25,7 @@
   "roster.editInfo": "編輯資訊",
   "roster.empty": "暫無 Agent",
   "roster.emptySearch": "沒有符合的 Agent",
+  "roster.emptySearchDescription": "請嘗試其他搜尋條件或清除目前的篩選。",
   "roster.filters.all": "全部",
   "roster.filters.createdByMe": "我建立的",
   "roster.filters.drafts": "草稿",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Inline Agent 建立失敗。請重新整理後再試。",
   "roster.nodeSelector.dialogLabel": "選擇 Agent",
   "roster.nodeSelector.manageInAgentConsole": "在 Agents 中管理",
-  "roster.nodeSelector.searchPlaceholder": "搜尋…",
+  "roster.nodeSelector.searchPlaceholder": "搜尋 Agent…",
   "roster.nodeSelector.startFromScratch": "從空白開始",
   "roster.references.label": "使用 {{name}} 的工作流程",
   "roster.references.trigger": "使用 {{name}} 的工作流程",

@@ -1,11 +1,11 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentRosterListState } from '../agent-roster-list'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentRosterList } from '../agent-roster-list'
 
@@ -40,6 +40,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.copy.post': duplicateAgentMutationFn,
+      'tags.get': () => [],
     }),
   }
 })
@@ -62,21 +63,17 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   ...overrides,
 })
 
-const renderState = (state: AgentRosterListState) => {
-  const queryClient = new QueryClient()
-
-  const result = render(
-    <QueryClientProvider client={queryClient}>
+const renderState = (state: AgentRosterListState) =>
+  renderWithConsoleQuery(
+    <>
       <h1 id="agent-roster-title">Agents</h1>
-      <AgentRosterList aria-labelledby="agent-roster-title" state={state} />
-    </QueryClientProvider>,
+      <AgentRosterList
+        aria-labelledby="agent-roster-title"
+        state={state}
+        onOpenTagManagement={vi.fn()}
+      />
+    </>,
   )
-
-  return {
-    ...result,
-    queryClient,
-  }
-}
 
 type ReadyState = Extract<AgentRosterListState, { status: 'ready' }>
 
@@ -147,13 +144,26 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agentRoster.roster.status.active')).not.toBeInTheDocument()
   })
 
-  it('shows the filtered empty state when no agents match', () => {
-    renderList([], { emptyState: 'filtered' })
+  it('explains how to recover from a filtered empty result', () => {
+    renderList([], { emptyState: { type: 'filtered', onClearFilters: vi.fn() } })
 
     expect(
       screen.getByRole('heading', { name: 'agentRoster.roster.emptySearch' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('agentRoster.roster.emptySearchDescription')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'agentRoster.roster.clearFilters' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the initial empty roster without offering to clear filters', () => {
+    renderList([])
+
+    expect(screen.getByRole('heading', { name: 'agentRoster.roster.empty' })).toBeInTheDocument()
     expect(screen.queryByText('agentRoster.roster.emptySearchDescription')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentRoster.roster.clearFilters' }),
+    ).not.toBeInTheDocument()
   })
 
   it('announces a loading error and lets the user retry', async () => {

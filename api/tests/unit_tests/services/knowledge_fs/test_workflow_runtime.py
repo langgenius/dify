@@ -3,7 +3,7 @@
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Never, cast
+from typing import cast
 
 import pytest
 from flask import Flask
@@ -18,6 +18,9 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import StringSegment
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from services.api_based_extension_adapters import WorkspaceTokenCipher
+from services.api_moderation_adapters import request_inputs, request_outputs
 from services.api_moderation_service import APIModerationService
 from services.knowledge_fs import runtime as runtime_module
 from services.knowledge_fs import workflow_runtime
@@ -70,7 +73,7 @@ class _FakeIdentity:
     def load_user(self, account_id: str) -> None:
         raise AssertionError(f"workflow runtime registration must not load account {account_id}")
 
-    def get_account_by_id(self, account_id: str) -> None:
+    def load_account(self, account_id: str) -> None:
         raise AssertionError(f"workflow runtime registration must not load account {account_id}")
 
 
@@ -95,20 +98,18 @@ def test_application_registers_lazy_workflow_runtime_dependencies(monkeypatch: p
     monkeypatch.setattr(workflow_runtime.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: session_maker)
     tracing = build_tracing_services(database_client=session_maker)
-
-    def unexpected_moderation(*_args: object) -> Never:
-        raise AssertionError("workflow runtime registration must not run API moderation")
-
-    api_moderation = APIModerationService(
-        find_extension=unexpected_moderation,
-        decrypt_key=unexpected_moderation,
-        request_inputs=unexpected_moderation,
-        request_outputs=unexpected_moderation,
-    )
     monkeypatch.setattr(
         ext_application_services,
         "build_application_services",
-        lambda **_kwargs: _FakeApplicationServices(tracing=tracing, api_moderation=api_moderation),
+        lambda **_kwargs: _FakeApplicationServices(
+            tracing=tracing,
+            api_moderation=APIModerationService(
+                find_extension=APIBasedExtensionRepository(session_factory=session_maker).find_extension,
+                decrypt_key=WorkspaceTokenCipher().decrypt,
+                request_inputs=request_inputs,
+                request_outputs=request_outputs,
+            ),
+        ),
     )
 
     ext_application_services.init_app(app)

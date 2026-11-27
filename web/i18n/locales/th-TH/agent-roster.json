@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "ล้างตัวกรอง",
   "roster.createAgent": "สร้างตัวแทน",
   "roster.createDialog.description": "สร้าง Agent ที่นำกลับมาใช้ใหม่ได้ในเวิร์กสเปซนี้",
   "roster.createDialog.title": "สร้างตัวแทน",
@@ -24,6 +25,7 @@
   "roster.editInfo": "แก้ไขข้อมูล",
   "roster.empty": "ยังไม่มีตัวแทน",
   "roster.emptySearch": "ไม่มีตัวแทนที่ตรงกัน",
+  "roster.emptySearchDescription": "ลองค้นหาอีกครั้งหรือล้างตัวกรองปัจจุบัน",
   "roster.filters.all": "ทั้งหมด",
   "roster.filters.createdByMe": "สร้างโดยฉัน",
   "roster.filters.drafts": "ฉบับร่าง",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "สร้างตัวแทนแบบอินไลน์ไม่สำเร็จ รีเฟรชและลองอีกครั้ง",
   "roster.nodeSelector.dialogLabel": "เลือกตัวแทน",
   "roster.nodeSelector.manageInAgentConsole": "จัดการใน Agents",
-  "roster.nodeSelector.searchPlaceholder": "ค้นหา…",
+  "roster.nodeSelector.searchPlaceholder": "ค้นหาตัวแทน…",
   "roster.nodeSelector.startFromScratch": "เริ่มต้นจากศูนย์",
   "roster.references.label": "เวิร์กโฟลว์ที่ใช้ {{name}}",
   "roster.references.trigger": "เวิร์กโฟลว์ที่ใช้ {{name}}",

@@ -3,6 +3,12 @@ import type {
   WorkflowCommentDetail,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { UserProfile } from '../types'
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverPortal,
+  PopoverPositioner,
+} from '@langgenius/dify-ui/popover'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -10,14 +16,18 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { CommentIcon } from '../comment-icon'
 import { CommentInput } from '../comment-input'
+import { getCommentMarkerId } from '../marker-id'
+import { commentThreadPlacement } from '../popup-placement'
 import { CommentThread } from '../thread'
+import { seedMentionableUsers } from './comment-query-data'
+import { CommentThreadFixture } from './comment-thread-fixture'
 
 let mentionableUsers: UserProfile[] = []
 const renderWithAccountProfile = (ui: Parameters<typeof renderWorkflowFlowComponent>[0]) => {
   const { queryClient } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  seedMentionableUsers(queryClient, mentionableUsers)
   return renderWorkflowFlowComponent(ui, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': mentionableUsers } },
   })
 }
 
@@ -64,7 +74,7 @@ describe('Comment thread focus', () => {
         kind === 'draft' ? (
           <CommentInput position={{ x: 0, y: 0 }} onSubmit={() => {}} onCancel={onClose} />
         ) : (
-          <CommentThread comment={createComment()} onClose={onClose} onReply={() => {}} />
+          <CommentThreadFixture comment={createComment()} onClose={onClose} onReply={() => {}} />
         ),
       )
       await user.click(screen.getByRole('textbox'))
@@ -85,13 +95,14 @@ describe('Comment thread focus', () => {
     function Comment() {
       const [comment, setComment] = useState(createComment)
       const [opened, setOpened] = useState(false)
+      const [handle] = useState(() => createPopoverHandle())
       return (
         <div id="workflow-container">
           <CommentIcon
             comment={comment}
+            threadHandle={handle}
             isActive={opened}
-            onClick={() => setOpened(true)}
-            onPositionUpdate={(position) => {
+            onPositionUpdate={(_commentId, position) => {
               onPositionUpdate(position)
               setComment((current) => ({
                 ...current,
@@ -100,9 +111,18 @@ describe('Comment thread focus', () => {
               }))
             }}
           />
-          {opened && (
-            <CommentThread comment={comment} onClose={() => setOpened(false)} onReply={() => {}} />
-          )}
+          <Popover
+            handle={handle}
+            open={opened}
+            triggerId={opened ? getCommentMarkerId(comment.id) : null}
+            onOpenChange={setOpened}
+          >
+            <PopoverPortal>
+              <PopoverPositioner {...commentThreadPlacement}>
+                {opened && <CommentThread comment={comment} onReply={() => {}} />}
+              </PopoverPositioner>
+            </PopoverPortal>
+          </Popover>
         </div>
       )
     }
@@ -126,7 +146,7 @@ describe('Comment thread focus', () => {
     expect(onPositionUpdate).toHaveBeenCalledTimes(2)
   })
 
-  it('confirms reply deletion outside the menu and restores focus when cancelled', async () => {
+  it('confirms reply deletion inside the reply menu, starting on cancel', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const onDelete = vi.fn()
     const onClose = vi.fn()
@@ -141,7 +161,7 @@ describe('Comment thread focus', () => {
       },
     ]
     renderWithAccountProfile(
-      <CommentThread
+      <CommentThreadFixture
         comment={comment}
         onClose={onClose}
         onReply={() => {}}
@@ -154,36 +174,48 @@ describe('Comment thread focus', () => {
       name: 'workflowComments.comments.aria.replyActions',
     })
     await user.click(trigger)
-    const deleteItem = screen.getByRole('menuitem', {
-      name: 'workflowComments.comments.actions.deleteReply',
-    })
-    await user.click(deleteItem)
-    const confirm = await screen.findByRole('alertdialog', {
+    await user.click(
+      screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
+    )
+    const confirmation = await screen.findByRole('dialog', {
       name: 'workflowComments.comments.confirm.deleteReplyTitle',
     })
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(onDelete).not.toHaveBeenCalled()
-    await user.click(within(confirm).getByRole('button', { name: 'common.operation.cancel' }))
+    // The safe choice starts focused, so a second Enter cannot delete.
+    await waitFor(() =>
+      expect(
+        within(confirmation).getByRole('button', { name: 'common.operation.cancel' }),
+      ).toHaveFocus(),
+    )
+    await user.keyboard('{Enter}')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'workflowComments.comments.confirm.deleteReplyTitle',
+        }),
+      ).not.toBeInTheDocument(),
+    )
     await waitFor(() => expect(trigger).toHaveFocus())
+    expect(onDelete).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
+
     await user.click(trigger)
     await user.click(
-      await screen.findByRole('menuitem', {
-        name: 'workflowComments.comments.actions.deleteReply',
-      }),
+      screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
     )
-    const reopened = await screen.findByRole('alertdialog')
-    await user.click(within(reopened).getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', {
+          name: 'workflowComments.comments.confirm.deleteReplyTitle',
+        }),
+      ).getByRole('button', { name: 'common.operation.delete' }),
+    )
     expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
-    expect(reopened).toBeVisible()
-    await user.keyboard('{Escape}')
-    await waitFor(() => expect(trigger).toHaveFocus())
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('keeps reply deletion pending until the reply disappears, then focuses the reply input', async () => {
+  it('focuses the reply input once a deleted reply is gone', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    const onDelete = vi.fn()
     let finishDeletion!: () => void
     const deletion = new Promise<void>((resolve) => {
       finishDeletion = resolve
@@ -201,17 +233,16 @@ describe('Comment thread focus', () => {
 
     function Thread() {
       const [comment, setComment] = useState(initial)
+      // Like the canvas, the thread shows its loading state while the reply is deleted.
       const [loading, setLoading] = useState(false)
       return (
-        <CommentThread
+        <CommentThreadFixture
           comment={comment}
           loading={loading}
-          onClose={() => {}}
           onReply={() => {}}
           onReplyEdit={() => {}}
-          onReplyDelete={async (id) => {
+          onReplyDelete={async () => {
             setLoading(true)
-            onDelete(id)
             await deletion
             setComment({ ...initial, replies: [] })
             setLoading(false)
@@ -228,36 +259,28 @@ describe('Comment thread focus', () => {
     await user.click(
       screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
     )
-    const dialog = await screen.findByRole('alertdialog')
-    const confirm = within(dialog).getByRole('button', { name: 'common.operation.delete' })
-    await user.click(confirm)
-    await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
-    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
-    await user.click(confirm)
-    await user.keyboard('{Escape}')
-    expect(dialog).toBeInTheDocument()
-    expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
-
+    await user.click(
+      within(
+        await screen.findByRole('dialog', {
+          name: 'workflowComments.comments.confirm.deleteReplyTitle',
+        }),
+      ).getByRole('button', { name: 'common.operation.delete' }),
+    )
     await act(async () => finishDeletion())
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(
-      screen.queryByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
-    ).not.toBeInTheDocument()
+
+    expect(screen.queryByText('A reply')).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
   })
 
-  it('focuses the reply input when navigating to another comment', async () => {
+  it('starts a fresh reply draft on navigation and keeps focus on the navigation button', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    const onReply = vi.fn()
 
     function Comments() {
       const [comment, setComment] = useState(createComment)
       return (
-        <CommentThread
+        <CommentThreadFixture
           comment={comment}
-          onClose={() => {}}
-          onReply={onReply}
-          canGoNext
+          onReply={() => {}}
           onNext={() => setComment((current) => ({ ...current, id: 'comment-2' }))}
         />
       )
@@ -265,13 +288,70 @@ describe('Comment thread focus', () => {
 
     renderWithAccountProfile(<Comments />)
     await act(() => vi.advanceTimersByTimeAsync(100))
-    const replyInput = screen.getByRole('textbox')
-    expect(replyInput).toHaveFocus()
+    expect(screen.getByRole('textbox')).toHaveFocus()
+    await user.type(screen.getByRole('textbox'), 'Unsent draft')
 
-    await user.click(
-      screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' }),
+    const next = screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' })
+    await user.click(next)
+
+    expect(next).toHaveFocus()
+    expect(screen.getByRole('textbox')).toHaveValue('')
+  })
+
+  it('does not pull focus to a newer comment when an earlier reply finishes sending', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    let finishReply = () => {}
+
+    function Comments() {
+      const [comment, setComment] = useState(createComment)
+      return (
+        <CommentThreadFixture
+          comment={comment}
+          onReply={() => new Promise<void>((resolve) => (finishReply = resolve))}
+          onNext={() => setComment((current) => ({ ...current, id: 'comment-2' }))}
+        />
+      )
+    }
+
+    renderWithAccountProfile(<Comments />)
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    await user.type(screen.getByRole('textbox'), 'Sent from the first comment{Enter}')
+    const next = screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' })
+    await user.click(next)
+    expect(next).toHaveFocus()
+
+    await act(async () => {
+      finishReply()
+      await vi.advanceTimersByTimeAsync(100)
+    })
+    expect(next).toHaveFocus()
+  })
+
+  it('keeps the mentions of a reply drafted while the previous one is still sending', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    mentionableUsers = [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }]
+    const sent: Array<[string, string[]]> = []
+    let finishFirst = () => {}
+    renderWithAccountProfile(
+      <CommentThreadFixture
+        comment={createComment()}
+        onReply={(content, ids) => {
+          sent.push([content, ids ?? []])
+          if (sent.length === 1) return new Promise<void>((resolve) => (finishFirst = resolve))
+        }}
+      />,
     )
     await act(() => vi.advanceTimersByTimeAsync(100))
-    expect(replyInput).toHaveFocus()
+    const reply = screen.getByRole('textbox')
+    await user.type(reply, 'First{Enter}')
+    await user.type(reply, 'Second @Bo')
+    await user.click(await screen.findByText('bob@example.com'))
+    await act(async () => finishFirst())
+    await user.type(reply, '{Enter}')
+
+    expect(sent).toEqual([
+      ['First', []],
+      ['Second @Bob', ['user-2']],
+    ])
   })
 })

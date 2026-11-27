@@ -24,7 +24,7 @@ export function AgentLogNav({ agentOrToolLogItemStack, onShowAgentOrToolLog }: A
   return (
     <Breadcrumb
       aria-label={t(($) => $['nodes.agent.strategy.label'], { ns: 'workflowAgent' })}
-      className="flex min-h-8 items-center bg-components-panel-bg p-1 pr-3"
+      className="flex min-h-8 items-center bg-components-panel-bg p-1 pe-3"
     >
       <BreadcrumbList className="gap-0">
         <BreadcrumbItem className="shrink-0">

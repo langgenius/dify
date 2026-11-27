@@ -27,6 +27,7 @@ export type SimpleDataResponse = {
 }
 
 export type RagPipelineDatasetImportPayload = {
+  icon_info?: RagPipelineIconInfo | null
   yaml_content: string
 }
 
@@ -395,6 +396,13 @@ export type RagPipelinePublishedRunResponse = PipelineGenerateResponse | Workflo
 export type WorkflowUpdatePayload = {
   marked_comment?: string | null
   marked_name?: string | null
+}
+
+export type RagPipelineIconInfo = {
+  icon: string
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'

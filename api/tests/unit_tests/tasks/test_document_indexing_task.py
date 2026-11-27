@@ -5,6 +5,7 @@ status persistence, indexing, and summary dispatch. These tests persist real
 ORM rows so each phase observes only committed database state.
 """
 
+import logging
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -190,7 +191,7 @@ class TestTaskEnqueuing:
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
         with (
-            patch.object(DocumentIndexingTaskProxy, "features"),
+            patch("services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=None),
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
@@ -219,10 +220,9 @@ class TestTaskEnqueuing:
         task_attribute: str,
     ) -> None:
         with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
+            patch("services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=plan),
             patch.object(DocumentIndexingTaskProxy, task_attribute, Mock()) as task,
         ):
-            features.billing.subscription.plan = plan
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.setex.assert_called()
@@ -234,10 +234,12 @@ class TestTaskEnqueuing:
     ) -> None:
         mock_redis.get.return_value = b"1"
         with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
+            patch(
+                "services.document_indexing_proxy.base.FeatureService.get_workspace_plan",
+                return_value=CloudPlan.PROFESSIONAL,
+            ),
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
-            features.billing.subscription.plan = CloudPlan.PROFESSIONAL
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.lpush.assert_called_once()
@@ -560,6 +562,52 @@ class TestSummaryDispatch:
         sqlite_session.expire_all()
         assert sqlite_session.get(Dataset, dataset_id) is None
         summary_delay.assert_not_called()
+
+    def test_document_removed_during_indexing_is_logged_in_summary_phase(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+        indexing_runner: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            summary_index_setting={"enable": True},
+            need_summary=[True, True, True],
+        )
+        _patch_features(monkeypatch, _features())
+        removed_id = document_ids[1]
+
+        def finish_and_remove_one(refs: list[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                for ref in refs:
+                    document = writer.get(Document, ref.document_id)
+                    assert document is not None
+                    if document.id == removed_id:
+                        writer.delete(document)
+                    else:
+                        document.indexing_status = IndexingStatus.COMPLETED
+
+        indexing_runner.run.side_effect = finish_and_remove_one
+        queued_ids: list[str] = []
+
+        def record_summary(_dataset_id: str, document_id: str, _options: None) -> None:
+            queued_ids.append(document_id)
+
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", record_summary)
+
+        with caplog.at_level(logging.WARNING, logger="tasks.document_indexing_task"):
+            _document_indexing(dataset_id, document_ids)
+
+        warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+        assert warnings == [f"Document {removed_id} not found after indexing"]
+        assert sorted(queued_ids) == sorted([document_ids[0], document_ids[2]])
 
 
 class TestTenantQueue:

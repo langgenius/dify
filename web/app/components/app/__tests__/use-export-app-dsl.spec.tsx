@@ -1,12 +1,17 @@
 import type { ReactNode } from 'react'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { ExportAppDialog } from '@/app/components/app-sidebar/app-info/export-app-dialog'
+import { ExportAppWarning } from '@/app/components/app-sidebar/app-info/export-app-warning'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import AppExportConfirmModal from '../export-confirm-modal'
+import { ExportSecretsDialogContent } from '../export-secrets-dialog'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '../use-export-app-dsl'
 
 const mocks = vi.hoisted(() => ({
@@ -36,23 +41,32 @@ const mocks = vi.hoisted(() => ({
   ),
 }))
 
-vi.mock('@/service/console', async () => {
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  return {
-    consoleQuery: createTanstackQueryUtils(
-      {
-        apps: {
-          byAppId: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  // Keep the real policies (including read freshness) over stubbed export requests.
+  const consoleClient = new Proxy(actual.consoleClient, {
+    get(target, property, receiver) {
+      if (property !== 'apps') return Reflect.get(target, property, receiver)
+      return new Proxy(target.apps, {
+        get(apps, appsProperty, appsReceiver) {
+          if (appsProperty !== 'byAppId') return Reflect.get(apps, appsProperty, appsReceiver)
+          return {
+            ...apps.byAppId,
             export: { get: mocks.exportAppDsl },
             workflows: {
-              draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
+              ...apps.byAppId.workflows,
+              draft: {
+                ...apps.byAppId.workflows.draft,
+                environmentVariables: { get: mocks.getEnvironmentVariables },
+              },
             },
-          },
+          }
         },
-      },
-      { path: ['console'] },
-    ),
-  }
+      })
+    },
+  })
+  return { ...actual, consoleClient, consoleQuery: createConsoleQuery(consoleClient) }
 })
 
 vi.mock('@/utils/download', () => ({
@@ -102,21 +116,23 @@ describe('useExportAppDsl', () => {
     function ExportConfirmation() {
       const { exportAppDsl, isExporting, errorMessage } = useExportAppDsl()
       return (
-        <AppExportConfirmModal
-          envList={[{ name: 'TOKEN', value: 'masked' }]}
-          isExporting={isExporting}
-          errorMessage={errorMessage}
-          onClose={onClose}
-          onConfirm={async (includeSecret) => {
-            const result = await exportAppDsl({
-              appId: 'app-1',
-              appName: 'App',
-              includeSecret,
-              feedback: 'dialog',
-            })
-            return result.status === 'downloaded'
-          }}
-        />
+        <AlertDialog open>
+          <ExportSecretsDialogContent
+            envList={[{ name: 'TOKEN', value: 'masked' }]}
+            isExporting={isExporting}
+            errorMessage={errorMessage}
+            onConfirm={async (includeSecret) => {
+              if (isExporting) return
+              const result = await exportAppDsl({
+                appId: 'app-1',
+                appName: 'App',
+                includeSecret,
+                feedback: 'dialog',
+              })
+              if (result.status === 'downloaded') onClose()
+            }}
+          />
+        </AlertDialog>
       )
     }
     render(<ExportConfirmation />, { wrapper: createWrapper() })
@@ -141,7 +157,7 @@ describe('useExportAppDsl', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
     expect(mocks.exportAppDsl).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: expect.objectContaining({ include_secret: true }) }),
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.anything(),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
@@ -170,7 +186,7 @@ describe('useExportAppDsl', () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith('app.ifpkgDownloaded')
     expect(mocks.exportAppDsl).toHaveBeenCalledWith(
       { params: { app_id: 'agent-app-id' }, query: { include_secret: false, format: 'ifpkg' } },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.anything(),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
     const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
@@ -205,7 +221,7 @@ describe('useExportAppDsl', () => {
           format: 'ifpkg',
         },
       },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.anything(),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
       data: archive,
@@ -265,7 +281,7 @@ describe('useExportAppDsl', () => {
         params: { app_id: input.appId },
         query: { include_secret: false, version_id: input.versionId },
       },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.anything(),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
@@ -304,7 +320,7 @@ describe('useExportAppDsl', () => {
         params: { app_id: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b' },
         query: { include_secret: false },
       },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.anything(),
     )
     expect(mocks.toastPromise).toHaveBeenCalledTimes(1)
     expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
@@ -410,16 +426,25 @@ describe('useExportWorkflowAppDsl', () => {
       .mockResolvedValueOnce(new File(['package'], 'workflow.ifpkg'))
 
     function ExportEntry() {
-      const [open, setOpen] = useState(true)
+      const [handle] = useState(() => createAlertDialogHandle())
       return (
         <>
-          <button onClick={() => setOpen(true)}>Reopen</button>
-          <ExportAppDialog appDetail={app} open={open} onClose={() => setOpen(false)} />
+          <button onClick={() => handle.open(null)}>Reopen</button>
+          <AlertDialog handle={handle}>
+            <AlertDialogContent>
+              <ExportAppWarning
+                appDetail={app}
+                onSecretsRequired={vi.fn()}
+                onExported={() => handle.close()}
+              />
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )
     }
 
     render(<ExportEntry />, { wrapper: createWrapper() })
+    await user.click(screen.getByRole('button', { name: 'Reopen' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Draft unavailable')
     expect(mocks.exportAppDsl).not.toHaveBeenCalled()
@@ -437,6 +462,39 @@ describe('useExportWorkflowAppDsl', () => {
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
   })
 
+  it.each(['check', 'download'] as const)(
+    'does not report an error when the dialog cancels the %s',
+    async (stage) => {
+      const controller = new AbortController()
+      mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })
+      const transport = stage === 'check' ? mocks.getEnvironmentVariables : mocks.exportAppDsl
+      transport.mockImplementationOnce(
+        (_input, { signal }: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+          }),
+      )
+      const { result } = renderHook(() => useExportWorkflowAppDsl(), { wrapper: createWrapper() })
+      let request: ReturnType<typeof result.current.exportWorkflowAppDsl>
+      await act(async () => {
+        request = result.current.exportWorkflowAppDsl({
+          appId: 'workflow-app-id',
+          appName: 'Support Workflow',
+          feedback: 'dialog',
+          signal: controller.signal,
+        })
+      })
+      await waitFor(() => expect(transport).toHaveBeenCalledTimes(1))
+      await act(async () => {
+        controller.abort()
+        await expect(request).resolves.toEqual({ status: 'cancelled' })
+      })
+      await waitFor(() => expect(result.current.isExporting).toBe(false))
+      expect(result.current.errorMessage).toBeUndefined()
+      expect(mocks.downloadBlob).not.toHaveBeenCalled()
+    },
+  )
+
   it('checks generated workflow environment variables before exporting', async () => {
     mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })
     mocks.exportAppDsl.mockResolvedValue({ data: 'kind: app\n' })
@@ -453,7 +511,7 @@ describe('useExportWorkflowAppDsl', () => {
 
     expect(mocks.getEnvironmentVariables).toHaveBeenCalledWith(
       { params: { app_id: 'workflow-app-id' } },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.anything(),
     )
     expect(mocks.getEnvironmentVariables.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.exportAppDsl.mock.invocationCallOrder[0]!,

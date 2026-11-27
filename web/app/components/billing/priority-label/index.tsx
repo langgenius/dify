@@ -26,10 +26,10 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
   const label = priority[plan]
 
   return (
-    <div className={cn('ml-1 inline-flex shrink-0 items-center gap-1', className)}>
+    <div className={cn('ms-1 inline-flex shrink-0 items-center gap-1', className)}>
       <span className="inline-flex h-4.5 items-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium text-text-accent-secondary">
         {(plan === 'professional' || plan === 'team') && (
-          <RiAedFill aria-hidden className="mr-0.5 size-3" />
+          <RiAedFill aria-hidden className="me-0.5 size-3" />
         )}
         {t(($) => $[`plansCommon.priority.${label}`], { ns: 'billing' })}
       </span>

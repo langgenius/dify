@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { toast } from '@/app/notifications'
 import { DocumentActionType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
@@ -13,7 +14,7 @@ type UseDocumentActionsOptions = {
   datasetId: string
   selectedIds: string[]
   downloadableSelectedIds: string[]
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
   onClearSelection: () => void
 }
 
@@ -21,13 +22,7 @@ type UseDocumentActionsOptions = {
  * Generate a random ZIP filename for bulk document downloads.
  * We intentionally avoid leaking dataset info in the exported archive name.
  */
-const generateDocsZipFileName = (): string => {
-  const randomPart =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
-  return `${randomPart}-docs.zip`
-}
+const generateDocsZipFileName = (): string => `${uuid4()}-docs.zip`
 
 export const useDocumentActions = ({
   datasetId,
@@ -40,19 +35,25 @@ export const useDocumentActions = ({
 
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
+    documents.status.byAction.batch.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: generateSummary } = useMutation(
-    documents.generateSummary.post.mutationOptions({ context: { silent: true } }),
+    documents.generateSummary.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: deleteDocuments } = useMutation(
-    documents.delete.mutationOptions({ context: { silent: true } }),
+    documents.delete.mutationOptions({ meta: { errorToast: false } }),
   )
   const { mutateAsync: retryIndexDocuments } = useMutation(
-    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip({
-    silent: true,
+    meta: { errorToast: false },
   })
 
   type SupportedActionType =

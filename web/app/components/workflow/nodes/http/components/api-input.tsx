@@ -55,10 +55,10 @@ const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, on
               'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5',
             )}
           >
-            <div className="w-12 pl-0.5 text-xs leading-4.5 font-medium text-text-primary uppercase">
+            <div className="w-12 ps-0.5 text-xs leading-4.5 font-medium text-text-primary uppercase">
               {method}
             </div>
-            {!readonly && <RiArrowDownSLine className="ml-1 size-3.5 text-text-secondary" />}
+            {!readonly && <RiArrowDownSLine className="ms-1 size-3.5 text-text-secondary" />}
           </div>
         }
         popupClassName="top-[34px] w-[108px]"

@@ -1,12 +1,11 @@
 import type { ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
+import type { RecordedStreamCall } from '@/test/stream-recorder'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { onTestFinished } from 'vite-plus/test'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
-// oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
-import { sseGet, ssePost } from '@/service/base'
 import {
   AppSourceType,
   fetchSuggestedQuestions,
@@ -25,10 +24,13 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWrapper from '../chat-wrapper'
 import { EmbeddedChatbotContext } from '../context'
 
-// oxlint-disable-next-line typescript/no-deprecated -- Existing SSE transport boundary; no new API is introduced.
-const post = vi.mocked(ssePost)
-// oxlint-disable-next-line typescript/no-deprecated -- Existing workflow event transport boundary.
-const get = vi.mocked(sseGet)
+const { sseGet, ssePost } = vi.hoisted(() => ({
+  sseGet: vi.fn<RecordedStreamCall>(),
+  ssePost: vi.fn<RecordedStreamCall>(),
+}))
+
+const post = ssePost
+const get = sseGet
 const ContextProvider = EmbeddedChatbotContext.Provider
 
 vi.mock('@/next/navigation', () => ({
@@ -36,16 +38,28 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/chat/share-code',
 }))
 vi.mock('@/app/components/base/amplitude/web-app-event', () => ({ trackWebAppEvent: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: vi.fn(),
-  sseGet: vi.fn(),
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: sseGet })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
 }))
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   fetchSuggestedQuestions: vi.fn().mockResolvedValue({ data: ['Tell me more'] }),
   stopChatMessageResponding: vi.fn().mockResolvedValue(undefined),
   submitHumanInputForm: vi.fn().mockResolvedValue(undefined),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),

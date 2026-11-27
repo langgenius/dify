@@ -9,27 +9,10 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import MarketplaceUpdateDialog from '../from-market-place'
 
-const mocks = vi.hoisted(() => ({ upgrade: vi.fn(), exclude: vi.fn() }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.upgrade.marketplace.post': mocks.upgrade,
-      'workspaces.current.plugin.autoUpgrade.exclude.post': mocks.exclude,
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
-    }),
-  }
-})
 const payload = (downgrade = false): UpdateFromMarketPlacePayload => ({
   category: PluginCategoryEnum.tool,
   originalPackageInfo: {
@@ -72,17 +55,36 @@ async function renderUpdate(warnAboutAutoUpdate = false) {
 }
 const upgrade = () => page.getByRole('button', { name: 'plugin.upgrade.upgrade' })
 const warning = () => page.getByRole('alertdialog')
+function installPluginApi() {
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          plugin: {
+            upgrade: {
+              marketplace: { post: () => ({ all_installed: true, task_id: '' }) },
+            },
+            autoUpgrade: { exclude: { post: () => ({ success: true }) } },
+            tasks: { get: () => ({ tasks: [] }) },
+          },
+          models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
+  return fake.console.workspaces.current.plugin
+}
+let pluginApi: ReturnType<typeof installPluginApi>
 beforeEach(() => {
-  mocks.upgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
-  mocks.exclude.mockReset().mockResolvedValue({})
-  onTestFinished(guardUnexpectedFetch())
+  pluginApi = installPluginApi()
 })
 afterEach(() => {
   toast.dismiss()
 })
 
 it('shows an immediate task failure and lets the user retry successfully', async () => {
-  mocks.upgrade.mockResolvedValueOnce({
+  pluginApi.upgrade.marketplace.post.mockResolvedValueOnce({
     all_installed: false,
     task_id: 'failed-upgrade',
     task: {
@@ -118,34 +120,39 @@ it('shows an immediate task failure and lets the user retry successfully', async
 })
 
 it('waits for exclusion before downgrading and keeps the warning modal locked until completion', async () => {
-  const exclusion = createDeferred<object>()
   const pending = createDeferred<PluginInstallTaskStartResponse>()
-  mocks.exclude.mockReturnValueOnce(exclusion.promise)
-  mocks.upgrade.mockReturnValueOnce(pending.promise)
+  const exclusion = hold(pluginApi.autoUpgrade.exclude.post)
+  pluginApi.upgrade.marketplace.post.mockReturnValueOnce(pending.promise)
   await renderUpdate(true)
   await page
     .getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' })
     .click()
   await expect.element(page.getByRole('button', { name: 'app.newApp.Cancel' })).toBeDisabled()
-  expect(mocks.exclude).toHaveBeenCalledExactlyOnceWith({
-    body: { plugin_id: 'plugin-1', category: PluginCategoryEnum.tool },
-  })
-  expect(mocks.upgrade).not.toHaveBeenCalled()
+  await expect
+    .poll(() => pluginApi.autoUpgrade.exclude.post)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: { plugin_id: 'plugin-1', category: PluginCategoryEnum.tool },
+      }),
+    )
+  expect(pluginApi.upgrade.marketplace.post).not.toHaveBeenCalled()
   await userEvent.keyboard('{Escape}')
   await expect.element(warning()).toBeVisible()
-  exclusion.resolve({})
-  await expect.poll(() => mocks.upgrade.mock.calls.length).toBe(1)
+  exclusion.resolve({ success: true })
+  await expect.poll(() => pluginApi.upgrade.marketplace.post.mock.calls.length).toBe(1)
   await userEvent.keyboard('{Escape}')
   await expect.element(warning()).toBeVisible()
   pending.resolve({ all_installed: true, task_id: '' })
   await expect.element(warning()).not.toBeInTheDocument()
   await expect.element(page.getByText('Plugin list refreshed')).toBeVisible()
-  expect(mocks.upgrade).toHaveBeenCalledExactlyOnceWith({
-    body: {
-      original_plugin_unique_identifier: 'plugin@1.0.0',
-      new_plugin_unique_identifier: 'plugin@0.9.0',
-    },
-  })
+  expect(pluginApi.upgrade.marketplace.post).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      body: {
+        original_plugin_unique_identifier: 'plugin@1.0.0',
+        new_plugin_unique_identifier: 'plugin@0.9.0',
+      },
+    }),
+  )
 })
 
 it('downgrades without excluding future automatic upgrades when that action is chosen', async () => {
@@ -155,18 +162,20 @@ it('downgrades without excluding future automatic upgrades when that action is c
     .click()
   await expect.element(warning()).not.toBeInTheDocument()
   await expect.element(page.getByText('Plugin list refreshed')).toBeVisible()
-  expect(mocks.exclude).not.toHaveBeenCalled()
-  expect(mocks.upgrade).toHaveBeenCalledExactlyOnceWith({
-    body: {
-      original_plugin_unique_identifier: 'plugin@1.0.0',
-      new_plugin_unique_identifier: 'plugin@0.9.0',
-    },
-  })
+  expect(pluginApi.autoUpgrade.exclude.post).not.toHaveBeenCalled()
+  expect(pluginApi.upgrade.marketplace.post).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      body: {
+        original_plugin_unique_identifier: 'plugin@1.0.0',
+        new_plugin_unique_identifier: 'plugin@0.9.0',
+      },
+    }),
+  )
 })
 
 it('hands an accepted installation to the real background task list without claiming completion', async () => {
   const pending = createDeferred<PluginInstallTaskStartResponse>()
-  mocks.upgrade.mockReturnValueOnce(pending.promise)
+  pluginApi.upgrade.marketplace.post.mockReturnValueOnce(pending.promise)
   await renderUpdate(true)
   const submit = page.getByRole('button', {
     name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade',
@@ -206,11 +215,13 @@ it('hands an accepted installation to the real background task list without clai
   await page.getByRole('button', { name: 'plugin.task.installing' }).click()
   await expect.element(page.getByText('Test Plugin', { exact: true })).toBeVisible()
   await expect.element(page.getByText('Downloading plugin', { exact: true })).toBeVisible()
-  expect(mocks.upgrade).toHaveBeenCalledOnce()
+  expect(pluginApi.upgrade.marketplace.post).toHaveBeenCalledOnce()
 })
 
 it('keeps a rejected upgrade available for retry and closes only after success', async () => {
-  mocks.upgrade.mockRejectedValueOnce(new Error('Upgrade request failed'))
+  pluginApi.upgrade.marketplace.post.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'UPGRADE_FAILED', message: 'Upgrade request failed' }),
+  )
   await renderUpdate()
   await upgrade().click()
   await expect.element(upgrade()).toBeEnabled()
@@ -218,5 +229,5 @@ it('keeps a rejected upgrade available for retry and closes only after success',
   await upgrade().click()
   await expect.element(page.getByText('Plugin list refreshed')).toBeVisible()
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  expect(mocks.upgrade).toHaveBeenCalledTimes(2)
+  expect(pluginApi.upgrade.marketplace.post).toHaveBeenCalledTimes(2)
 })

@@ -60,7 +60,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
       render={<button type="button" />}
       className={cn(
         'w-[calc(100%-8px)]',
-        'justify-between gap-4 border-0 bg-transparent px-3 text-left text-text-secondary',
+        'justify-between gap-4 border-0 bg-transparent px-3 text-start text-text-secondary',
       )}
     >
       {t(($) => $['common.addBlock'], { ns: 'workflow' })}

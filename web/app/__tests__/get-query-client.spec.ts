@@ -1,4 +1,5 @@
-import { dehydrate } from '@tanstack/react-query'
+import { dehydrate, MutationObserver, QueryObserver } from '@tanstack/react-query'
+import { consoleQuery } from '@/service/console'
 import { getQueryClient } from '../get-query-client'
 
 describe('getQueryClient', () => {
@@ -37,6 +38,26 @@ describe('getQueryClient', () => {
 
     resolveQuery('ready')
     await queryExecution
+    queryClient.removeQueries({ queryKey })
+  })
+
+  it("refreshes the mutation's domain after a console write that no policy covers", async () => {
+    const queryClient = getQueryClient()
+    const queryKey = consoleQuery.apps.get.queryKey({ input: { query: { page: 1 } } })
+    const queryFn = vi.fn(async () => queryFn.mock.calls.length)
+    const query = new QueryObserver(queryClient, { queryKey, queryFn, staleTime: Infinity })
+    const unsubscribe = query.subscribe(() => undefined)
+    await vi.waitFor(() => expect(query.getCurrentResult().data).toBe(1))
+    // Freshness is compared by timestamp: the write succeeds after the read.
+    await new Promise((resolve) => setTimeout(resolve, 2))
+
+    await new MutationObserver(queryClient, {
+      mutationKey: consoleQuery.apps.byAppId.put.mutationKey(),
+      mutationFn: async () => 'renamed',
+    }).mutate(undefined)
+
+    await vi.waitFor(() => expect(query.getCurrentResult().data).toBe(2))
+    unsubscribe()
     queryClient.removeQueries({ queryKey })
   })
 })

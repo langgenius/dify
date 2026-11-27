@@ -4,9 +4,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from services.credentials.query import CredentialQuery
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.model_entities import DefaultModelSetting, ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.entities.provider_configuration import configuration_for_model
 from core.entities.provider_entities import CredentialConfiguration
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -27,6 +28,7 @@ from enums import DeploymentEdition
 from extensions import ext_hosting_provider
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
+from models.enums import ProviderQuotaType
 from models.provider import (
     Provider,
     ProviderCredential,
@@ -52,12 +54,14 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.errors.app_model_config import ProviderNotFoundError
+from services.feature_service import ProviderCatalogBilling
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
 class _ProviderSummaryState:
+    has_free_quota: bool = False
     has_custom_provider: bool = False
     available_credentials: list[CredentialConfiguration] = field(default_factory=list)
     has_custom_models: bool = False
@@ -80,15 +84,33 @@ class ModelProviderService:
         self, tenant_id: str, model_type: ModelType, *, session: Session
     ) -> tuple[str, str] | None:
         """Resolve a workspace default without creating or committing a default-model record."""
+        return self._get_saved_default_model_selection(tenant_id, model_type, session=session) or (
+            self._discover_default_model_selection(tenant_id, model_type)
+        )
+
+    def resolve_default_model_selection(
+        self, tenant_id: str, model_type: ModelType, *, session_factory: sessionmaker[Session]
+    ) -> tuple[str, str] | None:
+        """Read the saved choice in a short session, then discover a model if no choice is saved."""
+        with session_factory() as session:
+            saved_model = self._get_saved_default_model_selection(tenant_id, model_type, session=session)
+        return saved_model or self._discover_default_model_selection(tenant_id, model_type)
+
+    @staticmethod
+    def _get_saved_default_model_selection(
+        tenant_id: str, model_type: ModelType, *, session: Session
+    ) -> tuple[str, str] | None:
+        """Return the saved provider and model names, or None when there is no selection."""
         saved_model = session.execute(
             select(TenantDefaultModel.provider_name, TenantDefaultModel.model_name).where(
                 TenantDefaultModel.tenant_id == tenant_id,
                 TenantDefaultModel.model_type == model_type,
             )
         ).one_or_none()
-        if saved_model is not None:
-            return saved_model.provider_name, saved_model.model_name
+        return (saved_model.provider_name, saved_model.model_name) if saved_model is not None else None
 
+    def _discover_default_model_selection(self, tenant_id: str, model_type: ModelType) -> tuple[str, str] | None:
+        """Return the first active provider model, or None if discovery fails or finds none."""
         try:
             configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
             available_models = configurations.get_models(model_type=model_type, only_active=True)
@@ -207,11 +229,12 @@ class ModelProviderService:
 
     @staticmethod
     def _load_provider_summary_states(tenant_id: str) -> dict[str, _ProviderSummaryState]:
-        """Load only the workspace columns required by the collapsed provider list."""
+        """Load workspace configuration metadata, including free quota row presence, without reading secrets."""
         with session_factory.create_session() as session:
-            custom_provider_rows = session.execute(
+            provider_rows = session.execute(
                 select(
                     Provider.provider_name,
+                    Provider.provider_type,
                     Provider.credential_id,
                     ProviderCredential.provider_name.label("credential_provider_name"),
                     ProviderCredential.credential_name,
@@ -225,8 +248,13 @@ class ModelProviderService:
                 )
                 .where(
                     Provider.tenant_id == tenant_id,
-                    Provider.provider_type == ProviderType.CUSTOM,
                     Provider.is_valid.is_(True),
+                    or_(
+                        Provider.provider_type == ProviderType.CUSTOM,
+                        and_(
+                            Provider.provider_type == ProviderType.SYSTEM, Provider.quota_type == ProviderQuotaType.FREE
+                        ),
+                    ),
                 )
             ).all()
             credential_rows = session.execute(
@@ -270,26 +298,23 @@ class ModelProviderService:
                 )
             )
 
-        selected_provider_priorities: dict[str, bool] = {}
-        for provider in custom_provider_rows:
+        for provider in provider_rows:
             provider_name = str(ModelProviderID(provider.provider_name))
             state = states[provider_name]
-            state.has_custom_provider = True
-
-            is_canonical_row = provider.provider_name == provider_name
-            if provider_name in selected_provider_priorities and not is_canonical_row:
-                continue
-            selected_provider_priorities[provider_name] = is_canonical_row
-            state.current_credential_id = provider.credential_id
-            if (
-                provider.credential_provider_name is not None
-                and str(ModelProviderID(provider.credential_provider_name)) == provider_name
-            ):
-                state.current_credential_name = provider.credential_name
-                state.current_credential_usable = True
-            else:
-                state.current_credential_name = None
-                state.current_credential_usable = False
+            if provider.provider_type == ProviderType.SYSTEM:
+                state.has_free_quota = True
+            elif not state.has_custom_provider or provider.provider_name == provider_name:
+                state.has_custom_provider = True
+                state.current_credential_id = provider.credential_id
+                if (
+                    provider.credential_provider_name is not None
+                    and str(ModelProviderID(provider.credential_provider_name)) == provider_name
+                ):
+                    state.current_credential_name = provider.credential_name
+                    state.current_credential_usable = True
+                else:
+                    state.current_credential_name = None
+                    state.current_credential_usable = False
 
         for model in custom_model_rows:
             states[str(ModelProviderID(model.provider_name))].has_custom_models = True
@@ -304,11 +329,6 @@ class ModelProviderService:
             states[provider_name].preferred_provider_type = preferred_provider.preferred_provider_type
 
         return dict(states)
-
-    @staticmethod
-    def _has_system_provider_hosting_configuration(provider: str) -> bool:
-        configuration = ext_hosting_provider.hosting_configuration.provider_map.get(provider)
-        return bool(configuration and configuration.enabled and configuration.quotas)
 
     @staticmethod
     def _select_binding(
@@ -345,7 +365,11 @@ class ModelProviderService:
     def get_provider_summary_list(
         self, tenant_id: str
     ) -> tuple[list[ModelProviderSummaryResponse], dict[str, ModelProviderPluginSummaryResponse]]:
-        """Build the complete first-screen provider projection without assembling provider configurations."""
+        """List workspace providers without reading credit balances or decrypting credentials.
+
+        A provider is configured if the workspace has custom configuration or is eligible for
+        hosting. If Billing is unavailable, report only workspace-owned configuration.
+        """
         # Read bindings first: remote-debug identity changes invalidate provider metadata
         # before the provider cache is consulted.
         bindings = PluginService.list_model_provider_bindings(tenant_id)
@@ -364,6 +388,7 @@ class ModelProviderService:
                 binding,
             )
 
+        billing = ProviderCatalogBilling(tenant_id)
         provider_summaries: list[ModelProviderSummaryResponse] = []
         emitted_provider_names: set[str] = set()
         for provider_entity in provider_entities:
@@ -387,11 +412,15 @@ class ModelProviderService:
             ) or state.has_custom_models
             custom_present = state.has_custom_provider or state.has_custom_models
             provider_binding = bindings_by_provider.get(provider_name)
+            hosting = ext_hosting_provider.hosting_configuration.provider_map.get(provider_name)
             system_enabled = bool(
                 provider_binding
-                and self._has_system_provider_hosting_configuration(provider_name)
-                and provider_binding.source != PluginInstallationSource.Package
+                and provider_binding.source == PluginInstallationSource.Marketplace
                 and provider_binding.verified
+                and hosting
+                and hosting.enabled
+                and hosting.quotas
+                and hosting.select_quota_type(billing.pool_type, has_free_quota=state.has_free_quota) is not None
             )
             preferred_provider_type = self._get_preferred_provider_type(
                 state,
@@ -805,15 +834,16 @@ class ModelProviderService:
 
     def get_model_parameter_rules(self, tenant_id: str, provider: str, model: str) -> list[ParameterRule]:
         """
-        get model parameter rules.
-        Only supports LLM.
+        Get LLM parameter rules using credentials from the same route as inference.
 
         :param tenant_id: workspace id
         :param provider: provider name
         :param model: model name
         :return:
         """
-        provider_configuration = self._get_provider_configuration(tenant_id, provider)
+        provider_configuration = configuration_for_model(
+            self._get_provider_configuration(tenant_id, provider), ModelType.LLM, model
+        )
 
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)

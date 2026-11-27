@@ -6,7 +6,7 @@ import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '../agent-composer/conversions'
 import { AgentComposerProvider } from '../agent-composer/provider'
-import { AgentOrchestratePanel } from '../agent-detail/configure/components/orchestrate'
+import { AgentConfigurationPanel } from '../agent-editor/configuration'
 
 export function AgentTemplateOrchestration({
   agentId,
@@ -26,7 +26,7 @@ export function AgentTemplateOrchestration({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex min-w-0 basis-1/2 flex-col overflow-hidden bg-components-panel-bg pt-1 pr-1 pb-1 @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none"
+      className="flex min-w-0 basis-1/2 flex-col overflow-hidden bg-components-panel-bg pe-1 pt-1 pb-1 @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none"
     >
       <h2
         id={headingId}
@@ -35,7 +35,7 @@ export function AgentTemplateOrchestration({
         {t(($) => $['tryApp.agentConfiguration'])}
       </h2>
       <AgentComposerProvider initialDraft={draft}>
-        <AgentOrchestratePanel
+        <AgentConfigurationPanel
           agentId={agentId}
           trialAppId={appId}
           trialVersionId={versionId}

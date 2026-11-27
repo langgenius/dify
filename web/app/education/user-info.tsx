@@ -1,9 +1,9 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useLogout } from '@/service/use-common'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { getAvatarInitial } from '@/utils/avatar'
 
 const UserInfo = () => {
@@ -13,12 +13,12 @@ const UserInfo = () => {
     select: (data) => data.profile,
   })
 
-  const { mutate: logout } = useLogout()
+  const { mutate: logout } = useMutation(logoutMutationOptions())
 
   return (
-    <div className="relative flex items-center justify-between rounded-xl border-4 border-components-panel-on-panel-item-bg bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 pt-9 pr-8 pb-6 pl-6 shadow-shadow-shadow-5">
-      <div className="absolute top-0 left-0 flex items-center">
-        <div className="flex h-5.5 items-center bg-components-panel-on-panel-item-bg pt-1 pl-2 system-2xs-semibold-uppercase text-text-accent-light-mode-only">
+    <div className="relative flex items-center justify-between rounded-xl border-4 border-components-panel-on-panel-item-bg bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 ps-6 pe-8 pt-9 pb-6 shadow-shadow-shadow-5">
+      <div className="absolute inset-s-0 top-0 flex items-center">
+        <div className="flex h-5.5 items-center bg-components-panel-on-panel-item-bg ps-2 pt-1 system-2xs-semibold-uppercase text-text-accent-light-mode-only">
           {t(($) => $.currentSigned, { ns: 'education' })}
         </div>
         <span
@@ -27,7 +27,7 @@ const UserInfo = () => {
         />
       </div>
       <div className="flex items-center">
-        <Avatar className="mr-4" size="2xl" aria-hidden="true">
+        <Avatar className="me-4" size="2xl" aria-hidden="true">
           <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
           <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
         </Avatar>

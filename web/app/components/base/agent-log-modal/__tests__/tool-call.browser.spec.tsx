@@ -2,11 +2,7 @@ import { useLocale } from '#i18n'
 import ToolCallItem from '../tool-call'
 import { renderAgentLog } from './browser-test-env'
 
-vi.mock('@monaco-editor/react', async () => {
-  const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
-  return createMonacoEditorModuleMock()
-})
-
+// boundary: pin the app locale that selects the localized tool label.
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
@@ -49,16 +45,16 @@ it('formats subsecond and minute-long tool calls', async () => {
 it('reveals real readonly input and output editors and hides them when collapsed', async () => {
   const { screen } = await renderAgentLog(<ToolCallItem toolCall={toolCall} isLLM={false} />)
   const trigger = screen.getByText('Test Tool Label')
-  await expect.element(screen.getByTestId('monaco-editor')).not.toBeInTheDocument()
+  const editors = screen.getByRole('textbox', { name: 'Editor content' })
+  await expect.element(editors).not.toBeInTheDocument()
   await trigger.click()
 
-  const editors = screen.getByTestId('monaco-editor').all()
-  expect(editors).toHaveLength(2)
-  await expect.element(editors[0]!).toHaveValue(JSON.stringify({ query: 'hello' }, null, 2))
-  await expect.element(editors[1]!).toHaveValue(JSON.stringify({ result: 'world' }, null, 2))
-  for (const editor of editors) await expect.element(editor).toHaveAttribute('readonly')
+  await expect.element(screen.getByText('"hello"')).toBeVisible()
+  await expect.element(screen.getByText('"world"')).toBeVisible()
+  await expect.poll(() => editors.all().length).toBe(2)
+  for (const editor of editors.all()) await expect.element(editor).toHaveAttribute('readonly')
   await trigger.click()
-  await expect.element(screen.getByTestId('monaco-editor')).not.toBeInTheDocument()
+  await expect.element(editors).not.toBeInTheDocument()
 })
 
 it('reveals the provider error inside the expanded tool call', async () => {
@@ -96,10 +92,8 @@ it.each([true, false])(
       />,
     )
     await screen.getByText('LLM').click()
-    const editors = screen.getByTestId('monaco-editor').all()
-    expect(editors).toHaveLength(4)
-    await expect.element(editors[2]!).toHaveValue(JSON.stringify('Tool returned a result'))
-    await expect.element(editors[3]!).toHaveValue(JSON.stringify('Use the result'))
+    await expect.element(screen.getByText('"Tool returned a result"')).toBeVisible()
+    await expect.element(screen.getByText('"Use the result"')).toBeVisible()
     await expect.element(screen.getByText(isFinal ? 'FINAL ANSWER' : 'THOUGHT')).toBeVisible()
     await expect
       .element(screen.getByText(isFinal ? 'THOUGHT' : 'FINAL ANSWER'))

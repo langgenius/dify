@@ -5,12 +5,14 @@
 `AppRequestContext`, a `ModerationRule`, text, and an `input` or `output` phase.
 It does not depend on Flask, persistence models, or app queue managers.
 
-An enabled phase returns only after approval. Any flagged verdict raises
-`ModerationRejectedError`, including API verdicts requesting replacement rather
-than rejection. Backend failures propagate instead of silently approving text.
+For an explicit policy, an enabled phase returns only after approval. Any
+flagged verdict raises `ModerationRejectedError`, including API verdicts requesting
+replacement rather than rejection. Explicit backend failures propagate.
 Disabled phases perform no moderation I/O. Strict policies are selected when
-assembling models. App OpenAI rules consume typed platform failures to apply
-configured replacement behavior; they never schedule a second OpenAI check.
+assembling models. For a direct app invocation, an admitted Cloud AI-credit LLM
+uses platform moderation. An app OpenAI rule can supply replacement text without
+scheduling another OpenAI check. Other direct app invocations use tenant
+moderation only for the configured app phases.
 
 ## Automatic platform moderation
 
@@ -19,9 +21,7 @@ defaults to false. It takes effect only when `DEPLOYMENT_EDITION=CLOUD`, matchin
 the edition boundary used to assemble AI Credits quotas. Non-Cloud deployments
 ignore the switch. When disabled or outside Cloud, no automatic policy is
 constructed or injected. Explicit model policies and app-level keyword/API
-moderation remain available in every edition. App-level Model Moderation is a
-silent no-op when the model is not admitted for automatic AI-credit moderation;
-enabling its app configuration does not select a tenant moderation provider.
+moderation remain available in every edition.
 
 When enabled,
 Cloud LLMs using a system provider with a current `TRIAL` or `PAID`
@@ -30,72 +30,102 @@ This includes `CREDITS` and legacy `TIMES` quotas, which reserve one credit per 
 This applies to manager-created models, credential-cache hits, and direct `ModelInstance`
 construction, including exhausted or unlimited credit quotas. Cloud custom-key,
 non-LLM, and token-based quota modes do not receive this automatic policy.
-Merely configuring a fallback identifier does not enable moderation.
 
-For example, an operator can enable moderation and pin an optional fallback:
+To enable platform moderation:
 
 ```dotenv
 DEPLOYMENT_EDITION=CLOUD
 HOSTED_MODERATION_ENABLED=true
 HOSTED_OPENAI_API_KEY=<server-owned-api-key>
-HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER=langgenius/openai:<version>@<checksum>
 ```
 
-The policy uses `langgenius/openai/openai` / `omni-moderation-latest` with the
-server-owned `HOSTED_OPENAI_API_KEY` and optional OpenAI base/organization settings.
-These credentials do not require enabling an OpenAI LLM trial/paid provider or
-initializing Cloud hosting quotas. It first discovers the tenant's
-`langgenius/openai/openai` provider and requires a Marketplace installation,
-moderation capability, the official package identity, and a verified manifest.
-If that route is absent, untrusted, or fails, it uses
-`HOSTED_MODERATION_PLUGIN_UNIQUE_IDENTIFIER`, a pinned
-`langgenius/openai:<version>@<checksum>` fallback supplied by SRE. A positive
-violation verdict is final: it never triggers fallback to obtain another verdict.
-The fallback identifier is validated only if needed; a working trusted tenant
-plugin does not require it. Missing both routes, platform credentials, or a
-working backend fails closed. A user's API key is never substituted.
+The platform calls OpenAI's `omni-moderation-latest` directly using the server-owned
+key and optional `HOSTED_OPENAI_API_ORGANIZATION`. It posts an `input` array to
+`/v1/moderations` on `HOSTED_OPENAI_API_BASE` (default host `https://api.openai.com`),
+adding the `/v1` suffix to the base URL when absent. API and worker processes need
+HTTPS egress to this endpoint through the SSRF-protected client. Requests use TLS
+verification and do not follow redirects.
 
-The verified tenant route uses `/plugin/{tenant_id}/dispatch/moderation/invoke`,
-which authorizes the plugin through the tenant's installation record. The SRE
-fallback instead uses `/v2/invoke/dispatch/moderation/invoke` with a mandatory
-`X-Plugin-Unique-Identifier` and the admitted `tenant_id` in JSON. Both routes
-keep daemon server-key authentication, platform credentials, and pinned package
-identity. An arbitrary client request cannot select direct dispatch or replace
-the server-managed fallback identifier.
-
-The v2 route is the daemon's existing direct-runtime invocation surface, originally
-introduced for Slim remote CLI calls. It parses the supplied identifier, preserves
-tenant execution context and cluster routing, and does not query tenant plugin
-installations. It is not an installation endpoint or a public tenant API. The
-fallback runtime must already be deployed and available to the daemon; direct
-dispatch does not bootstrap a missing package. The fallback remains an SRE-owned
-trust decision, while tenant-selected packages still require Marketplace and
-verified-manifest checks. Moderation does not construct a
-tenant model instance or enter `CreditPoolService`, so it neither reserves nor
-deducts user credits. The target LLM retains its normal accounting, including
-charging consumed usage when output is rejected.
-
-The former `HostingModerationFeature` and `HOSTED_MODERATION_PROVIDERS` allowlist
-have been removed. `HOSTED_MODERATION_ENABLED` controls the Cloud platform policy.
-The old
-random input-fragment check is replaced by complete segmented checks.
+Platform moderation does not need a tenant plugin, tenant API key, or a hosted
+OpenAI trial/paid provider. It never falls back to a plugin or tenant key. The
+moderation service does not reserve or deduct user credits; the target LLM retains
+normal accounting, including charges for consumed usage when its output is rejected.
 
 An explicitly supplied policy supplements enabled platform moderation rather
-than disabling it. When the switch is off, only the explicit policy applies.
+than disabling it. When the switch is off, only the explicit model policy applies
+at model assembly.
+
+### Batch transport and verdict cache
+
+The service deduplicates exact segments, looks up existing verdicts, and sends
+only misses. API and worker processes accept these positive integer settings:
+
+| Environment variable | Default | Scope |
+| --- | ---: | --- |
+| `MODERATION_NON_STREAM_SEGMENT_SIZE` | 2000 | Characters per input or non-streaming output segment. |
+| `HOSTED_MODERATION_BATCH_MAX_ITEMS` | 32 | Segments per platform moderation request. |
+| `HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES` | 131072 (128 KiB) | Combined UTF-8 text bytes per platform batch, excluding JSON overhead. |
+
+These are local limits, not OpenAI limits. Batching never cuts a segment again:
+an individually oversized segment is sent alone. Results must contain one
+strict boolean per input, in input order. A true verdict rejects the invocation;
+a missing or malformed result is an unavailable check, not approval. Streaming
+checks and releases each existing buffer independently.
+
+Redis stores only HMAC-SHA256 digests scoped to the tenant, credential,
+endpoint, organization, and requested model, plus the boolean verdict. Positive
+and negative verdicts expire after `HOSTED_MODERATION_CACHE_TTL` seconds
+(default 600; 0 disables caching without disabling batching). Cache hits do not
+refresh the TTL. Provider failures are never cached, Redis failures are treated
+as misses, and an outage or concurrent misses can cause duplicate provider
+checks. After an OpenAI alias update, older verdicts can be reused until expiry.
+The cache and batch transport do not apply to tenant-configured app rules.
+
+### Platform backend unavailability
+
+A recognized platform failure (missing credentials, invalid endpoint, timeout,
+HTTP error, or invalid response) logs a scoped warning and lets generation or
+delivery proceed for unclassified segments. A skip is not an approval and does
+not populate the cache. A verified cached or live rejection still blocks.
+
+Input and non-streaming checks stop making remote requests in that phase after
+the first failure. On a streaming output failure, the rest of that stream
+checks cached flags only, including its final partial buffer, so it does not
+wait for repeated upstream timeouts. A new invocation can try OpenAI again.
+Unexpected internal errors and explicit or tenant-configured policy failures
+still propagate.
 
 ## App-level ownership and replacement
 
-Each model guard exclusively owns its input
-and output checks. App Model Moderation never proactively invokes OpenAI, selects
-credentials, or caches approved content. Its configuration only selects a reply
-for a real platform rejection. Disabling an app phase does not disable mandatory
-platform checks. Different model invocations remain independent even when their
-text is identical.
+Chatbot, Completion, and legacy Agent Chat use their resolved model bundle to
+select OpenAI moderation. App input and output handling use the same admission
+check as model guard binding:
+
+| Direct app invocation | Platform checks | App OpenAI rule |
+| --- | --- | --- |
+| Cloud, switch on, AI-credit LLM | Input and output, even without an app rule | No independent check; can supply a phase-specific preset |
+| Cloud, switch on, other LLM | None | Tenant OpenAI for enabled phases |
+| Cloud, switch off | None | Tenant OpenAI for enabled phases |
+| Non-Cloud, either switch value | None | Tenant OpenAI for enabled phases |
+
+Tenant OpenAI requires a workspace OpenAI plugin and custom credentials for
+`omni-moderation-latest`. Its model resolution does not fall back to system
+credentials or the platform gateway, even if the workspace prefers a system
+OpenAI provider for other calls. Disabling an app rule or phase does not disable
+mandatory platform checks. Each invocation enforces the available verdicts,
+including those reused by the batch service.
+
+Chatflows, Workflows, and remote Agent apps do not have a single local model
+bundle representing their response. Per-model guards still apply to eligible
+LLM calls at model assembly (including calls through the Agent LLM gateway).
+This change does not add tenant checks to individual nodes or remote calls.
+App-level OpenAI checks, where supported by those app types, continue to defer
+when the Cloud switch is on; otherwise they use the tenant backend.
 
 App checks and reply selection are stateless functions of admitted app
 configuration. Startup injects a stateless policy port. There is no execution
 record, context variable, failure queue, or model-to-response side channel.
-Every model invocation still performs its own checks.
+Every model invocation still enforces its own policy before generation.
 
 App input verdicts are handled before generation: direct-output rejection returns
 the preset as a normal reply, while overrides continue with rewritten inputs.
@@ -131,23 +161,22 @@ replaced answer, so resumption does not lose buffered text or recheck the prefix
 
 Application entry points call the same stateless app adapters; no request wrapper
 is required to enable the correct behavior. Standalone kernel callers without an
-application container retain the keyword/API factory fallback. Their App OpenAI
-toggle is still a no-op and never selects an independent tenant provider.
-Independent use of the OpenAI capability retains tenant credentials, accounting,
-and failure behavior. It is an explicit independent
-operation, not an execution path selected by the App Model Moderation toggle.
+application container retain the factory fallback for keyword, API, and OpenAI
+rules not deferred to the platform. If the caller has no resolved app model
+bundle, only the Cloud deployment switch determines whether to defer OpenAI.
 
 The plugin `/invoke/app` entry uses the same app generator behavior. Invocation
 validates tenant ownership before model work. Nested or subsequent requests have
 no accumulated moderation state to inherit.
 
 Remote Agent LLM gateway calls do not transport local workflow node error types.
-Local App Model Moderation never issues hosted or tenant
-checks and cannot infer a typed remote verdict from text. Other configured app
-rules remain independent. A client-provided approval flag must never skip platform checks.
+App response handling cannot infer a typed remote verdict from text. Other
+configured app rules remain independent. A client-provided approval flag must
+never skip platform checks.
 
-For direct Chatbot and legacy Agent Chat generation, an enabled app OpenAI rule
-uses its nonblank phase-specific preset when the platform rejects the invocation.
+In Cloud, for direct Chatbot and legacy Agent Chat generation, an enabled app
+OpenAI rule uses its nonblank phase-specific preset when the platform rejects
+the invocation.
 These chat modes use the English default `This message can’t be processed.` when
 no matching preset is configured, including when app moderation or its phase is disabled.
 The default is resolved at runtime, not written into the app configuration.
@@ -163,7 +192,7 @@ rejections follow their configured node error strategy. Its own keyword/API
 input and output verdicts still use normal App replacement handling, without
 forcing an internal node failure over the workflow's own result.
 
-Unavailable checks are errors, not content verdicts, and never become replies.
+A skipped platform check produces neither a content verdict nor an error reply.
 Direct App check failures and unhandled typed model failures produce a safe
 `moderation_unavailable` error. Internal workflow errors keep Graphon's native
 projection. Historical unavailability cannot change a successful response or
@@ -176,8 +205,7 @@ transport handling; arbitrary upstream errors are not inferred to be platform
 rejections from their text.
 
 Platform rejections emit warning logs containing tenant, app, and phase.
-Tenant-route failures also log fallback warnings. Moderated content and API keys
-are never included in these log messages.
+Moderated content and API keys are not included.
 
 ## App errors
 
@@ -189,9 +217,10 @@ Application errors carry stable moderation identifiers and safe messages, not
 HTTP status codes or response payloads. HTTP handlers and the SSE response
 converter convert them to dedicated HTTP exceptions only after reply replacement
 has been considered. Those HTTP exceptions own the status, public error code,
-and description, keeping HTTP and SSE mappings consistent. Keyword/API input and output backend failures are
-adapted to the same unavailable error; private diagnostics remain in the cause
-and server logs, never in the client-facing response.
+and description, keeping HTTP and SSE mappings consistent. App input and output
+backend failures (including missing tenant OpenAI credentials) use the same
+unavailable error; private diagnostics remain in the cause and server logs,
+never in the client-facing response.
 
 | Condition | Code | Event status | Message |
 | --- | --- | --- | --- |
@@ -202,7 +231,7 @@ These statuses describe the SSE error payload, not the HTTP status of an already
 opened stream. Non-streaming requests on Console, Service API, and Web API return
 the same codes and messages with the corresponding HTTP status. Check failures
 retain their original cause in backend logs but
-never expose platform credentials or plugin diagnostics to clients. Provider
+never expose platform credentials or backend diagnostics to clients. Provider
 generation failures retain their existing classification. When an error is
 surfaced, approved segments remain visible; neither error delivers the rejected
 or unchecked segment.
@@ -277,11 +306,12 @@ whole-stream buffering mode selected by an omitted limit.
 
 ## Guarantees and trade-offs
 
-- Input checks precede model invocation and quota reservation. All prompt roles,
-  text parts of multimodal messages, and assistant tool arguments are inspected
-  as independent non-stream segments, so long prompts are fully covered without
-  sending one oversized moderation request. Each platform-checked prompt message
-  has its own segment sequence. Each model invocation performs its own checks;
+- Input checks precede model invocation and quota reservation. When the backend
+  is available, all prompt roles, text parts of multimodal messages, and assistant
+  tool arguments are inspected as independent non-stream segments without sending
+  one oversized moderation request. Each platform-checked prompt message
+  has its own segment sequence. The batch transport may reuse verdicts for exact
+  segments, but it never changes message or segment boundaries. Platform-owned
   app response handling does not schedule another moderation request.
 - Opaque Agent gateway dictionaries are inspected through validated copies. The
   original payload and provider-specific extension fields are forwarded unchanged.
@@ -292,8 +322,8 @@ whole-stream buffering mode selected by an omitted limit.
   name-only deltas. Streaming name fields are collected separately so repeated
   tool metadata cannot split the argument text being checked.
 - Non-stream output is checked in independent segments of
-  `MODERATION_NON_STREAM_SEGMENT_SIZE` characters. Every segment must pass before
-  the original result is returned.
+  `MODERATION_NON_STREAM_SEGMENT_SIZE` characters before returning the original
+  result, subject to the platform availability policy above.
 - Streaming output is buffered until it reaches
   `MODERATION_BUFFER_SIZE` characters, then checked before its original
   chunks are released. The final partial segment is also checked before release.
@@ -323,10 +353,11 @@ requires an explicit boolean `flagged` field in every API verdict.
 ## RAG failure handling
 
 `ModerationInvocationError` identifies model moderation failures without exposing
-application-service dependencies to RAG consumers. Both rejection and service
-unavailability remain terminal for the affected operation, not best-effort empty
-results. Input failures precede model usage; output failures retain consumed
-model charges.
+application-service dependencies to RAG consumers. Rejection and any
+unavailability propagated by a strict policy or an unexpected failure remain
+terminal, not best-effort empty results. Recognized platform outages are handled
+at the model guard, not by RAG. Input failures precede model usage; output
+failures retain consumed model charges.
 
 QA formatting propagates moderation failures in preview and indexing mode.
 Bounded worker futures return failures to the indexing coordinator, which marks

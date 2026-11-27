@@ -13,9 +13,9 @@ export type EvaluationConfigPayload = {
   judgment_config?: JudgmentConfig | null
 }
 
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
+export type EvaluationDatasetInvalidError = ErrorResponse & {
+  code: 'evaluation_dataset_invalid'
+  status: 400
 }
 
 export type ErrorResponse = {
@@ -28,6 +28,11 @@ export type ErrorResponse = {
   status: number
 }
 
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type EvaluationConfigResponse = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric> | null
@@ -35,6 +40,11 @@ export type EvaluationConfigResponse = {
   evaluation_model?: string | null
   evaluation_model_provider?: string | null
   judgment_config?: JudgmentConfig | null
+}
+
+export type EvaluationConfigInvalidError = ErrorResponse & {
+  code: 'evaluation_config_invalid'
+  status: 400
 }
 
 export type EvaluationDefaultMetricsResponse = {
@@ -92,6 +102,8 @@ export type EvaluationRunResponse = {
   dataset_file_id?: string | null
   error?: string | null
   evaluation_config_id: string
+  evaluation_model?: string | null
+  evaluation_model_provider?: string | null
   failed_items: number
   id: string
   metrics_summary?: {
@@ -107,6 +119,17 @@ export type EvaluationRunResponse = {
   target_workflow_version_id?: string | null
   tenant_id: string
   total_items: number
+}
+
+export type EvaluationFrameworkNotConfiguredError = ErrorResponse & {
+  code: 'evaluation_framework_not_configured'
+  status: 400
+}
+
+export type EvaluationMaxConcurrentRunsError = ErrorResponse & {
+  code: 'evaluation_max_concurrent_runs'
+  details?: EvaluationMaxConcurrentRunsDetails
+  status: 429
 }
 
 export type EvaluationRunDetailResponse = {
@@ -142,6 +165,10 @@ export type NodeInfo = {
   node_id: string
   title: string
   type: string
+}
+
+export type EvaluationMaxConcurrentRunsDetails = {
+  limit: number
 }
 
 export type EvaluationRunItemPaginationResponse = {
@@ -230,6 +257,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadDat
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdDatasetTemplateDownloadErrors = {
+  400: EvaluationDatasetInvalidError | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
@@ -280,6 +308,7 @@ export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationData = {
 }
 
 export type PutByEvaluateTargetTypeByEvaluateTargetIdEvaluationErrors = {
+  400: EvaluationConfigInvalidError | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
@@ -438,7 +467,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunData = {
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunErrors = {
+  400:
+    | EvaluationConfigInvalidError
+    | EvaluationDatasetInvalidError
+    | EvaluationFrameworkNotConfiguredError
+    | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
+  429: EvaluationMaxConcurrentRunsError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -519,7 +554,13 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetry
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationRunsByRunIdRetryErrors = {
+  400:
+    | EvaluationConfigInvalidError
+    | EvaluationDatasetInvalidError
+    | EvaluationFrameworkNotConfiguredError
+    | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
+  429: EvaluationMaxConcurrentRunsError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -544,6 +585,7 @@ export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsD
 }
 
 export type PostByEvaluateTargetTypeByEvaluateTargetIdEvaluationTemplateColumnsErrors = {
+  400: EvaluationDatasetInvalidError | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }

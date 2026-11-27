@@ -3,11 +3,10 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import { FileContextProvider } from '../../store'
 import { FileListInChatInput } from '../file-list'
-
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/' }))
 
 it('removes mixed chat attachments through their real keyboard and pointer affordances', async () => {
   const files: FileEntity[] = [
@@ -42,6 +41,7 @@ it('removes mixed chat attachments through their real keyboard and pointer affor
         <FileListInChatInput fileConfig={config} />
       </FileContextProvider>
     </ConsoleProvider>,
+    { wrapper: createTestNavigation().NavigationProvider },
   )
 
   await expect.element(page.getByRole('img', { name: 'Preview' })).toBeVisible()

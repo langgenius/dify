@@ -11,12 +11,13 @@ import {
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { ORPCError } from '@orpc/client'
+import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { consoleClient } from '@/service/console'
-import { useLogout } from '@/service/use-common'
+import { logoutMutationOptions } from '@/service/common-queries'
+import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 
 type Props = {
@@ -47,6 +48,27 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const latestEmailRef = useRef<string>('')
+  const { mutateAsync: sendChangeEmailCode } = useMutation(
+    consoleQuery.account.changeEmail.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutateAsync: verifyChangeEmailCode } = useMutation(
+    consoleQuery.account.changeEmail.validity.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutateAsync: checkEmailUnique } = useMutation(
+    consoleQuery.account.changeEmail.checkEmailUnique.post.mutationOptions({
+      // Advisory check: known conflicts show at the field, and sending the code reports the rest.
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutateAsync: resetEmail } = useMutation(
+    consoleQuery.account.changeEmail.reset.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
 
   const clearCountdown = useCallback(() => {
     if (!timerRef.current) return
@@ -73,12 +95,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
 
   const sendEmail = async (email: string, isOrigin: boolean, token?: string) => {
     try {
-      const res = await consoleClient.account.changeEmail.post(
-        {
-          body: { email, phase: isOrigin ? 'old_email' : 'new_email', token },
-        },
-        { context: { silent: true } },
-      )
+      const res = await sendChangeEmailCode({
+        body: { email, phase: isOrigin ? 'old_email' : 'new_email', token },
+      })
       startCount()
       if (res.data) setStepToken(res.data)
     } catch (error) {
@@ -93,12 +112,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     callback?: (token: string) => void,
   ) => {
     try {
-      const res = await consoleClient.account.changeEmail.validity.post(
-        {
-          body: { email, code, token },
-        },
-        { context: { silent: true } },
-      )
+      const res = await verifyChangeEmailCode({ body: { email, code, token } })
       if (res.is_valid) {
         setStepToken(res.token)
         callback?.(res.token)
@@ -127,10 +141,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   const checkNewEmailExisted = async (email: string) => {
     setIsCheckingEmail(true)
     try {
-      await consoleClient.account.changeEmail.checkEmailUnique.post(
-        { body: { email } },
-        { context: { silent: true } },
-      )
+      await checkEmailUnique({ body: { email } })
       if (latestEmailRef.current !== email) return
       setNewEmailExited(false)
       setUnAvailableEmail(false)
@@ -178,15 +189,13 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     setStep(STEP.verifyNew)
   }
 
-  const { mutateAsync: logout } = useLogout()
+  const { mutateAsync: logout } = useMutation({
+    ...logoutMutationOptions(),
+    meta: { errorToast: false },
+  })
   const updateEmail = async (lastToken: string) => {
     try {
-      await consoleClient.account.changeEmail.reset.post(
-        {
-          body: { new_email: mail.trim(), token: lastToken },
-        },
-        { context: { silent: true } },
-      )
+      await resetEmail({ body: { new_email: mail.trim(), token: lastToken } })
       await logout()
     } catch (error) {
       toast.error(`Error changing email: ${getErrorMessage(error) ?? ''}`)
@@ -203,7 +212,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     !normalizedMail || newEmailExited || unAvailableEmail || isCheckingEmail || !isMailValid
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open disablePointerDismissal onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-105">
         <form
           className="contents"

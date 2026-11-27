@@ -18,18 +18,27 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }))
 
+// boundary: the notification service receives the missing-configuration error.
 vi.mock('@/app/notifications', () => ({
   toast: { error: mocks.toastError },
 }))
 
+// boundary: the console service provides the available agents and filter options.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.get': () => [],
       'agent.inviteOptions.get': (input) => {
         mocks.fetchAgents(input)
-        return { data: mocks.agents }
+        return {
+          data: mocks.agents,
+          page: 1,
+          limit: 8,
+          total: mocks.agents.length,
+          has_more: false,
+        }
       },
     }),
   }

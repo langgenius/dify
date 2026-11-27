@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Clear filters",
   "roster.createAgent": "Create agent",
   "roster.createDialog.description": "Create a reusable Agent in this workspace.",
   "roster.createDialog.title": "Create agent",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Edit Info",
   "roster.empty": "No agent yet",
   "roster.emptySearch": "No matching agents",
+  "roster.emptySearchDescription": "Try another search or clear the current filters.",
   "roster.filters.all": "All",
   "roster.filters.createdByMe": "Created by me",
   "roster.filters.drafts": "Drafts",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Failed to create inline agent. Refresh and try again.",
   "roster.nodeSelector.dialogLabel": "Select an agent",
   "roster.nodeSelector.manageInAgentConsole": "Manage in Agents",
-  "roster.nodeSelector.searchPlaceholder": "Search…",
+  "roster.nodeSelector.searchPlaceholder": "Search agents…",
   "roster.nodeSelector.startFromScratch": "Start from Scratch",
   "roster.references.label": "Workflows using {{name}}",
   "roster.references.trigger": "Workflows using {{name}}",

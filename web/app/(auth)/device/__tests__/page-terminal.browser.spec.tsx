@@ -1,74 +1,78 @@
+import type { DeviceLookupReply } from '@/service/device-flow'
 import {
   resolvePostLoginRedirect,
   setPostLoginRedirect,
 } from '@/app/(auth)/signin/utils/post-login-redirect'
-import { DeviceFlowError } from '@/service/device-flow'
+import { apiError, installFakeApi, route } from '@/test/fake-api'
 import { renderDevicePage } from './device-page-fixture'
 
-const api = vi.hoisted(() => ({
-  lookup: vi.fn(),
-  replace: vi.fn(),
-  push: vi.fn(),
-  search: new URLSearchParams(),
-}))
-// boundary: Next routing is supplied by the running application.
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => api.search,
-  useRouter: () => ({ push: api.push, replace: api.replace }),
-  usePathname: () => '/device',
-}))
-vi.mock('@/service/device-flow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/device-flow')>()),
-  deviceLookup: api.lookup,
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'account.profile.get': async () => {
-        throw new Error('No console session')
-      },
-    }),
-  }
-})
+const lookup = vi.fn<(userCode: string | null) => DeviceLookupReply | Promise<DeviceLookupReply>>()
 beforeEach(() => {
-  api.search = new URLSearchParams()
-  api.lookup.mockReset().mockResolvedValue({ valid: true })
-  api.replace.mockReset().mockImplementation(() => {
-    api.search = new URLSearchParams()
-  })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          profile: {
+            // The signed-out state is a failed profile probe; a 401 would start the app's
+            // token refresh and sign-in redirect, which belong to the running application.
+            get: () => {
+              throw apiError({ status: 403, code: 'forbidden', message: 'No console session' })
+            },
+          },
+        },
+      },
+      routes: [
+        route('GET', 'origin', '/openapi/v1/oauth/device/lookup', ({ url }) =>
+          lookup(url.searchParams.get('user_code')),
+        ),
+      ],
+    }),
+  )
+  lookup.mockReset().mockResolvedValue({ valid: true, expires_in_remaining: 600, client_id: 'cli' })
   setPostLoginRedirect(null)
 })
 afterEach(() => setPostLoginRedirect(null))
 
 it.each([
   {
-    error: new Error('expired'),
+    error: apiError({
+      status: 400,
+      code: 'expired_token',
+      message: 'Expired',
+      details: { error: 'expired_token' },
+    }),
     title: 'deviceFlow.errorExpired.title',
     retry: 'deviceFlow.errorExpired.tryDifferentCode',
   },
   {
-    error: new DeviceFlowError('rate_limited', 429),
+    error: apiError({
+      status: 429,
+      code: 'rate_limited',
+      message: 'Rate limited',
+      details: { error: 'rate_limited' },
+    }),
     title: 'deviceFlow.errorRateLimited.title',
     retry: 'deviceFlow.tryAgain',
   },
   {
-    error: new DeviceFlowError('server_error', 500),
+    error: apiError({
+      status: 500,
+      code: 'server_error',
+      message: 'Server error',
+      details: { error: 'server_error' },
+    }),
     title: 'deviceFlow.errorLookupFailed.title',
     retry: 'deviceFlow.tryAgain',
   },
 ])('recovers from $title with another code', async ({ error, title, retry }) => {
-  api.lookup.mockRejectedValueOnce(error)
-  const { screen, queryClient } = await renderDevicePage()
-  onTestFinished(() => queryClient.clear())
+  lookup.mockRejectedValueOnce(error)
+  const { screen } = await renderDevicePage()
   const code = screen.getByRole('textbox')
   await expect.element(code).toHaveFocus()
   await code.fill('ABCD-3456')
   await screen.getByRole('button', { name: 'deviceFlow.codeEntry.continue' }).click()
   await expect.element(screen.getByRole('heading', { name: title })).toBeVisible()
-  expect(document.title).toBe(`${title} - Dify`)
+  await expect.poll(() => document.title).toBe(`${title} - Dify`)
   await screen.getByRole('button', { name: retry }).click()
   await expect.element(code).toBeVisible()
   await expect.element(screen.getByRole('heading', { name: title })).not.toBeInTheDocument()
@@ -77,7 +81,7 @@ it.each([
   await expect
     .element(screen.getByRole('link', { name: 'deviceFlow.chooser.signInAccount' }))
     .toBeVisible()
-  expect(api.lookup).toHaveBeenLastCalledWith('EFGH-6789')
+  expect(lookup).toHaveBeenLastCalledWith('EFGH-6789')
 })
 
 it.each([
@@ -86,31 +90,29 @@ it.each([
 ])(
   'recovers from the dedicated SSO error $error using the consumed code',
   async ({ error, copy }) => {
-    api.search = new URLSearchParams({ sso_error: error, user_code: 'ABCD-3456' })
-    const { screen, queryClient } = await renderDevicePage()
-    onTestFinished(() => queryClient.clear())
+    const query = new URLSearchParams({ sso_error: error, user_code: 'ABCD-3456' })
+    const { screen, navigation } = await renderDevicePage({ url: `/device?${query}` })
     await expect
       .element(screen.getByRole('heading', { name: 'deviceFlow.errorSso.title' }))
       .toBeVisible()
     await expect.element(screen.getByText(copy)).toBeVisible()
     await expect.element(screen.getByRole('textbox')).not.toBeInTheDocument()
-    expect(api.replace).toHaveBeenCalledWith('/device')
+    expect(navigation.router.replace).toHaveBeenCalledWith('/device')
     await screen.getByRole('button', { name: 'deviceFlow.errorSso.backToLoginOptions' }).click()
     await expect
       .element(screen.getByRole('link', { name: 'deviceFlow.chooser.signInAccount' }))
       .toBeVisible()
-    expect(api.lookup).toHaveBeenCalledWith('ABCD-3456')
+    expect(lookup).toHaveBeenCalledWith('ABCD-3456')
   },
 )
 
 it.each([false, true])(
   'preserves the code for console login and gates external SSO (available: %s)',
   async (sso) => {
-    const { screen, queryClient } = await renderDevicePage({ sso })
-    onTestFinished(() => queryClient.clear())
+    const { screen } = await renderDevicePage({ sso })
     const code = screen.getByRole('textbox')
     await expect.element(code).toHaveFocus()
-    expect(document.title).toBe('deviceFlow.codeEntry.title - Dify')
+    await expect.poll(() => document.title).toBe('deviceFlow.codeEntry.title - Dify')
     await expect
       .element(screen.getByRole('heading', { name: 'deviceFlow.errorSso.title' }))
       .not.toBeInTheDocument()

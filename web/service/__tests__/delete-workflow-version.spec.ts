@@ -18,13 +18,17 @@ const cases = [
     } satisfies EditorResource,
     path: '/apps/owner/workflows/version-1',
     key: (id: string) =>
-      consoleQuery.apps.byAppId.workflows.get.key({ input: { params: { app_id: id } } }),
+      consoleQuery.apps.byAppId.workflows.get.key({
+        type: 'infinite',
+        input: { params: { app_id: id } },
+      }),
   },
   {
     resource: { kind: 'knowledge-pipeline', pipelineId: 'owner' } satisfies EditorResource,
     path: '/rag/pipelines/owner/workflows/version-1',
     key: (id: string) =>
       consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+        type: 'infinite',
         input: { params: { pipeline_id: id } },
       }),
   },
@@ -33,13 +37,14 @@ const cases = [
     path: '/snippets/owner/workflows/version-1',
     key: (id: string) =>
       consoleQuery.snippets.bySnippetId.workflows.get.key({
+        type: 'infinite',
         input: { params: { snippet_id: id } },
       }),
   },
 ]
 
 it.each(cases)(
-  'deletes a $resource.kind version and refreshes only its list',
+  'deletes a $resource.kind version and resets only its version lists',
   async ({ resource, path, key }) => {
     const { wrapper, queryClient } = createConsoleQueryWrapper()
     const affected = key('owner')
@@ -48,7 +53,7 @@ it.each(cases)(
       .filter((item) => item.resource.kind !== resource.kind)
       .map((item) => item.key('owner'))
     for (const queryKey of [affected, unrelated, ...otherResources])
-      queryClient.setQueryData(queryKey, { cached: true })
+      queryClient.setQueryData(queryKey, { pages: [], pageParams: [] })
     request.mockResolvedValue(new Response(null, { status: 204 }))
     const { result, unmount } = renderHook(() => useDeleteWorkflow(resource), { wrapper })
     try {
@@ -58,9 +63,10 @@ it.each(cases)(
         expect.anything(),
         expect.objectContaining({ request: expect.objectContaining({ method: 'DELETE' }) }),
       )
-      expect(queryClient.getQueryState(affected)?.isInvalidated).toBe(true)
+      // Reset drops the cached pages so the list reloads from the first page.
+      expect(queryClient.getQueryData(affected)).toBeUndefined()
       for (const queryKey of [unrelated, ...otherResources])
-        expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(false)
+        expect(queryClient.getQueryData(queryKey)).toEqual({ pages: [], pageParams: [] })
     } finally {
       unmount()
       queryClient.clear()

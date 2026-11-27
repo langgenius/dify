@@ -4,6 +4,7 @@ import type { HumanInputNodeType } from '../../../human-input/types'
 import { useRef, useState } from 'react'
 import ReactFlow, { useReactFlow, useStoreApi } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { CanvasNodesCatalogProbe } from '../../../../__tests__/canvas-nodes-catalog-probe'
 import { renderWorkflowBrowserComponent as render } from '../../../../__tests__/workflow-browser-test-env'
 import CustomEdge from '../../../../custom-edge'
@@ -15,11 +16,8 @@ import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
 import '../../../../style.css'
 
-const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
-beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
 })
 let flow: ReturnType<typeof useStoreApi>
 

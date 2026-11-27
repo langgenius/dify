@@ -45,7 +45,7 @@ export const FieldTitle = memo(
           <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
             <span id={titleId} className="relative">
               {warningDot && (
-                <span className="absolute top-1/2 -left-2.25 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+                <span className="absolute -inset-s-2.25 top-1/2 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary" />
               )}
               {title}
             </span>
@@ -60,7 +60,7 @@ export const FieldTitle = memo(
             )}
             {tooltip && (
               <Infotip>
-                <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+                <InfotipTrigger aria-labelledby={titleId} className="ms-1" />
                 <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
               </Infotip>
             )}

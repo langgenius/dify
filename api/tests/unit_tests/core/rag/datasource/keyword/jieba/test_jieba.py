@@ -11,7 +11,7 @@ from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.models.document import Document
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
-from repositories.knowledge.keyword_table_repository import load_keyword_table
+from repositories.knowledge.keyword_table_repository import load_dataset_keyword_table, load_keyword_table
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_dataset
 
@@ -217,6 +217,54 @@ def test_search_preserves_ranking_and_document_filters(runtime: KeywordRuntime) 
     assert [doc.metadata["doc_id"] for doc in documents] == ["node-2", "node-1"]
     documents = keyword.search("alpha beta", session=runtime.session, top_k=2, document_ids_filter=["document-1"])
     assert [doc.metadata["doc_id"] for doc in documents] == ["node-1"]
+
+
+def test_read_only_postings_remain_lists_and_support_subsequent_mutation(runtime: KeywordRuntime) -> None:
+    runtime.session.add_all([segment("node-1"), segment("node-2")])
+    keyword = Jieba(runtime.dataset)
+    keyword.add_texts([Document(page_content="中文 alpha", metadata={"doc_id": "node-1"})], runtime.session)
+    runtime.session.commit()
+
+    payload = load_dataset_keyword_table(runtime.dataset, storage=runtime.storage, session=runtime.session)
+    assert payload is not None
+    assert payload["__data__"]["table"] == {"中文": ["node-1"], "alpha": ["node-1"]}
+    assert runtime.table() == {"中文": {"node-1"}, "alpha": {"node-1"}}
+    assert keyword.text_exists("node-1", session=runtime.session)
+    assert [doc.metadata["doc_id"] for doc in keyword.search("中文", session=runtime.session)] == ["node-1"]
+
+    keyword.add_texts([Document(page_content="alpha", metadata={"doc_id": "node-2"})], runtime.session)
+    keyword.delete_by_ids(["node-1"], runtime.session)
+    runtime.session.commit()
+    assert runtime.table() == {"alpha": {"node-2"}}
+    assert not keyword.text_exists("node-1", session=runtime.session)
+    assert [doc.metadata["doc_id"] for doc in keyword.search("alpha", session=runtime.session)] == ["node-2"]
+
+
+@pytest.mark.parametrize("decode_sets", [True, False])
+@pytest.mark.parametrize("storage_type", ["database", "file"])
+def test_keyword_decoder_handles_missing_and_invalid_payloads(storage_type: str, decode_sets: bool) -> None:
+    storage = KeywordStorage()
+    assert (
+        load_keyword_table(
+            storage=storage,
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            storage_type=storage_type,
+            data=None,
+            decode_sets=decode_sets,
+        )
+        is None
+    )
+    storage.files["keyword_files/tenant-1/dataset-1.txt"] = b"invalid json"
+    with pytest.raises(ValueError, match="[Ee]xpecting|unexpected"):
+        load_keyword_table(
+            storage=storage,
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            storage_type=storage_type,
+            data="invalid json",
+            decode_sets=decode_sets,
+        )
 
 
 def test_delete_removes_the_database_record_and_file(runtime: KeywordRuntime) -> None:

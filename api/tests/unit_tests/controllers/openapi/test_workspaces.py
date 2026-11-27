@@ -382,6 +382,35 @@ def test_invitation_quota_admission_preserves_error_contract(
     account_domain.delivery.send.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [
+        (WorkspaceInvitationQuotaError(), OpenApiErrorCode.MEMBER_LIMIT_EXCEEDED),
+        (WorkspaceMemberLicenseQuotaError(), OpenApiErrorCode.MEMBER_LICENSE_EXCEEDED),
+    ],
+)
+def test_invitation_counting_live_invitations_preserves_error_contract(
+    admitted_bearer: AdmittedWorld,
+    account_domain: AccountDomain,
+    error: WorkspaceInvitationQuotaError,
+    code: OpenApiErrorCode,
+) -> None:
+    account_domain.delivery.requires_capacity_check = True
+    account_domain.delivery.check_capacity.side_effect = error
+
+    response = admitted_bearer.client.post(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members",
+        headers=admitted_bearer.headers,
+        json={"email": "new@example.com", "role": "normal"},
+    )
+
+    assert response.status_code == 403
+    assert ErrorBody.model_validate(response.get_json()).code == code
+    account_domain.delivery.acquire.assert_called_once_with(admitted_bearer.workspace_id)
+    assert account_domain.repository.find_by_email("new@example.com") is None
+    account_domain.delivery.send.assert_not_called()
+
+
 def test_invitation_permission_rejection_precedes_quota_lookup(
     admitted_bearer: AdmittedWorld, account_domain: AccountDomain, sqlite_session: Session
 ) -> None:

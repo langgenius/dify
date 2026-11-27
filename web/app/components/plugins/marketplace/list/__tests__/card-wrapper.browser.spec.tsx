@@ -9,8 +9,8 @@ import {
 import { ThemeProvider } from '@/features/theme/provider'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import CardWrapper from '../card-wrapper'
 
 // boundary: the remote iframe document stays local; dialog rendering and message handling remain real.
@@ -20,34 +20,50 @@ vi.mock('@/features/marketplace/links', async (importOriginal) => {
     await importOriginal<typeof import('@/features/marketplace/links')>(),
   )
 })
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.marketplace.pkg.get': async () => ({
-        manifest: (await import('@/test/fixtures/plugin')).createPluginDeclarationFixture(),
-      }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.permission.fetch.get': async () => ({
-        install_permission: 'everyone',
-        debug_permission: 'everyone',
-      }),
-    }),
-  }
-})
-
+// A contract-valid manifest for the marketplace package the installer reads.
+const manifest = {
+  author: 'Dify',
+  category: 'tool' as const,
+  created_at: '2026-06-01T00:00:00Z',
+  description: { en_US: 'Plugin description' },
+  icon: 'icon.svg',
+  label: { en_US: 'Plugin label' },
+  meta: { version: '1.0.0' },
+  name: 'plugin-entity',
+  plugins: {},
+  resource: { memory: 0 },
+  tags: [],
+  version: '1.0.0',
+}
 const plugin = createMarketplacePluginFixture()
 
 describe('CardWrapper', () => {
   beforeEach(async () => {
     await page.viewport(1280, 900)
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        console: {
+          workspaces: {
+            current: {
+              plugin: {
+                list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
+                marketplace: {
+                  pkg: {
+                    get: () => ({ manifest }),
+                  },
+                },
+                tasks: { get: () => ({ tasks: [] }) },
+                permission: {
+                  fetch: {
+                    get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    )
   })
   afterEach(() => {
     delete window.__marketplaceTracking__

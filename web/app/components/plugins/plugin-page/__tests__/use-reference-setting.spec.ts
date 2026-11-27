@@ -2,7 +2,8 @@ import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
@@ -26,12 +27,15 @@ const requests = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.autoUpgrade.fetch.get': requests.getAutoUpgrade,
       'workspaces.current.plugin.permission.fetch.get': requests.getPermission,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.autoUpgrade.change.post': requests.autoUpgrade,
       'workspaces.current.plugin.permission.change.post': requests.permission,
     }),
@@ -212,13 +216,17 @@ describe('plugin settings access', () => {
   )
 })
 
+// The app's client refreshes a save's domain once no other plugin write is pending.
+const renderReferenceSetting = () =>
+  renderHookWithConsoleQuery(() => useReferenceSetting(PluginCategoryEnum.tool), {
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
+  })
+
 describe('saving reference settings', () => {
   it('submits only changed settings and refreshes server data after the pending save completes', async () => {
     const request = createDeferred<object>()
     requests.autoUpgrade.mockReturnValueOnce(request.promise)
-    const { result } = renderHookWithConsoleQuery(() =>
-      useReferenceSetting(PluginCategoryEnum.tool),
-    )
+    const { result } = renderReferenceSetting()
     await waitFor(() =>
       expect(result.current.referenceSetting).toEqual({
         permission: permissions,
@@ -247,6 +255,69 @@ describe('saving reference settings', () => {
       auto_upgrade: updated,
     })
     expect(toastSuccess).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+  it('shows each accepted save and reads the setting again once no save is pending', async () => {
+    const first = createDeferred<object>()
+    const second = createDeferred<object>()
+    requests.autoUpgrade.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const { result } = renderReferenceSetting()
+    await waitFor(() => expect(result.current.referenceSetting).toBeDefined())
+    const earlier = { ...autoUpgrade, strategy_setting: 'latest' as const }
+    const later = { ...autoUpgrade, strategy_setting: 'disabled' as const }
+
+    act(() =>
+      result.current.setReferenceSettings({ permission: permissions, auto_upgrade: earlier }),
+    )
+    await waitFor(() => expect(requests.autoUpgrade).toHaveBeenCalledTimes(1))
+    act(() => result.current.setReferenceSettings({ permission: permissions, auto_upgrade: later }))
+    await waitFor(() => expect(requests.autoUpgrade).toHaveBeenCalledTimes(2))
+
+    // The server has the earlier value until the later save lands.
+    requests.getAutoUpgrade.mockResolvedValue({
+      category: PluginCategoryEnum.tool,
+      auto_upgrade: earlier,
+    })
+    await act(async () => first.resolve({}))
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1))
+    // The accepted value shows; the read waits while the later save is pending.
+    expect(result.current.referenceSetting?.auto_upgrade).toEqual(earlier)
+    expect(requests.getAutoUpgrade).toHaveBeenCalledTimes(1)
+
+    requests.getAutoUpgrade.mockResolvedValue({
+      category: PluginCategoryEnum.tool,
+      auto_upgrade: later,
+    })
+    await act(async () => second.resolve({}))
+    await waitFor(() => expect(requests.getAutoUpgrade).toHaveBeenCalledTimes(2))
+    expect(result.current.referenceSetting?.auto_upgrade).toEqual(later)
+  })
+
+  it('rolls back only the setting whose save failed', async () => {
+    const autoUpgradeRequest = createDeferred<object>()
+    requests.autoUpgrade.mockReturnValueOnce(autoUpgradeRequest.promise)
+    const { result } = renderReferenceSetting()
+    await waitFor(() => expect(result.current.referenceSetting).toBeDefined())
+    const nextPermissions = { ...permissions, debug_permission: PermissionType.admin }
+    const nextAutoUpgrade = { ...autoUpgrade, strategy_setting: 'latest' as const }
+
+    act(() =>
+      result.current.setReferenceSettings({
+        permission: nextPermissions,
+        auto_upgrade: nextAutoUpgrade,
+      }),
+    )
+    await waitFor(() => expect(requests.permission).toHaveBeenCalledTimes(1))
+    requests.getPermission.mockResolvedValue(nextPermissions)
+    await act(async () => autoUpgradeRequest.reject(new Error('auto-upgrade update failed')))
+
+    await waitFor(() => expect(result.current.isUpdatePending).toBe(false))
+    await waitFor(() =>
+      expect(result.current.referenceSetting).toEqual({
+        permission: nextPermissions,
+        auto_upgrade: autoUpgrade,
+      }),
+    )
+    expect(toastSuccess).not.toHaveBeenCalled()
   })
 })
 

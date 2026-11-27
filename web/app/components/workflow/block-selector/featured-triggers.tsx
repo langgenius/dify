@@ -131,13 +131,13 @@ const FeaturedTriggers = ({
       open={!isCollapsed}
       onOpenChange={(open) => setIsCollapsed(!open)}
     >
-      <CollapsibleTrigger className="group/collapsible ml-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary">
+      <CollapsibleTrigger className="group/collapsible ms-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
         <span
           aria-hidden
-          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
+          className="ms-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
 
@@ -194,7 +194,7 @@ const FeaturedTriggers = ({
           <Button
             variant="ghost"
             size="medium"
-            className="group mt-1 w-full justify-start pr-2 pl-3 text-left text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
+            className="group mt-1 w-full justify-start ps-3 pe-2 text-start text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
             onClick={() => {
               setVisibleCount((count) => {
                 if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
@@ -203,7 +203,7 @@ const FeaturedTriggers = ({
               })
             }}
           >
-            <div className="flex items-center pl-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
+            <div className="flex items-center ps-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
               <span
                 aria-hidden
                 className="i-ri-more-line size-4 group-hover:hidden group-focus-visible:hidden"
@@ -292,11 +292,11 @@ function FeaturedTriggerUninstalledItem({
         size="sm"
         toolIcon={plugin.icon}
       />
-      <span className="ml-2 truncate system-sm-medium text-text-secondary">{label}</span>
+      <span className="ms-2 truncate system-sm-medium text-text-secondary">{label}</span>
       <span
         aria-hidden
         className={cn(
-          'ml-auto shrink-0 pl-2 system-xs-regular text-text-tertiary',
+          'ms-auto shrink-0 ps-2 system-xs-regular text-text-tertiary',
           actionOpen
             ? 'invisible'
             : 'group-focus-within:invisible group-hover:invisible [@media(hover:none)]:invisible',
@@ -323,7 +323,7 @@ function FeaturedTriggerUninstalledItem({
         )}
         <div
           className={cn(
-            'absolute inset-y-0 right-1 flex items-center gap-1 system-xs-medium text-components-button-secondary-accent-text opacity-0',
+            'absolute inset-y-0 inset-e-1 flex items-center gap-1 system-xs-medium text-components-button-secondary-accent-text opacity-0',
             actionOpen
               ? 'pointer-events-auto opacity-100'
               : 'pointer-events-none group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',

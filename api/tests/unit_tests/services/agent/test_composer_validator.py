@@ -239,7 +239,7 @@ def test_duplicate_cli_tool_ids_rejected() -> None:
 
 
 def test_save_backfills_missing_cli_tool_ids_and_keeps_existing() -> None:
-    from services.agent.composer_service import _backfill_cli_tool_ids
+    from models.agent_soul_state import backfill_cli_tool_ids
 
     payload = ComposerSavePayload.model_validate(
         {
@@ -252,7 +252,7 @@ def test_save_backfills_missing_cli_tool_ids_and_keeps_existing() -> None:
         }
     )
 
-    _backfill_cli_tool_ids(payload.agent_soul)
+    backfill_cli_tool_ids(payload.agent_soul)
 
     assert payload.agent_soul is not None
     minted, existing = payload.agent_soul.tools.cli_tools

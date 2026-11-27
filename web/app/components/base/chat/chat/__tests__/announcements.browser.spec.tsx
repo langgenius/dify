@@ -5,8 +5,6 @@ import Chat from '../index'
 import { chatItem, renderChatOwner } from './chat-owner-preset'
 
 vi.unmock('react-i18next')
-// boundary: the component reads route params outside a running Next app.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 it('announces response lifecycle while the real agent renderer streams, keeping tokens out of the live region', async () => {
   await page.viewport(1000, 800)

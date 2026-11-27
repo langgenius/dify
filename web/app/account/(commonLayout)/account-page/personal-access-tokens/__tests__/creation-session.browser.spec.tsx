@@ -1,33 +1,26 @@
 import { page, userEvent } from 'vite-plus/test/browser'
-import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
-const api = vi.hoisted(() => ({ create: vi.fn(), list: vi.fn() }))
 vi.unmock('react-i18next')
-// boundary: supply operation results while preserving generated options and real Query observers.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'account.personalAccessTokens.get': api.list,
-      'account.personalAccessTokens.post': api.create,
-    }),
-  }
-})
+
+const fake = setupFakeApi(() => ({
+  console: {
+    account: {
+      personalAccessTokens: {
+        get: () => tokenList(),
+        post: () => ({ ...token, secret: 'dpat_created_secret' }),
+      },
+    },
+  },
+}))
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  api.list.mockReset().mockResolvedValue(tokenList())
-  api.create.mockReset()
-  onTestFinished(guardUnexpectedFetch())
 })
 
 it('clears the one-time secret and name after closing and reopening creation', async () => {
-  const pending = createDeferred<typeof token & { secret: string }>()
-  api.create.mockReturnValueOnce(pending.promise)
+  const pending = hold(fake.console.account.personalAccessTokens.post)
   const { screen } = await renderTokenPage()
   const create = screen.getByRole('button', { name: 'Create token' })
   await create.click()
@@ -46,7 +39,7 @@ it('clears the one-time secret and name after closing and reopening creation', a
     .element(docs)
     .toHaveAttribute('href', expect.stringContaining('/cli/personal-access-tokens'))
   await expect.element(docs).toHaveAttribute('rel', 'noopener noreferrer')
-  expect(api.create).toHaveBeenCalledWith(
+  expect(fake.console.account.personalAccessTokens.post).toHaveBeenCalledWith(
     expect.objectContaining({
       body: {
         name: 'release',
@@ -64,12 +57,12 @@ it('clears the one-time secret and name after closing and reopening creation', a
   await expect.element(secret).not.toBeInTheDocument()
 })
 
-it.each([
-  ['a service message', 'Deployment catalog is unavailable.', 'Deployment catalog is unavailable.'],
-  ['an empty error', '', 'Action failed'],
-])('retains the draft after %s and completes a retry', async (_, message, feedback) => {
-  api.create
-    .mockRejectedValueOnce(new Error(message))
+it('retains the draft after a service message and completes a retry', async () => {
+  const feedback = 'Deployment catalog is unavailable.'
+  fake.console.account.personalAccessTokens.post
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: feedback }),
+    )
     .mockResolvedValue({ ...token, secret: 'dpat_retry' })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Create token' }).click()
@@ -87,7 +80,7 @@ it.each([
 })
 
 it('explains a successful idempotent response without a secret and offers no retry or retrieval', async () => {
-  api.create.mockResolvedValue({ ...token, secret: null })
+  fake.console.account.personalAccessTokens.post.mockResolvedValue({ ...token, secret: null })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Create token' }).click()
   const dialog = screen.getByRole('dialog')
@@ -105,5 +98,5 @@ it('explains a successful idempotent response without a secret and offers no ret
     .not.toBeInTheDocument()
   await dialog.getByRole('button', { name: 'Done' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.create).toHaveBeenCalledOnce()
+  expect(fake.console.account.personalAccessTokens.post).toHaveBeenCalledOnce()
 })

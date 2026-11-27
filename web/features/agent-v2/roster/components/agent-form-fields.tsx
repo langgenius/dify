@@ -70,7 +70,7 @@ export function AgentFormFields({
           <Field name="role" className="min-w-0 flex-1">
             <FieldLabel>
               {t(($) => $['roster.createForm.roleLabel'], { ns: 'agentRoster' })}
-              <span className="ml-1 system-xs-regular text-text-tertiary">
+              <span className="ms-1 system-xs-regular text-text-tertiary">
                 {tCommon(($) => $['label.optional'])}
               </span>
             </FieldLabel>
@@ -86,7 +86,7 @@ export function AgentFormFields({
       <Field name="description">
         <FieldLabel>
           {t(($) => $['roster.createForm.descriptionLabel'], { ns: 'agentRoster' })}
-          <span className="ml-1 system-xs-regular text-text-tertiary">
+          <span className="ms-1 system-xs-regular text-text-tertiary">
             {tCommon(($) => $['label.optional'])}
           </span>
         </FieldLabel>

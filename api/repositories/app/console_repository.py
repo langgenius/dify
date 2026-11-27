@@ -11,7 +11,7 @@ import logging
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
-from typing import Any, cast, override
+from typing import Any, Protocol, cast, override
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -35,10 +35,12 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.enums import AppStatus
-from models.model import App, AppMode, AppModelConfig, AppStar, IconType
+from models.enums import AppStatus, TagType
+from models.evaluation import EvaluationTargetType
+from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Tag, TagBinding
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
@@ -81,6 +83,14 @@ from services.openapi.visibility import apply_openapi_gate
 logger = logging.getLogger(__name__)
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
+
+
+class StageTargetEvaluationCleanup(Protocol):
+    """Stage target evaluation cleanup in an existing transaction, deferring external effects until commit."""
+
+    def __call__(self, *, session: Session, tenant_id: str, target_type: str, target_id: str) -> None:
+        """Delete evaluation records in the caller's session without committing it."""
+        ...
 
 
 def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
@@ -400,6 +410,12 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
+        """Build tenant-owned filters, matching all tags in the resource's own pool.
+
+        Preconditions: params is transport-validated and session is caller-owned.
+        Postconditions: Agent tags match roster IDs while App tags match App IDs;
+        an unknown, foreign or wrong-type selected tag yields an empty result.
+        """
         filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
         if params.mode == "workflow":
@@ -455,10 +471,23 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
         if params.tag_ids and len(params.tag_ids) > 0:
             target_ids = TagRepository.get_target_ids_by_tag_ids(
-                "app", tenant_id, params.tag_ids, session, match_all=True
+                "agent" if params.mode == "agent" else "app", tenant_id, params.tag_ids, session, match_all=True
             )
             if target_ids and len(target_ids) > 0:
-                filters.append(App.id.in_(target_ids))
+                if params.mode == "agent":
+                    # Agent tags bind canonical roster IDs, independently of Studio App tags.
+                    filters.append(
+                        App.id.in_(
+                            select(Agent.app_id).where(
+                                Agent.tenant_id == tenant_id,
+                                Agent.scope == AgentScope.ROSTER,
+                                Agent.status == AgentStatus.ACTIVE,
+                                Agent.id.in_(target_ids),
+                            )
+                        )
+                    )
+                else:
+                    filters.append(App.id.in_(target_ids))
             else:
                 return []
 
@@ -1039,10 +1068,41 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         return app
 
     @classmethod
-    def delete_app_record(cls, app: App, *, account_id: str | None, session: Session) -> AppDeletion:
-        """Stage App deletion; the lifecycle adapter retires Agent resources in the same transaction."""
+    def delete_app_record(
+        cls,
+        app: App,
+        *,
+        account_id: str | None,
+        session: Session,
+        stage_evaluation_cleanup: StageTargetEvaluationCleanup,
+    ) -> AppDeletion:
+        """Stage App deletion, evaluation cleanup and resource retirement together.
+
+        Preconditions: app belongs to the admitted tenant's write transaction
+        and the caller supplies its evaluation cleanup adapter. Postconditions:
+        archived Agents retain no Agent tag bindings, target evaluation records
+        are staged for cleanup and resources are retired in this transaction.
+        Independent Studio tags and other Agents' bindings remain unchanged.
+        Never commits or performs external effects before the caller commits.
+        """
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
+        if backing_agent is not None:
+            # Binding writes lock this same row before validating the active
+            # target, so archival cannot miss a concurrently inserted binding.
+            backing_agent = session.scalar(
+                select(Agent)
+                .where(Agent.tenant_id == app.tenant_id, Agent.id == backing_agent.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        if backing_agent is not None:
+            stage_evaluation_cleanup(
+                session=session,
+                tenant_id=app.tenant_id,
+                target_type=EvaluationTargetType.AGENTS.value,
+                target_id=backing_agent.id,
+            )
         workflow_agent_ids = set(
             session.scalars(
                 select(Agent.id).where(
@@ -1083,6 +1143,15 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 )
             )
         if backing_agent is not None:
+            session.execute(
+                delete(TagBinding).where(
+                    TagBinding.tenant_id == app.tenant_id,
+                    TagBinding.target_id == backing_agent.id,
+                    TagBinding.tag_id.in_(
+                        select(Tag.id).where(Tag.tenant_id == app.tenant_id, Tag.type == TagType.AGENT)
+                    ),
+                )
+            )
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED
             backing_agent.archived_by = account_id
@@ -1091,7 +1160,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             backing_agent.updated_at = now
 
         retired_binding_ids: list[str] = []
-        retired_snapshot_ids: list[str] = []
         if backing_agent is not None:
             bindings = session.scalars(
                 select(AgentWorkspaceBinding).where(
@@ -1102,12 +1170,20 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             retired_binding_ids = [binding.id for binding in bindings]
 
         session.delete(app)
-        result = AppDeletion(
-            app_event,
-            workflow_agent_ids,
-            [],
-            retired_binding_ids,
-            retired_snapshot_ids,
-            backing_agent.id if backing_agent else None,
+        resources = AgentWorkspaceRepository(session=session)
+        for binding_id in retired_binding_ids:
+            resources.retire_binding(tenant_id=app.tenant_id, binding_id=binding_id)
+        retired_snapshot_ids = (
+            resources.retire_home_snapshots_for_agent(tenant_id=app.tenant_id, agent_id=backing_agent.id)
+            if backing_agent is not None
+            else []
         )
-        return result
+        retired_workspace_ids = resources.retire_all_for_app(tenant_id=app.tenant_id, app_id=app.id)
+        return AppDeletion(
+            app=app_event,
+            workflow_agent_ids=workflow_agent_ids,
+            workspace_ids=retired_workspace_ids,
+            binding_ids=retired_binding_ids,
+            home_snapshot_ids=retired_snapshot_ids,
+            backing_agent_id=backing_agent.id if backing_agent else None,
+        )

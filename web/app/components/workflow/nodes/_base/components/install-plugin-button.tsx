@@ -2,12 +2,15 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { TaskStatus } from '@/app/components/plugins/types'
-import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { reportRequestError } from '@/app/query-error-toast'
+import { consoleQuery } from '@/service/console'
+import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
 
 type InstallPluginButtonProps = Omit<ButtonProps, 'children' | 'loading'> & {
   uniqueIdentifier: string
@@ -24,60 +27,70 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       [uniqueIdentifier, ...extraIdentifiers].filter((item): item is string => Boolean(item)),
     ),
   )
-  const manifest = useCheckInstalled({
+  const manifestQueryOptions = installedPluginsByIdsQueryOptions({
     pluginIds: identifiers,
     enabled: identifiers.length > 0,
   })
-  const install = useInstallPackageFromMarketPlace()
+  const manifest = useQuery(manifestQueryOptions)
+  const queryClient = useQueryClient()
+  const install = useMutation(
+    consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
+  )
   const [isTracking, setIsTracking] = useState(false)
   const isLoading = manifest.isLoading || install.isPending || isTracking
   const handleInstall: MouseEventHandler = (e) => {
     e.stopPropagation()
     if (isLoading) return
     setIsTracking(true)
-    install.mutate(uniqueIdentifier, {
-      onSuccess: async (response) => {
-        const finish = async () => {
-          await manifest.refetch()
-          onSuccess?.()
-          setIsTracking(false)
-          install.reset()
-        }
-
-        if (!response) {
-          await finish()
-          return
-        }
-
-        if (response.all_installed) {
-          await finish()
-          return
-        }
-
-        const { check } = checkTaskStatus()
-        try {
-          const { status } = await check({
-            taskId: response.task_id,
-            pluginUniqueIdentifier: uniqueIdentifier,
-          })
-
-          if (status === TaskStatus.failed) {
+    const body = { plugin_unique_identifiers: [uniqueIdentifier] }
+    install.mutate(
+      { body },
+      {
+        onSuccess: async (response) => {
+          const finish = async () => {
+            // Marketplace installs only seed the task list; the button reads the installed lookup.
+            await queryClient.invalidateQueries({ queryKey: manifestQueryOptions.queryKey })
+            onSuccess?.()
             setIsTracking(false)
             install.reset()
+          }
+
+          if (!response) {
+            await finish()
             return
           }
 
-          await finish()
-        } catch {
+          if (response.all_installed) {
+            await finish()
+            return
+          }
+
+          const { check } = checkTaskStatus()
+          try {
+            const { status } = await check({
+              taskId: response.task_id,
+              pluginUniqueIdentifier: uniqueIdentifier,
+            })
+
+            if (status === TaskStatus.failed) {
+              setIsTracking(false)
+              install.reset()
+              return
+            }
+
+            await finish()
+          } catch (error) {
+            reportRequestError(error)
+            setIsTracking(false)
+            install.reset()
+          }
+        },
+        onError: () => {
           setIsTracking(false)
           install.reset()
-        }
+        },
       },
-      onError: () => {
-        setIsTracking(false)
-        install.reset()
-      },
-    })
+    )
   }
   if (!canInstallPlugin || !manifest.data) return null
   const identifierSet = new Set(identifiers)

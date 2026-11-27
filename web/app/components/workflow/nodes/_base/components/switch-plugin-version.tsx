@@ -42,8 +42,6 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import {
   normalizeInstalledPluginDetail,
-  startMarketplacePluginUpgrade,
-  useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
 
@@ -68,13 +66,11 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { getIconUrl } = useGetIcon()
   const queryClient = useQueryClient()
   const invalidatePluginList = useInvalidateInstalledPluginList()
-  const invalidateInstalled = useInvalidateCheckInstalled()
   const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
   const marketplace = useMarketplace()
   const pluginDetails = useQuery(
     consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
-      input: pluginId ? { body: { plugin_ids: [pluginId] } } : skipToken,
-      enabled: canUpdatePlugin,
+      input: canUpdatePlugin && pluginId ? { body: { plugin_ids: [pluginId] } } : skipToken,
       staleTime: 0,
       select: (response) =>
         response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined,
@@ -83,13 +79,22 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const pluginDetail = pluginDetails.data
 
   const { t } = useTranslation(['workflowAgent', 'plugin', 'common', 'appLog'])
+  // The dialog shows the upgrade failure inline, so neither request toasts it.
+  const { mutateAsync: startMarketplacePluginUpgrade } = useMutation(
+    consoleQuery.workspaces.current.plugin.upgrade.marketplace.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
   const upgrade = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ plugin, target }: PluginVersionSelection) => {
       let taskId = acceptedTaskId
       if (!taskId) {
-        const response = await startMarketplacePluginUpgrade(queryClient, {
-          new_plugin_unique_identifier: target.unique_identifier,
-          original_plugin_unique_identifier: plugin.plugin_unique_identifier,
+        const response = await startMarketplacePluginUpgrade({
+          body: {
+            new_plugin_unique_identifier: target.unique_identifier,
+            original_plugin_unique_identifier: plugin.plugin_unique_identifier,
+          },
         })
         if (response.all_installed || response.task?.status === TaskStatus.success) return
         if (response.task?.status === TaskStatus.failed) {
@@ -112,7 +117,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     },
     onSuccess: (_data, { plugin }) => {
       const category = plugin.declaration.category
-      void invalidateInstalled()
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
+      })
       void invalidatePluginList(category)
       if (category === PluginCategoryEnum.agent) {
         const workspace = consoleQuery.workspaces.current

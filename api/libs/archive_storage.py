@@ -15,10 +15,13 @@ from urllib.parse import quote
 
 import boto3
 import orjson
+from boto3.exceptions import S3UploadFailedError
+from boto3.s3.transfer import TransferConfig
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
 from configs import dify_config
+from libs.stream import close_stream
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +130,26 @@ class ArchiveStorage:
         except ClientError as e:
             raise ArchiveStorageError(f"Failed to upload object '{key}': {e}") from e
 
+    def upload_file(self, key: str, filename: str) -> None:
+        """Upload a closed local file with one bounded multipart buffer; raise on failure.
+
+        The caller owns the file and must keep it available until this method returns. No complete object is read
+        into memory, and the managed transfer aborts a failed multipart upload.
+        """
+        try:
+            self.client.upload_file(
+                filename,
+                self.bucket,
+                key,
+                Config=TransferConfig(multipart_chunksize=8 * 1024 * 1024, max_concurrency=1, use_threads=False),
+            )
+        except (ClientError, BotoCoreError, S3UploadFailedError) as exc:
+            raise ArchiveStorageError(f"Failed to upload file '{key}': {exc}") from exc
+
     def get_object(self, key: str) -> bytes:
         """
         Download an object from the archive storage.
+        The response body is closed after reading, including on read errors.
 
         Args:
             key: Object key (path) within the bucket
@@ -143,7 +163,11 @@ class ArchiveStorage:
         """
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
-            return response["Body"].read()
+            body = response["Body"]
+            try:
+                return body.read()
+            finally:
+                close_stream(body)
         except ClientError as e:
             if _is_object_not_found_error(e):
                 raise FileNotFoundError(f"Archive object not found: {key}") from e
@@ -154,6 +178,7 @@ class ArchiveStorage:
     def get_object_stream(self, key: str) -> Generator[bytes]:
         """
         Stream an object from the archive storage.
+        The response body is closed when iteration ends or the generator is closed.
 
         Args:
             key: Object key (path) within the bucket
@@ -167,7 +192,11 @@ class ArchiveStorage:
         """
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
-            yield from response["Body"].iter_chunks()
+            body = response["Body"]
+            try:
+                yield from body.iter_chunks(chunk_size=1024 * 1024)
+            finally:
+                close_stream(body)
         except ClientError as e:
             if _is_object_not_found_error(e):
                 raise FileNotFoundError(f"Archive object not found: {key}") from e

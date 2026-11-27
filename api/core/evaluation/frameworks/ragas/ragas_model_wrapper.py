@@ -1,155 +1,73 @@
 import asyncio
-import logging
-from typing import Any
+from typing import Any, TypeVar, override
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, Generation, GenerationChunk, LLMResult
-from langchain_core.prompt_values import PromptValue
-from ragas.llms.base import BaseRagasLLM
+from pydantic import BaseModel
+from ragas.llms.base import InstructorBaseRagasLLM
 
-logger = logging.getLogger(__name__)
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
+from libs.structured_output_schema import to_strict_json_schema
+
+_OutputT = TypeVar("_OutputT", bound=BaseModel)
 
 
-class DifyModelWrapper(BaseRagasLLM):
-    """Bridge Dify model invocation to ragas and fallback LLM-as-judge flows.
-
-    ragas can accept a custom ``BaseRagasLLM`` instance. Using one here keeps
-    evaluation requests on Dify's provider stack instead of falling back to
-    ragas' default OpenAI factory, which would require standalone environment
-    credentials and bypass tenant-scoped model configuration.
-    """
-
-    model_provider: str
-    model_name: str
-    tenant_id: str
-    user_id: str | None
+class DifyModelWrapper(InstructorBaseRagasLLM):
+    """Run Ragas judge prompts on the tenant's configured Dify model."""
 
     def __init__(self, model_provider: str, model_name: str, tenant_id: str, user_id: str | None = None):
-        super().__init__()
         self.model_provider = model_provider
         self.model_name = model_name
         self.tenant_id = tenant_id
         self.user_id = user_id
 
     def _get_model_instance(self) -> Any:
+        """Resolve the configured judge model with Evaluation credit attribution."""
         from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
         from graphon.model_runtime.entities.model_entities import ModelType
 
         model_manager = create_plugin_model_manager(tenant_id=self.tenant_id, user_id=self.user_id)
-        model_instance = model_manager.get_model_instance(
+        return model_manager.get_model_instance(
             tenant_id=self.tenant_id,
             provider=self.model_provider,
             model_type=ModelType.LLM,
             model=self.model_name,
+            request_metadata=get_evaluation_credit_usage_metadata(),
         )
-        return model_instance
 
-    def invoke(self, prompt: str) -> str:
-        """Invoke the configured Dify model with a plain-text evaluation prompt."""
+    @staticmethod
+    def _prompt_messages(prompt: str) -> list[Any]:
         from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
-        model_instance = self._get_model_instance()
-        result = model_instance.invoke_llm(
-            prompt_messages=[
-                SystemPromptMessage(content="You are an evaluation judge. Answer precisely and concisely."),
-                UserPromptMessage(content=prompt),
-            ],
+        return [
+            SystemPromptMessage(content="You are an evaluation judge. Follow the requested output format exactly."),
+            UserPromptMessage(content=prompt),
+        ]
+
+    def invoke(self, prompt: str) -> str:
+        """Support the Dify-owned Agent judge's plain-text fallback."""
+        result = self._get_model_instance().invoke_llm(
+            prompt_messages=self._prompt_messages(prompt),
             model_parameters={"temperature": 0.0},
             stream=False,
         )
         return result.message.get_text_content()
 
-    def generate_text(
-        self,
-        prompt: PromptValue,
-        n: int = 1,
-        temperature: float = 1e-8,
-        stop: list[str] | None = None,
-        callbacks: Any = None,
-    ) -> LLMResult:
-        """Implement ragas' sync LLM interface on top of Dify's model runtime."""
-        del callbacks  # Dify's invocation path does not currently use LangChain callbacks here.
-        prompt_messages = _convert_prompt_value(prompt)
+    @override
+    def generate(self, prompt: str, response_model: type[_OutputT]) -> _OutputT:
+        """Generate a schema-validated result through Dify's model runtime."""
+        from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+
         model_instance = self._get_model_instance()
-
-        generations: list[list[Generation | ChatGeneration | GenerationChunk | ChatGenerationChunk]] = [[]]
-        completions = max(1, n)
-        for _ in range(completions):
-            # Ragas uses 1e-8 for deterministic calls, while plugin model schemas
-            # accept temperature values with at most two decimal places.
-            result = model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters={"temperature": round(temperature, 2)},
-                stop=stop,
-                stream=False,
-            )
-            text = result.message.get_text_content()
-            generations[0].append(
-                ChatGeneration(
-                    text=text,
-                    message=AIMessage(content=text, response_metadata={"finish_reason": "stop"}),
-                    generation_info={"finish_reason": "stop"},
-                )
-            )
-
-        return LLMResult(generations=generations)
-
-    async def agenerate_text(
-        self,
-        prompt: PromptValue,
-        n: int = 1,
-        temperature: float | None = None,
-        stop: list[str] | None = None,
-        callbacks: Any = None,
-    ) -> LLMResult:
-        """Async ragas hook backed by the sync Dify invocation path."""
-        return await asyncio.to_thread(
-            self.generate_text,
-            prompt,
-            n,
-            self.get_temperature(n) if temperature is None else temperature,
-            stop,
-            callbacks,
+        result = invoke_llm_with_structured_output(
+            provider=model_instance.provider,
+            model_schema=model_instance.get_model_schema(),
+            model_instance=model_instance,
+            prompt_messages=self._prompt_messages(prompt),
+            json_schema=to_strict_json_schema(response_model.model_json_schema()),
+            model_parameters={"temperature": 0.0},
+            stream=False,
         )
+        return response_model.model_validate(result.structured_output)
 
-
-def _convert_prompt_value(prompt: PromptValue) -> list[Any]:
-    """Translate LangChain prompt values into graphon prompt messages."""
-    from graphon.model_runtime.entities.message_entities import (
-        AssistantPromptMessage,
-        SystemPromptMessage,
-        UserPromptMessage,
-    )
-
-    prompt_messages: list[Any] = []
-    for message in prompt.to_messages():
-        content = _message_content_to_text(message)
-        if isinstance(message, SystemMessage):
-            prompt_messages.append(SystemPromptMessage(content=content))
-        elif isinstance(message, AIMessage):
-            prompt_messages.append(AssistantPromptMessage(content=content))
-        elif isinstance(message, HumanMessage):
-            prompt_messages.append(UserPromptMessage(content=content))
-        else:
-            prompt_messages.append(UserPromptMessage(content=content))
-
-    return prompt_messages
-
-
-def _message_content_to_text(message: BaseMessage) -> str:
-    """Flatten LangChain message content into a plain-text string for Dify."""
-    if isinstance(message.content, str):
-        return message.content
-
-    if isinstance(message.content, list):
-        parts: list[str] = []
-        for block in message.content:
-            if isinstance(block, str):
-                parts.append(block)
-            elif isinstance(block, dict):
-                text = block.get("text")
-                if text:
-                    parts.append(str(text))
-        return "\n".join(part for part in parts if part)
-
-    return str(message.content or "")
+    @override
+    async def agenerate(self, prompt: str, response_model: type[_OutputT]) -> _OutputT:
+        return await asyncio.to_thread(self.generate, prompt, response_model)

@@ -61,7 +61,7 @@ function GroupItem({
   return (
     <li className="flex min-w-0 items-center gap-2 rounded-lg hover:bg-state-base-hover">
       <SubjectToggleButton selected={selected} onToggle={onToggle}>
-        <div className="mr-2 size-5 shrink-0 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+        <div className="me-2 size-5 shrink-0 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
           <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
             <span
               aria-hidden="true"
@@ -69,7 +69,7 @@ function GroupItem({
             />
           </div>
         </div>
-        <span className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary">
+        <span className="me-1 min-w-0 truncate system-sm-medium text-text-secondary">
           {group.name}
         </span>
         <span className="shrink-0 system-xs-regular text-text-tertiary">{group.groupSize}</span>
@@ -78,7 +78,7 @@ function GroupItem({
         size="small"
         disabled={selected}
         variant="ghost-accent"
-        className="mr-1 flex shrink-0 items-center justify-between py-1"
+        className="me-1 flex shrink-0 items-center justify-between py-1"
         onClick={() => onExpand(group)}
       >
         <span>
@@ -107,15 +107,15 @@ function MemberItem({
 
   return (
     <li>
-      <SubjectToggleButton selected={selected} onToggle={onToggle} className="pr-3">
-        <div className="mr-2 size-5 shrink-0 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+      <SubjectToggleButton selected={selected} onToggle={onToggle} className="pe-3">
+        <div className="me-2 size-5 shrink-0 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
           <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
             <Avatar size="xxs" aria-hidden="true">
               <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
             </Avatar>
           </div>
         </div>
-        <span className="mr-1 min-w-0 truncate system-sm-medium text-text-secondary">
+        <span className="me-1 min-w-0 truncate system-sm-medium text-text-secondary">
           {member.name}
         </span>
         {currentUser.email === member.email && (
@@ -123,7 +123,7 @@ function MemberItem({
             ({t(($) => $.you, { ns: 'common' })})
           </span>
         )}
-        <span className="ml-auto min-w-0 truncate system-xs-regular text-text-quaternary">
+        <span className="ms-auto min-w-0 truncate system-xs-regular text-text-quaternary">
           {member.email}
         </span>
       </SubjectToggleButton>
@@ -151,7 +151,7 @@ function SubjectToggleButton({
           variant="ghost"
           size="medium"
           className={cn(
-            'min-h-8 min-w-0 grow justify-start gap-2 p-1 pl-2 text-left whitespace-normal',
+            'min-h-8 min-w-0 grow justify-start gap-2 p-1 ps-2 text-start whitespace-normal',
             className,
           )}
         />

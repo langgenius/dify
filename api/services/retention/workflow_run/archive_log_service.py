@@ -15,6 +15,7 @@ from services.retention.workflow_run.archive_deletion_task import (
     WorkflowRunArchiveDeletionTask,
 )
 from services.retention.workflow_run.archive_download_task import (
+    ARCHIVE_DOWNLOAD_REDISPATCH_INTERVAL_SECONDS,
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
     build_archive_download_id,
@@ -199,7 +200,11 @@ class WorkflowRunArchiveService:
         year: int,
         month: int,
     ) -> WorkflowRunArchiveDownloadTask:
-        """Create or return the idempotent download task for one workspace/month."""
+        """Create a monthly task or re-dispatch a stalled claim without replacing its execution owner.
+
+        The cache lock serializes dispatch timestamps. Repeated requests within the interval reuse the task;
+        older pending/processing tasks keep their Celery identity and attempt budget so redelivery is safe.
+        """
         tenant_id = context.active_workspace_id
         bundles = self._bundles.list_for_tenant_month(tenant_id, year=year, month=month)
         if not bundles:
@@ -229,13 +234,20 @@ class WorkflowRunArchiveService:
             existing = self._tasks.get(tenant_id=tenant_id, download_id=download_id)
             if existing is None or existing.status == WorkflowRunArchiveDownloadStatus.FAILED:
                 task_to_queue = task
-            elif existing.status == WorkflowRunArchiveDownloadStatus.PENDING and not existing.celery_task_id:
-                task_to_queue = existing
-            else:
+            elif existing.status == WorkflowRunArchiveDownloadStatus.READY or (
+                existing.celery_task_id
+                and datetime.datetime.now(datetime.UTC) - existing.updated_at
+                < datetime.timedelta(seconds=ARCHIVE_DOWNLOAD_REDISPATCH_INTERVAL_SECONDS)
+            ):
                 return existing
+            else:
+                task_to_queue = existing
 
             queued_task = task_to_queue.model_copy(
-                update={"celery_task_id": uuid.uuid4().hex, "updated_at": datetime.datetime.now(datetime.UTC)}
+                update={
+                    "celery_task_id": task_to_queue.celery_task_id or uuid.uuid4().hex,
+                    "updated_at": datetime.datetime.now(datetime.UTC),
+                }
             )
             self._tasks.save(queued_task)
 

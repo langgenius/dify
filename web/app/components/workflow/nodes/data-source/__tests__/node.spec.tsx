@@ -18,15 +18,12 @@ const requests = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.list.installations.ids.post': requests.manifest,
       'rag.pipelines.datasourcePlugins.get': requests.catalog,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.install.marketplace.post': requests.install,
     }),
   }

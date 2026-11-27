@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Contactul nu a putut fi eliminat. Încercați din nou.",
   "directory.removalSingleTitle": "Eliminați {{name}}?",
   "directory.resultCount": "Rezultate: {{count}}",
-  "imPlatform.action.configure": "Configurează",
   "imPlatform.action.configureChannel": "Configurați {{provider}}",
   "imPlatform.action.connect": "Conectează",
   "imPlatform.action.copied": "Copiat",

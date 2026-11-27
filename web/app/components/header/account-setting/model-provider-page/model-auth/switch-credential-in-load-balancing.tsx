@@ -69,7 +69,7 @@ const SwitchCredentialInLoadBalancing = ({
               'cursor-not-allowed opacity-50',
           )}
         >
-          {!empty && <StatusDot status={color} />}
+          {!empty && selectedCredentialId && <StatusDot status={color} />}
           {authRemoved && t(($) => $['modelProvider.auth.authRemoved'], { ns: 'modelProvider' })}
           {unavailable && t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
           {empty &&
@@ -79,7 +79,11 @@ const SwitchCredentialInLoadBalancing = ({
           {empty &&
             (!canCreateCredential || notAllowCustomCredential) &&
             t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
-          {!authRemoved && !unavailable && !empty && customModelCredential?.credential_name}
+          {!authRemoved &&
+            !unavailable &&
+            !empty &&
+            (customModelCredential?.credential_name ||
+              t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' }))}
           {currentCredential?.from_enterprise && <Badge>Enterprise</Badge>}
           <span className="i-ri-arrow-down-s-line size-4" />
         </Button>

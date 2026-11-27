@@ -27,6 +27,7 @@ from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
 from libs.rate_limit import LIMIT_ME_PER_ACCOUNT, enforce
 from machinery.context import AccountRequestContext
+from machinery.scope import scope_admits
 from services.account_errors import AccountNotFoundError, AccountSessionNotFoundError
 from services.entities.account_access_entities import AccountSessionSnapshot, AccountWorkspaceSnapshot
 from services.entities.account_entities import AccountSnapshot
@@ -58,9 +59,9 @@ class AccountApi(Resource):
             snapshot = application_services().accounts.access.get(request_context)
         except AccountNotFoundError:
             raise Unauthorized("account not found") from None
-        workspaces = snapshot.workspaces
-        if ctx.personal_workspace_ids is not None:
-            workspaces = tuple(workspace for workspace in workspaces if workspace.id in ctx.personal_workspace_ids)
+        workspaces = tuple(
+            workspace for workspace in snapshot.workspaces if scope_admits(ctx.personal_workspace_ids, workspace.id)
+        )
         visible_workspace_ids = {workspace.id for workspace in workspaces}
         default_workspace_id = (
             snapshot.default_workspace_id if snapshot.default_workspace_id in visible_workspace_ids else None

@@ -49,7 +49,13 @@ class WorkflowNodeExecutionRepository(Protocol):
 
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None: ...
 
-    def save_execution_data(self, execution: WorkflowNodeExecution): ...
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Persist the execution along with its inputs, process data, and outputs.
+
+        Implementations may truncate and offload oversized payloads, or collapse the write
+        into a single transaction when no offload is required.
+        """
+        ...
 
     def get_by_workflow_execution(
         self,

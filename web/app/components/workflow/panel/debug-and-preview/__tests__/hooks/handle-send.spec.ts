@@ -13,11 +13,6 @@ vi.mock('@/app/notifications', async (importOriginal) => {
     toast: { ...actual.toast, info: (...args: unknown[]) => mockNotify(...args) },
   }
 })
-const mockInvalidAllLastRun = vi.fn()
-vi.mock('@/service/use-workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
-}))
 const fetchInspectVars = vi.fn(async () => undefined)
 
 const renderChat = (canRun = true) =>

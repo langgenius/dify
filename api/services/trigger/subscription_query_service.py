@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
@@ -128,7 +129,7 @@ class TriggerSubscriptionQueryService:
 
     def list(
         self, *, tenant_id: str, account_id: str, provider_id: TriggerProviderID
-    ) -> list[TriggerProviderSubscriptionApiEntity]:
+    ) -> builtins.list[TriggerProviderSubscriptionApiEntity]:
         rows = self._credentials.list_trigger_subscriptions(
             workspace_id=tenant_id,
             provider=str(provider_id),
@@ -142,7 +143,7 @@ class TriggerSubscriptionQueryService:
             provider_id=provider_id,
             credential_types=frozenset(row.credential_type for row in rows),
         )
-        subscriptions: list[TriggerProviderSubscriptionApiEntity] = []
+        subscriptions: builtins.list[TriggerProviderSubscriptionApiEntity] = []
         for row in rows:
             credential_encrypter, _ = create_provider_encrypter(
                 tenant_id=tenant_id,

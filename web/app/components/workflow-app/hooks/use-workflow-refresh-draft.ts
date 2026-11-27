@@ -4,8 +4,9 @@ import { useCallback, useRef } from 'react'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 
 type RefreshWorkflowDraftOptions = {
@@ -43,7 +44,7 @@ export const useWorkflowRefreshDraft = () => {
       if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(false)
       const refreshSequence = ++refreshSequenceRef.current
       setIsSyncingWorkflowDraft(true)
-      return fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+      return fetchAppWorkflowDraft(appId)
         .then((response) => {
           if (options?.shouldApply && !options.shouldApply()) return false
 
@@ -71,8 +72,11 @@ export const useWorkflowRefreshDraft = () => {
           setIsWorkflowDataLoaded(true)
           return true
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(true)
+          // Callers only learn that the canvas was not replaced, so the failure is reported here.
+          // A collaboration reload (`shouldApply`) retries in the background with a backoff.
+          if (!options?.shouldApply) reportRequestError(error)
           return false
         })
         .finally(() => {

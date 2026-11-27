@@ -1,5 +1,5 @@
 import { page, userEvent } from 'vite-plus/test/browser'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
 import { AudioBtn } from '../index'
 import {
   audioResponse,
@@ -9,45 +9,60 @@ import {
   renderAudio,
 } from './audio-browser-test-env'
 
-const api = vi.hoisted(() => ({
-  stream: vi.fn(),
-  params: {} as Record<string, string>,
-  pathname: '/',
-}))
+const api = {
+  stream: vi.fn<(url: string, source: string, body: unknown) => Response | Promise<Response>>(),
+}
+// The agent contract requires a UUID agent id.
+const agentId = '3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f'
 vi.unmock('react-i18next')
-// boundary: supply route identity without the Next runtime.
-vi.mock('@/next/navigation', () => ({
-  useParams: () => api.params,
-  usePathname: () => api.pathname,
-}))
-// boundary: only the text-to-audio HTTP response is replaced; manager and media engine stay real.
-vi.mock('@/service/share', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/share')>()),
-  textToAudioStream: (...args: unknown[]) => api.stream(...args),
-}))
 
 beforeEach(async () => {
   await page.viewport(800, 600)
-  api.params = { appId: 'app-1' }
-  api.pathname = '/apps/app-1/chat'
   api.stream.mockReset()
-  onTestFinished(guardUnexpectedFetch())
+  // Public web apps call the public API; console routes stand for installed-app sources.
+  const respond =
+    (source: string) =>
+    async ({ request, url }: { request: Request; url: URL }) =>
+      api.stream(url.pathname.replace(/^.*\/api/, ''), source, await request.json())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        agent: {
+          byAgentId: {
+            textToAudio: {
+              post: async ({ params, body }) => {
+                const audio = await api.stream(
+                  `/agent/${params.agent_id}/text-to-audio`,
+                  'installedApp',
+                  body,
+                )
+                return audio.blob()
+              },
+            },
+          },
+        },
+      },
+      routes: [
+        route('POST', 'public', '/text-to-audio', respond('webApp')),
+        route('POST', 'console', '/apps/:appId/text-to-audio', respond('installedApp')),
+        route('POST', 'console', '/installed-apps/:appId/text-to-audio', respond('installedApp')),
+      ],
+    }),
+  )
 })
 
 it.each([
   ...audioRoutes,
   {
     route: 'agent audition',
-    params: { agentId: 'agent-1' },
-    pathname: '/agents/agent-1/configure',
-    url: '/agent/agent-1/text-to-audio',
+    params: { agentId },
+    pathname: `/agents/${agentId}/configure`,
+    url: `/agent/${agentId}/text-to-audio`,
     source: 'installedApp',
   },
 ])(
   'plays the selected voice through the $route HTTP endpoint',
   async ({ params, pathname, url, source, route }) => {
-    api.params = params
-    api.pathname = pathname
     api.stream.mockResolvedValue(audioResponse())
     const id = `route-${route}`
     onTestFinished(() => destroyPlayer(id))
@@ -58,15 +73,18 @@ it.each([
         voice="alloy"
         isAudition={route === 'agent audition'}
       />,
+      { params, pathname },
     )
     await screen.getByRole('button', { name: 'Play', exact: true }).click()
     await expect.element(screen.getByRole('button', { name: 'Playing', exact: true })).toBeEnabled()
-    expect(api.stream).toHaveBeenCalledExactlyOnceWith(url, source, {
-      message_id: id,
-      streaming: true,
-      voice: 'alloy',
-      text: 'Read this answer',
-    })
+    await expect
+      .poll(() => api.stream)
+      .toHaveBeenCalledExactlyOnceWith(url, source, {
+        message_id: id,
+        streaming: true,
+        voice: 'alloy',
+        text: 'Read this answer',
+      })
   },
 )
 

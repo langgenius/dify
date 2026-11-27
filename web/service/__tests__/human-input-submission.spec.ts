@@ -1,3 +1,4 @@
+import { isErrorHandled } from '../handled-error'
 import {
   HumanInputSubmissionPreparationError,
   prepareHumanInputFormSubmission,
@@ -23,4 +24,12 @@ it('clears its timeout after readiness succeeds', async () => {
   vi.useFakeTimers()
   await prepareHumanInputFormSubmission(() => Promise.resolve(true))
   expect(vi.getTimerCount()).toBe(0)
+})
+
+it('marks its failure handled because the form renders it inline', async () => {
+  const error = await prepareHumanInputFormSubmission(() => Promise.resolve(false)).catch(
+    (caught: unknown) => caught,
+  )
+
+  expect(isErrorHandled(error)).toBe(true)
 })

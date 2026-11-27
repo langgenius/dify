@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Workflow ທັງໝົດເປັນເຄື່ອງມື",
   "auth.authorized": "ໄດ້ຮັບອະນຸຍາດແລ້ວ",
   "auth.setup": "ຕັ້ງຄ່າການອະນຸຍາດເພື່ອໃຊ້ງານ",
-  "auth.setupModalTitle": "ຕັ້ງຄ່າການອະນຸຍາດ",
-  "auth.setupModalTitleDescription": "ຫຼັງຈາກຕັ້ງຄ່າຂໍ້ມູນປະຈຳຕົວແລ້ວ, ສະມາຊິກທັງໝົດໃນ Workspace ຈະສາມາດໃຊ້ເຄື່ອງມືນີ້ໄດ້ໃນການຈັດການແອັບພລິເຄຊັນ.",
   "auth.unauthorized": "ບໍ່ໄດ້ຮັບອະນຸຍາດ",
   "author": "ໂດຍ",
   "builtInPromptTitle": "Prompt",

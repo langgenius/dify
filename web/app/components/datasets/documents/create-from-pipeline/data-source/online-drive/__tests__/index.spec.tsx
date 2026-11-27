@@ -12,11 +12,30 @@ import { createDataSourceStore } from '../../store'
 import { DataSourceContext } from '../../store/provider'
 import OnlineDrive from '../index'
 
-const { ssePost, toastError } = vi.hoisted(() => ({ ssePost: vi.fn(), toastError: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost,
+const streamEvents = vi.hoisted(() => vi.fn<typeof import('@/service/event-stream').streamEvents>())
+const runNode = vi.hoisted(() => vi.fn())
+const toastError = vi.hoisted(() => vi.fn())
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents,
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'rag.pipelines.byPipelineId.workflows.draft.datasource.nodes.byNodeId.run.post': (
+        input: unknown,
+        options?: unknown,
+      ) => runNode('draft', input, options),
+      'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.run.post': (
+        input: unknown,
+        options?: unknown,
+      ) => runNode('published', input, options),
+    }),
+  }
+})
 vi.mock('@/app/notifications', () => ({ toast: { error: toastError } }))
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
@@ -78,7 +97,15 @@ function callbacks(): {
   onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => void
   onDataSourceNodeError: (data: DataSourceNodeErrorResponse) => void
 } {
-  return ssePost.mock.lastCall![2]
+  return streamEvents.mock.lastCall![1] as ReturnType<typeof callbacks>
+}
+/** Sends the last stream request and returns the stubbed run route and its input. */
+function lastRun() {
+  void streamEvents.mock.lastCall![0]({
+    signal: new AbortController().signal,
+    context: { stream: true },
+  })
+  return runNode.mock.lastCall!.slice(0, 2)
 }
 beforeEach(() => vi.clearAllMocks())
 
@@ -86,10 +113,11 @@ it.each([true, false])(
   'loads the %s draft route and stores streamed files and pagination',
   async (draft) => {
     const store = setup({ cached: false, draft })
-    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
-    expect(ssePost).toHaveBeenCalledWith(
-      `/rag/pipelines/pipeline-123/workflows/${draft ? 'draft' : 'published'}/datasource/nodes/node-1/run`,
+    await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
+    expect(lastRun()).toEqual([
+      draft ? 'draft' : 'published',
       {
+        params: { pipeline_id: 'pipeline-123', node_id: 'node-1' },
         body: {
           inputs: {
             prefix: 'root',
@@ -101,8 +129,7 @@ it.each([true, false])(
           credential_id: 'credential-1',
         },
       },
-      expect.any(Object),
-    )
+    ])
     act(() =>
       callbacks().onDataSourceNodeCompleted({
         event: 'datasource_completed',
@@ -126,13 +153,13 @@ it.each([true, false])(
 
 it('does not request files without a credential', () => {
   setup({ cached: false, credential: '' })
-  expect(ssePost).not.toHaveBeenCalled()
+  expect(streamEvents).not.toHaveBeenCalled()
 })
 
 it('uses cached files, selects them independently and clears selection when opening a folder', async () => {
   const user = userEvent.setup()
   const store = setup()
-  expect(ssePost).not.toHaveBeenCalled()
+  expect(streamEvents).not.toHaveBeenCalled()
   await user.click(screen.getByRole('checkbox', { name: 'Report.pdf' }))
   expect(store.getState().selectedFileIds).toEqual(['file-1'])
   expect(screen.getByRole('checkbox', { name: 'Other.txt' })).not.toBeChecked()
@@ -140,8 +167,8 @@ it('uses cached files, selects them independently and clears selection when open
   expect(store.getState().selectedFileIds).toEqual([])
   expect(store.getState().breadcrumbs).toEqual(['Root', 'Archive'])
   expect(store.getState().prefix).toEqual(['root', 'folder-1'])
-  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
-  expect(ssePost.mock.lastCall![1].body.inputs.prefix).toBe('folder-1')
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
+  expect(lastRun()[1]).toMatchObject({ body: { inputs: { prefix: 'folder-1' } } })
 })
 
 it('shows the selected file and switches selection in single-upload mode', async () => {
@@ -161,7 +188,7 @@ it('shows the selected file and switches selection in single-upload mode', async
 it('reports a failed stream and opens datasource configuration', async () => {
   const user = userEvent.setup()
   setup({ cached: false })
-  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
   act(() => callbacks().onDataSourceNodeError({ event: 'datasource_error', error: 'Drive failed' }))
   expect(toastError).toHaveBeenCalledWith('Drive failed')
   await user.click(screen.getByRole('button', { name: /^datasetPipeline\.configurationTip/ }))

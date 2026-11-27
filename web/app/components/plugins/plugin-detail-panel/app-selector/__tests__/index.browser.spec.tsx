@@ -1,16 +1,21 @@
-import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppPartial, GetAppsResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppSelectorValue } from '../index'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
-import { beforeEach, expect, it, vi } from 'vite-plus/test'
+import { expect, it, vi } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AppSelector } from '../index'
 
+// App detail routes take UUID ids.
+const appId = (index: number) => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`
 const apps = [
   {
-    id: 'app-1',
+    id: appId(1),
     name: 'Support Bot',
     mode: 'chat',
     icon_type: 'emoji',
@@ -19,7 +24,7 @@ const apps = [
     icon_url: null,
   },
   {
-    id: 'app-2',
+    id: appId(2),
     name: 'Sales App',
     mode: 'chat',
     icon_type: 'emoji',
@@ -28,20 +33,6 @@ const apps = [
     icon_url: null,
   },
 ] satisfies AppPartial[]
-const { fetchApps, fetchApp } = vi.hoisted(() => ({ fetchApps: vi.fn(), fetchApp: vi.fn() }))
-// boundary: app search/detail reads stop at the generated console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.get': fetchApps,
-      'apps.byAppId.get': fetchApp,
-      'files.upload.get': () => ({}),
-    }),
-  }
-})
 
 function Harness({
   onSelect,
@@ -86,16 +77,29 @@ async function renderSelector() {
   return { input, onSelect, onSubmit }
 }
 
-beforeEach(() => {
-  fetchApps.mockImplementation(({ query }: { query: { name: string; page: number } }) => ({
-    data: apps.filter((app) => app.name.toLowerCase().includes(query.name.toLowerCase())),
-    page: query.page,
-    has_more: false,
-  }))
-  fetchApp.mockImplementation(({ params }: { params: { app_id: string } }) =>
-    createAppDetailFixture(apps.find((app) => app.id === params.app_id)),
-  )
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: {
+      get: (input) => ({
+        data: apps.filter((app) =>
+          app.name.toLowerCase().includes(input?.query?.name?.toLowerCase() ?? ''),
+        ),
+        page: input?.query?.page ?? 1,
+        limit: 20,
+        total: 2,
+        has_more: false,
+      }),
+      byAppId: {
+        get: ({ params }) =>
+          createAppDetailFixture({
+            id: params.app_id,
+            ...apps.find((app) => app.id === params.app_id),
+          }),
+      },
+    },
+    files: { upload: { get: () => createFileUploadConfigFixture() } },
+  },
+}))
 
 it('dismisses only the inner picker with Escape and starts a fresh search after either popover closes', async () => {
   const { input, onSubmit } = await renderSelector()
@@ -110,6 +114,8 @@ it('dismisses only the inner picker with Escape and starts a fresh search after 
   await input.fill('missing')
   await expect.element(page.getByText('common.noData')).toBeVisible()
   await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('missing')
+  await expect.element(page.getByText('common.noData')).toBeVisible()
   expect(onSubmit).not.toHaveBeenCalled()
   await userEvent.keyboard('{Escape}')
   await expect.element(input).not.toBeInTheDocument()
@@ -130,27 +136,35 @@ it('removes a highlighted stale result during remote search and selects the new 
   await expect.element(page.getByRole('option', { name: /Support Bot/ })).toBeVisible()
   await userEvent.keyboard('{ArrowDown}')
   await expect.element(input).toHaveAttribute('aria-activedescendant')
-  let resolveSearch!: (value: { data: AppPartial[]; page: number; has_more: boolean }) => void
-  fetchApps.mockImplementation(({ query }: { query: { name: string } }) =>
-    query.name
-      ? new Promise((resolve) => {
-          resolveSearch = resolve
-        })
-      : { data: apps, page: 1, has_more: false },
-  )
+  const search = createDeferred<GetAppsResponse>()
+  fake.use({
+    console: {
+      apps: {
+        get: (input) =>
+          input?.query?.name
+            ? search.promise
+            : { data: apps, page: 1, limit: 20, total: 2, has_more: false },
+      },
+    },
+  })
   await input.fill('sales')
   await expect.element(page.getByRole('option')).not.toBeInTheDocument()
   await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('sales')
   expect(onSelect).not.toHaveBeenCalled()
   expect(onSubmit).not.toHaveBeenCalled()
-  await expect.poll(() => resolveSearch).toBeTypeOf('function')
-  resolveSearch({ data: [apps[1]!], page: 1, has_more: false })
+  await expect
+    .poll(() => fake.console.apps.get)
+    .toHaveBeenCalledWith(
+      expect.objectContaining({ query: expect.objectContaining({ name: 'sales' }) }),
+    )
+  search.resolve({ data: [apps[1]!], page: 1, limit: 20, total: 1, has_more: false })
   await expect.element(page.getByRole('option', { name: /Sales App/ })).toBeVisible()
   await userEvent.keyboard('{ArrowDown}')
   await expect.element(input).toHaveAttribute('aria-activedescendant')
   await userEvent.keyboard('{Enter}')
   await expect.element(input).not.toBeInTheDocument()
-  expect(onSelect).toHaveBeenLastCalledWith({ app_id: 'app-2', inputs: {}, files: [] })
+  expect(onSelect).toHaveBeenLastCalledWith({ app_id: appId(2), inputs: {}, files: [] })
   expect(onSubmit).not.toHaveBeenCalled()
   const innerTrigger = page.getByRole('button', { name: 'Sales App' }).nth(1)
   await expect.element(innerTrigger).toHaveFocus()
@@ -164,20 +178,31 @@ it('removes a highlighted stale result during remote search and selects the new 
 it('keeps pagination reachable in the scroll area and selects an app from the appended page', async () => {
   const firstPage = Array.from({ length: 20 }, (_, index) => ({
     ...apps[0]!,
-    id: `app-${index + 1}`,
+    id: appId(index + 1),
     name: `Application ${index + 1}`,
   }))
-  const nextApp = { ...apps[1]!, id: 'app-21', name: 'Application 21' }
-  fetchApps.mockImplementation(({ query }: { query: { page: number } }) => ({
-    data: query.page === 1 ? firstPage : [nextApp],
-    page: query.page,
-    has_more: query.page === 1,
-  }))
+  const nextApp = { ...apps[1]!, id: appId(21), name: 'Application 21' }
+  fake.use({
+    console: {
+      apps: {
+        get: (input) => {
+          const page = input?.query?.page ?? 1
+          return {
+            data: page === 1 ? firstPage : [nextApp],
+            page,
+            limit: 20,
+            total: 21,
+            has_more: page === 1,
+          }
+        },
+      },
+    },
+  })
   const { onSelect } = await renderSelector()
   const region = page.getByRole('region', { name: 'app.appSelector.label' })
   await expect.element(region).toBeVisible()
   expect(region.element().scrollHeight).toBeGreaterThan(region.element().clientHeight)
   await page.getByRole('button', { name: 'workflow.common.loadMore' }).click()
   await page.getByRole('option', { name: /Application 21/ }).click()
-  expect(onSelect).toHaveBeenLastCalledWith({ app_id: 'app-21', inputs: {}, files: [] })
+  expect(onSelect).toHaveBeenLastCalledWith({ app_id: appId(21), inputs: {}, files: [] })
 })

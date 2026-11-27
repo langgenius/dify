@@ -66,10 +66,8 @@ const replacePathPrefix = (path: string, sourcePrefix: string, targetPrefix: str
 
 const enterpriseDocPathOverrides: Readonly<Record<string, string>> = {
   '/use-dify/getting-started/introduction': '/use/build/workflow-chatflow',
+  '/use-dify/workspace/export-import-apps': '/use/workspace/app-management',
   '/cli/overview': '/develop/cli/introduction',
-  '/cli/authenticate': '/develop/cli/account-users/authenticate',
-  '/cli/common-tasks': '/develop/cli/account-users/common-tasks',
-  '/cli/quick-start': '/develop/cli/account-users/quick-start',
 }
 
 const unavailableEnterpriseDocPaths: ReadonlySet<string> = new Set([
@@ -80,8 +78,7 @@ const unavailableEnterpriseDocPaths: ReadonlySet<string> = new Set([
 
 const getEnterpriseDocPath = (path: string): string => {
   const { pathname, hash } = splitPathHash(path)
-  let targetPath = replacePathPrefix(pathname, '/cloud', '')
-  targetPath = replacePathPrefix(targetPath, '/self-host', '')
+  let targetPath = pathname
 
   if (!targetPath) return '/'
 

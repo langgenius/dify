@@ -3,12 +3,6 @@ import { checkAccessibility, renderDeploy } from './accessibility-test-env'
 
 vi.unmock('react-i18next')
 
-// boundary: isolated Browser specs do not provide the Next route params runtime.
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ appId: 'deploy-audit' }),
-}))
-
 afterEach(() => {
   vi.restoreAllMocks()
 })

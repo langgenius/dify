@@ -247,12 +247,12 @@ class TestTimezoneCompatibility(unittest.TestCase):
                     pass
 
     def test_invalid_timezone_handling(self) -> None:
-        """Test handling of invalid timezones."""
+        """Unknown timezone names raise the documented ValueError."""
         expression = "0 12 * * *"
-        invalid_timezone = "Invalid/Timezone"
 
-        with pytest.raises((ValueError, Exception)):  # Should raise an exception
-            calculate_next_run_at(expression, invalid_timezone, self.base_time)
+        for invalid_timezone in ("Invalid/Timezone", "America/NewYork", "GMT+8"):
+            with pytest.raises(ValueError, match="Invalid timezone"):
+                calculate_next_run_at(expression, invalid_timezone, self.base_time)
 
 
 class TestFrontendBackendIntegration(unittest.TestCase):

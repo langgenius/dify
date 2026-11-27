@@ -4,9 +4,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import assert_never, override
 
-from enums import CloudPlan
 from services.billing_client import saas
-from services.billing_service import BillingService
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
     NetworkAccessAppStatusSnapshot,
@@ -20,6 +18,7 @@ from services.errors.billing import (
     BillingUpstreamUnavailableError,
     UnknownErrorReason,
 )
+from services.feature_service import FeatureService
 from services.network_access_group_service import (
     NetworkAccessGroupAppNotFoundError,
     NetworkAccessGroupBoundError,
@@ -294,7 +293,7 @@ class BillingNetworkAccessGroupEntitlementGateway(NetworkAccessGroupEntitlement)
     @override
     def is_paid_plan(self, workspace_id: str) -> bool:
         try:
-            subscription = BillingService.get_info(workspace_id, exclude_vector_space=True).subscription
+            plan = FeatureService.get_workspace_plan(workspace_id)
         except BillingError as exc:
             raise NetworkAccessGroupEntitlementUnavailableError from exc
-        return subscription.plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+        return plan is not None and plan.is_paid

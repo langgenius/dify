@@ -124,10 +124,10 @@ const ConditionWrap: FC<Props> = ({
 
           <div
             className={cn(
-              'flex items-center justify-between pr-7.5',
+              'flex items-center justify-between pe-7.5',
               !conditions.length && !isSubVariable && 'mt-1',
               !conditions.length && isSubVariable && 'mt-2',
-              conditions.length > 1 && !isSubVariable && 'ml-15',
+              conditions.length > 1 && !isSubVariable && 'ms-15',
             )}
           >
             {isSubVariable ? (

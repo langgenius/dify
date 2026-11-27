@@ -1,33 +1,11 @@
 import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConfigurationModalTestWrapper } from '@/test/configuration-modals-browser'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import ExternalApiSelection from '../ExternalApiSelection'
-
-const mocks = vi.hoisted(() => ({
-  getApis: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
-  create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
-  refresh: vi.fn(),
-}))
-// boundary: Browser Mode has no Next App Router; creation keeps the real modal and query owners.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'datasets.externalKnowledgeApi.post': mocks.create,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.externalKnowledgeApi.get': mocks.getApis,
-    }),
-  }
-})
 
 const response: ExternalKnowledgeApiListResponse = {
   data: ['One', 'Two'].map((name, index) => ({
@@ -60,18 +38,23 @@ function KnowledgeConnectionForm() {
   )
 }
 
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  mocks.getApis.mockReset().mockResolvedValue(response)
-  mocks.create.mockReset().mockResolvedValue(response.data[0]!)
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      externalKnowledgeApi: { get: async () => response, post: async () => response.data[0]! },
+    },
+  },
+}))
 async function setup() {
   const { wrapper: Providers } = createConfigurationModalTestWrapper()
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/connect' })
   return render(
-    <Providers>
-      <KnowledgeConnectionForm />
-      <AppToaster />
-    </Providers>,
+    <NavigationProvider>
+      <Providers>
+        <KnowledgeConnectionForm />
+        <AppToaster />
+      </Providers>
+    </NavigationProvider>,
   )
 }
 
@@ -92,7 +75,7 @@ it('defaults to the first API and keeps the chosen API while entering the knowle
 it.each(['empty list', 'selector'] as const)(
   'refreshes APIs after creation from the %s',
   async (entry) => {
-    mocks.getApis.mockResolvedValueOnce({
+    fake.console.datasets.externalKnowledgeApi.get.mockResolvedValueOnce({
       ...response,
       data: entry === 'empty list' ? [] : [response.data[1]!],
       total: entry === 'empty list' ? 0 : 1,
@@ -110,15 +93,12 @@ it.each(['empty list', 'selector'] as const)(
     await dialog.getByLabelText(/API Key/).fill('secret-key')
     await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
     await expect.element(dialog).not.toBeInTheDocument()
-    expect(mocks.create).toHaveBeenCalledExactlyOnceWith(
-      {
-        body: {
-          name: 'API One',
-          settings: { endpoint: 'https://api1.com', api_key: 'secret-key' },
-        },
+    expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        name: 'API One',
+        settings: { endpoint: 'https://api1.com', api_key: 'secret-key' },
       },
-      { context: { silent: true } },
-    )
+    })
     const selector = screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' })
     if (entry === 'empty list') await expect.element(selector).toHaveTextContent('API One')
     else {

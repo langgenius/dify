@@ -6,6 +6,7 @@ import logging
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
+from pathlib import Path
 from typing import override
 from unittest.mock import MagicMock, patch
 
@@ -60,6 +61,10 @@ class MemoryStorage(ArchiveStorage):
             raise ArchiveStorageError("storage unavailable")
         self.deleted.append(key)
         self.objects.pop(key, None)
+
+    @override
+    def upload_file(self, key: str, filename: str) -> None:
+        self.objects[key] = Path(filename).read_bytes()
 
     @override
     def put_object(self, key: str, data: bytes) -> str:
@@ -429,6 +434,7 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
             bundle_refs=[(target.shard, target.bundle_id)],
         ),
     )
+    task = task.model_copy(update={"celery_task_id": "celery-task-1"})
     state = [task]
     redis, _commands = redis_transport
     cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
@@ -456,17 +462,16 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
     deletion_worker = threading.Thread(
         target=lambda: deletion_results.append(deleter.delete(tenant_id=TENANT_ID, year=2025, month=3))
     )
-    original_put, original_delete = downloads.put_object, downloads.delete_object
+    original_upload, original_delete = downloads.upload_file, downloads.delete_object
     compensation_failed = False
 
-    def upload(key: str, data: bytes) -> str:
-        result = original_put(key, data)
+    def upload(key: str, filename: str) -> None:
+        original_upload(key, filename)
         repository.request_deletion(TENANT_ID, year=2025, month=3)
         deletion_worker.start()
         assert deletion_waiting.wait(timeout=1)
         assert deletion_worker.is_alive()
         assert key in downloads.objects
-        return result
 
     def fail_compensation_once(key: str) -> None:
         nonlocal compensation_failed
@@ -475,7 +480,7 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
             raise ArchiveStorageError("compensation failed")
         original_delete(key)
 
-    monkeypatch.setattr(downloads, "put_object", upload)
+    monkeypatch.setattr(downloads, "upload_file", upload)
     monkeypatch.setattr(downloads, "delete_object", fail_compensation_once)
     preparer = WorkflowRunArchiveDownloadPreparer(
         archive_storage_provider=lambda: archive,
@@ -484,9 +489,13 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
         cache=cache,
         month_lock=month_lock,
     )
-    monkeypatch.setattr(preparer, "_build_zip_payload", lambda *_args: b"prepared ZIP")
 
-    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+    def build_zip(*_args: object, zip_path: Path, **_kwargs: object) -> None:
+        zip_path.write_bytes(b"prepared ZIP")
+
+    monkeypatch.setattr(preparer, "_build_zip_file", build_zip)
+
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1")
     deletion_worker.join(timeout=5)
 
     assert result is not None

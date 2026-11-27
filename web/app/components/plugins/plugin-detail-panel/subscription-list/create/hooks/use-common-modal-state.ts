@@ -6,6 +6,7 @@ import type {
   TriggerLogEntity,
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,12 +14,12 @@ import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { toast } from '@/app/notifications'
 import {
-  useBuildTriggerSubscription,
-  useCreateTriggerSubscriptionBuilder,
-  useTriggerSubscriptionBuilderLogs,
-  useUpdateTriggerSubscriptionBuilder,
-  useVerifyAndUpdateTriggerSubscriptionBuilder,
-} from '@/service/use-triggers'
+  buildTriggerSubscriptionMutationOptions,
+  createTriggerSubscriptionBuilderMutationOptions,
+  triggerSubscriptionBuilderLogsQueryOptions,
+  updateTriggerSubscriptionBuilderMutationOptions,
+  verifyAndUpdateTriggerSubscriptionBuilderMutationOptions,
+} from '@/service/trigger-queries'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { usePluginStore } from '../../../store'
 import { useSubscriptionList } from '../../use-subscription-list'
@@ -125,13 +126,21 @@ export const useCommonModalState = ({
   const apiKeyCredentialsFormRef = useRef<FormRefObject>(null)
 
   // Mutations
-  const { mutate: verifyCredentials, isPending: isVerifyingCredentials } =
-    useVerifyAndUpdateTriggerSubscriptionBuilder()
-  const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder({ silent: true })
-  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription({
-    silent: true,
+  const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useMutation(
+    verifyAndUpdateTriggerSubscriptionBuilderMutationOptions(),
+  )
+  const { mutateAsync: createBuilder } = useMutation({
+    ...createTriggerSubscriptionBuilderMutationOptions(),
+    meta: { errorToast: false },
   })
-  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder({ silent: true })
+  const { mutate: buildSubscription, isPending: isBuilding } = useMutation({
+    ...buildTriggerSubscriptionMutationOptions(),
+    meta: { errorToast: false },
+  })
+  const { mutate: updateBuilder } = useMutation({
+    ...updateTriggerSubscriptionBuilderMutationOptions(),
+    meta: { errorToast: false },
+  })
 
   // Schemas
   const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || []
@@ -145,14 +154,14 @@ export const useCommonModalState = ({
   }, [detail?.declaration?.trigger?.subscription_constructor?.credentials_schema])
 
   // Log data for manual mode
-  const { data: logData } = useTriggerSubscriptionBuilderLogs(
-    detail?.provider || '',
-    subscriptionBuilder?.id || '',
-    {
-      enabled: createType === SupportedCreationMethods.MANUAL,
-      refetchInterval: 3000,
-    },
-  )
+  const { data: logData } = useQuery({
+    ...triggerSubscriptionBuilderLogsQueryOptions(
+      detail?.provider || '',
+      subscriptionBuilder?.id || '',
+      createType === SupportedCreationMethods.MANUAL,
+    ),
+    refetchInterval: 3000,
+  })
 
   // Debounced update for manual properties
   const debouncedUpdate = useMemo(

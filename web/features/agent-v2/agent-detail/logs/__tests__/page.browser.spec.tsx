@@ -11,26 +11,10 @@ import appLog from '@/i18n/locales/en-US/app-log.json'
 import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { AgentLogsPage } from '../page'
 
-const mocks = vi.hoisted(() => ({
-  logs: vi.fn(),
-  sources: vi.fn(),
-}))
-
 vi.unmock('react-i18next')
-// boundary: generated Console transport supplies the log-list server responses.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'agent.byAgentId.logSources.get': mocks.sources,
-      'agent.byAgentId.logs.get': mocks.logs,
-    }),
-  }
-})
 
 const emptyLogs: AgentLogListResponse = {
   data: [],
@@ -44,8 +28,18 @@ const emptySources: AgentLogSourceListResponse = { data: [], groups: [] }
 
 it('keeps log filters and pagination reachable at a 320 by 256 viewport', async () => {
   await page.viewport(320, 256)
-  mocks.logs.mockResolvedValue(emptyLogs)
-  mocks.sources.mockResolvedValue(emptySources)
+  onTestFinished(
+    installFakeApi({
+      console: {
+        agent: {
+          byAgentId: {
+            logSources: { get: () => emptySources },
+            logs: { get: () => emptyLogs },
+          },
+        },
+      },
+    }),
+  )
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -60,7 +54,7 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
       <QueryClientTestProvider queryClient={queryClient}>
         <I18nextProvider i18n={i18n}>
           <div style={{ width: 224, height: 256 }}>
-            <AgentLogsPage agentId="agent-1" />
+            <AgentLogsPage agentId="00000000-0000-4000-8000-000000000001" />
           </div>
         </I18nextProvider>
       </QueryClientTestProvider>,

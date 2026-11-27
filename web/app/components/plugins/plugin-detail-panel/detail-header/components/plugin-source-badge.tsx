@@ -58,7 +58,7 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
 
   return (
     <>
-      <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
+      <div className="ms-1 me-0.5 system-xs-regular text-text-quaternary">·</div>
       <Tooltip>
         <TooltipTrigger
           render={

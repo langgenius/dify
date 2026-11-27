@@ -7,48 +7,30 @@ import type {
   DefaultModel,
   FormValue,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-// oxlint-disable-next-line no-restricted-imports
-import type { IOnCompleted, IOnData, IOnError } from '@/service/base'
-// oxlint-disable-next-line no-restricted-imports
-import { get, post, ssePost, upload } from '@/service/base'
+import type { IOnCompleted, IOnData, IOnError } from '@/service/event-stream'
+import { noop } from 'es-toolkit/function'
+import { consoleClient } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 
 export async function uploadSkillFile(
   file: File,
   options?: {
     onProgress?: (progress: number) => void
-    xhr?: XMLHttpRequest
+    signal?: AbortSignal
   },
-) {
-  const body = new FormData()
-  body.append('file', file)
-
-  if (options?.onProgress) {
-    const onProgress = (event: ProgressEvent) => {
-      if (!event.lengthComputable) return
-
-      options.onProgress?.(Math.floor((event.loaded / event.total) * 100))
-    }
-
-    const response = await upload(
-      {
-        xhr: options.xhr ?? new XMLHttpRequest(),
-        data: body,
-        onprogress: onProgress,
-      },
-      false,
-      '/workspaces/current/skills/files/upload',
-    )
-
-    return response as SkillFileUploadResponse
-  }
-
-  return await post<SkillFileUploadResponse>(
-    '/workspaces/current/skills/files/upload',
-    { body },
+): Promise<SkillFileUploadResponse> {
+  const onProgress = options?.onProgress
+  return consoleClient.workspaces.current.skills.files.upload.post(
+    { body: { file } },
     {
-      bodyStringify: false,
-      deleteContentType: true,
-      silent: true,
+      context: {
+        ...(onProgress && {
+          onUploadProgress: ({ loaded, total }: { loaded: number; total: number }) => {
+            onProgress(Math.floor((loaded / total) * 100))
+          },
+        }),
+      },
+      signal: options?.signal,
     },
   )
 }
@@ -63,29 +45,24 @@ export async function fetchSkillFileBlob({
   path: string
   skillId: string
   versionId: string | null
-}) {
-  const params = new URLSearchParams({ path })
-  if (versionId) params.set('version_id', versionId)
-  if (download) params.set('download', '1')
-
-  const response = await get<Response>(
-    `/workspaces/current/skills/${encodeURIComponent(skillId)}/files/content?${params.toString()}`,
-    {},
-    { needAllResponseContent: true, silent: true },
-  )
-  return response.blob()
+}): Promise<Blob> {
+  return consoleClient.workspaces.current.skills.bySkillId.files.content.get({
+    params: { skill_id: skillId },
+    query: {
+      path,
+      ...(versionId && { version_id: versionId }),
+      ...(download && { download: '1' }),
+    },
+  })
 }
 
-export async function fetchSkillArchiveBlob(skillId: string) {
-  const response = await get<Response>(
-    `/workspaces/current/skills/${encodeURIComponent(skillId)}/export`,
-    {},
-    { needAllResponseContent: true, silent: true },
-  )
-  return response.blob()
+export async function fetchSkillArchiveBlob(skillId: string): Promise<Blob> {
+  return consoleClient.workspaces.current.skills.bySkillId.export.get({
+    params: { skill_id: skillId },
+  })
 }
 
-export function sendSkillAssistMessage({
+export async function sendSkillAssistMessage({
   attachments,
   getAbortController,
   message,
@@ -113,32 +90,28 @@ export function sendSkillAssistMessage({
   targetPath?: string
 }) {
   let streamErrorHandled = false
-  return ssePost(
-    `/workspaces/current/skills/${encodeURIComponent(skillId)}/assist/messages`,
+  streamEvents(
+    (options) =>
+      consoleClient.workspaces.current.skills.bySkillId.assist.messages.post(
+        {
+          params: { skill_id: skillId },
+          body: {
+            attachments,
+            history,
+            message,
+            model,
+            target_path: targetPath,
+          },
+        },
+        options,
+      ),
     {
-      body: {
-        attachments,
-        history,
-        message,
-        model,
-        target_path: targetPath,
-      },
-    },
-    {
-      silent: true,
+      onNotifyError: noop,
       getAbortController,
       onCompleted: (hasError, errorMessage) => {
         onCompleted?.(streamErrorHandled && hasError ? false : hasError, errorMessage)
       },
-      onData: (chunk, isFirstMessage, moreInfo) => {
-        if (moreInfo.errorMessage) {
-          streamErrorHandled = true
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-          return
-        }
-
-        onData?.(chunk, isFirstMessage, moreInfo)
-      },
+      onData,
       onError: (errorMessage, errorCode) => {
         streamErrorHandled = true
         onError?.(errorMessage, errorCode)

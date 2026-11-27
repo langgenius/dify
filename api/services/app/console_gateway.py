@@ -14,8 +14,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from constants.resource_access_token import ResourceAccessTokenResourceType
-from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
@@ -25,22 +23,23 @@ from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account
-from models.agent import Agent, AgentIconType, AgentStatus
+from models.agent import AgentIconType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from repositories.app.agent_app_queries import get_roster_agent_app
-from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
+from repositories.agent.agent_runtime_app import create_backing_agent_for_app
+from repositories.app.console_repository import (
+    ConsoleAppRepository,
+    StageTargetEvaluationCleanup,
+    console_app_actor,
+    require_console_app,
+)
 from repositories.app.response import app_record
-from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
-from services.agent.errors import AgentNameConflictError, AgentNotFoundError
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.agent_app_contracts import AgentAppDetail
+from services.agent.errors import AgentNameConflictError
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
-from services.agent.roster_service import AgentRosterService
-from services.agent.workspace_service import AgentWorkspaceService
 from services.app.access import AppAccessFilter, resolve_app_access_filter
-from services.app.agent_app_contracts import AgentAppDetail, AgentAppNameConflictError, AgentAppNotFoundError
 from services.app.console_service import (
     AppLifecycle,
     AppPermissions,
@@ -63,10 +62,8 @@ from services.entities.app_entities import (
     AppExportOptions,
     AppListParams,
     AppRecord,
-    AppUpdateArguments,
     CreateAppParams,
     ImportedAppPackage,
-    UpdateAppParams,
 )
 from services.entities.dsl_entities import (
     AppImportPackage,
@@ -77,6 +74,7 @@ from services.entities.dsl_entities import (
     ImportStatus,
     PackagedWorkflowTool,
 )
+from services.errors.app import WorkflowHashNotEqualError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.rbac import contracts as rbac_contracts
@@ -260,9 +258,8 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
 
     @override
     def can_export_version(self, workspace_id: str) -> bool:
-        return (
-            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-            or FeatureService.get_workspace_plan(workspace_id).is_paid
+        return dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or (
+            (plan := FeatureService.get_workspace_plan(workspace_id)) is not None and plan.is_paid
         )
 
 
@@ -545,6 +542,30 @@ def notify_agent_app_updated(tenant_id: str, app_id: str) -> None:
     app_was_updated.send(AppEvent(app_id, tenant_id, str(AppMode.AGENT)))
 
 
+def notify_app_created(context: RequestContext, app: AppRecord) -> None:
+    """Notify existing listeners and initialize access for a committed App."""
+    AppService.notify_created_app(
+        event=AppEvent(app.id, context.active_workspace_id, app.mode_compatible_with_agent),
+        account_id=context.account_id,
+        backing_agent_id=app.bound_agent_id,
+    )
+
+
+def inherit_agent_webapp_access(source_app_id: str, target_app_id: str) -> None:
+    """Apply the source App's Enterprise access mode to the committed copy."""
+    if SystemFeatureService.is_webapp_auth_enabled():
+        try:
+            access_mode = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app_id).access_mode
+        except Exception:
+            access_mode = "public"
+        EnterpriseService.WebAppAuth.update_app_access_mode(target_app_id, access_mode)
+
+
+def notify_app_deleted(context: RequestContext, deleted: AppDeletion) -> None:
+    """Publish cleanup for an already committed deletion."""
+    AppService.notify_deleted_app(deleted, account_id=context.account_id)
+
+
 class AppLifecycleGateway(AppLifecycle):
     """Integrate App persistence with existing Agent transaction participants.
 
@@ -552,8 +573,12 @@ class AppLifecycleGateway(AppLifecycle):
     the App transaction; notification and resource cleanup run after it closes.
     """
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self, *, session_factory: sessionmaker[Session], stage_evaluation_cleanup: StageTargetEvaluationCleanup
+    ) -> None:
+        """Prepare legacy App operations with transactional evaluation cleanup supplied by composition."""
         self._session_factory = session_factory
+        self._stage_evaluation_cleanup = stage_evaluation_cleanup
 
     @override
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
@@ -565,7 +590,8 @@ class AppLifecycleGateway(AppLifecycle):
             if app.mode == AppMode.AGENT:
                 initial_soul = AppService.prepare_agent_soul(context.active_workspace_id, session=session)
                 try:
-                    AgentRosterService(session).create_backing_agent_for_app(
+                    create_backing_agent_for_app(
+                        session,
                         tenant_id=context.active_workspace_id,
                         account_id=context.account_id,
                         app_id=app.id,
@@ -583,142 +609,35 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def create_draft(self, context: RequestContext, app_id: str) -> None:
+        """Ensure an admitted Workflow App has a draft, keeping any competing first save."""
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
-            WorkflowService(self._session_factory).sync_draft_workflow(
-                app_model=app,
-                graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
-                features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
-                unique_hash=None,
-                account=console_app_actor(session, context),
-                environment_variables=[],
-                conversation_variables=[],
-                session=session,
-            )
+            try:
+                WorkflowService(self._session_factory).sync_draft_workflow(
+                    app_model=app,
+                    graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
+                    features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
+                    unique_hash=None,
+                    account=console_app_actor(session, context),
+                    environment_variables=[],
+                    conversation_variables=[],
+                    session=session,
+                    serialize_creation=True,
+                )
+            except WorkflowHashNotEqualError:
+                # A hashless save only conflicts if a draft already exists.
+                return
 
     @override
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
-            return self._delete_in_session(context, app, session=session)
-
-    def delete_agent(self, context: RequestContext, agent_id: str) -> AppDeletion:
-        """Resolve and delete an active roster Agent App in one transaction."""
-        with self._session_factory.begin() as session:
-            app = get_roster_agent_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
-            if app is None:
-                raise AgentAppNotFoundError
-            ResourceAccessTokenCleanupRepository(session=session).delete_resource_relations(
-                tenant_id=context.active_workspace_id,
-                resource_type=ResourceAccessTokenResourceType.APP,
-                resource_id=app.id,
+            return ConsoleAppRepository.delete_app_record(
+                app,
+                account_id=context.account_id,
+                session=session,
+                stage_evaluation_cleanup=self._stage_evaluation_cleanup,
             )
-            return self._delete_in_session(context, app, session=session)
-
-    def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
-        """Materialize the runtime App and Agent while the legacy session is open."""
-        with self._session_factory() as session:
-            roster = AgentRosterService(session)
-            try:
-                # Workflow-only Agents may still need their legacy hidden runtime App created here.
-                app = roster.get_agent_runtime_app_model(tenant_id=context.active_workspace_id, agent_id=agent_id)
-            except AgentNotFoundError as exc:
-                raise AgentAppNotFoundError from exc
-            agent = session.scalar(
-                select(Agent).where(
-                    Agent.tenant_id == context.active_workspace_id,
-                    Agent.id == agent_id,
-                    Agent.status == AgentStatus.ACTIVE,
-                )
-            )
-            if agent is None:
-                raise AgentAppNotFoundError
-            record = app_record(app, session=session, projection="detail-with-site")
-            # The legacy response view detects old Agent configurations here,
-            # including its existing mode update and commit.
-            should_mask_agent_mode = bool(
-                record.app_model_config is not None and app.is_agent_with_session(session=session)
-            )
-            return AgentAppDetail(
-                app=record,
-                agent_id=agent.id,
-                app_id=agent.app_id,
-                backing_app_id=roster.runtime_backing_app_id(agent),
-                hidden_app_backed=bool(agent.backing_app_id and agent.backing_app_id != agent.app_id),
-                role=agent.role or "",
-                access_ready=agent_has_workflow_callable_active_snapshot(session=session, agent=agent),
-                should_mask_agent_mode=should_mask_agent_mode,
-            )
-
-    def get_agent_build_conversation(self, context: RequestContext, agent_id: str, *, app_id: str) -> tuple[str, int]:
-        """Commit the caller's Build conversation if the Agent still owns the same runtime App."""
-        with self._session_factory.begin() as session:
-            roster = AgentRosterService(session)
-            agent = session.scalar(
-                select(Agent).where(
-                    Agent.tenant_id == context.active_workspace_id,
-                    Agent.id == agent_id,
-                    Agent.status == AgentStatus.ACTIVE,
-                )
-            )
-            if agent is None or roster.runtime_backing_app_id(agent) != app_id:
-                raise AgentAppNotFoundError
-            try:
-                conversation_id = roster.get_or_create_build_conversation(
-                    tenant_id=context.active_workspace_id,
-                    agent_id=agent_id,
-                    account_id=context.account_id,
-                    commit=False,
-                )
-            except AgentNotFoundError as exc:
-                raise AgentAppNotFoundError from exc
-            count = roster.count_agent_app_debug_conversation_messages(conversation_id=conversation_id)
-            return conversation_id, count
-
-    def update_agent(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> str:
-        """Commit updates for the tenant's active roster Agent App and return its id."""
-        with self._session_factory() as session:
-            app = get_roster_agent_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
-            if app is None:
-                raise AgentAppNotFoundError
-            args: AppUpdateArguments = {
-                "name": params.name,
-                "description": params.description,
-                "icon_type": params.icon_type,
-                "icon": params.icon,
-                "icon_background": params.icon_background,
-                "use_icon_as_answer_icon": params.use_icon_as_answer_icon,
-                "max_active_requests": params.max_active_requests,
-                "role": params.role,
-            }
-            try:
-                return ConsoleAppRepository.update_app(app, args, account_id=context.account_id, session=session).id
-            except AgentNameConflictError as exc:
-                raise AgentAppNameConflictError from exc
-
-    def agent_updated(self, context: RequestContext, app_id: str) -> None:
-        """Notify listeners after the Agent App update has committed."""
-        notify_agent_app_updated(context.active_workspace_id, app_id)
-
-    @staticmethod
-    def _delete_in_session(context: RequestContext, app: App, *, session: Session) -> AppDeletion:
-        """Stage App deletion and resource retirement in the caller's transaction."""
-        deleted = ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
-        for binding_id in deleted.binding_ids:
-            AgentWorkspaceService.retire_binding(
-                session=session, tenant_id=context.active_workspace_id, binding_id=binding_id
-            )
-        snapshots = (
-            AgentHomeSnapshotService.retire_all_for_agent(
-                session=session, tenant_id=context.active_workspace_id, agent_id=deleted.backing_agent_id
-            )
-            if deleted.backing_agent_id is not None
-            else []
-        )
-        workspaces = AgentWorkspaceService.retire_all_for_app(
-            session=session, tenant_id=context.active_workspace_id, app_id=app.id
-        )
-        return replace(deleted, home_snapshot_ids=snapshots, workspace_ids=workspaces)
 
     @override
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
@@ -726,11 +645,7 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def created(self, context: RequestContext, app: AppRecord) -> None:
-        AppService.notify_created_app(
-            event=AppEvent(app.id, context.active_workspace_id, app.mode_compatible_with_agent),
-            account_id=context.account_id,
-            backing_agent_id=app.bound_agent_id,
-        )
+        notify_app_created(context, app)
 
     @override
     def updated(self, context: RequestContext, app: AppRecord) -> None:
@@ -738,7 +653,7 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
-        AppService.notify_deleted_app(deleted, account_id=context.account_id)
+        notify_app_deleted(context, deleted)
 
     @override
     def present(self, context: RequestContext, app: AppRecord, *, mask_credentials: bool = False) -> AppRecord:

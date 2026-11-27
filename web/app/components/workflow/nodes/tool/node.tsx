@@ -26,7 +26,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute -top-8 right-3 z-40">
+        <div className="pointer-events-auto absolute inset-e-3 -top-8 z-40">
           <InstallPluginButton
             size="small"
             className="font-medium! text-text-accent!"
@@ -55,7 +55,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                 {typeof tool_configurations[key].value === 'string' && (
                   <div
                     title={tool_configurations[key].value}
-                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                    className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                   >
                     {paramSchemas?.find((i) => i.name === key)?.type === FormTypeEnum.secretInput
                       ? '********'
@@ -69,7 +69,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                         ? ''
                         : tool_configurations[key].value
                     }
-                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                    className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                   >
                     {Number.isNaN(tool_configurations[key].value)
                       ? ''
@@ -79,7 +79,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                 {Array.isArray(tool_configurations[key].value) && (
                   <div
                     title={tool_configurations[key].value.join(', ')}
-                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                    className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                   >
                     {tool_configurations[key].value.join(', ')}
                   </div>
@@ -88,7 +88,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                   tool_configurations[key]?.type === FormTypeEnum.modelSelector && (
                     <div
                       title={tool_configurations[key].model}
-                      className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                      className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                     >
                       {tool_configurations[key].model}
                     </div>
@@ -97,7 +97,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
             ))}
           {showAuthorizationWarning && (
             <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-              <span className="mr-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
+              <span className="me-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
               <div
                 className="grow truncate system-xs-medium text-text-warning"
                 title={t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' })}

@@ -1,12 +1,8 @@
 'use client'
 
-import type {
-  AppPartial,
-  EnvironmentVariableItemResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEvent, ReactElement } from 'react'
-import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import type { AppListDialogHandles } from '../app-list-dialogs'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -15,17 +11,14 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import dynamic from 'next/dynamic'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
@@ -41,20 +34,8 @@ import { AccessMode } from '@/models/access-control'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getRedirection } from '@/utils/app-redirection'
-import { getErrorMessage } from '@/utils/error-message'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
-
-const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
-  ssr: false,
-})
-const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
-  ssr: false,
-})
-const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
-  ssr: false,
-})
 
 const OPERATIONS_MENU_POPUP_CLASS_NAME = 'min-w-[216px]'
 const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppPartial['mode']>([
@@ -139,12 +120,9 @@ function AppCardOperationsMenuItems({
     try {
       await openAsyncWindow(
         async () => {
-          const { installed_apps } = await consoleClient.installedApps.get(
-            {
-              query: { app_id: app.id },
-            },
-            { context: { silent: true } },
-          )
+          const { installed_apps } = await consoleClient.installedApps.get({
+            query: { app_id: app.id },
+          })
           if (installed_apps?.length > 0)
             return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
           throw new Error(t(($) => $.notPublishedYet, { ns: 'app' }))
@@ -240,6 +218,7 @@ function AppCardOperationsMenuItems({
 type AppCardInteractionsProps = {
   app: AppPartial
   children: ReactElement
+  dialogs: AppListDialogHandles
   onDelete: () => void
   stepByStepTourActionMenuOpen?: boolean
   stepByStepTourActionMenuHighlightPart?: string
@@ -248,6 +227,7 @@ type AppCardInteractionsProps = {
 export function AppCardInteractions({
   app,
   children,
+  dialogs,
   onDelete,
   stepByStepTourActionMenuOpen = false,
   stepByStepTourActionMenuHighlightPart,
@@ -261,37 +241,26 @@ export function AppCardInteractions({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
-  const { mutate: copyApp } = useMutation(
-    consoleQuery.apps.byAppId.copy.post.mutationOptions({ context: { silent: true } }),
-  )
   const { mutate: starApp, isPending: isStarring } = useMutation(
-    consoleQuery.apps.byAppId.star.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.star.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutate: unstarApp, isPending: isUnstarring } = useMutation(
-    consoleQuery.apps.byAppId.star.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.star.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
-  const edit = useMutation(
-    consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
-  )
-  const editNameRef = useRef<HTMLInputElement>(null)
-  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | 'switch' | null>(null)
   const operationsMenu = useStepByStepTourControlledMenu({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
   })
   const isOperationsMenuOpen = operationsMenu.open
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
-  const {
-    exportAppDsl,
-    isExporting: isAppDslExporting,
-    errorMessage: exportError,
-    reset: resetExport,
-  } = useExportAppDsl()
+  const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
   const isTogglingStar = isStarring || isUnstarring
-  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
   const resourceMaintainer = app.maintainer ?? undefined
   const maintainerPermissionOptions = useMemo(
     () => ({
@@ -308,69 +277,15 @@ export function AppCardInteractions({
   )
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = ({
-    name,
-    icon_type,
-    icon,
-    icon_background,
-  }) => {
-    try {
-      copyApp(
-        {
-          params: { app_id: app.id },
-          body: {
-            name,
-            icon_type,
-            icon,
-            icon_background,
-          },
-        },
-        {
-          onSuccess: (newApp) => {
-            if (!('mode' in newApp)) {
-              toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-              return
-            }
-
-            setActiveDialog(null)
-            getRedirection(newApp, push, {
-              currentUserId,
-              resourceMaintainer: newApp.maintainer ?? undefined,
-              workspacePermissionKeys,
-              isRbacEnabled,
-            })
-          },
-          onError: (error) =>
-            toast.error(
-              getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-            ),
-        },
-      )
-    } catch (error) {
-      toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-    }
-    return Promise.resolve()
-  }
-
-  const onExport = async (include = false) => {
-    const result = await exportAppDsl({
-      appId: app.id,
-      appName: app.name,
-      includeSecret: include,
-      feedback: 'dialog',
-    })
-    return result.status === 'downloaded'
-  }
-
   const exportCheck = async () => {
     if (isExporting) return
 
-    resetExport()
     const isWorkflowApp = app.mode === 'workflow' || app.mode === 'advanced-chat'
     const result = isWorkflowApp
       ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
       : await exportAppDsl({ appId: app.id, appName: app.name })
-    if (result?.status === 'confirmation-required') setSecretEnvList(result.secretEnvList)
+    if (result?.status === 'confirmation-required' && !dialogs.exportSecrets.isOpen)
+      dialogs.exportSecrets.openWithPayload({ app, envList: result.secretEnvList })
   }
 
   const handleToggleStar = useCallback(
@@ -424,10 +339,10 @@ export function AppCardInteractions({
     shouldShowAccessConfigOption,
     shouldShowDeleteOption,
     isExporting,
-    onEdit: () => setActiveDialog('edit'),
-    onDuplicate: () => setActiveDialog('duplicate'),
+    onEdit: () => dialogs.edit.openWithPayload(app),
+    onDuplicate: () => dialogs.duplicate.openWithPayload(app),
     onExport: exportCheck,
-    onSwitch: () => setActiveDialog('switch'),
+    onSwitch: () => dialogs.switchApp.openWithPayload(app),
     onDelete,
     onAccessConfig: () => push(`/app/${app.id}/access-config`),
   }
@@ -508,9 +423,8 @@ export function AppCardInteractions({
                 align="end"
                 {...getStepByStepTourMenuContentProps({
                   highlightPart: stepByStepTourActionMenuHighlightPart,
-                  interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
-                  className: OPERATIONS_MENU_POPUP_CLASS_NAME,
                 })}
+                className={OPERATIONS_MENU_POPUP_CLASS_NAME}
               >
                 <AppCardOperationsMenuItems kind="menu" {...operationsMenuItemsProps} />
               </MenuContent>
@@ -518,62 +432,6 @@ export function AppCardInteractions({
           )}
         </div>
       </div>
-      <Dialog
-        open={activeDialog === 'edit'}
-        disablePointerDismissal
-        onOpenChange={(open, details) => {
-          if (!open && edit.isPending) details.cancel()
-          else if (!open) setActiveDialog(null)
-        }}
-        onOpenChangeComplete={(open) => {
-          if (!open) {
-            edit.reset()
-          }
-        }}
-      >
-        <DialogContent initialFocus={editNameRef}>
-          <AppMetadataForm
-            appDetail={app}
-            nameInputRef={editNameRef}
-            operation="edit"
-            isPending={edit.isPending}
-            error={edit.error?.message}
-            onSubmit={(body) => {
-              if (edit.isPending) return
-              edit.mutate(
-                { params: { app_id: app.id }, body },
-                {
-                  onSuccess: () => setActiveDialog(null),
-                },
-              )
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-      {activeDialog === 'duplicate' && (
-        <DuplicateAppModal
-          appName={app.name}
-          icon_type={appIconType}
-          icon={app.icon ?? ''}
-          icon_background={app.icon_background}
-          icon_url={app.icon_url}
-          show
-          onConfirm={onCopy}
-          onHide={() => setActiveDialog(null)}
-        />
-      )}
-      {activeDialog === 'switch' && (
-        <SwitchAppModal open sourceApp={app} onClose={() => setActiveDialog(null)} />
-      )}
-      {secretEnvList.length > 0 && (
-        <AppExportConfirmModal
-          envList={secretEnvList}
-          errorMessage={exportError}
-          isExporting={isExporting}
-          onConfirm={onExport}
-          onClose={() => setSecretEnvList([])}
-        />
-      )}
     </>
   )
 }

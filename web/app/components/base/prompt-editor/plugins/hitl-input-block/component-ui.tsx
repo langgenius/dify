@@ -185,6 +185,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
       {isShowEditModal && (
         <Dialog
           open
+          disablePointerDismissal
           onOpenChange={(open) => {
             if (!open) hideEditModal()
           }}

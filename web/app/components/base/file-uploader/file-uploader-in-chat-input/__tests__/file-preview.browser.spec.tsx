@@ -1,5 +1,6 @@
 import type { FileEntity } from '../../types'
 import { render } from 'vitest-browser-react'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { TransferMethod } from '@/types/app'
 import { FileItem } from '../file-item'
 
@@ -10,6 +11,7 @@ afterEach(() => {
 
 it('retains the local media resource during the real exit transition and releases it afterwards', async () => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  await emulateReducedMotion(false)
   const createUrl = vi.spyOn(URL, 'createObjectURL')
   const revokeUrl = vi.spyOn(URL, 'revokeObjectURL')
   const file: FileEntity = {

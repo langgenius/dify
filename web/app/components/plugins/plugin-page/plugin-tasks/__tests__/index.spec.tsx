@@ -3,6 +3,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PermissionType, PluginSource, TaskStatus } from '@/app/components/plugins/types'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import PluginTasks from '../index'
@@ -10,12 +11,15 @@ import PluginTasks from '../index'
 const requests = vi.hoisted(() => ({ list: vi.fn(), clear: vi.fn(), refresh: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.tasks.get': requests.list,
       'workspaces.current.plugin.tasks.byTaskId.delete.byIdentifier.post': requests.clear,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
@@ -131,7 +135,9 @@ describe('plugin installation tasks', () => {
       expect(await screen.findByText('Downloading package')).toBeInTheDocument()
       tasks = [task([plugin('Search plugin', status, status === TaskStatus.failed ? message : '')])]
       await act(async () => {
-        await queryClient.invalidateQueries({ queryKey: ['plugins', 'pluginTaskList'] })
+        await queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.tasks.get.key(),
+        })
       })
       expect(
         await screen.findByRole('button', { name: new RegExp(`^plugin\\.task\\.${tip}(?::|$)`) }),

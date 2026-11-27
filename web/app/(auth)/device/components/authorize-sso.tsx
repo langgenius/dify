@@ -112,7 +112,7 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
           <span className="font-semibold text-text-primary">{ctx.subject_issuer}</span>
         </div>
       )}
-      <Button variant="primary" size="large" className="w-full" onClick={approve} disabled={busy}>
+      <Button variant="primary" size="large" className="w-full" onClick={approve} loading={busy}>
         {t(($) => $['authorize.approve'])}
       </Button>
     </div>

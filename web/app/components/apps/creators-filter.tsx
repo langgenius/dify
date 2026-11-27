@@ -126,7 +126,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           aria-label={creatorFilterLabel}
           className={cn(
             baseChipClassName,
-            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-7 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
+            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pe-7 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pe-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
           )}
         >
           <ComboboxValue<string, true>>
@@ -136,12 +136,8 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
               </span>
               {selectedCount > 0 ? (
                 <AvatarGroup size="xs">
-                  {selectedAvatarCreators.map((creator, index) => (
-                    <Avatar
-                      key={creator.id}
-                      aria-hidden="true"
-                      style={{ zIndex: selectedAvatarCreators.length - index }}
-                    >
+                  {selectedAvatarCreators.map((creator) => (
+                    <Avatar key={creator.id} aria-hidden="true">
                       <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
                       <AvatarImage src={creator.avatarUrl || undefined} alt="" />
                     </Avatar>
@@ -159,7 +155,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           <IconButton
             size="sm"
             aria-label={resetLabel}
-            className="absolute top-1/2 right-1 -translate-y-1/2 peer-data-popup-open/creators-trigger:text-text-secondary"
+            className="absolute inset-e-1 top-1/2 -translate-y-1/2 peer-data-popup-open/creators-trigger:text-text-secondary"
             onClick={handleSelectionClear}
           >
             <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />

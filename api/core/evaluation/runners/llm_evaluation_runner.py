@@ -53,9 +53,9 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
     ) -> list[EvaluationItemInput]:
         """Create new items from NodeRunResult for ragas evaluation.
 
-        Extracts prompts from process_data and concatenates them into a single
-        string with role prefixes (e.g. "system: ...\nuser: ...\nassistant: ...").
-        The last assistant message in outputs is used as the actual output.
+        Precondition: process_data contains the final serialized LLM prompts.
+        Postcondition: explicit evidence includes only text present in those
+        prompts; the last assistant output is the evaluated response.
         """
         merged = []
         for i, item in enumerate(items):
@@ -63,6 +63,7 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
             prompt = _format_prompts(prompts)
             output = _extract_llm_output(item.outputs)
             dataset_item = dataset_items[i] if dataset_items and i < len(dataset_items) else None
+            explicit_context = context_list[i] if context_list is not None and i < len(context_list) else None
             merged.append(
                 EvaluationItemInput(
                     index=i,
@@ -77,13 +78,28 @@ class LLMEvaluationRunner(BaseEvaluationRunner):
                         else None
                     ),
                     context=(
-                        context_list[i]
-                        if context_list is not None and i < len(context_list) and context_list[i] is not None
+                        _contexts_present_in_prompts(explicit_context, prompts)
+                        if explicit_context is not None
                         else _extract_context_blocks(prompts)
                     ),
                 )
             )
         return merged
+
+
+def _contexts_present_in_prompts(contexts: list[str], prompts: list[dict[str, Any]]) -> list[str]:
+    """Keep only selected evidence the model saw in a final prompt message.
+
+    Precondition: contexts are extracted source text and prompts are the model's
+    serialized messages. Postcondition: source text is preserved in order, and
+    absent or blank evidence cannot be used for scoring.
+    """
+    message_texts = [" ".join(_prompt_content_to_text(message.get("text", "")).split()) for message in prompts]
+    return [
+        context
+        for context in contexts
+        if context.strip() and any(" ".join(context.split()) in message_text for message_text in message_texts)
+    ]
 
 
 def _format_prompts(prompts: list[dict[str, Any]]) -> str:

@@ -10,6 +10,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
+import { TEST_AGENT_ID } from '@/test/console/ids'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createData, createPanelEnvironment } from './panel-test-env'
@@ -81,7 +82,7 @@ const rosterComposer = zAgentAppComposerResponse.parse({
   variant: 'agent_app',
   active_config_is_published: true,
   save_options: [],
-  agent: { id: 'agent-1', name: 'Nadia', description: '', scope: 'roster', status: 'active' },
+  agent: { id: TEST_AGENT_ID, name: 'Nadia', description: '', scope: 'roster', status: 'active' },
   agent_soul: { schema_version: 1, prompt: { system_prompt: 'Read-only roster instructions' } },
 } satisfies AgentAppComposerResponse)
 const rosterPrefix = 'workflowAgent.nodes.agent.roster'
@@ -90,11 +91,11 @@ const environment = (options: Parameters<typeof createPanelEnvironment>[0] = {})
   const env = createPanelEnvironment(options)
   env.queryClient.setQueryData(
     consoleQuery.agent.byAgentId.composer.get.queryKey({
-      input: { params: { agent_id: 'agent-1' } },
+      input: { params: { agent_id: TEST_AGENT_ID } },
     }),
     rosterComposer,
   )
-  for (const agentId of ['agent-1', 'inline-agent', 'saved-agent']) {
+  for (const agentId of [TEST_AGENT_ID, 'inline-agent', 'saved-agent']) {
     env.queryClient.setQueryData(
       consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryKey({
         input: { params: { agent_id: agentId } },
@@ -169,7 +170,7 @@ describe('Agent panel bindings', () => {
     const dialog = within(await screen.findByRole('dialog', { name: 'Nadia' }))
     expect(dialog.getByRole('link', { name: `${rosterPrefix}.editInConsole` })).toHaveAttribute(
       'href',
-      '/agents/agent-1/configure',
+      `/agents/${TEST_AGENT_ID}/configure`,
     )
     expect(await dialog.findByText('Read-only roster instructions')).toBeVisible()
     expect(dialog.getByRole('textbox')).toHaveAttribute('contenteditable', 'false')
@@ -215,7 +216,7 @@ describe('Agent panel bindings', () => {
             resource.kind === 'app'
               ? { app_id: 'app-1', node_id: 'agent-node' }
               : { snippet_id: 'snippet-1', node_id: 'agent-node' },
-          body: { source_agent_id: 'agent-1' },
+          body: { source_agent_id: TEST_AGENT_ID },
         }),
       )
       await waitFor(() => expect(env.getNodeData().agent_binding).toEqual(inlineBinding))

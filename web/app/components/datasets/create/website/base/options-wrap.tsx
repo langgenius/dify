@@ -30,7 +30,7 @@ const OptionsWrap: FC<Props> = ({ className = '', children, controlFoldOptions }
         onClick={foldToggle}
       >
         <div className="flex grow items-center">
-          <RiEqualizer2Line className="mr-1 size-4 text-text-secondary" />
+          <RiEqualizer2Line className="me-1 size-4 text-text-secondary" />
           <span className="text-[13px] leading-4 font-semibold text-text-secondary uppercase">
             {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>

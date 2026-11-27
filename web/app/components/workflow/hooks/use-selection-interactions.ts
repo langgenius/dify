@@ -15,7 +15,7 @@ export const useSelectionInteractions = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
 
   const handleSelectionStart = useCallback(() => {
-    const { getNodes, setNodes, edges, setEdges, userSelectionRect } = store.getState()
+    const { getNodes, edges, userSelectionRect } = store.getState()
 
     if (!userSelectionRect?.width || !userSelectionRect?.height) {
       const nodes = getNodes()
@@ -24,19 +24,19 @@ export const useSelectionInteractions = () => {
           if (node.data._isBundled) node.data._isBundled = false
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       const newEdges = produce(edges, (draft) => {
         draft.forEach((edge) => {
           if (edge.data._isBundled) edge.data._isBundled = false
         })
       })
-      setEdges(newEdges)
+      collaborativeWorkflow.setEdges(newEdges, false)
     }
-  }, [store])
+  }, [collaborativeWorkflow, store])
 
   const handleSelectionChange = useCallback<OnSelectionChangeFunc>(
     ({ nodes: nodesInSelection, edges: edgesInSelection }) => {
-      const { getNodes, setNodes, edges, setEdges, userSelectionRect } = store.getState()
+      const { getNodes, edges, userSelectionRect } = store.getState()
 
       const nodes = getNodes()
 
@@ -50,7 +50,7 @@ export const useSelectionInteractions = () => {
           else node.data._isBundled = false
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       const newEdges = produce(edges, (draft) => {
         draft.forEach((edge) => {
           const edgeInSelection = edgesInSelection.find((e) => e.id === edge.id)
@@ -59,9 +59,9 @@ export const useSelectionInteractions = () => {
           else edge.data._isBundled = false
         })
       })
-      setEdges(newEdges)
+      collaborativeWorkflow.setEdges(newEdges, false)
     },
-    [store],
+    [collaborativeWorkflow, store],
   )
 
   const handleSelectionDrag = useCallback(
@@ -86,11 +86,11 @@ export const useSelectionInteractions = () => {
   )
 
   const handleSelectionCancel = useCallback(() => {
-    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const { getNodes, edges } = store.getState()
 
     store.setState({
       userSelectionRect: null,
-      userSelectionActive: true,
+      userSelectionActive: false,
     })
 
     const nodes = getNodes()
@@ -99,14 +99,14 @@ export const useSelectionInteractions = () => {
         if (node.data._isBundled) node.data._isBundled = false
       })
     })
-    setNodes(newNodes)
+    collaborativeWorkflow.setNodes(newNodes, false)
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
         if (edge.data._isBundled) edge.data._isBundled = false
       })
     })
-    setEdges(newEdges)
-  }, [store])
+    collaborativeWorkflow.setEdges(newEdges, false)
+  }, [collaborativeWorkflow, store])
 
   const handleSelectionContextMenu = useCallback(
     (e: MouseEvent) => {

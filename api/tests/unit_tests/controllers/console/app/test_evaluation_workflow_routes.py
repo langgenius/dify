@@ -6,14 +6,18 @@ from inspect import unwrap
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.app import workflow as workflow_module
 from controllers.console.error import PaidPlanRequiredError
 from enums import WorkflowKind
 from models.model import AppMode
 from services.errors.app import WorkflowNotFoundError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_app
 
@@ -94,13 +98,21 @@ def test_publish_evaluation_workflow_route_maps_plan_denial(
             )
 
 
-def test_ordinary_publish_route_maps_evaluation_plan_denial(
-    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [(EvaluationPlanRequiredError, PaidPlanRequiredError), (EvaluationDisabledError, NotFound)],
+)
+def test_ordinary_publish_route_maps_evaluation_denial(
+    app: Flask,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    service_error: type[Exception],
+    http_error: type[HTTPException],
 ) -> None:
     service = _service(sqlite_session, monkeypatch)
 
     def deny_publish(**_kwargs: object) -> None:
-        raise EvaluationPlanRequiredError()
+        raise service_error()
 
     monkeypatch.setattr(service, "publish_workflow", deny_publish)
     monkeypatch.setattr(
@@ -110,7 +122,7 @@ def test_ordinary_publish_route_maps_evaluation_plan_denial(
     )
     api = workflow_module.PublishedWorkflowApi()
     with app.test_request_context("/apps/app-1/workflows/publish", method="POST"):
-        with pytest.raises(PaidPlanRequiredError):
+        with pytest.raises(http_error):
             unwrap(api.post)(
                 api, workflow_module.PublishWorkflowPayload(), make_account(), make_app(mode=AppMode.WORKFLOW)
             )

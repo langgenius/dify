@@ -13,6 +13,7 @@ Web owns application-specific requirements and consumes shared architecture guid
 - When adding or changing page layouts, navigation, or landmark elements, follow [Page landmarks] and inspect the composed page, including parent layouts.
 - User-facing strings must use `web/i18n/locales/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
 - For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/console`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
+- Cache effects every caller of a mutation needs (invalidation, cache writes) belong in that procedure's policy, not at the call site; follow [Console cache policies]. A successful console mutation already refreshes its own domain in the background ([Cache updates after writes]): a policy holds only the awaited primary refresh or the response write, and a call site invalidates only for a user-driven refresh or retry.
 - Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Use the [Dify UI package index] to find a primitive; read the relevant contract directly when it is already known. Preserve a visible focus indicator on the final focusable element.
 - Reuse the Web `SearchInput` composite when its search, clear, and IME contract matches the feature; otherwise follow the canonical [Input Group contract].
 - Give save and submit flows a real form boundary with visible labels and accessible errors. Use Dify UI `Form` when its structured submission and validation contract is the owner; otherwise use a native form. Follow the canonical [form contract].
@@ -36,6 +37,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 [Accessible names and descriptions]: ../packages/dify-ui/docs/accessible-names-and-descriptions.md
 [Button contract]: ../packages/dify-ui/src/button/README.md
+[Cache updates after writes]: service/console/README.md#cache-updates-after-writes
+[Console cache policies]: service/console/README.md#policy-ownership
 [Dify UI overlay contract]: ../packages/dify-ui/docs/overlays.md
 [Dify UI package index]: ../packages/dify-ui/README.md
 [IconButton contract]: ../packages/dify-ui/src/icon-button/README.md

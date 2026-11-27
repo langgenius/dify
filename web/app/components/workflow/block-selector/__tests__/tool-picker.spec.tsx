@@ -44,10 +44,7 @@ const { getBuiltInTools, getCustomTools, getWorkflowTools, getMCPTools, api } = 
     search: vi.fn<typeof import('@/service/marketplace').marketplaceClient.searchAdvanced>(),
     recommend:
       vi.fn<
-        (
-          url: string,
-          options: { body: { limit: number } },
-        ) => Promise<{ data: { plugins: import('@/app/components/plugins/types').Plugin[] } }>
+        () => Promise<{ data: { plugins: import('@/app/components/plugins/types').Plugin[] } }>
       >(),
     createCustom:
       vi.fn<
@@ -76,15 +73,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.tools.workflow.get': getWorkflowTools,
       'workspaces.current.tools.mcp.get': getMCPTools,
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.toolProvider.api.add.post': api.createCustom,
-      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
       'workspaces.current.plugin.marketplace.pkg.get': async () => ({
         manifest: createPluginEntity().declaration,
       }),
       'workspaces.current.plugin.install.marketplace.post': api.install,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.toolProvider.api.add.post': api.createCustom,
+      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
@@ -94,15 +91,21 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  const stubs: Record<string, unknown> = {
+    searchAdvanced: api.search,
+    collectionPlugins: api.recommend,
+  }
+  const marketplaceClient = new Proxy(actual.marketplaceClient, {
+    get: (target, key, receiver) =>
+      typeof key === 'string' && key in stubs ? stubs[key] : Reflect.get(target, key, receiver),
+  })
   return {
     ...actual,
-    marketplaceClient: { ...actual.marketplaceClient, searchAdvanced: api.search },
+    marketplaceClient,
+    marketplaceQuery: createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: api.recommend,
-}))
 vi.mock('@/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/env')>()
   return {

@@ -19,7 +19,7 @@ const VisualEditor: FC<VisualEditorProps> = (props) => {
   return (
     <div
       className={cn(
-        'h-full overflow-auto rounded-xl bg-background-section-burn p-1 pl-2',
+        'h-full overflow-auto rounded-xl bg-background-section-burn p-1 ps-2',
         className,
       )}
     >

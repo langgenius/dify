@@ -1,6 +1,7 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
 import type { DocumentToRename } from '../../../rename-document-form'
+import type { TestNavigation } from '@/test/next-navigation'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
@@ -11,40 +12,37 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import DocumentTableRow from '../document-table-row'
 
-const mockPush = vi.fn()
-let mockSearchParams = ''
-
-// boundary: navigation is observed at the router because this component test has no running application.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-  useSearchParams: () => new URLSearchParams(mockSearchParams),
-}))
+let search = ''
+let navigation: TestNavigation
 
 const createWrapper = () => {
   const { wrapper: QueryClientWrapper } = createConsoleQueryWrapper({
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: [],
   })
+  navigation = createTestNavigation({ url: `/datasets/dataset-1/documents?${search}` })
+  const { NavigationProvider } = navigation
   return function Wrapper({ children }: { children: ReactNode }) {
     const [selected, setSelected] = useState<string[]>([])
     return (
-      <QueryClientWrapper>
-        {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
-        <DatasetDetailContext.Provider
-          value={{ dataset: createDatasetFixture({ permission_keys: ['dataset.acl.edit'] }) }}
-        >
-          <CheckboxGroup value={selected} onValueChange={setSelected} allValues={['doc-1']}>
-            <table>
-              <tbody>{children}</tbody>
-            </table>
-          </CheckboxGroup>
-        </DatasetDetailContext.Provider>
-      </QueryClientWrapper>
+      <NavigationProvider>
+        <QueryClientWrapper>
+          {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
+          <DatasetDetailContext.Provider
+            value={{ dataset: createDatasetFixture({ permission_keys: ['dataset.acl.edit'] }) }}
+          >
+            <CheckboxGroup value={selected} onValueChange={setSelected} allValues={['doc-1']}>
+              <table>
+                <tbody>{children}</tbody>
+              </table>
+            </CheckboxGroup>
+          </DatasetDetailContext.Provider>
+        </QueryClientWrapper>
+      </NavigationProvider>
     )
   }
 }
@@ -91,12 +89,12 @@ describe('DocumentTableRow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSearchParams = ''
+    search = ''
   })
 
   describe('Row Navigation', () => {
     it('provides a keyboard-accessible detail link preserving search parameters', async () => {
-      mockSearchParams = 'page=2&status=error'
+      search = 'page=2&status=error'
       await render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
 
       const link = page.getByRole('link', { name: 'test-document.txt' })
@@ -110,16 +108,16 @@ describe('DocumentTableRow', () => {
       await userEvent.keyboard('{Control>}')
       await link.click()
       await userEvent.keyboard('{/Control}')
-      expect(mockPush).not.toHaveBeenCalled()
+      expect(navigation.router.push).not.toHaveBeenCalled()
     })
 
     it('preserves the current list filters when the row opens document details', async () => {
-      mockSearchParams = 'page=2&status=error'
+      search = 'page=2&status=error'
       await render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
 
       await page.getByRole('row').click()
 
-      expect(mockPush).toHaveBeenCalledWith(
+      expect(navigation.router.push).toHaveBeenCalledWith(
         '/datasets/dataset-1/documents/doc-1?page=2&status=error',
       )
     })
@@ -140,17 +138,17 @@ describe('DocumentTableRow', () => {
     await page.getByRole('button', { name: /error/i }).click()
 
     await expect.element(page.getByText(reason)).toBeVisible()
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(navigation.router.push).not.toHaveBeenCalled()
   })
 
   it('toggles row selection without navigating to document details', async () => {
     await render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
     await getRowCheckbox().click()
     await expect.element(getRowCheckbox()).toBeChecked()
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(navigation.router.push).not.toHaveBeenCalled()
     await userEvent.keyboard('{Space}')
     await expect.element(getRowCheckbox()).not.toBeChecked()
-    expect(mockPush).not.toHaveBeenCalled()
+    expect(navigation.router.push).not.toHaveBeenCalled()
   })
 })
 

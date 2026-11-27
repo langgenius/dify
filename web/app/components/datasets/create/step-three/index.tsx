@@ -80,7 +80,7 @@ const StepThree = ({
           />
         </div>
       </div>
-      <div className="shrink-0 px-4 pb-8 text-xs sm:px-8 xl:pt-22 xl:pl-0">
+      <div className="shrink-0 px-4 pb-8 text-xs sm:px-8 xl:ps-0 xl:pt-22">
         <div className="flex w-full max-w-82 flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
           <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
             <RiBookOpenLine className="size-5 text-text-accent" />

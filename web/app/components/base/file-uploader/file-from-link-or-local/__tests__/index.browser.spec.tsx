@@ -4,18 +4,12 @@ import { render } from 'vitest-browser-react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { route, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import { FileItem } from '../../file-uploader-in-chat-input/file-item'
 import { FileContextProvider, useStore } from '../../store'
 import FileFromLinkOrLocal from '../index'
-
-// oxlint-disable-next-line typescript/no-deprecated -- Control the generated remote-file client's transport without replacing file processing or the store.
-const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
-// oxlint-disable-next-line typescript/no-deprecated -- Local uploads still use the XHR transport.
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-vi.mock('@/service/base', () => ({ request, upload, post: vi.fn() }))
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/apps' }))
 
 function Files() {
   const files = useStore((s) => s.files)
@@ -53,24 +47,32 @@ async function setup(props: Partial<ComponentProps<typeof FileFromLinkOrLocal>> 
         </div>
       </FileContextProvider>
     </Query>,
+    { wrapper: createTestNavigation({ url: '/apps' }).NavigationProvider },
   )
   await page.getByRole('button', { name: 'Open uploads' }).click()
   return { onChange }
 }
 
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  upload.mockReset()
-  request.mockReset().mockImplementation(async () =>
-    Response.json({
-      id: 'uploaded-file',
-      name: 'report.pdf',
-      mime_type: 'application/pdf',
-      size: 10,
-      url: 'https://example.com/report.pdf',
-    }),
-  )
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    remoteFiles: {
+      upload: {
+        post: () => ({
+          id: 'uploaded-file',
+          name: 'report.pdf',
+          extension: 'pdf',
+          mime_type: 'application/pdf',
+          created_at: 1_767_225_600,
+          created_by: 'user-1',
+          size: 10,
+          url: 'https://example.com/report.pdf',
+        }),
+      },
+    },
+  },
+  // Local uploads still use the XHR transport; the fake API answers it.
+  routes: [route('POST', 'console', '/files/upload', () => ({ id: 'uploaded-file' }))],
+}))
 
 it.each([
   { showFromLink: true, showFromLocal: false },
@@ -94,7 +96,7 @@ it('corrects an invalid link and renders the uploaded result while enforcing the
   await input.fill('invalid-url')
   await submit.click()
   await expect.element(page.getByText(/pasteFileLinkInvalid/)).toBeVisible()
-  expect(request).not.toHaveBeenCalled()
+  expect(fake.console.remoteFiles.upload.post).not.toHaveBeenCalled()
   await input.fill('https://example.com/report.pdf')
   await expect.element(page.getByText(/pasteFileLinkInvalid/)).not.toBeInTheDocument()
   await submit.click()
@@ -102,8 +104,8 @@ it('corrects an invalid link and renders the uploaded result while enforcing the
   await expect.element(list.getByText('https://example.com/report.pdf')).toBeVisible()
   await expect.element(list.getByText('10.00 bytes')).toBeVisible()
   await expect.element(list.getByRole('progressbar')).not.toBeInTheDocument()
-  expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({
-    url: 'https://example.com/report.pdf',
+  expect(fake.console.remoteFiles.upload.post).toHaveBeenCalledExactlyOnceWith({
+    body: { url: 'https://example.com/report.pdf' },
   })
   expect(onChange).toHaveBeenLastCalledWith([
     expect.objectContaining({
@@ -127,7 +129,8 @@ it('dismisses the actual upload popup and returns focus to its trigger', async (
 })
 
 it('publishes a pending local upload after its popup closes in the same input session', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof upload>>>()
+  const pending = createDeferred<{ id: string }>()
+  const upload = fake.route('POST', 'console', '/files/upload')
   upload.mockReturnValue(pending.promise)
   const { onChange } = await setup({ showFromLink: false })
   const button = page.getByRole('button', { name: /uploadFromComputer/ })
@@ -138,7 +141,8 @@ it('publishes a pending local upload after its popup closes in the same input se
   await expect.element(page.getByRole('progressbar', { name: 'custom.uploading' })).toBeVisible()
   await page.getByRole('button', { name: 'Close uploads' }).click()
   await expect.element(button).not.toBeInTheDocument()
-  const selected = upload.mock.calls[0]![0].data.get('file') as File
+  await expect.poll(() => upload).toHaveBeenCalledOnce()
+  const selected = (upload.mock.calls[0]![0].body as FormData).get('file') as File
   expect(selected.name).toBe('report.txt')
   expect(await selected.text()).toBe('report')
   pending.resolve({ id: 'uploaded-report' })

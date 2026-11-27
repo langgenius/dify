@@ -138,9 +138,7 @@ def _filter_paid_workflow_archive_tenant_ids(tenant_ids: list[str]) -> tuple[lis
 
     plans = BillingService.get_plan_bulk_with_cache(tenant_ids)
     paid_tenant_ids = [
-        tenant_id
-        for tenant_id in tenant_ids
-        if (plan := plans.get(tenant_id)) and plan.plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+        tenant_id for tenant_id in tenant_ids if (plan := plans.get(tenant_id)) and CloudPlan(plan.plan).is_paid
     ]
     unpaid_tenant_ids = sorted(set(tenant_ids) - set(paid_tenant_ids))
     return paid_tenant_ids, unpaid_tenant_ids

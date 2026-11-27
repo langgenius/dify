@@ -11,10 +11,12 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import wraps
-from typing import Literal, Protocol
+from typing import Literal, NotRequired, Protocol
 
+from pydantic import TypeAdapter
 from sqlalchemy import update
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 from werkzeug.exceptions import ServiceUnavailable
 
 from configs import dify_config
@@ -75,6 +77,18 @@ def try_get_auth_ctx() -> AuthContext | None:
     return _auth_ctx_var.get(None)
 
 
+class _CachedResolvedRow(TypedDict):
+    subject_email: str | None
+    subject_issuer: str | None
+    account_id: str | None
+    client_id: NotRequired[str | None]
+    token_id: str
+    expires_at: str | None
+
+
+_RESOLVED_ROW_CACHE_ADAPTER = TypeAdapter(_CachedResolvedRow)
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedRow:
     subject_email: str | None
@@ -84,7 +98,7 @@ class ResolvedRow:
     token_id: uuid.UUID
     expires_at: datetime | None
 
-    def to_cache(self) -> dict:
+    def to_cache(self) -> _CachedResolvedRow:
         return {
             "subject_email": self.subject_email,
             "subject_issuer": self.subject_issuer,
@@ -95,7 +109,7 @@ class ResolvedRow:
         }
 
     @classmethod
-    def from_cache(cls, data: dict) -> ResolvedRow:
+    def from_cache(cls, data: _CachedResolvedRow) -> ResolvedRow:
         return cls(
             subject_email=data["subject_email"],
             subject_issuer=data["subject_issuer"],
@@ -195,11 +209,11 @@ class OAuthAccessTokenResolver:
         raw = self._redis.get(self._cache_key(token_hash))
         if raw is None:
             return None
-        text = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
-        if text == "invalid":
+        if raw in ("invalid", b"invalid"):
             return "invalid"
         try:
-            return ResolvedRow.from_cache(json.loads(text))
+            data = _RESOLVED_ROW_CACHE_ADAPTER.validate_json(raw, strict=True)
+            return ResolvedRow.from_cache(data)
         except (ValueError, KeyError):
             logger.warning("auth:token cache entry malformed; treating as miss")
             return None
@@ -259,7 +273,11 @@ class _TokenTypeResolver:
             return None
 
         now = datetime.now(UTC)
-        if row.expires_at is not None and row.expires_at <= now:
+        expires_at = row.expires_at
+        # Dialects without zone-aware DATETIME (MySQL, SQLite) return naive values stored in UTC.
+        if expires_at is not None and expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at is not None and expires_at <= now:
             self._parent.hard_expire(session, row.id, token_hash)
             return None
 
@@ -277,7 +295,7 @@ class _TokenTypeResolver:
             account_id=uuid.UUID(str(row.account_id)) if row.account_id else None,
             client_id=row.client_id,
             token_id=uuid.UUID(str(row.id)),
-            expires_at=row.expires_at,
+            expires_at=expires_at,
         )
         self._parent.cache_set_positive(token_hash, resolved)
         return resolved

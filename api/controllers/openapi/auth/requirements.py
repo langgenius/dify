@@ -15,11 +15,18 @@ from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, ServiceUnavailable
 
 from configs import dify_config
 from constants.oauth_bearer import Scope, TokenType
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
+from controllers.common.rbac import (
+    PlainApp,
+    RBACCheck,
+    RBACPermission,
+    ResourceLocator,
+    Workspace,
+    enforce_rbac_checks,
+)
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi._errors import (
     AppModeMismatch,
@@ -34,7 +41,7 @@ from controllers.openapi._models import Hint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from models import AppMode
 from models.account import TenantAccountRole, TenantPluginInstallPermission
@@ -43,6 +50,7 @@ from services.enterprise.enterprise_service import EnterpriseService, WebAppAcce
 from services.entities.feature_entities import LicenseStatus
 from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
 from services.feature_service import FeatureService
+from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.system_feature_service import SystemFeatureService
 
@@ -224,6 +232,51 @@ class CheckAppQuota(Requirement):
             raise Forbidden("The number of apps has reached the limit of your subscription.")
 
 
+class CheckKnowledgeRateLimit(Requirement):
+    """The cloud knowledge-base request rate limit the service API applies to
+    dataset and document writes. Inert outside Cloud."""
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not FeatureService.has_knowledge_subscription_limits():
+            return
+        try:
+            enforce_knowledge_rate_limit(load_workspace(ctx).id)
+        except KnowledgeRateLimitExceededError as error:
+            raise Forbidden(str(error)) from error
+
+
+class CheckVectorSpaceQuota(Requirement):
+    """The cloud vector-space capacity gate the service API applies before
+    creating or replacing a document."""
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not FeatureService.has_knowledge_subscription_limits():
+            return
+        workspace_id = load_workspace(ctx).id
+        vector_space = application_services().feature_queries.get_workspace_vector_space(workspace_id)
+        if vector_space.usage_unknown:
+            if FeatureService.get_workspace_plan(workspace_id) == CloudPlan.SANDBOX:
+                raise ServiceUnavailable("Unable to verify vector space usage right now. Please try again later.")
+        if 0 < vector_space.limit <= vector_space.size:
+            raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
+
+
+class CheckDocumentsUploadQuota(Requirement):
+    """The cloud documents-upload quota the service API applies before creating a document."""
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not FeatureService.has_knowledge_subscription_limits():
+            return
+        documents = FeatureService.get_features(
+            load_workspace(ctx).id, exclude_vector_space=True
+        ).documents_upload_quota
+        if 0 < documents.limit <= documents.size:
+            raise Forbidden("The number of documents has reached the limit of your subscription.")
+
+
 class CheckWorkspaceRole(Requirement):
     """The workspace-role gate that predates RBAC. Inert wherever RBAC is on;
     a route that needs a check there declares a `CheckRBACPermission` beside this.
@@ -347,14 +400,18 @@ def _role_gate(roles: Roles) -> tuple[Requirement, ...]:
 
 
 def workspace_write_guards(
-    permission: RBACPermission, *, roles: Roles, extra: tuple[Requirement, ...] = ()
+    permission: RBACPermission,
+    *,
+    roles: Roles,
+    extra: tuple[Requirement, ...] = (),
+    locator: ResourceLocator | None = None,
 ) -> tuple[Requirement, ...]:
-    """Guards for an account-only write to the workspace."""
+    """Guards for an account-only write to the workspace or one of its resources."""
     return (
         CheckSubject(allowed=(AccountSubject,)),
         CheckScope(Scope.WORKSPACE_WRITE),
         CheckWorkspaceMember(),
-        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        CheckRBACPermission(RBACCheck(permission, locator or Workspace())),
         *_role_gate(roles),
         *extra,
     )

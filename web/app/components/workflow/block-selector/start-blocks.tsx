@@ -128,16 +128,16 @@ const StartBlocks = ({
           <div
             className={cn('flex min-w-0 flex-1 items-center', isUserInputDisabled && 'opacity-30')}
           >
-            <BlockIcon className="mr-2 shrink-0" type={block.type} size="sm" />
+            <BlockIcon className="me-2 shrink-0" type={block.type} size="sm" />
             <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
               <span className="truncate system-sm-medium">{label}</span>
               {isUserInput && showUserInputAdded && (
-                <span className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+                <span className="ms-2 shrink-0 system-xs-regular text-text-tertiary">
                   {t(($) => $['operation.added'], { ns: 'common' })}
                 </span>
               )}
               {isUserInput && showMostCommonBadge && !showUserInputAdded && (
-                <span className="ml-2 shrink-0 rounded-[5px] border border-divider-deep px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                <span className="ms-2 shrink-0 rounded-[5px] border border-divider-deep px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['blocks.mostCommon'], { ns: 'workflow' })}
                 </span>
               )}
@@ -145,7 +145,7 @@ const StartBlocks = ({
                 !showMostCommonBadge &&
                 !showUserInputAdded &&
                 !showUserInputDisabled && (
-                  <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">
+                  <span className="ms-2 shrink-0 system-xs-regular text-text-quaternary">
                     {t(($) => $['blocks.originalStartNode'], { ns: 'workflow' })}
                   </span>
                 )}

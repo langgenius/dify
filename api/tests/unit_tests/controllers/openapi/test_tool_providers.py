@@ -1,13 +1,33 @@
+import uuid
+from collections.abc import Callable
+
 import pytest
+from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+from constants.oauth_bearer import TokenType
+from controllers.common.fields import SimpleResultResponse
+from controllers.openapi import tool_providers
+from controllers.openapi._errors import CredentialNotFound
 from controllers.openapi._models import PageQuery, ToolListQuery, ToolListResponse
-from controllers.openapi.tool_providers import _credential_write_errors, tool_rows
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.tool_providers import ToolProviderCredentialApi, _credential_write_errors, tool_rows
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
-from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
+from core.tools.entities.api_entities import (
+    ToolApiEntity,
+    ToolProviderApiEntity,
+    ToolProviderCredentialApiEntity,
+)
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from extensions.ext_application_services import ApplicationServices
+from libs.oauth_bearer import AuthContext
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
 @pytest.mark.parametrize(
@@ -157,3 +177,98 @@ def test_page_past_the_end() -> None:
 def test_unknown_provider_type_is_rejected() -> None:
     with pytest.raises(ValidationError):
         ToolListQuery.model_validate({"provider_type": "plugin"})
+
+
+_PROVIDER = "langgenius/tavily/tavily"
+
+
+def _context(session: Session) -> Context:
+    subject = AccountSubject(
+        AuthContext(
+            subject_email="caller@example.com",
+            subject_issuer="dify:account",
+            account_id=uuid.uuid4(),
+            client_id="difyctl",
+            token_id=uuid.uuid4(),
+            token_type=TokenType.OAUTH_ACCOUNT,
+            expires_at=None,
+        )
+    )
+    ctx = Context(subject, session, {"workspace_id": "ws"})
+    ctx._workspace = make_tenant(tenant_id="ws")
+    ctx._caller = make_account(interface_language="en-US")
+    return ctx
+
+
+def _credential(credential_id: str) -> ToolProviderCredentialApiEntity:
+    return ToolProviderCredentialApiEntity(
+        id=credential_id, name="main", provider=_PROVIDER, credential_type=CredentialType.API_KEY
+    )
+
+
+def _handler(view: Callable[..., object]) -> Callable[..., object]:
+    """Return the bare view ``@endpoint`` attaches as ``__handler__``."""
+    handler = vars(view).get("__handler__")
+    assert callable(handler)
+    return handler
+
+
+def test_delete_removes_a_visible_credential(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    deleted: list[tuple[str, str, str]] = []
+
+    def credentials(**_kwargs: object) -> list[ToolProviderCredentialApiEntity]:
+        return [_credential("cred-1")]
+
+    def delete(tenant_id: str, provider: str, credential_id: str) -> dict[str, str]:
+        deleted.append((tenant_id, provider, credential_id))
+        return {"result": "success"}
+
+    monkeypatch.setattr(BuiltinToolManageService, "get_builtin_tool_provider_credentials", credentials)
+    monkeypatch.setattr(BuiltinToolManageService, "delete_builtin_tool_provider", delete)
+    monkeypatch.setattr(tool_providers, "application_services", lambda: account_application_services)
+
+    api = ToolProviderCredentialApi()
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/ws/tool-providers/{_PROVIDER}/credentials/cred-1", method="DELETE"
+    ):
+        result = _handler(api.delete)(api, _context(sqlite_session), "ws", _PROVIDER, "cred-1")
+
+    assert result == SimpleResultResponse(result="success")
+    assert deleted == [("ws", _PROVIDER, "cred-1")]
+
+
+def test_delete_answers_404_for_a_credential_the_list_does_not_show(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    deleted: list[object] = []
+
+    def delete(*_args: object) -> dict[str, str]:
+        deleted.append(None)
+        return {"result": "success"}
+
+    monkeypatch.setattr(
+        BuiltinToolManageService,
+        "get_builtin_tool_provider_credentials",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(BuiltinToolManageService, "delete_builtin_tool_provider", delete)
+    monkeypatch.setattr(tool_providers, "application_services", lambda: account_application_services)
+
+    api = ToolProviderCredentialApi()
+    with (
+        app.test_request_context(
+            f"/openapi/v1/workspaces/ws/tool-providers/{_PROVIDER}/credentials/missing", method="DELETE"
+        ),
+        pytest.raises(CredentialNotFound),
+    ):
+        _handler(api.delete)(api, _context(sqlite_session), "ws", _PROVIDER, "missing")
+
+    assert deleted == []

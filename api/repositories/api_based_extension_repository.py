@@ -32,11 +32,6 @@ class APIBasedExtensionRepository(APIBasedExtensionStore):
 
     @override
     def find_extension(self, workspace_id: str, extension_id: str) -> APIBasedExtensionRecord | None:
-        """Read string owner/extension IDs and return a detached record or None.
-
-        Perform no writes; close the read session on success and query failure.
-        Query exceptions propagate unchanged.
-        """
         with self._session_factory() as session:
             extension = self._find(session, workspace_id, extension_id)
             return self._to_record(extension) if extension is not None else None
@@ -85,10 +80,6 @@ class APIBasedExtensionRepository(APIBasedExtensionStore):
 
     @staticmethod
     def _find(session: Session, workspace_id: str, extension_id: str) -> APIBasedExtension | None:
-        """Query an owned ORM row or None using the caller's active session.
-
-        The caller owns commit and cleanup; query exceptions propagate unchanged.
-        """
         return session.scalar(
             select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == workspace_id, APIBasedExtension.id == extension_id)

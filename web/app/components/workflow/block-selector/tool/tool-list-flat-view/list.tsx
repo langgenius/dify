@@ -45,7 +45,7 @@ const ToolViewFlatView: FC<Props> = ({
   }, [payload, letters])
   return (
     <div className="flex w-full min-w-0">
-      <div className="mr-1 min-w-0 grow">
+      <div className="me-1 min-w-0 grow">
         {payload.map((tool) => (
           <div
             key={tool.id}

@@ -26,6 +26,7 @@ const queryMocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }))
 
+// boundary: serve console API requests from the Workflow picker locally.
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: (...args: unknown[]) => queryMocks.request(...args),
@@ -95,19 +96,22 @@ const createJsonResponse = (body: unknown) =>
     },
   })
 
+const inviteOptionsPath = '/console/api/agent/invite-options'
+
 const mockInviteOptionsResponse = (agents: AgentInviteOptionResponse[]) => {
-  queryMocks.request.mockImplementation(() =>
-    Promise.resolve(createJsonResponse(createInviteOptionsResponse(agents))),
-  )
+  queryMocks.request.mockImplementation(async (url: string) => {
+    const { pathname } = new URL(url, window.location.origin)
+    if (pathname === '/console/api/tags') return createJsonResponse([])
+    if (pathname === inviteOptionsPath)
+      return createJsonResponse(createInviteOptionsResponse(agents))
+    throw new Error(`Unexpected picker request: ${url}`)
+  })
 }
 
-const expectLastInviteOptionsRequest = () => {
-  const [url] = queryMocks.request.mock.calls.at(-1) ?? []
-  const requestURL = new URL(String(url), window.location.origin)
-
-  expect(requestURL.pathname).toBe('/console/api/agent/invite-options')
-  return requestURL
-}
+const getInviteOptionsRequests = () =>
+  queryMocks.request.mock.calls
+    .map(([url]) => new URL(url, window.location.origin))
+    .filter(({ pathname }) => pathname === inviteOptionsPath)
 
 describe('Blocks', () => {
   beforeEach(() => {
@@ -336,6 +340,8 @@ describe('Blocks', () => {
     expect(
       await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
+    // Wait for the hover query to settle before the next test resets its request spy.
+    expect(await screen.findByText('agentRoster.roster.empty')).toBeInTheDocument()
   })
 
   it('opens the agent selector from the Agent block and selects an agent', async () => {
@@ -399,40 +405,14 @@ describe('Blocks', () => {
       agent_node_kind: 'dify_agent',
       version: '2',
     })
-    const requestURL = expectLastInviteOptionsRequest()
-    expect(requestURL.searchParams.get('app_id')).toBe('app-1')
-    expect(requestURL.searchParams.get('limit')).toBe('8')
-    expect(requestURL.searchParams.get('page')).toBe('1')
+    expect(
+      getInviteOptionsRequests().map((url) => Object.fromEntries(url.searchParams)),
+    ).toMatchObject([{ app_id: 'app-1', limit: '8', page: '1' }])
   })
 
   it('should refresh Agent v2 roster options when the selector is reopened', async () => {
     const user = userEvent.setup()
-    queryMocks.request
-      .mockImplementationOnce(() =>
-        Promise.resolve(
-          createJsonResponse(
-            createInviteOptionsResponse([
-              createInviteOption({
-                id: 'agent-1',
-                name: 'Nadia',
-              }),
-            ]),
-          ),
-        ),
-      )
-      .mockImplementation(() =>
-        Promise.resolve(
-          createJsonResponse(
-            createInviteOptionsResponse([
-              createInviteOption({
-                id: 'agent-2',
-                name: 'Bruno',
-                role: 'Planner',
-              }),
-            ]),
-          ),
-        ),
-      )
+    mockInviteOptionsResponse([createInviteOption({ id: 'agent-1', name: 'Nadia' })])
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -467,11 +447,14 @@ describe('Blocks', () => {
       ).not.toBeInTheDocument()
     })
 
+    mockInviteOptionsResponse([
+      createInviteOption({ id: 'agent-2', name: 'Bruno', role: 'Planner' }),
+    ])
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(await screen.findByText('Bruno')).toBeInTheDocument()
     expect(screen.getByText('Planner')).toBeInTheDocument()
-    await waitFor(() => expect(queryMocks.request).toHaveBeenCalledTimes(2))
+    expect(getInviteOptionsRequests()).toHaveLength(2)
     expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
   })
 

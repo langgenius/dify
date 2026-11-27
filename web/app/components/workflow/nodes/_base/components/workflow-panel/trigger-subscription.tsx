@@ -21,7 +21,7 @@ export const TriggerSubscription: FC<TriggerSubscriptionProps> = ({
   const subscriptionCount = subscriptions?.length || 0
 
   return (
-    <div className={cn('px-4', subscriptionCount > 0 && 'flex items-center justify-between pr-3')}>
+    <div className={cn('px-4', subscriptionCount > 0 && 'flex items-center justify-between pe-3')}>
       {!subscriptionCount && <CreateSubscriptionButton buttonType={CreateButtonType.FULL_BUTTON} />}
       {children}
       {subscriptionCount > 0 && (

@@ -3,10 +3,11 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createOverviewData } from '@/test/new-rag-overview'
+import { createTestNavigation } from '@/test/next-navigation'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { KnowledgeOverviewPage } from '../page'
 
 vi.mock('@/next/link', () => ({
@@ -24,85 +25,89 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useSearchParams: () => new URLSearchParams(),
-  usePathname: () => '/datasets/new/space-1/overview',
-  useRouter: () => ({ push: vi.fn() }),
-}))
-
-// boundary: ECharts is an external renderer; the page's real chart surface remains asserted.
-vi.mock('echarts-for-react/esm/core', () => ({
-  default: () => <div aria-label="query outcomes chart" />,
-}))
-type OverviewResource =
-  | 'activity'
-  | 'attention'
-  | 'inventory'
-  | 'members'
-  | 'outcomes'
-  | 'source'
-  | 'stats'
-  | 'tasks'
 let queryData = createOverviewData()
 
-const server = vi.hoisted(() => ({
-  calls: {
-    activity: vi.fn(),
-    attention: vi.fn(),
-    inventory: vi.fn(),
-    members: vi.fn(),
-    outcomes: vi.fn(),
-    source: vi.fn(),
-    stats: vi.fn(),
-    tasks: vi.fn(),
-  },
-  failing: new Set<string>(),
-  held: new Map<string, Promise<void>>(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+function installOverviewApi() {
   const respond =
-    (resource: OverviewResource, data: () => unknown) =>
-    async (input: unknown): Promise<unknown> => {
-      server.calls[resource](input)
-      await server.held.get(resource)
-      if (server.failing.has(resource)) throw new Error(`${resource} unavailable`)
-      return structuredClone(data())
-    }
-  const overview = 'knowledgeFs.spaces.byControlSpaceId.overview'
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get': respond('tasks', () => ({
-        data: queryData.tasks,
-        next_cursor: null,
-      })),
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get': respond(
-        'source',
-        () => queryData.source,
-      ),
-      [`${overview}.activity.get`]: respond('activity', () => queryData.activity),
-      [`${overview}.attention.get`]: respond('attention', () => queryData.attention),
-      [`${overview}.inventory.get`]: respond('inventory', () => queryData.inventory),
-      [`${overview}.queryOutcomes.get`]: respond('outcomes', () => queryData.outcomes),
-      [`${overview}.stats.get`]: respond('stats', () => queryData.stats),
-      'knowledgeFs.spaces.byControlSpaceId.settings.get': () => ({ configuration_state: 'active' }),
-      'workspaces.current.members.get': respond('members', () => ({
-        accounts: [
-          {
-            avatar_url: null,
-            email: 'ada@example.com',
-            id: 'member-1',
-            name: 'Ada',
+    <T,>(data: () => T) =>
+    async () =>
+      structuredClone(data())
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            backgroundTasks: {
+              get: respond(() => ({ data: queryData.tasks, next_cursor: null })),
+            },
+            sources: {
+              bySourceId: {
+                get: respond(() => ({
+                  created_at: '2026-07-29T08:00:00Z',
+                  id: 'source-1',
+                  knowledge_space_id: 'knowledge-1',
+                  metadata: {},
+                  permission_scope: [],
+                  status: 'active' as const,
+                  type: 'connector' as const,
+                  updated_at: '2026-07-29T08:00:00Z',
+                  uri: 'notion://support-sop',
+                  version: 1,
+                  ...queryData.source,
+                })),
+              },
+            },
+            overview: {
+              activity: { get: respond(() => queryData.activity) },
+              attention: { get: respond(() => queryData.attention) },
+              inventory: { get: respond(() => queryData.inventory) },
+              queryOutcomes: { get: respond(() => queryData.outcomes) },
+              stats: { get: respond(() => queryData.stats) },
+            },
+            settings: {
+              get: () => ({
+                active_profile_available: true,
+                active_profile_revisions: { embedding: 1, retrieval: 1 },
+                capabilities: {
+                  deep: true,
+                  index: true,
+                  ingest: true,
+                  query: true,
+                  research: true,
+                  source_sync: true,
+                },
+                configuration_state: 'active',
+                embedding: null,
+                issues: [],
+                retrieval: null,
+                revision: 1,
+              }),
+            },
           },
-        ],
-      })),
-    }),
-  }
-})
+        },
+      },
+      workspaces: {
+        current: {
+          members: {
+            get: respond(() => ({
+              accounts: [
+                {
+                  avatar_url: null,
+                  email: 'ada@example.com',
+                  id: 'member-1',
+                  name: 'Ada',
+                  role: 'normal',
+                  status: 'active',
+                },
+              ],
+            })),
+          },
+        },
+      },
+    },
+  })
+}
+let fake: ReturnType<typeof installOverviewApi>
 async function renderOverview({
   deploymentEdition = 'COMMUNITY',
   searchParams = '',
@@ -120,16 +125,21 @@ async function renderOverview({
     systemFeatures: { deployment_edition: deploymentEdition },
   })
   onTestFinished(() => queryClient.clear())
+  const { NavigationProvider } = createTestNavigation({
+    url: `/datasets/new/space-1/overview${searchParams}`,
+  })
   const view = await render(
-    <Wrapper>
-      <QueryTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-        <KnowledgeSpaceTestProvider
-          space={createKnowledgeSpaceFixture({ permission_keys: spacePermissions })}
-        >
-          <KnowledgeOverviewPage knowledgeSpaceId="space-1" />
-        </KnowledgeSpaceTestProvider>
-      </QueryTestingAdapter>
-    </Wrapper>,
+    <NavigationProvider>
+      <Wrapper>
+        <QueryTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+          <KnowledgeSpaceTestProvider
+            space={createKnowledgeSpaceFixture({ permission_keys: spacePermissions })}
+          >
+            <KnowledgeOverviewPage knowledgeSpaceId="space-1" />
+          </KnowledgeSpaceTestProvider>
+        </QueryTestingAdapter>
+      </Wrapper>
+    </NavigationProvider>,
   )
   if (settle) await expect.poll(() => queryClient.isFetching()).toBe(0)
   const refetch = async (path: () => readonly unknown[]) => {
@@ -150,9 +160,8 @@ const emptyKnowledgeBase = () => {
 describe('KnowledgeOverviewPage indexing', () => {
   beforeEach(async () => {
     await page.viewport(1280, 900)
-    onTestFinished(guardUnexpectedFetch())
-    server.failing.clear()
-    server.held.clear()
+    fake = installOverviewApi()
+    onTestFinished(fake)
     queryData = createOverviewData()
   })
 
@@ -180,10 +189,99 @@ describe('KnowledgeOverviewPage indexing', () => {
     await vi.advanceTimersByTimeAsync(2000)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
     await expect.poll(() => queryClient.isFetching()).toBe(0)
-    const caughtUp = server.calls.stats.mock.calls.length
+    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
+    const caughtUp = stats.mock.calls.length
     await vi.advanceTimersByTimeAsync(6000)
-    expect(server.calls.stats).toHaveBeenCalledTimes(caughtUp)
+    expect(stats).toHaveBeenCalledTimes(caughtUp)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+  })
+
+  it('stops refreshing overview sections after the task request fails', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.mockImplementation(
+      async () => {
+        throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+      },
+    )
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
+    const overview = fake.console.knowledgeFs.spaces.byControlSpaceId.overview
+    const calls = () => [overview.stats.get, overview.attention.get].map((m) => m.mock.calls.length)
+    const settled = calls()
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(calls()).toEqual(settled)
+  })
+
+  it('resumes refreshing visible metrics when tasks load after the task request failed', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const tasks = fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get
+    tasks.mockImplementationOnce(async () => {
+      throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+    })
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    queryData.tasks[0]!.state = 'running'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+    queryData.stats.queries.value = 12
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect.element(page.getByText('12', { exact: true })).toBeVisible()
+  })
+
+  it('refreshes stopped metrics when tasks recover with only finished tasks', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const tasks = fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get
+    tasks.mockImplementationOnce(async () => {
+      throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+    })
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    queryData.tasks[0]!.state = 'completed'
+    queryData.tasks[0]!.updated_at = '2026-07-29T10:02:00Z'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+  })
+
+  it('refreshes stopped metrics when a task is first seen after it finished', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    queryData.stats.generated_at = '2026-07-29T10:01:00Z'
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
+    const idle = stats.mock.calls.length
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(stats).toHaveBeenCalledTimes(idle)
+    queryData.tasks.push({
+      ...queryData.tasks[0]!,
+      id: 'task-finished-elsewhere',
+      state: 'completed',
+      updated_at: '2026-07-29T10:02:00Z',
+    })
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+  })
+
+  it('resumes refreshing visible metrics when a task starts after polling stopped', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    queryData.stats.generated_at = '2026-07-29T10:01:00Z'
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
+    const idle = stats.mock.calls.length
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(stats).toHaveBeenCalledTimes(idle)
+    queryData.tasks[0]!.state = 'running'
+    queryData.tasks[0]!.updated_at = '2026-07-29T10:02:00Z'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+    queryData.stats.queries.value = 12
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect.element(page.getByText('12', { exact: true })).toBeVisible()
   })
 
   it('keeps failed first-source tasks in Needs attention without a duplicate banner', async () => {

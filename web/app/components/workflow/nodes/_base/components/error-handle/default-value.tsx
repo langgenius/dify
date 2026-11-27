@@ -28,11 +28,11 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
             <div key={index} className="py-1">
               <div className="mb-1 flex items-center">
                 {isInput ? (
-                  <label htmlFor={inputId} className="mr-1 system-sm-medium text-text-primary">
+                  <label htmlFor={inputId} className="me-1 system-sm-medium text-text-primary">
                     {form.key}
                   </label>
                 ) : (
-                  <div className="mr-1 system-sm-medium text-text-primary">{form.key}</div>
+                  <div className="me-1 system-sm-medium text-text-primary">{form.key}</div>
                 )}
                 <div className="system-xs-regular text-text-tertiary">{form.type}</div>
               </div>

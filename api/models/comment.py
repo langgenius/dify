@@ -66,7 +66,11 @@ class WorkflowComment(TypeBase):
     resolved: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # Relationships
     replies: Mapped[list[WorkflowCommentReply]] = relationship(
-        lambda: WorkflowCommentReply, back_populates="comment", cascade="all, delete-orphan", init=False
+        lambda: WorkflowCommentReply,
+        back_populates="comment",
+        cascade="all, delete-orphan",
+        order_by=lambda: (WorkflowCommentReply.created_at, WorkflowCommentReply.id),
+        init=False,
     )
     mentions: Mapped[list[WorkflowCommentMention]] = relationship(
         lambda: WorkflowCommentMention, back_populates="comment", cascade="all, delete-orphan", init=False

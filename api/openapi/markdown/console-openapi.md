@@ -368,6 +368,25 @@ Get account avatar url
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /accounts/{account_id}/avatars/{file_id}
+**Serve an account's assigned raster avatar to an authenticated Console account**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| account_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Avatar image | **image/bmp**: binary<br>**image/gif**: binary<br>**image/jpeg**: binary<br>**image/png**: binary<br>**image/webp**: binary<br> |
+| 304 | Avatar image has not changed |  |
+| 404 | Avatar file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /activate
 **Accept an invitation without letting an existing session act for another account**
 
@@ -387,7 +406,7 @@ invitation before the token is consumed or tenant membership is changed.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
-| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[WorkspaceMemberLimitReachedError](#workspacememberlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AlreadyActivateError](#alreadyactivateerror)<br>[InvitationAccountMismatchError](#invitationaccountmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -452,7 +471,11 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
-**Return visible Workflow-callable Agents and their current workflow usage**
+**Return visible Workflow-callable Agents matching validated tag filters**
+
+Preconditions: Console admission supplies the active workspace identity.
+Postconditions: repeated tag_ids are validated as UUIDs and passed with
+name/pagination filters; the response contains detached Agent tags.
 
 #### Parameters
 
@@ -462,6 +485,7 @@ Check if activation token is valid
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
+| tag_ids | query | Agent tag IDs; every selected tag must match | No | [ string (uuid) ] |
 
 #### Responses
 
@@ -619,6 +643,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/audio-to-text
+**Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft**
+
 Transcribe audio using the current Agent debug configuration
 
 #### Parameters
@@ -645,6 +671,8 @@ Transcribe audio using the current Agent debug configuration
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-chat/finalize
+**Drain the admitted account's Build turn to the first message-end event**
+
 Run a build-draft Agent App turn that asks the agent to push config updates
 
 #### Parameters
@@ -664,6 +692,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/build-draft
+**Discard the caller's draft and report success even if it was already absent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -679,6 +709,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/build-draft
+**Return the admitted account's existing Build draft, or 404 when none exists**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -694,6 +726,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/build-draft
+**Save the admitted account's Build draft and return its committed state**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -711,11 +745,13 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft saved | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/apply
+**Apply the admitted account's Build draft to the shared draft and return its metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -729,11 +765,14 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AgentHomeSnapshotTooLargeError](#agenthomesnapshottoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Bad Gateway | **application/json**: [AgentHomeSnapshotCreateFailedError](#agenthomesnapshotcreatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/checkout
+**Copy the shared draft for the admitted account, or reuse the existing personal draft unless forced**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -798,6 +837,8 @@ Get suggested questions for an Agent App message
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
+**Stop a task owned by the admitted account after resolving the Agent's runtime App**
+
 Stop a running Agent App chat message generation
 
 #### Parameters
@@ -816,6 +857,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
+**Return the Agent's effective shared configuration without creating a draft**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -831,6 +874,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/composer
+**Save the shared draft and return the committed state with validation findings**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -853,6 +898,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer/candidates
+**Return mention candidates from tenant-scoped configuration and workspace tools**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -868,6 +915,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/composer/validate
+**Check publish rules for the supplied configuration and report findings without writing**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -890,6 +939,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -907,6 +958,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -930,6 +983,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files/batch
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -953,6 +1008,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/files/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -971,6 +1028,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -989,6 +1048,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1007,6 +1068,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/manifest
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1024,6 +1087,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1041,6 +1106,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/skills/upload
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1064,6 +1131,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/skills/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1082,6 +1151,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1100,6 +1171,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/content
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1116,6 +1189,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1135,6 +1210,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1154,6 +1231,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/inspect
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1172,6 +1251,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
+**Copy an admitted roster Agent App and render its committed private detail**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1196,6 +1277,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/debug-conversation/refresh
+**Reset the admitted account's Build conversation and return the new empty conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1353,6 +1436,8 @@ Get Agent App message details by ID
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
+**Publish the current shared draft and return the committed version and draft metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1373,6 +1458,7 @@ Get Agent App message details by ID
 | 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
@@ -1501,6 +1587,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/text-to-audio
+**Synthesize an owned message or preview text using the existing runtime App**
+
 Preview an Agent TTS voice or read an Agent chat message
 
 #### Parameters
@@ -1526,6 +1614,8 @@ Preview an Agent TTS voice or read an Agent chat message
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/text-to-audio/voices
+**Require an existing runtime App, then discover provider voices without a DB session**
+
 Get available TTS voices for an Agent and language
 
 #### Parameters
@@ -2362,6 +2452,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2381,6 +2473,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2406,6 +2500,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files/batch
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2431,6 +2527,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/files/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2451,6 +2549,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2471,6 +2571,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2491,6 +2593,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/manifest
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2510,6 +2614,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2529,6 +2635,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/skills/upload
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2554,6 +2662,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/skills/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2574,6 +2684,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2594,6 +2706,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/content
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2611,6 +2725,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2632,6 +2748,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2653,6 +2771,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/inspect
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2850,6 +2970,12 @@ Batch import annotations from CSV file with rate limiting and security checks
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -5065,6 +5191,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5082,6 +5210,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5106,6 +5236,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5122,6 +5254,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5146,6 +5280,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5168,6 +5304,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5192,6 +5330,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5642,7 +5782,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
-| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[TriggerNodeLimitExceededError](#triggernodelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6678,7 +6818,7 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | ZIP archive downloaded successfully |  |
+| 200 | ZIP archive downloaded successfully | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
@@ -7318,6 +7458,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7388,7 +7529,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
@@ -7440,7 +7583,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/template/download
@@ -8379,6 +8524,12 @@ Request body:
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -8882,6 +9033,137 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base Capability v2 public keys | **application/json**: [KnowledgeFSJWKSResponse](#knowledgefsjwksresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/agent-access
+**Your agent connections in the current workspace, the MCP URL and both switches**
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Your agent connections | **application/json**: [KnowledgeAgentMineResponse](#knowledgeagentmineresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/agent-access/authorize
+**Validate an agent's authorization request for the consent page**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| client_id | query |  | No | string |
+| code_challenge | query |  | No | string |
+| code_challenge_method | query |  | No | string |
+| redirect_uri | query |  | No | string |
+| resource | query |  | No | string |
+| response_type | query |  | No | string |
+| scope | query |  | No | string |
+| state | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Authorization request | **application/json**: [KnowledgeAgentAuthorizationResponse](#knowledgeagentauthorizationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/agent-access/authorize
+**Approve (with chosen knowledge bases) or deny; returns the agent's redirect URI**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentAuthorizationPayload](#knowledgeagentauthorizationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Where the browser goes next | **application/json**: [KnowledgeAgentAuthorizationDecisionResponse](#knowledgeagentauthorizationdecisionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/agent-access/grants/{grant_id}
+**Disconnect: yours, or any member's for workspace admins**
+
+Takes effect at once.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| grant_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Disconnected |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/agent-access/grants/{grant_id}
+**Change which knowledge bases your connection may read**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| grant_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentGrantUpdatePayload](#knowledgeagentgrantupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection updated | **application/json**: [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/agent-access/tokens
+**Create a personal token for chosen knowledge bases; the token is shown once**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentTokenPayload](#knowledgeagenttokenpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Personal token created | **application/json**: [KnowledgeAgentTokenCreatedResponse](#knowledgeagenttokencreatedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/agent-access/workspace
+**The workspace switch and every member's connections (workspace admins)**
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace agent access | **application/json**: [KnowledgeAgentWorkspaceResponse](#knowledgeagentworkspaceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/agent-access/workspace
+**Turn personal agents on or off for the whole workspace (workspace admins)**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeAgentWorkspacePayload](#knowledgeagentworkspacepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace agent access updated | **application/json**: [KnowledgeAgentWorkspaceResponse](#knowledgeagentworkspaceresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/features
@@ -11367,6 +11649,171 @@ Set the malware scan policy of an Agent Knowledge Base
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/findings
+**List a page of findings (duplicate, similar, conflict), optionally by status and kind**
+
+Unknown query parameters and malformed cursors are answered 400.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| kind | query |  | No | string, <br>**Available values:** "conflict", "duplicate", "similar" |
+| status | query |  | No | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyFindingListResponse](#knowledgefstidyfindinglistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/actions
+**Act on one finding: dismiss, mark reviewed, disable a document, adopt a side, or undo**
+
+A conflict (409) carries ``details.parameters.status`` when a passage could not be rewritten.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| finding_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSTidyActionPayload](#knowledgefstidyactionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/retry
+**Retry the knowledge base's Tidy scans and report how many were resumed**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyRetryResponse](#knowledgefstidyretryresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/scans
+**List a page of per-document scan records, optionally by state**
+
+Unknown query parameters and malformed cursors are answered 400.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| state | query |  | No | string, <br>**Available values:** "complete", "failed", "pending", "scanning" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidyScanListResponse](#knowledgefstidyscanlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/settings
+**Read whether Tidy and its conflict detection are on for the knowledge base, with the settings revision**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySettingsResponse](#knowledgefstidysettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/tidy/settings
+**Turn Tidy or its conflict detection on or off; needs edit permission and the current revision**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSTidySettingsPayload](#knowledgefstidysettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySettingsResponse](#knowledgefstidysettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/summary
+**Count findings by status and kind, and report scan progress and model calls so far**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tidy result | **application/json**: [KnowledgeFSTidySummaryResponse](#knowledgefstidysummaryresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
 #### Parameters
 
@@ -13448,6 +13895,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13465,6 +13914,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13489,6 +13940,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13504,6 +13957,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13528,6 +13983,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13549,6 +14006,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13573,6 +14032,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14015,7 +14476,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "agent", "app", "knowledge", "skill", "snippet" |
 
 #### Responses
 
@@ -14025,6 +14486,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /tags
+**Create a validated tag only after authorization for its pool; conflicts preserve existing tags**
+
 #### Request Body
 
 | Required | Schema |
@@ -14039,6 +14502,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /tags/{tag_id}
+**Delete an authorized tenant-owned tag and its bindings; other tag pools remain independent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14053,6 +14518,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /tags/{tag_id}
+**Rename a tenant-owned tag after pool authorization; a missing tag is a 404 without writes**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14276,6 +14743,12 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -15905,7 +16378,10 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/test-channels
-**List current Workspace test channels without granting channel management or app execution permissions**
+**List test identifiers for an authenticated workspace member in every edition**
+
+Discovery grants no channel-management or app-execution permissions and
+performs no writes or provider I/O. Storage failures propagate normally.
 
 #### Responses
 
@@ -17033,6 +17509,12 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"bundle"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -18232,7 +18714,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft Skill zip archive |  |
+| 200 | Draft Skill zip archive | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
@@ -19433,6 +19915,47 @@ Invalid path arguments fail before provider discovery or asset access.
 | 200 | Model provider icon |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/{workspace_id}/members/pending-invitations
+**List pending invitations for the active workspace**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PendingWorkspaceInvitationListResponse](#pendingworkspaceinvitationlistresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/{workspace_id}/members/pending-invitations/revoke
+**Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PendingInvitationRevokePayload](#pendinginvitationrevokepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [PendingInvitationNotFoundError](#pendinginvitationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/dataset-template/download
 #### Parameters
 
@@ -19452,6 +19975,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19490,6 +20014,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19603,7 +20128,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
@@ -19658,7 +20185,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
@@ -19680,6 +20209,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -21020,6 +21550,7 @@ Supported icon storage formats for Agent roster entries.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
+| tags | [ [Tag](#tag) ] | Workspace Agent tags, independent of Studio App tags | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
@@ -21033,6 +21564,7 @@ Supported icon storage formats for Agent roster entries.
 | keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+| tag_ids | [ string (uuid) ] | Agent tag IDs; every selected tag must match | No |
 
 #### AgentInviteOptionsResponse
 
@@ -21254,6 +21786,7 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | No |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
@@ -21688,7 +22221,9 @@ run request to Agent backend. ``plugin`` providers keep the direct
 ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
 ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
 keeps compatibility with existing Agent tool config payloads; new callers
-should send ``plugin_id`` + ``provider`` when available.
+should send ``plugin_id`` + ``provider`` when available. A per-run call
+limit is either absent/unlimited or a strict positive integer for one
+concrete operation; provider-wide entries cannot define a call limit.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21696,6 +22231,8 @@ should send ``plugin_id`` + ``provider`` when available.
 | credential_type | string, <br>**Available values:** "api-key", "oauth2", "unauthorized", <br>**Default:** api-key | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
 | description | string |  | No |
 | enabled | boolean, <br>**Default:** true |  | No |
+| last_max_calls_per_run | integer | Last enabled limit retained by the editor; does not enforce a runtime quota. | No |
+| max_calls_per_run | integer | Maximum dispatches of this operation per logical run; null or omitted means unlimited. | No |
 | name | string |  | No |
 | plugin_id | string |  | No |
 | provider | string |  | No |
@@ -21995,6 +22532,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | position | integer |  | Yes |
 | thought | string |  | No |
 | tool | string |  | No |
+| tool_activity | [AgentToolActivity](#agenttoolactivity) |  | No |
 | tool_input | string |  | No |
 | tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
 
@@ -22013,6 +22551,25 @@ Legacy Chat App model config used only for follow-up question generation.
 | ---- | ---- | ----------- | -------- |
 | date | string |  | Yes |
 | tps | number |  | Yes |
+
+#### AgentToolActivity
+
+One native tool call's application-owned, persistable display metadata.
+
+Native call identity is independent of its display name and the SQL thought
+row. Tool inputs, credentials and successful observations remain outside
+this sidecar; ``error`` is a bounded failure description for display.
+Missing metadata on older thoughts conveys no execution or quota claim.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| call_limit | [ToolCallLimitMetadata](#toolcalllimitmetadata) |  | No |
+| error | string |  | No |
+| id | string |  | Yes |
+| run_id | string |  | Yes |
+| status | string, <br>**Available values:** "cancelled", "failed", "not_executed", "running", "started", "succeeded" | *Enum:* `"cancelled"`, `"failed"`, `"not_executed"`, `"running"`, `"started"`, `"succeeded"` | Yes |
+| tool_call_id | string |  | Yes |
+| tool_name | string |  | Yes |
 
 #### AgentToolCallResponse
 
@@ -26646,6 +27203,7 @@ Too many incorrect password attempts. Please try again later.
 | ---- | ---- | ----------- | -------- |
 | code | string |  | Yes |
 | email | string |  | Yes |
+| invite_token | string | Invitation link token being accepted. | No |
 | language | string |  | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
@@ -27058,6 +27616,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | metrics | [ string ] |  | Yes |
 
+#### EvaluationConfigInvalidError
+
+Evaluation configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationConfigInvalidError |  | Evaluation configuration is invalid. |  |
+
 #### EvaluationConfigPayload
 
 | Name | Type | Description | Required |
@@ -27080,6 +27646,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | evaluation_model_provider | string |  | No |
 | judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
 
+#### EvaluationDatasetInvalidError
+
+Evaluation dataset is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationDatasetInvalidError |  | Evaluation dataset is invalid. |  |
+
 #### EvaluationDefaultMetricsResponse
 
 | Name | Type | Description | Required |
@@ -27098,11 +27672,33 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | name | string |  | Yes |
 | size | integer |  | Yes |
 
+#### EvaluationFrameworkNotConfiguredError
+
+Selected evaluation framework is unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationFrameworkNotConfiguredError |  | Selected evaluation framework is unavailable. |  |
+
 #### EvaluationFrameworkQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+
+#### EvaluationMaxConcurrentRunsDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+
+#### EvaluationMaxConcurrentRunsError
+
+Maximum number of concurrent evaluation runs reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationMaxConcurrentRunsError |  | Maximum number of concurrent evaluation runs reached. |  |
 
 #### EvaluationMetric
 
@@ -27200,6 +27796,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 
 #### EvaluationRunResponse
 
+Expose the model pinned in the run snapshot, independent of later config edits.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completed_at | integer |  | No |
@@ -27209,6 +27807,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | dataset_file_id | string |  | No |
 | error | string |  | No |
 | evaluation_config_id | string |  | Yes |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
 | failed_items | integer |  | Yes |
 | id | string |  | Yes |
 | metrics_summary | object |  | No |
@@ -27498,6 +28098,7 @@ Effective feature availability and limits for the current workspace.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_preview_enabled | boolean |  | Yes |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
 | api_rate_limit | [Quota](#quota) |  | Yes |
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
@@ -27508,6 +28109,8 @@ Effective feature availability and limits for the current workspace.
 | enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
+| evaluation_enabled | boolean |  | Yes |
+| evaluation_upgrade_available | boolean |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | im_centrally_managed | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
@@ -28867,6 +29470,147 @@ Attributes:
 | conditions | [ [JudgmentCondition](#judgmentcondition) ] |  | No |
 | logical_operator | string, <br>**Available values:** "and", "or", <br>**Default:** and | *Enum:* `"and"`, `"or"` | No |
 
+#### KnowledgeAgentAuthorizationClientResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | [KnowledgeAgentClientKind](#knowledgeagentclientkind) |  | Yes |
+| name | string |  | Yes |
+| redirect_host | string |  | Yes |
+
+#### KnowledgeAgentAuthorizationDecisionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| redirect_to | string |  | Yes |
+
+#### KnowledgeAgentAuthorizationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| approve | boolean |  | Yes |
+| client_id | string |  | No |
+| code_challenge | string |  | No |
+| code_challenge_method | string |  | No |
+| knowledge_base_ids | [ string ] |  | No |
+| redirect_uri | string |  | No |
+| resource | string |  | No |
+| response_type | string |  | No |
+| scope | string |  | No |
+| state | string |  | No |
+
+#### KnowledgeAgentAuthorizationQuery
+
+The OAuth authorization request the agent opened the consent page with.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | No |
+| code_challenge | string |  | No |
+| code_challenge_method | string |  | No |
+| redirect_uri | string |  | No |
+| resource | string |  | No |
+| response_type | string |  | No |
+| scope | string |  | No |
+| state | string |  | No |
+
+#### KnowledgeAgentAuthorizationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_access_enabled | boolean |  | Yes |
+| blocked_knowledge_base_ids | [ string ] |  | Yes |
+| client | [KnowledgeAgentAuthorizationClientResponse](#knowledgeagentauthorizationclientresponse) |  | Yes |
+| scopes | [ string ] |  | Yes |
+| workspace | [KnowledgeAgentAuthorizationWorkspaceResponse](#knowledgeagentauthorizationworkspaceresponse) |  | Yes |
+
+#### KnowledgeAgentAuthorizationWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### KnowledgeAgentClientKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeAgentClientKind | string |  |  |
+
+#### KnowledgeAgentGrantAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### KnowledgeAgentGrantKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeAgentGrantKind | string |  |  |
+
+#### KnowledgeAgentGrantResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account | [KnowledgeAgentGrantAccountResponse](#knowledgeagentgrantaccountresponse) |  | No |
+| client_name | string |  | No |
+| created_at | dateTime |  | Yes |
+| expires_at | string | Absent for a token that never expires | No |
+| id | string |  | Yes |
+| kind | [KnowledgeAgentGrantKind](#knowledgeagentgrantkind) |  | Yes |
+| knowledge_base_ids | [ string ] |  | Yes |
+| last_used_at | string |  | No |
+| name | string |  | Yes |
+| scopes | [ string ] |  | Yes |
+| token_hint | string | Last characters of a personal token | No |
+
+#### KnowledgeAgentGrantUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| knowledge_base_ids | [ string ] |  | Yes |
+
+#### KnowledgeAgentMineResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_access_enabled | boolean | The workspace switch | Yes |
+| available | boolean | Whether this deployment offers agent connections at all | Yes |
+| blocked_knowledge_base_ids | [ string ] |  | Yes |
+| grants | [ [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse) ] |  | Yes |
+| mcp_url | string |  | Yes |
+
+#### KnowledgeAgentTokenCreatedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| grant | [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse) |  | Yes |
+| token | string | Shown once; only its SHA-256 digest is stored | Yes |
+
+#### KnowledgeAgentTokenPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_in_days | integer | Days until the token expires; null for a token that never expires | No |
+| knowledge_base_ids | [ string ] |  | Yes |
+| name | string |  | Yes |
+
+#### KnowledgeAgentWorkspacePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+
+#### KnowledgeAgentWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_access_enabled | boolean |  | Yes |
+| grants | [ [KnowledgeAgentGrantResponse](#knowledgeagentgrantresponse) ] |  | Yes |
+
 #### KnowledgeConfig
 
 Document ingestion configuration with a validated indexing technique.
@@ -29657,6 +30401,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | ---- | ---- | ----------- | -------- |
 | agent_enabled | boolean |  | Yes |
 | mcp_enabled | boolean |  | No |
+| personal_agent_enabled | boolean |  | No |
 | service_api_enabled | boolean |  | Yes |
 | workflow_enabled | boolean |  | Yes |
 
@@ -29666,6 +30411,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | ---- | ---- | ----------- | -------- |
 | agent_enabled | boolean |  | Yes |
 | mcp_enabled | boolean |  | Yes |
+| personal_agent_enabled | boolean, <br>**Default:** true |  | No |
 | revision | integer |  | Yes |
 | service_api_enabled | boolean |  | Yes |
 | workflow_enabled | boolean |  | Yes |
@@ -31405,6 +32151,174 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | revision | integer |  | Yes |
 | slug | string |  | Yes |
 
+#### KnowledgeFSTidyActionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | [TidyActionName](#tidyactionname) |  | Yes |
+| also | [ [KnowledgeFSTidyFurtherAction](#knowledgefstidyfurtheraction) ] |  | No |
+| documentId | string |  | No |
+| expectedRevision | integer |  | Yes |
+| replacement | string |  | No |
+
+#### KnowledgeFSTidyCurrentScanResponse
+
+How far the scanner is through the document it is scanning now.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| passagesDone | integer |  | Yes |
+| passagesTotal | integer |  | Yes |
+| title | string |  | Yes |
+
+#### KnowledgeFSTidyDocumentCardResponse
+
+What the review page shows about a document a finding quotes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| mimeType | string |  | Yes |
+| publishedAt | string |  | Yes |
+| sizeBytes | integer |  | Yes |
+| title | string |  | Yes |
+
+#### KnowledgeFSTidyDocumentProgressResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| complete | integer |  | Yes |
+| failed | integer |  | Yes |
+| pending | integer |  | Yes |
+| scanning | integer |  | Yes |
+
+#### KnowledgeFSTidyEvidenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chunkId | string |  | Yes |
+| documentId | string |  | Yes |
+| end | integer |  | Yes |
+| revision | integer |  | Yes |
+| start | integer |  | Yes |
+| text | string |  | Yes |
+| title | string |  | Yes |
+
+#### KnowledgeFSTidyFindingCountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| kind | [TidyFindingKind](#tidyfindingkind) |  | Yes |
+| status | [TidyFindingStatus](#tidyfindingstatus) |  | Yes |
+
+#### KnowledgeFSTidyFindingListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | object |  | No |
+| items | [ [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse) ] |  | Yes |
+| nextCursor | string |  | Yes |
+
+#### KnowledgeFSTidyFindingQuery
+
+Query of the findings list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| kind | [TidyFindingKind](#tidyfindingkind) |  | No |
+| status | [TidyFindingStatus](#tidyfindingstatus) |  | No |
+
+#### KnowledgeFSTidyFindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actionId | string |  | Yes |
+| createdAt | string |  | Yes |
+| id | string |  | Yes |
+| kind | [TidyFindingKind](#tidyfindingkind) |  | Yes |
+| left | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
+| reason | string |  | Yes |
+| revision | integer |  | Yes |
+| right | [KnowledgeFSTidyEvidenceResponse](#knowledgefstidyevidenceresponse) |  | Yes |
+| similarity | number |  | Yes |
+| stale | boolean |  | No |
+| status | [TidyFindingStatus](#tidyfindingstatus) |  | Yes |
+
+#### KnowledgeFSTidyFurtherAction
+
+Another finding settled in the same transaction as the one the request addresses.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | [TidyFurtherActionName](#tidyfurtheractionname) |  | Yes |
+| documentId | string |  | No |
+| expectedRevision | integer |  | Yes |
+| findingId | string |  | Yes |
+
+#### KnowledgeFSTidyRetryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| resumed | integer |  | Yes |
+
+#### KnowledgeFSTidyScanListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSTidyScanResponse](#knowledgefstidyscanresponse) ] |  | Yes |
+| nextCursor | string |  | Yes |
+
+#### KnowledgeFSTidyScanQuery
+
+Query of the scans list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| state | [TidyScanState](#tidyscanstate) |  | No |
+
+#### KnowledgeFSTidyScanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| error | string |  | Yes |
+| modelCalls | integer |  | Yes |
+| state | [TidyScanState](#tidyscanstate) |  | Yes |
+| title | string |  | Yes |
+| windows | integer |  | Yes |
+
+#### KnowledgeFSTidySettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| acknowledgeTokenUsage | boolean |  | No |
+| conflicts | boolean |  | No |
+| enabled | boolean |  | Yes |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSTidySettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conflicts | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| lastError | [TidySettingsError](#tidysettingserror) |  | Yes |
+| revision | integer |  | Yes |
+| updatedAt | string |  | Yes |
+
+#### KnowledgeFSTidySummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current | [KnowledgeFSTidyCurrentScanResponse](#knowledgefstidycurrentscanresponse) |  | No |
+| documents | [KnowledgeFSTidyDocumentProgressResponse](#knowledgefstidydocumentprogressresponse) |  | Yes |
+| findings | [ [KnowledgeFSTidyFindingCountResponse](#knowledgefstidyfindingcountresponse) ] |  | Yes |
+| modelCalls | integer |  | Yes |
+
 #### KnowledgeFSTraceEntriesQuery
 
 | Name | Type | Description | Required |
@@ -31918,8 +32832,8 @@ Unable to create account because the licensed seats limit was exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Maximum number of resources allowed; 0 means unlimited | Yes |
+| size | integer | Number of resources already consumed | Yes |
 
 #### ListChannelProvidersResponse
 
@@ -33837,6 +34751,34 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
 
+#### PendingInvitationNotFoundError
+
+No live invitation exists for this email in the workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PendingInvitationNotFoundError |  | No live invitation exists for this email in the workspace. |  |
+
+#### PendingInvitationRevokePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+
+#### PendingWorkspaceInvitationListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitations | [ [PendingWorkspaceInvitationResponse](#pendingworkspaceinvitationresponse) ] |  | Yes |
+
+#### PendingWorkspaceInvitationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| expires_at | dateTime |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+
 #### Permission
 
 | Name | Type | Description | Required |
@@ -35035,6 +35977,7 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| icon_info | [RagPipelineIconInfo](#ragpipelineiconinfo) |  | No |
 | yaml_content | string |  | Yes |
 
 #### RagPipelineDatasourceListResponse
@@ -35061,6 +36004,15 @@ Resource types understood by access policies.
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | start_node_id | string |  | Yes |
+
+#### RagPipelineIconInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | Yes |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
 
 #### RagPipelineImportCheckDependenciesResponse
 
@@ -37111,7 +38063,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"skill"`, `"snippet"` | Yes |
+| type | [TagType](#tagtype) | Tag type filter | Yes |
 
 #### TagListResponse
 
@@ -37274,6 +38226,42 @@ Available voices
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
 
+#### TidyActionName
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyActionName | string |  |  |
+
+#### TidyFindingKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyFindingKind | string |  |  |
+
+#### TidyFindingStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyFindingStatus | string |  |  |
+
+#### TidyFurtherActionName
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyFurtherActionName | string |  |  |
+
+#### TidyScanState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidyScanState | string |  |  |
+
+#### TidySettingsError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TidySettingsError | string |  |  |
+
 #### TimeoutUnit
 
 Timeout unit for form expiration.
@@ -37334,6 +38322,18 @@ Only one file is allowed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolApiListResponse | array |  |  |
+
+#### ToolCallLimitMetadata
+
+Usage at this call's dispatch boundary and its authoritative disposition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| execution_status | string, <br>**Available values:** "executed", "not_executed", "unconfirmed" | *Enum:* `"executed"`, `"not_executed"`, `"unconfirmed"` | Yes |
+| limit | integer |  | Yes |
+| reason | string, <br>**Available values:** "call_limit_reached", "duplicate_tool_call" |  | No |
+| tool_identity | string |  | Yes |
+| used | integer |  | Yes |
 
 #### ToolEmojiIcon
 
@@ -37969,6 +38969,21 @@ the app is not allowed to be trial.
 | ---- | ---- | ----------- | -------- |
 | TriggerCreationMethod | string |  |  |
 
+#### TriggerNodeLimitDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| limit | integer |  | Yes |
+
+#### TriggerNodeLimitExceededError
+
+The workflow has more trigger nodes than the workspace plan allows.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerNodeLimitExceededError |  | The workflow has more trigger nodes than the workspace plan allows. |  |
+
 #### TriggerOAuthAuthorizeResponse
 
 | Name | Type | Description | Required |
@@ -38377,8 +39392,8 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Vector storage allowed, in MB; -1 means unlimited | Yes |
+| size | integer | Vector storage already consumed, in MB | Yes |
 | usage_unknown | boolean |  | No |
 
 #### VerificationTokenResponse
@@ -39199,6 +40214,7 @@ tenant's default model. The underlying generator never raises — an empty
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| continue_agent_session | boolean, <br>**Default:** true | Reuse this node's Agent history and working resources across messages in the same Chatflow chat. | No |
 | declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
@@ -39206,6 +40222,7 @@ tenant's default model. The underlying generator never raises — an empty
 | output_routes | [WorkflowOutputRoutes](#workflowoutputroutes) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
+| session_generation | string | Server-managed session generation. Empty preserves the scope of legacy Chatflow nodes. | No |
 | workflow_prompt | string |  | No |
 
 #### WorkflowNodeJobMetadata
@@ -39823,6 +40840,14 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
+
+#### WorkspaceMemberLimitReachedError
+
+The workspace has reached its member limit, so this invitation cannot be accepted right now.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkspaceMemberLimitReachedError |  | The workspace has reached its member limit, so this invitation cannot be accepted right now. |  |
 
 #### WorkspacePaginationResponse
 

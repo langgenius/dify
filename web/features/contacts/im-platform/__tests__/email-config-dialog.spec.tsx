@@ -1,9 +1,11 @@
 import type { ContactImIntegrationView } from '../types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { providerMetadata, toDetailView } from '../credentials'
 import { ContactEmailConfigContent } from '../email-config-dialog'
 import { channelSummary, emailDetail } from './fixtures/channel-client'
@@ -23,10 +25,6 @@ vi.mock('@/service/base', async () => {
   }
 })
 vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
-// boundary: documentation routing is covered separately from Email credential requests.
-vi.mock('../use-channel-doc-link', () => ({
-  useChannelDocLink: () => () => 'https://docs.dify.ai',
-}))
 
 const email = channelSummary({ id: 'channel-email', kind: 'email', provider: 'resend' })
 const clients: QueryClient[] = []
@@ -60,11 +58,12 @@ function renderEmail(
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
+  seedSystemFeatures(client)
   clients.push(client)
   render(
-    <QueryClientProvider client={client}>
+    <QueryClientTestProvider queryClient={client}>
       <EmailSession integration={integration} />
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 }
 

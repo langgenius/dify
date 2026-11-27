@@ -12,8 +12,6 @@ import { BlockEnum, VarType } from '../../types'
 import { WorkflowCanvas } from '../workflow-canvas'
 import 'reactflow/dist/style.css'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-
 function VariableConnectionNode({ id }: NodeProps) {
   return (
     <div style={{ width: 150, height: 80 }}>

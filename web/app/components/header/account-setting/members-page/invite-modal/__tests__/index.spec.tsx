@@ -4,10 +4,13 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createTestQueryClient } from '@/test/query-client'
 import { InviteModal } from '../index'
 
 const { fetchFeatures, inviteMember, fetchRoles } = vi.hoisted(() => ({
@@ -27,6 +30,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': fetchFeatures,
       'workspaces.current.rbac.roles.get': fetchRoles,
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.inviteEmail.post': (input: unknown) =>
         validate({
           context: {},
@@ -48,6 +52,9 @@ describe('InviteModal', () => {
         mutations: { retry: false },
       },
     })
+  // Seats and members refresh through the invalidation fallback, as in the app.
+  const createAppQueryClient = () =>
+    createTestQueryClient(undefined, { invalidation: createMutationInvalidation() })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -84,13 +91,13 @@ describe('InviteModal', () => {
     workspaceMembers?: GetFeaturesResponse['workspace_members']
   } = {}) => {
     seedCurrentWorkspaceQuery(queryClient)
-    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD', is_email_setup: isEmailSetup })
     const features = seedFeatures(queryClient, { workspace_members: workspaceMembers })
     fetchFeatures.mockResolvedValue(features)
 
     const result = render(
       <QueryClientTestProvider queryClient={queryClient}>
-        <InviteModal isEmailSetup={isEmailSetup} onSend={onSend} />
+        <InviteModal onSend={onSend} />
       </QueryClientTestProvider>,
     )
     if (open) {
@@ -409,7 +416,8 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     })
-    await renderModal()
+    const queryClient = createAppQueryClient()
+    await renderModal({ queryClient })
     // The refresh started by a successful invitation never settles.
     fetchFeatures.mockReturnValue(new Promise(() => {}))
     await addRecipients(user, 'person@example.com')
@@ -418,7 +426,12 @@ describe('InviteModal', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(onSend).toHaveBeenCalledExactlyOnceWith([])
-    await waitFor(() => expect(fetchFeatures).toHaveBeenCalled())
+    // The closed modal no longer reads the seats, so they are only marked stale.
+    await waitFor(() =>
+      expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.isInvalidated).toBe(
+        true,
+      ),
+    )
   })
 
   it('warns but lets the backend decide whether recipients consume remaining seats', async () => {
@@ -438,6 +451,19 @@ describe('InviteModal', () => {
 
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
     await waitFor(() => expect(inviteMember).toHaveBeenCalled())
+  })
+
+  it('says the workspace is full and points to revoking or upgrading when no seat is left', async () => {
+    const user = userEvent.setup()
+    await renderModal({ workspaceMembers: { enabled: true, size: 10, limit: 10 } })
+
+    await addRecipients(user, 'one@example.com')
+    await selectAdminRole(user)
+
+    expect(screen.getByText(/members\.seatsFull$/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.seatsFullTip/i)).toBeInTheDocument()
+    expect(screen.queryByText(/members\.recipientCountExceedsSeats/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeEnabled()
   })
 
   it('counts a manually typed recipient list before it is committed', async () => {
@@ -626,6 +652,25 @@ describe('InviteModal', () => {
         },
       })
     })
+  })
+
+  it('shows the invite failure for an unknown code without a field', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'bad_request',
+        message: 'Server says why',
+      }),
+    )
+    await renderModal()
+
+    await addRecipients(user, 'user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'workspaceMembers.members.inviteFailed',
+    )
   })
 
   it('keeps request failures visible until the user closes, then starts a fresh draft', async () => {

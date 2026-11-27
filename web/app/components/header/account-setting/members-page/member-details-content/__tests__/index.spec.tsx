@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
-import MemberDetailsContent from '../index'
+import { MemberDetailsContent } from '../index'
 
 const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
   mockWorkspaceRoleListHook: vi.fn(),

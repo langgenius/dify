@@ -11,13 +11,7 @@ import { createWorkflowStore } from '../store/workflow'
 import 'reactflow/dist/style.css'
 import '../style.css'
 
-vi.mock('../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
-}))
-vi.mock('../hooks/use-workflow-history', () => ({
-  WorkflowHistoryEvent: { NodeDragStop: 'NodeDragStop' },
-  useWorkflowHistory: () => ({ saveStateToHistory: vi.fn() }),
-}))
+// boundary: collaboration broadcasts over a realtime connection.
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     setNodes: vi.fn(),

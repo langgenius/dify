@@ -2,9 +2,9 @@ import json
 import threading
 import uuid
 from collections import defaultdict, deque
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import timedelta
-from typing import Any
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,6 +19,8 @@ from core.app.features.rate_limiting import rate_limit as rate_limit_module
 from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from core.errors.error import AppInvokeQuotaExceededError
 from enums import DeploymentEdition, QuotaType
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel
+from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 from models.account import Account
 from models.enums import AppStatus
 from models.model import App, AppMode
@@ -71,7 +73,7 @@ class _DummyRateLimit:
     def exit(self, request_id: str) -> None:
         self._exited.append(request_id)
 
-    def generate(self, generator, request_id: str):
+    def generate[G](self, generator: G, request_id: str) -> G:
         return generator
 
 
@@ -81,7 +83,8 @@ def _make_app(mode: AppMode | str, *, max_active_requests: int = 0) -> App:
         tenant_id="tenant-id",
         name="App",
         description="",
-        mode=AppMode.CHAT if isinstance(mode, str) and mode == "invalid-mode" else mode,
+        # "invalid-mode" is deliberately passed through to exercise the error path.
+        mode=AppMode.CHAT if isinstance(mode, str) and mode == "invalid-mode" else mode,  # pyrefly: ignore[bad-argument-type]
         status=AppStatus.NORMAL,
         enable_site=False,
         enable_api=False,
@@ -190,7 +193,7 @@ class TestAppGenerateServiceCases:
     class TestBuildStreamingTaskOnSubscribe:
         def test_streams_starts_only_when_hook_is_invoked_without_creating_timer(
             self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
 
             monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
@@ -209,7 +212,7 @@ class TestAppGenerateServiceCases:
             monkeypatch: pytest.MonkeyPatch,
             channel_type: str,
             config_overrides: Callable[..., None],
-        ):
+        ) -> None:
             config_overrides(PUBSUB_REDIS_CHANNEL_TYPE=channel_type)
             timers: list[_FakeTimer] = []
 
@@ -235,7 +238,7 @@ class TestAppGenerateServiceCases:
 
         def test_pubsub_fallback_starts_task_if_hook_is_never_invoked(
             self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="pubsub")
             timers: list[_FakeTimer] = []
 
@@ -254,12 +257,12 @@ class TestAppGenerateServiceCases:
 
         def test_streams_retries_after_enqueue_failure(
             self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
             monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
             call_count = 0
 
-            def _bad():
+            def _bad() -> None:
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
@@ -273,12 +276,12 @@ class TestAppGenerateServiceCases:
 
         def test_concurrent_subscribe_only_starts_once(
             self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
             monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
             call_count = 0
 
-            def _inc():
+            def _inc() -> None:
                 nonlocal call_count
                 call_count += 1
 
@@ -294,27 +297,27 @@ class TestAppGenerateServiceCases:
     # _get_max_active_requests
     # ---------------------------------------------------------------------------
     class TestGetMaxActiveRequests:
-        def test_both_zero_returns_zero(self, config_overrides: Callable[..., None]):
+        def test_both_zero_returns_zero(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
             app = _make_app(AppMode.CHAT, max_active_requests=0)
             assert AppGenerateService._get_max_active_requests(app) == 0
 
-        def test_app_limit_only(self, config_overrides: Callable[..., None]):
+        def test_app_limit_only(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
             app = _make_app(AppMode.CHAT, max_active_requests=5)
             assert AppGenerateService._get_max_active_requests(app) == 5
 
-        def test_config_limit_only(self, config_overrides: Callable[..., None]):
+        def test_config_limit_only(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(APP_MAX_ACTIVE_REQUESTS=10, APP_DEFAULT_ACTIVE_REQUESTS=0)
             app = _make_app(AppMode.CHAT, max_active_requests=0)
             assert AppGenerateService._get_max_active_requests(app) == 10
 
-        def test_both_non_zero_returns_min(self, config_overrides: Callable[..., None]):
+        def test_both_non_zero_returns_min(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(APP_MAX_ACTIVE_REQUESTS=20, APP_DEFAULT_ACTIVE_REQUESTS=0)
             app = _make_app(AppMode.CHAT, max_active_requests=5)
             assert AppGenerateService._get_max_active_requests(app) == 5
 
-        def test_default_active_requests_used_when_app_has_none(self, config_overrides: Callable[..., None]):
+        def test_default_active_requests_used_when_app_has_none(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=15)
             app = _make_app(AppMode.CHAT, max_active_requests=0)
             assert AppGenerateService._get_max_active_requests(app) == 15
@@ -326,12 +329,12 @@ class TestAppGenerateServiceCases:
         """Tests for AppGenerateService.generate covering each mode."""
 
         @pytest.fixture(autouse=True)
-        def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
             mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
 
         # -- COMPLETION ---------------------------------------------------------
-        def test_completion_mode(self, mocker: MockerFixture):
+        def test_completion_mode(self, mocker: MockerFixture) -> None:
             gen_spy = mocker.patch(
                 "services.app_generate_service.CompletionAppGenerator.generate",
                 return_value={"result": "ok"},
@@ -352,7 +355,7 @@ class TestAppGenerateServiceCases:
             gen_spy.assert_called_once()
 
         # -- AGENT_CHAT via mode ------------------------------------------------
-        def test_agent_chat_mode(self, mocker: MockerFixture):
+        def test_agent_chat_mode(self, mocker: MockerFixture) -> None:
             gen_spy = mocker.patch(
                 "services.app_generate_service.AgentChatAppGenerator.generate",
                 return_value={"result": "agent"},
@@ -373,7 +376,7 @@ class TestAppGenerateServiceCases:
             gen_spy.assert_called_once()
 
         # -- AGENT_CHAT via is_agent flag (non-AGENT_CHAT mode) -----------------
-        def test_agent_via_is_agent_flag(self, mocker: MockerFixture):
+        def test_agent_via_is_agent_flag(self, mocker: MockerFixture) -> None:
             gen_spy = mocker.patch(
                 "services.app_generate_service.AgentChatAppGenerator.generate",
                 return_value={"result": "agent-via-flag"},
@@ -398,7 +401,7 @@ class TestAppGenerateServiceCases:
             is_agent.assert_called_once_with(session=session)
 
         # -- AGENT --------------------------------------------------------------
-        def test_agent_mode_passes_session(self, mocker: MockerFixture):
+        def test_agent_mode_passes_session(self, mocker: MockerFixture) -> None:
             gen_spy = mocker.patch(
                 "services.app_generate_service.AgentAppGenerator.generate",
                 return_value={"result": "agent"},
@@ -422,7 +425,7 @@ class TestAppGenerateServiceCases:
             assert gen_spy.call_args.kwargs["session"] is session
 
         # -- CHAT ---------------------------------------------------------------
-        def test_chat_mode(self, mocker: MockerFixture):
+        def test_chat_mode(self, mocker: MockerFixture) -> None:
             gen_spy = mocker.patch(
                 "services.app_generate_service.ChatAppGenerator.generate",
                 return_value={"result": "chat"},
@@ -444,7 +447,7 @@ class TestAppGenerateServiceCases:
             gen_spy.assert_called_once()
 
         # -- ADVANCED_CHAT blocking ---------------------------------------------
-        def test_advanced_chat_blocking(self, mocker: MockerFixture):
+        def test_advanced_chat_blocking(self, mocker: MockerFixture) -> None:
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
 
@@ -474,7 +477,7 @@ class TestAppGenerateServiceCases:
             retrieve_spy.assert_not_called()
 
         # -- ADVANCED_CHAT streaming --------------------------------------------
-        def test_advanced_chat_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        def test_advanced_chat_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
             config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -505,7 +508,7 @@ class TestAppGenerateServiceCases:
             delay_spy.assert_called_once()
 
         # -- WORKFLOW blocking --------------------------------------------------
-        def test_workflow_blocking(self, mocker: MockerFixture):
+        def test_workflow_blocking(self, mocker: MockerFixture) -> None:
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             gen_spy = mocker.patch(
@@ -658,7 +661,7 @@ class TestAppGenerateServiceCases:
             get_workflow.assert_called_once_with(app, InvokeFrom.SERVICE_API, workflow_id, session=session)
 
         # -- WORKFLOW streaming -------------------------------------------------
-        def test_workflow_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        def test_workflow_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
             config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -692,7 +695,7 @@ class TestAppGenerateServiceCases:
             delay_spy.assert_called_once()
 
         # -- Invalid mode -------------------------------------------------------
-        def test_invalid_mode_raises(self, mocker: MockerFixture):
+        def test_invalid_mode_raises(self, mocker: MockerFixture) -> None:
             app = _make_app("invalid-mode")
             with pytest.raises(ValueError, match="Invalid app mode"):
                 AppGenerateService.generate(
@@ -776,10 +779,12 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
     class TestGenerateBilling(_RealSessionTest):
         @pytest.fixture(autouse=True)
-        def _common(self, mocker: MockerFixture):
+        def _common(self, mocker: MockerFixture) -> None:
             mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
 
-        def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+        def test_cloud_edition_consumes_quota(
+            self, mocker: MockerFixture, config_overrides: Callable[..., None]
+        ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             quota_charge = MagicMock()
             reserve_mock = mocker.patch(
@@ -808,7 +813,7 @@ class TestAppGenerateServiceCases:
 
         def test_billing_quota_exceeded_raises_rate_limit_error(
             self, mocker: MockerFixture, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             from services.errors.app import QuotaExceededError
             from services.errors.llm import InvokeRateLimitError
 
@@ -830,7 +835,7 @@ class TestAppGenerateServiceCases:
 
         def test_exception_refunds_quota_and_exits_rate_limit(
             self, mocker: MockerFixture, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             quota_charge = MagicMock()
             mocker.patch(
@@ -859,13 +864,14 @@ class TestAppGenerateServiceCases:
 
         def test_rate_limit_exit_called_in_finally_for_blocking(
             self, mocker: MockerFixture, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             """For non-streaming (blocking) calls, rate_limit.exit should be called in finally."""
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
             exit_calls: list[str] = []
 
             class _TrackingRateLimit(_DummyRateLimit):
+                @override
                 def exit(self, request_id: str) -> None:
                     exit_calls.append(request_id)
 
@@ -892,7 +898,7 @@ class TestAppGenerateServiceCases:
 
         def test_blocking_failure_exits_rate_limit_once(
             self, mocker: MockerFixture, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             quota_charge = MagicMock()
             mocker.patch(
@@ -902,6 +908,7 @@ class TestAppGenerateServiceCases:
             exit_calls: list[str] = []
 
             class _TrackingRateLimit(_DummyRateLimit):
+                @override
                 def exit(self, request_id: str) -> None:
                     exit_calls.append(request_id)
 
@@ -926,7 +933,7 @@ class TestAppGenerateServiceCases:
 
         def test_streaming_failure_exits_rate_limit_once(
             self, mocker: MockerFixture, config_overrides: Callable[..., None]
-        ):
+        ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             quota_charge = MagicMock()
             mocker.patch(
@@ -936,6 +943,7 @@ class TestAppGenerateServiceCases:
             exit_calls: list[str] = []
 
             class _TrackingRateLimit(_DummyRateLimit):
+                @override
                 def exit(self, request_id: str) -> None:
                     exit_calls.append(request_id)
 
@@ -962,7 +970,7 @@ class TestAppGenerateServiceCases:
     # _get_workflow
     # ---------------------------------------------------------------------------
     class TestGetWorkflow(_RealSessionTest):
-        def test_debugger_fetches_draft(self, mocker: MockerFixture):
+        def test_debugger_fetches_draft(self, mocker: MockerFixture) -> None:
             draft_wf = _make_workflow()
             ws = MagicMock()
             ws.get_draft_workflow.return_value = draft_wf
@@ -974,7 +982,7 @@ class TestAppGenerateServiceCases:
             assert result is draft_wf
             ws.get_draft_workflow.assert_called_once()
 
-        def test_debugger_raises_when_no_draft(self, mocker: MockerFixture):
+        def test_debugger_raises_when_no_draft(self, mocker: MockerFixture) -> None:
             ws = MagicMock()
             ws.get_draft_workflow.return_value = None
             mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
@@ -982,7 +990,7 @@ class TestAppGenerateServiceCases:
             with pytest.raises(ValueError, match="Workflow not initialized"):
                 AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.DEBUGGER, session=self.session)
 
-        def test_non_debugger_fetches_published(self, mocker: MockerFixture):
+        def test_non_debugger_fetches_published(self, mocker: MockerFixture) -> None:
             pub_wf = _make_workflow()
             ws = MagicMock()
             ws.get_published_workflow.return_value = pub_wf
@@ -994,7 +1002,7 @@ class TestAppGenerateServiceCases:
             assert result is pub_wf
             ws.get_published_workflow.assert_called_once()
 
-        def test_non_debugger_raises_when_no_published(self, mocker: MockerFixture):
+        def test_non_debugger_raises_when_no_published(self, mocker: MockerFixture) -> None:
             ws = MagicMock()
             ws.get_published_workflow.return_value = None
             mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
@@ -1004,7 +1012,7 @@ class TestAppGenerateServiceCases:
                     _make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API, session=self.session
                 )
 
-        def test_specific_workflow_id_valid_uuid(self, mocker: MockerFixture):
+        def test_specific_workflow_id_valid_uuid(self, mocker: MockerFixture) -> None:
             valid_uuid = str(uuid.uuid4())
             specific_wf = _make_workflow(workflow_id=valid_uuid)
             ws = MagicMock()
@@ -1020,7 +1028,7 @@ class TestAppGenerateServiceCases:
             assert result is specific_wf
             ws.get_published_workflow_by_id.assert_called_once()
 
-        def test_specific_workflow_id_invalid_uuid(self, mocker: MockerFixture):
+        def test_specific_workflow_id_invalid_uuid(self, mocker: MockerFixture) -> None:
             ws = MagicMock()
             mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
 
@@ -1032,7 +1040,7 @@ class TestAppGenerateServiceCases:
                     session=self.session,
                 )
 
-        def test_specific_workflow_id_not_found(self, mocker: MockerFixture):
+        def test_specific_workflow_id_not_found(self, mocker: MockerFixture) -> None:
             valid_uuid = str(uuid.uuid4())
             ws = MagicMock()
             ws.get_published_workflow_by_id.return_value = None
@@ -1050,7 +1058,7 @@ class TestAppGenerateServiceCases:
     # generate_single_iteration
     # ---------------------------------------------------------------------------
     class TestGenerateSingleIteration(_RealSessionTest):
-        def test_advanced_chat_mode(self, mocker: MockerFixture):
+        def test_advanced_chat_mode(self, mocker: MockerFixture) -> None:
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
@@ -1074,7 +1082,7 @@ class TestAppGenerateServiceCases:
             assert iter_spy.call_args.kwargs["session"] is session
             assert result == {"event": "iteration"}
 
-        def test_workflow_mode(self, mocker: MockerFixture):
+        def test_workflow_mode(self, mocker: MockerFixture) -> None:
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
@@ -1098,7 +1106,7 @@ class TestAppGenerateServiceCases:
             assert iter_spy.call_args.kwargs["session"] is session
             assert result == {"event": "wf-iteration"}
 
-        def test_invalid_mode_raises(self, mocker: MockerFixture):
+        def test_invalid_mode_raises(self, mocker: MockerFixture) -> None:
             app = _make_app(AppMode.CHAT)
             with pytest.raises(ValueError, match="Invalid app mode"):
                 AppGenerateService.generate_single_iteration(
@@ -1109,7 +1117,7 @@ class TestAppGenerateServiceCases:
     # generate_single_loop
     # ---------------------------------------------------------------------------
     class TestGenerateSingleLoop(_RealSessionTest):
-        def test_advanced_chat_mode(self, mocker: MockerFixture):
+        def test_advanced_chat_mode(self, mocker: MockerFixture) -> None:
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
@@ -1133,7 +1141,7 @@ class TestAppGenerateServiceCases:
             assert loop_spy.call_args.kwargs["session"] is session
             assert result == {"event": "loop"}
 
-        def test_workflow_mode(self, mocker: MockerFixture):
+        def test_workflow_mode(self, mocker: MockerFixture) -> None:
             workflow = _make_workflow()
             mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
             mocker.patch(
@@ -1157,7 +1165,7 @@ class TestAppGenerateServiceCases:
             assert loop_spy.call_args.kwargs["session"] is session
             assert result == {"event": "wf-loop"}
 
-        def test_invalid_mode_raises(self, mocker: MockerFixture):
+        def test_invalid_mode_raises(self, mocker: MockerFixture) -> None:
             app = _make_app(AppMode.COMPLETION)
             with pytest.raises(ValueError, match="Invalid app mode"):
                 AppGenerateService.generate_single_loop(
@@ -1173,13 +1181,15 @@ class TestAppGenerateServiceCases:
 # Fakes for Redis Pub/Sub flow
 # -----------------------------
 class _FakePubSub:
-    def __init__(self, store: dict[str, deque[bytes]]):
+    def __init__(self, store: dict[str, deque[bytes]]) -> None:
         self._store = store
         self._subs: set[str] = set()
+        self._acks: deque[dict[str, object]] = deque()
         self._closed = False
 
     def subscribe(self, topic: str) -> None:
         self._subs.add(topic)
+        self._acks.append({"type": "subscribe", "channel": topic, "data": len(self._subs)})
 
     def unsubscribe(self, topic: str) -> None:
         self._subs.discard(topic)
@@ -1187,10 +1197,16 @@ class _FakePubSub:
     def close(self) -> None:
         self._closed = True
 
-    def get_message(self, ignore_subscribe_messages: bool = True, timeout: int | float | None = 1):
+    def get_message(
+        self, ignore_subscribe_messages: bool = True, timeout: int | float | None = 1
+    ) -> dict[str, object] | None:
         # simulate a non-blocking poll; return first available
         if self._closed:
             return None
+        while self._acks:
+            acknowledgement = self._acks.popleft()
+            if not ignore_subscribe_messages:
+                return acknowledgement
         for t in list(self._subs):
             q = self._store.get(t)
             if q and len(q) > 0:
@@ -1201,10 +1217,10 @@ class _FakePubSub:
 
 
 class _FakeRedisClient:
-    def __init__(self, store: dict[str, deque[bytes]]):
+    def __init__(self, store: dict[str, deque[bytes]]) -> None:
         self._store = store
 
-    def pubsub(self):
+    def pubsub(self) -> _FakePubSub:
         return _FakePubSub(self._store)
 
     def publish(self, topic: str, payload: bytes) -> None:
@@ -1217,13 +1233,13 @@ class _FakeRedisClient:
 class _FakeStreams:
     def __init__(self) -> None:
         # key -> list[(id, {field: value})]
-        self._data: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+        self._data: dict[str, list[tuple[str, dict[object, object]]]] = defaultdict(list)
         self._seq: dict[str, int] = defaultdict(int)
         # Mirrors real Redis: "$" resolves once, to the tail of the stream at the moment
         # the first xread naming it is issued -- entries added earlier are never seen.
         self._dollar_snapshots: dict[str, int] = {}
 
-    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
+    def xadd(self, key: str, fields: dict[object, object], *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
         self._seq[key] += 1
         eid = f"{self._seq[key]}-0"
@@ -1234,13 +1250,15 @@ class _FakeStreams:
         # no-op for tests
         return None
 
-    def xrevrange(self, key: str, count: int | None = None):
+    def xrevrange(self, key: str, count: int | None = None) -> list[tuple[str, dict[object, object]]]:
         entries = list(reversed(self._data.get(key, [])))
         if count is not None:
             entries = entries[:count]
         return entries
 
-    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+    def xread(
+        self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
+    ) -> list[tuple[str, list[tuple[str, dict[object, object]]]]]:
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
         entries = self._data.get(key, [])
@@ -1258,7 +1276,10 @@ class _FakeStreams:
         return [(key, entries[start:end])]
 
 
-def _publish_events(app_mode: AppMode, run_id: str, events: list[dict]):
+type JsonValue = str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]
+
+
+def _publish_events(app_mode: AppMode, run_id: str, events: Sequence[Mapping[str, JsonValue]]) -> None:
     # Publish events to the same topic used by MessageGenerator
     topic = MessageGenerator.get_response_topic(app_mode, run_id)
     for ev in events:
@@ -1268,13 +1289,13 @@ def _publish_events(app_mode: AppMode, run_id: str, events: list[dict]):
 class TestAppGenerateServiceStreamingIntegrationCases:
     @staticmethod
     @pytest.fixture
-    def _patch_get_channel_streams(monkeypatch: pytest.MonkeyPatch):
-        from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
+    def _patch_get_channel_streams(monkeypatch: pytest.MonkeyPatch) -> None:
 
         fake = _FakeStreams()
-        chan = StreamsBroadcastChannel(fake, retention_seconds=60)
+        # _FakeStreams implements only the Redis commands the channel uses.
+        chan = StreamsBroadcastChannel(fake, retention_seconds=60)  # pyrefly: ignore[bad-argument-type]
 
-        def _get_channel():
+        def _get_channel() -> StreamsBroadcastChannel:
             return chan
 
         # Patch the source and the imported aliases used by MessageGenerator / MessageBasedAppGenerator
@@ -1285,14 +1306,15 @@ class TestAppGenerateServiceStreamingIntegrationCases:
 
     @staticmethod
     @pytest.fixture
-    def _patch_get_channel_pubsub(monkeypatch: pytest.MonkeyPatch):
+    def _patch_get_channel_pubsub(monkeypatch: pytest.MonkeyPatch) -> None:
         from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 
         store: dict[str, deque[bytes]] = defaultdict(deque)
         client = _FakeRedisClient(store)
-        chan = RedisBroadcastChannel(client)
+        # _FakeRedisClient implements only the Redis commands the channel uses.
+        chan = RedisBroadcastChannel(client)  # pyrefly: ignore[bad-argument-type]
 
-        def _get_channel():
+        def _get_channel() -> BroadcastChannel:
             return chan
 
         # Patch both the source and the imported alias used by MessageGenerator
@@ -1302,7 +1324,7 @@ class TestAppGenerateServiceStreamingIntegrationCases:
 
     @staticmethod
     @pytest.mark.usefixtures("_patch_get_channel_streams")
-    def test_streams_full_flow_prepublish_and_replay():
+    def test_streams_full_flow_prepublish_and_replay() -> None:
         """Regression test for dify#40948: `workflow_started` dropped for concurrent streaming
         runs on the streams transport.
 
@@ -1316,7 +1338,7 @@ class TestAppGenerateServiceStreamingIntegrationCases:
 
         events = [{"event": "workflow_started"}, {"event": "workflow_finished"}]
 
-        def start_task():
+        def start_task() -> None:
             _publish_events(app_mode, run_id, events)
 
         # MessageBasedAppGenerator is what AppGenerateService actually dispatches WORKFLOW /
@@ -1338,7 +1360,7 @@ class TestAppGenerateServiceStreamingIntegrationCases:
 
     @staticmethod
     @pytest.mark.usefixtures("_patch_get_channel_pubsub")
-    def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch: pytest.MonkeyPatch):
+    def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch: pytest.MonkeyPatch) -> None:
         # Speed up any potential timer if it accidentally triggers
         monkeypatch.setattr("services.app_generate_service.SSE_TASK_START_FALLBACK_MS", 50)
 
@@ -1347,7 +1369,7 @@ class TestAppGenerateServiceStreamingIntegrationCases:
 
         published_order: list[str] = []
 
-        def start_task():
+        def start_task() -> None:
             # When called (on subscribe), publish both events
             events = [{"event": "workflow_started"}, {"event": "workflow_finished"}]
             _publish_events(app_mode, run_id, events)

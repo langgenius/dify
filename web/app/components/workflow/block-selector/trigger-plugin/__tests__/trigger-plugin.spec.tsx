@@ -5,18 +5,18 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
+import {
+  createTriggerEventResponseFixture,
+  createTriggerProviderResponseFixture,
+  seedTriggerPlugins,
+} from '@/test/console/trigger-plugins'
 import TriggerPluginActionItem from '../action-item'
 import TriggerPluginItem from '../item'
 import TriggerPluginList from '../list'
-
-vi.mock('@/service/use-triggers', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-triggers')>()),
-  useAllTriggerPlugins: vi.fn(),
-}))
-
-const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
 
 const createEvent = (name: string, label: string): Event => ({
   name,
@@ -78,9 +78,6 @@ const createTriggerProvider = (
 describe('trigger plugin selector components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<
-      typeof useAllTriggerPlugins
-    >)
   })
 
   it('should select trigger plugin action items with default params and preview details', async () => {
@@ -223,17 +220,28 @@ describe('trigger plugin selector components', () => {
 
   it('should filter trigger plugins and report whether content exists', async () => {
     const onContentStateChange = vi.fn()
-    mockUseAllTriggerPlugins.mockReturnValue({
-      data: [
-        createTriggerProvider(),
-        createTriggerProvider({
-          id: 'empty-provider',
-          name: 'empty-provider',
-          label: { en_US: 'Empty Provider', zh_Hans: 'Empty Provider' },
-          events: [],
-        }),
-      ],
-    } as ReturnType<typeof useAllTriggerPlugins>)
+    const queryClient = createConsoleQueryClient()
+    seedTriggerPlugins(queryClient, [
+      createTriggerProviderResponseFixture({
+        name: 'trigger-provider',
+        plugin_id: 'trigger-plugin-1',
+        label: { en_US: 'Trigger Provider', zh_Hans: 'Trigger Provider' },
+        events: [
+          createTriggerEventResponseFixture({
+            name: 'on_message',
+            identity: {
+              author: 'Dify',
+              name: 'on_message',
+              label: { en_US: 'On Message', zh_Hans: 'On Message' },
+            },
+          }),
+        ],
+      }),
+      createTriggerProviderResponseFixture({
+        name: 'empty-provider',
+        label: { en_US: 'Empty Provider', zh_Hans: 'Empty Provider' },
+      }),
+    ])
 
     const { rerender } = render(
       <TriggerPluginList
@@ -241,6 +249,7 @@ describe('trigger plugin selector components', () => {
         onSelect={vi.fn()}
         onContentStateChange={onContentStateChange}
       />,
+      { queryClient },
     )
 
     expect(screen.getByText('Trigger Provider')).toBeInTheDocument()

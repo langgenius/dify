@@ -10,7 +10,9 @@ import {
 } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -24,6 +26,28 @@ import {
   logicalDocumentsInfiniteOptions,
 } from '../queries'
 
+// Confirming a reindex has its own spec; here every request to reindex is confirmed at once.
+vi.mock('../reindex-confirm-dialog', async () => {
+  const { useEffect } = await import('react')
+  return {
+    ReindexConfirmDialog: ({
+      onConfirm,
+      onOpenChange,
+      open,
+    }: {
+      onConfirm: () => void
+      onOpenChange: (open: boolean) => void
+      open: boolean
+    }) => {
+      useEffect(() => {
+        if (!open) return
+        onOpenChange(false)
+        onConfirm()
+      }, [onConfirm, onOpenChange, open])
+      return null
+    },
+  }
+})
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -248,6 +272,7 @@ vi.mock('@/utils/download', () => ({ downloadBlob: downloadBlobMock }))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const { documentDisplayStatus } = await import('../model')
@@ -386,73 +411,79 @@ vi.mock('@/service/console', async (importOriginal) => {
       revision: 1,
     }
   }
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    // The invalidation fallback refetches the knowledge features after knowledge writes.
+    'knowledgeFs.features.get': async () => ({
+      agent_enabled: false,
+      upload_enabled: systemFeaturesStateMock.uploadEnabled,
+    }),
+    [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: async (input: never) =>
+      taskApiResponse(await cancelMutation.mutateAsync(input)),
+    [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: async (input: never) =>
+      taskApiResponse(await retryMutation.mutateAsync(input)),
+    // Exact task lookups: one task is looked up by its identity, a batch with one request.
+    [`${space}.backgroundTasks.get`]: async (
+      input: { query?: { task_ids?: string } },
+      options?: unknown,
+    ) => {
+      const tasks = tasksQuery.data?.pages.flatMap((page) => page.items) ?? []
+      const ids = input.query?.task_ids?.split(',') ?? []
+      const snapshots = []
+      if (ids.length > 1) {
+        const batch = await getTaskSnapshot(input, options)
+        snapshots.push(...(Array.isArray(batch) ? batch : batch ? [batch] : []))
+      }
+      for (const id of ids.length > 1 ? [] : ids) {
+        const listed = tasks.find((task) => task.id === id)
+        const snapshot = await getTaskSnapshot(
+          listed
+            ? {
+                params: {
+                  documentId: listed.documentId,
+                  id: listed.knowledgeSpaceId,
+                  taskId: listed.id,
+                },
+              }
+            : input,
+          options,
+        )
+        snapshots.push(...(Array.isArray(snapshot) ? snapshot : snapshot ? [snapshot] : []))
+      }
+      return { data: snapshots.map(taskApiResponse), next_cursor: null }
+    },
+    [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
+    [`${space}.documents.post`]: (input: never) => uploadMutation.mutateAsync(input),
+    [`${space}.logicalDocuments.bulk.delete`]: bulkRemoveDocumentsMutation,
+    [`${space}.logicalDocuments.byDocumentId.delete`]: removeDocumentMutation,
+    [`${space}.logicalDocuments.byDocumentId.download.get`]: downloadDocumentMutation,
+    [`${space}.logicalDocuments.byDocumentId.patch`]: updateLogicalDocumentMutation,
+    [`${space}.logicalDocuments.downloadZip.post`]: downloadDocumentsMutation,
+    [`${space}.logicalDocuments.get`]: listLogicalDocuments,
+    [`${space}.logicalDocuments.patch`]: bulkUpdateLogicalDocumentsMutation,
+    [`${space}.metadata.byFieldId.delete`]: deleteMetadataField,
+    [`${space}.metadata.byFieldId.patch`]: renameMetadataField,
+    [`${space}.metadata.get`]: () =>
+      metadataFieldsQuery.isPending
+        ? forever()
+        : track(async () => {
+            if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
+            server.served.set('metadata-fields', {
+              data: metadataFieldsQuery.data,
+              error: metadataFieldsQuery.error,
+            })
+            if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
+            return {
+              data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
+              next_cursor: null,
+            }
+          }),
+    [`${space}.metadata.post`]: createMetadataField,
+    [`${space}.sources.bySourceId.patch`]: updateSourceMutation,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.backgroundTasks.byTaskKind.byTaskId.cancel.post`]: async (input: never) =>
-        taskApiResponse(await cancelMutation.mutateAsync(input)),
-      [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: async (input: never) =>
-        taskApiResponse(await retryMutation.mutateAsync(input)),
-      // Exact task lookups: one task is looked up by its identity, a batch with one request.
-      [`${space}.backgroundTasks.get`]: async (
-        input: { query?: { task_ids?: string } },
-        options?: unknown,
-      ) => {
-        const tasks = tasksQuery.data?.pages.flatMap((page) => page.items) ?? []
-        const ids = input.query?.task_ids?.split(',') ?? []
-        const snapshots = []
-        if (ids.length > 1) {
-          const batch = await getTaskSnapshot(input, options)
-          snapshots.push(...(Array.isArray(batch) ? batch : batch ? [batch] : []))
-        }
-        for (const id of ids.length > 1 ? [] : ids) {
-          const listed = tasks.find((task) => task.id === id)
-          const snapshot = await getTaskSnapshot(
-            listed
-              ? {
-                  params: {
-                    documentId: listed.documentId,
-                    id: listed.knowledgeSpaceId,
-                    taskId: listed.id,
-                  },
-                }
-              : input,
-            options,
-          )
-          snapshots.push(...(Array.isArray(snapshot) ? snapshot : snapshot ? [snapshot] : []))
-        }
-        return { data: snapshots.map(taskApiResponse), next_cursor: null }
-      },
-      [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
-      [`${space}.documents.post`]: (input: never) => uploadMutation.mutateAsync(input),
-      [`${space}.logicalDocuments.bulk.delete`]: bulkRemoveDocumentsMutation,
-      [`${space}.logicalDocuments.byDocumentId.delete`]: removeDocumentMutation,
-      [`${space}.logicalDocuments.byDocumentId.download.get`]: downloadDocumentMutation,
-      [`${space}.logicalDocuments.byDocumentId.patch`]: updateLogicalDocumentMutation,
-      [`${space}.logicalDocuments.downloadZip.post`]: downloadDocumentsMutation,
-      [`${space}.logicalDocuments.get`]: listLogicalDocuments,
-      [`${space}.logicalDocuments.patch`]: bulkUpdateLogicalDocumentsMutation,
-      [`${space}.metadata.byFieldId.delete`]: deleteMetadataField,
-      [`${space}.metadata.byFieldId.patch`]: renameMetadataField,
-      [`${space}.metadata.get`]: () =>
-        metadataFieldsQuery.isPending
-          ? forever()
-          : track(async () => {
-              if (repeatRead('metadata-fields')) await metadataFieldsQuery.refetch()
-              server.served.set('metadata-fields', {
-                data: metadataFieldsQuery.data,
-                error: metadataFieldsQuery.error,
-              })
-              if (metadataFieldsQuery.error) throw metadataFieldsQuery.error
-              return {
-                data: (metadataFieldsQuery.data ?? []).map(metadataFieldApiResponse),
-                next_cursor: null,
-              }
-            }),
-      [`${space}.metadata.post`]: createMetadataField,
-      [`${space}.sources.bySourceId.patch`]: updateSourceMutation,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
       'features.get': () =>
         track(() => ({ billing: { subscription: { plan: uploadPlanMock.plan } } })),
@@ -658,6 +689,8 @@ function seedPreloadedPages() {
 }
 
 type RenderOptions = {
+  /** Mirror the app's cache-level error toasts, so a failure's messages can be counted. */
+  errorToasts?: boolean
   onUrlUpdate?: ComponentProps<typeof QueryTestingAdapter>['onUrlUpdate']
   searchParams?: string
   settle?: boolean
@@ -665,7 +698,14 @@ type RenderOptions = {
 
 async function render(ui: ReactElement, options: RenderOptions = {}) {
   const onUrlUpdate = vi.fn<NonNullable<RenderOptions['onUrlUpdate']>>(options.onUrlUpdate)
-  queryClient = createConsoleQueryClient()
+  // Like the app, refresh a mutation's domain after it succeeds.
+  const invalidation = createMutationInvalidation()
+  queryClient = createConsoleQueryClient({
+    invalidation,
+    ...(options.errorToasts && {
+      caches: createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess }),
+    }),
+  })
   queryClient.setDefaultOptions({
     ...queryClient.getDefaultOptions(),
     queries: { ...queryClient.getDefaultOptions().queries, retryDelay: 0 },
@@ -704,6 +744,7 @@ async function render(ui: ReactElement, options: RenderOptions = {}) {
   )
   const rendered = renderWithConsoleQuery(withProviders(ui), {
     knowledgeFsFeatures: { upload_enabled: systemFeaturesStateMock.uploadEnabled },
+    features: null,
     queryClient,
     systemFeatures: { deployment_edition: systemFeaturesStateMock.deploymentEdition },
   })
@@ -1276,12 +1317,9 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeDocuments.downloadDocuments' }))
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'report' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
@@ -1320,12 +1358,9 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'failed-report' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'failed-report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'failed-report.pdf' })
   })
 
@@ -1413,7 +1448,7 @@ describe('DocumentsPage', () => {
     expect(createMetadataField).toHaveBeenCalledOnce()
     expect(createMetadataField).toHaveBeenCalledWith(
       { body: { name: 'category', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(listLogicalDocuments).not.toHaveBeenCalled()
     expect(renameDocumentMutation).not.toHaveBeenCalled()
@@ -1542,7 +1577,7 @@ describe('DocumentsPage', () => {
     expect(nameInput).not.toHaveAttribute('aria-invalid')
     expect(createMetadataField).toHaveBeenCalledWith(
       { body: { name: 'priority_1', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -1579,7 +1614,7 @@ describe('DocumentsPage', () => {
         body: { expectedRowVersion: 0, name: 'topic' },
         params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
@@ -1634,7 +1669,7 @@ describe('DocumentsPage', () => {
         params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
         query: { expectedRowVersion: 0 },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
@@ -2052,8 +2087,8 @@ describe('DocumentsPage', () => {
       ).not.toBeInTheDocument(),
     )
     await waitFor(() => expect(menuButton).toHaveFocus())
+    // Golden questions show the document's name; the invalidation fallback refreshes them.
     expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState(goldenQuestionsKey('space-2'))?.isInvalidated).toBe(false)
   })
 
   it('disables the document from the row action', async () => {
@@ -2070,12 +2105,11 @@ describe('DocumentsPage', () => {
         body: { enabled: false, expectedRowVersion: 1 },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     await waitFor(() =>
       expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
-    expect(queryClient.getQueryState(goldenQuestionsKey('space-2'))?.isInvalidated).toBe(false)
   })
 
   it('re-enables a disabled document from the same row action', async () => {
@@ -2083,6 +2117,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document({ enabled: false })] }] }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    seedGoldenQuestions()
     expect(screen.getByText('knowledgeSpace.documentStatus.disabled')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'dataset.enable' }))
@@ -2092,12 +2127,10 @@ describe('DocumentsPage', () => {
         body: { enabled: true, expectedRowVersion: 1 },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
+    await waitFor(() =>
+      expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
   })
 
@@ -2118,7 +2151,7 @@ describe('DocumentsPage', () => {
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
@@ -2571,7 +2604,7 @@ describe('DocumentsPage', () => {
     await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
-    expect(getUploadQuotaFailure).not.toHaveBeenCalled()
+    expect(getUploadQuotaFailure).toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
       { cancelRefetch: false },
@@ -2929,7 +2962,7 @@ describe('DocumentsPage', () => {
         target: { files: [maxSizeFile] },
       })
 
-      expect(stageUploadMutation).toHaveBeenCalledOnce()
+      await vi.waitFor(() => expect(stageUploadMutation).toHaveBeenCalledOnce())
 
       await act(async () => {
         vi.advanceTimersByTime(5 * 60_000)
@@ -2972,7 +3005,7 @@ describe('DocumentsPage', () => {
       target: { files: [maxSizeFile] },
     })
 
-    expect(stageUploadMutation).toHaveBeenCalledOnce()
+    await waitFor(() => expect(stageUploadMutation).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(stagingSignal?.aborted).toBe(true)
@@ -3008,7 +3041,7 @@ describe('DocumentsPage', () => {
       target: { files: [canceledFile, failedFile] },
     })
 
-    expect(stageUploadMutation).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(stageUploadMutation).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'common.operation.remove · cancel.txt' }))
     expect(canceledSignal?.aborted).toBe(true)
 
@@ -4572,6 +4605,7 @@ describe('DocumentsPage', () => {
     }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    seedGoldenQuestions()
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
 
@@ -4594,12 +4628,10 @@ describe('DocumentsPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
+    await waitFor(() =>
+      expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
     await waitFor(() =>
       expect(
@@ -4622,6 +4654,7 @@ describe('DocumentsPage', () => {
     }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    seedGoldenQuestions()
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
     const actions = screen.getByRole('group', {
@@ -4640,12 +4673,10 @@ describe('DocumentsPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
+    await waitFor(() =>
+      expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
   })
 
@@ -4717,13 +4748,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['one', 'two'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['one', 'two'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'space-1-documents.zip',
@@ -4759,13 +4787,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['download-only'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['download-only'] },
+      params: { control_space_id: 'space-1' },
+    })
   })
 
   it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
@@ -4808,13 +4833,10 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['failed'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['failed'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'failed-documents.zip',
@@ -4912,7 +4934,7 @@ describe('DocumentsPage', () => {
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
@@ -5606,6 +5628,98 @@ describe('DocumentsPage', () => {
     expect(within(panel).queryByText('knowledgeTasks.noBackgroundTasks')).not.toBeInTheDocument()
   })
 
+  it('shows a failed interrupt once, with the translated reason in the task panel', async () => {
+    const user = userEvent.setup()
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'document_already_finished',
+        message: 'The task has already finished',
+      }),
+    )
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeTasks.interruptTask' }))
+
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.document_already_finished',
+    )
+    expect(toastMock.error).not.toHaveBeenCalled()
+    // A rejected interrupt may still have reached the server, so the drawer refreshes its tasks.
+    await waitFor(() =>
+      expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
+        }),
+      ),
+    )
+  })
+
+  it('keeps a rate-limited interrupt failure visible once write access is confirmed', async () => {
+    const user = userEvent.setup()
+    // The knowledge rate limit fails with a plain 403, like a permission denial.
+    const message = 'Sorry, you have reached the knowledge base request rate limit.'
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message }),
+    )
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeTasks.interruptTask' }))
+
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    // A message without a cataloged code gives way to the action's own text.
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      'knowledgeSpace.taskActionFailed',
+    )
+    expect(
+      within(panel).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    ).toBeVisible()
+    expect(toastMock.error).not.toHaveBeenCalled()
+  })
+
+  it('drops an interrupt failure when the recheck confirms write access was revoked', async () => {
+    const user = userEvent.setup()
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message: 'Permission denied' }),
+    )
+    permissionStateMock.refreshAfterDenial.mockResolvedValue({
+      data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
+      error: null,
+    })
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeTasks.interruptTask' }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.queryByText('Permission denied')).not.toBeInTheDocument()
+  })
+
   it('prevents duplicate interrupt requests and refreshes both resources', async () => {
     const user = userEvent.setup()
     let resolveCancel: ((value: DocumentProcessingTask) => void) | undefined
@@ -5896,7 +6010,12 @@ describe('DocumentsPage', () => {
     documentsQuery.error = createHttpError(new Response(null, { status: 403 }))
     await rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await act(async () => resolveCancel?.(task({ id: 'revoked-action', state: 'canceled' })))
-    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+    // Only the invalidation fallback refreshes after the accepted cancel; the drawer does not.
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+      }),
+    )
 
     documentsQuery.error = null
     await rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -9485,5 +9604,129 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalled())
     expect(await screen.findByText('knowledgeErrors.taskFailure.internal')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeInTheDocument()
+  })
+
+  describe('request error messages', () => {
+    const serverError = () =>
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      })
+
+    it('shows the translated error code when the metadata fields fail to load', async () => {
+      const user = userEvent.setup()
+      documentsQuery.data = { pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }] }
+      metadataFieldsQuery.error = serverError()
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
+
+      expect(await screen.findByText('requestErrors.code.invalid_input')).toBeInTheDocument()
+    })
+
+    it('shows the translated error code when a row re-index fails', async () => {
+      const user = userEvent.setup()
+      documentsQuery.data = { pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }] }
+      reindexMutation.mutateAsync.mockRejectedValueOnce(serverError())
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'knowledgeDocuments.reindexDocument' }),
+      )
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
+    })
+
+    it('shows the translated error code when a bulk re-index fails', async () => {
+      const user = userEvent.setup()
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({ id: 'one', title: 'One.pdf' }),
+              document({ id: 'two', title: 'Two.pdf' }),
+            ],
+          },
+        ],
+      }
+      reindexMutation.mutateAsync.mockRejectedValueOnce(serverError())
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
+    })
+
+    it('shows the translated error code when retrying a document row fails', async () => {
+      const user = userEvent.setup()
+      const failedTask = task({ documentId: 'one', id: 'failed-task', state: 'failed' })
+      documentsQuery.data = {
+        pages: [{ items: [document({ id: 'one', status: 'failed', latestTask: failedTask })] }],
+      }
+      tasksQuery.data = { pages: [{ items: [failedTask] }] }
+      retryMutation.mutateAsync.mockRejectedValueOnce(serverError())
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+      await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.retryTask' }))
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
+    })
+
+    it('shows the translated error code when retrying a task in the panel fails', async () => {
+      const user = userEvent.setup()
+      retryMutation.mutateAsync.mockRejectedValueOnce(serverError())
+      documentsQuery.data = {
+        pages: [{ items: [document({ latestTask: task({ id: 'failed', state: 'failed' }) })] }],
+      }
+      tasksQuery.data = { pages: [{ items: [task({ id: 'failed', state: 'failed' })] }] }
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
+    })
+
+    it('shows the translated error code when staging a file fails', async () => {
+      stageUploadMutation.mockRejectedValueOnce(serverError())
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      fireEvent.change(screen.getByLabelText('knowledgeCreate.uploadDocuments'), {
+        target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
+      })
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
+    })
+
+    it('shows the translated error code when adding staged files fails', async () => {
+      const user = userEvent.setup()
+      uploadMutation.mutateAsync.mockRejectedValueOnce(serverError())
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      await user.upload(
+        screen.getByLabelText('knowledgeCreate.uploadDocuments'),
+        new File(['one'], 'one.md', { type: 'text/markdown' }),
+      )
+      await waitForDocumentFilesStaged()
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
+    })
   })
 })

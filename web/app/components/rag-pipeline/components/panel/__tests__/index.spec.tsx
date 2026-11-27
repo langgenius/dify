@@ -1,6 +1,6 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import type { FetchWorkflowDraftPageResponse, FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -26,7 +26,10 @@ import { renderWorkflowEditor } from '@/test/workflow-editor'
 import RagPipelinePanel from '../index'
 
 const api = vi.hoisted(() => ({
-  history: vi.fn<(url: string, options?: unknown) => Promise<FetchWorkflowDraftPageResponse>>(),
+  history:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.get
+    >(),
   update:
     vi.fn<
       typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch
@@ -35,10 +38,6 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof import('@/service/console').consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete
     >(),
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: api.history,
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -51,6 +50,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.get': api.history,
       'rag.pipelines.byPipelineId.workflows.byWorkflowId.patch': api.update,
       'rag.pipelines.byPipelineId.workflows.byWorkflowId.delete': api.remove,
       'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': async () => ({
@@ -63,9 +63,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const version = (
-  overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
+const version = (overrides: Partial<WorkflowResponse> = {}): WorkflowResponse => ({
   ...createWorkflowResponseFixture(),
   id: 'release-1',
   version: '2026-06-01T00:00:00Z',
@@ -78,7 +76,7 @@ const version = (
   updated_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
   ...overrides,
 })
-let versions: FetchWorkflowDraftResponse[]
+let versions: WorkflowResponse[]
 const nodes = [
   createNode({
     id: 'local',
@@ -172,9 +170,10 @@ beforeEach(() => {
   originalUrl = window.location.href
   window.history.replaceState({}, '', '/datasets/dataset-1/pipeline')
   versions = [version()]
-  api.history.mockReset().mockImplementation(async (url) => {
-    if (url !== '/rag/pipelines/pipeline-1/workflows') throw new Error(`Unexpected GET: ${url}`)
-    return { items: versions, page: 1, limit: 10, total: versions.length, has_more: false }
+  api.history.mockReset().mockImplementation(async ({ params }) => {
+    if (params.pipeline_id !== 'pipeline-1')
+      throw new Error(`Unexpected pipeline: ${params.pipeline_id}`)
+    return { items: versions, page: 1, limit: 10, has_more: false }
   })
   api.update.mockReset().mockImplementation(async ({ body }) => {
     versions = [
@@ -198,9 +197,12 @@ afterEach(() => {
 it('loads, edits and deletes versions belonging to this pipeline', async () => {
   const { user } = setup({ showWorkflowVersionHistoryPanel: true })
   expect(await screen.findByText('First release')).toBeVisible()
-  expect(api.history).toHaveBeenCalledWith('/rag/pipelines/pipeline-1/workflows', {
-    params: { page: 1, limit: 10, user_id: '', named_only: false },
-  })
+  expect(api.history).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: { pipeline_id: 'pipeline-1' },
+      query: { page: 1, limit: 10, user_id: undefined, named_only: false },
+    }),
+  )
   await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
   await user.click(
     await screen.findByRole('menuitem', { name: 'workflowHistory.versionHistory.editVersionInfo' }),

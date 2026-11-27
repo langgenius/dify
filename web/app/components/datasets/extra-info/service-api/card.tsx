@@ -46,7 +46,7 @@ export function ServiceApiCard({ apiBaseUrl, apiReferenceUrl, canManageApiKey }:
           <div className="system-xs-regular leading-6 text-text-tertiary">
             {t(($) => $['serviceApi.card.endpoint'], { ns: 'dataset' })}
           </div>
-          <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
+          <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 ps-2">
             <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
               <div className="truncate system-xs-medium text-text-secondary">{apiBaseUrl}</div>
             </div>

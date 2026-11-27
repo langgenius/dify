@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { EdgeChange, NodeChange, Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -45,6 +46,7 @@ type WorkflowPreviewProps = {
   viewport: Viewport
   className?: string
   miniMapToRight?: boolean
+  children?: ReactNode
 }
 const WorkflowPreview = ({
   nodes,
@@ -52,6 +54,7 @@ const WorkflowPreview = ({
   viewport,
   className,
   miniMapToRight,
+  children,
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
   const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
@@ -78,10 +81,10 @@ const WorkflowPreview = ({
           maskColor="var(--color-workflow-minimap-bg)"
           className={cn(
             'absolute! bottom-14! z-9 m-0! h-18! w-25.5! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!',
-            miniMapToRight ? 'right-4!' : 'left-4!',
+            miniMapToRight ? 'inset-e-4!' : 'inset-s-4!',
           )}
         />
-        <div className="absolute bottom-4 left-4 z-9 mt-1 flex items-center gap-2">
+        <div className="absolute inset-s-4 bottom-4 z-9 mt-1 flex items-center gap-2">
           <ZoomInOut />
         </div>
       </>
@@ -112,6 +115,7 @@ const WorkflowPreview = ({
           className="bg-workflow-canvas-workflow-bg"
           color="var(--color-workflow-canvas-workflow-dot-color)"
         />
+        {children}
       </ReactFlow>
     </div>
   )

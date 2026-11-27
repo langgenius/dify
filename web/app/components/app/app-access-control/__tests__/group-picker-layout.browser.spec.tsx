@@ -1,40 +1,11 @@
 import { render } from 'vitest-browser-react'
 import { SubjectType } from '@/models/access-control'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 
 const groupName =
   'Research and development platform engineering operations team supporting international infrastructure and customer experience across all business divisions'
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'enterprise.webAppAuth.searchForWhilteListCandidates': ({
-        query,
-      }: Parameters<
-        typeof actual.consoleClient.enterprise.webAppAuth.searchForWhilteListCandidates
-      >[0] = {}) => ({
-        currPage: 1,
-        hasMore: false,
-        subjects: [
-          {
-            subjectId: query?.groupId ? 'nested' : 'group',
-            subjectType: SubjectType.GROUP,
-            groupData: {
-              id: query?.groupId ? 'nested' : 'group',
-              name: query?.groupId ? 'Child group' : groupName,
-              groupSize: 1,
-            },
-          },
-        ],
-      }),
-    }),
-  }
-})
-
 it('keeps a long group path between search and the next selectable row', async () => {
   const { wrapper: Providers } = createConsoleQueryWrapper()
   const screen = await render(
@@ -76,5 +47,32 @@ it('keeps a long group path between search and the next selectable row', async (
 })
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        enterprise: {
+          webAppAuth: {
+            searchForWhilteListCandidates: (input) => {
+              const groupId = input?.query?.groupId
+              return {
+                currPage: 1,
+                hasMore: false,
+                subjects: [
+                  {
+                    subjectId: groupId ? 'nested' : 'group',
+                    subjectType: SubjectType.GROUP,
+                    groupData: {
+                      id: groupId ? 'nested' : 'group',
+                      name: groupId ? 'Child group' : groupName,
+                      groupSize: 1,
+                    },
+                  },
+                ],
+              }
+            },
+          },
+        },
+      },
+    }),
+  )
 })

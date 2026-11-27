@@ -116,7 +116,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         {iconContent}
       </div>
-      {indicator && <StatusDot status={indicator} className="absolute -top-px -right-px" />}
+      {indicator && <StatusDot status={indicator} className="absolute -inset-e-px -top-px" />}
       {tooltip && <span className="sr-only">{tooltip}</span>}
     </div>
   )

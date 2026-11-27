@@ -102,7 +102,7 @@ const AddOAuthButton = ({
       openOAuthPopup(authorization_url, () => onUpdate?.())
       return true
     } catch {
-      // The request layer surfaces the error. Keep the current UI state so the
+      // The mutation cache reports the error. Keep the current UI state so the
       // user can retry without losing their visibility selection.
       return false
     }
@@ -142,7 +142,7 @@ const AddOAuthButton = ({
       return (
         <div className="w-full">
           <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
-            <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
+            <div className="me-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
               <span className="i-ri-information-2-fill size-5 text-text-accent" />
             </div>
             <div className="w-0 grow">
@@ -167,7 +167,7 @@ const AddOAuthButton = ({
           </div>
           <div className="flex h-6 items-center system-sm-medium text-text-secondary">
             {renderI18nObject(item.label as Record<string, string>)}
-            {item.required && <span className="ml-1 text-text-destructive-secondary">*</span>}
+            {item.required && <span className="ms-1 text-text-destructive-secondary">*</span>}
           </div>
         </div>
       )
@@ -238,7 +238,7 @@ const AddOAuthButton = ({
       <Button
         variant={buttonVariant}
         className={cn(
-          'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
+          'h-8 min-w-0 flex-1 rounded-e-none p-0 hover:bg-components-button-primary-bg-hover',
           buttonLeftClassName,
         )}
         disabled={disabled}
@@ -248,7 +248,7 @@ const AddOAuthButton = ({
         {is_oauth_custom_client_enabled && (
           <Badge
             className={cn(
-              'mr-0.5',
+              'me-0.5',
               buttonVariant === 'primary' &&
                 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
             )}
@@ -268,7 +268,7 @@ const AddOAuthButton = ({
         aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
         size="lg"
         className={cn(
-          'shrink-0 rounded-l-none hover:bg-components-button-primary-bg-hover',
+          'shrink-0 rounded-s-none hover:bg-components-button-primary-bg-hover',
           buttonRightClassName,
         )}
         disabled={disabled}

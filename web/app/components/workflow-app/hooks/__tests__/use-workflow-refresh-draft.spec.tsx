@@ -13,8 +13,10 @@ import {
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
@@ -22,7 +24,7 @@ import { createDeferred } from '@/test/deferred'
 import { useWorkflowRefreshDraft } from '../use-workflow-refresh-draft'
 
 const { fetchDraft } = vi.hoisted(() => ({
-  fetchDraft: vi.fn<(url: string) => Promise<FetchWorkflowDraftResponse>>(),
+  fetchDraft: vi.fn<(appId: string) => Promise<FetchWorkflowDraftResponse>>(),
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -34,7 +36,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: fetchDraft,
+  fetchAppWorkflowDraft: fetchDraft,
   fetchAllInspectVars: async () => [],
 }))
 
@@ -166,6 +168,7 @@ describe('useWorkflowRefreshDraft', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it.each([undefined, false, true])(
@@ -179,7 +182,7 @@ describe('useWorkflowRefreshDraft', () => {
         expect(await refresh.current!.handleRefreshWorkflowDraft(notUpdateCanvas)).toBe(true)
       })
 
-      expect(fetchDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+      expect(fetchDraft).toHaveBeenCalledWith('app-1')
       await expectGraph(
         flow,
         notUpdateCanvas ? ['local-start', 'local-code'] : ['saved-start', 'saved-code'],
@@ -375,5 +378,37 @@ describe('useWorkflowRefreshDraft', () => {
       syncWorkflowDraftIsEmpty: false,
     })
     await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
+  })
+
+  const draftUnavailable = () =>
+    createHttpError(
+      { status: 500, statusText: '', headers: new Headers() },
+      { message: 'Draft unavailable' },
+    )
+
+  it('reports a failed refresh with the server message', async () => {
+    const toastError = vi.spyOn(toast, 'error')
+    fetchDraft.mockRejectedValue(draftUnavailable())
+    const { refresh } = setup()
+
+    await act(async () => {
+      expect(await refresh.current!.handleRefreshWorkflowDraft()).toBe(false)
+    })
+
+    expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable')
+  })
+
+  it('keeps a failed collaboration reload silent', async () => {
+    const toastError = vi.spyOn(toast, 'error')
+    fetchDraft.mockRejectedValue(draftUnavailable())
+    const { refresh } = setup()
+
+    await act(async () => {
+      expect(
+        await refresh.current!.handleRefreshWorkflowDraft(false, { shouldApply: () => true }),
+      ).toBe(false)
+    })
+
+    expect(toastError).not.toHaveBeenCalled()
   })
 })

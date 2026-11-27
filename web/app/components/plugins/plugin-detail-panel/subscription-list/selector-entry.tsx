@@ -85,7 +85,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
       </span>
       <RiArrowDownSLine
         className={cn(
-          'ml-auto size-4 shrink-0 text-text-quaternary transition-transform',
+          'ms-auto size-4 shrink-0 text-text-quaternary transition-transform',
           isOpen && 'rotate-180',
           statusConfig.color === 'red' && 'text-components-button-destructive-secondary-text',
         )}

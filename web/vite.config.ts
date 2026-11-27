@@ -11,6 +11,30 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
+// `--changed` follows source imports, so inputs outside the module graph rerun every test.
+// Keep coverage-counted sources out of `?raw` imports: those report zero lines.
+const forceRerunTriggers = [
+  ...configDefaults.forceRerunTriggers,
+  '**/pnpm-lock.yaml',
+  '**/pnpm-workspace.yaml',
+  '**/patches/**',
+  // `tsconfigPaths` resolves aliases from these files.
+  '**/web/tsconfig.json',
+  '**/packages/tsconfig/**',
+  // Specs read these from disk or copy them into a temporary project.
+  '**/web/public/embed{,.min}.js',
+  '**/web/i18n/locales/*/{skill,deployments}.json',
+  '**/web/i18n/lib.{client,server}.ts',
+  '**/web/app/route-metadata.ts',
+  '**/web/scripts/check-i18n{.js,-values.ts}',
+  // Tests and the Vite plugin load this workspace package from its built `dist`.
+  '**/packages/openapi-content-mapper/src/**',
+  // Browser setup loads global styles through CSS imports, which the module graph does not track.
+  '**/web/app/styles/**',
+  '**/web/themes/**',
+  '**/web/app/components/base/{badge,premium-badge}/index.css',
+  '**/packages/dify-ui/src/{styles,themes,plugins}/**',
+]
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
@@ -99,6 +123,17 @@ export default defineConfig(({ command, mode, isPreview }) => {
     test: {
       // Vitest 5 stores Browser Mode failure screenshots as attachments; CI uploads this directory on failure.
       attachmentsDir: './.vitest-browser/attachments',
+      forceRerunTriggers,
+      // boundary: Monaco's word highlighter schedules work on a 50 ms `Delayer` after cursor, focus
+      // and content changes and never handles the promise it returns, so disposing an editor inside
+      // that window rejects it with Monaco's `CancellationError`, which Monaco treats as expected.
+      // Browser specs unmount right after their last interaction, so ignore only that rejection.
+      onUnhandledError: (error) =>
+        !(
+          error.name === 'Canceled' &&
+          error.message === 'Canceled' &&
+          error.stack?.includes('/vs/editor/editor.main.js:')
+        ),
       coverage: {
         provider: 'v8',
         // Unit uploads establish the full source denominator; browser uploads add executed code.
@@ -160,6 +195,10 @@ export default defineConfig(({ command, mode, isPreview }) => {
               'dayjs/plugin/timezone',
               'dayjs/plugin/utc',
               'es-toolkit/function',
+              // Keep the router contexts shared with `next/navigation` for `test/next-navigation.tsx`.
+              'next/dist/shared/lib/app-router-context.shared-runtime',
+              'next/dist/shared/lib/hooks-client-context.shared-runtime',
+              'next/navigation',
               'next/script',
               'react-textarea-autosize',
             ],
@@ -171,8 +210,19 @@ export default defineConfig(({ command, mode, isPreview }) => {
             include: [browserTestPattern],
             browser: {
               enabled: true,
-              provider: playwright(),
+              // Pin what the host machine would otherwise decide, so local runs match CI.
+              provider: playwright({
+                // `TZ` instead of `timezoneId`: a context override would block the
+                // per-spec `Emulation.setTimezoneOverride` behind `emulateTimezone`.
+                launchOptions: { env: { ...process.env, TZ: 'UTC' } },
+                contextOptions: {
+                  locale: 'en-US',
+                  reducedMotion: 'reduce',
+                },
+              }),
               instances: [{ browser: 'chromium' }],
+              // Vitest's default, stated so specs and the setup file share one documented size.
+              viewport: { width: 414, height: 896 },
               headless: true,
               // Keep application maps and mapped error stacks without sending dependency maps.
               dependencySourcemaps: false,

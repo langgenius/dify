@@ -1,6 +1,9 @@
 """Framework-neutral data contracts for account invitation activation."""
 
 from dataclasses import dataclass
+from datetime import datetime
+
+from enums.account import TenantAccountRole
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +20,14 @@ class InvitationToken:
     workspace_id: str
     role: str | None = None
     requires_setup: bool | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PendingWorkspaceInvitation:
+    account_id: str
+    email: str
+    role: TenantAccountRole
+    expires_at: datetime
 
 
 @dataclass(frozen=True, slots=True)

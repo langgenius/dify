@@ -7,6 +7,8 @@ import { consoleQuery } from '@/service/console'
 import { Type } from '../../types'
 import { StructureOutput } from '../structure-output'
 
+// boundary: typing into real Monaco is rewritten by auto-closing, and pasting needs the system
+// clipboard that parallel spec files share; readonly specs render the real editor instead.
 vi.mock('@monaco-editor/react', () => {
   function Editor({
     value,

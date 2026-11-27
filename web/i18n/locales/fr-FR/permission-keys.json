@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Publier et gérer les versions de l'agent",
   "agent.acl.test_and_run": "Tester et exécuter l'agent",
   "agent.create": "Créer des agents",
+  "agent.tag.manage": "Gérer les étiquettes des agents",
   "api_extension.manage": "Gérer la configuration de l'extension API",
   "app.access_config": "Configurer les autorisations d'accès à l'application",
   "app.acl.access_config": "Afficher et gérer les autorisations d'accès",

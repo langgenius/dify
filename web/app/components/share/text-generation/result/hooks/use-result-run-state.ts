@@ -3,6 +3,7 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { reportRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -159,17 +160,22 @@ export const useResultRunState = ({
   const handleFeedback = useCallback(
     async (nextFeedback: FeedbackType) => {
       if (!messageId) return
-      await updateFeedback(
-        {
-          messageId,
-          body: {
-            rating: nextFeedback.rating,
-            content: nextFeedback.content,
+      try {
+        await updateFeedback(
+          {
+            messageId,
+            body: {
+              rating: nextFeedback.rating,
+              content: nextFeedback.content,
+            },
           },
-        },
-        appSourceType,
-        appId,
-      )
+          appSourceType,
+          appId,
+        )
+      } catch (error) {
+        reportRequestError(error)
+        throw error
+      }
       setFeedback(nextFeedback)
     },
     [appId, appSourceType, messageId],
@@ -189,14 +195,8 @@ export const useResultRunState = ({
     const abortController = abortControllerRef.current
     setIsStopping(true)
     try {
-      if (isWorkflow)
-        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '', {
-          silent: true,
-        })
-      else
-        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '', {
-          silent: true,
-        })
+      if (isWorkflow) await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
+      else await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
 
       if (isCurrentRequest()) abortController?.abort()
     } catch (error) {

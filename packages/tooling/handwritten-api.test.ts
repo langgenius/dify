@@ -118,6 +118,26 @@ it('blocks native requests and client imports without blocking type-only imports
   }
 })
 
+it('rejects crypto.randomUUID in production Web code but allows it in tests', () => {
+  const test = fixture()
+  try {
+    const source = [
+      'crypto.randomUUID()',
+      'globalThis.crypto.randomUUID()',
+      'window.crypto?.randomUUID?.()',
+      "typeof crypto.randomUUID === 'function'",
+    ].join('\n')
+    for (const file of ['web/feature.ts', 'web/feature.tsx']) {
+      expect(test.lint(source, file).diagnostics.map((d) => d.labels[0]!.span.line)).toEqual([
+        1, 2, 3, 4,
+      ])
+    }
+    expect(test.lint(source, 'web/feature.spec.ts').diagnostics).toEqual([])
+  } finally {
+    test.close()
+  }
+})
+
 it('preserves storage and service import restrictions alongside transport restrictions', () => {
   const test = fixture()
   try {

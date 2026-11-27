@@ -15,7 +15,7 @@ const Trigger = ({ currentCredential, isOpen }: TriggerProps) => {
   return (
     <div
       className={cn(
-        'flex cursor-pointer items-center gap-x-2 rounded-md p-1 pr-2',
+        'flex cursor-pointer items-center gap-x-2 rounded-md p-1 pe-2',
         isOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
       )}
     >

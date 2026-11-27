@@ -20,6 +20,22 @@ it.each([
   expect(result.current).toEqual({ source: expected })
 })
 
+it('initializes a legacy empty checkbox default as unchecked', () => {
+  const variables = [
+    createPipelineVariable({ type: PipelineInputVarType.checkbox, default_value: '' }),
+  ]
+  const { result } = renderHook(() => useInitialData(variables))
+  expect(result.current).toEqual({ source: false })
+})
+
+it('keeps a saved unchecked value when the checkbox default is checked', () => {
+  const variables = [
+    createPipelineVariable({ type: PipelineInputVarType.checkbox, default_value: true }),
+  ]
+  const { result } = renderHook(() => useInitialData(variables, { source: false }))
+  expect(result.current).toEqual({ source: false })
+})
+
 it('combines defaults with saved inputs without losing unrelated field defaults', () => {
   const variables = [
     createPipelineVariable({ variable: 'name', default_value: 'Alice' }),
@@ -31,11 +47,11 @@ it('combines defaults with saved inputs without losing unrelated field defaults'
     createPipelineVariable({
       variable: 'agreed',
       type: PipelineInputVarType.checkbox,
-      default_value: false,
+      default_value: true,
     }),
   ]
   const { result } = renderHook(() => useInitialData(variables, { name: 'Bob' }))
-  expect(result.current).toEqual({ name: 'Bob', count: 25, agreed: false })
+  expect(result.current).toEqual({ name: 'Bob', count: 25, agreed: true })
 })
 
 it('maps labels, validation, selection and upload settings into form configurations in order', () => {

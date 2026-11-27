@@ -76,7 +76,7 @@ export function CurlImportDialog({ readOnly, onImport }: CurlImportDialogProps) 
   }
 
   return (
-    <Dialog actionsRef={actionsRef}>
+    <Dialog actionsRef={actionsRef} disablePointerDismissal>
       <DialogTrigger className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-2 hover:bg-state-base-hover">
         <span
           aria-hidden

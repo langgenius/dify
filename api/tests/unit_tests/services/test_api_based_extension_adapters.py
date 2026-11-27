@@ -1,17 +1,11 @@
-import json
-from typing import Literal
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import JsonValue
 
 import services.api_based_extension_adapters as module
-from graphon.file import File, FileTransferMethod, FileType
 from models.api_based_extension import APIBasedExtensionPoint
-from services.api_based_extension_adapters import APIBasedExtensionPingProbe, APIModerationGateway, WorkspaceTokenCipher
+from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionConnectionError
-from services.api_moderation_service import ModerationInputParams, ModerationOutputParams
-from services.entities.message_entities import MessageInputValue
 
 
 def test_workspace_token_cipher_delegates_to_the_platform_encrypter(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -64,120 +58,3 @@ def test_ping_probe_wraps_transport_failures(monkeypatch: pytest.MonkeyPatch) ->
 
     with pytest.raises(APIBasedExtensionConnectionError, match="connection error: request timeout"):
         APIBasedExtensionPingProbe().ping("https://ext.example.com", "secret")
-
-
-@pytest.mark.parametrize("direction", ["inputs", "outputs"])
-def test_moderation_gateway_translates_point_and_validated_parameters(direction: Literal["inputs", "outputs"]) -> None:
-    """Validated input/output parameters retain their point, payload and response identity."""
-    response: JsonValue = {"flagged": False}
-    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, JsonValue]]] = []
-
-    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, params: dict[str, JsonValue]) -> JsonValue:
-        calls.append((endpoint, key, point, params))
-        return response
-
-    gateway = APIModerationGateway(request=request)
-    if direction == "inputs":
-        params = ModerationInputParams(app_id="app", inputs={"field": [1, True]}, query="hello")
-        assert gateway.inputs("https://extension.example.test", "plaintext-key", params) is response
-        expected_point = APIBasedExtensionPoint.APP_MODERATION_INPUT
-        expected = {"app_id": "app", "inputs": {"field": [1, True]}, "query": "hello"}
-    else:
-        output_params = ModerationOutputParams(app_id="app", text="hello")
-        assert gateway.outputs("https://extension.example.test", "plaintext-key", output_params) is response
-        expected_point = APIBasedExtensionPoint.APP_MODERATION_OUTPUT
-        expected = {"app_id": "app", "text": "hello"}
-    assert len(calls) == 1
-    endpoint, key, point, payload = calls[0]
-    assert (endpoint, key, point) == ("https://extension.example.test", "plaintext-key", expected_point)
-    assert json.dumps(payload, sort_keys=True, ensure_ascii=False) == json.dumps(
-        expected, sort_keys=True, ensure_ascii=False
-    )
-
-
-def test_input_domain_serialization_preserves_files_and_json() -> None:
-    """File instances serialize as files while ordinary file-shaped JSON stays intact."""
-    attachment = File(
-        file_id="66666666-6666-4666-8666-666666666666",
-        file_type=FileType.DOCUMENT,
-        transfer_method=FileTransferMethod.REMOTE_URL,
-        remote_url="https://example.com/input.pdf",
-        filename="input.pdf",
-        extension=".pdf",
-        mime_type="application/pdf",
-        size=12,
-    )
-    file_shaped_json: dict[str, JsonValue] = {
-        "dify_model_identity": "__dify__file__",
-        "id": "77777777-7777-4777-8777-777777777777",
-        "type": "document",
-        "transfer_method": "remote_url",
-        "remote_url": "https://example.com/ordinary.json",
-        "filename": "ordinary.json",
-        "extension": ".json",
-        "mime_type": "application/json",
-        "size": 4,
-        "ordinary_json": {"keep": [1, True]},
-    }
-    values: dict[str, MessageInputValue] = {
-        "动态变量": "value",
-        "nothing": None,
-        "empty_text": "",
-        "empty_object": {},
-        "empty_list": [],
-        "nested": {"list": [{"checked": True}, None, ""]},
-        "mixed": [1, True],
-        "file": attachment,
-        "files": [attachment],
-        "file_json": file_shaped_json,
-    }
-    params = ModerationInputParams(inputs=values)
-    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, JsonValue]]] = []
-    response: JsonValue = {"flagged": False}
-
-    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, payload: dict[str, JsonValue]) -> JsonValue:
-        calls.append((endpoint, key, point, payload))
-        return response
-
-    assert APIModerationGateway(request=request).inputs("https://extension.example.test", "plaintext-key", params) is (
-        response
-    )
-    assert params.inputs["file"] is attachment
-    files = params.inputs["files"]
-    assert isinstance(files, list)
-    assert len(files) == 1
-    assert files[0] is attachment
-    assert params.inputs["file_json"] == file_shaped_json
-    expected = {
-        "app_id": "",
-        "inputs": {**values, "file": attachment.model_dump(), "files": [attachment.model_dump()]},
-        "query": "",
-    }
-    assert len(calls) == 1
-    endpoint, key, point, payload = calls[0]
-    assert (endpoint, key, point) == (
-        "https://extension.example.test",
-        "plaintext-key",
-        APIBasedExtensionPoint.APP_MODERATION_INPUT,
-    )
-    assert json.dumps(payload, sort_keys=True, ensure_ascii=False) == json.dumps(
-        expected, sort_keys=True, ensure_ascii=False
-    )
-
-
-@pytest.mark.parametrize("direction", ["inputs", "outputs"])
-def test_moderation_gateway_preserves_request_failure_identity(direction: Literal["inputs", "outputs"]) -> None:
-    """Either gateway method propagates the original request failure instance."""
-    failure = ValueError("request timeout")
-
-    def request(_endpoint: str, _key: str, _point: APIBasedExtensionPoint, _params: dict[str, JsonValue]) -> JsonValue:
-        raise failure
-
-    gateway = APIModerationGateway(request=request)
-    if direction == "inputs":
-        with pytest.raises(ValueError, match="request timeout") as raised:
-            gateway.inputs("https://extension.example.test", "plaintext-key", ModerationInputParams())
-    else:
-        with pytest.raises(ValueError, match="request timeout") as raised:
-            gateway.outputs("https://extension.example.test", "plaintext-key", ModerationOutputParams(text="hello"))
-    assert raised.value is failure

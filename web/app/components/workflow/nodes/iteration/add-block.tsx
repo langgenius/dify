@@ -48,9 +48,9 @@ const AddBlock = ({ iterationNodeData }: AddBlockProps) => {
   )
 
   return (
-    <div className="absolute top-7 left-14 z-10 flex h-8 items-center">
+    <div className="absolute inset-s-14 top-7 z-10 flex h-8 items-center">
       <div className="group/insert relative h-0.5 w-16 bg-gray-300">
-        <div className="absolute top-1/2 right-0 h-2 w-0.5 -translate-y-1/2 bg-primary-500"></div>
+        <div className="absolute inset-e-0 top-1/2 h-2 w-0.5 -translate-y-1/2 bg-primary-500"></div>
       </div>
       <BlockSelector
         disabled={nodesReadOnly}

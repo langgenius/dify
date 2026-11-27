@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import type {
-  FetchWorkflowDraftResponse,
   WorkflowFinishedResponse,
   WorkflowPausedResponse,
   WorkflowStartedResponse,
@@ -39,13 +38,27 @@ import {
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { useWorkflowRun } from '../use-workflow-run'
 
 const api = vi.hoisted(() => ({
   sync: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
-  ssePost: vi.fn<typeof import('@/service/base').ssePost>(),
-  sseGet: vi.fn<typeof import('@/service/base').sseGet>(),
-  post: vi.fn<typeof import('@/service/base').post>(),
+  // Spies on the real stream consumer so the run callbacks can be driven directly.
+  streamEvents: vi.fn<typeof import('@/service/event-stream').streamEvents>(),
+  run: vi.fn<
+    typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.run.post
+  >(),
+  triggerRun:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.trigger.run.post
+    >(),
+  triggerRunAll:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.trigger.runAll.post
+    >(),
+  events:
+    vi.fn<typeof import('@/service/console').consoleClient.workflow.byWorkflowRunId.events.get>(),
   stop: vi.fn<
     typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post
   >(),
@@ -68,15 +81,18 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': api.sync,
+      'apps.byAppId.workflows.draft.run.post': api.run,
+      'apps.byAppId.workflows.draft.trigger.run.post': api.triggerRun,
+      'apps.byAppId.workflows.draft.trigger.runAll.post': api.triggerRunAll,
+      'workflow.byWorkflowRunId.events.get': api.events,
     }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.ssePost,
-  sseGet: api.sseGet,
-  post: api.post,
-}))
+vi.mock('@/service/event-stream', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/event-stream')>()
+  api.streamEvents.mockImplementation(actual.streamEvents)
+  return { ...actual, streamEvents: api.streamEvents }
+})
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   fetchAllInspectVars: api.inspect,
@@ -121,10 +137,15 @@ const finished: WorkflowFinishedResponse = {
   },
 }
 
-const streamResponse = (events: object[]) =>
-  new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''), {
-    headers: { 'content-type': 'text/event-stream' },
-  })
+type TriggerResponse = Awaited<ReturnType<typeof api.triggerRun>>
+// The generated client decodes a `text/event-stream` response into an async iterator of frames,
+// which the contract's JSON output type does not describe.
+const eventStream = (events: object[]) =>
+  (async function* () {
+    yield* events
+  })() as unknown as TriggerResponse
+const never = () => new Promise<never>(() => {})
+const streamCallbacks = () => api.streamEvents.mock.lastCall?.[1]
 const paused: WorkflowPausedResponse = {
   ...started,
   event: 'workflow_paused',
@@ -220,9 +241,11 @@ beforeEach(() => {
   api.sync
     .mockReset()
     .mockResolvedValue({ result: 'success', hash: 'saved', updated_at: 1700000000 })
-  api.ssePost.mockReset()
-  api.sseGet.mockReset()
-  api.post.mockReset()
+  api.streamEvents.mockClear()
+  api.run.mockReset().mockImplementation(never)
+  api.triggerRun.mockReset()
+  api.triggerRunAll.mockReset()
+  api.events.mockReset().mockImplementation(never)
   api.stop.mockReset().mockResolvedValue({ result: 'success' })
   api.inspect.mockReset().mockResolvedValue([])
   api.track.mockReset()
@@ -245,33 +268,30 @@ it('saves the graph before running and applies streamed results to the real work
     run = result.current.run.handleRun({ inputs: { query: 'hello' } })
   })
   await waitFor(() => expect(api.sync).toHaveBeenCalledOnce())
-  expect(api.ssePost).not.toHaveBeenCalled()
-  expect(api.sync).toHaveBeenCalledWith(
-    {
-      params: { app_id: 'app-1' },
-      body: expect.objectContaining({
-        graph: expect.objectContaining({
-          nodes: [
-            expect.objectContaining({
-              id: 'node-1',
-              data: expect.objectContaining({ selected: false }),
-            }),
-          ],
-        }),
+  expect(api.streamEvents).not.toHaveBeenCalled()
+  expect(api.sync).toHaveBeenCalledWith({
+    params: { app_id: 'app-1' },
+    body: expect.objectContaining({
+      graph: expect.objectContaining({
+        nodes: [
+          expect.objectContaining({
+            id: 'node-1',
+            data: expect.objectContaining({ selected: false }),
+          }),
+        ],
       }),
-    },
-    { context: { silent: true } },
-  )
+    }),
+  })
   await act(async () => {
     pending.resolve({ result: 'success', hash: 'saved', updated_at: 1700000000 })
     await run
   })
-  expect(api.ssePost).toHaveBeenCalledExactlyOnceWith(
-    '/apps/app-1/workflows/draft/run',
-    { body: { inputs: { query: 'hello' } } },
-    expect.any(Object),
+  expect(api.streamEvents).toHaveBeenCalledOnce()
+  expect(api.run).toHaveBeenCalledExactlyOnceWith(
+    { params: { app_id: 'app-1' }, body: { inputs: { query: 'hello' } } },
+    { signal: expect.any(AbortSignal), context: { stream: true } },
   )
-  const callbacks = api.ssePost.mock.lastCall?.[2]
+  const callbacks = streamCallbacks()
   assert(callbacks?.onWorkflowStarted && callbacks.onWorkflowFinished)
   act(() => callbacks.onWorkflowStarted?.(started))
   expect(store.getState().workflowRunningData).toMatchObject({
@@ -294,7 +314,7 @@ it('saves the graph before running and applies streamed results to the real work
 it('marks the active node failed and reports the current trace in bounded analytics chunks', async () => {
   const { result, store } = await setup()
   await act(async () => result.current.run.handleRun({ inputs: {} }))
-  const callbacks = api.ssePost.mock.lastCall?.[2]
+  const callbacks = streamCallbacks()
   assert(callbacks?.onWorkflowStarted && callbacks.onNodeStarted && callbacks.onError)
   const trace = createNodeTracing({ node_id: 'node-1', inputs: { query: '🙂'.repeat(1100) } })
   act(() => {
@@ -353,23 +373,23 @@ it.each([
 ])(
   'listens for $mode triggers and aborts the pending request when stopped',
   async ({ mode, options, body, url }) => {
-    const pending = createDeferred<Response>()
-    api.post.mockReturnValueOnce(pending.promise)
+    const pending = createDeferred<TriggerResponse>()
+    const trigger = url === 'run-all' ? api.triggerRunAll : api.triggerRun
+    trigger.mockReturnValueOnce(pending.promise)
     const { result, store } = await setup()
     let run: Promise<void>
     act(() => {
       run = result.current.run.handleRun({}, undefined, { mode, ...options })
     })
-    await waitFor(() => expect(api.post).toHaveBeenCalledOnce())
-    expect(api.post).toHaveBeenCalledWith(
-      `/apps/app-1/workflows/draft/trigger/${url}`,
-      expect.objectContaining({ body, signal: expect.any(AbortSignal) }),
-      { needAllResponseContent: true, silent: true },
+    await waitFor(() => expect(trigger).toHaveBeenCalledOnce())
+    expect(trigger).toHaveBeenCalledWith(
+      { params: { app_id: 'app-1' }, body },
+      { signal: expect.any(AbortSignal), context: { stream: true } },
     )
+    expect(api.triggerRun.mock.calls.length + api.triggerRunAll.mock.calls.length).toBe(1)
     expect(store.getState().isListening).toBe(true)
-    const request = api.post.mock.lastCall?.[1]
-    assert(request && 'signal' in request && request.signal instanceof AbortSignal)
-    const signal = request.signal
+    const signal = trigger.mock.lastCall?.[1]?.signal
+    assert(signal instanceof AbortSignal)
     act(() => result.current.run.handleStopRun(''))
     expect(signal.aborted).toBe(true)
     expect(store.getState()).toMatchObject({
@@ -377,7 +397,7 @@ it.each([
       workflowRunningData: { result: { status: WorkflowRunningStatus.Stopped } },
     })
     await act(async () => {
-      pending.resolve(new Response())
+      pending.resolve({})
       await run
     })
   },
@@ -386,7 +406,7 @@ it.each([
 it('stops an identified task through the stop endpoint', async () => {
   const { result, store } = await setup()
   await act(async () => result.current.run.handleRun({ inputs: {} }))
-  const callbacks = api.ssePost.mock.lastCall?.[2]
+  const callbacks = streamCallbacks()
   assert(callbacks?.onWorkflowStarted)
   act(() => callbacks.onWorkflowStarted?.(started))
   act(() => result.current.run.handleStopRun('task-1'))
@@ -425,8 +445,8 @@ it.each([
 ])(
   'creates the $url audio player only when streamed audio arrives',
   async ({ params, url, isPublic }) => {
-    const pending = createDeferred<Response>()
-    api.post.mockReturnValueOnce(pending.promise)
+    const pending = createDeferred<TriggerResponse>()
+    api.triggerRun.mockReturnValueOnce(pending.promise)
     const { result } = await setup()
     let run: Promise<void>
     act(() => {
@@ -435,17 +455,15 @@ it.each([
         webhookNodeId: 'node-1',
       })
     })
-    await waitFor(() => expect(api.post).toHaveBeenCalledOnce())
+    await waitFor(() => expect(api.triggerRun).toHaveBeenCalledOnce())
     expect(api.getAudioPlayer).not.toHaveBeenCalled()
-    const stream = [
+    const stream = eventStream([
       { ...started },
       { event: 'tts_message', message_id: 'message-1', audio: 'YXVkaW8=', audio_type: 'audio/wav' },
       { event: 'tts_message', message_id: 'message-1', audio: 'bW9yZQ==', audio_type: 'audio/wav' },
-    ]
-      .map((event) => `data: ${JSON.stringify(event)}\n\n`)
-      .join('')
+    ])
     await act(async () => {
-      pending.resolve(new Response(stream, { headers: { 'content-type': 'text/event-stream' } }))
+      pending.resolve(stream)
       await run
     })
     await waitFor(() => expect(api.playAudio).toHaveBeenCalledTimes(2))
@@ -464,7 +482,7 @@ it.each([
 it('aborts the run transport when stopped before a task identifier arrives', async () => {
   const { result, store } = await setup()
   await act(async () => result.current.run.handleRun({ inputs: {} }))
-  const callbacks = api.ssePost.mock.lastCall?.[2]
+  const callbacks = streamCallbacks()
   assert(callbacks?.getAbortController)
   const controller = new AbortController()
   callbacks.getAbortController(controller)
@@ -476,12 +494,12 @@ it('aborts the run transport when stopped before a task identifier arrives', asy
 
 it.each([
   { name: 'published variables', variables: [{ ...environment, value: 'eu-west-1' }] },
-  { name: 'no published variables', variables: undefined },
+  { name: 'no published variables', variables: [] },
 ])(
   'restores a published graph and replaces the draft environment with $name',
   async ({ variables }) => {
     const { result, store, features, canvasUpdate } = await setup()
-    const published: FetchWorkflowDraftResponse = {
+    const published = createWorkflowResponseFixture({
       id: 'published-1',
       version: '2026-10-18T00:00:00Z',
       hash: 'published-hash',
@@ -514,7 +532,10 @@ it.each([
         file_upload: features.getState().features.file,
       },
       environment_variables: variables,
-    }
+    })
+    // The saved version carries no upload config; restoring keeps the server's current limits.
+    const uploadConfig = createFileUploadConfigFixture({ file_size_limit: 50 })
+    store.getState().setFileUploadConfig(uploadConfig)
     act(() => result.current.run.handleRestoreFromPublishedWorkflow(published))
     expect(canvasUpdate).toHaveBeenCalledWith({
       type: WORKFLOW_DATA_UPDATE,
@@ -529,11 +550,12 @@ it.each([
         edges: [],
       },
     })
-    expect(store.getState().environmentVariables).toEqual(variables ?? [])
+    expect(store.getState().environmentVariables).toEqual(variables)
     expect(features.getState().features).toMatchObject({
       opening: { enabled: true, opening_statement: 'Welcome', suggested_questions: ['Help'] },
       suggested: { enabled: true },
     })
+    expect(features.getState().features.file?.fileUploadConfig).toEqual(uploadConfig)
   },
 )
 
@@ -542,7 +564,7 @@ it.each([false, true])(
   async (trigger) => {
     const { result, store } = await setup()
     const onFinished = vi.fn()
-    if (trigger) api.post.mockResolvedValueOnce(streamResponse([started, paused, paused]))
+    if (trigger) api.triggerRun.mockResolvedValueOnce(eventStream([started, paused, paused]))
     await act(async () =>
       result.current.run.handleRun(
         { inputs: {} },
@@ -551,7 +573,7 @@ it.each([false, true])(
       ),
     )
     if (!trigger) {
-      const callbacks = api.ssePost.mock.lastCall?.[2]
+      const callbacks = streamCallbacks()
       assert(callbacks?.onWorkflowStarted && callbacks.onWorkflowPaused)
       act(() => {
         callbacks.onWorkflowStarted?.(started)
@@ -559,14 +581,16 @@ it.each([false, true])(
         callbacks.onWorkflowPaused?.(paused)
       })
     }
-    await waitFor(() => expect(api.sseGet).toHaveBeenCalledOnce())
-    expect(api.sseGet).toHaveBeenCalledWith(
-      '/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
-      expect.any(Object),
+    await waitFor(() => expect(api.events).toHaveBeenCalledOnce())
+    expect(api.events).toHaveBeenCalledWith(
+      {
+        params: { workflow_run_id: 'run-1' },
+        query: { include_state_snapshot: 'true', continue_on_pause: 'true' },
+      },
+      { signal: expect.any(AbortSignal), context: { stream: true } },
     )
     expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Paused)
-    const resumed = api.sseGet.mock.lastCall?.[2]
+    const resumed = streamCallbacks()
     assert(resumed?.onWorkflowStarted && resumed.onWorkflowFinished)
     act(() => resumed.onWorkflowStarted?.(started))
     expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Running)
@@ -582,9 +606,9 @@ it.each([false, true])(
 
 it('honors the trigger retry interval before consuming the eventual run stream', async () => {
   const { result, store } = await setup()
-  api.post
-    .mockResolvedValueOnce(Response.json({ status: 'waiting', retry_in: 2000 }))
-    .mockResolvedValueOnce(streamResponse([started, finished]))
+  api.triggerRun
+    .mockResolvedValueOnce({ status: 'waiting', retry_in: 2000 } as TriggerResponse)
+    .mockResolvedValueOnce(eventStream([started, finished]))
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   let run: Promise<void>
   await act(async () => {
@@ -593,15 +617,15 @@ it('honors the trigger retry interval before consuming the eventual run stream',
       scheduleNodeId: 'node-1',
     })
   })
-  expect(api.post).toHaveBeenCalledOnce()
+  expect(api.triggerRun).toHaveBeenCalledOnce()
   expect(store.getState().isListening).toBe(true)
   await act(async () => vi.advanceTimersByTimeAsync(1999))
-  expect(api.post).toHaveBeenCalledOnce()
+  expect(api.triggerRun).toHaveBeenCalledOnce()
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1)
     await run
   })
-  expect(api.post).toHaveBeenCalledTimes(2)
+  expect(api.triggerRun).toHaveBeenCalledTimes(2)
   expect(store.getState()).toMatchObject({
     isListening: false,
     workflowRunningData: { result: { status: WorkflowRunningStatus.Succeeded } },
@@ -616,8 +640,8 @@ it.each([
   async ({ failure, message }) => {
     const { result, store } = await setup()
     if (failure === 'server')
-      api.post.mockResolvedValueOnce(Response.json({ status: 'failed', message }))
-    else api.post.mockRejectedValueOnce(new Error(message))
+      api.triggerRun.mockResolvedValueOnce({ status: 'failed', message } as TriggerResponse)
+    else api.triggerRun.mockRejectedValueOnce(new Error(message))
     await act(async () =>
       result.current.run.handleRun({}, undefined, {
         mode: TriggerType.Webhook,

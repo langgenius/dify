@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import { useEvaluationActions, useEvaluationTemplateColumns } from '../../../queries'
@@ -33,6 +34,7 @@ export const useInputFieldsActions = ({
   templateFileName,
 }: UseInputFieldsActionsParams) => {
   const { t } = useTranslation(['evaluation'])
+  const describeRequestError = useRequestErrorDescriber()
   const resource = useEvaluationResource(resourceType, resourceId)
   const setBatchTab = useEvaluationStore((state) => state.setBatchTab)
   const setSelectedRunId = useEvaluationStore((state) => state.setSelectedRunId)
@@ -48,21 +50,28 @@ export const useInputFieldsActions = ({
   )
   const [isUploadPopoverOpen, setIsUploadPopoverOpen] = useState(false)
   const [uploadedFileMeta, setUploadedFileMeta] = useState<UploadedFileMeta | null>(null)
-  const uploadMutation = useMutation({
-    ...consoleQuery.files.upload.post.mutationOptions(),
-    onSuccess: (uploadedFile, input) => {
-      const file = input.body.file
-      setUploadedFile(resourceType, resourceId, {
-        id: uploadedFile.id,
-        name: uploadedFile.name || (file instanceof File ? file.name : ''),
-      })
-    },
-    onError: () => {
-      setUploadedFileMeta(null)
-      setUploadedFile(resourceType, resourceId, null)
-      toast.error(t(($) => $['batch.uploadError']))
-    },
-  })
+  const uploadMutation = useMutation(
+    consoleQuery.files.upload.post.mutationOptions({
+      meta: { errorToast: false },
+      onSuccess: (uploadedFile, input) => {
+        const file = input.body.file
+        setUploadedFile(resourceType, resourceId, {
+          id: uploadedFile.id,
+          name: uploadedFile.name || (file instanceof File ? file.name : ''),
+        })
+      },
+      onError: (error) => {
+        setUploadedFileMeta(null)
+        setUploadedFile(resourceType, resourceId, null)
+        toast.error(
+          describeRequestError(
+            error,
+            t(($) => $['batch.uploadError']),
+          ),
+        )
+      },
+    }),
+  )
 
   const isFileUploading = uploadMutation.isPending
   const isRunning = evaluationActions.isRunning
@@ -84,8 +93,13 @@ export const useInputFieldsActions = ({
     try {
       const file = await evaluationActions.downloadTemplate(templateConfigPayload)
       downloadBlob({ data: file, fileName: templateFileName })
-    } catch {
-      toast.error(t(($) => $['batch.templateDownloadError']))
+    } catch (error) {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['batch.templateDownloadError']),
+        ),
+      )
     }
   }
 
@@ -118,8 +132,13 @@ export const useInputFieldsActions = ({
       setSelectedRunId(resourceType, resourceId, run.id)
       setIsUploadPopoverOpen(false)
       setBatchTab(resourceType, resourceId, 'history')
-    } catch {
-      toast.error(t(($) => $['batch.runFailed']))
+    } catch (error) {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['batch.runFailed']),
+        ),
+      )
     }
   }
 

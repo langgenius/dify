@@ -84,7 +84,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
             {!linkOperatorShow && (
               <>
                 <input
-                  className="mr-0.5 h-6 w-49 appearance-none rounded-xs bg-transparent p-1 text-[13px] text-components-input-text-filled outline-hidden"
+                  className="me-0.5 h-6 w-49 appearance-none rounded-xs bg-transparent p-1 text-[13px] text-components-input-text-filled outline-hidden"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => {
@@ -115,8 +115,8 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <RiExternalLinkLine className="mr-1 size-3" />
-                  <div className="mr-1">
+                  <RiExternalLinkLine className="me-1 size-3" />
+                  <div className="me-1">
                     {t(($) => $['nodes.note.editor.openLink'], { ns: 'workflow' })}
                   </div>
                   <div title={escape(url)} className="max-w-35 truncate text-text-accent">
@@ -127,7 +127,7 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
                 <Button
                   variant="ghost"
                   size="small"
-                  className="mr-0.5 px-2 text-text-tertiary"
+                  className="me-0.5 px-2 text-text-tertiary"
                   onClick={(e) => {
                     e.stopPropagation()
                     setLinkOperatorShow(false)

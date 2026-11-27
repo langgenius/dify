@@ -4,6 +4,9 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ComponentProps, ReactElement } from 'react'
+import type { AppListDialogHandles } from '../app-list-dialogs'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -16,6 +19,7 @@ import { captureDownloads } from '@/test/download'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import { AppCard } from '../app-card'
+import { AppListDialogs } from '../app-list-dialogs'
 import { StarredAppCard } from '../starred-app-card'
 
 const api = vi.hoisted(() => ({
@@ -74,15 +78,28 @@ const mockConsoleState = {
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }
+const createDialogHandles = (): AppListDialogHandles => ({
+  edit: createDialogHandle(),
+  duplicate: createDialogHandle(),
+  switchApp: createDialogHandle(),
+  exportSecrets: createAlertDialogHandle(),
+})
+let dialogs = createDialogHandles()
 const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    accountProfile: mockConsoleState.userProfile,
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-    systemFeatures: {
-      webapp_auth: { enabled: mockWebappAuthEnabled },
-      rbac_enabled: mockRbacEnabled,
+  renderWithConsoleQuery(
+    <>
+      {ui}
+      <AppListDialogs handles={dialogs} />
+    </>,
+    {
+      accountProfile: mockConsoleState.userProfile,
+      workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+      systemFeatures: {
+        webapp_auth: { enabled: mockWebappAuthEnabled },
+        rbac_enabled: mockRbacEnabled,
+      },
     },
-  })
+  )
 const getOperationsTrigger = () =>
   screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })
 async function chooseAction(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -137,6 +154,7 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
 describe('AppCard', () => {
   const mockApp = createMockApp()
   beforeEach(() => {
+    dialogs = createDialogHandles()
     vi.spyOn(toast, 'error')
     vi.spyOn(toast, 'warning')
     openWindow.mockReset().mockReturnValue(popup)
@@ -202,7 +220,7 @@ describe('AppCard', () => {
       permission_keys: [AppACLPermission.Preview],
     })
 
-    render(<AppCard onDelete={onDelete} app={previewOnlyApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={previewOnlyApp} />)
 
     const card = screen.getByRole('button', { name: 'Preview Only App' })
     expect(screen.getByRole('listitem')).toContainElement(card)
@@ -240,7 +258,7 @@ describe('AppCard', () => {
       permission_keys: [AppACLPermission.Preview],
     })
 
-    render(<StarredAppCard onDelete={onDelete} app={previewOnlyApp} />)
+    render(<StarredAppCard dialogs={dialogs} onDelete={onDelete} app={previewOnlyApp} />)
 
     const card = screen.getByRole('button', { name: 'Preview Only Starred App' })
     expect(card).not.toHaveAttribute('aria-disabled')
@@ -259,7 +277,7 @@ describe('AppCard', () => {
   })
 
   it('should render card navigation as a link', () => {
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     const cardLink = screen.getByRole('link', { name: 'Test App' })
 
     expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
@@ -270,9 +288,31 @@ describe('AppCard', () => {
     expect(screen.getByText('Test Author')).toBeInTheDocument()
   })
 
+  it('shows each online collaborator once, however many tabs they have open', () => {
+    const alice = { user_id: 'alice', username: 'Alice', sid: 'alice-1' }
+    render(
+      <AppCard
+        dialogs={dialogs}
+        onDelete={onDelete}
+        app={mockApp}
+        onlineUsers={[
+          alice,
+          { ...alice, sid: 'alice-2' },
+          { user_id: 'bob', username: 'Bob', sid: 'bob-1' },
+          { user_id: 'carol', username: 'Carol', sid: 'carol-1' },
+          { user_id: 'dave', username: 'Dave', sid: 'dave-1' },
+        ]}
+      />,
+    )
+
+    expect(screen.getAllByRole('img', { name: 'Alice' })).toHaveLength(1)
+    expect(screen.getByRole('img', { name: 'Bob' })).toBeInTheDocument()
+    expect(screen.getByText('+2')).toBeInTheDocument()
+  })
+
   it('should star the app from the card action', async () => {
     const user = userEvent.setup()
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
 
     const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
     expect(starToggle).toHaveAttribute('aria-pressed', 'false')
@@ -290,7 +330,7 @@ describe('AppCard', () => {
   it('should unstar the app from the filled star action', async () => {
     const user = userEvent.setup()
     const starredApp = createMockApp({ is_starred: true })
-    render(<AppCard onDelete={onDelete} app={starredApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={starredApp} />)
 
     const starToggle = screen.getByRole('button', { name: 'app.studio.starApp: Test App' })
     expect(starToggle).toHaveAttribute('aria-pressed', 'true')
@@ -310,7 +350,7 @@ describe('AppCard', () => {
 
   it('should expose the same operations from the card context menu', async () => {
     const user = userEvent.setup()
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
 
     await user.pointer({
       target: screen.getByRole('link', { name: 'Test App' }),
@@ -324,7 +364,7 @@ describe('AppCard', () => {
 
   it('should keep card actions outside the card context menu trigger', async () => {
     const user = userEvent.setup()
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
 
     await user.pointer({
       target: screen.getByRole('button', { name: 'app.studio.starApp: Test App' }),
@@ -341,7 +381,7 @@ describe('AppCard', () => {
       maintainer: 'another-user',
       permission_keys: [AppACLPermission.ViewLayout],
     })
-    render(<AppCard onDelete={onDelete} app={appWithoutImportExportPermission} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={appWithoutImportExportPermission} />)
 
     await user.click(getOperationsTrigger())
 
@@ -358,7 +398,13 @@ describe('AppCard', () => {
       maintainer: 'another-user',
       permission_keys: [AppACLPermission.ViewLayout],
     })
-    render(<StarredAppCard onDelete={onDelete} app={appWithoutImportExportPermission} />)
+    render(
+      <StarredAppCard
+        dialogs={dialogs}
+        onDelete={onDelete}
+        app={appWithoutImportExportPermission}
+      />,
+    )
 
     await user.click(getOperationsTrigger())
 
@@ -377,7 +423,7 @@ describe('AppCard', () => {
       mode: 'chat',
       permission_keys: [AppACLPermission.Edit],
     })
-    render(<AppCard onDelete={onDelete} app={editableChatApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={editableChatApp} />)
 
     await user.click(getOperationsTrigger())
 
@@ -390,7 +436,7 @@ describe('AppCard', () => {
   it('should not show switch option for workflow mode apps', async () => {
     const user = userEvent.setup()
     const workflowApp = { ...mockApp, mode: 'workflow' as const }
-    render(<AppCard onDelete={onDelete} app={workflowApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={workflowApp} />)
 
     await user.click(getOperationsTrigger())
 
@@ -405,7 +451,7 @@ describe('AppCard', () => {
     const user = userEvent.setup()
     const ssoApp = createMockApp({ access_mode: AccessMode.EXTERNAL_MEMBERS })
 
-    render(<AppCard onDelete={onDelete} app={ssoApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={ssoApp} />)
 
     await user.click(getOperationsTrigger())
     const menu = await screen.findByRole('menu')
@@ -422,7 +468,7 @@ describe('AppCard', () => {
       resolveResponse = resolve
     })
     api.installedRequest.mockReturnValueOnce(response)
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.openInExplore')
 
     expect(openWindow).toHaveBeenCalledOnce()
@@ -442,15 +488,16 @@ describe('AppCard', () => {
   it('reports a blocked popup without making a request', async () => {
     const user = userEvent.setup()
     openWindow.mockReturnValueOnce(null)
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.openInExplore')
     expect(api.installedRequest).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledWith('Failed to open new window')
   })
 
-  it('should render the tour-controlled operations menu as presentation only', async () => {
+  it('should open the tour-controlled operations menu', async () => {
     render(
       <AppCard
+        dialogs={dialogs}
         onDelete={onDelete}
         app={mockApp}
         stepByStepTourActionMenuHighlightPart={
@@ -462,7 +509,6 @@ describe('AppCard', () => {
 
     expect(await screen.findByText('app.editApp')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'app.editApp', hidden: true })).toBeInTheDocument()
-    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('should tell workflow users to publish before opening in explore', async () => {
@@ -471,7 +517,7 @@ describe('AppCard', () => {
       mode: 'workflow' as const,
       workflow: undefined,
     })
-    render(<AppCard onDelete={onDelete} app={workflowApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={workflowApp} />)
 
     await user.click(getOperationsTrigger())
     await waitFor(() => {
@@ -490,7 +536,7 @@ describe('AppCard', () => {
     api.installedRequest.mockResolvedValueOnce(
       Response.json({ has_more: false, installed_apps: [], next_cursor: null }),
     )
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.openInExplore')
     await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
     expect(popup.location.href).toBe('')
@@ -500,7 +546,7 @@ describe('AppCard', () => {
   it('closes the popup and reports a failed lookup without retrying', async () => {
     const user = userEvent.setup()
     api.installedRequest.mockRejectedValueOnce(new Error('Network error'))
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.openInExplore')
     await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
     expect(api.installedRequest).toHaveBeenCalledOnce()
@@ -511,7 +557,7 @@ describe('AppCard', () => {
   it('should not show open in explore option for apps with has_draft_trigger', async () => {
     const user = userEvent.setup()
     const draftTriggerApp = createMockApp({ has_draft_trigger: true })
-    render(<AppCard onDelete={onDelete} app={draftTriggerApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={draftTriggerApp} />)
 
     await user.click(getOperationsTrigger())
     await waitFor(() => {
@@ -529,7 +575,7 @@ describe('AppCard', () => {
       maintainer: 'another-user',
       permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
     })
-    render(<AppCard onDelete={onDelete} app={appWithAccessConfigPermission} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={appWithAccessConfigPermission} />)
 
     await user.click(getOperationsTrigger())
 
@@ -549,7 +595,7 @@ describe('AppCard', () => {
       maintainer: 'another-user',
       permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
     })
-    render(<AppCard onDelete={onDelete} app={appWithAccessConfigPermission} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={appWithAccessConfigPermission} />)
 
     await user.click(getOperationsTrigger())
 
@@ -567,7 +613,7 @@ describe('AppCard', () => {
       maintainer: 'another-user',
       permission_keys: [AppACLPermission.AccessConfig],
     })
-    render(<AppCard onDelete={onDelete} app={appWithAccessConfigPermission} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={appWithAccessConfigPermission} />)
 
     await user.click(getOperationsTrigger())
     await user.click(await screen.findByText('navigation.settings.resourceAccess'))
@@ -586,6 +632,7 @@ describe('AppCard', () => {
       mockConsoleState.workspacePermissionKeys = workspace
       render(
         <AppCard
+          dialogs={dialogs}
           onDelete={onDelete}
           app={createMockApp({ maintainer: 'another-user', permission_keys: permissions })}
         />,
@@ -601,21 +648,17 @@ describe('AppCard', () => {
       await user.click(trigger)
       await user.click(await screen.findByRole('option', { name: 'Tag 1' }))
       await user.keyboard('{Escape}')
-      await waitFor(() =>
-        expect(api.bind).toHaveBeenCalledWith(
-          {
-            body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
-          },
-          { context: { silent: true } },
-        ),
-      )
+      await waitFor(() => expect(api.bind).toHaveBeenCalledOnce())
+      expect(api.bind.mock.calls[0]![0]).toEqual({
+        body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
+      })
       expect(mockPush).not.toHaveBeenCalled()
     },
   )
 
   it('refreshes selected tag names from the shared tag query', async () => {
     const app = createMockApp({ tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' }] })
-    const { queryClient } = render(<AppCard onDelete={onDelete} app={app} />)
+    const { queryClient } = render(<AppCard dialogs={dialogs} onDelete={onDelete} app={app} />)
     expect(await screen.findByRole('combobox', { name: 'Tag 1: Test App' })).toBeInTheDocument()
     act(() =>
       queryClient.setQueryData(
@@ -632,7 +675,7 @@ describe('AppCard', () => {
     const user = userEvent.setup()
     const firstSave = createDeferred<Awaited<ReturnType<typeof api.update>>>()
     api.update.mockReturnValueOnce(firstSave.promise)
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.editApp')
     const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
     const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
@@ -683,7 +726,7 @@ describe('AppCard', () => {
     'discards unsubmitted name changes when reopening $action',
     async ({ action, title, initial }) => {
       const user = userEvent.setup()
-      render(<AppCard onDelete={onDelete} app={mockApp} />)
+      render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
       await chooseAction(user, action)
       const dialog = await screen.findByRole('dialog', { name: title })
       const input = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
@@ -700,13 +743,13 @@ describe('AppCard', () => {
 
   it('duplicates the chosen name and source icon, then navigates to the new app', async () => {
     const user = userEvent.setup()
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.duplicate')
     const dialog = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
     const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
     await user.clear(name)
     await user.type(name, 'Copied App')
-    await user.click(within(dialog).getByRole('button', { name: 'app.duplicate' }))
+    await user.click(within(dialog).getByRole('button', { name: /app\.duplicate/ }))
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/app/new-app-id/configuration'))
     expect(api.copy).toHaveBeenCalledWith({
       params: { app_id: mockApp.id },
@@ -715,14 +758,14 @@ describe('AppCard', () => {
     expect(dialog).not.toBeInTheDocument()
   })
 
-  it('reports failed duplication without navigating to a new app', async () => {
+  it('keeps the duplicate dialog open with the error when duplication fails', async () => {
     const user = userEvent.setup()
     api.copy.mockRejectedValueOnce(new Error('Copy failed'))
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.duplicate')
     const dialog = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
-    await user.click(within(dialog).getByRole('button', { name: 'app.duplicate' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Copy failed'))
+    await user.click(within(dialog).getByRole('button', { name: /app\.duplicate/ }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Copy failed')
     expect(mockPush).not.toHaveBeenCalled()
   })
 
@@ -730,7 +773,7 @@ describe('AppCard', () => {
     'converts a %s app from the card and opens its workflow',
     async (mode) => {
       const user = userEvent.setup()
-      render(<AppCard onDelete={onDelete} app={createMockApp({ mode })} />)
+      render(<AppCard dialogs={dialogs} onDelete={onDelete} app={createMockApp({ mode })} />)
       await chooseAction(user, 'app.switch')
       const dialog = await screen.findByRole('dialog', { name: 'app.switch' })
       const name = within(dialog).getByRole('textbox', { name: 'app.newApp.name' })
@@ -752,7 +795,7 @@ describe('AppCard', () => {
     async (mode) => {
       const user = userEvent.setup()
       const downloads = captureDownloads()
-      render(<AppCard onDelete={onDelete} app={createMockApp({ mode })} />)
+      render(<AppCard dialogs={dialogs} onDelete={onDelete} app={createMockApp({ mode })} />)
       await chooseAction(user, 'app.exportApp')
       await waitFor(() => expect(downloads).toHaveLength(1))
       expect(downloads[0]!.filename).toBe('Test App.yml')
@@ -771,7 +814,7 @@ describe('AppCard', () => {
     const pending = createDeferred<{ data: string }>()
     api.export.mockReturnValueOnce(pending.promise)
     const downloads = captureDownloads()
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.exportApp')
     await waitFor(() => expect(api.export).toHaveBeenCalledOnce())
     await user.click(getOperationsTrigger())
@@ -796,7 +839,9 @@ describe('AppCard', () => {
         items: [secret],
       })
       const downloads = captureDownloads()
-      render(<AppCard onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />)
+      render(
+        <AppCard dialogs={dialogs} onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />,
+      )
       await chooseAction(user, 'app.exportApp')
       const dialog = await screen.findByRole('alertdialog', { name: 'app.exportSecret.title' })
       expect(within(dialog).getByText('API_KEY')).toBeInTheDocument()
@@ -820,12 +865,45 @@ describe('AppCard', () => {
     },
   )
 
+  it('keeps the open secret export confirmation on its app when another export check finishes', async () => {
+    const user = userEvent.setup()
+    const lateCheck = createDeferred<{ items: EnvironmentVariableItemResponse[] }>()
+    api.env.mockImplementation(({ params }) =>
+      params.app_id === 'late-app' ? lateCheck.promise : Promise.resolve({ items: [secret] }),
+    )
+    render(
+      <>
+        <AppCard
+          dialogs={dialogs}
+          onDelete={onDelete}
+          app={createMockApp({ id: 'late-app', name: 'Late App', mode: 'workflow' })}
+        />
+        <AppCard dialogs={dialogs} onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />
+      </>,
+    )
+    const [lateTrigger, trigger] = screen.getAllByRole('button', {
+      name: /common\.operation\.moreActionsFor/,
+    })
+    await user.click(lateTrigger!)
+    await user.click(await screen.findByRole('menuitem', { name: 'app.exportApp' }))
+    await user.click(trigger!)
+    await user.click(await screen.findByRole('menuitem', { name: 'app.exportApp' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'app.exportSecret.title' })
+    await user.click(within(dialog).getByRole('checkbox'))
+    await act(async () => lateCheck.resolve({ items: [{ ...secret, name: 'LATE_KEY' }] }))
+    expect(within(dialog).getByText('API_KEY')).toBeInTheDocument()
+    expect(within(dialog).queryByText('LATE_KEY')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('checkbox')).toBeChecked()
+  })
+
   it('clears secret export consent when the warning is cancelled and reopened', async () => {
     const user = userEvent.setup()
     api.env.mockResolvedValue({
       items: [secret],
     })
-    render(<AppCard onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />)
+    render(
+      <AppCard dialogs={dialogs} onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />,
+    )
     await chooseAction(user, 'app.exportApp')
     const dialog = await screen.findByRole('alertdialog')
     await user.click(within(dialog).getByRole('checkbox'))
@@ -841,7 +919,7 @@ describe('AppCard', () => {
     const pending = createDeferred<{ result: boolean }>()
     mockWebappAuthEnabled = true
     api.access.mockReturnValue(pending.promise)
-    render(<AppCard onDelete={onDelete} app={mockApp} />)
+    render(<AppCard dialogs={dialogs} onDelete={onDelete} app={mockApp} />)
     await user.click(getOperationsTrigger())
     await screen.findByRole('menu')
     expect(screen.queryByRole('menuitem', { name: 'app.openInExplore' })).not.toBeInTheDocument()
@@ -857,7 +935,9 @@ describe('AppCard', () => {
     const user = userEvent.setup()
     mockWebappAuthEnabled = true
     api.access.mockImplementation(() => new Promise(() => {}))
-    render(<AppCard onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />)
+    render(
+      <AppCard dialogs={dialogs} onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />,
+    )
     await chooseAction(user, 'app.openInExplore')
     expect(toast.error).toHaveBeenCalledWith('app.notPublishedYet')
     expect(openWindow).not.toHaveBeenCalled()

@@ -6,7 +6,7 @@ inputs:
     description: Install web dependencies after setting up the toolchain
     default: 'true'
   cache-save:
-    description: Save the dependency cache after the job completes
+    description: Save the pnpm store cache after installing when no cache matched the lockfile
     default: 'true'
 
 runs:
@@ -31,7 +31,37 @@ runs:
         package-manager: |
           pnpm: false
           npm: false
-        cache: true
-        # Nested composite post actions can evaluate inputs in the outer scope.
-        cache-save: ${{ inputs.cache-save || 'true' }}
-        run-install: ${{ inputs.run-install }}
+        # setup-vp's dependency cache falls back to the newest store for the OS and never
+        # prunes it, so every lockfile change saves a bigger store. The steps below cache a
+        # store built from the current lockfile only.
+        cache: false
+        run-install: false
+    - name: Resolve pnpm store
+      id: pnpm-store
+      if: ${{ inputs.run-install == 'true' }}
+      shell: bash
+      run: echo "path=$(vp pm cache dir)" >> "$GITHUB_OUTPUT"
+    # No restore-keys: a store from an older lockfile only adds stale packages to the save.
+    - name: Restore pnpm store
+      id: restore-pnpm-store
+      if: ${{ inputs.run-install == 'true' }}
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: pnpm-store-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+    - name: Install web dependencies
+      if: ${{ inputs.run-install == 'true' }}
+      shell: bash
+      run: vp install
+    # Depot's cache is shared by every branch. GitHub's cache is scoped to the ref, so a
+    # GitHub-hosted PR save is invisible to other PRs and only pays the upload.
+    - name: Save pnpm store
+      if: >-
+        ${{ inputs.run-install == 'true' && inputs.cache-save == 'true'
+        && steps.restore-pnpm-store.outputs.cache-hit != 'true'
+        && (startsWith(runner.name, 'depot-')
+        || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ steps.restore-pnpm-store.outputs.cache-primary-key }}

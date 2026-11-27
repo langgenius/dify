@@ -12,14 +12,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { useQuery } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { toast } from '@/app/notifications'
-import {
-  useMutationPluginAutoUpgradeSettings,
-  usePluginAutoUpgradeSettings,
-} from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
+import { useMutationPluginAutoUpgradeSettings } from '@/service/use-plugins'
 import { UpdateSettingDialogForm } from './update-setting-dialog-form'
 
 type Props = {
@@ -34,7 +33,11 @@ export function UpdateSettingDialog({ category }: Props) {
     error,
     isFetching,
     isLoading,
-  } = usePluginAutoUpgradeSettings(category)
+  } = useQuery(
+    consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryOptions({
+      input: { query: { category } },
+    }),
+  )
   const { mutate: saveAutoUpgrade, isPending: isSavePending } =
     useMutationPluginAutoUpgradeSettings({
       category,
@@ -68,6 +71,7 @@ export function UpdateSettingDialog({ category }: Props) {
   return (
     <Dialog
       actionsRef={actionsRef}
+      disablePointerDismissal
       onOpenChange={(open, details) => {
         if (!open && isSavePending && details.reason !== 'imperative-action') details.cancel()
       }}

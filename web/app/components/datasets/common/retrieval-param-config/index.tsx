@@ -133,7 +133,7 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             )}
             <div className="flex items-center">
-              <span id={rerankLabelId} className="mr-0.5 system-sm-semibold text-text-secondary">
+              <span id={rerankLabelId} className="me-0.5 system-sm-semibold text-text-secondary">
                 {t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' })}
               </span>
               <Infotip>

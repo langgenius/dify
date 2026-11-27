@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "نشر إصدارات الوكيل وإدارتها",
   "agent.acl.test_and_run": "اختبار الوكيل وتشغيله",
   "agent.create": "إنشاء الوكلاء",
+  "agent.tag.manage": "إدارة وسوم الوكلاء",
   "api_extension.manage": "إدارة إعدادات امتداد API",
   "app.access_config": "تكوين أذونات الوصول إلى التطبيق",
   "app.acl.access_config": "عرض أذونات الوصول وإدارتها",

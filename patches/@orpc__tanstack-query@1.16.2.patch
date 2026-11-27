@@ -1,0 +1,49 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index c19095ef73e35a2aca7bc4ec35b2414d4f3ae7b3..dbe5619f517bef01aefd00bf493e7f14a59f80e1 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -4,7 +4,7 @@ import { RECURSIVE_CLIENT_UNWRAP_KEYS } from '@orpc/client';
+ 
+ function generateOperationKey(path, state = {}) {
+   return [path, {
+-    ...state.input !== void 0 ? { input: state.input } : {},
++    ...state.input === skipToken ? { skipToken: true } : state.input !== void 0 ? { input: state.input } : {},
+     ...state.type !== void 0 ? { type: state.type } : {},
+     ...state.fnOptions !== void 0 ? { fnOptions: state.fnOptions } : {}
+   }];
+@@ -108,7 +108,7 @@ function createProcedureUtils(client, options) {
+       optionsIn = { ...options.experimental_defaults?.queryOptions, ...optionsIn };
+       const queryKey = utils.queryKey(optionsIn);
+       return {
+-        queryFn: ({ signal }) => {
++        queryFn: optionsIn.input === skipToken ? skipToken : ({ signal }) => {
+           if (optionsIn.input === skipToken) {
+             throw new Error("queryFn should not be called with skipToken used as input");
+           }
+@@ -137,7 +137,7 @@ function createProcedureUtils(client, options) {
+       optionsIn = { ...options.experimental_defaults?.experimental_streamedOptions, ...optionsIn };
+       const queryKey = utils.experimental_streamedKey(optionsIn);
+       return {
+-        queryFn: experimental_serializableStreamedQuery(
++        queryFn: optionsIn.input === skipToken ? skipToken : experimental_serializableStreamedQuery(
+           async ({ signal }) => {
+             if (optionsIn.input === skipToken) {
+               throw new Error("queryFn should not be called with skipToken used as input");
+@@ -173,7 +173,7 @@ function createProcedureUtils(client, options) {
+       optionsIn = { ...options.experimental_defaults?.experimental_liveOptions, ...optionsIn };
+       const queryKey = utils.experimental_liveKey(optionsIn);
+       return {
+-        queryFn: experimental_liveQuery(async ({ signal }) => {
++        queryFn: optionsIn.input === skipToken ? skipToken : experimental_liveQuery(async ({ signal }) => {
+           if (optionsIn.input === skipToken) {
+             throw new Error("queryFn should not be called with skipToken used as input");
+           }
+@@ -209,7 +209,7 @@ function createProcedureUtils(client, options) {
+       optionsIn = { ...options.experimental_defaults?.infiniteOptions, ...optionsIn };
+       const queryKey = utils.infiniteKey(optionsIn);
+       return {
+-        queryFn: ({ pageParam, signal }) => {
++        queryFn: optionsIn.input === skipToken ? skipToken : ({ pageParam, signal }) => {
+           if (optionsIn.input === skipToken) {
+             throw new Error("queryFn should not be called with skipToken used as input");
+           }

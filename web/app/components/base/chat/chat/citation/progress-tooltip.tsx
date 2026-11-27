@@ -13,9 +13,9 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({ data }) => {
     <Tooltip>
       <TooltipTrigger
         data-testid="progress-trigger-content"
-        className="flex grow items-center border-0 bg-transparent p-0 text-left"
+        className="flex grow items-center border-0 bg-transparent p-0 text-start"
       >
-        <div className="mr-1 h-1.5 w-16 overflow-hidden rounded-[3px] border border-components-progress-gray-border">
+        <div className="me-1 h-1.5 w-16 overflow-hidden rounded-[3px] border border-components-progress-gray-border">
           <div
             data-testid="progress-bar-fill"
             className="h-full bg-components-progress-gray-progress"

@@ -16,6 +16,7 @@ class EvaluationErrorCode(StrEnum):
 
     MODEL_REQUEST_FAILED = "EVAL_MODEL_REQUEST_FAILED"
     METRIC_FAILED = "EVAL_METRIC_FAILED"
+    CONTEXT_MISSING = "EVAL_CONTEXT_MISSING"
     UNSUPPORTED_METRIC = "EVAL_UNSUPPORTED_METRIC"
     CUSTOM_EVALUATOR_FAILED = "EVAL_CUSTOM_EVALUATOR_FAILED"
     TARGET_FAILED = "EVAL_TARGET_FAILED"
@@ -24,6 +25,8 @@ class EvaluationErrorCode(StrEnum):
     RUN_FAILED = "EVAL_RUN_FAILED"
     RUN_DISPATCH_FAILED = "EVAL_RUN_DISPATCH_FAILED"
     RUN_RETRYING = "EVAL_RUN_RETRYING"
+    RUN_QUOTA_EXCEEDED = "EVAL_RUN_QUOTA_EXCEEDED"
+    APP_CONCURRENCY_TIMEOUT = "EVAL_APP_CONCURRENCY_TIMEOUT"
     INVALID_CONFIG = "EVAL_INVALID_CONFIG"
     JUDGMENT_FAILED = "EVAL_JUDGMENT_FAILED"
 
@@ -33,6 +36,9 @@ _PUBLIC_MESSAGES = {
         "Evaluation model request failed. Check the model configuration and retry."
     ),
     EvaluationErrorCode.METRIC_FAILED: "Metric evaluation failed. Check the evaluation configuration and retry.",
+    EvaluationErrorCode.CONTEXT_MISSING: (
+        "This metric needs text context present in the model prompt or retrieval result, but none was eligible."
+    ),
     EvaluationErrorCode.UNSUPPORTED_METRIC: "The selected metric is not supported by this evaluator.",
     EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED: "Custom evaluator failed. Check its workflow and retry.",
     EvaluationErrorCode.TARGET_FAILED: "Target execution failed. Check the target configuration and retry.",
@@ -41,6 +47,12 @@ _PUBLIC_MESSAGES = {
     EvaluationErrorCode.RUN_FAILED: "Evaluation run failed. Please retry or contact support.",
     EvaluationErrorCode.RUN_DISPATCH_FAILED: "Could not start evaluation. Please retry or contact support.",
     EvaluationErrorCode.RUN_RETRYING: "Evaluation is retrying after a temporary failure.",
+    EvaluationErrorCode.RUN_QUOTA_EXCEEDED: (
+        "Workflow execution quota was exhausted before the evaluation could finish."
+    ),
+    EvaluationErrorCode.APP_CONCURRENCY_TIMEOUT: (
+        "Evaluation timed out while waiting for the target app concurrency limit. Please retry."
+    ),
     EvaluationErrorCode.INVALID_CONFIG: "Evaluation configuration is invalid. Check it and retry.",
     EvaluationErrorCode.JUDGMENT_FAILED: "Evaluation judgment failed. Check its conditions and retry.",
 }

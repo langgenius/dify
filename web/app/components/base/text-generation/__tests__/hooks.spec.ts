@@ -1,16 +1,21 @@
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import { act, renderHook } from '@testing-library/react'
 import { useTextGeneration } from '../hooks'
 
 const mockNotify = vi.fn()
-const mockSsePost =
+const mockSsePost = vi.hoisted(() =>
   vi.fn<
     (
       url: string,
-      fetchOptions: { body: Record<string, unknown> },
-      otherOptions: IOtherOptions,
+      fetchOptions: { body?: Record<string, unknown> },
+      otherOptions: StreamCallbacks,
     ) => void
-  >()
+  >(),
+)
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: mockSsePost, get: vi.fn() })
+})
 
 vi.mock('@/app/notifications', () => ({
   default: {
@@ -24,11 +29,9 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/base', () => ({
-  ssePost: (...args: Parameters<typeof mockSsePost>) => mockSsePost(...args),
-}))
+vi.mock('@/service/event-stream', () => ({ streamEvents: streams.streamEvents }))
 
-const getLatestStreamOptions = (): IOtherOptions => {
+const getLatestStreamOptions = (): StreamCallbacks => {
   const latestCall = mockSsePost.mock.calls[mockSsePost.mock.calls.length - 1]
   if (!latestCall) throw new Error('Expected ssePost to be called at least once')
   return latestCall[2]
@@ -47,7 +50,7 @@ describe('useTextGeneration', () => {
 
       await act(async () => {
         sendResult = await result.current.handleSend(
-          '/console/api',
+          streams.sender('/console/api'),
           { query: 'hello' },
           { onNotifyError },
         )
@@ -79,7 +82,7 @@ describe('useTextGeneration', () => {
       const { result } = renderHook(() => useTextGeneration())
 
       await act(async () => {
-        await result.current.handleSend('/console/api', { query: 'chunk' })
+        await result.current.handleSend(streams.sender('/console/api'), { query: 'chunk' })
       })
 
       const streamOptions = getLatestStreamOptions()
@@ -102,7 +105,7 @@ describe('useTextGeneration', () => {
       const { result } = renderHook(() => useTextGeneration())
 
       await act(async () => {
-        await result.current.handleSend('/console/api', { query: 'replace' })
+        await result.current.handleSend(streams.sender('/console/api'), { query: 'replace' })
       })
 
       const streamOptions = getLatestStreamOptions()
@@ -111,7 +114,7 @@ describe('useTextGeneration', () => {
       })
 
       const replaceMessage = { answer: 'New content' } as Parameters<
-        NonNullable<IOtherOptions['onMessageReplace']>
+        NonNullable<StreamCallbacks['onMessageReplace']>
       >[0]
       act(() => {
         streamOptions.onMessageReplace?.(replaceMessage)
@@ -124,7 +127,7 @@ describe('useTextGeneration', () => {
       const { result } = renderHook(() => useTextGeneration())
 
       await act(async () => {
-        await result.current.handleSend('/console/api', { query: 'done' })
+        await result.current.handleSend(streams.sender('/console/api'), { query: 'done' })
       })
       expect(result.current.isResponding).toBe(true)
 
@@ -140,7 +143,7 @@ describe('useTextGeneration', () => {
       const { result } = renderHook(() => useTextGeneration())
 
       await act(async () => {
-        await result.current.handleSend('/console/api', { query: 'error' })
+        await result.current.handleSend(streams.sender('/console/api'), { query: 'error' })
       })
       expect(result.current.isResponding).toBe(true)
 
@@ -157,11 +160,13 @@ describe('useTextGeneration', () => {
       let sendResult: boolean | undefined
 
       await act(async () => {
-        await result.current.handleSend('/console/api', { query: 'first' })
+        await result.current.handleSend(streams.sender('/console/api'), { query: 'first' })
       })
 
       await act(async () => {
-        sendResult = await result.current.handleSend('/console/api', { query: 'wait' })
+        sendResult = await result.current.handleSend(streams.sender('/console/api'), {
+          query: 'wait',
+        })
       })
 
       expect(sendResult).toBe(false)

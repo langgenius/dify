@@ -40,7 +40,7 @@ const ImageUploader = () => {
           <RiUploadCloud2Line className="size-5 text-text-tertiary" />
           <div>
             <span>{t(($) => $['imageUploader.button'], { ns: 'dataset' })}</span>
-            <span className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>
+            <span className="ms-1 cursor-pointer text-text-accent" onClick={selectHandle}>
               {t(($) => $['imageUploader.browse'], { ns: 'dataset' })}
             </span>
           </div>

@@ -1,4 +1,3 @@
-import type { PluginStatus } from '@/app/components/plugins/types'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { userEvent } from 'vite-plus/test/browser'
@@ -6,33 +5,28 @@ import { render } from 'vitest-browser-react'
 import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import plugin from '@/i18n/locales/en-US/plugin.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import PluginTasks from './index'
 
-const service = vi.hoisted(() => ({ clear: vi.fn().mockResolvedValue({}), refetch: vi.fn() }))
-// boundary: task polling and clear mutations stop at the plugin service hooks.
-vi.mock('@/service/use-plugins', () => ({
-  usePluginTaskList: () => ({
-    pluginTasks: [
-      {
-        id: 'task-1',
-        plugins: [
-          {
-            plugin_unique_identifier: 'plugin-1',
-            plugin_id: 'plugin-1',
-            source: PluginSource.marketplace,
-            status: TaskStatus.success,
-            message: '',
-            icon: '',
-            labels: { en_US: 'Installed Plugin' },
-          } satisfies Omit<PluginStatus, 'taskId'>,
-        ],
-      },
-    ],
-    handleRefetch: service.refetch,
-  }),
-  useMutationClearTaskPlugin: () => ({ mutateAsync: service.clear }),
-}))
+const task = {
+  id: 'task-1',
+  status: TaskStatus.success,
+  completed_plugins: 1,
+  total_plugins: 1,
+  created_at: '2026-06-01T00:00:00Z',
+  updated_at: '2026-06-01T00:00:00Z',
+  plugins: [
+    {
+      plugin_unique_identifier: 'plugin-1',
+      plugin_id: 'plugin-1',
+      source: PluginSource.marketplace,
+      status: TaskStatus.success,
+      message: '',
+      icon: '',
+      labels: { en_US: 'Installed Plugin' },
+    },
+  ],
+}
 
 vi.unmock('react-i18next')
 
@@ -44,8 +38,26 @@ it('clears a completed plugin installation task using the keyboard and returns f
     keySeparator: false,
     resources: { 'en-US': { plugin } },
   })
-  onTestFinished(guardUnexpectedFetch())
-  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          // Completed tasks refresh the workspace model lists.
+          models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+          plugin: {
+            tasks: {
+              get: () => ({ tasks: [task] }),
+              byTaskId: { delete: { byIdentifier: { post: () => ({ success: true }) } } },
+            },
+          },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    workspacePermissionKeys: ['plugin.install'],
+  })
   const screen = await render(
     <ConsoleProvider>
       <I18nextProvider i18n={i18n}>
@@ -67,7 +79,11 @@ it('clears a completed plugin installation task using the keyboard and returns f
   await expect.element(clear).toHaveFocus()
   await expect.poll(() => clear.element().checkVisibility({ checkOpacity: true })).toBe(true)
   await userEvent.keyboard('{Enter}')
-  expect(service.clear).toHaveBeenCalledExactlyOnceWith({ taskId: 'task-1', pluginId: 'plugin-1' })
+  await expect
+    .poll(() => fake.console.workspaces.current.plugin.tasks.byTaskId.delete.byIdentifier.post)
+    .toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params: { task_id: 'task-1', identifier: 'plugin-1' } }),
+    )
   await expect.element(taskDetails).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
 })

@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { Suspense, useId, useRef } from 'react'
@@ -111,11 +111,7 @@ function TryAppContent({
       <Tabs defaultValue={TypeEnum.DETAIL} className="flex h-full flex-col">
         <div className="flex shrink-0 ps-4 pe-10">
           <TabsList>
-            <TabsTab
-              ref={detailTabRef}
-              value={TypeEnum.DETAIL}
-              className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
-            >
+            <TabsTab ref={detailTabRef} value={TypeEnum.DETAIL} className="pt-2">
               <span className="system-md-semibold-uppercase">
                 {t(($) => $['tryApp.tabHeader.detail'], { ns: 'explore' })}
               </span>
@@ -124,13 +120,14 @@ function TryAppContent({
               <TabsTab
                 value={TypeEnum.TRY}
                 disabled={!appDetail || hasLoadError || agentLoading}
-                className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
+                className="pt-2"
               >
                 <span className="system-md-semibold-uppercase">
                   {t(($) => $['tryApp.tabHeader.try'], { ns: 'explore' })}
                 </span>
               </TabsTab>
             )}
+            <TabsIndicator />
           </TabsList>
         </div>
         <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:overflow-hidden">

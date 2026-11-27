@@ -1,38 +1,30 @@
 import type { QueryParam } from '../filter'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import Filter from '../filter'
 
-const countAnnotations = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.apps.byAppId.annotations.count.get>(),
-)
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.byAppId.annotations.count.get': countAnnotations,
-    }),
-  }
-})
+const appId = '019a0000-0000-7000-8000-000000000001'
 
 // Filter exposes a controlled search value; the fixture supplies only that public prop contract.
 function ControlledFilter() {
   const [query, setQuery] = useState<QueryParam>({ keyword: 'initial' })
   return (
-    <Filter appId="app-1" queryParams={query} setQueryParams={setQuery}>
+    <Filter appId={appId} queryParams={query} setQueryParams={setQuery}>
       <button type="button">Add annotation</button>
     </Filter>
   )
 }
 
-async function renderFilter() {
+async function renderFilter(count: () => { count: number } | Promise<{ count: number }>) {
+  onTestFinished(
+    installFakeApi({
+      console: { apps: { byAppId: { annotations: { count: { get: count } } } } },
+    }),
+  )
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
   return render(
     <ConsoleProvider>
@@ -41,15 +33,9 @@ async function renderFilter() {
   )
 }
 
-beforeEach(() => {
-  countAnnotations.mockReset()
-  onTestFinished(guardUnexpectedFetch())
-})
-
 it('withholds filters until the annotation count arrives', async () => {
   const request = createDeferred<{ count: number }>()
-  countAnnotations.mockReturnValue(request.promise)
-  const screen = await renderFilter()
+  const screen = await renderFilter(() => request.promise)
   await expect.element(screen.getByRole('searchbox')).not.toBeInTheDocument()
   await expect
     .element(screen.getByRole('button', { name: 'Add annotation' }))
@@ -64,8 +50,7 @@ it('withholds filters until the annotation count arrives', async () => {
 it.each([0, 20])(
   'edits and clears the search after count %i loads without losing input focus',
   async (count) => {
-    countAnnotations.mockResolvedValue({ count })
-    const screen = await renderFilter()
+    const screen = await renderFilter(() => ({ count }))
     const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
     await expect.element(input).toHaveValue('initial')
     await input.fill('updated')

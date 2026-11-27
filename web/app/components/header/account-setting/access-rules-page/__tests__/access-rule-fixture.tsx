@@ -8,10 +8,16 @@ import { ResourceAccessRuleSection } from '../resource-access-rule-section'
 export const resources = ['app', 'dataset', 'agent'] as const
 export const permissionFor = (type: AccessPolicyResourceType) =>
   type === 'app' ? 'app.acl.release_and_version' : `${type}.acl.edit`
+// Access policy routes take UUID path parameters.
+const ruleIds: Record<AccessPolicyResourceType, string> = {
+  app: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d',
+  dataset: '1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e',
+  agent: '2c3d4e5f-6a7b-4c8d-8e9f-1a2b3c4d5e6f',
+}
 export function ruleFor(type: AccessPolicyResourceType, name = `${type} rule`) {
   return {
     policy: createAccessPolicyFixture({
-      id: `${type}-rule`,
+      id: ruleIds[type],
       resource_type: type,
       name,
       permission_keys: [permissionFor(type)],

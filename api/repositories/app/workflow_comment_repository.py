@@ -414,14 +414,8 @@ class WorkflowCommentRepository(WorkflowCommentQueries, WorkflowCommentThreads):
     def _participants(
         comment: WorkflowComment, accounts: Mapping[str, WorkflowCommentAccount]
     ) -> tuple[WorkflowCommentAccount, ...]:
-        """Return the creator, repliers, then mentioned users, each once and in first-seen order."""
-        participant_ids = dict.fromkeys(
-            [
-                comment.created_by,
-                *(reply.created_by for reply in comment.replies),
-                *(mention.mentioned_user_id for mention in comment.mentions),
-            ]
-        )
+        """Return the creator and repliers with known accounts, once each in first-seen order."""
+        participant_ids = dict.fromkeys([comment.created_by, *(reply.created_by for reply in comment.replies)])
         return tuple(accounts[user_id] for user_id in participant_ids if user_id in accounts)
 
 

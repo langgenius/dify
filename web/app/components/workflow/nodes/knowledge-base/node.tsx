@@ -36,10 +36,10 @@ const SettingRow = memo(({ label, value, warning = false }: SettingRowProps) => 
           : 'bg-workflow-block-parma-bg',
       )}
     >
-      <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{label}</div>
+      <div className="me-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{label}</div>
       <div
         className={cn(
-          'grow truncate text-right system-xs-medium',
+          'grow truncate text-end system-xs-medium',
           warning ? 'text-text-warning' : 'text-text-secondary',
         )}
         title={value}
@@ -195,7 +195,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     return (
       <div className="mb-1 space-y-0.5 px-3 py-1">
         <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-          <span className="mr-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
+          <span className="me-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
           <div
             className="grow truncate system-xs-medium text-text-warning"
             title={validationIssueMessage}

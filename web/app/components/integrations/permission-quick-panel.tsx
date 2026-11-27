@@ -17,6 +17,8 @@ const permissionSettingOptions = [
 
 type PermissionQuickPanelProps = {
   permission: Permissions
+  /** While a save is pending: the next change builds on the value it writes. */
+  disabled?: boolean
   onChange: (key: PermissionSettingKey, value: PermissionType) => void
 }
 
@@ -27,7 +29,11 @@ const permissionOptionCardClassName = cn(
   'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:font-medium data-checked:text-text-primary data-checked:shadow-xs data-checked:shadow-shadow-shadow-3',
 )
 
-export function PermissionQuickPanel({ permission, onChange }: PermissionQuickPanelProps) {
+export function PermissionQuickPanel({
+  permission,
+  disabled = false,
+  onChange,
+}: PermissionQuickPanelProps) {
   const { t } = useTranslation(['plugin'])
   const rows: Array<{
     key: PermissionSettingKey
@@ -60,6 +66,7 @@ export function PermissionQuickPanel({ permission, onChange }: PermissionQuickPa
                 if (nextValue) onChange(row.key, nextValue)
               }}
               aria-label={row.label}
+              disabled={disabled}
               className="w-full gap-2"
             >
               {permissionSettingOptions.map((option) => {

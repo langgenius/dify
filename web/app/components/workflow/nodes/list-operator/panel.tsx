@@ -91,7 +91,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
         >
           {inputs.extract_by?.enabled ? (
             <div className="flex items-center justify-between">
-              <div className="mr-2 grow">
+              <div className="me-2 grow">
                 <ExtractInput
                   value={inputs.extract_by.serial as string}
                   onChange={handleExtractsChange}
@@ -119,7 +119,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
           {inputs.order_by?.enabled ? (
             <div className="flex items-center justify-between">
               {hasSubVariable && (
-                <div className="mr-2 grow">
+                <div className="me-2 grow">
                   <SubVariablePicker
                     value={inputs.order_by.key as string}
                     onChange={handleOrderByKeyChange}

@@ -14,6 +14,7 @@ import { useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
+import { getVectorSpaceQuota, isQuotaReached } from '@/app/components/billing/quota'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
@@ -145,7 +146,7 @@ const StepOne = ({
 
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0
-  const shouldCheckVectorSpace = deploymentEdition === 'CLOUD' && (allFileLoaded || hasNotion)
+  const shouldCheckVectorSpace = allFileLoaded || hasNotion
   const {
     data: vectorSpace,
     isFetching: isFetchingVectorSpacePlan,
@@ -157,12 +158,8 @@ const StepOne = ({
   const isVectorSpaceUnavailable =
     shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    !!vectorSpace &&
-    !vectorSpace.usage_unknown &&
-    vectorSpace.limit > 0 &&
-    vectorSpace.size >= vectorSpace.limit
-  const isShowVectorSpaceFull =
-    (allFileLoaded || hasNotion) && isVectorSpaceFull && deploymentEdition === 'CLOUD'
+    !!vectorSpace && !vectorSpace.usage_unknown && isQuotaReached(getVectorSpaceQuota(vectorSpace))
+  const isShowVectorSpaceFull = shouldCheckVectorSpace && isVectorSpaceFull
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const supportBatchUpload =
     deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'

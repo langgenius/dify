@@ -7,11 +7,11 @@ import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
 import { toast } from '@/app/notifications'
-import { resolveLogicalDocumentCitation } from '@/features/new-rag/documents/resolve-logical-document-id'
 import { newKnowledgeDocumentDetailPath } from '@/features/new-rag/routes'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { resolveLogicalDocumentCitation } from '@/service/knowledge-fs/document-citation'
 import { downloadUrl } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import ProgressTooltip from './progress-tooltip'
@@ -86,7 +86,7 @@ function SourceOpenAction({ source }: { source: Resources['sources'][number] }) 
         className={sourceActionClassName}
       >
         {label}
-        <i className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+        <i className="ms-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
       </Link>
     )
   }
@@ -103,7 +103,7 @@ function SourceOpenAction({ source }: { source: Resources['sources'][number] }) 
       className={sourceActionClassName}
     >
       {label}
-      <i className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+      <i className="ms-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
     </Link>
   )
 }
@@ -133,7 +133,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
       })
       if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
     } catch {
-      // The request layer reports the error; allow retry without an unhandled rejection.
+      // The mutation cache reports the error; allow retry without an unhandled rejection.
     }
   }
 
@@ -146,7 +146,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
             data-testid="popup-trigger"
             className="flex h-7 max-w-60 items-center rounded-lg bg-components-button-secondary-bg px-2"
           >
-            <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
+            <FileIcon type={fileType} className="me-1 size-4 shrink-0" />
             <div className="truncate text-xs text-text-tertiary">{data.documentName}</div>
           </div>
         }
@@ -163,14 +163,14 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
         >
           <div className="px-4 pt-3 pb-2">
             <div className="flex h-4.5 items-center">
-              <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
+              <FileIcon type={fileType} className="me-1 size-4 shrink-0" />
               <div className="truncate system-xs-medium text-text-tertiary">
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') &&
                 !!data.sources?.[0]?.dataset_id &&
                 !!(data.documentId || data.sources?.[0]?.document_id) ? (
                   <button
                     type="button"
-                    className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"
+                    className="cursor-pointer truncate border-none bg-transparent p-0 text-start text-text-tertiary hover:underline"
                     onClick={handleDownloadUploadFile}
                     disabled={isDownloading}
                   >
@@ -195,7 +195,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                         <div className="flex h-5 items-center rounded-md border border-divider-subtle px-1.5">
                           {/* replaced svg component with tailwind icon class per lint rule */}
                           <i
-                            className="mr-0.5 i-custom-vender-line-general-hash-02 size-3 text-text-quaternary"
+                            className="me-0.5 i-custom-vender-line-general-hash-02 size-3 text-text-quaternary"
                             aria-hidden
                           />
                           <div
@@ -223,7 +223,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             data={source.word_count}
                             icon={
                               <i
-                                className="mr-1 i-custom-vender-line-editor-type-square size-3"
+                                className="me-1 i-custom-vender-line-editor-type-square size-3"
                                 aria-hidden
                               />
                             }
@@ -233,7 +233,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             data={source.hit_count}
                             icon={
                               <i
-                                className="mr-1 i-custom-vender-line-general-target-04 size-3"
+                                className="me-1 i-custom-vender-line-general-target-04 size-3"
                                 aria-hidden
                               />
                             }
@@ -243,7 +243,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             data={source.index_node_hash?.substring(0, 7)}
                             icon={
                               <i
-                                className="mr-1 i-custom-vender-line-editor-bezier-curve-03 size-3"
+                                className="me-1 i-custom-vender-line-editor-bezier-curve-03 size-3"
                                 aria-hidden
                               />
                             }

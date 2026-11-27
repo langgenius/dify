@@ -63,14 +63,14 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
   const [fold, setFold] = useState(false)
   return (
     <div>
-      <div className={cn('flex pr-2')}>
+      <div className={cn('flex pe-2')}>
         <TreeIndentLine depth={depth} />
         <div className="w-0 grow">
           <div className="relative flex select-none">
             {hasChildren && (
               <RiArrowDropDownLine
                 className={cn(
-                  'absolute top-[50%] -left-4.5 h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary',
+                  'absolute -inset-s-4.5 top-[50%] h-4 w-4 translate-y-[-50%] cursor-pointer bg-components-panel-bg text-text-tertiary',
                   fold && 'rotate-270 text-text-accent',
                 )}
                 onClick={() => setFold((isFolded) => !isFolded)}
@@ -78,31 +78,31 @@ const Field: FC<Props> = ({ name, payload, depth = 1, required, rootClassName })
             )}
             <div
               className={cn(
-                'ml-1.75 h-6 truncate system-sm-medium leading-6 text-text-secondary',
+                'ms-1.75 h-6 truncate system-sm-medium leading-6 text-text-secondary',
                 isRoot && rootClassName,
               )}
             >
               {name}
             </div>
-            <div className="ml-3 shrink-0 system-xs-regular leading-6 text-text-tertiary">
+            <div className="ms-3 shrink-0 system-xs-regular leading-6 text-text-tertiary">
               {displayType}
               {schemaType && schemaType !== 'file' && ` (${schemaType})`}
             </div>
             {required && (
-              <div className="ml-3 system-2xs-medium-uppercase leading-6 text-text-warning">
+              <div className="ms-3 system-2xs-medium-uppercase leading-6 text-text-warning">
                 {t(($) => $['structOutput.required'], { ns: 'app' })}
               </div>
             )}
           </div>
           {description && (
-            <div className="ml-1.75 flex">
+            <div className="ms-1.75 flex">
               <div className="w-0 grow truncate system-xs-regular text-text-tertiary">
                 {description}
               </div>
             </div>
           )}
           {enumValues.length > 0 && (
-            <div className="ml-1.75 flex">
+            <div className="ms-1.75 flex">
               <div className="w-0 grow system-xs-regular text-text-quaternary">
                 {enumValues.map((value, index) => (
                   <span key={index}>

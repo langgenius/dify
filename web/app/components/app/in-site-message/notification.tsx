@@ -5,6 +5,7 @@ import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import InSiteMessage from './index'
 
@@ -55,9 +56,13 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
   }
 }
 
+/** Pages a notice links to, where it stays out of the way without being dismissed. */
+const hiddenPathnames: ReadonlySet<string> = new Set(['/collaboration-demo'])
+
 function InSiteMessageNotification() {
   const { t } = useTranslation(['common'])
   const locale = useLocale()
+  const hidden = hiddenPathnames.has(usePathname())
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -70,14 +75,14 @@ function InSiteMessageNotification() {
   const { data } = useQuery(
     consoleQuery.notification.get.queryOptions({
       input: { query: { language: locale } },
-      enabled: isCloudEdition,
+      enabled: isCloudEdition && !hidden,
     }),
   )
 
   const notification = data?.notifications?.[0]
   const parsedBody = notification ? parseNotificationBody(notification.body) : null
 
-  if (!isCloudEdition || !notification || !notification.notification_id) return null
+  if (hidden || !isCloudEdition || !notification || !notification.notification_id) return null
 
   const notificationId = notification.notification_id
   const fallbackActions: InSiteMessageActionItem[] = [

@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Ningún documento coincide con esta búsqueda.",
   "parentChildChunkCount": "{{parentCount}} fragmentos padre / {{childCount}} fragmentos hijo",
   "partialDocumentResults": "Puede haber más documentos coincidentes. Carga más para continuar la búsqueda.",
+  "reindexConfirmDescription": "Al reindexar se vuelven a generar todos los fragmentos y entradas del índice a partir del archivo de origen. Las ediciones hechas en los fragmentos de la base de conocimiento, como adoptar la afirmación de otro documento al resolver un conflicto, se sobrescribirán con el contenido del archivo de origen. La búsqueda seguirá usando el índice actual hasta que termine la reindexación.",
+  "reindexConfirmTitle": "¿Reindexar a partir del archivo de origen?",
   "reindexDocument": "Reindexar",
   "retrievalCountValue": "{{value}} en los últimos 7 días",
   "retryReindexDocument": "Reindexar de nuevo",

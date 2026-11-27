@@ -1,7 +1,7 @@
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import type { SnippetDraftRunPayload } from '@/types/snippet'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
@@ -12,9 +12,14 @@ import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflo
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { ssePost } from '@/service/base'
-import { consoleQuery } from '@/service/console'
-import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
+import {
+  toGraphEdges,
+  toGraphNodes,
+  toStoredViewport,
+} from '@/app/components/workflow/utils/published-workflow'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
+import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useSnippetRun = () => {
@@ -77,12 +82,23 @@ export const useSnippetRun = () => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
-  const invalidAllLastRun = useInvalidateAllLastRun(resource)
-  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+  const queryClient = useQueryClient()
+
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
+  const invalidateRunHistory = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: workflowRunHistoryQueryOptions(resource).queryKey,
+      }),
+    [queryClient, resource],
+  )
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
-    async (params: SnippetDraftRunPayload, callback?: IOtherOptions) => {
+    async (params: SnippetDraftRunPayload, callback?: StreamCallbacks) => {
       const { getNodes, setNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft) => {
         draft.forEach((node) => {
@@ -109,13 +125,10 @@ export const useSnippetRun = () => {
         onError,
         ...restCallback
       } = callback || {}
-      const runHistoryUrl = `/snippets/${snippetId}/workflow-runs`
       workflowStore.setState({ historyWorkflowData: undefined })
       const workflowContainer = document.getElementById('workflow-container')
 
       const { clientWidth, clientHeight } = workflowContainer!
-
-      const url = `/snippets/${snippetId}/workflows/draft/run`
 
       const { setWorkflowRunningData } = workflowStore.getState()
       setWorkflowRunningData({
@@ -132,24 +145,25 @@ export const useSnippetRun = () => {
       abortControllerRef.current?.abort()
       abortControllerRef.current = null
 
-      ssePost(
-        url,
-        {
-          body: params,
-        },
+      streamEvents(
+        (options) =>
+          consoleClient.snippets.bySnippetId.workflows.draft.run.post(
+            { params: { snippet_id: snippetId }, body: params },
+            options,
+          ),
         {
           getAbortController: (controller: AbortController) => {
             abortControllerRef.current = controller
           },
           onWorkflowStarted: (params) => {
             handleWorkflowStarted(params)
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
 
             onWorkflowStarted?.(params)
           },
           onWorkflowFinished: (params) => {
             handleWorkflowFinished(params)
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
             fetchInspectVars({})
             invalidAllLastRun()
 
@@ -157,7 +171,7 @@ export const useSnippetRun = () => {
           },
           onError: (params) => {
             handleWorkflowFailed()
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
 
             onError?.(params)
           },
@@ -282,14 +296,14 @@ export const useSnippetRun = () => {
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: FetchWorkflowDraftResponse) => {
-      const nodes = publishedWorkflow.graph.nodes.map((node) => ({
+    (publishedWorkflow: WorkflowVersionListItem) => {
+      const nodes = toGraphNodes(publishedWorkflow.graph).map((node) => ({
         ...node,
         selected: false,
         data: { ...node.data, selected: false },
       }))
-      const edges = publishedWorkflow.graph.edges
-      const viewport = publishedWorkflow.graph.viewport!
+      const edges = toGraphEdges(publishedWorkflow.graph)
+      const viewport = toStoredViewport(publishedWorkflow.graph)
       handleUpdateWorkflowCanvas({
         nodes,
         edges,

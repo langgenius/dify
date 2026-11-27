@@ -21,6 +21,8 @@ import ModelLoadBalancingModal from '../model-load-balancing-modal'
 
 const api = vi.hoisted(() => ({
   save: vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.post>(),
+  removeModel:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.delete>(),
   credentials:
     vi.fn<
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.credentials.get
@@ -50,6 +52,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         credentials: { api_key: 'same-key' },
       }),
       'workspaces.current.modelProviders.byProvider.models.post': api.save,
+      'workspaces.current.modelProviders.byProvider.models.delete': api.removeModel,
     }),
   }
 })
@@ -173,9 +176,8 @@ beforeEach(() => {
       (c) => c.credential_id !== credential_id,
     )
     if (credentialData.current_credential_id === credential_id) {
-      const next = credentialData.available_credentials[0]
-      credentialData.current_credential_id = next?.credential_id
-      credentialData.current_credential_name = next?.credential_name
+      credentialData.current_credential_id = null
+      credentialData.current_credential_name = null
     }
     return { result: 'success' }
   })
@@ -207,6 +209,106 @@ describe('ModelLoadBalancingModal', () => {
     await act(async () => request.resolve(credentialData))
     expect(await screen.findByRole('switch', { name: 'Default' })).toBeChecked()
     expect(saveButton()).toBeEnabled()
+  })
+
+  it('saves an edited draft while credentials refresh in the background', async () => {
+    const { user, queryClient, onSave, onClose } = renderModal()
+    await screen.findByRole('switch', { name: 'Default' })
+    await user.click(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.providerManaged' }),
+    )
+
+    const refresh = createDeferred<typeof credentialData>()
+    api.credentials.mockReturnValueOnce(refresh.promise)
+    const key =
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.key()
+    void queryClient.invalidateQueries({ queryKey: key })
+    await waitFor(() => expect(api.credentials).toHaveBeenCalledTimes(2))
+
+    expect(saveButton()).toBeEnabled()
+    await user.click(saveButton())
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(api.save.mock.calls[0]?.[0].body.load_balancing?.enabled).toBe(false)
+    await act(async () => refresh.resolve(credentialData))
+  })
+
+  it('waits for a credential deletion and reconciliation before saving the replacement', async () => {
+    const { user } = renderModal(ConfigurationMethodEnum.customizableModel)
+    await screen.findByRole('switch', { name: 'Default' })
+    await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
+    await user.click(screen.getByRole('button', { name: 'Default' }))
+    await user.click(screen.getByRole('button', { name: 'Backup' }))
+    expect(saveButton()).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Backup' }))
+
+    const deletion = createDeferred<{ result: string }>()
+    const refresh = createDeferred<typeof credentialData>()
+    const remove = api.remove.getMockImplementation()!
+    api.remove.mockImplementationOnce(async (input) => {
+      await deletion.promise
+      return remove(input)
+    })
+    api.credentials.mockReturnValueOnce(refresh.promise)
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1]!)
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    expect(api.remove).toHaveBeenCalledTimes(1)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+    await act(async () => deletion.resolve({ result: 'success' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(api.credentials).toHaveBeenCalledTimes(2))
+    expect(saveButton()).toBeDisabled()
+    await user.click(saveButton())
+    expect(api.save).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Default' }))
+    expect(screen.getByRole('button', { name: 'New Key' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Backup' })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await act(async () => refresh.resolve(credentialData))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await user.click(saveButton())
+    await waitFor(() => expect(api.save).toHaveBeenCalledTimes(1))
+    expect(api.save.mock.calls[0]?.[0].body).toMatchObject({
+      credential_id: 'cred-1',
+      load_balancing: { configs: [expect.objectContaining({ credential_id: 'cred-1' })] },
+    })
+  })
+
+  it('does not save a deleted active credential if the reconciliation fails', async () => {
+    const { user } = renderModal(ConfigurationMethodEnum.customizableModel)
+    await screen.findByRole('switch', { name: 'Default' })
+    await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
+    await user.click(screen.getByRole('button', { name: 'Default' }))
+
+    const refresh = createDeferred<typeof credentialData>()
+    api.credentials.mockReturnValueOnce(refresh.promise)
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    await waitFor(() => expect(api.credentials).toHaveBeenCalledTimes(2))
+    await act(async () => refresh.reject(new Error('Credential refresh failed')))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(saveButton()).toBeDisabled()
+    await user.click(saveButton())
+    expect(api.save).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /authRemoved$/ }))
+    expect(screen.queryByRole('button', { name: 'Default' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Backup' }))
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await user.click(saveButton())
+    await waitFor(() => expect(api.save).toHaveBeenCalledTimes(1))
+    expect(api.save.mock.calls[0]?.[0].body.credential_id).toBe('cred-2')
   })
 
   it('masks unchanged secrets in the request without changing cached credentials', async () => {
@@ -273,9 +375,16 @@ describe('ModelLoadBalancingModal', () => {
   it.each(['Create credential', 'Rename credential'])(
     'preserves local edits when %s refreshes server credentials',
     async (action) => {
+      credentialData.load_balancing.configs.push({
+        ...credentialData.load_balancing.configs[0]!,
+        id: 'cfg-3',
+        credential_id: 'cred-3',
+        name: 'New Key',
+      })
       const { user } = renderModal()
       await screen.findByRole('switch', { name: 'Default' })
       await user.click(screen.getByRole('switch', { name: 'Backup' }))
+      const refresh = createDeferred<typeof credentialData>()
       await user.click(addCredential())
       if (action === 'Create credential') {
         await user.click(await screen.findByText('modelProvider.modelProvider.auth.addApiKey'))
@@ -287,7 +396,18 @@ describe('ModelLoadBalancingModal', () => {
       await user.type(name, action === 'Create credential' ? 'Created Key' : 'Renamed Key')
       if (action === 'Create credential')
         await user.type(screen.getByPlaceholderText('Enter API key'), 'new-key')
+      api.credentials.mockReturnValueOnce(refresh.promise)
       await user.click(saveButton())
+      await waitFor(() => expect(api.credentials).toHaveBeenCalledTimes(2))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(saveButton()).toBeDisabled()
+      await user.click(saveButton())
+      expect(api.save).not.toHaveBeenCalled()
+      await act(async () => refresh.resolve(credentialData))
       await screen.findByRole('switch', {
         name: action === 'Create credential' ? 'Created Key' : 'Renamed Key',
       })
@@ -367,6 +487,13 @@ describe('ModelLoadBalancingModal', () => {
       )
       expect(screen.getByRole('switch', { name: retained })).not.toBeChecked()
       await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
+      if (removedId === 'cred-1') {
+        expect(saveButton()).toBeDisabled()
+        await user.click(
+          screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.modelCredentials' }),
+        )
+        await user.click(screen.getByRole('button', { name: retained }))
+      }
       await user.click(saveButton())
       await waitFor(() => expect(api.save).toHaveBeenCalledTimes(1))
       expect(api.save.mock.calls[0]![0].body.load_balancing).toMatchObject({
@@ -391,13 +518,19 @@ describe('ModelLoadBalancingModal', () => {
     })
   })
 
-  it('prevents duplicate submissions and keeps the draft available for retry after failure', async () => {
+  it('blocks dismissal and duplicate submissions while saving and allows retry after failure', async () => {
     const request = createDeferred<{ result: string }>()
     api.save.mockReturnValueOnce(request.promise)
     const { user, onClose, onSave } = renderModal()
     await screen.findByRole('switch', { name: 'Default' })
     await user.dblClick(saveButton())
-    expect(saveButton()).toBeDisabled()
+    expect(saveButton()).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onClose).not.toHaveBeenCalled()
+    expect(saveButton()).toHaveAttribute('aria-disabled', 'true')
     expect(api.save).toHaveBeenCalledTimes(1)
     await act(async () => request.reject(new Error('Save failed')))
     expect(await screen.findByText('Save failed')).toBeInTheDocument()
@@ -416,5 +549,26 @@ describe('ModelLoadBalancingModal', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(api.save).not.toHaveBeenCalled()
+  })
+
+  it('does not start a save while the model is being removed', async () => {
+    const request = createDeferred<Awaited<ReturnType<typeof api.removeModel>>>()
+    api.removeModel.mockReturnValueOnce(request.promise)
+    const { user, onClose } = renderModal(ConfigurationMethodEnum.customizableModel)
+    await screen.findByRole('switch', { name: 'Default' })
+    await user.click(screen.getByRole('button', { name: /removeModel$/ }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(api.removeModel).toHaveBeenCalledTimes(1)
+    expect(saveButton()).toBeDisabled()
+    await user.click(saveButton())
+    expect(api.save).not.toHaveBeenCalled()
+    await act(async () => request.resolve({ result: 'success' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

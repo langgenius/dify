@@ -33,7 +33,7 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
         <InfotipTrigger
           aria-label={t(($) => $.error, { ns: 'common' })}
           iconVariant="warning"
-          iconSize="large"
+          size="lg"
           className="text-text-destructive"
         />
         <InfotipContent
@@ -98,7 +98,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
     >
       {isEmbedding && (
         <div
-          className="absolute top-0 left-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+          className="absolute inset-s-0 top-0 h-full min-w-0.5 border-e-2 border-e-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
           role="progressbar"
           aria-labelledby={nameId}
           aria-valuemin={0}
@@ -110,13 +110,13 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
       <span role="status" aria-atomic="true" className="sr-only">
         {statusText && `${name}: ${statusText}`}
       </span>
-      <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
+      <div className="z-1 flex h-full items-center gap-1 ps-1.5 pe-2">
         <SourceTypeIcon sourceType={sourceType} name={name} notionIcon={notionIcon} />
         <div className="flex w-0 grow items-center gap-1" title={name}>
           <div id={nameId} className="truncate system-xs-medium text-text-secondary">
             {name}
           </div>
-          <PriorityLabel className="ml-0" />
+          <PriorityLabel className="ms-0" />
         </div>
         {isEmbedding && <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>}
         <StatusIcon status={detail.indexing_status} error={detail.error ?? undefined} />

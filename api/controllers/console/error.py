@@ -1,4 +1,5 @@
 from controllers.common.errors import PaidPlanRequiredError  # noqa: F401 - Preserve the Console import path.
+from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
 
 
@@ -50,6 +51,12 @@ class NotAllowedCreateWorkspace(BaseHTTPException):
 class WorkspaceMembersLimitExceeded(BaseHTTPException):
     error_code = "limit_exceeded"
     description = "Unable to add member because the maximum workspace's member limit was exceeded"
+    code = 400
+
+
+class InvitationWorkspaceMemberLimitError(BaseHTTPException):
+    error_code = "workspace_member_limit_reached"
+    description = "The workspace has reached its member limit, so this invitation cannot be accepted right now."
     code = 400
 
 
@@ -138,3 +145,46 @@ class ApiKeyLimitExceededHTTPError(BaseHTTPException):
     error_code = "max_keys_exceeded"
     description = "The API key limit has been reached."
     code = 400
+
+
+class EvaluationDatasetInvalidHTTPError(BaseHTTPException):
+    """The uploaded evaluation dataset cannot be run; the message names the row or column."""
+
+    error_code = "evaluation_dataset_invalid"
+    description = "Evaluation dataset is invalid."
+    code = 400
+
+
+class EvaluationFrameworkNotConfiguredHTTPError(BaseHTTPException):
+    """The selected evaluation framework is unavailable; the message says why."""
+
+    error_code = "evaluation_framework_not_configured"
+    description = "Selected evaluation framework is unavailable."
+    code = 400
+
+
+class EvaluationConfigInvalidHTTPError(BaseHTTPException):
+    """The evaluation configuration cannot be saved; the message names the field or model."""
+
+    error_code = "evaluation_config_invalid"
+    description = "Evaluation configuration is invalid."
+    code = 400
+
+
+class EvaluationMaxConcurrentRunsDetails(ResponseModel):
+    limit: int
+
+
+class EvaluationMaxConcurrentRunsHTTPError(BaseHTTPException):
+    """The workspace already runs as many evaluations as it may at once; ``details.limit`` says how many."""
+
+    error_code = "evaluation_max_concurrent_runs"
+    description = "Maximum number of concurrent evaluation runs reached."
+    code = 429
+    details_model = EvaluationMaxConcurrentRunsDetails
+
+    def __init__(self, description: str | None = None, *, limit: int | None = None) -> None:
+        super().__init__(description)
+        if limit is not None:
+            assert self.data is not None
+            self.data["details"] = EvaluationMaxConcurrentRunsDetails(limit=limit).model_dump(mode="json")

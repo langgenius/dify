@@ -7,8 +7,19 @@ import { createDataSourceStore } from '../../../store'
 import { DataSourceContext } from '../../../store/provider'
 import { useLocalFileUpload } from '../use-local-file-upload'
 
-const upload = vi.fn()
-vi.mock('@/service/base', () => ({ upload: (...args: unknown[]) => upload(...args) }))
+const upload = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': upload,
+    }),
+  }
+})
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 function Uploader() {
@@ -61,7 +72,7 @@ function setup() {
 // adapter owns merging upload transitions into the pipeline's data-source store.
 it('updates only the uploaded file and preserves other files through progress, success and removal', async () => {
   const user = userEvent.setup()
-  let resolve!: (value: { id: string; name: string }) => void
+  let resolve!: (value: { id: string; name: string; size: number }) => void
   upload.mockImplementationOnce(
     () =>
       new Promise((res) => {
@@ -74,15 +85,15 @@ it('updates only the uploaded file and preserves other files through progress, s
     new File(['new'], 'New.pdf', { type: 'application/pdf' }),
   )
   expect(store.getState().localFileList).toHaveLength(2)
-  const request = upload.mock.lastCall![0]
-  act(() => request.onprogress({ lengthComputable: true, loaded: 53, total: 100 }))
+  const onUploadProgress = upload.mock.lastCall![1]!.context!.onUploadProgress!
+  act(() => onUploadProgress({ loaded: 53, total: 100 }))
   expect(store.getState().localFileList[1]?.progress).toBe(53)
   expect(store.getState().localFileList[0]).toEqual(existing)
-  await act(async () => resolve({ id: 'server-new', name: 'New.pdf' }))
+  await act(async () => resolve({ id: 'server-new', name: 'New.pdf', size: 3 }))
   await waitFor(() =>
     expect(store.getState().localFileList[1]).toEqual({
       fileID: expect.any(String),
-      file: { id: 'server-new', name: 'New.pdf' },
+      file: { id: 'server-new', name: 'New.pdf', size: 3 },
       progress: 100,
     }),
   )

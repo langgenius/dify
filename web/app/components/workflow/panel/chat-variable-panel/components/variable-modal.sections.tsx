@@ -191,7 +191,7 @@ export const ValueSection = ({
         )}
         {editInJSON && (
           <div
-            className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3"
+            className="w-full rounded-[10px] bg-components-input-bg-normal py-2 ps-3 pe-1"
             style={{ height: editorMinHeight }}
           >
             <CodeEditor
@@ -236,7 +236,7 @@ export const DescriptionSection = ({
     </div>
     <div
       className={cn(
-        'mt-1 text-right system-xs-regular',
+        'mt-1 text-end system-xs-regular',
         description.length > maxLength ? 'text-text-destructive' : 'text-text-quaternary',
       )}
     >

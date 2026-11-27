@@ -4,7 +4,7 @@ import type { ChangeEventHandler, Ref } from 'react'
 import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -13,25 +13,22 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/console'
 import { createAgentIconSelection, getAgentIconKey } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
-type EditAgentDialogProps = {
+type EditAgentDialogContentProps = {
   agent: AgentFormSource
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  pending: boolean
+  onSubmit: (body: AgentAppUpdatePayload) => void
 }
 
 type EditAgentFormSessionProps = {
   agent: AgentFormSource
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
-  onCancel: () => void
-  onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
+  onSubmit: (body: AgentAppUpdatePayload) => void
 }
 
 const applyIconPayload = (body: AgentAppUpdatePayload, icon: AgentIconSelection) => {
@@ -51,7 +48,6 @@ function EditAgentFormSession({
   agent,
   nameInputRef,
   pending,
-  onCancel,
   onSubmit,
 }: EditAgentFormSessionProps) {
   const { t } = useTranslation(['agentRoster'])
@@ -95,7 +91,16 @@ function EditAgentFormSession({
         className="contents"
         onChange={handleFormChange}
         onFormSubmit={(formValues) => {
-          if (hasChanges) onSubmit(formValues, agentIcon)
+          if (!hasChanges) return
+          const body: AgentAppUpdatePayload = {
+            name: formValues.name.trim(),
+            description: formValues.description.trim(),
+            // Keep sending the trimmed role even when empty: omitting the field
+            // preserves the current backing-agent role, while "" intentionally clears it.
+            role: formValues.role.trim(),
+          }
+          applyIconPayload(body, agentIcon)
+          onSubmit(body)
         }}
       >
         <AgentFormFields
@@ -106,9 +111,9 @@ function EditAgentFormSession({
           onIconChange={setAgentIcon}
         />
         <DialogFooter>
-          <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
+          <DialogClose disabled={pending} render={<Button type="button" className="min-w-18" />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             type="submit"
             variant="primary"
@@ -124,57 +129,17 @@ function EditAgentFormSession({
   )
 }
 
-export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogProps) {
+export function EditAgentDialogContent({ agent, pending, onSubmit }: EditAgentDialogContentProps) {
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && updateAgentMutation.isPending) return
-    onOpenChange(nextOpen)
-  }
-
-  const handleSubmit = (formValues: AgentFormValues, agentIcon: AgentIconSelection) => {
-    if (updateAgentMutation.isPending) return
-
-    const body: AgentAppUpdatePayload = {
-      name: formValues.name.trim(),
-      description: formValues.description.trim(),
-      // Keep sending the trimmed role even when empty: omitting the field
-      // preserves the current backing-agent role, while "" intentionally clears it.
-      role: formValues.role.trim(),
-    }
-
-    applyIconPayload(body, agentIcon)
-
-    updateAgentMutation.mutate(
-      {
-        params: {
-          agent_id: agent.id,
-        },
-        body,
-      },
-      {
-        onSuccess: () => {
-          onOpenChange(false)
-        },
-      },
-    )
-  }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent initialFocus={nameInputRef} className="w-130">
-          <EditAgentFormSession
-            key={agent.id}
-            agent={agent}
-            nameInputRef={nameInputRef}
-            pending={updateAgentMutation.isPending}
-            onCancel={() => onOpenChange(false)}
-            onSubmit={handleSubmit}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+    <DialogContent initialFocus={nameInputRef} className="w-130">
+      <EditAgentFormSession
+        agent={agent}
+        nameInputRef={nameInputRef}
+        pending={pending}
+        onSubmit={onSubmit}
+      />
+    </DialogContent>
   )
 }

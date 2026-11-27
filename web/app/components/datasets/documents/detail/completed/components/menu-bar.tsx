@@ -58,7 +58,7 @@ function MenuBar({
       ) : (
         <span className="size-4 shrink-0" aria-hidden />
       )}
-      <div className="flex-1 pl-5 system-sm-semibold-uppercase text-text-secondary">
+      <div className="flex-1 ps-5 system-sm-semibold-uppercase text-text-secondary">
         {totalText}
       </div>
       <Select<SegmentStatusFilterValue>
@@ -71,7 +71,7 @@ function MenuBar({
       >
         <SelectTrigger
           aria-label={t(($) => $['segment.statusFilterLabel'], { ns: 'datasetDocuments' })}
-          className="mr-2 w-25 shrink-0 shadow-none"
+          className="me-2 w-25 shrink-0 shadow-none"
         >
           {selectedStatus?.name ?? ''}
         </SelectTrigger>

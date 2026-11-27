@@ -50,7 +50,7 @@
   "scanner.lastTested": "Son sınaq: {{time}}",
   "scanner.loadFailed": "Skanerləri yükləmək mümkün olmadı.",
   "scanner.neverTested": "Hələ sınaqdan keçirilməyib",
-  "scanner.readOnly": "Skanerləri yalnız iş sahəsinin sahibləri və adminləri idarə edə bilər.",
+  "scanner.readOnly": "Skanerləri idarə etmək icazəniz yoxdur.",
   "scanner.status.active": "Aktiv",
   "scanner.status.error": "Xəta",
   "scanner.test": "Sına",

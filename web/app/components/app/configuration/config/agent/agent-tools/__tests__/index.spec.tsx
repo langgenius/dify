@@ -20,42 +20,50 @@ import AgentTools from '../index'
 
 // Credential loading and clipboard writes are external boundaries. The picker,
 // settings drawer, authorization menu and configuration caller remain live.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: async (url: string) => {
-    if (
-      !url.startsWith('/workspaces/current/tool-provider/builtin/vendor/provider-1/credential/info')
-    )
-      throw new Error(`Unexpected request: ${url}`)
-    return {
-      supported_credential_types: ['api-key'],
-      is_oauth_custom_client_enabled: false,
-      credentials: [
-        {
-          id: 'credential-search',
-          name: 'Search credential',
-          provider: 'vendor/provider-1',
-          credential_type: 'api-key',
-          is_default: true,
-        },
-        {
-          id: 'credential-translate',
-          name: 'Translate credential',
-          provider: 'vendor/provider-1',
-          credential_type: 'api-key',
-          is_default: false,
-        },
-        {
-          id: 'credential-updated',
-          name: 'Replacement credential',
-          provider: 'vendor/provider-1',
-          credential_type: 'api-key',
-          is_default: false,
-        },
-      ],
-    }
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': async ({
+        params,
+      }: {
+        params: { provider: string }
+      }) => {
+        if (params.provider !== 'vendor/provider-1')
+          throw new Error(`Unexpected credential provider: ${params.provider}`)
+        return {
+          supported_credential_types: ['api-key'],
+          is_oauth_custom_client_enabled: false,
+          credentials: [
+            {
+              id: 'credential-search',
+              name: 'Search credential',
+              provider: 'vendor/provider-1',
+              credential_type: 'api-key',
+              is_default: true,
+            },
+            {
+              id: 'credential-translate',
+              name: 'Translate credential',
+              provider: 'vendor/provider-1',
+              credential_type: 'api-key',
+              is_default: false,
+            },
+            {
+              id: 'credential-updated',
+              name: 'Replacement credential',
+              provider: 'vendor/provider-1',
+              credential_type: 'api-key',
+              is_default: false,
+            },
+          ],
+        }
+      },
+    }),
+  }
+})
 
 vi.mock('@/utils/clipboard', () => ({
   writeTextToClipboard: vi.fn().mockResolvedValue(undefined),

@@ -25,7 +25,7 @@ export function RetrievalHistoryPanel() {
 
   return (
     <div className="mt-3 flex min-h-0 flex-1 flex-col pt-6">
-      <div className="flex shrink-0 items-center justify-between gap-2 pr-3 pb-2 pl-3">
+      <div className="flex shrink-0 items-center justify-between gap-2 ps-3 pe-3 pb-2">
         <h2 className="system-xs-medium text-text-tertiary">
           {t(($) => $['retrievalTest.records'], { ns: 'knowledgeRetrieval' })}
         </h2>

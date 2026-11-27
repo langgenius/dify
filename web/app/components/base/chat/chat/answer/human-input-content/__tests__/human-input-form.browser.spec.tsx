@@ -1,3 +1,4 @@
+import type { FakeApiHandle, FakeRoute } from '@/test/fake-api'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
@@ -6,16 +7,11 @@ import { UserActionButtonType } from '@/app/components/workflow/nodes/human-inpu
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
-
-// oxlint-disable-next-line typescript/no-deprecated -- The production file picker still uses the XHR upload transport.
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-
-vi.mock('@/service/base', () => ({ upload }))
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const currentTimestamp = Math.floor(Date.now() / 1000)
 
@@ -46,14 +42,26 @@ async function renderWithQueries(ui: React.ReactElement) {
   const { wrapper: Query } = createConsoleQueryWrapper({
     accountProfile: { email: 'reviewer@example.com' },
   })
-  return render(<Query>{ui}</Query>)
+  const { NavigationProvider } = createTestNavigation({ url: '/chat' })
+  return render(
+    <NavigationProvider>
+      <Query>{ui}</Query>
+    </NavigationProvider>,
+  )
 }
 
+const uploadedFile = (body: unknown) => (body as FormData).get('file') as File
+let fake: FakeApiHandle<{ routes: FakeRoute[] }>
 beforeEach(() => {
-  upload.mockReset().mockImplementation(async ({ data }) => ({
-    id: `uploaded-${(data.get('file') as File).name}`,
-  }))
-  onTestFinished(guardUnexpectedFetch())
+  // The production file picker still uploads through XMLHttpRequest; the fake API answers it.
+  fake = installFakeApi({
+    routes: [
+      route('POST', 'console', '/files/upload', ({ body }) => ({
+        id: `uploaded-${uploadedFile(body).name}`,
+      })),
+    ],
+  })
+  onTestFinished(fake)
 })
 
 it('submits the visible form values and keeps them available after a failed attempt', async () => {
@@ -98,10 +106,11 @@ it('submits the visible form values and keeps them available after a failed atte
 it('waits for every rendered select and file upload before enabling submission', async () => {
   const singleUpload = createDeferred<{ id: string }>()
   const listUpload = createDeferred<{ id: string }>()
-  upload.mockImplementation(({ data }) => {
-    const file = data.get('file') as File
-    return file.name === 'main.png' ? singleUpload.promise : listUpload.promise
-  })
+  fake
+    .route('POST', 'console', '/files/upload')
+    .mockImplementation(({ body }) =>
+      uploadedFile(body).name === 'main.png' ? singleUpload.promise : listUpload.promise,
+    )
   const onSubmit = vi.fn().mockResolvedValue(undefined)
   await renderWithQueries(
     <HumanInputForm

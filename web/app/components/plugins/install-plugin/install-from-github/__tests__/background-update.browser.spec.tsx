@@ -3,35 +3,49 @@ import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { hold, installFakeApi } from '@/test/fake-api'
 import { PluginCategoryEnum } from '../../../types'
 import { GitHubInstallDialog } from '../dialog'
 
-const { uploadGitHub, updateFromGitHub } = vi.hoisted(() => ({
-  uploadGitHub: vi.fn(),
-  updateFromGitHub: vi.fn(),
-}))
-vi.mock('@/service/plugins', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/plugins')>()),
-  uploadGitHub,
-  updateFromGitHub,
-}))
-// boundary: Isolate workspace model queries and plugin cache refreshes from the dialog lifecycle.
-vi.mock('../../hooks/use-refresh-plugin-list', () => ({
-  default: () => ({ refreshPluginList: vi.fn() }),
-}))
-
 it('keeps a reopened GitHub update and its automatic fold independent of the background update', async () => {
-  onTestFinished(guardUnexpectedFetch())
-  const first = createDeferred<{ all_installed: boolean; task_id: string }>()
-  const second = createDeferred<{ all_installed: boolean; task_id: string }>()
-  updateFromGitHub.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
-  uploadGitHub.mockResolvedValue({
-    unique_identifier: 'github-target-id',
-    manifest: createPluginDeclarationFixture({ version: '2.0.0' }),
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          // Plugin refreshes reload the workspace model lists.
+          models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+          plugin: {
+            upgrade: { github: { post: () => ({ all_installed: true, task_id: '' }) } },
+            upload: {
+              github: {
+                post: () => ({
+                  unique_identifier: 'github-target-id',
+                  manifest: {
+                    author: 'Dify',
+                    category: 'model',
+                    created_at: '2026-06-01T00:00:00Z',
+                    description: { en_US: 'Plugin description' },
+                    icon: 'icon.svg',
+                    label: { en_US: 'Plugin label' },
+                    meta: { version: '2.0.0' },
+                    name: 'plugin-entity',
+                    plugins: {},
+                    resource: { memory: 0 },
+                    tags: [],
+                    version: '2.0.0',
+                  },
+                }),
+              },
+            },
+          },
+        },
+      },
+    },
   })
+  onTestFinished(fake)
+  const upgrade = fake.console.workspaces.current.plugin.upgrade.github.post
+  const first = hold(upgrade)
+  const second = hold(upgrade)
   const handle = createDialogHandle<UpdatePluginPayload>()
   const onUpdated = vi.fn()
   const { wrapper } = createConsoleQueryWrapper()

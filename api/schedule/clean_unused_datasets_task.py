@@ -112,11 +112,9 @@ def clean_unused_datasets_task():
                                     features_cache_key = f"features:{dataset.tenant_id}"
                                     plan_cache = redis_client.get(features_cache_key)
                                     if plan_cache is None:
-                                        features = FeatureService.get_features(
-                                            dataset.tenant_id, exclude_vector_space=True
-                                        )
-                                        redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
-                                        plan = features.billing.subscription.plan
+                                        # Non-Cloud workspaces keep the sandbox cleanup window.
+                                        plan = FeatureService.get_workspace_plan(dataset.tenant_id) or CloudPlan.SANDBOX
+                                        redis_client.setex(features_cache_key, 600, plan)
                                     else:
                                         plan = plan_cache.decode()
                                     should_clean = plan == plan_filter

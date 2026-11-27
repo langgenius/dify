@@ -2,6 +2,7 @@ import logging
 from collections.abc import Generator
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
@@ -52,7 +53,9 @@ class _PresentationProvider:
         return "agent-icon"
 
 
-def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:
+def test_dispatch_converts_agent_events_and_delegates_other_events(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     node = AgentNode(
         node_id="node-id",
         data=AgentNodeData(title="Agent"),
@@ -66,7 +69,7 @@ def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:
         strategy_resolver=_StrategyResolver(_RecordingStrategy()),
         presentation_provider=_PresentationProvider(),
         runtime_support=AgentRuntimeSupport(),
-        message_transformer=AgentMessageTransformer(),
+        message_transformer=AgentMessageTransformer(sqlite_session_factory),
     )
     node._node_execution_id = "execution-id"
 
@@ -110,6 +113,7 @@ def test_dispatch_converts_agent_events_and_delegates_other_events() -> None:
 def test_run_captures_tool_snapshots_only_for_evaluation(
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
     capture_evaluation_trace: bool,
     fail_capture: bool,
 ) -> None:
@@ -135,7 +139,7 @@ def test_run_captures_tool_snapshots_only_for_evaluation(
     monkeypatch.setattr(runtime_support, "build_credentials", lambda **_kwargs: None)
 
     completed_event = StreamCompletedEvent(node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED))
-    message_transformer = AgentMessageTransformer()
+    message_transformer = AgentMessageTransformer(sqlite_session_factory)
     transform_calls: list[dict[str, object]] = []
 
     def transform(**kwargs: object) -> Generator[StreamCompletedEvent]:

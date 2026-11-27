@@ -3,13 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from extensions.ext_code_based_extension import code_based_extension
 from services.code_based_extension_service import CodeBasedExtensionService
-
-
-def test_real_scanned_moderation_discovery_keeps_builtins_private() -> None:
-    code_based_extension.init()
-    assert CodeBasedExtensionService.get_code_based_extension("moderation") == []
 
 
 class TestCodeBasedExtensionService:

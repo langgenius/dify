@@ -6,6 +6,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TransferMethod } from '@/types/app'
 import CheckboxField from '../checkbox'
@@ -17,12 +18,6 @@ import NumberSliderField from '../number-slider'
 import OptionsField from '../options'
 import SelectField from '../select'
 import TextAreaField from '../text-area'
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ token: 'test-token' }),
-  usePathname: () => '/',
-}))
 
 const renderField = async (field: ReactElement, initialValue: unknown) => {
   const Harness = () => {
@@ -46,6 +41,7 @@ const renderField = async (field: ReactElement, initialValue: unknown) => {
     <Wrapper>
       <Harness />
     </Wrapper>,
+    { wrapper: createTestNavigation({ params: { token: 'test-token' } }).NavigationProvider },
   )
   await expect.element(page.getByRole('status', { name: 'Form values' })).toBeVisible()
   return screen

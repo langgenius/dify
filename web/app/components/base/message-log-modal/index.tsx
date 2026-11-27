@@ -52,7 +52,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <button
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="absolute inset-e-3 top-4 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onCancel}
       >
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
@@ -61,8 +61,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         appId={appId}
         hideResult
         activeTab={activeTab}
-        runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
-        tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
+        runOwner={{ kind: 'app', appId }}
+        runId={currentLogItem.workflow_run_id}
       />
     </>
   )
@@ -77,7 +77,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       >
         <DialogPortal>
           <DialogBackdrop className="bg-transparent" />
-          <DialogPopup className="fixed top-16 bottom-4 left-[max(8px,calc(100vw-1136px))] flex w-120 max-w-[calc(100vw-16px)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-3 shadow-xl">
+          <DialogPopup className="fixed inset-s-[max(8px,calc(100vw-1136px))] top-16 bottom-4 flex w-120 max-w-[calc(100vw-16px)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-3 shadow-xl">
             {modalContent}
           </DialogPopup>
         </DialogPortal>
@@ -103,7 +103,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <button
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="absolute inset-e-3 top-4 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onCancel}
       >
         <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
@@ -112,8 +112,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         appId={appId}
         hideResult
         activeTab={activeTab}
-        runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
-        tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
+        runOwner={{ kind: 'app', appId }}
+        runId={currentLogItem.workflow_run_id}
       />
     </div>
   )

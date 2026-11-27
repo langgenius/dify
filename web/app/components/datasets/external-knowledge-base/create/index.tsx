@@ -81,7 +81,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
               </p>
               <IconButton
                 aria-label={t(($) => $['operation.back'], { ns: 'common' })}
-                className="absolute top-1 -left-11 rounded-full"
+                className="absolute -inset-s-11 top-1 rounded-full"
                 variant="tertiary"
                 size="lg"
                 onClick={navBackHandle}

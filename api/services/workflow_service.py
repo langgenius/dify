@@ -3,6 +3,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
@@ -105,7 +106,6 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import AppRunAccessFilter
-from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -114,9 +114,15 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from services.errors.billing import BillingError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
+from services.feature_service import FeatureService
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
+from services.workflow.draft_creation_lock import lock_draft_creation
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
@@ -286,7 +292,14 @@ class WorkflowService:
         )
 
     def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
-        """Return the app draft while holding its row lock for the caller's transaction."""
+        """Lock and refresh the admitted App's draft for the caller's transaction.
+
+        Preconditions: the App belongs to the admitted tenant and pending draft
+        changes have not been written before acquiring this lock. Postconditions:
+        an existing draft is refreshed from the database and locked until commit
+        or rollback, so graph and Agent-binding writers share one serialization
+        boundary. A missing draft returns None; no state is written by this read.
+        """
         return session.scalar(
             select(Workflow)
             .where(
@@ -296,6 +309,7 @@ class WorkflowService:
             )
             .limit(1)
             .with_for_update()
+            .execution_options(populate_existing=True, autoflush=False)
         )
 
     @staticmethod
@@ -506,6 +520,7 @@ class WorkflowService:
         commit: bool = True,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
+        serialize_creation: bool = False,
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -514,95 +529,109 @@ class WorkflowService:
         portable package references can be materialized atomically after the
         draft workflow has received its target-workspace id.
 
-        Existing drafts are row-locked before the hash check. Collaborative
-        graph-only saves preserve independently persisted draft fields, while
-        an explicit per-ID environment patch is merged with the graph.
+        The Console editor and OpenAPI starter opt in to serialized creation
+        and supply a transaction this method can commit. A hashless request
+        rechecks the draft under the Redis lease before inserting and committing.
+        Other callers retain the existing save behavior. Collaborative saves
+        preserve independently persisted fields and merge a per-ID patch.
 
-        :raises WorkflowHashNotEqualError
+        :raises WorkflowHashNotEqualError: The draft state differs from the request.
+        :raises WorkflowDraftInitializationBusyError: Initialization could not acquire its lease.
         """
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
-        # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        initializing = serialize_creation and unique_hash is None
+        if initializing:
+            if not commit:
+                raise ValueError("Serialized draft creation requires the save to commit.")
+            if self.is_workflow_exist(app_model, session=session):
+                raise WorkflowHashNotEqualError()
 
-        if workflow and workflow.unique_hash != unique_hash:
-            raise WorkflowHashNotEqualError()
+        with (
+            lock_draft_creation(tenant_id=app_model.tenant_id, app_id=app_model.id, session=session)
+            if initializing
+            else nullcontext()
+        ):
+            workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+            if (workflow is not None or serialize_creation) and unique_hash != (
+                workflow.unique_hash if workflow is not None else None
+            ):
+                raise WorkflowHashNotEqualError()
 
-        # Collaboration persists features and variables through dedicated endpoints. A graph save
-        # must not overwrite those newer database values with another collaborator's stale cache.
-        if not graph_only or not workflow:
-            self.validate_features_structure(app_model=app_model, features=features)
+            # Collaboration persists features and variables through dedicated endpoints. A graph save
+            # must not overwrite those newer database values with another collaborator's stale cache.
+            if not graph_only or not workflow:
+                self.validate_features_structure(app_model=app_model, features=features)
 
-        # validate graph structure
-        self.validate_graph_structure(graph=graph)
+            # validate graph structure
+            self.validate_graph_structure(graph=graph)
 
-        # create draft workflow if not found
-        if not workflow:
-            initial_environment_variables = (
-                _merge_environment_variable_patch(
-                    environment_variables,
-                    environment_variable_upserts,
-                    deleted_environment_variable_ids,
+            # create draft workflow if not found
+            if not workflow:
+                initial_environment_variables = (
+                    _merge_environment_variable_patch(
+                        environment_variables,
+                        environment_variable_upserts,
+                        deleted_environment_variable_ids,
+                    )
+                    if environment_variable_upserts is not None
+                    else list(environment_variables)
                 )
-                if environment_variable_upserts is not None
-                else list(environment_variables)
-            )
-            workflow = Workflow(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type=WorkflowType.from_app_mode(app_model.mode),
-                version=Workflow.VERSION_DRAFT,
-                graph=json.dumps(graph),
-                _features=json.dumps(features),
-                created_by=account.id,
-                _environment_variables=initial_environment_variables,
-                _conversation_variables=conversation_variables,
-            )
-            session.add(workflow)
-        # update draft workflow if found
-        else:
-            workflow.graph = json.dumps(graph)
-            workflow.updated_by = account.id
-            workflow.updated_at = naive_utc_now()
-            if not graph_only:
-                workflow.features = json.dumps(features)
-                workflow.conversation_variables = conversation_variables
-            if environment_variable_upserts is not None:
-                workflow.environment_variables = _merge_environment_variable_patch(
-                    workflow.environment_variables,
-                    environment_variable_upserts,
-                    deleted_environment_variable_ids,
+                workflow = Workflow(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    type=WorkflowType.from_app_mode(app_model.mode),
+                    version=Workflow.VERSION_DRAFT,
+                    graph=json.dumps(graph),
+                    _features=json.dumps(features),
+                    created_by=account.id,
+                    _environment_variables=initial_environment_variables,
+                    _conversation_variables=conversation_variables,
                 )
-            elif not graph_only and not preserve_environment_variables:
-                workflow.environment_variables = environment_variables
+                session.add(workflow)
+            # update draft workflow if found
+            else:
+                workflow.graph = json.dumps(graph)
+                workflow.updated_by = account.id
+                workflow.updated_at = naive_utc_now()
+                if not graph_only:
+                    workflow.features = json.dumps(features)
+                    workflow.conversation_variables = conversation_variables
+                if environment_variable_upserts is not None:
+                    workflow.environment_variables = _merge_environment_variable_patch(
+                        workflow.environment_variables,
+                        environment_variable_upserts,
+                        deleted_environment_variable_ids,
+                    )
+                elif not graph_only and not preserve_environment_variables:
+                    workflow.environment_variables = environment_variables
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+            from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
-        session.flush()
-        retirement_candidates: set[str] = set()
-        if sync_agent_bindings:
-            retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-                session=session,
-                draft_workflow=workflow,
-                account_id=account.id,
-            )
-            WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-                session=session,
-                draft_workflow=workflow,
-            )
+            session.flush()
+            retirement_candidates: set[str] = set()
+            if sync_agent_bindings:
+                retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                    session=session,
+                    draft_workflow=workflow,
+                    account_id=account.id,
+                )
+                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                    session=session,
+                    draft_workflow=workflow,
+                )
 
-        # commit db session changes
+            # commit db session changes
+            if commit:
+                session.commit()
+
         if commit:
-            session.commit()
             WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=app_model.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
             )
-
-        # trigger app workflow events
-        if commit:
             app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
 
         # return draft workflow
@@ -721,6 +750,11 @@ class WorkflowService:
 
         Secret environment variables are copied server-side from the selected
         published workflow so the normal draft sync flow stays stateless.
+
+        Preconditions: the caller has admitted the App, account and source ID.
+        Postconditions: the source and destination draft stay locked while their
+        graph and Agent bindings are copied atomically; a concurrent Composer
+        save cannot interleave. Validation failure commits no draft changes.
         """
         source_workflow = self.get_published_workflow_by_id(
             app_model=app_model,
@@ -734,7 +768,7 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -780,15 +814,15 @@ class WorkflowService:
         """Publish an existing draft, preserving the active kind unless one is requested.
 
         The caller supplies the app, account and session. A successful call adds
-        a version with the resolved kind; Cloud evaluator publication requires a
-        paid plan. Entitlement failures add no published version.
+        a version with the resolved kind. Evaluator publication requires Evaluation
+        to be enabled and a paid plan on Cloud.
+
+        Preconditions: the caller has admitted the App and account. Postconditions:
+        the refreshed draft is locked until the caller commits or rolls back, so
+        the copied graph and Agent node jobs represent the same session-policy
+        generation. Validation or entitlement failure publishes no version.
         """
-        draft_workflow_stmt = select(Workflow).where(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.version == Workflow.VERSION_DRAFT,
-        )
-        draft_workflow = session.scalar(draft_workflow_stmt)
+        draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
@@ -798,7 +832,7 @@ class WorkflowService:
             requested_kind=workflow_kind,
         )
         if workflow_kind == WorkflowKind.EVALUATION:
-            self._require_evaluation_paid_plan(app_model.tenant_id)
+            self._require_evaluation_workflow_access(app_model.tenant_id)
 
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,
@@ -833,8 +867,7 @@ class WorkflowService:
         # Evaluators already passed the Cloud paid-plan check above; only standard
         # workflows need the Sandbox trigger limit lookup.
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and workflow_kind != WorkflowKind.EVALUATION:
-            limit_info = BillingService.get_info(app_model.tenant_id)
-            if limit_info.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(app_model.tenant_id) == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
                 trigger_node_count = sum(
                     1
@@ -910,20 +943,22 @@ class WorkflowService:
         )
 
     @staticmethod
-    def _require_evaluation_paid_plan(tenant_id: str) -> None:
-        """Allow a trusted tenant's Evaluation operation only with Cloud paid billing.
+    def _require_evaluation_workflow_access(tenant_id: str) -> None:
+        """Check deployment availability and Cloud billing for a trusted tenant.
 
-        Non-Cloud editions make no billing call. Cloud Sandbox raises a plan
-        error and billing failures raise an unavailable error. Neither changes
-        workflow state; controllers translate these failures to HTTP responses.
+        A disabled deployment raises an error before billing. When enabled,
+        Cloud Sandbox raises a plan error and billing failures raise an unavailable
+        error. The check performs no workflow writes.
         """
+        if not dify_config.ENABLE_EVALUATION:
+            raise EvaluationDisabledError()
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return
         try:
-            paid = BillingService.is_cloud_paid_plan(tenant_id)
+            plan = FeatureService.get_workspace_plan(tenant_id)
         except BillingError as exc:
             raise EvaluationEntitlementUnavailableError() from exc
-        if not paid:
+        if plan is None or not plan.is_paid:
             raise EvaluationPlanRequiredError()
 
     def publish_evaluation_workflow(
@@ -980,12 +1015,13 @@ class WorkflowService:
         """Convert a published version between standard and evaluation kinds.
 
         The caller supplies a valid target kind, app, account and session. Both
-        conversion directions require Cloud paid billing; denied requests leave
-        the published workflow unchanged.
+        conversion directions require Evaluation to be enabled and a paid plan on
+        Cloud. Denied requests leave the published workflow unchanged. Publication
+        receivers use the same session, so their failures do not commit a conversion.
         """
         if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
             raise ValueError("target_kind must be either 'standard' or 'evaluation'")
-        self._require_evaluation_paid_plan(app_model.tenant_id)
+        self._require_evaluation_workflow_access(app_model.tenant_id)
         if not app_model.workflow_id:
             raise WorkflowNotFoundError("Published workflow not found")
 
@@ -1007,7 +1043,7 @@ class WorkflowService:
         workflow.kind = target_kind
         workflow.updated_by = account.id
         workflow.updated_at = naive_utc_now()
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
         return workflow
 
     def convert_published_workflow_kind_for_app(

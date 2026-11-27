@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Не вдалося видалити контакт. Спробуйте ще раз.",
   "directory.removalSingleTitle": "Видалити {{name}}?",
   "directory.resultCount": "Результати: {{count}}",
-  "imPlatform.action.configure": "Налаштувати",
   "imPlatform.action.configureChannel": "Налаштувати {{provider}}",
   "imPlatform.action.connect": "Підключити",
   "imPlatform.action.copied": "Скопійовані",

@@ -139,3 +139,81 @@ def test_chat_message_rejects_empty_agent_tool_as_invalid_param(
         "message": "Each item in agent_mode.tools must be a non-empty object",
         "status": 400,
     }
+
+
+class _PreviewGatePassedError(Exception):
+    pass
+
+
+def _post_agent_chat_message(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, draft_type: str
+) -> tuple[int, dict[str, object] | None, bool]:
+    account = make_account(account_id=str(uuid4()))
+    app_model = make_app(app_id=str(uuid4()), tenant_id=_TENANT_ID, mode=AppMode.AGENT, created_by=account.id)
+    sqlite_session.add(app_model)
+    sqlite_session.commit()
+    reached_conversation = False
+
+    def resolve_conversation(**_: object) -> str:
+        nonlocal reached_conversation
+        reached_conversation = True
+        raise _PreviewGatePassedError
+
+    monkeypatch.setattr(completion_module, "_resolve_current_user_agent_debug_conversation_id", resolve_conversation)
+
+    class ChatMessageHttpResource(Resource):
+        def post(self) -> ResponseReturnValue:
+            try:
+                return unwrap(completion_module.ChatMessageApi.post)(
+                    completion_module.ChatMessageApi(), sqlite_session, _TENANT_ID, account, app_model
+                )
+            except _PreviewGatePassedError:
+                return {"result": "gate passed"}, 200
+
+    http_app = Flask(__name__)
+    http_app.config.update(TESTING=True)
+    ExternalApi(http_app).add_resource(ChatMessageHttpResource, "/chat-messages")
+
+    response = http_app.test_client().post(
+        "/chat-messages",
+        json={"inputs": {}, "query": "hello", "response_mode": "streaming", "draft_type": draft_type},
+    )
+    return response.status_code, response.get_json(), reached_conversation
+
+
+def test_agent_preview_chat_is_rejected_when_preview_is_unavailable(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
+    status, body, reached_conversation = _post_agent_chat_message(sqlite_session, monkeypatch, "draft")
+
+    assert status == 403
+    assert body is not None
+    assert body["code"] == "agent_preview_unavailable"
+    assert not reached_conversation
+
+
+@pytest.mark.parametrize(
+    ("edition", "draft_type"),
+    [
+        (DeploymentEdition.COMMUNITY, "debug_build"),
+        (DeploymentEdition.CLOUD, "draft"),
+        (DeploymentEdition.ENTERPRISE, "draft"),
+    ],
+)
+def test_agent_chat_passes_preview_gate(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    draft_type: str,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    status, _, reached_conversation = _post_agent_chat_message(sqlite_session, monkeypatch, draft_type)
+
+    assert status == 200
+    assert reached_conversation

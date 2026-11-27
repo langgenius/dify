@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict
-from pydantic_ai import RunContext, Tool
+from pydantic_ai import RunContext, Tool, ToolReturn
 from pydantic_ai.tools import ToolDefinition
 
 from pydantic_ai.toolsets import FunctionToolset
@@ -50,6 +50,8 @@ from dify_agent.layers.dify_plugin.tool_client import (
 )
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import Capability as ExecutionContextCapability
+from dify_agent.layers.tool_call_limits import ToolCallLimitGuard, validate_limited_tool_arguments
+from dify_agent.protocol.tool_call_limits import TOOL_VALIDATION_FAILED_METADATA_KEY
 
 
 # Plugin tools intentionally do not expose a per-tool strictness override in the
@@ -112,6 +114,7 @@ class Toolset(FunctionToolset[Deps]):
                         tool_config=tool_config,
                         effective_parameters=effective_parameters,
                         file_context=file_context,
+                        call_limit=ToolCallLimitGuard.for_tool(ctx.deps, tool_config),
                     )
                 )
             self._loaded = True
@@ -141,12 +144,16 @@ def _build_pydantic_ai_tool(
     tool_config: DifyPluginToolConfig,
     effective_parameters: Sequence[DifyPluginToolParameter],
     file_context: "_PluginToolFileContext",
+    call_limit: ToolCallLimitGuard | None = None,
 ) -> Tool[Deps]:
     tool_name = tool_config.name or tool_config.tool_name
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-    async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
+    async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str | ToolReturn:
+        """Validate before reservation; retain admitted usage on every transport outcome."""
+        reservation = None
+        failed = False
         try:
             merged_arguments = await _prepare_tool_arguments(
                 effective_parameters,
@@ -154,6 +161,40 @@ def _build_pydantic_ai_tool(
                 tool_arguments,
                 file_context=file_context,
             )
+            if call_limit is not None:
+                # Schema file fields describe model locators, not prepared daemon objects.
+                file_arguments: dict[str, object] = {}
+                file_parameters = [
+                    parameter
+                    for parameter in effective_parameters
+                    if parameter.type
+                    in {
+                        DifyPluginToolParameterType.FILE,
+                        DifyPluginToolParameterType.FILES,
+                        DifyPluginToolParameterType.SYSTEM_FILES,
+                    }
+                    and parameter.name in merged_arguments
+                ]
+                for parameter in file_parameters:
+                    value = tool_arguments.get(
+                        parameter.name, tool_config.runtime_parameters.get(parameter.name, parameter.default)
+                    )
+                    if parameter.type is DifyPluginToolParameterType.FILE:
+                        # Preparation already rejects zero/multiple files for this case.
+                        value = value[0] if isinstance(value, list) else value
+                    else:
+                        value = value if isinstance(value, list) else [value]
+                    file_arguments[parameter.name] = value
+                validate_limited_tool_arguments(
+                    tool_schema,
+                    tool_config.parameters,
+                    tool_config.runtime_parameters,
+                    tool_arguments,
+                    prepared_arguments={**merged_arguments, **file_arguments},
+                )
+                reservation = await call_limit.reserve(_ctx)
+                if not reservation.allowed:
+                    return call_limit.denied(reservation)
             messages = await client.invoke(
                 provider=tool_config.provider,
                 tool_name=tool_config.tool_name,
@@ -161,15 +202,27 @@ def _build_pydantic_ai_tool(
                 credentials=dict(tool_config.credentials),
                 tool_parameters=merged_arguments,
             )
-            return await _convert_tool_response_to_text(messages, file_context=file_context)
+            observation = await _convert_tool_response_to_text(messages, file_context=file_context)
         except DifyPluginToolClientError as exc:
-            return _tool_error_text(tool_name=tool_name, error=exc)
+            failed = True
+            observation = _tool_error_text(tool_name=tool_name, error=exc)
         except ValueError as exc:
-            return f"tool parameters validation error: {exc}, please check your tool parameters"
+            failed = True
+            observation = f"tool parameters validation error: {exc}, please check your tool parameters"
+            if call_limit is not None and reservation is None:
+                # This attempt failed before admission and consumed no quota.
+                return ToolReturn(observation, metadata={TOOL_VALIDATION_FAILED_METADATA_KEY: True})
         except httpx.HTTPError as exc:
-            return f"tool file request failed: {exc}"
+            failed = True
+            observation = f"tool file request failed: {exc}"
+        if call_limit is not None and reservation is not None:
+            return call_limit.result(reservation, observation, failed=failed)
+        return observation
 
-    async def prepare_tool_definition(_ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition:
+    async def prepare_tool_definition(_ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition | None:
+        """Hide an exhausted operation on subsequent model turns without spending quota."""
+        if call_limit is not None and not await call_limit.available(_ctx):
+            return None
         return replace(tool_def, parameters_json_schema=tool_schema, strict=PLUGIN_TOOL_STRICT)
 
     return Tool(
@@ -214,8 +267,14 @@ async def _prepare_tool_arguments(
             raise ValueError(f"tool parameter {parameter.name} not found in tool config")
         else:
             continue
+        parameter_type = parameter.type
+        if parameter.multiple and parameter_type in {
+            DifyPluginToolParameterType.SELECT,
+            DifyPluginToolParameterType.DYNAMIC_SELECT,
+        }:
+            parameter_type = DifyPluginToolParameterType.ARRAY
         prepared_arguments[parameter.name] = await _cast_tool_parameter_value(
-            parameter.type,
+            parameter_type,
             value,
             file_context=file_context,
         )

@@ -1,4 +1,5 @@
 'use client'
+import type { ApiProviderSchemaType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type {
   Credential,
@@ -20,13 +21,14 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiSettings2Line } from '@remixicon/react'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { AuthType } from '@/app/components/tools/types'
 import { getPluginLanguage } from '@/i18n/metadata'
-import { testAPIAvailable } from '@/service/tools'
+import { consoleQuery } from '@/service/console'
 import ConfigCredentials from './config-credentials'
 
 type Props = Readonly<{
@@ -45,13 +47,16 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
   const [tempCredential, setTempCredential] = React.useState<Credential>(
     customCollection.credentials,
   )
-  const [testing, setTesting] = useState(false)
   const [result, setResult] = useState<string>('')
   const { operation_id: toolName, parameters } = tool
   const [parametersValue, setParametersValue] = useState<Record<string, string>>({})
-  const handleTest = async () => {
+  const { mutate: testApi, isPending: testing } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.api.test.pre.post.mutationOptions({
+      onSuccess: (response) => setResult(response.error || response.result || ''),
+    }),
+  )
+  const handleTest = () => {
     if (testing) return
-    setTesting(true)
     // clone test schema
     const credentials = JSON.parse(JSON.stringify(tempCredential)) as Credential
     if (credentials.auth_type === AuthType.none) {
@@ -63,13 +68,11 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
       provider_name: customCollection.provider,
       tool_name: toolName,
       credentials,
-      schema_type: customCollection.schema_type,
+      schema_type: customCollection.schema_type as ApiProviderSchemaType,
       schema: customCollection.schema,
       parameters: parametersValue,
     }
-    const res = (await testAPIAvailable(data)) as any
-    setResult(res.error || res.result)
-    setTesting(false)
+    testApi({ body: data })
   }
 
   return (
@@ -116,7 +119,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                   className="min-h-0 flex-1 overflow-y-auto px-6 pt-2"
                   onSubmit={(event) => {
                     event.preventDefault()
-                    void handleTest()
+                    handleTest()
                   }}
                 >
                   <div className="space-y-4">

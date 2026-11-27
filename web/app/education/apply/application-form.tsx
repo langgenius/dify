@@ -15,11 +15,11 @@ import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { isDefinedError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
+import { getBillingErrorMessage } from '@/app/components/billing/billing-error'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
@@ -27,6 +27,7 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
@@ -48,6 +49,7 @@ type EducationApplyError = ErrorFromErrorMap<
 function educationApplyErrorMessage(
   error: EducationApplyError,
   t: TFunction<['billing', 'common', 'education']>,
+  describeRequestError: (error: unknown, fallback?: string) => string,
 ) {
   const code = isDefinedError(error) ? error.code : undefined
   switch (code) {
@@ -56,7 +58,7 @@ function educationApplyErrorMessage(
     case 'education_activate_limit':
       return t(($) => $.tooManyAttempts, { ns: 'education' })
     default:
-      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+      return getBillingErrorMessage(error, t, describeRequestError)
   }
 }
 
@@ -67,7 +69,7 @@ type EducationApplyPageProps = {
 
 const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const { t } = useTranslation(['billing', 'common', 'education'])
-  const queryClient = useQueryClient()
+  const describeRequestError = useRequestErrorDescriber()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')
   const [agreements, setAgreements] = useState<string[]>([])
@@ -78,7 +80,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     isPending,
     mutate: educationAdd,
   } = useMutation(
-    consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.education.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -91,7 +95,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(
-    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workspaces.switch.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   const appliedEducationCase = (() => {
@@ -113,7 +119,6 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       {
         onSuccess: (res) => {
           if (res.message === 'success') {
-            void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
             setHasSubmittedEducation(true)
           } else {
             toast.error(t(($) => $.submitError, { ns: 'education' }))
@@ -129,16 +134,14 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await openAsyncWindow(
         async () => {
-          const res = await consoleClient.billing.invoices.get(undefined, {
-            context: { silent: true },
-          })
+          const res = await consoleClient.billing.invoices.get()
           if (res.url) return res.url
 
           throw new Error('Failed to open billing page')
         },
         {
           onError: (error) => {
-            toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+            toast.error(getBillingErrorMessage(error, t, describeRequestError))
           },
         },
       )
@@ -302,7 +305,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
           </Button>
           {submitError && (
             <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
-              {educationApplyErrorMessage(submitError, t)}
+              {educationApplyErrorMessage(submitError, t, describeRequestError)}
             </p>
           )}
           <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]" />

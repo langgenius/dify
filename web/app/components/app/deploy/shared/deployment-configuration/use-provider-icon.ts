@@ -7,7 +7,7 @@ import { findNodeIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import { consoleQuery } from '@/service/console'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 
 const PROVIDER_ICON_BLOCK_TYPES = new Set<string>([
   BlockEnum.DataSource,
@@ -59,7 +59,7 @@ export const useGetProviderIcon = (nodes: UnsupportedNode[]) => {
       enabled: hasDataSourceNode,
     }),
   )
-  const { data: triggerPlugins } = useAllTriggerPlugins(hasTriggerPluginNode)
+  const { data: triggerPlugins } = useQuery(allTriggerPluginsQueryOptions(hasTriggerPluginNode))
   const theme = useResolvedTheme()
 
   return useCallback(

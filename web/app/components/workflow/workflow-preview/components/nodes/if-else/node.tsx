@@ -77,7 +77,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                   conditionNotSet
                 )}
                 {i !== caseItem.conditions.length - 1 && (
-                  <div className="absolute right-1 -bottom-2.5 z-10 text-2xs leading-4 font-medium text-text-accent uppercase">
+                  <div className="absolute inset-e-1 -bottom-2.5 z-10 text-2xs leading-4 font-medium text-text-accent uppercase">
                     {t(($) => $[`${i18nPrefix}.${caseItem.logical_operator}`], {
                       ns: 'workflowLogic',
                     })}
@@ -89,7 +89,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         </div>
       ))}
       <div className="relative flex h-6 items-center px-1">
-        <div className="w-full text-right text-xs font-semibold text-text-secondary">ELSE</div>
+        <div className="w-full text-end text-xs font-semibold text-text-secondary">ELSE</div>
         <NodeSourceHandle
           {...props}
           handleId="false"

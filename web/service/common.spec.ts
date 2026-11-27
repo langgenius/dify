@@ -1,112 +1,81 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
-import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import {
-  OAUTH_REGISTRATION_GA_SENT_KEY,
-  REGISTRATION_SUCCESS_STORAGE_KEY,
-} from '@/app/components/base/amplitude/registration-session-state'
-import { clearPageLeaveGuards } from '@/utils/page-leave-guard'
-import { useLogout } from './use-common'
+import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
+import { webAppLoginStatus, webAppLogout } from './common'
+import { getWebAppPassport, setWebAppAccessToken, setWebAppPassport } from './webapp-auth'
 
-const mocks = vi.hoisted(() => ({
-  post: vi.fn(),
-  request: vi.fn(),
-  resetUser: vi.fn(),
-  basePath: '',
+const webAppClientMock = vi.hoisted(() => ({
+  login: { status: { get: vi.fn() } },
+  logout: { post: vi.fn() },
 }))
 
-vi.mock('./base', () => ({
-  del: vi.fn(),
-  get: vi.fn(),
-  patch: vi.fn(),
-  post: mocks.post,
-  request: mocks.request,
-}))
+vi.mock('./webapp-client', () => ({ webAppClient: webAppClientMock }))
 
-vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: mocks.resetUser }))
-vi.mock('@/utils/var', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/var')>()),
-  get basePath() {
-    return mocks.basePath
-  },
-}))
-
-describe('useLogout', () => {
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client: new QueryClient() }, children)
-
+describe('webAppLoginStatus', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.basePath = ''
-    window.sessionStorage.clear()
+    webAppClientMock.login.status.get.mockReset()
+    webAppClientMock.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: true })
   })
-
   afterEach(() => {
-    clearPageLeaveGuards()
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
+    window.history.replaceState({}, '', originalUrl)
   })
 
-  it.each(['', '/console'])(
-    'clears persisted session identity and replaces the document with base path "%s"',
-    async (basePath) => {
-      mocks.basePath = basePath
-      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-      window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
-      window.sessionStorage.setItem(OAUTH_REGISTRATION_GA_SENT_KEY, 'true')
-      let finishLogout!: (response: Response) => void
-      mocks.request.mockReturnValue(
-        new Promise<Response>((resolve) => {
-          finishLogout = resolve
-        }),
-      )
-      const { result } = renderHook(() => useLogout(), { wrapper })
-      let logout!: Promise<unknown>
-      await act(async () => {
-        logout = result.current.mutateAsync()
-      })
-      expect(replace).not.toHaveBeenCalled()
-      expect(mocks.resetUser).not.toHaveBeenCalled()
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('pending-marker')
+  it('does not add an app code query to environment login status', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
 
-      await act(async () => {
-        finishLogout(new Response(JSON.stringify({ result: 'success' }), { status: 200 }))
-        await logout
-      })
+    await webAppLoginStatus('workflow-app', 'user-1')
 
-      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
-      expect(window.sessionStorage.getItem(OAUTH_REGISTRATION_GA_SENT_KEY)).toBeNull()
-      expect(mocks.resetUser).toHaveBeenCalledOnce()
-      expect(replace).toHaveBeenCalledExactlyOnceWith(`${basePath}/signin`)
-    },
-  )
-
-  it('preserves the OAuth return URL across the document replacement', async () => {
-    mocks.basePath = '/console'
-    mocks.request.mockResolvedValue(
-      new Response(JSON.stringify({ result: 'success' }), { status: 200 }),
-    )
-    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-    const redirectTo = `/signin?redirect_url=${encodeURIComponent('/console/account/oauth/authorize?client_id=app&state=value')}`
-    const { result } = renderHook(() => useLogout({ redirectTo }), { wrapper })
-    await act(async () => {
-      await result.current.mutateAsync()
+    expect(webAppClientMock.login.status.get).toHaveBeenCalledWith({
+      query: { user_id: 'user-1' },
     })
-    expect(replace).toHaveBeenCalledExactlyOnceWith(`/console${redirectTo}`)
   })
 
-  it('keeps the session identity and current document when logout fails', async () => {
-    mocks.request.mockRejectedValue(new Error('Logout failed'))
-    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
-    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-    const { result } = renderHook(() => useLogout(), { wrapper })
-    await act(async () => {
-      await expect(result.current.mutateAsync()).rejects.toThrow('Logout failed')
+  it('uses the authoritative environment login state', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
+    webAppClientMock.login.status.get.mockResolvedValue({ logged_in: false, app_logged_in: false })
+
+    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
+      userLoggedIn: false,
+      appLoggedIn: false,
     })
-    expect(replace).not.toHaveBeenCalled()
-    expect(mocks.resetUser).not.toHaveBeenCalled()
-    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('pending-marker')
+  })
+
+  it('trusts the remote login state for an sso verified environment', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
+    webAppClientMock.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: false })
+
+    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
+      userLoggedIn: true,
+      appLoggedIn: false,
+    })
+  })
+
+  it('keeps the app code for ordinary webapps', async () => {
+    window.history.replaceState({}, '', '/workflow/workflow-app')
+
+    await webAppLoginStatus('workflow-app')
+
+    expect(webAppClientMock.login.status.get).toHaveBeenCalledWith({
+      query: { app_code: 'workflow-app' },
+    })
+  })
+})
+
+describe('webAppLogout', () => {
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('clears the stored credentials before logging out remotely', async () => {
+    const address = { kind: 'default' as const, code: 'workflow-app' }
+    setWebAppAccessToken('access-token')
+    setWebAppPassport(address, 'passport')
+    webAppClientMock.logout.post.mockResolvedValue({ result: 'success' })
+
+    await webAppLogout(address)
+
+    expect(localStorage.getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)).toBeNull()
+    expect(getWebAppPassport(address)).toBe('')
+    expect(webAppClientMock.logout.post).toHaveBeenCalledOnce()
   })
 })

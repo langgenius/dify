@@ -3,39 +3,29 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import Recipient from '../index'
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.members.get': () =>
-        Promise.resolve({
-          accounts: [
-            {
-              id: 'member-1',
-              email: 'member-1@example.com',
-              name: 'Member One',
-              avatar_url: null,
-              role: 'normal',
-              status: 'active',
-            },
-            {
-              id: 'member-2',
-              email: 'member-2@example.com',
-              name: 'Member Two',
-              avatar_url: null,
-              role: 'normal',
-              status: 'active',
-            },
-          ],
-        }),
-    }),
-  }
-})
+const members = {
+  accounts: [
+    {
+      id: 'member-1',
+      email: 'member-1@example.com',
+      name: 'Member One',
+      avatar_url: null,
+      role: 'normal',
+      status: 'active',
+    },
+    {
+      id: 'member-2',
+      email: 'member-2@example.com',
+      name: 'Member Two',
+      avatar_url: null,
+      role: 'normal',
+      status: 'active',
+    },
+  ],
+}
 
 it('retains member and external recipients through additions, deletions and workspace delivery changes', async () => {
   function RecipientForm() {
@@ -48,7 +38,11 @@ it('retains member and external recipients through additions, deletions and work
     )
   }
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: { workspaces: { current: { members: { get: () => members } } } },
+    }),
+  )
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: { email: 'owner@example.com' },
     currentWorkspace: { name: "Dify's Lab" },

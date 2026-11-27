@@ -12,7 +12,7 @@ import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { useAppWorkflow } from '@/service/use-workflow'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { Resolution } from '@/types/app'
 
 const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
@@ -187,7 +187,7 @@ export function useAppInputsFormSchema({
     }),
   )
   const { data: currentApp } = appQuery
-  const workflowQuery = useAppWorkflow(isBasicApp ? '' : appDetail.id)
+  const workflowQuery = useQuery(appWorkflowQueryOptions(isBasicApp ? '' : appDetail.id))
   const { data: currentWorkflow } = workflowQuery
 
   const isLoading = appQuery.isFetching || workflowQuery.isFetching

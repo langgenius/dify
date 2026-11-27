@@ -4,31 +4,16 @@ import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import AgentLogModal from '../index'
 import { renderAgentLog } from './browser-test-env'
 
-const fetchAgentLogDetail = vi.hoisted(() => vi.fn())
+// The contract requires UUID app ids.
+const appId = '0f8e2c1a-7b3d-4e5f-8a9b-0c1d2e3f4a5b'
+const oldAppId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
+const newAppId = '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e'
 
 vi.unmock('react-i18next')
-// boundary: Monaco workers do not run in the Browser test bundle; readonly editor values stay real.
-vi.mock('@monaco-editor/react', async () => {
-  const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
-  return createMonacoEditorModuleMock()
-})
-
-// boundary: agent log records come from Console HTTP; modal race handling stays real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.agent.logs.get': fetchAgentLogDetail,
-    }),
-  }
-})
-
 const log: IChatItem = {
   id: 'msg-id',
   conversationId: 'conv-id',
@@ -67,7 +52,7 @@ function ControlledModal({ floating = false }: { floating?: boolean }) {
       <button type="button">Outside agent log</button>
       {open ? (
         <AgentLogModal
-          appId="app-id"
+          appId={appId}
           currentLogItem={log}
           floating={floating}
           onCancel={() => setOpen(false)}
@@ -88,11 +73,16 @@ function ControlledModal({ floating = false }: { floating?: boolean }) {
   )
 }
 
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: {
+      byAppId: { agent: { logs: { get: () => response('User') } } },
+    },
+  },
+}))
+
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
   toast.dismiss()
-  fetchAgentLogDetail.mockReset()
-  fetchAgentLogDetail.mockResolvedValue(response('User'))
 })
 
 it('closes and reopens the portalled dialog through its real controls', async () => {
@@ -122,14 +112,14 @@ it('closes the inline viewer only for an outside interaction', async () => {
 
 it('keeps the new record visible when the previous response arrives late', async () => {
   const oldResponse = createDeferred<AgentLogResponse>()
-  fetchAgentLogDetail.mockImplementationOnce(() => oldResponse.promise)
-  fetchAgentLogDetail.mockResolvedValueOnce(response('New executor'))
+  fake.console.apps.byAppId.agent.logs.get.mockImplementationOnce(() => oldResponse.promise)
+  fake.console.apps.byAppId.agent.logs.get.mockResolvedValueOnce(response('New executor'))
   const { rerender, screen } = await renderAgentLog(
-    <AgentLogModal appId="old-app" currentLogItem={log} onCancel={() => {}} width={1000} />,
+    <AgentLogModal appId={oldAppId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
 
   await rerender(
-    <AgentLogModal appId="new-app" currentLogItem={log} onCancel={() => {}} width={1000} />,
+    <AgentLogModal appId={newAppId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
   await expect.element(screen.getByText('New executor')).toBeVisible()
   oldResponse.resolve(response('Old executor'))
@@ -140,7 +130,7 @@ it('keeps the new record visible when the previous response arrives late', async
 it('preserves the selected tracing view when another message replaces the record', async () => {
   await page.viewport(1200, 800)
   const { rerender, screen } = await renderAgentLog(
-    <AgentLogModal appId="app-id" currentLogItem={log} onCancel={() => {}} width={1000} />,
+    <AgentLogModal appId={appId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
   await expect.element(screen.getByText('User')).toBeVisible()
   const tracing = screen.getByRole('button', { name: 'TRACING' })
@@ -149,7 +139,7 @@ it('preserves the selected tracing view when another message replaces the record
 
   await rerender(
     <AgentLogModal
-      appId="app-id"
+      appId={appId}
       currentLogItem={{ ...log, id: 'next-message' }}
       onCancel={() => {}}
       width={1000}
@@ -157,26 +147,27 @@ it('preserves the selected tracing view when another message replaces the record
   )
   await expect.element(screen.getByText('Final Processing')).toBeVisible()
   await expect.element(tracing).toHaveFocus()
-  expect(fetchAgentLogDetail).toHaveBeenLastCalledWith(
-    {
-      params: { app_id: 'app-id' },
+  expect(fake.console.apps.byAppId.agent.logs.get).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      params: { app_id: appId },
       query: { conversation_id: 'conv-id', message_id: 'next-message' },
-    },
-    { context: { silent: true } },
+    }),
   )
 })
 
 it('ignores a failed request after its record has been replaced', async () => {
   const oldResponse = createDeferred<AgentLogResponse>()
-  fetchAgentLogDetail.mockImplementationOnce(() => oldResponse.promise)
+  fake.console.apps.byAppId.agent.logs.get.mockImplementationOnce(() => oldResponse.promise)
   const { rerender, screen } = await renderAgentLog(
-    <AgentLogModal appId="old-app" currentLogItem={log} onCancel={() => {}} width={1000} />,
+    <AgentLogModal appId={oldAppId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
   await rerender(
-    <AgentLogModal appId="new-app" currentLogItem={log} onCancel={() => {}} width={1000} />,
+    <AgentLogModal appId={newAppId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
   await expect.element(screen.getByText('User')).toBeVisible()
-  oldResponse.reject(new Error('Old request failed'))
+  oldResponse.reject(
+    apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Old request failed' }),
+  )
   await expect.element(screen.getByText('User')).toBeVisible()
   await expect
     .element(screen.getByRole('dialog', { name: 'Old request failed' }))

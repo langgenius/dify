@@ -58,11 +58,11 @@ describe('plugin and bundle icons', () => {
     { type: 'plugin' as const, collection: 'plugins' },
     { type: 'bundle' as const, collection: 'bundles' },
   ])('builds $type icons and formats card data', async ({ type, collection }) => {
-    const { getPluginIconInMarketplace, getFormattedPlugin } = await import('../utils')
+    const { getPluginIconInMarketplace, toPluginCard } = await import('../plugin-card-adapter')
     const plugin = { ...createMockPlugin({ type }), labels: { en_US: 'Bundle label' } }
     const icon = `https://marketplace.dify.ai/api/v1/${collection}/test-org/test-plugin/icon`
     expect(getPluginIconInMarketplace(plugin)).toBe(icon)
-    expect(getFormattedPlugin(plugin)).toEqual({
+    expect(toPluginCard(plugin)).toEqual({
       ...plugin,
       icon,
       ...(type === 'bundle' ? { brief: plugin.description, label: plugin.labels } : {}),
@@ -286,7 +286,7 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
 
 describe('toListPlugin', () => {
   it('keeps card fields and drops list-unused payload', async () => {
-    const { toListPlugin } = await import('../utils')
+    const { toListPlugin } = await import('../plugin-card-adapter')
     const plugin = {
       ...createMockPlugin({
         introduction: 'A very long readme that must not enter the catalog RSC payload',

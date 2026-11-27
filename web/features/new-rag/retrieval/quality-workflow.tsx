@@ -3,16 +3,16 @@
 import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from '../quality/types'
 import type { RetrievalEvidence } from './model'
 import type { BadCaseReason, QualityDecision } from './results'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValueRawSync } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
-import { goldenQuestionQueriesKey } from '../quality/quality-model'
 import { newKnowledgeQualityBadCasesPath, newKnowledgeQualityPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { QualityActions } from './results'
@@ -48,7 +48,19 @@ function goldenQuestionEvidenceOptions(
 
 export function RetrievalQualityWorkflow() {
   const { t } = useTranslation(['dataset'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
+  const { mutateAsync: createBadCase } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutateAsync: createGoldenQuestion } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
+      // The promotion dialog shows the failure next to its submit button.
+      meta: { errorToast: false },
+    }),
+  )
   const canEditQuality = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
   const {
@@ -66,7 +78,7 @@ export function RetrievalQualityWorkflow() {
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [goldenPromotion, setGoldenPromotion] = useState<GoldenQuestionPromotion>()
-  const [goldenPromotionError, setGoldenPromotionError] = useState<string>()
+  const [goldenPromotionError, setGoldenPromotionError] = useState<{ error: unknown }>()
 
   const startGoldenPromotion = () => {
     if (!resultKey || !selectedQuery) return
@@ -90,27 +102,25 @@ export function RetrievalQualityWorkflow() {
     setQualityPendingKey(resultKey)
     try {
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post(
-          {
-            body: {
-              reason,
-              tags: ['retrieval-test'],
-              trace_id: selectedTraceId,
-            },
-            params: { control_space_id: knowledgeSpaceId },
+        await createBadCase({
+          body: {
+            reason,
+            tags: ['retrieval-test'],
+            trace_id: selectedTraceId,
           },
-          { context: { silent: true } },
-        )
+          params: { control_space_id: knowledgeSpaceId },
+        })
       } catch (error) {
         // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
         if (getHttpErrorStatus(error) !== 409) throw error
+        // A successful create leaves the list to the invalidation fallback; this one failed.
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+            input: { params: { control_space_id: knowledgeSpaceId } },
+            type: 'infinite',
+          }),
+        })
       }
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
-      })
       setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
       void refetchTraces()
     } catch (error) {
@@ -126,7 +136,7 @@ export function RetrievalQualityWorkflow() {
     setGoldenPromotionError(undefined)
     setQualityPendingKey(promotion.resultKey)
     try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post({
+      await createGoldenQuestion({
         body: {
           annotation: draft.annotation,
           expected_evidence_ids: draft.expectedEvidenceIds,
@@ -136,13 +146,10 @@ export function RetrievalQualityWorkflow() {
         },
         params: { control_space_id: knowledgeSpaceId },
       })
-      await queryClient.invalidateQueries({
-        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
-      })
       setQualityDecisions((current) => ({ ...current, [promotion.resultKey]: 'golden' }))
       setGoldenPromotion(undefined)
-    } catch {
-      setGoldenPromotionError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      setGoldenPromotionError({ error })
     } finally {
       setQualityPendingKey(undefined)
     }
@@ -181,7 +188,13 @@ export function RetrievalQualityWorkflow() {
         <GoldenQuestionDialog
           key={goldenPromotion.resultKey}
           evidenceOptions={goldenPromotion.evidenceOptions}
-          error={goldenPromotionError}
+          error={
+            goldenPromotionError &&
+            describeRequestError(
+              goldenPromotionError.error,
+              t(($) => $.unknownError, { ns: 'dataset' }),
+            )
+          }
           initialValue={goldenPromotion.value}
           knowledgeSpaceId={knowledgeSpaceId}
           mode="promote"

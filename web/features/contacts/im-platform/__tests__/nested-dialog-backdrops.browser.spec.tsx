@@ -1,3 +1,4 @@
+import { zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -9,26 +10,21 @@ import common from '@/i18n/locales/en-US/common.json'
 import contacts from '@/i18n/locales/en-US/contacts.json'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { ContactsImPlatformRuntimeProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
-import { channelSummary } from './fixtures/channel-client'
-import { channel, defaultResponse, json } from './fixtures/http'
+import { channelSummary, emailDetail, imDetail } from './fixtures/channel-client'
+import { channel as feishuChannel, providers, syncRun } from './fixtures/http'
 
-const network = vi.hoisted(() => ({
-  handle: vi.fn<(request: Request) => Promise<Response> | Response>(),
-}))
-vi.unmock('react-i18next')
-// boundary: the HTTP adapter is the server edge below the real contacts runtime.
-vi.mock('@/service/base', async () => {
-  const { httpErrorFromResponse } = await import('@/service/http-error')
-  return {
-    request: async (_url: string, _init: RequestInit, options: { request: Request }) => {
-      const response = await network.handle(options.request)
-      if (!response.ok) throw await httpErrorFromResponse(response)
-      return response
-    },
-  }
+// Channel ids are UUIDs in the contract.
+const channel = { ...feishuChannel, id: '00000000-0000-4000-8000-000000000001' }
+const emailChannel = channelSummary({
+  id: '00000000-0000-4000-8000-000000000002',
+  kind: 'email',
+  provider: 'resend',
 })
+
+vi.unmock('react-i18next')
 
 // These surfaces previously lost their scrims when moved under Settings' transparent modal.
 // Independent component tests miss that nested-dialog condition. Real rendering must prove
@@ -57,16 +53,43 @@ function visibleViewportScrims() {
 }
 
 async function setup() {
-  network.handle.mockImplementation((request) => {
-    if (new URL(request.url).pathname.endsWith('/channels'))
-      return json({
-        channels: [
-          channel,
-          channelSummary({ id: 'channel-email', kind: 'email', provider: 'resend' }),
-        ],
-      })
-    return defaultResponse(request)
-  })
+  // Only reads are served: any write from opening or dismissing a surface fails the test.
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            humanInput: {
+              v2: {
+                channelProviders: {
+                  get: () =>
+                    zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse.parse(providers),
+                },
+                channels: {
+                  get: () => ({ channels: [channel, emailChannel] }),
+                  im: { byChannelId: { get: () => imDetail(channel) } },
+                  email: { byChannelId: { get: () => emailDetail(emailChannel) } },
+                },
+                imSyncRuns: {
+                  latest: {
+                    get: () => ({ run: syncRun({ channel_id: channel.id }) }),
+                    results: {
+                      get: ({ query }) => ({
+                        data: [],
+                        total: 0,
+                        limit: query.limit,
+                        page: query.page,
+                      }),
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -143,7 +166,7 @@ it.each(['IM configuration', 'Email configuration', 'replacement', 'deletion', '
           .element(popup.getByRole('link', { name: 'Learn more' }))
           .toHaveAttribute(
             'href',
-            'https://docs.dify.ai/en/cloud/use-dify/workspace/channels/email',
+            'https://docs.dify.ai/en/self-host/use-dify/workspace/channels/overview',
           )
       }
       if (surface === 'IM configuration') {
@@ -157,7 +180,6 @@ it.each(['IM configuration', 'Email configuration', 'replacement', 'deletion', '
       await expect
         .element(page.getByRole('dialog', { name: 'Workspace settings', exact: true }))
         .toBeVisible()
-      expect(network.handle.mock.calls.every(([request]) => request.method === 'GET')).toBe(true)
     } finally {
       client.clear()
     }

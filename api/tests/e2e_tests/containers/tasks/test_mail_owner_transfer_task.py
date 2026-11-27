@@ -6,29 +6,35 @@ using TestContainers to ensure real email service integration and proper functio
 testing with actual database and service dependencies.
 """
 
-import logging
-from unittest.mock import patch
+from collections.abc import Iterator
+from typing import NamedTuple
+from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from tasks.mail_owner_transfer_task import (
     send_new_owner_transfer_notify_email_task,
     send_old_owner_transfer_notify_email_task,
     send_owner_transfer_confirm_task,
 )
 
-logger = logging.getLogger(__name__)
+
+class MailDependencies(NamedTuple):
+    is_inited: Mock
+    get_email_service: Mock
+    send_email: Mock
 
 
+@pytest.mark.usefixtures("db_session_with_containers")
 class TestMailOwnerTransferTask:
     """Integration tests for mail owner transfer tasks using testcontainers."""
 
     @pytest.fixture
-    def mock_mail_dependencies(self):
+    def mock_mail_dependencies(self) -> Iterator[MailDependencies]:
         """Mock setup for mail service dependencies."""
         with (
             patch("tasks.mail_owner_transfer_task.mail", autospec=True) as mock_mail,
@@ -39,13 +45,13 @@ class TestMailOwnerTransferTask:
 
             # Setup mock email service
             mock_email_service = mock_get_email_service.return_value
-            yield {
-                "mail": mock_mail,
-                "email_service": mock_email_service,
-                "get_email_service": mock_get_email_service,
-            }
+            yield MailDependencies(
+                is_inited=mock_mail.is_inited,
+                get_email_service=mock_get_email_service.mock,
+                send_email=mock_email_service.send_email,
+            )
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session) -> tuple[Account, Tenant]:
         """
         Helper method to create test account and tenant for testing.
 
@@ -62,7 +68,7 @@ class TestMailOwnerTransferTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -70,7 +76,7 @@ class TestMailOwnerTransferTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -79,7 +85,7 @@ class TestMailOwnerTransferTask:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db_session_with_containers.add(join)
@@ -88,8 +94,8 @@ class TestMailOwnerTransferTask:
         return account, tenant
 
     def test_send_owner_transfer_confirm_task_success(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, db_session_with_containers: Session, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test successful owner transfer confirmation email sending.
 
@@ -115,12 +121,13 @@ class TestMailOwnerTransferTask:
         )
 
         # Assert: Verify the expected outcomes
-        mock_mail_dependencies["mail"].is_inited.assert_called_once()
-        mock_mail_dependencies["get_email_service"].assert_called_once()
+        mock_mail_dependencies.is_inited.assert_called_once()
+        mock_mail_dependencies.get_email_service.assert_called_once()
 
         # Verify email service was called with correct parameters
-        mock_mail_dependencies["email_service"].send_email.assert_called_once()
-        call_args = mock_mail_dependencies["email_service"].send_email.call_args
+        mock_mail_dependencies.send_email.assert_called_once()
+        call_args = mock_mail_dependencies.send_email.call_args
+        assert call_args is not None
 
         assert call_args[1]["email_type"] == EmailType.OWNER_TRANSFER_CONFIRM
         assert call_args[1]["language_code"] == test_language
@@ -130,8 +137,8 @@ class TestMailOwnerTransferTask:
         assert call_args[1]["template_context"]["WorkspaceName"] == test_workspace
 
     def test_send_owner_transfer_confirm_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test owner transfer confirmation email when mail service is not initialized.
 
@@ -141,7 +148,7 @@ class TestMailOwnerTransferTask:
         - No exceptions are raised
         """
         # Arrange: Set mail service as not initialized
-        mock_mail_dependencies["mail"].is_inited.return_value = False
+        mock_mail_dependencies.is_inited.return_value = False
 
         test_language = "en-US"
         test_email = "test@example.com"
@@ -157,12 +164,12 @@ class TestMailOwnerTransferTask:
         )
 
         # Assert: Verify no email service calls were made
-        mock_mail_dependencies["get_email_service"].assert_not_called()
-        mock_mail_dependencies["email_service"].send_email.assert_not_called()
+        mock_mail_dependencies.get_email_service.assert_not_called()
+        mock_mail_dependencies.send_email.assert_not_called()
 
     def test_send_owner_transfer_confirm_task_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test exception handling in owner transfer confirmation email.
 
@@ -173,7 +180,7 @@ class TestMailOwnerTransferTask:
         - Error logging works correctly
         """
         # Arrange: Setup email service to raise exception
-        mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
+        mock_mail_dependencies.send_email.side_effect = Exception("Email service error")
 
         test_language = "en-US"
         test_email = "test@example.com"
@@ -192,11 +199,11 @@ class TestMailOwnerTransferTask:
             pytest.fail(f"Task should not raise exceptions, but raised: {e}")
 
         # Verify email service was called despite the exception
-        mock_mail_dependencies["email_service"].send_email.assert_called_once()
+        mock_mail_dependencies.send_email.assert_called_once()
 
     def test_send_old_owner_transfer_notify_email_task_success(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, db_session_with_containers: Session, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test successful old owner transfer notification email sending.
 
@@ -222,12 +229,13 @@ class TestMailOwnerTransferTask:
         )
 
         # Assert: Verify the expected outcomes
-        mock_mail_dependencies["mail"].is_inited.assert_called_once()
-        mock_mail_dependencies["get_email_service"].assert_called_once()
+        mock_mail_dependencies.is_inited.assert_called_once()
+        mock_mail_dependencies.get_email_service.assert_called_once()
 
         # Verify email service was called with correct parameters
-        mock_mail_dependencies["email_service"].send_email.assert_called_once()
-        call_args = mock_mail_dependencies["email_service"].send_email.call_args
+        mock_mail_dependencies.send_email.assert_called_once()
+        call_args = mock_mail_dependencies.send_email.call_args
+        assert call_args is not None
 
         assert call_args[1]["email_type"] == EmailType.OWNER_TRANSFER_OLD_NOTIFY
         assert call_args[1]["language_code"] == test_language
@@ -237,8 +245,8 @@ class TestMailOwnerTransferTask:
         assert call_args[1]["template_context"]["NewOwnerEmail"] == test_new_owner_email
 
     def test_send_old_owner_transfer_notify_email_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test old owner transfer notification email when mail service is not initialized.
 
@@ -248,7 +256,7 @@ class TestMailOwnerTransferTask:
         - No exceptions are raised
         """
         # Arrange: Set mail service as not initialized
-        mock_mail_dependencies["mail"].is_inited.return_value = False
+        mock_mail_dependencies.is_inited.return_value = False
 
         test_language = "en-US"
         test_email = "test@example.com"
@@ -264,12 +272,12 @@ class TestMailOwnerTransferTask:
         )
 
         # Assert: Verify no email service calls were made
-        mock_mail_dependencies["get_email_service"].assert_not_called()
-        mock_mail_dependencies["email_service"].send_email.assert_not_called()
+        mock_mail_dependencies.get_email_service.assert_not_called()
+        mock_mail_dependencies.send_email.assert_not_called()
 
     def test_send_old_owner_transfer_notify_email_task_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test exception handling in old owner transfer notification email.
 
@@ -280,7 +288,7 @@ class TestMailOwnerTransferTask:
         - Error logging works correctly
         """
         # Arrange: Setup email service to raise exception
-        mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
+        mock_mail_dependencies.send_email.side_effect = Exception("Email service error")
 
         test_language = "en-US"
         test_email = "test@example.com"
@@ -299,11 +307,11 @@ class TestMailOwnerTransferTask:
             pytest.fail(f"Task should not raise exceptions, but raised: {e}")
 
         # Verify email service was called despite the exception
-        mock_mail_dependencies["email_service"].send_email.assert_called_once()
+        mock_mail_dependencies.send_email.assert_called_once()
 
     def test_send_new_owner_transfer_notify_email_task_success(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, db_session_with_containers: Session, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test successful new owner transfer notification email sending.
 
@@ -327,12 +335,13 @@ class TestMailOwnerTransferTask:
         )
 
         # Assert: Verify the expected outcomes
-        mock_mail_dependencies["mail"].is_inited.assert_called_once()
-        mock_mail_dependencies["get_email_service"].assert_called_once()
+        mock_mail_dependencies.is_inited.assert_called_once()
+        mock_mail_dependencies.get_email_service.assert_called_once()
 
         # Verify email service was called with correct parameters
-        mock_mail_dependencies["email_service"].send_email.assert_called_once()
-        call_args = mock_mail_dependencies["email_service"].send_email.call_args
+        mock_mail_dependencies.send_email.assert_called_once()
+        call_args = mock_mail_dependencies.send_email.call_args
+        assert call_args is not None
 
         assert call_args[1]["email_type"] == EmailType.OWNER_TRANSFER_NEW_NOTIFY
         assert call_args[1]["language_code"] == test_language
@@ -341,8 +350,8 @@ class TestMailOwnerTransferTask:
         assert call_args[1]["template_context"]["WorkspaceName"] == test_workspace
 
     def test_send_new_owner_transfer_notify_email_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test new owner transfer notification email when mail service is not initialized.
 
@@ -352,7 +361,7 @@ class TestMailOwnerTransferTask:
         - No exceptions are raised
         """
         # Arrange: Set mail service as not initialized
-        mock_mail_dependencies["mail"].is_inited.return_value = False
+        mock_mail_dependencies.is_inited.return_value = False
 
         test_language = "en-US"
         test_email = "test@example.com"
@@ -366,12 +375,12 @@ class TestMailOwnerTransferTask:
         )
 
         # Assert: Verify no email service calls were made
-        mock_mail_dependencies["get_email_service"].assert_not_called()
-        mock_mail_dependencies["email_service"].send_email.assert_not_called()
+        mock_mail_dependencies.get_email_service.assert_not_called()
+        mock_mail_dependencies.send_email.assert_not_called()
 
     def test_send_new_owner_transfer_notify_email_task_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+        self, mock_mail_dependencies: MailDependencies
+    ) -> None:
         """
         Test exception handling in new owner transfer notification email.
 
@@ -382,7 +391,7 @@ class TestMailOwnerTransferTask:
         - Error logging works correctly
         """
         # Arrange: Setup email service to raise exception
-        mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
+        mock_mail_dependencies.send_email.side_effect = Exception("Email service error")
 
         test_language = "en-US"
         test_email = "test@example.com"
@@ -399,4 +408,4 @@ class TestMailOwnerTransferTask:
             pytest.fail(f"Task should not raise exceptions, but raised: {e}")
 
         # Verify email service was called despite the exception
-        mock_mail_dependencies["email_service"].send_email.assert_called_once()
+        mock_mail_dependencies.send_email.assert_called_once()

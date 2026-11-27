@@ -39,14 +39,14 @@ const PanelOutputSection: FC<Props> = ({
         collapsed={structuredOutputCollapsed}
         onCollapse={setStructuredOutputCollapsed}
         operations={
-          <div className="mr-4 flex shrink-0 items-center">
+          <div className="me-4 flex shrink-0 items-center">
             {!isModelSupportStructuredOutput && !!inputs.structured_output_enabled && (
               <Infotip>
                 <InfotipTrigger
                   aria-label={t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
                   iconVariant="warning"
-                  iconSize="large"
-                  className="mr-1 text-text-warning-secondary"
+                  size="lg"
+                  className="me-1 text-text-warning-secondary"
                 />
                 <InfotipContent className="w-58">
                   <InfotipTitle className="title-xs-semi-bold text-text-primary">
@@ -60,7 +60,7 @@ const PanelOutputSection: FC<Props> = ({
             )}
             <div
               id={structuredLabelId}
-              className="mr-0.5 system-xs-medium-uppercase text-text-tertiary"
+              className="me-0.5 system-xs-medium-uppercase text-text-tertiary"
             >
               {t(($) => $['structOutput.structured'], { ns: 'app' })}
             </div>
@@ -71,7 +71,7 @@ const PanelOutputSection: FC<Props> = ({
               </InfotipContent>
             </Infotip>
             <Switch
-              className="ml-2"
+              className="ms-2"
               checked={!!inputs.structured_output_enabled}
               onCheckedChange={handleStructureOutputEnableChange}
               size="md"

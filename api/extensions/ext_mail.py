@@ -1,17 +1,30 @@
 import logging
+from typing import TYPE_CHECKING, Protocol
 
 from flask import Flask
 
 from configs import dify_config
 from dify_app import DifyApp
 
+if TYPE_CHECKING:
+    from resend import Emails
+
 logger = logging.getLogger(__name__)
 
 
+class MailClient(Protocol):
+    """Transport accepting validated mail messages and propagating delivery failures."""
+
+    def send(self, message: dict[str, str], /) -> None:
+        """Deliver a complete message, or raise before reporting success."""
+        ...
+
+
 class Mail:
-    def __init__(self):
-        self._client = None
-        self._default_send_from = None
+    def __init__(self, client: MailClient | None = None, default_send_from: str | None = None) -> None:
+        """Use the supplied transport and sender, or remain uninitialized until init_app."""
+        self._client: MailClient | type[Emails] | None = client
+        self._default_send_from = default_send_from
 
     def is_inited(self) -> bool:
         return self._client is not None

@@ -1,7 +1,7 @@
 import type { PermissionKey } from '@/models/access-control'
 import { hasPermission } from '@/utils/permission'
 
-export const SnippetPermission = {
+const SnippetPermission = {
   CreateAndModify: 'snippets.create_and_modify',
   Management: 'snippets.management',
 } as const satisfies Record<string, PermissionKey>

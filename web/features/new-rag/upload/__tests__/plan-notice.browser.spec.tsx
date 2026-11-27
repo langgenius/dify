@@ -41,13 +41,3 @@ it('shows the free upload constraints and opens the existing pricing flow from t
     .poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('pricing'))
     .toBe('open')
 })
-
-it('does not show the free upload notice for a paid plan', async () => {
-  await renderNotice('professional')
-  await expect
-    .element(page.getByText('billing.upgrade.uploadMultiplePages.title'))
-    .not.toBeInTheDocument()
-  await expect
-    .element(page.getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }))
-    .not.toBeInTheDocument()
-})

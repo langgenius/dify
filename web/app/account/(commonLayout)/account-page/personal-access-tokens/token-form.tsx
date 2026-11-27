@@ -23,6 +23,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -80,12 +81,14 @@ export default function TokenForm({
   const { copied, failed: copyFailed, copySecret } = useTokenClipboard()
   const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null)
   const create = useMutation(
-    consoleQuery.account.personalAccessTokens.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.personalAccessTokens.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const created = create.data
   const update = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const pending = create.isPending || update.isPending
@@ -138,7 +141,7 @@ export default function TokenForm({
       return
     }
     if (attemptRef.current?.fingerprint !== fingerprint)
-      attemptRef.current = { fingerprint, key: crypto.randomUUID() }
+      attemptRef.current = { fingerprint, key: uuid4() }
     create.mutate({ body, headers: { 'Idempotency-Key': attemptRef.current.key } })
   }
   return (

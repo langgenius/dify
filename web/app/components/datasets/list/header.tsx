@@ -10,7 +10,7 @@ import {
   getStepByStepTourMenuContentProps,
   useStepByStepTourControlledMenu,
 } from '@/app/components/step-by-step-tour/menu'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 
 type Props = {
   canConnectExternalDataset: boolean
@@ -110,13 +110,11 @@ const DatasetListHeader = ({
             <MenuContent
               align="end"
               {...getStepByStepTourMenuContentProps({
-                disableMotion: createMenu.controlled,
                 highlightPart: createMenu.controlled
                   ? stepByStepTourCreateMenuHighlightPart
                   : undefined,
-                interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
-                className: 'w-80',
               })}
+              className="w-80"
             >
               {canCreateDataset && (
                 <>

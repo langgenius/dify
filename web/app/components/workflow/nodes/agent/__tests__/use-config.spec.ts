@@ -8,19 +8,30 @@ import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig, { useStrategyInfo } from '../use-config'
 import { createProvider, createStrategy } from './strategy-fixture'
 
-const { request, marketplaceRefetch, marketplaceQuery } = vi.hoisted(() => ({
+const { request, marketplaceRequest } = vi.hoisted(() => ({
   request: vi.fn(),
-  marketplaceRefetch: vi.fn(),
-  marketplaceQuery: vi.fn(),
+  marketplaceRequest: vi.fn(),
 }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
 }))
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: marketplaceQuery,
-  useCheckInstalled: () => ({ data: { plugins: [] } }),
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: marketplaceRequest,
+  })
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
+})
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   title: 'Agent',
@@ -37,12 +48,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
 beforeEach(() => {
   vi.clearAllMocks()
   request.mockImplementation(() => Promise.resolve(Response.json(createProvider())))
-  marketplaceRefetch.mockResolvedValue({ data: undefined })
-  marketplaceQuery.mockReturnValue({
-    isLoading: false,
-    data: { data: { plugins: [] } },
-    refetch: marketplaceRefetch,
-  })
+  marketplaceRequest.mockResolvedValue({ data: { plugins: [], total: 0 } })
 })
 
 describe('agent strategy query and configuration', () => {
@@ -53,8 +59,7 @@ describe('agent strategy query and configuration', () => {
     expect(result.current.strategyStatus).toBeUndefined()
     act(() => result.current.refetch())
     expect(request).not.toHaveBeenCalled()
-    expect(marketplaceRefetch).not.toHaveBeenCalled()
-    expect(marketplaceQuery).toHaveBeenCalledWith([], { retry: false })
+    expect(marketplaceRequest).not.toHaveBeenCalled()
   })
 
   it('treats a failed provider lookup as missing without retrying', async () => {

@@ -1,11 +1,14 @@
 """SQLAlchemy implementation of the account persistence port."""
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import override
+from uuid import UUID
 
 from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.human_input_v2.shared import AccountId
 from models.account import (
     Account,
@@ -17,12 +20,14 @@ from models.account import (
     TenantAccountJoin,
     TenantStatus,
 )
+from models.model import UploadFile
+from repositories.account.avatar import eligible_avatar_file_conditions, owned_avatar_file_conditions
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository
 from services.account_email import normalize_email
-from services.account_errors import AccountNormalizedEmailAlreadyInUseError
-from services.account_ports import AccountRepository
+from services.account_errors import AccountNormalizedEmailAlreadyInUseError, AvatarFileNotFoundError
+from services.account_ports import AccountAvatarQuery, AccountRepository
 from services.entities.account_entities import (
     AccountAuthenticationSnapshot,
     AccountCredentials,
@@ -41,8 +46,18 @@ from services.entities.account_login_entities import (
     PasswordLoginCompletion,
 )
 
+_file_access = DatabaseFileAccessController()
 
-class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepository):
+
+def _normalized_uuid(value: str) -> str | None:
+    """Return the canonical UUID spelling, or None for an invalid reference."""
+    try:
+        return str(UUID(value))
+    except ValueError:
+        return None
+
+
+class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepository, AccountAvatarQuery):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -267,10 +282,24 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
             if account is None:
                 return None
 
+            avatar = changes.avatar
+            if avatar and not avatar.startswith(("http://", "https://")):
+                try:
+                    avatar = str(UUID(avatar))
+                except ValueError as error:
+                    raise AvatarFileNotFoundError from error
+                owned_avatar_id = session.scalar(
+                    select(UploadFile.id)
+                    .where(*owned_avatar_file_conditions(account_id=account_id, file_id=avatar, allow_legacy=False))
+                    .limit(1)
+                )
+                if owned_avatar_id is None:
+                    raise AvatarFileNotFoundError
+
             if changes.name is not None:
                 account.name = changes.name
             if changes.avatar is not None:
-                account.avatar = changes.avatar
+                account.avatar = avatar
             if changes.interface_language is not None:
                 account.interface_language = changes.interface_language
             if changes.interface_theme is not None:
@@ -280,6 +309,70 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
 
             session.flush()
             return self._to_snapshot(account)
+
+    @override
+    def get_owned_avatar_file_id(self, *, account_id: str, upload_file_id: str) -> str | None:
+        """Return the canonical ID of the account's raster upload, or None if ineligible."""
+        owner_id = _normalized_uuid(account_id)
+        file_id = _normalized_uuid(upload_file_id)
+        if owner_id is None or file_id is None:
+            return None
+
+        with self._session_factory() as session:
+            return session.scalar(
+                select(UploadFile.id)
+                .where(*owned_avatar_file_conditions(account_id=owner_id, file_id=file_id, allow_legacy=True))
+                .limit(1)
+            )
+
+    @override
+    def get_current_avatar_references(self, *, account_ids: Sequence[str]) -> dict[str, str]:
+        """Return current external URLs or canonical owned raster IDs keyed by the original inputs.
+
+        Omit invalid, missing, or out-of-scope references. Apply the active file scope in the
+        upload query and use at most two queries for the whole batch.
+        """
+        canonical_by_input = {
+            account_id: canonical_id
+            for account_id in dict.fromkeys(account_ids)
+            if (canonical_id := _normalized_uuid(account_id)) is not None
+        }
+        if not canonical_by_input:
+            return {}
+
+        references: dict[str, str] = {}
+        upload_ids: dict[str, str] = {}
+        with self._session_factory() as session:
+            profiles = session.execute(
+                select(Account.id, Account.avatar).where(Account.id.in_(set(canonical_by_input.values())))
+            ).all()
+            for account_id, avatar in profiles:
+                if avatar:
+                    if avatar.startswith(("http://", "https://")):
+                        references[account_id] = avatar
+                    elif (file_id := _normalized_uuid(avatar)) is not None:
+                        upload_ids[account_id] = file_id
+
+            if upload_ids:
+                scoped_uploads = _file_access.apply_upload_file_filters(
+                    select(UploadFile).where(
+                        UploadFile.id.in_(set(upload_ids.values())),
+                        UploadFile.created_by.in_(set(upload_ids)),
+                        *eligible_avatar_file_conditions(allow_legacy=True),
+                    )
+                )
+                owned_uploads = session.execute(
+                    scoped_uploads.with_only_columns(UploadFile.id, UploadFile.created_by)
+                ).all()
+                for file_id, owner_id in owned_uploads:
+                    if upload_ids.get(owner_id) == file_id:
+                        references[owner_id] = file_id
+
+        return {
+            input_id: references[canonical_id]
+            for input_id, canonical_id in canonical_by_input.items()
+            if canonical_id in references
+        }
 
     @override
     def update_password(self, account_id: str, password: AccountPasswordDigest) -> AccountSnapshot | None:

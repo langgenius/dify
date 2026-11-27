@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -10,7 +10,6 @@ from core.app.file_access import DatabaseFileAccessController
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.agent_log_events import AgentLogEvent
-from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
@@ -33,6 +32,9 @@ _file_access_controller = DatabaseFileAccessController()
 
 
 class AgentMessageTransformer:
+    def __init__(self, session_factory: Callable[[], Session]) -> None:
+        self._session_factory = session_factory
+
     def transform(
         self,
         *,
@@ -82,7 +84,7 @@ class AgentMessageTransformer:
                 if not isinstance(tool_file_id, str) or not tool_file_id:
                     raise ToolFileNotFoundError("missing tool_file_id metadata")
 
-                with Session(db.engine) as session:
+                with self._session_factory() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -107,7 +109,7 @@ class AgentMessageTransformer:
                 tool_file_id = message.meta.get("tool_file_id")
                 if not isinstance(tool_file_id, str) or not tool_file_id:
                     raise ToolFileNotFoundError("missing tool_file_id metadata")
-                with Session(db.engine) as session:
+                with self._session_factory() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -321,8 +323,7 @@ class AgentMessageTransformer:
             is_final=False,
         )
 
-    @staticmethod
-    def _file_from_link_message(*, message: ToolInvokeMessage, tenant_id: str) -> File | None:
+    def _file_from_link_message(self, *, message: ToolInvokeMessage, tenant_id: str) -> File | None:
         if not isinstance(message.message, ToolInvokeMessage.TextMessage):
             return None
         meta = message.meta
@@ -335,7 +336,7 @@ class AgentMessageTransformer:
 
         tool_file_id = meta.get("tool_file_id")
         if isinstance(tool_file_id, str) and tool_file_id:
-            with Session(db.engine) as session:
+            with self._session_factory() as session:
                 tool_file = session.scalar(
                     select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id)
                 )

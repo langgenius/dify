@@ -1,46 +1,33 @@
-import type { PostFilesUploadData } from '@dify/contracts/api/console/files/types.gen'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { dropFixtureFile } from '@/test/browser-file-drag'
+import { setupFakeApi } from '@/test/fake-api'
 import { createGifFile, createImageFile, readImagePixels } from '@/test/fixtures/image-files'
-import { guardPreviewFetch } from '@/test/fixtures/preview-files'
 import { createIconPickerEnvironment } from '@/test/icon-picker'
 import { ImageIconInput } from '../image-input'
 import { IconPickerCaller } from './icon-picker-caller'
 
-const { uploadImage } = vi.hoisted(() => ({
-  uploadImage:
-    vi.fn<
-      (
-        input: Pick<PostFilesUploadData, 'body'>,
-      ) => Promise<{ id: string; name: string; size: number }>
-    >(),
+// The contract requires UUID file ids; derive a stable one from each readable key.
+const fileId = (key: string) =>
+  `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
+    .join('')
+    .slice(0, 12)
+    .padStart(12, '0')}`
+const fake = setupFakeApi(() => ({
+  console: {
+    files: {
+      upload: {
+        post: ({ body }) => ({
+          id: fileId('saved-image'),
+          name: 'uploaded-image',
+          size: body.file.size,
+        }),
+      },
+    },
+  },
 }))
-// boundary: console file upload is the external persistence service for the rendered picker.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
-  }
-})
-// boundary: isolated picker rendering has no Next route, while upload only requires empty params.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
-
-let restoreFetch: () => void
-beforeEach(() => {
-  // boundary: preview transport rejects backend requests while native local URLs stay real.
-  restoreFetch = guardPreviewFetch()
-  uploadImage.mockImplementation(async ({ body: { file } }) => ({
-    id: 'saved-image',
-    name: 'uploaded-image',
-    size: file.size,
-  }))
-})
 afterEach(() => {
-  restoreFetch()
   vi.restoreAllMocks()
 })
 
@@ -67,8 +54,8 @@ it('crops a decoded static image into the square bytes saved by the picker', asy
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect
     .element(page.getByRole('status', { name: 'Saved icon' }))
-    .toMatchTextContent('saved-image')
-  const file = uploadImage.mock.calls[0]![0].body.file
+    .toMatchTextContent(fileId('saved-image'))
+  const file = fake.console.files.upload.post.mock.calls[0]![0].body.file
   expect(file).toMatchObject({ name: 'photo.png' })
   expect(await readImagePixels(file)).toEqual({
     width: 80,
@@ -91,9 +78,9 @@ it('preserves a GIF as the original decodable file without cropping', async () =
     .not.toBeInTheDocument()
   await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  expect(new Uint8Array(await uploadImage.mock.calls[0]![0].body.file.arrayBuffer())).toEqual(
-    new Uint8Array(await file.arrayBuffer()),
-  )
+  expect(
+    new Uint8Array(await fake.console.files.upload.post.mock.calls[0]![0].body.file.arrayBuffer()),
+  ).toEqual(new Uint8Array(await file.arrayBuffer()))
   await expect.element(page.getByRole('img', { name: 'Saved icon preview' })).toBeVisible()
 })
 
@@ -138,7 +125,7 @@ it('invalidates an unreadable image and lets a replacement be saved', async () =
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect
     .element(page.getByRole('status', { name: 'Saved icon' }))
-    .toMatchTextContent('saved-image')
+    .toMatchTextContent(fileId('saved-image'))
 })
 
 it('accepts an external file drop on nested content without consuming text drags', async () => {

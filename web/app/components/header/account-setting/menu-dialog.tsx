@@ -48,7 +48,7 @@ const MenuDialog = ({ children, title, onClose }: MenuDialogProps) => {
                 ESC
               </div>
             </div>
-            <div className="pointer-events-auto relative z-0 h-full w-full overflow-hidden bg-background-sidenav-bg backdrop-blur-md">
+            <div className="pointer-events-auto relative z-0 h-full w-full overflow-clip bg-background-sidenav-bg backdrop-blur-md">
               {children}
             </div>
           </DialogPopup>

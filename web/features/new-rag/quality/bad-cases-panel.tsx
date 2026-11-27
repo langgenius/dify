@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeFsBadCaseResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { GoldenQuestionDraft } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,11 +20,19 @@ import { GoldenQuestionDialog } from './golden-question-dialog'
 import {
   formatQualityUpdatedAt,
   goldenQuestionPayload,
-  goldenQuestionQueriesKey,
   qualityPageSize,
   visibleQualityTags,
 } from './quality-model'
 import { QualityRowMenuTrigger } from './quality-row-menu-trigger'
+
+// A rejected update may still have dismissed the case; the caller confirmed it did.
+const refreshBadCases = (queryClient: QueryClient, knowledgeSpaceId: string) =>
+  queryClient.invalidateQueries({
+    queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+      type: 'infinite',
+    }),
+  })
 
 function BadCaseReason({
   question,
@@ -94,14 +103,20 @@ function BadCasePromotionDialog({
   const promotedGoldenQuestionIdsRef = useRef(new Map<string, string>())
   const createGoldenMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const deleteGoldenMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
       {
-        context: { silent: true },
+        // Only rolls back a failed promotion; the dialog shows the original failure.
+        meta: { errorToast: false },
       },
+    ),
+  )
+  const { mutateAsync: updateBadCase } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
+      { meta: { errorToast: false } },
     ),
   )
 
@@ -110,29 +125,27 @@ function BadCasePromotionDialog({
     onOpenChange(undefined)
   }
   const getBadCase = (badCaseId: string) =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
-      { params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId } },
-      { context: { silent: true } },
-    )
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
+      params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId },
+    })
   const markBadCaseDismissed = async (
     badCase: KnowledgeFsBadCaseResponse,
     tags: string[] = badCase.tags,
   ) => {
     try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
-        {
-          body: {
-            expected_revision: badCase.revision,
-            status: 'dismissed',
-            tags,
-          },
-          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+      await updateBadCase({
+        body: {
+          expected_revision: badCase.revision,
+          status: 'dismissed',
+          tags,
         },
-        { context: { silent: true } },
-      )
+        params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+      })
     } catch (mutationError) {
       const refreshed = await getBadCase(badCase.id).catch(() => undefined)
       if (refreshed?.status !== 'dismissed') throw mutationError
+      // The policy refreshes the list after a successful update; this one failed.
+      await refreshBadCases(queryClient, knowledgeSpaceId)
     }
   }
 
@@ -168,17 +181,6 @@ function BadCasePromotionDialog({
         }
         throw mutationError
       }
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
-            input: { params: { control_space_id: knowledgeSpaceId } },
-            type: 'infinite',
-          }),
-        }),
-      ])
       toast.success(t(($) => $['qualityPage.promotedToast'], { ns: 'knowledgeQuality' }))
       close()
     } catch (error) {
@@ -227,21 +229,22 @@ function BadCaseRow({
   const queryClient = useQueryClient()
   const router = useRouter()
   const [pending, setPending] = useState(false)
+  const { mutateAsync: updateBadCase } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
+  )
 
   const getBadCase = () =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
-      {
-        params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
-      },
-      { context: { silent: true } },
-    )
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
+      params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
+    })
   const openTrace = async (retest: boolean) => {
     setPending(true)
     try {
       const reference =
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.traceReference.get(
           { params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId } },
-          { context: { silent: true } },
         )
       const search = new URLSearchParams(
         retest
@@ -259,27 +262,20 @@ function BadCaseRow({
     try {
       const badCase = await getBadCase()
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
-          {
-            body: {
-              expected_revision: badCase.revision,
-              status: 'dismissed',
-              tags: badCase.tags,
-            },
-            params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+        await updateBadCase({
+          body: {
+            expected_revision: badCase.revision,
+            status: 'dismissed',
+            tags: badCase.tags,
           },
-          { context: { silent: true } },
-        )
+          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+        })
       } catch (mutationError) {
         const refreshed = await getBadCase().catch(() => undefined)
         if (refreshed?.status !== 'dismissed') throw mutationError
+        // The row leaves with the refetch; the policy refreshes after a successful update.
+        await refreshBadCases(queryClient, knowledgeSpaceId)
       }
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
-      })
     } catch (error) {
       toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       setPending(false)
