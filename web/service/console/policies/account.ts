@@ -1,4 +1,7 @@
 import type { PersonalAccessTokenListResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { EmailCodeLoginPayload } from '@dify/contracts/api/console/email-code-login/types.gen'
+import type { EmailRegisterResetPayload } from '@dify/contracts/api/console/email-register/types.gen'
+import type { LoginPayload } from '@dify/contracts/api/console/login/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
@@ -18,10 +21,13 @@ export function authPolicies(
     mutationOptions: {
       onSuccess: (
         response: { result: string },
-        _v: unknown,
+        { body }: { body: LoginPayload | EmailCodeLoginPayload | EmailRegisterResetPayload },
         _r: unknown,
         { client }: { client: QueryClient },
-      ) => (response.result === 'success' ? resetProfile(consoleQuery, client) : undefined),
+      ) => {
+        if (response.result !== 'success' || ('mode' in body && body.mode === 'end_user')) return
+        return resetProfile(consoleQuery, client)
+      },
     },
   }
   return {

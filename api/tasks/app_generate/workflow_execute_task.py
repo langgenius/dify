@@ -12,7 +12,9 @@ from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from context.connection_execution import ConnectionExecutionContext
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL
@@ -37,12 +39,21 @@ from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
+from services.app_definition_query_service import (
+    ServiceApiEndUserAuthError,
+    require_service_api_end_user_workflow_access,
+)
 from services.app_task_service import AppTaskService
+from services.end_user_connection_execution_adapters import validate_connection_execution
+from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError, ConnectionRequiredError
 from services.human_input_v2.submission_service import HumanInputSubmissionService
+from services.workflow.tool_credentials import requires_end_user_connections
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_test_execution import require_workflow_test_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +107,7 @@ class AppExecutionParams(BaseModel):
     app_mode: AppMode = AppMode.ADVANCED_CHAT
     user: User
     args: Mapping[str, Any]
+    connection_context: ConnectionExecutionContext | None = None
 
     invoke_from: InvokeFrom
     streaming: bool = True
@@ -115,6 +127,7 @@ class AppExecutionParams(BaseModel):
         call_depth: int = 0,
         root_node_id: str | None = None,
         workflow_run_id: str | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
     ):
         user_params: _Account | _EndUser
         match user:
@@ -131,6 +144,7 @@ class AppExecutionParams(BaseModel):
             app_mode=AppMode.value_of(app_model.mode),
             user=user_params,
             args=args,
+            connection_context=connection_context,
             invoke_from=invoke_from,
             streaming=streaming,
             call_depth=call_depth,
@@ -219,13 +233,52 @@ class _AppRunner:
         pause_state_config: PauseStateLayerConfig,
         session: Session,
     ):
+        """Execute the reconstructed workflow only after validating its invocation policy.
+
+        Service API personal-auth graphs fail before generator dispatch. Existing
+        WebApp, Explore and Debugger credential checks remain authoritative for
+        their surfaces; no credentials or workflow state change on policy denial.
+        """
         exec_params = self._exec_params
+        if exec_params.invoke_from == InvokeFrom.SERVICE_API:
+            require_service_api_end_user_workflow_access(workflow.graph_dict)
+        if (
+            exec_params.invoke_from == InvokeFrom.EXPLORE
+            and requires_end_user_connections(workflow.graph_dict)
+            and exec_params.connection_context is None
+        ):
+            raise ConnectionRequiredError()
+        if (
+            exec_params.connection_context is not None
+            and exec_params.connection_context.workspace is not None
+            and exec_params.invoke_from != InvokeFrom.EXPLORE
+        ):
+            raise ConnectionIdentityError()
+        if exec_params.invoke_from == InvokeFrom.DEBUGGER:
+            if not isinstance(user, Account):
+                raise ValueError("Builder tests require an Account.")
+            require_workflow_test_credentials(
+                app=app,
+                user=user,
+                workflow=workflow,
+                node_id=None,
+            )
+        if exec_params.connection_context is not None:
+            validate_connection_execution(
+                exec_params.connection_context,
+                app=app,
+                user=user,
+                workflow=workflow,
+                conversation_id=exec_params.args.get("conversation_id"),
+                repository=EndUserConnectionRepository(session_factory=self._session_factory),
+            )
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
                 args=exec_params.args,
+                connection_context=exec_params.connection_context,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
                 workflow_run_id=exec_params.workflow_run_id,
@@ -239,6 +292,7 @@ class _AppRunner:
                 user=user,
                 execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
+                connection_context=exec_params.connection_context,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
                 call_depth=exec_params.call_depth,
@@ -510,6 +564,13 @@ def workflow_based_app_execution_task(
 
 
 def _resume_app_execution(payload: dict[str, Any]) -> None:
+    """Resume a stored pause only after validating its reconstructed execution context.
+
+    The payload identifies an existing run; load its saved state, graph and actor
+    before dispatch. A Service API personal-auth graph fails the pause and emits
+    its terminal failure without resuming nodes. Repeated delivery after pause
+    cleanup is a no-op. Existing credential checks still govern other surfaces.
+    """
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -587,6 +648,67 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
+    if (
+        generate_entity.connection_context is not None
+        or workflow_run.connection_context is not None
+        or (generate_entity.invoke_from == InvokeFrom.EXPLORE and requires_end_user_connections(workflow.graph_dict))
+        or (
+            generate_entity.invoke_from == InvokeFrom.SERVICE_API and requires_end_user_connections(workflow.graph_dict)
+        )
+    ):
+        try:
+            if generate_entity.invoke_from == InvokeFrom.SERVICE_API:
+                require_service_api_end_user_workflow_access(workflow.graph_dict)
+            if workflow_run.connection_context is not None:
+                try:
+                    generate_entity.connection_context = ConnectionExecutionContext.model_validate_json(
+                        workflow_run.connection_context
+                    )
+                except ValueError:
+                    raise ConnectionIdentityError() from None
+            if generate_entity.connection_context is None:
+                raise ConnectionRequiredError()
+            if (
+                generate_entity.connection_context.workspace is not None
+                and generate_entity.invoke_from != InvokeFrom.EXPLORE
+            ):
+                raise ConnectionIdentityError()
+            validate_connection_execution(
+                generate_entity.connection_context,
+                app=app_model,
+                user=user,
+                workflow=workflow,
+                conversation_id=(
+                    generate_entity.conversation_id
+                    if isinstance(generate_entity, AdvancedChatAppGenerateEntity)
+                    else None
+                ),
+                repository=EndUserConnectionRepository(session_factory=session_factory),
+            )
+        except (ConnectionError, ServiceApiEndUserAuthError) as exc:
+            failed_run = workflow_run_repo.fail_workflow_pause(
+                tenant_id=workflow_run.tenant_id,
+                app_id=workflow_run.app_id,
+                workflow_run_id=workflow_run_id,
+                pause_id=pause_entity.id,
+                error=str(exc),
+            )
+            if failed_run is not None:
+                response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                    task_id=generate_entity.task_id, workflow_run=failed_run, creator_user=user
+                )
+                app_mode = (
+                    AppMode.ADVANCED_CHAT
+                    if isinstance(generate_entity, AdvancedChatAppGenerateEntity)
+                    else AppMode.WORKFLOW
+                )
+                topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
+                topic.publish(response.model_dump_json().encode())
+                try:
+                    workflow_run_repo.delete_workflow_pause(pause_entity)
+                except Exception:
+                    logger.exception("Failed to clean rejected workflow pause %s", pause_entity.id)
+            return
     # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
     task_id = workflow_run.task_id
     if task_id is None:

@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
+    InvokeFrom,
 )
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
@@ -35,6 +36,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.enums import MessageFileBelongsTo
 from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
+from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_access
+from repositories.entities.web_execution import EndUserBusyError
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -116,7 +119,19 @@ class MessageCycleManager:
         query: str,
         message_id: str | None = None,
     ):
+        """Generate outside transactions, then rename only for the original actor.
+
+        Ownership loss or a concurrent migration discards this best-effort title.
+        No database transaction spans the provider call or cache access.
+        """
         with flask_app.app_context():
+            entity = self._application_generate_entity
+            check_owner = (
+                isinstance(entity, ChatAppGenerateEntity)
+                and entity.app_config.app_mode == AppMode.CHAT
+                and entity.invoke_from == InvokeFrom.WEB_APP
+                and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            )
             with session_factory.create_session() as session:
                 # get conversation and message
                 stmt = select(Conversation).where(Conversation.id == conversation_id)
@@ -125,38 +140,49 @@ class MessageCycleManager:
                 if not conversation:
                     return
 
-                if conversation.mode != AppMode.COMPLETION:
-                    app_model = session.get(App, conversation.app_id)
-                    if not app_model:
-                        return
+                if conversation.mode == AppMode.COMPLETION:
+                    return
+                app_model = session.get(App, conversation.app_id)
+                if not app_model:
+                    return
+                tenant_id, app_id = app_model.tenant_id, app_model.id
 
-                    # generate conversation name
-                    query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
-                    cache_key = f"conv_name:{conversation_id}:{query_hash}"
-
-                    cached_name = redis_client.get(cache_key)
-                    if cached_name:
-                        name = cached_name.decode("utf-8")
-                    else:
-                        try:
-                            name = LLMGenerator.generate_conversation_name(
-                                app_model.tenant_id,
-                                query,
-                                conversation_id,
-                                conversation.app_id,
-                                message_id=message_id,
-                                # The request's scope keeps the caller's trace ID with the message.
-                                trace_scope=self._application_generate_entity.trace_scope,
-                            )
-                            redis_client.setex(cache_key, 3600, name)
-                        except Exception:
-                            if dify_config.DEBUG:
-                                logger.exception(
-                                    "generate conversation name failed, conversation_id: %s", conversation_id
-                                )
-                            name = query[:47] + "..." if len(query) > 50 else query
-                    conversation.name = name
+            query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
+            cache_key = f"conv_name:{conversation_id}:{query_hash}"
+            cached_name = redis_client.get(cache_key)
+            if cached_name:
+                name = cached_name.decode("utf-8")
+            else:
+                try:
+                    name = LLMGenerator.generate_conversation_name(
+                        tenant_id,
+                        query,
+                        conversation_id,
+                        app_id,
+                        message_id=message_id,
+                        trace_scope=entity.trace_scope,
+                    )
+                    redis_client.setex(cache_key, 3600, name)
+                except Exception:
+                    if dify_config.DEBUG:
+                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                    name = query[:47] + "..." if len(query) > 50 else query
+            try:
+                with session_factory.create_session() as session:
+                    if check_owner:
+                        require_web_message_access(
+                            session,
+                            tenant_id=entity.app_config.tenant_id,
+                            app_id=entity.app_config.app_id,
+                            end_user_id=entity.user_id,
+                            conversation_id=conversation_id,
+                        )
+                    current = session.get(Conversation, conversation_id)
+                    if current is not None:
+                        current.name = name
                     session.commit()
+            except (ConversationAccessDeniedError, EndUserBusyError):
+                logger.info("Discarded title after conversation ownership changed, conversation_id=%s", conversation_id)
 
     def handle_annotation_reply(self, event: QueueAnnotationReplyEvent, session: Session) -> MessageAnnotation | None:
         """

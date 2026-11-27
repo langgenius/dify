@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
@@ -49,6 +49,8 @@ type ChatInputAreaProps = {
   theme?: Theme | null
   isResponding?: boolean
   disabled?: boolean
+  disabledInputAction?: ReactNode
+  inputRef?: RefObject<HTMLTextAreaElement | null>
   sendButtonLabel?: string
   sendButtonLoading?: boolean
   footerNotice?: ReactNode
@@ -69,7 +71,7 @@ const ChatInputArea = ({
   inputLabel,
   showFeatureBar,
   showFileUpload,
-  featureBarReadonly = readonly,
+  featureBarReadonly,
   featureBarDisabled,
   onFeatureBarClick,
   visionConfig = { enabled: false },
@@ -82,6 +84,8 @@ const ChatInputArea = ({
   theme,
   isResponding,
   disabled,
+  disabledInputAction,
+  inputRef,
   sendButtonLabel,
   sendButtonLoading,
   footerNotice,
@@ -104,7 +108,9 @@ const ChatInputArea = ({
   } = useTextAreaHeight()
   const [query, setQuery] = useState('')
   const canSend = !disabled && !readonly && !!query.trim()
+  const isFeatureBarReadonly = featureBarReadonly ?? readonly
   const [showVoiceInput, setShowVoiceInput] = useState(false)
+  if ((disabled || readonly) && showVoiceInput) setShowVoiceInput(false)
   const filesStore = useFileStore()
   const {
     handleDragFileEnter,
@@ -187,6 +193,7 @@ const ChatInputArea = ({
     }, 50)
   }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (disabled) return
     // Determine if this key combo should trigger send:
     // sendOnEnter=true (default): Enter sends, Shift+Enter inserts newline
     // sendOnEnter=false: Shift+Enter sends, Enter inserts newline
@@ -220,6 +227,7 @@ const ChatInputArea = ({
     }
   }
   const handleShowVoiceInput = useCallback(() => {
+    if (disabled || readonly) return
     const textareaElement = textareaRef.current
     if (textareaElement) {
       const activeElement = textareaElement.ownerDocument.activeElement
@@ -230,7 +238,7 @@ const ChatInputArea = ({
     }
     voiceInputCompletedRef.current = false
     setShowVoiceInput(true)
-  }, [textareaRef])
+  }, [disabled, readonly, textareaRef])
   const handleVoiceInputStartError = useCallback(
     (error: unknown) => {
       toast.error(
@@ -295,7 +303,8 @@ const ChatInputArea = ({
       onSend={handleSend}
       sendButtonLabel={sendButtonLabel}
       sendButtonLoading={sendButtonLoading}
-      disabled={!canSend}
+      disabled={disabled}
+      sendDisabled={!canSend}
       theme={theme}
     />
   )
@@ -313,7 +322,7 @@ const ChatInputArea = ({
         )}
       >
         <div className="px-2.25 pt-2.25">
-          <FileListInChatInput fileConfig={visionConfig!} />
+          <FileListInChatInput fileConfig={visionConfig!} disabled={disabled} />
         </div>
         <div className="relative max-h-39.5 overflow-x-hidden overflow-y-auto px-2.25">
           <div ref={wrapperRef} className="flex items-center justify-between">
@@ -333,6 +342,7 @@ const ChatInputArea = ({
                 id={textareaId}
                 ref={(ref) => {
                   textareaRef.current = ref ?? undefined
+                  if (inputRef) inputRef.current = ref
                 }}
                 className={cn(
                   'w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden',
@@ -349,18 +359,20 @@ const ChatInputArea = ({
                       )
                 }
                 // oxlint-disable-next-line jsx-a11y/no-autofocus -- Existing chat behavior focuses the composer as soon as it opens.
-                autoFocus={autoFocus}
+                autoFocus={autoFocus && !disabled}
                 minRows={1}
                 value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}
+                onChange={(e) => {
+                  if (!disabled) handleQueryChange(e.target.value)
+                }}
                 onKeyDown={handleKeyDown}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
-                onPaste={handleClipboardPasteFile}
-                onDragEnter={handleDragFileEnter}
-                onDragLeave={handleDragFileLeave}
-                onDragOver={handleDragFileOver}
-                onDrop={handleDropFile}
+                onPaste={disabled ? undefined : handleClipboardPasteFile}
+                onDragEnter={disabled ? undefined : handleDragFileEnter}
+                onDragLeave={disabled ? undefined : handleDragFileLeave}
+                onDragOver={disabled ? undefined : handleDragFileOver}
+                onDrop={disabled ? undefined : handleDropFile}
                 readOnly={readonly}
                 disabled={disabled}
               />
@@ -381,6 +393,9 @@ const ChatInputArea = ({
           </div>
         )}
         {isMultipleLine && <div className="px-2.25">{operation}</div>}
+        {disabled && disabledInputAction ? (
+          <div className="pointer-events-auto absolute inset-0">{disabledInputAction}</div>
+        ) : null}
       </div>
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-s border-e border-b border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
@@ -412,8 +427,10 @@ const ChatInputArea = ({
           <FeatureBar
             showFileUpload={showFileUpload}
             disabled={featureBarDisabled}
-            onFeatureBarClick={featureBarReadonly ? noop : onFeatureBarClick}
-            hideEditEntrance={featureBarReadonly}
+            onFeatureBarClick={
+              featureBarDisabled || isFeatureBarReadonly ? noop : onFeatureBarClick
+            }
+            hideEditEntrance={isFeatureBarReadonly}
           />
         </div>
       )}

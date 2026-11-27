@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
@@ -149,4 +149,35 @@ it('restores a completed status after hiding the page loses transient canvas sta
     'succeeded',
   )
   expect(screen.getByDisplayValue(/Saved answer/)).toBeInTheDocument()
+})
+
+it('keeps a blocked missing-run action keyboard accessible and restores running after configuration', async () => {
+  lastRun.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
+  const user = userEvent.setup()
+  const { rerender } = setup({
+    isRunAfterSingleRun: false,
+    singleRunDisabledReason: 'workflow.panel.configureTestRunConnection',
+  })
+  const action = await screen.findByRole('button', {
+    name: 'workflowDebug.debug.noData.runThisNode',
+  })
+  expect(action).toHaveAttribute('aria-disabled', 'true')
+  await user.tab()
+  expect(action).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(
+    await screen.findByRole('dialog', { name: 'workflowDebug.debug.noData.runThisNode' }),
+  ).toBeVisible()
+  expect(screen.getByText('workflow.panel.configureTestRunConnection')).toBeVisible()
+  expect(props.onSingleRunClicked).not.toHaveBeenCalled()
+
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  rerender(<LastRun {...props} isRunAfterSingleRun={false} />)
+  const configuredAction = screen.getByRole('button', {
+    name: 'workflowDebug.debug.noData.runThisNode',
+  })
+  expect(configuredAction).not.toHaveAttribute('aria-disabled', 'true')
+  await user.click(configuredAction)
+  expect(props.onSingleRunClicked).toHaveBeenCalledOnce()
 })

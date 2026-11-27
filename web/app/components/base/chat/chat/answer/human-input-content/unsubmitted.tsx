@@ -8,6 +8,7 @@ export const UnsubmittedHumanInputContent = ({
   showEmailTip = false,
   isEmailDebugMode = false,
   showDebugModeTip = false,
+  disabled,
   onSubmit,
 }: UnsubmittedHumanInputContentProps) => {
   const { expiration_time } = formData
@@ -15,7 +16,7 @@ export const UnsubmittedHumanInputContent = ({
   return (
     <>
       {/* Form */}
-      <HumanInputForm formData={formData} onSubmit={onSubmit} />
+      <HumanInputForm formData={formData} disabled={disabled} onSubmit={onSubmit} />
       {/* Tips */}
       {(showEmailTip || showDebugModeTip) && (
         <Tips

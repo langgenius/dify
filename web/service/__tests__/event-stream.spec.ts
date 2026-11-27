@@ -5,6 +5,8 @@ import { toast } from '@/app/notifications'
 import { consoleClient } from '../console'
 import { sendCompletionMessage } from '../debug'
 import { streamEvents, streamGeneratorEvents } from '../event-stream'
+import { setWebAppAccessToken, setWebAppPassport } from '../webapp-auth'
+import { webAppClient } from '../webapp-client'
 import { generateWorkflowStream } from '../workflow-generator'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
@@ -750,5 +752,58 @@ describe('generated client streams', () => {
       expect(onCompleted).not.toHaveBeenCalled()
       expect(toast.error).not.toHaveBeenCalled()
     })
+  })
+
+  it('stops delivering a public WebApp stream after an account switch', async () => {
+    window.history.replaceState({}, '', '/chat/account-app')
+    setWebAppAccessToken('account-a', 'end_user')
+    setWebAppPassport({ kind: 'default', code: 'account-app' }, 'app-passport')
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const cancel = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(streamController) {
+              controller = streamController
+            },
+            cancel,
+          }),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        ),
+      ),
+    )
+    const onData = vi.fn()
+    const onMessageEnd = vi.fn()
+    const onCompleted = vi.fn()
+
+    streamEvents(
+      (options) =>
+        webAppClient.chatMessages.post(
+          { body: { inputs: {}, query: 'hello', response_mode: 'streaming' } },
+          options,
+        ),
+      { isPublicAPI: true, onData, onMessageEnd, onCompleted },
+    )
+
+    await vi.waitFor(() => expect(controller).toBeDefined())
+    controller.enqueue(encode(frame({ event: 'message', answer: 'first', id: 'm-1' })))
+    await vi.waitFor(() => expect(onData).toHaveBeenCalledOnce())
+
+    setWebAppAccessToken('account-b', 'end_user')
+    controller.enqueue(
+      encode(
+        frame({ event: 'message', answer: 'private', id: 'm-1' }) +
+          frame({ event: 'message_end', id: 'm-1' }),
+      ),
+    )
+
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+    expect(onData).toHaveBeenCalledOnce()
+    expect(onMessageEnd).not.toHaveBeenCalled()
+    expect(onCompleted).not.toHaveBeenCalled()
+    localStorage.clear()
+    window.history.replaceState({}, '', '/')
   })
 })

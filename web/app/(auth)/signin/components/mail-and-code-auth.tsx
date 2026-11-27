@@ -11,6 +11,7 @@ import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { isEndUserSignIn } from '../utils/end-user-login'
 import Turnstile from './turnstile'
 
 type MailAndCodeAuthProps = {
@@ -44,6 +45,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         body: {
           email,
           language: locale,
+          ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' } : {}),
           ...(isTurnstileRequired ? { turnstile_token: turnstileToken } : {}),
         },
       })

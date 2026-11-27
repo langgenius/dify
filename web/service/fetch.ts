@@ -18,7 +18,7 @@ import { markErrorHandled } from './handled-error'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
-import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
+import { captureWebAppAuthSession, getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
@@ -50,10 +50,14 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
  * Error feedback belongs to the query cache and the request's owners; the transport only marks
  * failures a request guard presented, or that settle after the guarded surface is gone.
  */
-const afterResponseErrorCode = (requestGuard: RequestGuard | undefined): AfterResponseHook => {
+const afterResponseErrorCode = (
+  requestGuard: RequestGuard | undefined,
+  assertAuthSessionCurrent: () => void,
+): AfterResponseHook => {
   return async ({ response }) => {
     if (!isHttpErrorStatus(response.status)) return
     const error = await httpErrorFromResponse(response)
+    assertAuthSessionCurrent()
     if (
       requestGuard?.handleError(response.status, error.data, error) ||
       requestGuard?.isActive() === false
@@ -123,6 +127,11 @@ async function base<T>(
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
+  const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
+  const assertAuthSessionCurrent = () => {
+    if (!isAuthSessionCurrent())
+      throw new DOMException('The Web App account changed.', 'AbortError')
+  }
 
   const headers = new Headers(headersFromProps || {})
 
@@ -152,9 +161,14 @@ async function base<T>(
       ...baseHooks,
       beforeRequest: [
         ...(baseHooks.beforeRequest || []),
-        isPublicAPI && beforeRequestPublicWithCode,
+        assertAuthSessionCurrent,
+        isPublicAPI && !otherOptions.isWebAppAccountAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(requestGuard)],
+      afterResponse: [
+        assertAuthSessionCurrent,
+        ...(baseHooks.afterResponse || []),
+        afterResponseErrorCode(requestGuard, assertAuthSessionCurrent),
+      ],
     },
   })
 
@@ -194,7 +208,9 @@ async function base<T>(
     return (await res.blob()) as T
   }
 
-  return (await res.json()) as T
+  const result = (await res.json()) as T
+  assertAuthSessionCurrent()
+  return result
 }
 
 /**

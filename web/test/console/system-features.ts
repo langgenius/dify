@@ -17,6 +17,8 @@ export type DeepPartial<T> =
 const baseSystemFeatures = {
   agent_tracing_api_collection_enabled: false,
   deployment_edition: 'COMMUNITY',
+  webapp_account_login_enabled: false,
+  webapp_url: '',
   enable_app_deploy: false,
   sso_enforced_for_signin: false,
   sso_enforced_for_signin_protocol: null,

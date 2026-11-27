@@ -24,7 +24,6 @@ import type {
   StreamSender,
 } from './event-stream'
 import type { OnUploadProgress } from './xhr-fetch'
-import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
@@ -38,7 +37,6 @@ import {
   isAppAccessScopeCurrent,
 } from '@/features/app-access-error/state'
 import { consoleClient } from '@/service/console'
-import { selectAppParameters } from '@/service/console/app-parameters-select'
 import { request } from './base'
 import { streamEvents } from './event-stream'
 import { resolveWebAppAddress } from './webapp-address'
@@ -348,20 +346,6 @@ export const fetchChatList = async (
 // export const fetchAppVariables = async () => {
 //   return get(`variables`)
 // }
-
-// init value. wait for server update
-export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') => {
-  if (appSourceType !== AppSourceType.webApp) {
-    const parameters =
-      appSourceType === AppSourceType.installedApp
-        ? await consoleClient.installedApps.byInstalledAppId.parameters.get({
-            params: { installed_app_id: appId },
-          })
-        : await consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
-    return selectAppParameters(parameters)
-  }
-  return webAppClient.parameters.get() as Promise<ChatConfig>
-}
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
   return webAppClient.enterprise.sso.samlLogin({

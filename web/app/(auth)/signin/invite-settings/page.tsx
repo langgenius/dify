@@ -23,7 +23,6 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { TimezoneCombobox } from '@/features/account-profile/timezone-combobox'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n } from '@/i18n'
@@ -36,7 +35,6 @@ import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
-import { isInvitationForAccount } from '../utils/invitation-account'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 const languageItems = languages
@@ -56,15 +54,6 @@ export default function InviteSettingsPage() {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
-  const {
-    data: userResp,
-    isPending: isProfilePending,
-    error: profileError,
-  } = useQuery({
-    ...userProfileQueryOptions(),
-    throwOnError: (err) => !isUnauthorizedError(err),
-    refetchOnWindowFocus: false,
-  })
   const locale = useLocale()
   const [name, setName] = useState('')
   const [isActivating, setIsActivating] = useState(false)
@@ -83,18 +72,13 @@ export default function InviteSettingsPage() {
       input: { query: checkParams.params },
       enabled: !!token,
       retry: false,
+      refetchOnWindowFocus: false,
     }),
   )
-  const isInvitationForCurrentAccount = isInvitationForAccount(
-    checkRes?.data?.email,
-    userResp?.profile.email,
+  const isInvitationForCurrentAccount = Boolean(
+    checkRes?.is_valid && checkRes.data?.is_current_account,
   )
-  const shouldReturnToSignIn =
-    !isProfilePending &&
-    Boolean(
-      checkRes?.is_valid &&
-      (isUnauthorizedError(profileError) || (userResp && !isInvitationForCurrentAccount)),
-    )
+  const shouldReturnToSignIn = Boolean(checkRes?.is_valid && !isInvitationForCurrentAccount)
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
   const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })
@@ -135,9 +119,16 @@ export default function InviteSettingsPage() {
         : {
             token,
           }
-      const [error, res, isDefined] = await safe(consoleClient.activate.post({ body }))
+      const [error, res, isDefined] = await safe(
+        consoleClient.activate.post({ body }, { context: { handleUnauthorizedLocally: true } }),
+      )
       if (error) {
         setIsActivating(false)
+        if (isUnauthorizedError(error)) {
+          queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
+          router.replace(`/signin?${searchParams.toString()}`)
+          return
+        }
         if (isDefined && error.code === 'workspace_member_limit_reached') {
           setIsWorkspaceFull(true)
           return
@@ -154,6 +145,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!)
+        queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
@@ -177,7 +169,7 @@ export default function InviteSettingsPage() {
     router,
   ])
 
-  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
+  if (shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
   if (!checkRes.is_valid) {
     return (
       <div className="flex flex-col">

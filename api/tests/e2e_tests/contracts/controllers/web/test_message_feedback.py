@@ -22,7 +22,7 @@ from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import ExternalApi
 from libs.passport import PassportService
 from models.enums import ConversationFromSource, CustomizeTokenStrategy, FeedbackFromSource, FeedbackRating
-from models.model import App, AppModelConfig, EndUser, Message, MessageFeedback, Site
+from models.model import App, AppModelConfig, Conversation, EndUser, Message, MessageFeedback, Site
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
@@ -113,7 +113,9 @@ def harness(
     api = ExternalApi(app)
     api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
     api.add_resource(MessageListApi, "/messages")
-    passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_code": site.code, "app_id": target.id, "end_user_id": end_user.id}
+    )
     yield _Harness(
         app,
         target,
@@ -175,7 +177,13 @@ def test_revoke_without_feedback_has_specific_error(harness: _Harness, payload: 
 def test_message_ownership_is_enforced(harness: _Harness, field: str) -> None:
     value = ConversationFromSource.CONSOLE if field == "from_source" else str(uuid4())
     with harness.factory.begin() as session:
-        session.execute(update(Message).where(Message.id == harness.message.id).values({field: value}))
+        # History access follows the owner of the conversation after migration.
+        if field == "app_id":
+            session.execute(update(Message).where(Message.id == harness.message.id).values(app_id=value))
+        else:
+            session.execute(
+                update(Conversation).where(Conversation.id == harness.message.conversation_id).values({field: value})
+            )
     response = harness.post({"rating": "like"})
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.get_json()["code"] == "not_found"

@@ -1,10 +1,28 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import SignInPage from '../sign-in-page'
 
 const navigationMocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
+  request: vi.fn(),
+  basePath: '',
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: navigationMocks.request,
+}))
+
+vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: vi.fn() }))
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return navigationMocks.basePath
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -22,6 +40,8 @@ vi.mock('../one-more-step', () => ({
 describe('SignIn', () => {
   beforeEach(() => {
     navigationMocks.searchParams = new URLSearchParams()
+    navigationMocks.basePath = ''
+    navigationMocks.request.mockReset()
     window.history.replaceState({}, '', '/signin')
     vi.restoreAllMocks()
   })
@@ -53,5 +73,56 @@ describe('SignIn', () => {
     render(<SignInPage />)
 
     expect(screen.getByText('One more step')).toBeInTheDocument()
+  })
+
+  // Native document replacement would unload the Browser Mode runner. Keep this
+  // navigation assertion at the existing happy-dom page boundary.
+  it.each([
+    { destination: '/chat/current-app?conversation=existing#turn-2', appCode: 'current-app' },
+    { destination: '/my-apps', appCode: undefined },
+  ])('logs out after confirmation for $destination', async ({ destination, appCode }) => {
+    const logout = createDeferred<Response>()
+    navigationMocks.request.mockReturnValueOnce(logout.promise)
+    navigationMocks.basePath = '/console'
+    navigationMocks.searchParams = new URLSearchParams({
+      is_end_user: '1',
+      redirect_url: destination,
+      code_challenge: 'a'.repeat(43),
+      code_challenge_method: 'S256',
+      switch_account: '1',
+    })
+    if (appCode) navigationMocks.searchParams.set('app_code', appCode)
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    render(
+      <StrictMode>
+        <SignInPage />
+      </StrictMode>,
+      { systemFeatures: { webapp_url: 'https://apps.example/web' } },
+    )
+
+    const switchAccount = await screen.findByRole('button', { name: 'oauth.switchAccount' })
+    expect(navigationMocks.request).not.toHaveBeenCalled()
+    await userEvent.click(switchAccount)
+    await vi.waitFor(() => expect(navigationMocks.request).toHaveBeenCalledOnce())
+    expect(screen.queryByText('Sign-in form')).not.toBeInTheDocument()
+    expect(replace).not.toHaveBeenCalled()
+
+    logout.resolve(Response.json({ result: 'success' }))
+    const expectedParams = new URLSearchParams(navigationMocks.searchParams)
+    expectedParams.delete('switch_account')
+    await vi.waitFor(() =>
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        `/console/signin?${expectedParams.toString()}`,
+      ),
+    )
+    expect(screen.queryByText('Sign-in form')).not.toBeInTheDocument()
+  })
+
+  it('does not end the Console session without a valid end-user login context', () => {
+    navigationMocks.searchParams = new URLSearchParams({ switch_account: '1' })
+    render(<SignInPage />)
+
+    expect(screen.getByText('Sign-in form')).toBeInTheDocument()
+    expect(navigationMocks.request).not.toHaveBeenCalled()
   })
 })

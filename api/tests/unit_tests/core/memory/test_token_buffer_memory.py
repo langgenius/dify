@@ -45,6 +45,7 @@ from models.workflow import (
     WorkflowRunTriggeredFrom,
     WorkflowType,
 )
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 # ---------------------------------------------------------------------------
 # Helpers / shared fixtures
@@ -238,6 +239,19 @@ def _enable_file_uploads(
 # ===========================================================================
 # Tests for get_history_prompt_messages
 # ===========================================================================
+
+
+@pytest.mark.parametrize(("tenant_id", "end_user_id"), [("tenant", None), (None, "end-user")])
+def test_memory_rejects_incomplete_original_web_identity(tenant_id: str | None, end_user_id: str | None) -> None:
+    model_instance = make_model_instance(provider="test-provider", model="test-model")
+
+    with pytest.raises(ValueError, match="both tenant_id and end_user_id"):
+        TokenBufferMemory(
+            conversation=Conversation(),
+            model_instance=model_instance,
+            tenant_id=tenant_id,
+            end_user_id=end_user_id,
+        )
 
 
 class TestGetHistoryPromptMessages:

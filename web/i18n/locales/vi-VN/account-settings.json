@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Tài khoản Dify của bạn và dữ liệu người dùng liên quan.",
   "account.myAccount": "Tài khoản của tôi",
   "account.name": "Tên",
+  "account.nameLengthInvalid": "Tên phải có từ {{min}} đến {{max}} ký tự.",
   "account.newPassword": "Mật khẩu mới",
   "account.notEqual": "Hai mật khẩu không giống nhau.",
   "account.password": "Mật khẩu",

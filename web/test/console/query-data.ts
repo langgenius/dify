@@ -20,7 +20,6 @@ import type {
 import type { ReactElement, ReactNode } from 'react'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { DeepPartial } from '@/test/console/system-features'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { noop } from '@tanstack/react-query'
 import { render, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
@@ -30,6 +29,7 @@ import {
   ensureCurrentWorkspaceQuery,
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import {
@@ -146,20 +146,14 @@ export const seedEducationStatus = (
   return data
 }
 
-export const createFeaturesFixture = (
-  overrides: DeepPartial<GetFeaturesResponse> = {},
-): GetFeaturesResponse => zGetFeaturesResponse.parse(overrides)
-
 // Matches the default Community system features: plan quotas are unlimited outside Cloud.
-const unlimitedCount = { size: 0, limit: 0 }
-const unlimitedPeriodic = { usage: 0, limit: -1, reset_date: -1 }
 const communityFeatures = {
-  members: unlimitedCount,
-  apps: unlimitedCount,
-  annotation_quota_limit: unlimitedCount,
-  documents_upload_quota: unlimitedCount,
-  trigger_event: unlimitedPeriodic,
-  api_rate_limit: unlimitedPeriodic,
+  members: { size: 0, limit: 0 },
+  apps: { size: 0, limit: 0 },
+  annotation_quota_limit: { size: 0, limit: 0 },
+  documents_upload_quota: { size: 0, limit: 0 },
+  trigger_event: { usage: 0, limit: -1, reset_date: -1 },
+  api_rate_limit: { usage: 0, limit: -1, reset_date: -1 },
 } satisfies DeepPartial<GetFeaturesResponse>
 
 export const seedFeatures = (

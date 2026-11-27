@@ -3,6 +3,7 @@ import type { ChatConfig } from '../../../types'
 import type { VoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { FeaturesProvider } from '@/app/components/base/features/context'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
 import { createTestNavigation } from '@/test/next-navigation'
@@ -104,6 +105,34 @@ it('sends the actual draft through the operation and prevents readonly or disabl
   }
 })
 
+it('keeps Features available while the composer is paused', async () => {
+  const openFeatures = vi.fn()
+  const chat = (isResponding = false) => (
+    <FeaturesProvider>
+      <div style={{ height: 500 }}>
+        <Chat
+          chatList={[]}
+          inputDisabled
+          isResponding={isResponding}
+          showFeatureBar
+          onFeatureBarClick={openFeatures}
+        />
+      </div>
+    </FeaturesProvider>
+  )
+  const screen = await renderChat(chat())
+  const features = page.getByRole('button', {
+    name: 'Enable feature to enhance web app user experience',
+  })
+
+  await expect.element(page.getByRole('textbox')).toBeDisabled()
+  await features.click()
+  expect(openFeatures).toHaveBeenCalledExactlyOnceWith(true)
+
+  await screen.rerender(chat(true))
+  await expect.element(features).toBeDisabled()
+})
+
 it('starts real voice UI only while the operation is available and editable', async () => {
   const context = new AudioContext()
   const recorder: VoiceRecorder = {
@@ -130,6 +159,16 @@ it('starts real voice UI only while the operation is available and editable', as
   await expect.element(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect.element(page.getByRole('button', { name: 'Stop recording' })).not.toBeInTheDocument()
+  await screen.rerender(
+    <Chat
+      chatList={[]}
+      config={config}
+      inputDisabled
+      speechToTextTarget={{ type: 'consoleApp', appId: 'app-1' }}
+    />,
+  )
+  await expect.element(page.getByRole('button', { name: 'Voice input' })).toBeDisabled()
+  expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
   await screen.rerender(
     <Chat
       chatList={[]}

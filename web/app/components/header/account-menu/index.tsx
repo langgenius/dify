@@ -34,6 +34,7 @@ import Link from '@/next/link'
 import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
+import LogoutMenuItem from './logout-menu-item'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type AccountMenuProps = {
@@ -175,17 +176,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
       </MenuGroup>
       <MenuSeparator className="my-0" />
       <MenuGroup className="py-1">
-        <MenuItem
-          className="px-3 py-1"
-          onClick={() => {
-            onLogout()
-          }}
-        >
-          <MenuItemContent
-            iconClassName="i-ri-shut-down-line"
-            label={t(($) => $['userProfile.logout'], { ns: 'common' })}
-          />
-        </MenuItem>
+        <LogoutMenuItem onLogout={onLogout} />
       </MenuGroup>
     </>
   )

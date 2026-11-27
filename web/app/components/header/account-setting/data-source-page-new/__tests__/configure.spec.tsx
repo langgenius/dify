@@ -80,15 +80,21 @@ describe('Configure Component', () => {
       const trigger = screen.getByRole('button', { name: /dataSource.configure/i })
       expect(trigger).toHaveAccessibleName('common.dataSource.configure Test Label')
 
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).not.toBeInTheDocument()
 
       await user.click(trigger)
 
-      expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).toBeInTheDocument()
 
       await user.click(trigger)
 
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -103,9 +109,11 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
-      expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+        screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.common.configureClient' }),
       ).not.toBeInTheDocument()
     })
 
@@ -121,8 +129,12 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithOAuth} pluginPayload={mockPluginPayload} />)
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
-      expect(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render both buttons and the OR divider when both schemes are available', async () => {
@@ -138,8 +150,12 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
-      expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('OR')).toBeInTheDocument()
     })
   })
@@ -162,7 +178,7 @@ describe('Configure Component', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
-      await user.click(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' }))
+      await user.click(screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }))
       const settings = screen.getByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
       expect(mockOnUpdate).not.toHaveBeenCalled()
       await user.type(within(settings).getByRole('textbox', { name: /API Key/ }), 'client-secret')
@@ -177,7 +193,7 @@ describe('Configure Component', () => {
       })
       expect(mockOnUpdate).toHaveBeenCalledOnce()
       expect(
-        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+        screen.queryByRole('button', { name: 'plugin.auth.common.configureClient' }),
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('dialog', { name: 'plugin.auth.oauthClientSettings' }),
@@ -199,7 +215,7 @@ describe('Configure Component', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
-      await user.click(screen.getByRole('button', { name: 'plugin.auth.addApi' }))
+      await user.click(screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }))
       expect(mockOnUpdate).not.toHaveBeenCalled()
       await user.type(screen.getByRole('textbox', { name: /API Key/ }), 'datasource-key')
       await user.type(
@@ -214,7 +230,9 @@ describe('Configure Component', () => {
         body: { credentials: { api_key: 'datasource-key' }, name: 'Team source' },
       })
       expect(mockOnUpdate).toHaveBeenCalledTimes(1)
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -232,8 +250,10 @@ describe('Configure Component', () => {
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} disabled={true} />)
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
 
-      expect(screen.getByRole('button', { name: 'plugin.auth.addApi' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'plugin.auth.setupOAuth' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }),
+      ).toBeDisabled()
     })
 
     it('should handle edge cases for missing, empty, or partial item data', async () => {
@@ -242,9 +262,11 @@ describe('Configure Component', () => {
         <Configure item={mockItemBase} pluginPayload={mockPluginPayload} />,
       )
       await user.click(screen.getByRole('button', { name: /dataSource.configure/i }))
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+        screen.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.common.configureClient' }),
       ).not.toBeInTheDocument()
 
       const itemEmpty: DatasourceProviderAuthResponse = {
@@ -255,9 +277,11 @@ describe('Configure Component', () => {
 
       rerender(<Configure item={itemEmpty} pluginPayload={mockPluginPayload} />)
 
-      expect(screen.queryByRole('button', { name: 'plugin.auth.addApi' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+        screen.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.common.configureClient' }),
       ).not.toBeInTheDocument()
 
       const itemPartialOAuth: DatasourceProviderAuthResponse = {
@@ -270,7 +294,7 @@ describe('Configure Component', () => {
       rerender(<Configure item={itemPartialOAuth} pluginPayload={mockPluginPayload} />)
 
       expect(
-        screen.queryByRole('button', { name: 'plugin.auth.setupOAuth' }),
+        screen.queryByRole('button', { name: 'plugin.auth.common.configureClient' }),
       ).not.toBeInTheDocument()
     })
   })

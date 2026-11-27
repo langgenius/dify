@@ -9,8 +9,7 @@ import { uniqBy } from 'es-toolkit'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AppTypeIcon } from '@/app/components/app/type-selector'
-import AppIcon from '@/app/components/base/app-icon'
+import AppCardSummary from '@/app/components/app/app-card-summary'
 import { CollaboratorAvatarStack } from '@/app/components/workflow/collaboration/components/collaborator-avatar'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -132,25 +131,12 @@ export const AppCard = memo(
     }, [t])
     const appCardContent = (
       <>
-        <div className="flex shrink-0 items-center gap-3 ps-4 pe-4 pt-4 pb-2">
-          <div className="relative shrink-0">
-            <AppIcon size="large" icon={app} />
-            <AppTypeIcon
-              type={app.mode}
-              wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
-              className="size-3"
-            />
-          </div>
-          <div className="flex w-0 grow flex-col gap-1 py-px">
-            <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-              <div id={appNameId} className="truncate">
-                {app.name}
-              </div>
-            </div>
-            <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
-              {appModeLabel}
-            </div>
-          </div>
+        <AppCardSummary
+          app={app}
+          nameId={appNameId}
+          descriptionId={appDescriptionId}
+          typeLabel={appModeLabel}
+        >
           {onlinePresenceUsers.length > 0 && (
             <div className="ms-3 flex shrink-0 items-start">
               <CollaboratorAvatarStack
@@ -160,12 +146,7 @@ export const AppCard = memo(
               />
             </div>
           )}
-        </div>
-        <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
-          <div id={appDescriptionId} className="line-clamp-2 min-h-8">
-            {app.description}
-          </div>
-        </div>
+        </AppCardSummary>
         <div className="mt-6.5 flex min-w-0 shrink-0 items-center overflow-hidden ps-4 pe-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             {app.author_name && (

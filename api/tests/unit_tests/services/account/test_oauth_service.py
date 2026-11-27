@@ -22,6 +22,7 @@ from services.account_errors import (
     OAuthWorkspaceCreationNotAllowedError,
 )
 from services.entities.account_entities import AccountSessionTokens, AccountSnapshot
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAccountRegistration,
     OAuthAuthorizationRequest,
@@ -260,6 +261,9 @@ class FakeRuntime:
         self.workspace_operations.append(("owner", account_id))
         self.memberships.workspace_ids = (*self.memberships.workspace_ids, f"owner-{account_id}")
 
+    def activate_default_workspace(self, account_id: str) -> None:
+        self.create_owner_workspace(account_id)
+
     def try_join_default_workspace(self, account_id: str) -> None:
         self._assert_identity_linked(account_id)
         self.default_workspace_accounts.append(account_id)
@@ -313,6 +317,7 @@ def _harness(
     *,
     identity: OAuthIdentity | None = None,
     additional_identities: dict[str, OAuthIdentity] | None = None,
+    defer_workspace_creation: bool = False,
 ) -> Harness:
     provider = FakeProvider(identity)
     providers = {"github": provider}
@@ -341,6 +346,7 @@ def _harness(
         workspace_policy=policy,
         supported_languages=("en-US", "zh-Hans"),
         now=lambda: NOW,
+        defer_workspace_creation=defer_workspace_creation,
     )
     return Harness(
         service=service,
@@ -380,6 +386,26 @@ def _command(**overrides: object) -> OAuthCallbackCommand:
     }
     values.update(overrides)
     return OAuthCallbackCommand(**values)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("new_account", [False, True])
+def test_cloud_oauth_login_prepares_a_workspace_for_the_console_session(new_account: bool) -> None:
+    harness = _harness(defer_workspace_creation=True)
+    harness.memberships.workspace_ids = ()
+    account_id = "new-account" if new_account else "account-1"
+    account = _account(account_id=account_id, status="uninitialized")
+    if new_account:
+        harness.accounts.stored[account_id] = account
+    else:
+        _bind_identity(harness, account)
+
+    result = harness.service.complete_authorization(_command())
+
+    assert isinstance(result, OAuthSignInResult)
+    assert result.oauth_new_user is new_account
+    assert harness.accounts.activations == []
+    assert harness.runtime.created_accounts == [account_id]
+    assert harness.runtime.logins == [(account_id, "203.0.113.10")]
 
 
 def test_start_authorization_delegates_to_configured_provider() -> None:
@@ -722,9 +748,27 @@ def test_pending_account_is_not_activated_when_workspace_creation_fails() -> Non
     assert harness.runtime.logins == []
 
 
-def test_valid_invitation_links_and_logs_in_invited_account() -> None:
+@pytest.mark.parametrize(
+    ("has_workspace", "creation_allowed", "creation_error", "expected_operations"),
+    [
+        (False, True, None, [("owner", "invited-account")]),
+        (True, True, None, []),
+        (False, False, None, []),
+        (False, True, OAuthWorkspaceCreationNotAllowedError(), []),
+    ],
+    ids=["provisions-default", "existing-workspace", "creation-disabled", "limit-or-denied"],
+)
+def test_valid_invitation_links_provisions_when_allowed_and_logs_in_invited_account(
+    has_workspace: bool,
+    creation_allowed: bool,
+    creation_error: Exception | None,
+    expected_operations: list[tuple[str, str]],
+) -> None:
     harness = _harness(identity=OAuthIdentity("provider-user", "User", "Invitee@Example.com"))
     harness.invitations.invitation = OAuthInvitation("invited-account", "invitee@example.com", "active")
+    harness.memberships.workspace_ids = ("existing-workspace",) if has_workspace else ()
+    harness.policy.creation_allowed = creation_allowed
+    harness.runtime.workspace_creation_error = creation_error
 
     result = harness.service.complete_authorization(_command(invite_token="invite-token"))
 
@@ -734,7 +778,7 @@ def test_valid_invitation_links_and_logs_in_invited_account() -> None:
     assert harness.runtime.logins == [("invited-account", "203.0.113.10")]
     assert harness.integrations.identity_lookups == []
     assert harness.invitations.resolutions == ["invite-token"]
-    assert harness.runtime.workspace_operations == []
+    assert harness.runtime.workspace_operations == expected_operations
 
 
 def test_resolvable_invitation_requires_matching_email() -> None:
@@ -767,3 +811,29 @@ def test_banned_account_is_rejected_before_writes() -> None:
         harness.service.complete_authorization(_command())
 
     assert harness.integrations.links == []
+
+
+@pytest.mark.parametrize("existing", [True, False])
+def test_end_user_oauth_never_provisions_or_joins_workspace(existing: bool) -> None:
+    harness = _harness()
+    harness.policy.creation_allowed = False
+    if existing:
+        _bind_identity(harness, _account(status="uninitialized"))
+    else:
+        harness.accounts.stored["new-account"] = _account(account_id="new-account", status="uninitialized")
+    result = harness.service.complete_authorization(_command(mode=LoginMode.END_USER))
+    assert isinstance(result, OAuthSignInResult)
+    assert result.oauth_new_user is (not existing)
+    assert harness.memberships.account_ids == []
+    assert harness.runtime.workspace_operations == []
+    assert harness.accounts.activations == []
+    if not existing:
+        assert harness.registration.registrations[0].mode == LoginMode.END_USER
+
+
+def test_end_user_oauth_does_not_consume_workspace_invitation() -> None:
+    harness = _harness()
+    with pytest.raises(ValueError, match="workspace invitation"):
+        harness.service.complete_authorization(_command(mode=LoginMode.END_USER, invite_token="invite"))
+    assert harness.invitations.resolutions == []
+    assert harness.provider.codes == []

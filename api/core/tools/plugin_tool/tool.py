@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import Any, override
 
 from sqlalchemy.orm import Session
@@ -21,6 +21,8 @@ class PluginTool(Tool):
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
         self.runtime_parameters: list[ToolParameter] | None = None
+        # Bound only on a runtime instance, never on provider definitions or parameter lookups.
+        self.before_connection_invoke: Callable[[], None] | None = None
 
     @override
     def tool_provider_type(self) -> ToolProviderType:
@@ -36,9 +38,12 @@ class PluginTool(Tool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
+        """Fence bound Connection use after parameter conversion and before provider dispatch."""
         manager = PluginToolManager(plugin_unique_identifier=self.plugin_unique_identifier)
 
         tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
+        if self.before_connection_invoke is not None:
+            self.before_connection_invoke()
 
         yield from manager.invoke(
             tenant_id=self.tenant_id,

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from services.entities.account_entities import AccountSessionTokens as _AccountSessionTokens
+from services.entities.account_login_entities import LoginMode
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,6 +12,8 @@ class OAuthAuthorizationRequest:
     timezone: str | None = None
     language: str | None = None
     redirect_url: str | None = None
+    mode: LoginMode = LoginMode.CONSOLE
+    state: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +32,7 @@ class OAuthCallbackCommand:
     language: str | None
     browser_language: str | None
     ip_address: str
+    mode: LoginMode = LoginMode.CONSOLE
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +49,7 @@ class OAuthAccountRegistration:
     language: str
     timezone: str | None
     ip_address: str
+    mode: LoginMode = LoginMode.CONSOLE
 
 
 @dataclass(frozen=True, slots=True)

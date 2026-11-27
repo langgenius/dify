@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "ຂໍ້ມູນຜູ້ໃຊ້ຂອງບັນຊີຂອງທ່ານ.",
   "account.myAccount": "ບັນຊີຂອງຂ້ອຍ",
   "account.name": "ຊື່",
+  "account.nameLengthInvalid": "ຊື່ຕ້ອງມີຄວາມຍາວລະຫວ່າງ {{min}} ຫາ {{max}} ຕົວອັກສອນ.",
   "account.newPassword": "ລະຫັດຜ່ານໃໝ່",
   "account.notEqual": "ລະຫັດຜ່ານທັງສອງບໍ່ກົງກັນ.",
   "account.password": "ລະຫັດຜ່ານ",

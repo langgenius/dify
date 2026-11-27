@@ -1,4 +1,9 @@
-import type { PropsWithChildren, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type {
+  ComponentProps,
+  PropsWithChildren,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+} from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import Link from '@/next/link'
@@ -9,17 +14,19 @@ type SuggestedActionButton = {
   onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void
 }
 
-type SuggestedActionProps = PropsWithChildren<{
-  icon?: ReactNode
-  link?: string
-  disabled?: boolean
-  focusableWhenDisabled?: boolean
-  description?: ReactNode
-  endIcon?: ReactNode
-  actionButton?: SuggestedActionButton
-  className?: string
-  onClick?: () => void
-}>
+type SuggestedActionProps = PropsWithChildren<
+  Pick<ComponentProps<'button'>, 'aria-description'> & {
+    icon?: ReactNode
+    link?: string
+    disabled?: boolean
+    focusableWhenDisabled?: boolean
+    description?: ReactNode
+    endIcon?: ReactNode
+    actionButton?: SuggestedActionButton
+    className?: string
+    onClick?: () => void
+  }
+>
 
 const SuggestedAction = ({
   icon,
@@ -27,6 +34,7 @@ const SuggestedAction = ({
   disabled = false,
   focusableWhenDisabled = false,
   description,
+  'aria-description': ariaDescription,
   endIcon,
   actionButton,
   children,
@@ -93,7 +101,8 @@ const SuggestedAction = ({
   )
   const accessibilityProps = {
     'aria-labelledby': labelId,
-    'aria-describedby': description ? descriptionId : undefined,
+    'aria-describedby': description && !ariaDescription ? descriptionId : undefined,
+    'aria-description': ariaDescription,
   }
 
   let mainAction: ReactNode

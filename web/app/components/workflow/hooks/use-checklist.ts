@@ -61,8 +61,10 @@ import {
   LLMModelIssueCode,
   resolveLLMNodeModel,
 } from '../nodes/llm/utils'
+import { resolveToolAuthorization } from '../nodes/tool/authorization'
+import { getToolAuthorizationTab } from '../nodes/tool/authorization-config'
 import { useStore, useWorkflowStore } from '../store'
-import { BlockEnum } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import {
   getDataSourceCheckParams,
   getNodeCatalogType,
@@ -147,6 +149,21 @@ const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
 ]
 
+const getEndUserAuthTriggerConflictNodeIds = (nodes: Node[]) => {
+  const executionNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
+  if (!executionNodes.some((node) => isTriggerNode(node.data.type))) return new Set<string>()
+
+  return new Set(
+    executionNodes
+      .filter(
+        (node) =>
+          node.data.type === BlockEnum.Tool &&
+          getToolAuthorizationTab(node.data as ToolNodeType) === 'app-user-auth',
+      )
+      .map((node) => node.id),
+  )
+}
+
 const getDuplicateEndOutputMessages = (
   nodes: Node[],
   t: ReturnType<typeof useTranslation>['t'],
@@ -182,7 +199,7 @@ const getDuplicateEndOutputMessages = (
 }
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
-  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider'])
+  const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider', 'plugin'])
   const language = useGetLanguage()
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const contactIds = useMemo(() => getHumanInputContactIds(nodes), [nodes])
@@ -406,15 +423,23 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     const list: ChecklistItem[] = []
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
+    const endUserAuthTriggerConflictNodeIds = getEndUserAuthTriggerConflictNodeIds(filteredNodes)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
     const installedPluginIds = new Set(modelProviders.map((p) => extractPluginId(p.provider)))
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
+      const authorization = resolveToolAuthorization({ node: node!, nodes })
+      const appUserAuthDraft =
+        authorization?.status === 'resolved' &&
+        authorization.sourceNodeId === node!.id &&
+        authorization.authorizationTab === 'app-user-auth'
+          ? authorization.appUserDraft
+          : undefined
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
 
-      if (node!.data.type === BlockEnum.Tool)
+      if (node!.data.type === BlockEnum.Tool) {
         moreDataForCheckValid = getToolCheckParams(
           node!.data as ToolNodeType,
           buildInTools || [],
@@ -422,6 +447,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           workflowTools || [],
           language,
         )
+        if (getToolAuthorizationTab(node!.data as ToolNodeType) !== 'workspace-auth')
+          moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
+      }
 
       if (node!.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(
@@ -479,7 +507,19 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         })
 
         const errorMessages: string[] = []
+        if (endUserAuthTriggerConflictNodeIds.has(node!.id))
+          errorMessages.push(t(($) => $['errorMsg.endUserAuthWithTrigger'], { ns: 'workflow' }))
+        if (authorization?.status === 'invalid')
+          errorMessages.push(t(($) => $['panel.selectReuseNode'], { ns: 'workflow' }))
         const inlineAgentIssues = inlineAgentConfigurationIssues[node!.id]
+        if (appUserAuthDraft) {
+          if (appUserAuthDraft.errors?.methods)
+            errorMessages.push(t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }))
+          if (appUserAuthDraft.errors?.oauthClient)
+            errorMessages.push(t(($) => $['auth.appUser.clientRequired'], { ns: 'plugin' }))
+          if (appUserAuthDraft.errors?.description)
+            errorMessages.push(t(($) => $['auth.appUser.descriptionRequired'], { ns: 'plugin' }))
+        }
 
         if (isPluginMissing) {
           errorMessages.push(t(($) => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
@@ -758,6 +798,7 @@ export const useChecklistBeforePublish = () => {
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
+    const endUserAuthTriggerConflictNodeIds = getEndUserAuthTriggerConflictNodeIds(filteredNodes)
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
@@ -853,7 +894,13 @@ export const useChecklistBeforePublish = () => {
       const node = filteredNodes[i]
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
-      if (node!.data.type === BlockEnum.Tool)
+      if (node!.data.type === BlockEnum.Tool) {
+        if (endUserAuthTriggerConflictNodeIds.has(node!.id)) {
+          toast.error(
+            `[${node!.data.title}] ${t(($) => $['errorMsg.endUserAuthWithTrigger'], { ns: 'workflow' })}`,
+          )
+          return false
+        }
         moreDataForCheckValid = getToolCheckParams(
           node!.data as ToolNodeType,
           buildInTools || [],
@@ -861,6 +908,16 @@ export const useChecklistBeforePublish = () => {
           workflowTools || [],
           language,
         )
+        const authorization = resolveToolAuthorization({ node: node!, nodes })
+        if (authorization?.status === 'invalid') {
+          toast.error(
+            `[${node!.data.title}] ${t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })}`,
+          )
+          return false
+        }
+        if (getToolAuthorizationTab(node!.data as ToolNodeType) !== 'workspace-auth')
+          moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
+      }
 
       if (node!.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(

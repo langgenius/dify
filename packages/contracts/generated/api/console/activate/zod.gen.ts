@@ -103,6 +103,7 @@ export const zInvitationAccountMismatchError = zErrorResponse.and(
 export const zActivationCheckData = z.object({
   account_status: z.string().nullish(),
   email: z.string().nullable(),
+  is_current_account: z.boolean().optional().default(false),
   requires_setup: z.boolean().nullish(),
   workspace_id: z.string().nullable(),
   workspace_name: z.string().nullable(),

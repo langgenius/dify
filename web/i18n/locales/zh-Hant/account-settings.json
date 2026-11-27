@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "您的帳號和相關的使用者資料。",
   "account.myAccount": "我的帳戶",
   "account.name": "使用者名稱",
+  "account.nameLengthInvalid": "名稱長度必須為 {{min}} 至 {{max}} 個字元。",
   "account.newPassword": "新密碼",
   "account.notEqual": "兩個密碼不相同",
   "account.password": "密碼",

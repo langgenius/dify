@@ -16,7 +16,19 @@ const webAppAuthMocks = vi.hoisted(() => ({
   setWebAppPassport: vi.fn(),
   webAppLoginStatus: vi.fn(),
   webAppLogout: vi.fn(),
+  getAuthenticatedWebAppPassport: vi.fn(),
+  getWebAppAccessToken: vi.fn(),
+  getWebAppLoginMode: vi.fn(),
+  expireWebAppAccountSession: vi.fn(),
+  captureWebAppAuthSession: () => () => true,
+  getWebAppAuthSessionSnapshot: () => 0,
 }))
+
+const accountClient = vi.hoisted(() => ({
+  login: { status: { get: vi.fn() } },
+  passport: { get: vi.fn() },
+}))
+vi.mock('@/service/webapp', () => ({ webAppClient: accountClient }))
 
 const fetchAccessTokenMock = vi.hoisted(() => vi.fn())
 const ipAccessState = vi.hoisted(() => ({
@@ -51,15 +63,7 @@ vi.mock('@/service/share', () => ({
   fetchAccessToken: (...args: unknown[]) => fetchAccessTokenMock(...args),
 }))
 
-vi.mock('@/service/webapp-auth', () => ({
-  setWebAppAccessToken: webAppAuthMocks.setWebAppAccessToken,
-  setWebAppPassport: webAppAuthMocks.setWebAppPassport,
-}))
-
-vi.mock('@/service/common', () => ({
-  webAppLoginStatus: webAppAuthMocks.webAppLoginStatus,
-  webAppLogout: webAppAuthMocks.webAppLogout,
-}))
+vi.mock('@/service/webapp-auth', () => webAppAuthMocks)
 
 describe('Splash', () => {
   beforeEach(() => {
@@ -68,6 +72,8 @@ describe('Splash', () => {
     useWebAppStore.setState({ webAppAccessMode: AccessMode.PUBLIC })
     useWebAppStore.setState({ embeddedUserId: 'embedded-user' })
     webAppAuthMocks.webAppLogout.mockResolvedValue(undefined)
+    webAppAuthMocks.getWebAppAccessToken.mockReturnValue('')
+    webAppAuthMocks.getWebAppLoginMode.mockReturnValue('console')
     ipAccessState.isCurrent = true
     ipAccessState.isDenied = false
     navigationMocks.pathname = '/chatbot/share-app'
@@ -79,6 +85,119 @@ describe('Splash', () => {
       userLoggedIn: false,
       appLoggedIn: false,
     })
+  })
+
+  it('keeps the enterprise sign-in route on its original flow even with an App user cookie session', async () => {
+    navigationMocks.pathname = '/webapp-signin'
+    navigationMocks.searchParams = new URLSearchParams({
+      redirect_url: '/workflow/share-app',
+    })
+    webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
+    render(
+      <Splash>
+        <div>enterprise sign-in</div>
+      </Splash>,
+    )
+    await screen.findByText('enterprise sign-in')
+    expect(webAppAuthMocks.webAppLoginStatus).toHaveBeenCalledWith('share-app', 'embedded-user')
+    expect(accountClient.login.status.get).not.toHaveBeenCalled()
+    expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('restores a cookie-backed account Passport with end_user mode instead of replacing it with an anonymous Passport', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
+    accountClient.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: false })
+    accountClient.passport.get.mockResolvedValue({ access_token: 'account-passport' })
+    render(
+      <Splash>
+        <div>account App</div>
+      </Splash>,
+    )
+    await screen.findByText('account App')
+    expect(accountClient.passport.get).toHaveBeenCalledWith(
+      { query: { mode: 'end_user' } },
+      expect.objectContaining({
+        context: expect.objectContaining({ address: { kind: 'default', code: 'share-app' } }),
+      }),
+    )
+    expect(webAppAuthMocks.setWebAppPassport).toHaveBeenCalledWith(
+      { kind: 'default', code: 'share-app' },
+      'account-passport',
+      'authenticated',
+      'end_user',
+    )
+    expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('clears an expired cookie session before anonymous initialization can resume', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
+    accountClient.login.status.get.mockResolvedValue({ logged_in: false, app_logged_in: false })
+    render(
+      <Splash>
+        <div>App content</div>
+      </Splash>,
+    )
+    await waitFor(() => expect(webAppAuthMocks.expireWebAppAccountSession).toHaveBeenCalledOnce())
+    expect(screen.queryByText('App content')).not.toBeInTheDocument()
+    expect(accountClient.passport.get).not.toHaveBeenCalled()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+  })
+
+  it('recovers an account that expires between the login check and Passport renewal without forcing sign-in', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
+    accountClient.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: false })
+    accountClient.passport.get.mockRejectedValue(
+      createHttpError(new Response(null, { status: 401 })),
+    )
+    render(
+      <Splash>
+        <div>App content</div>
+      </Splash>,
+    )
+    await waitFor(() => expect(webAppAuthMocks.expireWebAppAccountSession).toHaveBeenCalledOnce())
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+    expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps environment Apps on their existing authentication flow even when an ordinary App cookie session is active', async () => {
+    navigationMocks.pathname = '/environment/workflow/environment-app'
+    navigationMocks.searchParams = new URLSearchParams()
+    window.history.replaceState({}, '', navigationMocks.pathname)
+    useWebAppStore.setState({ shareCode: 'environment-app' })
+    webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
+    webAppAuthMocks.webAppLoginStatus.mockResolvedValue({ userLoggedIn: true, appLoggedIn: true })
+    render(
+      <Splash>
+        <div>environment App</div>
+      </Splash>,
+    )
+    await screen.findByText('environment App')
+    expect(webAppAuthMocks.webAppLoginStatus).toHaveBeenCalledWith(
+      'environment-app',
+      'embedded-user',
+    )
+    expect(accountClient.login.status.get).not.toHaveBeenCalled()
+  })
+
+  it('uses the enterprise sign-in flow for an external App while another App uses an account', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    useWebAppStore.setState({ webAppAccessMode: AccessMode.EXTERNAL_MEMBERS })
+    webAppAuthMocks.getWebAppLoginMode.mockImplementation((address) =>
+      address ? 'console' : 'end_user',
+    )
+    webAppAuthMocks.webAppLoginStatus.mockResolvedValue({ userLoggedIn: true, appLoggedIn: true })
+    render(
+      <Splash>
+        <div>Enterprise App</div>
+      </Splash>,
+    )
+
+    await screen.findByText('Enterprise App')
+    expect(webAppAuthMocks.webAppLoginStatus).toHaveBeenCalledWith('share-app', 'embedded-user')
+    expect(accountClient.login.status.get).not.toHaveBeenCalled()
   })
 
   it('should use the login fallback without checking auth when the redirect target is external', async () => {

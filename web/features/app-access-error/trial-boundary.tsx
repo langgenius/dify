@@ -15,7 +15,7 @@ import {
   trialAppAccessScopeAtom,
 } from './state'
 
-const AppNotAccessible = dynamic(() => import('./page'), {
+const AppNotAccessible = dynamic(() => import('./view'), {
   loading: () => <LoadingPlaceholder className="h-full" />,
 })
 

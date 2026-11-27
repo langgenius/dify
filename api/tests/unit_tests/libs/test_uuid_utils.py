@@ -6,8 +6,34 @@ from unittest import mock
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from pydantic import TypeAdapter, ValidationError
 
-from libs.uuid_utils import _create_uuidv7_bytes, uuidv7, uuidv7_boundary, uuidv7_timestamp
+from libs.uuid_utils import UUIDStr, _create_uuidv7_bytes, uuid_value, uuidv7, uuidv7_boundary, uuidv7_timestamp
+
+
+@pytest.mark.parametrize("value", ["ABCD1234-1234-5678-ABCD-1234567890AB", "abcd123412345678abcd1234567890ab"])
+def test_uuid_string_normalization_and_schema_are_preserved(value: str) -> None:
+    adapter = TypeAdapter(UUIDStr)
+    assert adapter.validate_python(value) == "abcd1234-1234-5678-abcd-1234567890ab"
+    assert adapter.json_schema() == {"type": "string", "format": "uuid"}
+    assert uuid_value(uuid.UUID(value)) == "abcd1234-1234-5678-abcd-1234567890ab"
+
+
+@pytest.mark.parametrize("value", ["", " ", "invalid", None])
+def test_uuid_string_rejects_missing_and_malformed_revisions(value: object) -> None:
+    with pytest.raises(ValidationError):
+        TypeAdapter(UUIDStr).validate_python(value)
+
+
+def test_legacy_uuid_helpers_share_the_same_validation_owner() -> None:
+    from libs import helper
+
+    assert helper.UUIDStr is UUIDStr
+    assert helper.uuid_value is uuid_value
+    assert uuid_value("") == ""
+    assert helper.normalize_uuid("") == ""
+    with pytest.raises(ValueError, match="invalid is not a valid uuid"):
+        uuid_value("invalid")
 
 
 # Tests for private helper function _create_uuidv7_bytes

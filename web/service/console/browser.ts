@@ -22,6 +22,7 @@ export function createBrowserLink(contract: AnyContractRouter): ClientLink<Conso
       const response = await request<Response>(normalizedURL, requestInit, {
         fetchCompat: true,
         request: normalizedRequest,
+        handleUnauthorizedLocally: options.context.handleUnauthorizedLocally,
         onUploadProgress: options.context.onUploadProgress,
         timeout: options.context.stream ? false : undefined,
       })

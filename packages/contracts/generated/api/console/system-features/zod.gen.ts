@@ -123,11 +123,11 @@ export const zWebAppAuthModel = z.object({
 })
 
 /**
- * SystemFeatureModel
+ * ConsoleSystemFeatureResponse
  *
- * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+ * Extend public bootstrap with the Console WebApp destination and login availability.
  */
-export const zSystemFeatureModel = z.object({
+export const zConsoleSystemFeatureResponse = z.object({
   agent_tracing_api_collection_enabled: z.boolean(),
   branding: zBrandingModel.default({
     application_title: '',
@@ -157,13 +157,15 @@ export const zSystemFeatureModel = z.object({
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  webapp_account_login_enabled: z.boolean(),
   webapp_auth: zWebAppAuthModel,
+  webapp_url: z.string(),
 })
 
 /**
  * Success
  */
-export const zGetSystemFeaturesResponse = zSystemFeatureModel
+export const zGetSystemFeaturesResponse = zConsoleSystemFeatureResponse
 
 /**
  * Success

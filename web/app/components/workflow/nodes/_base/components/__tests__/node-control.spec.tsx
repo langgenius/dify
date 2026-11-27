@@ -1,9 +1,13 @@
 import type { CommonNodeType } from '../../../../types'
-import { screen } from '@testing-library/react'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useNodes } from 'reactflow'
+import { useEffect } from 'react'
+import { useNodes, useStoreApi } from 'reactflow'
+import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { renderWorkflowFlowComponent } from '../../../../__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '../../../../hooks-store'
@@ -14,20 +18,38 @@ function SelectedNode() {
   const selected = useNodes<CommonNodeType>().find((node) => node.data.selected)
   return <output aria-label="Selected node">{selected?.id}</output>
 }
+
+function GraphNodeControl({
+  pluginInstallLocked,
+  onGraphReady,
+}: {
+  pluginInstallLocked: boolean
+  onGraphReady: (graph: ReturnType<typeof useStoreApi>) => void
+}) {
+  const graph = useStoreApi()
+  const node = useNodes<CommonNodeType>().find((node) => node.id === 'node-1')
+  useEffect(() => onGraphReady(graph), [graph, onGraphReady])
+  return node ? (
+    <NodeControl id={node.id} data={node.data} pluginInstallLocked={pluginInstallLocked} />
+  ) : null
+}
+
 const renderControl = ({
   data = {},
   canRun = true,
   readonly = false,
   pluginInstallLocked = false,
+  tools = [],
 }: {
-  data?: Partial<CommonNodeType>
+  data?: Partial<CommonNodeType> & Partial<ToolNodeType>
   canRun?: boolean
   readonly?: boolean
   pluginInstallLocked?: boolean
+  tools?: ReturnType<typeof createToolProviderFixture>[]
 } = {}) => {
   const { queryClient } = createConsoleQueryWrapper()
   seedAppDslVersion(queryClient)
-  seedToolProviders(queryClient, { builtInTools: [], customTools: [], workflowTools: [] })
+  seedToolProviders(queryClient, { builtInTools: tools, customTools: [], workflowTools: [] })
   queryClient.setQueryData(
     consoleQuery.workspaces.current.defaultModel.get.queryKey({
       input: { query: { model_type: 'llm' } },
@@ -35,9 +57,15 @@ const renderControl = ({
     { data: null },
   )
   const payload: CommonNodeType = { type: BlockEnum.Code, title: 'Code', desc: '', ...data }
-  return renderWorkflowFlowComponent(
+  let graph: ReturnType<typeof useStoreApi>
+  const rendered = renderWorkflowFlowComponent(
     <>
-      <NodeControl id="node-1" data={payload} pluginInstallLocked={pluginInstallLocked} />
+      <GraphNodeControl
+        pluginInstallLocked={pluginInstallLocked}
+        onGraphReady={(state) => {
+          graph = state
+        }}
+      />
       <SelectedNode />
     </>,
     {
@@ -47,6 +75,17 @@ const renderControl = ({
       hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun } },
     },
   )
+  return {
+    ...rendered,
+    updateNodeData: (data: Partial<ToolNodeType>) => {
+      const { getNodes, setNodes } = graph.getState()
+      setNodes(
+        getNodes().map((node) =>
+          node.id === 'node-1' ? { ...node, data: { ...node.data, ...data } } : node,
+        ),
+      )
+    },
+  }
 }
 
 describe('NodeControl', () => {
@@ -86,5 +125,88 @@ describe('NodeControl', () => {
     renderControl({ pluginInstallLocked: true, data: { selected: true } })
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(await screen.findByRole('menu')).toBeVisible()
+  })
+
+  it('blocks App user runs until the graph contains a saved test credential', async () => {
+    const user = userEvent.setup()
+    const provider = createToolProviderFixture({
+      id: 'provider-id',
+      name: 'test-provider',
+      allow_delete: true,
+      is_team_authorization: false,
+    })
+    const { store, updateNodeData } = renderControl({
+      tools: [provider],
+      data: {
+        type: BlockEnum.Tool,
+        provider_type: CollectionType.builtIn,
+        provider_id: provider.id,
+        provider_name: provider.name,
+        tool_name: 'test-tool',
+        tool_label: 'Test tool',
+        tool_parameters: {},
+        tool_configurations: {},
+        credential_source: 'end_user',
+        end_user_auth: {
+          allowed_credential_types: ['api-key'],
+          purpose: 'Connect app users',
+        },
+      },
+    })
+    // A cached inactive-tab draft cannot authorize a run without a persisted credential.
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('node-1', provider.name, provider.id, {
+        oauthEnabled: false,
+        apiKeyEnabled: true,
+        description: 'Cached purpose',
+        testCredentialId: 'cached-test-key',
+      })
+    })
+    const run = screen.getByRole('button', { name: 'workflow.panel.runThisStep' })
+    expect(run).toHaveAttribute('aria-disabled', 'true')
+    await user.click(run)
+    expect(store.getState().pendingSingleRun).toBeUndefined()
+    expect(store.getState().initShowLastRunTab).toBe(false)
+    expect(screen.getByRole('status', { name: 'Selected node' })).toBeEmptyDOMElement()
+
+    await user.keyboard('{Escape}')
+    act(() => updateNodeData({ test_credential_id: 'saved-test-key' }))
+    expect(screen.getByRole('button', { name: 'workflow.panel.runThisStep' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
+    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
+    expect(screen.getByRole('status', { name: 'Selected node' })).toHaveTextContent('node-1')
+  })
+
+  it('keeps stop available when App user test connections have been removed', async () => {
+    const user = userEvent.setup()
+    const provider = createToolProviderFixture({
+      id: 'provider-id',
+      name: 'test-provider',
+      allow_delete: true,
+      is_team_authorization: false,
+    })
+    const { store } = renderControl({
+      tools: [provider],
+      data: {
+        type: BlockEnum.Tool,
+        provider_type: CollectionType.builtIn,
+        provider_id: provider.id,
+        credential_source: 'end_user',
+        end_user_auth: {
+          allowed_credential_types: ['api-key'],
+          purpose: 'Connect app users',
+        },
+        _singleRunningStatus: NodeRunningStatus.Running,
+      },
+    })
+    const stop = screen.getByRole('button', {
+      name: 'workflowDebug.debug.variableInspect.trigger.stop',
+    })
+    expect(stop).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(stop)
+    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'stop' })
   })
 })

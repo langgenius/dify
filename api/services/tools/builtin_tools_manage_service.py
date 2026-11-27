@@ -4,11 +4,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, exists, func, select, update
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from constants.end_user_connections import OAuthClientSource
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
@@ -34,6 +35,7 @@ from models.account import Account
 from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.credentials.query import CredentialQuery, ToolCredentialRecord
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.tools.tools_transform_service import ToolTransformService
@@ -51,15 +53,24 @@ class BuiltinToolManageService:
         """
         tool_provider = ToolProviderID(provider)
         with sessionmaker(bind=db.engine).begin() as session:
-            session.execute(
-                delete(ToolOAuthTenantClient)
+            client = session.scalar(
+                select(ToolOAuthTenantClient)
                 .where(
                     ToolOAuthTenantClient.tenant_id == tenant_id,
                     ToolOAuthTenantClient.provider == tool_provider.provider_name,
                     ToolOAuthTenantClient.plugin_id == tool_provider.plugin_id,
                 )
-                .execution_options(synchronize_session=False)
+                .with_for_update()
             )
+            if client is not None:
+                EndUserConnectionRepository.disconnect_oauth_client_connections(
+                    session,
+                    tenant_id=tenant_id,
+                    provider=str(tool_provider),
+                    source=OAuthClientSource.WORKSPACE,
+                    configuration_id=client.id,
+                )
+                session.delete(client)
         return {"result": "success"}
 
     @staticmethod
@@ -742,7 +753,11 @@ class BuiltinToolManageService:
                     ToolOAuthTenantClient.provider == tool_provider.provider_name,
                 )
                 .limit(1)
+                .with_for_update()
             )
+
+            existing_client = custom_client_params is not None
+            invalidate = False
 
             # if the record does not exist, create a basic record
             if custom_client_params is None:
@@ -764,10 +779,22 @@ class BuiltinToolManageService:
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
-                custom_client_params.encrypted_oauth_params = json.dumps(encrypter.encrypt(new_params))
+                if new_params != original_params:
+                    custom_client_params.encrypted_oauth_params = json.dumps(encrypter.encrypt(new_params))
+                    invalidate = True
 
             if enable_oauth_custom_client is not None:
+                invalidate = invalidate or (custom_client_params.enabled and not enable_oauth_custom_client)
                 custom_client_params.enabled = enable_oauth_custom_client
+
+            if existing_client and invalidate:
+                EndUserConnectionRepository.disconnect_oauth_client_connections(
+                    session,
+                    tenant_id=tenant_id,
+                    provider=str(tool_provider),
+                    source=OAuthClientSource.WORKSPACE,
+                    configuration_id=custom_client_params.id,
+                )
 
         return {"result": "success"}
 

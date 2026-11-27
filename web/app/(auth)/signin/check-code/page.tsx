@@ -22,6 +22,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import Turnstile from '../components/turnstile'
+import { isEndUserSignIn } from '../utils/end-user-login'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type CheckCodeFormValues = {
@@ -36,7 +37,9 @@ export default function CheckCode() {
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
-  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+  const invite_token = isEndUserSignIn(searchParams)
+    ? ''
+    : decodeURIComponent(searchParams.get('invite_token') || '')
   const language = i18n.language
   const [loading, setLoading] = useState(false)
   const { mutateAsync: verifyLoginCode } = useMutation(
@@ -73,6 +76,7 @@ export default function CheckCode() {
           token,
           language,
           timezone: getBrowserTimezone(),
+          ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' } : {}),
           ...(invite_token ? { invite_token } : {}),
           ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
         },
@@ -85,9 +89,10 @@ export default function CheckCode() {
         })
 
         if (invite_token) {
+          queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          await queryClient.query(userProfileQueryOptions())
+          if (!isEndUserSignIn(searchParams)) await queryClient.query(userProfileQueryOptions())
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       }
@@ -108,6 +113,7 @@ export default function CheckCode() {
         body: {
           email,
           language: locale,
+          ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' } : {}),
           ...(isTurnstileRequired ? { turnstile_token: turnstileToken } : {}),
         },
       })

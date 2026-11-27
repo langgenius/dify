@@ -19,6 +19,7 @@ type UseWorkflowToolParams = {
   appPublished: boolean
   hasPublishedVersion: boolean
   hasTriggerNode: boolean
+  hasEndUserAuthTools: boolean
   inputs?: InputVar[]
   outputs?: WorkflowToolOutputVariable[]
   toolPublished?: boolean
@@ -39,6 +40,7 @@ export function useWorkflowTool({
   appPublished,
   hasPublishedVersion,
   hasTriggerNode,
+  hasEndUserAuthTools,
   inputs,
   onClosePublisher,
   onPublish,
@@ -52,10 +54,14 @@ export function useWorkflowTool({
   const canManageTools = useCanManageTools()
   const visible = appMode === 'workflow' && !hasTriggerNode
   const published = Boolean(toolPublished)
+  const availableForUser = workflowToolAvailable && canManageTools && !hasEndUserAuthTools
   const message =
-    !hasPublishedVersion || !workflowToolAvailable
+    !hasEndUserAuthTools && (!hasPublishedVersion || !workflowToolAvailable)
       ? t(($) => $['common.workflowAsToolDisabledHint'], { ns: 'workflow' })
       : undefined
+  const tooltipMessage = hasEndUserAuthTools
+    ? t(($) => $['common.workflowAsToolEndUserAuth'], { ns: 'workflow' })
+    : undefined
   const icon = {
     content: (appIconType === 'image' ? '🤖' : appIcon) || '🤖',
     background:
@@ -83,19 +89,20 @@ export function useWorkflowTool({
   })
 
   function openDrawer() {
-    if (!canManageTools) return
+    if (!hasPublishedVersion || !availableForUser) return
 
     onClosePublisher()
     setDrawerOpen(true)
   }
 
   return {
-    availableForUser: workflowToolAvailable && canManageTools,
+    availableForUser,
     canManageTools,
     closeDrawer,
     configuration,
     drawerOpen,
     message,
+    tooltipMessage,
     openDrawer,
     published,
     visible,

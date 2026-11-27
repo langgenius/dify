@@ -26,7 +26,6 @@ vi.mock('./share', async (importOriginal) => {
     generationConversationName: vi.fn(),
     fetchAppInfo: vi.fn(),
     fetchAppMeta: vi.fn(),
-    fetchAppParams: vi.fn(),
     getAppAccessModeByAppCode: vi.fn(),
   }
 })
@@ -88,9 +87,6 @@ describe('shareQueryKeys', () => {
       shareQueryKeys.appAccessMode(secondAddress, 'webapp'),
     )
     expect(shareQueryKeys.appInfo(firstAddress)).not.toEqual(shareQueryKeys.appInfo(secondAddress))
-    expect(shareQueryKeys.appParams(firstAddress)).not.toEqual(
-      shareQueryKeys.appParams(secondAddress),
-    )
     expect(shareQueryKeys.appMeta(firstAddress)).not.toEqual(shareQueryKeys.appMeta(secondAddress))
 
     const params = { appSourceType: AppSourceType.webApp, appId: 'app-1' }

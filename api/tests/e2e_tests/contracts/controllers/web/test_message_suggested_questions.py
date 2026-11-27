@@ -34,6 +34,7 @@ from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, Site
 from models.provider import Provider, TenantDefaultModel
 from models.workflow import Workflow
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.message_repository import MessageRepository
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
@@ -41,12 +42,14 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
 )
+from services.web_identity_service import WebIdentityService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass
 class _Services:
+    web_identity: WebIdentityService
     message_suggested_questions: MessageSuggestedQuestions
 
 
@@ -150,7 +153,9 @@ def harness(
 
     event.listen(admission_factory, "after_begin", track_admission)
     event.listen(read_factory, "after_begin", track_session)
-    passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_code": site.code, "app_id": target.id, "end_user_id": end_user.id}
+    )
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)
@@ -159,9 +164,14 @@ def harness(
         session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
     )
     services = _Services(
+        WebIdentityService(
+            accounts=SQLAlchemyAccountRepository(admission_factory),
+            allow_console_login=False,
+            allow_webapp_login=False,
+        ),
         MessageSuggestedQuestionsService(
             queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
-        )
+        ),
     )
     app.extensions["application_services"] = services
     api = ExternalApi(app)
@@ -287,7 +297,7 @@ def test_non_chat_app_is_rejected_before_shared_capability(harness: _Harness, mo
     [
         ("agent_version", 404, "app_not_found", "App not found"),
         ("message", 404, "not_found", "Message not found"),
-        ("conversation", 404, "not_found", "Conversation not found"),
+        ("conversation", 404, "not_found", "Message not found"),
         ("disabled", 403, "app_suggested_questions_after_answer_disabled", "disabled"),
     ],
 )
@@ -403,8 +413,15 @@ def test_admission_rejects_end_user_from_another_owner(
     harness.assert_closed()
 
 
-@pytest.mark.parametrize("model", [Message, Conversation])
-@pytest.mark.parametrize("field_name", ["app_id", "from_end_user_id", "from_source"])
+@pytest.mark.parametrize(
+    ("model", "field_name"),
+    [
+        (Message, "app_id"),
+        (Conversation, "app_id"),
+        (Conversation, "from_end_user_id"),
+        (Conversation, "from_source"),
+    ],
+)
 def test_real_runtime_rejects_message_or_conversation_outside_actor_scope(
     harness: _Harness,
     model: type[Message] | type[Conversation],
@@ -416,7 +433,7 @@ def test_real_runtime_rejects_message_or_conversation_outside_actor_scope(
         session.execute(update(model).where(model.id == record_id).values({field_name: value}))
     response = harness.get()
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.get_json()["message"] == ("Message not found" if model is Message else "Conversation not found")
+    assert response.get_json()["message"] == "Message not found"
     harness.assert_closed()
 
 

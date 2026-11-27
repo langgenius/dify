@@ -4,7 +4,7 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type FeatureModel = {
+export type ConsoleFeatureResponse = {
   agent_preview_enabled: boolean
   annotation_quota_limit: LimitationModel
   api_rate_limit: Quota
@@ -16,6 +16,7 @@ export type FeatureModel = {
   enable_file_scan: boolean
   enable_knowledge_fs: boolean
   enable_skill: boolean
+  end_user_auth_enabled: boolean
   evaluation_enabled: boolean
   evaluation_upgrade_available: boolean
   human_input_email_delivery_enabled: boolean
@@ -98,7 +99,7 @@ export type GetFeaturesErrors = {
 export type GetFeaturesError = GetFeaturesErrors[keyof GetFeaturesErrors]
 
 export type GetFeaturesResponses = {
-  200: FeatureModel
+  200: ConsoleFeatureResponse
 }
 
 export type GetFeaturesResponse = GetFeaturesResponses[keyof GetFeaturesResponses]

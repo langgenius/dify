@@ -10,6 +10,12 @@ from typing import Literal
 
 @dataclass(frozen=True, slots=True)
 class AccountSnapshot:
+    """Account data with independent profile and Builder lifecycle timestamps.
+
+    A missing first workspace time means no owned creation or legacy Builder
+    baseline is recorded. Invitation initialization remains a separate lifecycle.
+    """
+
     id: str
     name: str
     email: str
@@ -23,6 +29,41 @@ class AccountSnapshot:
     status: str
     initialized_at: datetime | None
     created_at: datetime
+    first_workspace_created_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AccountProfile(AccountSnapshot):
+    """Profile membership flags describe existing tenants, including archived ones.
+
+    Ownership implies membership. These flags do not grant workspace access and
+    do not replace the durable first workspace creation time.
+    """
+
+    has_owned_tenant: bool
+    has_tenant: bool
+
+    @classmethod
+    def from_account(cls, account: AccountSnapshot, *, has_owned_tenant: bool, has_tenant: bool) -> AccountProfile:
+        """Extend an Account snapshot with membership facts from the same read."""
+        return cls(
+            id=account.id,
+            name=account.name,
+            email=account.email,
+            avatar=account.avatar,
+            is_password_set=account.is_password_set,
+            interface_language=account.interface_language,
+            interface_theme=account.interface_theme,
+            timezone=account.timezone,
+            last_login_at=account.last_login_at,
+            last_login_ip=account.last_login_ip,
+            status=account.status,
+            initialized_at=account.initialized_at,
+            created_at=account.created_at,
+            first_workspace_created_at=account.first_workspace_created_at,
+            has_owned_tenant=has_owned_tenant,
+            has_tenant=has_tenant,
+        )
 
 
 @dataclass(frozen=True, slots=True)

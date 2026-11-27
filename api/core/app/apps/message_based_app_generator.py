@@ -7,6 +7,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -27,9 +28,11 @@ from core.app.entities.task_entities import (
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
 )
+from core.app.file_access import get_current_file_access_scope
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
+from extensions.application_services.end_user_connections import initialize_conversation_connections
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
@@ -43,7 +46,9 @@ from models.enums import (
 from models.enums import (
     InvokeFrom as ModelInvokeFrom,
 )
-from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile
+from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_access
+from repositories.web_execution_file_access import execution_file_references, require_execution_file_ownership
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -129,6 +134,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
+        Web Chatbot admission fences migration and rechecks conversation and file
+        ownership before atomically committing the new message. Rejected admission
+        rolls back without appending to transferred history.
         :param application_generate_entity: application generate entity
         :conversation conversation
         :return:
@@ -171,6 +179,44 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         created_new_conversation = conversation is None
         try:
+            if (
+                isinstance(application_generate_entity, AdvancedChatAppGenerateEntity | ChatAppGenerateEntity)
+                and application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            ):
+                try:
+                    require_web_message_access(
+                        session,
+                        tenant_id=app_config.tenant_id,
+                        app_id=app_config.app_id,
+                        end_user_id=application_generate_entity.user_id,
+                        conversation_id=conversation.id if conversation is not None else None,
+                    )
+                    if isinstance(application_generate_entity, ChatAppGenerateEntity):
+                        actor = session.get(EndUser, application_generate_entity.user_id)
+                        if actor is None:
+                            raise ConversationAccessDeniedError("Conversation ownership changed")
+                        uploads, tools = execution_file_references(
+                            (application_generate_entity.inputs, application_generate_entity.files)
+                        )
+                        file_scope = get_current_file_access_scope()
+                        granted_uploads = (
+                            file_scope.granted_upload_file_ids
+                            if file_scope is not None
+                            and (file_scope.tenant_id, file_scope.user_id) == (app_config.tenant_id, actor.id)
+                            else frozenset()
+                        )
+                        require_execution_file_ownership(
+                            session,
+                            tenant_id=app_config.tenant_id,
+                            app_id=app_config.app_id,
+                            user=actor,
+                            upload_ids=uploads,
+                            tool_ids=tools,
+                            granted_upload_ids=granted_uploads,
+                        )
+                except ConversationAccessDeniedError as exc:
+                    raise ConversationNotExistsError() from exc
             if not conversation:
                 conversation = Conversation(
                     app_id=app_config.app_id,
@@ -203,6 +249,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 conversation_id=conversation.id,
+                workflow_run_id=(
+                    application_generate_entity.workflow_run_id
+                    if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+                    else None
+                ),
                 _inputs=dict(application_generate_entity.inputs),
                 query=application_generate_entity.query,
                 message="",
@@ -244,6 +295,16 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
             if message_files:
                 session.add_all(message_files)
+
+            if (
+                created_new_conversation
+                and isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+                and application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.EXPLORE}
+                and application_generate_entity.connection_context is not None
+            ):
+                initialize_conversation_connections(
+                    session, application_generate_entity.connection_context, conversation
+                )
 
             session.commit()
 

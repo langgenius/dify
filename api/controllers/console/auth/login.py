@@ -1,19 +1,22 @@
+from contextlib import suppress
 from http import HTTPStatus
-from typing import Never
+from typing import Literal, Never, Self
 from uuid import UUID
 
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from configs import dify_config
 from controllers.common.fields import (
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
     SimpleResultOptionalDataResponse,
     SimpleResultResponse,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.web_login import WebLoginUnavailableHTTPError, web_login_errors
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -28,6 +31,7 @@ from controllers.console.auth.error import (
     TurnstileServiceUnavailableError,
     TurnstileVerificationFailedError,
 )
+from controllers.console.auth.login_mode import require_login_mode
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
@@ -47,6 +51,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -55,18 +60,33 @@ from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
+    clear_webapp_access_token_from_cookie,
+    extract_console_cookie_token,
     extract_refresh_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
+    set_webapp_access_token_to_cookie,
 )
 from services import account_errors
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import EmailCodeLoginCommand, EmailCodeSendCommand, PasswordLoginCommand
+from services.entities.account_login_entities import (
+    EmailCodeLoginCommand,
+    EmailCodeSendCommand,
+    LoginMode,
+    PasswordLoginCommand,
+)
 from services.entities.auth_entities import LoginPayloadBase
+from services.web_login_handoff import S256_CHALLENGE_PATTERN, WebLoginSession, WebLoginTarget
+from services.web_login_redirect import resolve_personal_login_redirect, resolve_web_portal_login_redirect
+from services.web_passport_service import WebPassportUnauthorizedError
 
 
 class LoginPayload(LoginPayloadBase):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="End User mode authenticates an Account without workspace admission or provisioning.",
+    )
     remember_me: bool = Field(default=False, description="Remember me flag")
     invite_token: str | None = Field(default=None, description="Invitation token")
 
@@ -77,6 +97,10 @@ class EmailPayload(BaseModel):
 
 
 class EmailCodeSendPayload(EmailPayload):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="End User mode authenticates an Account without workspace admission or provisioning.",
+    )
     turnstile_token: str | None = Field(
         default=None,
         max_length=2048,
@@ -85,6 +109,10 @@ class EmailCodeSendPayload(EmailPayload):
 
 
 class EmailCodeLoginPayload(BaseModel):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="End User mode authenticates an Account without workspace admission or provisioning.",
+    )
     email: EmailStr = Field(...)
     code: str
     token: UUID
@@ -105,9 +133,83 @@ class EmailCodeLoginPayload(BaseModel):
         return validate_timezone_string(value)
 
 
-register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeSendPayload, EmailCodeLoginPayload)
+class RefreshTokenPayload(BaseModel):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="Console mode requires an active workspace; End User mode refreshes only the Account session.",
+    )
+
+
+class WebAppAccountSessionQuery(BaseModel):
+    mode: Literal["end_user"] = "end_user"
+    app_code: str | None = Field(default=None, min_length=1)
+    redirect_url: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Personal portal return URL, or App return URL when app_code and code_challenge are provided",
+    )
+    code_challenge: str | None = Field(
+        default=None,
+        pattern=S256_CHALLENGE_PATTERN,
+        description="S256 PKCE challenge for a published App or Webapp personal portal handoff",
+    )
+
+    @model_validator(mode="after")
+    def validate_app_handoff(self) -> Self:
+        """Require a destination for any PKCE grant and a challenge for app-scoped grants."""
+        if self.app_code is not None and (self.redirect_url is None or self.code_challenge is None):
+            raise ValueError("App login handoff requires app_code, redirect_url, and code_challenge.")
+        if self.code_challenge is not None and self.redirect_url is None:
+            raise ValueError("Web App login handoff requires redirect_url.")
+        return self
+
+    @property
+    def handoff_target(self) -> WebLoginTarget | None:
+        if self.app_code is None or self.redirect_url is None or self.code_challenge is None:
+            return None
+        return WebLoginTarget(
+            app_code=self.app_code,
+            redirect_url=self.redirect_url,
+            code_challenge=self.code_challenge,
+        )
+
+
+class WebAppAccountSessionResponse(ResponseModel):
+    logged_in: bool
+    redirect_url: str | None
+    login_code: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        description="One-use portal code to exchange on the Webapp API using the matching PKCE verifier.",
+    )
+
+
+def _personal_portal_target(redirect_url: str | None) -> str:
+    """Return a validated portal target, defaulting to My Apps when absent.
+
+    The URL is untrusted; resolve it using only configured frontend bases. Reject
+    non-portal destinations before issuing any login cookies.
+    """
+    target = resolve_personal_login_redirect(
+        redirect_url, app_web_url=dify_config.APP_WEB_URL, console_web_url=dify_config.CONSOLE_WEB_URL
+    )
+    if target is None:
+        raise ValueError("Invalid personal portal login target.")
+    return target
+
+
+register_schema_models(
+    console_ns,
+    LoginPayload,
+    EmailPayload,
+    EmailCodeSendPayload,
+    EmailCodeLoginPayload,
+    RefreshTokenPayload,
+    WebAppAccountSessionQuery,
+)
 register_response_schema_models(
     console_ns,
+    WebAppAccountSessionResponse,
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
     SimpleResultOptionalDataResponse,
@@ -117,7 +219,81 @@ register_response_schema_models(
 
 @console_ns.route("/login")
 class LoginApi(Resource):
-    """Resource for user login."""
+    """Resource for user login and silent reuse of an existing Account session."""
+
+    @setup_required
+    @console_ns.doc("reuse_web_app_account_login")
+    @console_ns.doc(
+        description="Called by /signin in the Account origin before showing a login form and after successful login. "
+        "Reuses or refreshes the existing Account session without workspace admission. "
+        "Returns logged_in=false when authentication is needed. A personal portal PKCE request returns a "
+        "one-use login code for /api/account/session and a validated Webapp redirect_url. Legacy personal "
+        "portal requests set an HttpOnly Webapp cookie on the Console API origin; "
+        "App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page."
+    )
+    @console_ns.doc(params=query_params_from_model(WebAppAccountSessionQuery))
+    @console_ns.response(200, "Existing Account session", console_ns.models[WebAppAccountSessionResponse.__name__])
+    @error_responses(WebLoginUnavailableHTTPError)
+    @model_validate(WebAppAccountSessionQuery)
+    def get(self, query: WebAppAccountSessionQuery):
+        """Resolve a trusted return target and reuse a Console account without workspace admission."""
+        require_login_mode(LoginMode.END_USER)
+        with web_login_errors():
+            handoff = application_services().web_login_handoff
+            target = query.handoff_target
+            portal_target = None
+            portal_challenge = query.code_challenge if target is None else None
+            if target is not None:
+                handoff.validate_target(target)
+            elif portal_challenge is not None:
+                portal_target = resolve_web_portal_login_redirect(
+                    query.redirect_url, webapp_url=dify_config.APP_WEB_URL or dify_config.CONSOLE_WEB_URL
+                )
+                if portal_target is None:
+                    raise ValueError("Invalid personal portal login target.")
+            else:
+                portal_target = _personal_portal_target(query.redirect_url)
+
+            def establish_session(token: str) -> tuple[WebAppAccountSessionResponse, WebLoginSession | None]:
+                """Keep the legacy cookie private; a PKCE client receives only its one-use grant."""
+                if target is not None:
+                    callback = handoff.authorize(target, token)
+                    return WebAppAccountSessionResponse(logged_in=True, redirect_url=callback), None
+                assert portal_target is not None
+                if portal_challenge is not None:
+                    code = handoff.authorize_portal(access_token=token, code_challenge=portal_challenge)
+                    return WebAppAccountSessionResponse(
+                        logged_in=True, redirect_url=portal_target, login_code=code
+                    ), None
+                return WebAppAccountSessionResponse(
+                    logged_in=True, redirect_url=portal_target
+                ), handoff.personal_session(token)
+
+            tokens = None
+            personal_session = None
+            data = WebAppAccountSessionResponse(logged_in=False, redirect_url=None)
+            if access_token := extract_console_cookie_token(request):
+                with suppress(WebPassportUnauthorizedError):
+                    data, personal_session = establish_session(access_token)
+            if not data.logged_in and (refresh_token := extract_refresh_token(request)):
+                try:
+                    tokens = application_services().accounts.authentication.refresh(
+                        refresh_token, mode=LoginMode.END_USER
+                    )
+                    data, personal_session = establish_session(tokens.access_token)
+                except (account_errors.InvalidRefreshTokenError, WebPassportUnauthorizedError):
+                    tokens = None
+            if tokens is not None:
+                response = _token_response(tokens, WebAppAccountSessionResponse, data)
+            else:
+                response = make_response(dump_response(WebAppAccountSessionResponse, data))
+            if personal_session is not None:
+                set_webapp_access_token_to_cookie(
+                    request, response, personal_session.access_token, expires_at=personal_session.expires_at
+                )
+        # response-contract:ignore authentication state must not be cached
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @error_responses(
         AccountBannedError,
@@ -128,6 +304,8 @@ class LoginApi(Resource):
         EmailPasswordLoginLimitError,
         InvalidAccountPasswordRequestError,
         InvalidEmailError,
+        InvalidTokenError,
+        NotAllowedCreateWorkspace,
         WorkspacesLimitExceeded,
     )
     @setup_required
@@ -138,9 +316,11 @@ class LoginApi(Resource):
     @model_validate(LoginPayload)
     def post(self, req_data: LoginPayload):
         """Authenticate user and login."""
+        require_login_mode(req_data.mode, invite_token=req_data.invite_token)
         try:
             result = application_services().accounts.authentication.login_with_password(
                 PasswordLoginCommand(
+                    mode=req_data.mode,
                     email=req_data.email,
                     password=req_data.password,
                     invite_token=req_data.invite_token,
@@ -150,7 +330,7 @@ class LoginApi(Resource):
         except account_errors.AccountApplicationError as error:
             _raise_password_login_error(error)
 
-        if not result.workspace_found or result.tokens is None:
+        if result.tokens is None:
             return dump_response(
                 SimpleResultOptionalDataResponse,
                 {
@@ -166,15 +346,17 @@ class LogoutApi(Resource):
     @setup_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self):
+        if refresh_token := extract_refresh_token(request):
+            application_services().accounts.authentication.logout(refresh_token=refresh_token)
         account, _ = current_account_with_tenant_optional()
         if account is not None:
-            application_services().accounts.authentication.logout(account.id)
             flask_login.logout_user()
 
         response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))
         clear_access_token_from_cookie(response)
         clear_refresh_token_from_cookie(response)
         clear_csrf_token_from_cookie(response)
+        clear_webapp_access_token_from_cookie(request, response)
         return response
 
 
@@ -217,9 +399,11 @@ class EmailCodeLoginSendEmailApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @model_validate(EmailCodeSendPayload)
     def post(self, req_data: EmailCodeSendPayload):
+        require_login_mode(req_data.mode)
         try:
             token = application_services().accounts.authentication.send_email_code(
                 EmailCodeSendCommand(
+                    mode=req_data.mode,
                     email=req_data.email,
                     language=req_data.language,
                     turnstile_token=req_data.turnstile_token,
@@ -255,9 +439,11 @@ class EmailCodeLoginApi(Resource):
     @decrypt_code_field
     @model_validate(EmailCodeLoginPayload)
     def post(self, req_data: EmailCodeLoginPayload):
+        require_login_mode(req_data.mode, invite_token=req_data.invite_token)
         try:
             tokens = application_services().accounts.authentication.login_with_email_code(
                 EmailCodeLoginCommand(
+                    mode=req_data.mode,
                     email=req_data.email,
                     code=req_data.code,
                     token=str(req_data.token),
@@ -275,9 +461,14 @@ class EmailCodeLoginApi(Resource):
 
 @console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
+    # Existing callers refresh without a request body.
+    @console_ns.doc(params={"payload": {"required": False}})
+    @console_ns.expect(console_ns.models[RefreshTokenPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
     def post(self):
+        payload = RefreshTokenPayload.model_validate(request.get_json(silent=True) or {})
+        require_login_mode(payload.mode)
         refresh_token = extract_refresh_token(request)
         if not refresh_token:
             return dump_response(
@@ -286,7 +477,7 @@ class RefreshTokenApi(Resource):
             ), HTTPStatus.UNAUTHORIZED
 
         try:
-            tokens = application_services().accounts.authentication.refresh(refresh_token)
+            tokens = application_services().accounts.authentication.refresh(refresh_token, mode=payload.mode)
         except account_errors.InvalidRefreshTokenError as error:
             return dump_response(
                 SimpleResultMessageResponse,
@@ -298,6 +489,7 @@ class RefreshTokenApi(Resource):
 def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel], data: object):
     # response-contract:ignore cookie-bearing Flask response
     response = make_response(dump_response(response_model, data))
+    response.headers["Cache-Control"] = "no-store"
     set_csrf_token_to_cookie(request, response, tokens.csrf_token)
     set_access_token_to_cookie(request, response, tokens.access_token)
     set_refresh_token_to_cookie(request, response, tokens.refresh_token)
@@ -316,6 +508,8 @@ def _raise_account_state_error(error: account_errors.AccountApplicationError) ->
 
 
 def _raise_password_login_error(error: account_errors.AccountApplicationError) -> Never:
+    if isinstance(error, account_errors.InvalidInvitationError):
+        raise InvalidTokenError() from error
     if isinstance(error, account_errors.LoginRateLimitError):
         raise EmailPasswordLoginLimitError() from error
     if isinstance(error, account_errors.InvalidLoginCredentialsError):
@@ -326,6 +520,8 @@ def _raise_password_login_error(error: account_errors.AccountApplicationError) -
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.LoginWorkspaceLimitError):
         raise WorkspacesLimitExceeded() from error
+    if isinstance(error, account_errors.LoginWorkspaceCreationNotAllowedError):
+        raise NotAllowedCreateWorkspace() from error
     if isinstance(error, account_errors.AccountNotFoundError):
         raise AccountNotFound() from error
     _raise_account_state_error(error)
@@ -352,7 +548,7 @@ def _raise_email_code_send_error(error: account_errors.AccountApplicationError) 
 
 
 def _raise_email_code_login_error(error: account_errors.AccountApplicationError) -> Never:
-    if isinstance(error, account_errors.InvalidEmailCodeTokenError):
+    if isinstance(error, (account_errors.InvalidEmailCodeTokenError, account_errors.InvalidInvitationError)):
         raise InvalidTokenError() from error
     if isinstance(error, (account_errors.EmailCodeEmailMismatchError, account_errors.InvalidLoginInvitationEmailError)):
         raise InvalidEmailError() from error

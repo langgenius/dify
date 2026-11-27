@@ -310,7 +310,7 @@ describe('AddOAuthButton', () => {
       />,
     )
 
-    await user.click(screen.getByText('plugin.auth.setupOAuth'))
+    await user.click(screen.getByText('plugin.auth.common.configureClient'))
     await user.click(
       within(screen.getByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })).getByRole(
         'button',

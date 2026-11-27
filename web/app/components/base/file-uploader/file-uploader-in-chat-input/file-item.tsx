@@ -23,6 +23,7 @@ type FileItemProps = {
   canPreview?: boolean
   onRemove?: (fileId: string) => void
   onReUpload?: (fileId: string) => void
+  disabled?: boolean
 }
 export function FileItem({
   file,
@@ -31,6 +32,7 @@ export function FileItem({
   onRemove,
   onReUpload,
   canPreview,
+  disabled,
 }: FileItemProps) {
   const { t } = useTranslation(['common', 'custom'])
   const { id, name, type, progress, url, base64Url, isRemote } = file
@@ -56,6 +58,7 @@ export function FileItem({
           size="sm"
           className="absolute -inset-e-1.5 -top-1.5 z-11 hidden rounded-full group-hover/file-item:flex"
           onClick={() => onRemove?.(id)}
+          disabled={disabled}
         >
           <span
             className="i-ri-close-line size-4 text-components-button-secondary-text"
@@ -67,6 +70,7 @@ export function FileItem({
         {previewKind ? (
           <Dialog disablePointerDismissal>
             <DialogTrigger
+              disabled={disabled}
               title={name}
               className="line-clamp-2 w-full cursor-pointer text-start system-xs-medium break-all text-text-tertiary"
             >
@@ -100,6 +104,7 @@ export function FileItem({
               e.stopPropagation()
               downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
             }}
+            disabled={disabled}
           >
             <span className="i-ri-download-line size-3.5 text-text-tertiary" aria-hidden="true" />
           </IconButton>
@@ -117,6 +122,7 @@ export function FileItem({
             aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
             className="size-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={() => onReUpload?.(id)}
+            disabled={disabled}
           >
             <span className="i-custom-vender-other-replay-line block size-4" aria-hidden="true" />
           </button>

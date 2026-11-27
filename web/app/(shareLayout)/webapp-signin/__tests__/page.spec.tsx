@@ -28,6 +28,7 @@ vi.mock('@/context/web-app-context', () => ({
 }))
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/webapp-signin',
   useRouter: () => ({ push: navigationMocks.push, replace: navigationMocks.replace }),
   useSearchParams: () => navigationMocks.searchParams,
 }))

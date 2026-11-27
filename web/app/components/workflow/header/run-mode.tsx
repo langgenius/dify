@@ -1,9 +1,11 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
 import type { EventEmitterValue } from '@/context/event-emitter'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -11,7 +13,6 @@ import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useStore } from '@/app/components/workflow/store/workflow'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useWorkflowRunValidation } from '../hooks/use-checklist'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
@@ -38,17 +39,19 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  const { warningNodes } = useWorkflowRunValidation()
+  const { hasValidationErrors, warningNodes } = useWorkflowRunValidation()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const isListening = useStore((s) => s.isListening)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const isRunDisabled = disabled || !canRun
+  const isRunUnavailable = disabled || !canRun
+  const isRunDisabled = isRunUnavailable || hasValidationErrors
 
   const status = workflowRunningData?.result.status
   const isRunning = status === WorkflowRunningStatus.Running || isListening
 
   const dynamicOptions = useDynamicTestRunOptions()
   const testRunMenuRef = useRef<TestRunMenuRef>(null)
+  const validationHintId = useId()
 
   const handleToggleTestRunMenu = useCallback(() => {
     if (isRunDisabled) return
@@ -81,16 +84,6 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     (option: TriggerOption) => {
       if (isRunDisabled) return
 
-      // Validate checklist before running any workflow
-      let isValid: boolean = true
-      warningNodes.forEach((node) => {
-        if (node.id === option.nodeId) isValid = false
-      })
-      if (!isValid) {
-        toast.error(t(($) => $['panel.checklistTip'], { ns: 'workflow' }))
-        return
-      }
-
       if (option.type === TriggerType.UserInput) {
         handleWorkflowStartRunInWorkflow()
         trackEvent('app_start_action_time', { action_type: 'user_input' })
@@ -112,8 +105,6 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     },
     [
       isRunDisabled,
-      warningNodes,
-      t,
       handleWorkflowStartRunInWorkflow,
       handleWorkflowTriggerScheduleRunInWorkflow,
       handleWorkflowTriggerWebhookRunInWorkflow,
@@ -127,21 +118,40 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     if (isWorkflowStopEvent(v)) handleStop()
   })
 
+  const runLabel = (
+    <>
+      <span aria-hidden className="i-ri-play-large-line size-4" />
+      {text ?? t(($) => $['common.run'], { ns: 'workflow' })}
+      <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
+    </>
+  )
+  const disabledRunButton = (
+    <Button
+      size="small"
+      variant="ghost-accent"
+      className="h-7 px-1.5 system-xs-medium select-none"
+      disabled
+      focusableWhenDisabled={!isRunUnavailable}
+      aria-describedby={isRunUnavailable ? undefined : validationHintId}
+    >
+      {runLabel}
+    </Button>
+  )
+  const firstWarning = warningNodes[0]
+
   return (
     <div className="flex items-center gap-x-px">
-      {isRunDisabled ? (
-        <button
-          type="button"
-          className={cn(
-            'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-md px-1.5 system-xs-medium text-text-accent opacity-50',
-          )}
-          disabled
-          style={{ userSelect: 'none' }}
-        >
-          <span aria-hidden className="me-1 i-ri-play-large-line size-4" />
-          {text ?? t(($) => $['common.run'], { ns: 'workflow' })}
-          <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
-        </button>
+      {isRunUnavailable ? (
+        disabledRunButton
+      ) : hasValidationErrors && !isRunning ? (
+        <Tooltip>
+          <TooltipTrigger render={disabledRunButton} />
+          <TooltipContent id={validationHintId} role="tooltip">
+            {firstWarning?.title && <div className="system-xs-semibold">{firstWarning.title}</div>}
+            {firstWarning?.errorMessages[0] ??
+              t(($) => $['common.needConnectTip'], { ns: 'workflow' })}
+          </TooltipContent>
+        </Tooltip>
       ) : isRunning ? (
         <button
           type="button"
@@ -164,13 +174,11 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
             )}
             style={{ userSelect: 'none' }}
           >
-            <span aria-hidden className="me-1 i-ri-play-large-line size-4" />
-            {text ?? t(($) => $['common.run'], { ns: 'workflow' })}
-            <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
+            {runLabel}
           </button>
         </TestRunMenu>
       )}
-      {isRunning && !isRunDisabled && (
+      {isRunning && !isRunUnavailable && (
         <button
           type="button"
           aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}

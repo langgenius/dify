@@ -4,8 +4,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
@@ -22,8 +21,6 @@ import {
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
-  AuthorizedInNode,
-  PluginAuth,
   PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
@@ -74,6 +71,7 @@ import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
 import HelpLink from '../help-link'
 import NextStep from '../next-step'
 import RetryOnPanel from '../retry/retry-on-panel'
+import SingleRunButton from '../single-run-button'
 import { DescriptionInput, TitleInput } from '../title-description-input'
 import {
   clampNodePanelWidth,
@@ -91,6 +89,7 @@ import {
   StartPlaceholderPanelDescription,
   StartPlaceholderPanelTitle,
 } from './start-placeholder-panel'
+import ToolAuthorization from './tool-authorization'
 import { TriggerSubscription } from './trigger-subscription'
 import { TabType } from './types'
 
@@ -322,6 +321,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     setRunInputData,
     handleStop,
     handleSingleRun,
+    singleRunDisabledReason,
     handleRunWithParams,
     getExistVarValuesInForms,
     getFilteredExistVarForms,
@@ -566,10 +566,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     )
   }
 
-  const runThisStepLabel = t(($) => $['panel.runThisStep'], { ns: 'workflow' })
-  const singleRunActionLabel = isSingleRunning
-    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
-    : runThisStepLabel
   const nodePanelRightOffset = !messageLogItem ? '4px' : `${otherPanelWidth + 8}px`
   const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
   const panelChildren = cloneElement(children as any, {
@@ -659,30 +655,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {isSupportSingleRun && canRun && !nodesReadOnly && (
-                <Tooltip disabled={isSingleRunning}>
-                  <TooltipTrigger
-                    render={
-                      <IconButton
-                        aria-label={singleRunActionLabel}
-                        className="me-1"
-                        onClick={() => {
-                          if (isSingleRunning) handleStop()
-                          else handleSingleRun()
-                        }}
-                      >
-                        {isSingleRunning ? (
-                          <span
-                            aria-hidden
-                            className="i-custom-vender-line-mediaAndDevices-stop size-4"
-                          />
-                        ) : (
-                          <RiPlayLargeLine aria-hidden className="size-4" />
-                        )}
-                      </IconButton>
-                    }
-                  />
-                  <TooltipContent>{runThisStepLabel}</TooltipContent>
-                </Tooltip>
+                <SingleRunButton
+                  running={isSingleRunning}
+                  disabledReason={singleRunDisabledReason}
+                  className="me-1"
+                  onClick={() => {
+                    if (isSingleRunning) handleStop()
+                    else handleSingleRun()
+                  }}
+                />
               )}
               <HelpLink nodeType={nodeMetaType} />
               <NodeActionsMenu id={id} data={data} showHelpLink={false} />
@@ -708,31 +689,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           )}
           {!isStartPlaceholderPanel && (
             <>
-              {needsToolAuth && (
-                <PluginAuth
-                  className="px-4 pb-2"
-                  pluginPayload={{
-                    provider: currToolCollection?.name || '',
-                    providerType: currToolCollection?.type,
-                    category: AuthCategory.tool,
-                    detail: currToolCollection as any,
-                  }}
-                >
-                  <div className="flex items-center justify-between ps-4 pe-3">
-                    {panelTabs}
-                    <AuthorizedInNode
-                      pluginPayload={{
-                        provider: currToolCollection?.name || '',
-                        providerType: currToolCollection?.type,
-                        category: AuthCategory.tool,
-                        detail: currToolCollection as any,
-                      }}
-                      onAuthorizationItemClick={handleAuthorizationItemClick}
-                      credentialId={data.credential_id}
-                    />
-                  </div>
-                </PluginAuth>
-              )}
               {!!currentDataSource && (
                 <PluginAuthInDataSourceNode
                   onJumpToDataSourcePage={handleJumpToDataSourcePage}
@@ -755,7 +711,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   {panelTabs}
                 </TriggerSubscription>
               )}
-              {!needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
+              {!currentDataSource && !currentTriggerPlugin && (
                 <div className="flex items-center justify-between ps-4 pe-3">{panelTabs}</div>
               )}
               <Split />
@@ -769,6 +725,27 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
         {!isStartPlaceholderPanel && (
           <TabsPanel value={TabType.settings} className="flex flex-1 flex-col overflow-y-auto">
+            {needsToolAuth && (
+              <ToolAuthorization
+                nodeId={id}
+                providerId={data.provider_id as string}
+                toolIcon={toolIcon}
+                showAuthorizationTabs
+                className="px-4 pb-2"
+                nodeAuth={{
+                  providerName:
+                    currToolCollection?.label[language] || currToolCollection?.label.en_US,
+                  credentialId: data.credential_id,
+                  onAuthorizationItemClick: handleAuthorizationItemClick,
+                }}
+                pluginPayload={{
+                  provider: currToolCollection?.name || '',
+                  providerType: currToolCollection?.type,
+                  category: AuthCategory.tool,
+                  detail: currToolCollection as any,
+                }}
+              />
+            )}
             <div>{panelChildren}</div>
             <Split />
             {hasRetryNode(data.type) && <RetryOnPanel id={id} data={data} />}
@@ -797,6 +774,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
               isRunAfterSingleRun={isRunAfterSingleRun}
               updateNodeRunningStatus={updateNodeRunningStatus}
               onSingleRunClicked={handleSingleRun}
+              singleRunDisabledReason={singleRunDisabledReason}
               nodeInfo={nodeInfo!}
               singleRunResult={runResult!}
               isPaused={isPaused}

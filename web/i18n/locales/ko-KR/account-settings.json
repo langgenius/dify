@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Dify 계정과 관련된 사용자 데이터.",
   "account.myAccount": "내 계정",
   "account.name": "이름",
+  "account.nameLengthInvalid": "이름은 {{min}}자 이상 {{max}}자 이하여야 합니다.",
   "account.newPassword": "새 비밀번호",
   "account.notEqual": "비밀번호가 일치하지 않습니다.",
   "account.password": "비밀번호",

@@ -1,5 +1,6 @@
-import type { Parameters as AppParameters } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { Parameters as AppParameters } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { selectAppParameters } from '@/service/console/app-parameters-select'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { createHttpError } from './http-error'
 
@@ -45,7 +46,6 @@ const {
   fetchConversations,
   generationConversationName,
   fetchAppMeta,
-  fetchAppParams,
   fetchChatList,
   textToAudioStream,
   fetchWebSAMLSSOUrl,
@@ -376,10 +376,7 @@ it('loads installed-app metadata and initial chat history without sending the ol
   })
 })
 
-it.each([
-  { source: AppSourceType.installedApp, prefix: 'installed-apps' },
-  { source: AppSourceType.tryApp, prefix: 'trial-apps' },
-])('loads $source parameters through the shared typed UI adapter', async ({ source, prefix }) => {
+it('preserves input defaults when adapting app parameters to UI config', () => {
   const numberDefaults = [0, 42, -7.123456, '12.5']
   const fileDefault = {
     id: 'default-file',
@@ -460,11 +457,7 @@ it.each([
       },
     ],
   }
-  request.mockReset().mockResolvedValueOnce(Response.json(parameters))
-  const result = await fetchAppParams(source, 'selected-app')
-  expect(new URL(request.mock.calls[0]![0]).pathname).toBe(
-    `/console/api/${prefix}/selected-app/parameters`,
-  )
+  const result = selectAppParameters(parameters)
   expect(result).toMatchObject({
     opening_statement: '',
     suggested_questions: ['Next question'],
@@ -547,17 +540,10 @@ describe('public app requests through the generated WebApp client', () => {
     window.history.replaceState({}, '', '/environment/chat/environment-app')
     request.mockImplementation(async () => Response.json({ tool_icons: {} }))
     await fetchAppMeta(AppSourceType.webApp)
-    await fetchAppParams(AppSourceType.webApp)
-    expect(publicRequestCalls()).toEqual([
-      ['/meta', 'GET'],
-      ['/parameters', 'GET'],
-    ])
+    expect(publicRequestCalls()).toEqual([['/meta', 'GET']])
     expect(
       request.mock.calls.map(([, , options]) => new URL(options!.request!.url).pathname),
-    ).toEqual([
-      '/api/environment/environment-app/meta',
-      '/api/environment/environment-app/parameters',
-    ])
+    ).toEqual(['/api/environment/environment-app/meta'])
     window.history.replaceState({}, '', '/')
   })
 })

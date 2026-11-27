@@ -1,3 +1,4 @@
+import type { InvalidateOptions } from '@tanstack/react-query'
 import type { CredentialTypeEnum, PluginPayload } from '../types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
@@ -40,16 +41,18 @@ export const useInvalidPluginCredentialInfoHook = (pluginPayload: PluginPayload)
   const queryClient = useQueryClient()
   const toolListQueryKey = getToolListQueryKey(providerType)
 
-  return () => {
-    if (category === AuthCategory.tool) {
-      queryClient.invalidateQueries({
+  return (options?: InvalidateOptions) => {
+    if (toolListQueryKey) void queryClient.invalidateQueries({ queryKey: toolListQueryKey })
+    if (category !== AuthCategory.tool) return
+    return queryClient.invalidateQueries(
+      {
         queryKey:
           consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key({
             input: { params: { provider } },
           }),
-      })
-    }
-    if (toolListQueryKey) queryClient.invalidateQueries({ queryKey: toolListQueryKey })
+      },
+      options,
+    )
   }
 }
 

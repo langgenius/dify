@@ -5,11 +5,13 @@ from datetime import datetime
 from typing import override
 from uuid import UUID
 
-from sqlalchemy import case, delete, func, select, update
+from sqlalchemy import case, delete, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import DatabaseFileAccessController
 from core.human_input_v2.shared import AccountId
+from enums.account import TenantAccountRole
+from libs.datetime_utils import ensure_naive_utc
 from models.account import (
     Account,
     AccountIntegrate,
@@ -28,6 +30,7 @@ from services.account.login_service import ConsoleAuthAccountRepository
 from services.account_email import normalize_email
 from services.account_errors import AccountNormalizedEmailAlreadyInUseError, AvatarFileNotFoundError
 from services.account_ports import AccountAvatarQuery, AccountRepository
+from services.account_profile_service import AccountProfileStore
 from services.entities.account_entities import (
     AccountAuthenticationSnapshot,
     AccountCredentials,
@@ -37,6 +40,7 @@ from services.entities.account_entities import (
     AccountInitializationResult,
     AccountInitializationStatus,
     AccountPasswordDigest,
+    AccountProfile,
     AccountProfileChanges,
     AccountSnapshot,
 )
@@ -57,7 +61,12 @@ def _normalized_uuid(value: str) -> str | None:
         return None
 
 
-class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepository, AccountAvatarQuery):
+class SQLAlchemyAccountRepository(
+    AccountRepository,
+    ConsoleAuthAccountRepository,
+    AccountProfileStore,
+    AccountAvatarQuery,
+):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -70,6 +79,34 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
         """Load a detached identity for framework adapters that require Account."""
         with self._session_factory() as session:
             return session.get(Account, account_id)
+
+    @override
+    def get_profile(self, account_id: str) -> AccountProfile | None:
+        """Scope profile and membership existence to the same Account in one read.
+
+        Archived tenants count as existing associations. Dangling memberships do
+        not count, and other accounts' memberships cannot affect either flag.
+        """
+        memberships = (
+            select(TenantAccountJoin.id)
+            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+            .where(TenantAccountJoin.account_id == Account.id)
+            .correlate(Account)
+        )
+        with self._session_factory() as session:
+            row = session.execute(
+                select(
+                    Account,
+                    memberships.where(TenantAccountJoin.role == TenantAccountRole.OWNER).exists(),
+                    memberships.exists(),
+                ).where(Account.id == account_id)
+            ).one_or_none()
+            if row is None:
+                return None
+            account, has_owned_tenant, has_tenant = row._tuple()
+            return AccountProfile.from_account(
+                self._to_snapshot(account), has_owned_tenant=has_owned_tenant, has_tenant=has_tenant
+            )
 
     def find_identity(self, email: str, *, case_fallback: bool = False) -> Account | None:
         """Prefer an exact email match, then the oldest normalized match when requested.
@@ -136,6 +173,20 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
                 values["updated_at"] = func.current_timestamp()
             session.execute(
                 update(Account).where(Account.id == account_id, Account.last_active_at < before).values(**values)
+            )
+
+    def record_end_user_handoff(self, account_id: str, *, occurred_at: datetime) -> None:
+        """For an admitted Account, persist the minimum event time as naive UTC, even on reordered writes."""
+        at = ensure_naive_utc(occurred_at)
+        with self._session_factory.begin() as session:
+            session.execute(
+                update(Account)
+                .where(
+                    Account.id == account_id,
+                    Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
+                    or_(Account.be_end_user_at.is_(None), Account.be_end_user_at > at),
+                )
+                .values(be_end_user_at=at)
             )
 
     @override
@@ -501,6 +552,7 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
             last_login_ip=account.last_login_ip,
             status=account.status.value,
             initialized_at=account.initialized_at,
+            first_workspace_created_at=account.first_workspace_created_at,
             created_at=account.created_at,
         )
 

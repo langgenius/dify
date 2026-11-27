@@ -2,6 +2,7 @@ import hmac
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
 from flask import Request
 from werkzeug.exceptions import Unauthorized
@@ -100,7 +101,12 @@ def is_admin_api_key_request(request: Request) -> bool:
 
 
 def extract_webapp_access_token(request: Request) -> str | None:
-    return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)) or _try_extract_from_header(request)
+    return extract_webapp_cookie_token(request) or _try_extract_from_header(request)
+
+
+def extract_webapp_cookie_token(request: Request) -> str | None:
+    """Read the WebApp session without accepting Console cookies or bearer fallback."""
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN))
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
@@ -131,6 +137,31 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
         secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
+        path="/",
+    )
+
+
+def set_webapp_access_token_to_cookie(
+    request: Request, response: Response, token: str, *, expires_at: int, samesite: str = "Lax"
+) -> None:
+    """Set or expire the Web proof on the issuing host, sharing only a configured, applicable domain.
+
+    Browsers discard the entire Set-Cookie if a separate Web API uses the Console's unrelated Domain.
+    The request host can only narrow the configured scope to host-only, never select a new domain.
+    """
+    domain = _cookie_domain()
+    if domain:
+        host = urlsplit(request.host_url).hostname
+        if host is None or (host != domain.lower() and not host.endswith(f".{domain.lower()}")):
+            domain = None
+    response.set_cookie(
+        _real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN),
+        value=token,
+        httponly=True,
+        domain=domain,
+        secure=is_secure(),
+        samesite=samesite,
+        expires=expires_at,
         path="/",
     )
 
@@ -170,8 +201,9 @@ def clear_access_token_from_cookie(response: Response, samesite: str = "Lax"):
     _clear_cookie(response, COOKIE_NAME_ACCESS_TOKEN, samesite)
 
 
-def clear_webapp_access_token_from_cookie(response: Response, samesite: str = "Lax"):
-    _clear_cookie(response, COOKIE_NAME_WEBAPP_ACCESS_TOKEN, samesite)
+def clear_webapp_access_token_from_cookie(request: Request, response: Response, samesite: str = "Lax") -> None:
+    """Expire the Web proof with its original cookie scope; leave Console credentials untouched."""
+    set_webapp_access_token_to_cookie(request, response, "", expires_at=0, samesite=samesite)
 
 
 def clear_refresh_token_from_cookie(response: Response):

@@ -1,4 +1,5 @@
 import type { AnyFieldApi, AnyFormApi } from '@tanstack/react-form'
+import type { ReactNode } from 'react'
 import type { BaseFieldProps } from '.'
 import type {
   FieldState,
@@ -8,15 +9,15 @@ import type {
 } from '@/app/components/base/form/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useForm, useSelector } from '@tanstack/react-form'
-import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useGetFormValues, useGetValidators } from '@/app/components/base/form/hooks'
 import { FormItemValidateStatusEnum } from '@/app/components/base/form/types'
 import { BaseField } from '.'
 
 export type BaseFormProps = {
+  id?: string
   formSchemas?: FormSchema[]
   defaultValues?: Record<string, any>
-  id?: string
   formClassName?: string
   ref?: FormRef
   disabled?: boolean
@@ -24,6 +25,7 @@ export type BaseFormProps = {
   onChange?: (field: string, value: any) => void
   onSubmit?: (e: React.SubmitEvent<HTMLFormElement>) => void
   preventDefaultSubmit?: boolean
+  renderAfterField?: (schema: FormSchema) => ReactNode
 } & Pick<
   BaseFieldProps,
   'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'
@@ -44,6 +46,7 @@ const BaseForm = ({
   onChange,
   onSubmit,
   preventDefaultSubmit = false,
+  renderAfterField,
 }: BaseFormProps) => {
   const initialDefaultValues = useMemo(() => {
     if (defaultValues) return defaultValues
@@ -184,12 +187,15 @@ const BaseForm = ({
       if (!show) return null
 
       return (
-        <form.Field key={name} name={name} validators={validators}>
-          {renderField}
-        </form.Field>
+        <Fragment key={name}>
+          <form.Field name={name} validators={validators}>
+            {renderField}
+          </form.Field>
+          {renderAfterField?.(formSchema)}
+        </Fragment>
       )
     },
-    [renderField, form, getValidators, showOnValues],
+    [renderField, form, getValidators, showOnValues, renderAfterField],
   )
 
   if (!formSchemas?.length) return null

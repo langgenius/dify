@@ -17,11 +17,12 @@ from controllers.web.error import (
 from core.logging.context import set_identity_context
 from extensions.ext_application_services import application_services
 from libs.passport import PassportService
-from libs.token import extract_webapp_passport
+from libs.token import extract_webapp_cookie_token, extract_webapp_passport
 from models.model import App, EndUser
 from repositories.web_passport_repository import get_web_passport_identity
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.system_feature_service import SystemFeatureService
+from services.web_identity_service import WebIdentityError
 from services.web_passport_gateways import resolve_web_app_auth_type
 from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
@@ -60,15 +61,20 @@ def resolve_web_app_id(app_code: str) -> str:
 def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
     webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled()
     if not app_code:
-        app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
+        app_code = request.headers.get(HEADER_NAME_APP_CODE)
     try:
+        if not app_code:
+            raise Unauthorized("X-App-Code header is missing.")
         tk = extract_webapp_passport(app_code, request)
         if not tk:
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
-        app_code = decoded.get("app_code")
-        if not isinstance(app_code, str) or not app_code:
+        token_app_code = decoded.get("app_code")
+        if not isinstance(token_app_code, str) or not token_app_code:
             raise WebAppNotFoundError()
+        if token_app_code != app_code:
+            raise Unauthorized("Passport belongs to another web app.")
+        app_code = token_app_code
         app_id = decoded.get("app_id")
         app_model, end_user = get_web_passport_identity(app_id, app_code, decoded.get("end_user_id"))
         if app_model is None:
@@ -77,8 +83,23 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
             raise NotFound()
 
         # Validate user_id against end_user's session_id if provided.
-        if user_id is not None and end_user.session_id != user_id:
+        if end_user.account_id is None and user_id is not None and end_user.session_id != user_id:
             raise Unauthorized("Authentication has expired.")
+
+        try:
+            application_services().web_identity.validate_passport(decoded, account_id=end_user.account_id)
+            if end_user.account_id is not None:
+                login_token = extract_webapp_cookie_token(request)
+                if not login_token:
+                    raise WebIdentityError("Web App Account login required.")
+                application_services().web_identity.validate_account_login(
+                    PassportService().verify(login_token), account_id=end_user.account_id
+                )
+        except WebIdentityError as exc:
+            raise Unauthorized(str(exc)) from exc
+        if end_user.account_id is not None:
+            # Reconstruct the internal authorization reference; it is never sent in the JWT.
+            decoded = {**decoded, "user_id": end_user.account_id}
 
         # for enterprise webapp auth
         app_web_auth_enabled = False
@@ -114,7 +135,7 @@ def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_au
     # raise an error and redirect to login
     if system_webapp_auth_enabled and app_web_auth_enabled:
         source = decoded.get("token_source")
-        if not source or source != "webapp":
+        if source not in {"webapp", "webapp_account"}:
             raise WebAppAuthRequiredError()
 
     # Check if authentication is not enforced for web, and if the token source is webapp,

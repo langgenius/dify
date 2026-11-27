@@ -7,11 +7,11 @@ from uuid import UUID
 
 from flask import Response, after_this_request, request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
-from pydantic.json_schema import SkipJsonSchema
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
+from controllers.common.account import AccountProfilePatchPayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import (
     AvatarUrlResponse,
@@ -58,18 +58,22 @@ from controllers.console.workspace.error import (
     MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import model_validate, setup_required
+from controllers.console.wraps import (
+    email_password_login_enabled,
+    model_validate,
+    setup_required,
+)
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from fields.member_fields import AccountResponse
+from fields.member_fields import AccountProfileResponse, AccountResponse
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from services import account_errors
 from services.account_education_service import EDUCATION_EDITIONS
-from services.entities.account_entities import AccountProfileChanges
+from services.entities.account_entities import AccountSnapshot
 from services.errors.billing import BillingUpstreamError
 from services.upload_file_delivery_service import UploadFileDeliveryNotFoundError
 
@@ -92,42 +96,6 @@ class AccountInitPayload(BaseModel):
 
 class AccountAvatarQuery(BaseModel):
     avatar: str = Field(..., description="Avatar file ID")
-
-
-class AccountProfilePatchPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: Annotated[str, Field(min_length=3, max_length=30)] | SkipJsonSchema[None] = None
-    avatar: str | SkipJsonSchema[None] = None
-    interface_language: str | SkipJsonSchema[None] = None
-    interface_theme: Literal["light", "dark"] | SkipJsonSchema[None] = None
-    timezone: str | SkipJsonSchema[None] = None
-
-    @field_validator("*", mode="before")
-    @classmethod
-    def reject_null(cls, value: object) -> object:
-        if value is None:
-            raise ValueError("Account profile fields cannot be null")
-        return value
-
-    @field_validator("interface_language")
-    @classmethod
-    def validate_language(cls, value: str) -> str:
-        return supported_language(value)
-
-    @field_validator("timezone")
-    @classmethod
-    def validate_timezone(cls, value: str) -> str:
-        return timezone(value)
-
-    def to_changes(self) -> AccountProfileChanges:
-        return AccountProfileChanges(
-            name=self.name,
-            avatar=self.avatar,
-            interface_language=self.interface_language,
-            interface_theme=self.interface_theme,
-            timezone=self.timezone,
-        )
 
 
 class AccountPasswordPayload(BaseModel):
@@ -267,6 +235,7 @@ class EducationAutocompleteResponse(ResponseModel):
 register_response_schema_models(
     console_ns,
     AccountResponse,
+    AccountProfileResponse,
     AccountIntegrateResponse,
     AccountIntegrateListResponse,
     AvatarUrlResponse,
@@ -312,15 +281,17 @@ class AccountInitApi(Resource):
 
 @console_ns.route("/account/profile")
 class AccountProfileApi(Resource):
+    @console_ns.doc(description="Get the Console Account profile. A session without an active workspace returns 401.")
     @error_responses(AccountNotFound)
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission(require_valid_enterprise_license=True, require_active_workspace=False)
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountProfileResponse.__name__])
+    @console_account_admission(require_valid_enterprise_license=True)
     def get(self, request_context: RequestContext):
+        """Return the profile for an admitted Console workspace without provisioning one."""
         try:
             account = application_services().accounts.profile.get(request_context)
         except account_errors.AccountNotFoundError as error:
             raise AccountNotFound() from error
-        return dump_response(AccountResponse, account)
+        return dump_response(AccountProfileResponse, account)
 
     @error_responses(AccountNotFound)
     @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
@@ -419,8 +390,14 @@ class AccountPasswordApi(Resource):
     @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
+    @email_password_login_enabled
     @model_validate(AccountPasswordPayload)
     def post(self, args: AccountPasswordPayload, request_context: RequestContext):
+        """Change admitted Account credentials only while password login is enabled.
+
+        Existing passwords require verification. Disabled policy rejects before
+        payload validation or credential writes; failures leave credentials unchanged.
+        """
         try:
             assert args.password is not None
             account = application_services().accounts.password.change(
@@ -615,6 +592,99 @@ class EducationAutoCompleteApi(Resource):
         return dump_response(EducationAutocompleteResponse, institutions)
 
 
+def send_change_email_code(
+    context: AccountRequestContext | RequestContext, args: ChangeEmailSendPayload
+) -> SimpleResultDataResponse:
+    """Send an admitted Account's challenge using the existing Console arguments and HTTP errors.
+
+    The caller must validate admission and payload first. Challenge creation does not
+    change the Account; service failures retain their existing Console responses.
+    """
+    ip_address = extract_remote_ip(request)
+    language = "zh-Hans" if args.language == "zh-Hans" else "en-US"
+    try:
+        token = application_services().accounts.change_email.send_code(
+            context,
+            requested_email=args.email,
+            language=language,
+            phase=args.phase,
+            predecessor_token=args.token,
+            ip_address=ip_address,
+        )
+    except account_errors.ChangeEmailSendIPLimitedError:
+        raise EmailSendIpLimitError() from None
+    except account_errors.ChangeEmailSendRateLimitError as error:
+        raise EmailChangeRateLimitExceededError(error.retry_after_minutes) from None
+    except account_errors.InvalidChangeEmailTokenError:
+        raise InvalidTokenError() from None
+    except account_errors.InvalidChangeEmailAddressError:
+        raise InvalidEmailError() from None
+    except account_errors.AccountNotFoundError:
+        raise AccountNotFound() from None
+    return SimpleResultDataResponse(result="success", data=token)
+
+
+def verify_change_email_code(
+    context: AccountRequestContext | RequestContext, args: ChangeEmailValidityPayload
+) -> VerificationTokenResponse:
+    """Verify an admitted Account's validated challenge using the existing Console error contract.
+
+    Success promotes the verification token without changing identity; invalid codes
+    and token state retain the service's security accounting and HTTP responses.
+    """
+    try:
+        verification = application_services().accounts.change_email.verify_code(
+            context, email=args.email, code=args.code, token=args.token
+        )
+    except account_errors.ChangeEmailVerificationLimitError:
+        raise EmailChangeLimitError() from None
+    except account_errors.InvalidChangeEmailTokenError:
+        raise InvalidTokenError() from None
+    except account_errors.InvalidChangeEmailAddressError:
+        raise InvalidEmailError() from None
+    except account_errors.InvalidChangeEmailCodeError:
+        raise EmailCodeError() from None
+    return VerificationTokenResponse(is_valid=True, email=verification.email, token=verification.token)
+
+
+def reset_change_email(
+    context: AccountRequestContext | RequestContext, args: ChangeEmailResetPayload
+) -> AccountSnapshot:
+    """Reset an admitted Account's verified email with the existing Console behavior and errors.
+
+    The caller supplies a validated payload and serializes the returned Account.
+    Rejected verification or policy checks cannot update identity.
+    """
+    try:
+        return application_services().accounts.change_email.reset(context, new_email=args.new_email, token=args.token)
+    except account_errors.AccountEmailDomainSuspendedError:
+        raise EmailDomainSuspendedError() from None
+    except account_errors.AccountEmailFrozenError:
+        raise AccountInFreezeError() from None
+    except account_errors.AccountEmailAlreadyInUseError:
+        raise EmailAlreadyInUseError() from None
+    except account_errors.InvalidChangeEmailTokenError:
+        raise InvalidTokenError() from None
+    except account_errors.AccountNotFoundError:
+        raise AccountNotFound() from None
+
+
+def check_change_email_available(args: CheckEmailUniquePayload) -> SimpleResultResponse:
+    """Check an admitted caller's validated address using existing Console policy and errors.
+
+    Availability checks leave Account and token state unchanged, including on failure.
+    """
+    try:
+        application_services().accounts.change_email.ensure_available(args.email)
+    except account_errors.AccountEmailDomainSuspendedError:
+        raise EmailDomainSuspendedError() from None
+    except account_errors.AccountEmailFrozenError:
+        raise AccountInFreezeError() from None
+    except account_errors.AccountEmailAlreadyInUseError:
+        raise EmailAlreadyInUseError() from None
+    return SimpleResultResponse(result="success")
+
+
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
     @error_responses(
@@ -625,28 +695,7 @@ class ChangeEmailSendEmailApi(Resource):
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailSendPayload)
     def post(self, args: ChangeEmailSendPayload, request_context: RequestContext):
-        ip_address = extract_remote_ip(request)
-        language = "zh-Hans" if args.language == "zh-Hans" else "en-US"
-        try:
-            token = application_services().accounts.change_email.send_code(
-                request_context,
-                requested_email=args.email,
-                language=language,
-                phase=args.phase,
-                predecessor_token=args.token,
-                ip_address=ip_address,
-            )
-        except account_errors.ChangeEmailSendIPLimitedError:
-            raise EmailSendIpLimitError() from None
-        except account_errors.ChangeEmailSendRateLimitError as error:
-            raise EmailChangeRateLimitExceededError(error.retry_after_minutes) from None
-        except account_errors.InvalidChangeEmailTokenError:
-            raise InvalidTokenError() from None
-        except account_errors.InvalidChangeEmailAddressError:
-            raise InvalidEmailError() from None
-        except account_errors.AccountNotFoundError:
-            raise AccountNotFound() from None
-        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
+        return send_change_email_code(request_context, args).model_dump(mode="json")
 
 
 @console_ns.route("/account/change-email/validity")
@@ -657,24 +706,7 @@ class ChangeEmailCheckApi(Resource):
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailValidityPayload)
     def post(self, args: ChangeEmailValidityPayload, request_context: RequestContext):
-        try:
-            verification = application_services().accounts.change_email.verify_code(
-                request_context,
-                email=args.email,
-                code=args.code,
-                token=args.token,
-            )
-        except account_errors.ChangeEmailVerificationLimitError:
-            raise EmailChangeLimitError() from None
-        except account_errors.InvalidChangeEmailTokenError:
-            raise InvalidTokenError() from None
-        except account_errors.InvalidChangeEmailAddressError:
-            raise InvalidEmailError() from None
-        except account_errors.InvalidChangeEmailCodeError:
-            raise EmailCodeError() from None
-        return VerificationTokenResponse(is_valid=True, email=verification.email, token=verification.token).model_dump(
-            mode="json"
-        )
+        return verify_change_email_code(request_context, args).model_dump(mode="json")
 
 
 @console_ns.route("/account/change-email/reset")
@@ -687,23 +719,7 @@ class ChangeEmailResetApi(Resource):
     @console_account_admission(require_change_email_enabled=True)
     @model_validate(ChangeEmailResetPayload)
     def post(self, args: ChangeEmailResetPayload, request_context: RequestContext):
-        try:
-            updated_account = application_services().accounts.change_email.reset(
-                request_context,
-                new_email=args.new_email,
-                token=args.token,
-            )
-        except account_errors.AccountEmailDomainSuspendedError:
-            raise EmailDomainSuspendedError() from None
-        except account_errors.AccountEmailFrozenError:
-            raise AccountInFreezeError() from None
-        except account_errors.AccountEmailAlreadyInUseError:
-            raise EmailAlreadyInUseError() from None
-        except account_errors.InvalidChangeEmailTokenError:
-            raise InvalidTokenError() from None
-        except account_errors.AccountNotFoundError:
-            raise AccountNotFound() from None
-
+        updated_account = reset_change_email(request_context, args)
         return dump_response(AccountResponse, updated_account)
 
 
@@ -715,12 +731,4 @@ class CheckEmailUnique(Resource):
     @console_account_admission()
     @model_validate(CheckEmailUniquePayload)
     def post(self, args: CheckEmailUniquePayload, request_context: RequestContext):
-        try:
-            application_services().accounts.change_email.ensure_available(args.email)
-        except account_errors.AccountEmailDomainSuspendedError:
-            raise EmailDomainSuspendedError() from None
-        except account_errors.AccountEmailFrozenError:
-            raise AccountInFreezeError() from None
-        except account_errors.AccountEmailAlreadyInUseError:
-            raise EmailAlreadyInUseError() from None
-        return SimpleResultResponse(result="success").model_dump(mode="json")
+        return check_change_email_available(args).model_dump(mode="json")

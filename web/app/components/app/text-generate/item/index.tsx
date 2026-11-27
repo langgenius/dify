@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
+import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import { toast } from '@/app/notifications'
 import { reportRequestError } from '@/app/query-error-toast'
 import { useParams } from '@/next/navigation'
@@ -97,6 +98,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 }) => {
   const { t } = useTranslation(['appDebug', 'common', 'share'])
   const params = useParams()
+  const connections = useOptionalWebAppConnections()
+  const connectionsReady = appSourceType !== AppSourceType.webApp || (connections?.canRun ?? true)
   const isTop = depth === 1
   const [completionRes, setCompletionRes] = useState('')
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
@@ -212,6 +215,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [workflowProcessData])
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
+      if (!connectionsReady) return
       const { form_version: formVersion, ...submission } = formData
       if (appSourceType === AppSourceType.installedApp) {
         try {
@@ -231,7 +235,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
         }
       }
     },
-    [appSourceType, prepareHumanInputSubmission],
+    [appSourceType, connectionsReady, prepareHumanInputSubmission],
   )
 
   return (
@@ -262,6 +266,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 depth={depth}
                 hideProcessDetail={hideProcessDetail}
                 isError={isError}
+                humanInputFormDisabled={!connectionsReady}
                 onSubmitHumanInputForm={handleSubmitHumanInputForm}
                 onSwitchTab={switchTab}
                 showResultTabs={showResultTabs}

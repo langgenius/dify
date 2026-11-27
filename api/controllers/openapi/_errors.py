@@ -109,6 +109,9 @@ class OpenApiErrorCode(StrEnum):
     DRAFT_CHANGED = "draft_changed"
     APP_MODE_MISMATCH = "app_mode_mismatch"
     SERVICE_API_DISABLED = "service_api_disabled"
+    TEST_CREDENTIALS_NOT_READY = "test_credentials_not_ready"
+    END_USER_AUTH_IN_TRIGGER_WORKFLOW = "end_user_auth_in_trigger_workflow"
+    END_USER_AUTH_IN_WORKFLOW_TOOL = "end_user_auth_in_workflow_tool"
     SKILLS_DISABLED = "skills_disabled"
     SKILL_NOT_FOUND = "skill_not_found"
     SKILL_VERSION_NOT_FOUND = "skill_version_not_found"
@@ -558,6 +561,27 @@ class ServiceApiDisabled(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.SERVICE_API_DISABLED
     description = "This app's Service API is turned off."
     hint = "A workspace admin can turn it on; hints holds the op."
+
+
+class TestCredentialsNotReady(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.TEST_CREDENTIALS_NOT_READY
+    description = "Every EndUser tool node needs a ready test credential before a draft test can run."
+    hint = "Choose a test credential for each listed node in the Dify console draft, then retest."
+
+
+class EndUserAuthInTriggerWorkflow(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.END_USER_AUTH_IN_TRIGGER_WORKFLOW
+    description = "EndUser tool credentials cannot be published in a workflow started by a trigger."
+    hint = "Switch those tool nodes to workspace credentials, or drop the trigger before publishing."
+
+
+class EndUserAuthInWorkflowTool(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.END_USER_AUTH_IN_WORKFLOW_TOOL
+    description = "EndUser tool credentials cannot be published while this app is registered as a workflow tool."
+    hint = "Switch those tool nodes to workspace credentials, or stop exposing this app as a workflow tool."
 
 
 class SkillsDisabled(OpenApiError):  # noqa: N818

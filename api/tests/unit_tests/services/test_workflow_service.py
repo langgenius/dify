@@ -1008,6 +1008,85 @@ class TestWorkflowServiceCases:
             assert workflow.environment_variables == environment_variables
             assert workflow.conversation_variables == conversation_variables
 
+        @pytest.mark.parametrize("collaborative", [False, True])
+        @pytest.mark.parametrize(
+            "credential_settings",
+            [
+                {"credential_source": "end_user", "end_user_auth": {}},
+                {
+                    "credential_source": "end_user",
+                    "end_user_auth": {"allowed_credential_types": ["oauth2", "api-key"], "purpose": "Read mail."},
+                    "test_credential_id": "workspace-test-credential",
+                },
+                {"credential_source": "reuse_node"},
+                {"credential_source": "reuse_node", "reuse_node_id": "workspace"},
+            ],
+        )
+        def test_sync_draft_preserves_tool_credentials_and_unfinished_configuration(
+            self,
+            workflow_service: WorkflowService,
+            sqlite_session: Session,
+            collaborative: bool,
+            credential_settings: dict[str, object],
+        ) -> None:
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            graph = {
+                "nodes": [
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_type": "builtin",
+                            "provider_id": "langgenius/mail/mail",
+                            **credential_settings,
+                        },
+                    },
+                    {"id": "workspace", "data": {"type": "tool", "credential_id": "shared"}},
+                ],
+                "edges": [],
+            }
+            with patch("services.workflow_service.app_draft_workflow_was_synced"):
+                saved = workflow_service.sync_draft_workflow(
+                    app_model=app,
+                    graph=graph,
+                    features={},
+                    unique_hash=None,
+                    account=account,
+                    environment_variables=[],
+                    conversation_variables=[],
+                    session=sqlite_session,
+                    graph_only=collaborative,
+                )
+
+            sqlite_session.expire(saved)
+            loaded = workflow_service.get_draft_workflow(app, session=sqlite_session)
+            assert loaded is not None
+            assert loaded.graph_dict == graph
+
+        def test_malformed_tool_credentials_do_not_replace_the_saved_graph(
+            self, workflow_service: WorkflowService, sqlite_session: Session
+        ) -> None:
+            workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+            sqlite_session.add(workflow)
+            sqlite_session.commit()
+            original = workflow.graph_dict
+            invalid = {"nodes": [{"id": "personal", "data": {"type": "tool", "credential_source": "invalid"}}]}
+
+            with pytest.raises(ValueError, match="personal.*credential_source"):
+                workflow_service.sync_draft_workflow(
+                    app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                    graph=invalid,
+                    features={},
+                    unique_hash=workflow.unique_hash,
+                    account=TestWorkflowAssociatedDataFactory.create_account(),
+                    environment_variables=[],
+                    conversation_variables=[],
+                    session=sqlite_session,
+                )
+
+            assert workflow.graph_dict == original
+
         def test_sync_draft_workflow_raises_hash_not_equal_error(
             self, workflow_service: WorkflowService, sqlite_session: Session
         ):
@@ -1520,6 +1599,136 @@ class TestWorkflowServiceCases:
 
         # ==================== Publish Workflow Tests ====================
         # These tests verify creating published versions from draft workflows
+
+        def test_publish_rejects_incomplete_end_user_auth_before_creating_version(
+            self, workflow_service: WorkflowService, sqlite_session: Session
+        ) -> None:
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+            graph["nodes"].append({"id": "personal", "data": {"type": "tool", "credential_source": "end_user"}})
+            draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
+            sqlite_session.add(draft)
+            sqlite_session.commit()
+
+            with patch("services.workflow_service.app_published_workflow_was_updated") as published:
+                with pytest.raises(ValueError, match="Node personal"):
+                    workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+
+            published.send.assert_not_called()
+            assert sqlite_session.scalar(select(func.count()).select_from(Workflow)) == 1
+
+        def test_publish_rejects_unsupported_end_user_authentication(self, workflow_service: WorkflowService) -> None:
+            workflow = MagicMock()
+            workflow.tenant_id = "tenant"
+            workflow.graph_dict = {
+                "nodes": [
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "provider",
+                            "provider_type": "builtin",
+                            "tool_name": "send",
+                            "credential_source": "end_user",
+                            "end_user_auth": {
+                                "allowed_credential_types": ["oauth2"],
+                                "oauth_client_type": "default",
+                                "purpose": "Send",
+                            },
+                        },
+                    }
+                ]
+            }
+            provider = MagicMock()
+            provider.get_supported_credential_types.return_value = []
+            with patch(
+                "services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider", return_value=provider
+            ):
+                with pytest.raises(ValueError, match="Node personal: The provider or tool"):
+                    workflow_service._validate_publish_tool_credentials(workflow)
+
+        def test_publish_credential_check_stops_at_first_static_issue(self, workflow_service: WorkflowService) -> None:
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {"id": "first", "data": {"type": "tool", "credential_source": "invalid"}},
+                    {"id": "second", "data": {"type": "tool", "credential_source": "end_user"}},
+                ]
+            }
+            with patch("services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider") as provider:
+                with pytest.raises(ValueError, match="Node first") as exc:
+                    workflow_service._validate_publish_tool_credentials(workflow)
+            assert "second" not in str(exc.value)
+            provider.assert_not_called()
+
+        def test_publish_credential_check_propagates_provider_outage(self, workflow_service: WorkflowService) -> None:
+            from services.end_user_connections.errors import ConnectionCheckUnavailableError
+
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "provider",
+                            "provider_type": "builtin",
+                            "tool_name": "send",
+                            "credential_source": "end_user",
+                            "end_user_auth": {
+                                "allowed_credential_types": ["api-key"],
+                                "purpose": "Send",
+                            },
+                        },
+                    }
+                ]
+            }
+            with patch(
+                "services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider",
+                side_effect=ConnectionCheckUnavailableError(),
+            ):
+                with pytest.raises(ConnectionCheckUnavailableError):
+                    workflow_service._validate_publish_tool_credentials(workflow)
+
+        @pytest.mark.parametrize("trigger", ["trigger-schedule", "trigger-webhook", "trigger-plugin"])
+        def test_publish_rejects_end_user_auth_in_trigger_workflow(
+            self, workflow_service: WorkflowService, trigger: str
+        ) -> None:
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {"id": "trigger", "data": {"type": trigger}},
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "provider",
+                            "provider_type": "builtin",
+                            "tool_name": "send",
+                            "credential_source": "end_user",
+                            "end_user_auth": {
+                                "allowed_credential_types": ["api-key"],
+                                "purpose": "Send",
+                            },
+                        },
+                    },
+                ]
+            }
+            with patch("services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider") as provider:
+                with pytest.raises(ValueError, match="Node personal: EndUser credentials.*trigger workflows"):
+                    workflow_service._validate_publish_tool_credentials(workflow)
+            provider.assert_not_called()
+
+        def test_publish_allows_trigger_with_workspace_credentials(self, workflow_service: WorkflowService) -> None:
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {"id": "trigger", "data": {"type": "trigger-schedule"}},
+                    {"id": "workspace", "data": {"type": "tool", "credential_source": "workspace"}},
+                ]
+            }
+            workflow_service._validate_publish_tool_credentials(workflow)
 
         def test_publish_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
@@ -2435,6 +2644,62 @@ class TestWorkflowServiceCases:
             )
 
         # --- _validate_workflow_credentials: tool node (with credential_id) ---
+
+        @pytest.mark.parametrize("credential_id", [None, "old-workspace-credential"])
+        @pytest.mark.parametrize("source", ["end_user", "reuse_node"])
+        def test_indirect_credentials_do_not_check_workspace_or_test_credentials(
+            self, service: WorkflowService, sqlite_session: Session, credential_id: str | None, source: str
+        ) -> None:
+            workflow = self._make_workflow(
+                [
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "langgenius/mail/mail",
+                            "credential_source": source,
+                            "credential_id": credential_id,
+                            "test_credential_id": "deleted-test-credential",
+                        },
+                    }
+                ]
+            )
+
+            with (
+                patch.object(service, "_check_default_tool_credential") as check_default,
+                patch("core.helper.credential_utils.check_credential_policy_compliance") as check_policy,
+            ):
+                service._validate_workflow_credentials(workflow, session=sqlite_session)
+
+            check_default.assert_not_called()
+            check_policy.assert_not_called()
+
+        def test_reused_workspace_credential_is_checked_on_the_target_node(
+            self, service: WorkflowService, sqlite_session: Session
+        ) -> None:
+            workflow = self._make_workflow(
+                [
+                    {"id": "target", "data": {"type": "tool", "provider_id": "provider", "credential_id": "shared"}},
+                    {
+                        "id": "reuse",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "provider",
+                            "credential_source": "reuse_node",
+                            "reuse_node_id": "target",
+                        },
+                    },
+                ]
+            )
+            with (
+                patch.object(service, "_check_default_tool_credential") as check_default,
+                patch("core.helper.credential_utils.check_credential_policy_compliance") as check_policy,
+            ):
+                service._validate_workflow_credentials(workflow, session=sqlite_session)
+
+            check_default.assert_not_called()
+            check_policy.assert_called_once()
+            assert check_policy.call_args.kwargs["credential_id"] == "shared"
 
         def test_validate_workflow_credentials_should_check_tool_credential_when_credential_id_present(
             self, service: WorkflowService, sqlite_session: Session

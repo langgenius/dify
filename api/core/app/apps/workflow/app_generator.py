@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import contexts
 from configs import dify_config
 from constants.trigger import is_trigger_node_type
+from context.connection_execution import ConnectionExecutionContext
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator, noop_restore_file_access
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -114,6 +115,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
@@ -136,6 +138,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]: ...
 
@@ -158,6 +161,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
@@ -179,6 +183,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
         capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
@@ -234,6 +239,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(
+                connection_context=connection_context,
                 task_id=task_id or str(uuid.uuid4()),
                 app_config=app_config,
                 file_upload_config=file_extra_config,
@@ -425,7 +431,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 },
             )
 
-            worker_thread.start()
+            with self._web_workflow_launch(
+                application_generate_entity,
+                workflow=workflow,
+                user=user,
+                conversation_id=None,
+                resume=graph_runtime_state is not None,
+            ):
+                worker_thread.start()
 
             draft_var_saver_factory = self._get_draft_var_saver_factory(
                 invoke_from,
@@ -668,7 +681,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
-        with preserve_flask_contexts(flask_app, context_vars=context):
+        with (
+            preserve_flask_contexts(flask_app, context_vars=context),
+            self._web_workflow_worker(application_generate_entity),
+        ):
             # The caller blocks on the queue until this worker publishes an event, so a
             # failure while preparing the run must be published like a failure during it.
             try:

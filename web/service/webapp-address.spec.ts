@@ -4,12 +4,31 @@ import {
   getWebAppConversationScopeId,
   getWebAppPublicApiPath,
   parseWebAppAddress,
+  removeWebAppBasePath,
   resolveWebAppAddress,
 } from './webapp-address'
 
+const deployment = vi.hoisted(() => ({ basePath: '' }))
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return deployment.basePath
+  },
+}))
+
 describe('WebAppAddress', () => {
   afterEach(() => {
+    deployment.basePath = ''
     vi.unstubAllGlobals()
+  })
+
+  it('removes a deployment prefix only at its route boundary', () => {
+    deployment.basePath = '/web'
+
+    expect(removeWebAppBasePath('/web/chat/app')).toBe('/chat/app')
+    expect(removeWebAppBasePath('/web')).toBe('/')
+    expect(removeWebAppBasePath('/web-other/chat/app')).toBe('/web-other/chat/app')
+    expect(parseWebAppAddress('/web/chat/app')).toEqual({ kind: 'default', code: 'app' })
   })
 
   it('parses ordinary and environment workflow addresses without using the app code format', () => {
@@ -31,6 +50,56 @@ describe('WebAppAddress', () => {
   it('accepts chat addresses under the environment prefix', () => {
     expect(parseWebAppAddress('/environment/chat/chat-app')).toEqual({
       kind: 'environment',
+      code: 'chat-app',
+    })
+  })
+
+  it.each([
+    '/chat/chat-app',
+    '/chat/chat-app/migrate-conversations',
+    '/chat/chat-app/migrate-conversations/',
+  ])('keeps the chat app address for %s', (pathname) => {
+    expect(parseWebAppAddress(pathname)).toEqual({
+      kind: 'default',
+      code: 'chat-app',
+    })
+  })
+
+  it.each([
+    '/chat/chat-app/unknown',
+    '/chat/chat-app/migrate-conversations/extra',
+    '/workflow/chat-app/migrate-conversations',
+    '/chatbot/chat-app/migrate-conversations',
+    '/environment/chat/chat-app/migrate-conversations',
+    '/chat/webapp-signin/migrate-conversations',
+  ])('rejects unsupported WebApp subroutes at %s', (pathname) => {
+    expect(parseWebAppAddress(pathname)).toBeNull()
+  })
+
+  it('uses the migration route app instead of a different redirect target', () => {
+    vi.stubGlobal(
+      'location',
+      new URL(
+        'https://example.com/chat/current-app/migrate-conversations?redirect_url=%2Fchat%2Fother-app',
+      ),
+    )
+
+    expect(resolveWebAppAddress()).toEqual({
+      kind: 'default',
+      code: 'current-app',
+    })
+  })
+
+  it('resolves a migration route when returning from WebApp sign-in', () => {
+    vi.stubGlobal(
+      'location',
+      new URL(
+        'https://example.com/webapp-signin?redirect_url=%2Fchat%2Fchat-app%2Fmigrate-conversations',
+      ),
+    )
+
+    expect(resolveWebAppAddress()).toEqual({
+      kind: 'default',
       code: 'chat-app',
     })
   })

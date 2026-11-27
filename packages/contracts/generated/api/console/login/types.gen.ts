@@ -4,9 +4,31 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type WebAppAccountSessionResponse = {
+  logged_in: boolean
+  login_code?: string | null
+  redirect_url: string | null
+}
+
+export type WebLoginUnavailableError = ErrorResponse & {
+  code: 'web_login_unavailable'
+  status: 503
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type LoginPayload = {
   email: string
   invite_token?: string | null
+  mode?: LoginMode
   password: string
   remember_me?: boolean
 }
@@ -46,19 +68,19 @@ export type InvalidEmailError = ErrorResponse & {
   status: 400
 }
 
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status: 400
+}
+
 export type LimitExceededError = ErrorResponse & {
   code: 'limit_exceeded'
   status: 400
 }
 
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
+export type NotAllowedCreateWorkspaceError = ErrorResponse & {
+  code: 'not_allowed_create_workspace'
+  status: 400
 }
 
 export type AuthenticationFailedError = ErrorResponse & {
@@ -70,6 +92,33 @@ export type EmailCodeLoginLimitError = ErrorResponse & {
   code: 'email_code_login_limit'
   status: 429
 }
+
+export type LoginMode = 'console' | 'end_user'
+
+export type GetLoginData = {
+  body?: never
+  path?: never
+  query?: {
+    app_code?: string
+    code_challenge?: string
+    mode?: string
+    redirect_url?: string
+  }
+  url: '/login'
+}
+
+export type GetLoginErrors = {
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetLoginError = GetLoginErrors[keyof GetLoginErrors]
+
+export type GetLoginResponses = {
+  200: WebAppAccountSessionResponse
+}
+
+export type GetLoginResponse = GetLoginResponses[keyof GetLoginResponses]
 
 export type PostLoginData = {
   body: LoginPayload
@@ -86,7 +135,9 @@ export type PostLoginErrors = {
     | EmailDomainSuspendedError
     | InvalidAccountPasswordError
     | InvalidEmailError
+    | InvalidOrExpiredTokenError
     | LimitExceededError
+    | NotAllowedCreateWorkspaceError
     | ErrorResponse
   401: AuthenticationFailedError | ErrorResponse
   429: EmailCodeLoginLimitError | ErrorResponse

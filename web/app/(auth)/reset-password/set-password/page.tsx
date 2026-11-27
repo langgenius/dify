@@ -19,6 +19,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useCountDown } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getEndUserSignInUrl } from '@/app/(auth)/signin/utils/end-user-login'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -49,6 +50,9 @@ const ChangePasswordForm = () => {
   )
 
   const getSignInUrl = () => {
+    const endUserSignIn = getEndUserSignInUrl(searchParams)
+    if (endUserSignIn) return endUserSignIn
+
     if (searchParams.has('invite_token')) {
       const params = new URLSearchParams()
       params.set('token', searchParams.get('invite_token') as string)

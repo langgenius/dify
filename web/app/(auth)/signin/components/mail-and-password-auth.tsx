@@ -8,7 +8,7 @@ import {
   PasswordFieldInput,
   PasswordFieldToggle,
 } from '@langgenius/dify-ui/password-field'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -20,6 +20,7 @@ import { consoleQuery } from '@/service/console'
 import { encryptPassword } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
+import { isEndUserSignIn } from '../utils/end-user-login'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type MailAndPasswordAuthProps = {
@@ -34,6 +35,7 @@ function hasErrorCode(error: unknown, code: string) {
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation(['login'])
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
@@ -49,6 +51,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         email,
         password: encryptPassword(password),
         remember_me: true,
+        ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' as const } : {}),
       }
       if (isInvite)
         loginData.invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
@@ -60,6 +63,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         })
 
         if (isInvite) {
+          queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)

@@ -71,7 +71,7 @@ const Authorize = ({
         buttonVariant: 'secondary',
         buttonText: !canOAuth
           ? (buttonText ?? t(($) => $['auth.useApiAuth'], { ns: 'plugin' }))
-          : t(($) => $['auth.addApi'], { ns: 'plugin' }),
+          : t(($) => $['auth.common.addApiKey'], { ns: 'plugin' }),
         onClick: onApiKeyClick,
       }
     }
@@ -79,7 +79,7 @@ const Authorize = ({
       pluginPayload,
       buttonText: !canOAuth
         ? (buttonText ?? t(($) => $['auth.useApiAuth'], { ns: 'plugin' }))
-        : t(($) => $['auth.addApi'], { ns: 'plugin' }),
+        : t(($) => $['auth.common.addApiKey'], { ns: 'plugin' }),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
       onClick: onApiKeyClick,
     }

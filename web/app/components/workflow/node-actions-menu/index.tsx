@@ -121,7 +121,15 @@ function NodeActionsMenuContent(props: NodeActionsContentProps) {
       >
         {hasRunGroup && (
           <MenuGroup>
-            {model.canRun && <MenuItem onClick={model.handleRun}>{singleRunActionLabel}</MenuItem>}
+            {model.canRun && (
+              <MenuItem
+                disabled={!!model.singleRunDisabledReason}
+                aria-description={model.singleRunDisabledReason}
+                onClick={model.handleRun}
+              >
+                {singleRunActionLabel}
+              </MenuItem>
+            )}
             {model.canChangeBlock && (
               <Popover modal="trap-focus">
                 <MenuItem

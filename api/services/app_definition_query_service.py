@@ -1,11 +1,19 @@
 """Application service for reading an app's externally visible definition."""
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NamedTuple, Protocol
+
+from pydantic import Field
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.end_user_connections.errors import ConnectionError
+from services.entities.tool_connection_entities import (
+    ConnectionRevisions,
+    ToolConnectionRequirement,
+    requires_end_user_connections,
+)
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 
@@ -13,6 +21,32 @@ from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundE
 class AppParameterConfig(NamedTuple):
     features_dict: Mapping[str, Any]
     user_input_form: list[dict[str, Any]]
+
+
+class WebAppParameterConfig(NamedTuple):
+    parameters: AppParameterConfig
+    default_language: str
+    # Non-workflow app modes have no workflow version or personal tool requirements.
+    workflow_id: str | None
+    requires_end_user_connections: bool
+    connection_requirements: tuple[ToolConnectionRequirement, ...]
+    graph: Mapping[str, Any] | None
+
+
+class WebAppConnectionRequirement(ToolConnectionRequirement):
+    provider_label: str = Field(
+        description="Tool provider display name in the WebApp's configured language, falling back to English."
+    )
+    plugin_unique_identifier: str = Field(description="Exact plugin artifact recorded in connection_revision.")
+    verified: bool = Field(description="Whether Dify verified this exact plugin artifact.")
+    icon: str = Field(description="Plugin icon URL, using the Integrations asset endpoint.")
+    icon_dark: str | None = Field(description="Dark plugin icon URL; null when the plugin has no dark icon.")
+
+
+class WebAppParametersDict(AppParametersDict):
+    connection_revision: str | None
+    requires_end_user_connections: bool
+    connection_requirements: tuple[WebAppConnectionRequirement, ...]
 
 
 class AppToolIconSource(NamedTuple):
@@ -68,12 +102,23 @@ class AppDefinitionQuery(Protocol):
         """Return the active workspace's owner ID, or None when that identity is unavailable."""
         ...
 
+    def get_published_workflow_graph(self, tenant_id: str, app_id: str) -> Mapping[str, Any] | None:
+        """Return the app's current published graph after closing the scoped read session.
+
+        Match both app and workflow ownership. Return None for non-workflow apps
+        or when no owned, non-draft publication is selected. Never read a draft
+        or another publication merely because it belongs to the same app.
+        """
+        ...
+
     def get_published_parameter_config(
         self,
         app_id: str,
         *,
         public_runtime: bool = False,
     ) -> AppParameterConfig | None: ...
+
+    def get_web_parameter_config(self, app_id: str, tenant_id: str) -> WebAppParameterConfig | None: ...
 
     def get_tool_icon_sources(self, app_id: str) -> Sequence[AppToolIconSource] | None: ...
 
@@ -90,6 +135,24 @@ class AppDefinitionNotPublishedError(AppDefinitionUnavailableError):
     """Raised when a public Agent App has not been published."""
 
 
+class ServiceApiEndUserAuthError(ValueError):
+    """Service API user identifiers cannot authenticate personal tool access."""
+
+
+def require_service_api_end_user_workflow_access(graph: Mapping[str, Any]) -> None:
+    """Check a server-selected workflow graph before Service API execution.
+
+    Reject any declared personal tool authentication, including incomplete
+    settings, with ServiceApiEndUserAuthError. Otherwise return without changing
+    state or resolving credentials. Callers must use the graph they will execute,
+    including after version selection or reconstruction across task boundaries.
+    """
+    if requires_end_user_connections(graph):
+        raise ServiceApiEndUserAuthError(
+            "Service API end-user access is unavailable for apps that require EndUser authentication."
+        )
+
+
 _API_TOOL_FALLBACK_ICON = {"background": "#252525", "content": "\ud83d\ude01"}
 
 
@@ -99,9 +162,17 @@ class AppDefinitionQueryService:
         *,
         definitions: AppDefinitionQuery,
         builtin_icon_url_prefix: str,
+        connection_revisions: ConnectionRevisions,
+        plugin_verified: Callable[[str, str], bool],
+        plugin_readme: Callable[[str, str, str], str],
+        plugin_asset: Callable[[str, str, str], bytes],
     ) -> None:
         self._definitions = definitions
+        self._connection_revisions = connection_revisions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
+        self._plugin_verified = plugin_verified
+        self._plugin_readme = plugin_readme
+        self._plugin_asset = plugin_asset
 
     def get_service_api_app(self, app_id: str | None, *, tenant_id: str | None = None) -> ServiceApiAppRecord:
         """Return an app admitted for Service API access, or raise a domain error.
@@ -130,6 +201,19 @@ class AppDefinitionQueryService:
         """Return the active workspace's legacy owner identity; None means unavailable."""
         return self._definitions.get_service_api_owner_id(tenant_id)
 
+    def require_service_api_end_user_access(self, tenant_id: str, app_id: str) -> None:
+        """Check an admitted app before resolving any Service API EndUser identity.
+
+        Reject a published graph declaring personal tool authentication, including
+        incomplete settings, with ServiceApiEndUserAuthError. Otherwise return
+        without provisioning users or accessing personal credentials. Draft-only
+        requirements do not affect the published API; app/account-only operations
+        do not call this policy. Repository failures propagate without admission.
+        """
+        graph = self._definitions.get_published_workflow_graph(tenant_id, app_id)
+        if graph is not None:
+            require_service_api_end_user_workflow_access(graph)
+
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)
         if mode is None:
@@ -150,6 +234,83 @@ class AppDefinitionQueryService:
             raise AppDefinitionUnavailableError from None
 
         return self._map_parameters(config)
+
+    def get_web_parameters(self, app_id: str, tenant_id: str) -> WebAppParametersDict:
+        """Read inputs and connection requirements from one published definition."""
+        try:
+            config = self._definitions.get_web_parameter_config(app_id, tenant_id)
+        except AgentAppNotPublishedError:
+            raise AppDefinitionNotPublishedError from None
+        except AgentAppGeneratorError:
+            raise AppDefinitionUnavailableError from None
+        if config is None:
+            raise AppDefinitionUnavailableError()
+        try:
+            requirements = config.connection_requirements
+            revision, providers = (
+                self._connection_revisions.resolve(tenant_id, app_id, config.graph)
+                if config.workflow_id is not None and config.graph is not None
+                else (None, ())
+            )
+            providers_by_name = {provider.provider: provider for provider in providers}
+            verified_by_provider = {
+                provider.provider: self._plugin_verified(tenant_id, provider.plugin_unique_identifier)
+                for provider in providers
+            }
+            web_requirements = []
+            for requirement in requirements:
+                metadata = providers_by_name[requirement.provider]
+                provider_labels = {
+                    "en-US": metadata.provider_label.en_US,
+                    "zh-Hans": metadata.provider_label.zh_Hans,
+                    "pt-BR": metadata.provider_label.pt_BR,
+                    "ja-JP": metadata.provider_label.ja_JP,
+                }
+                web_requirements.append(
+                    WebAppConnectionRequirement(
+                        **requirement.model_dump(),
+                        provider_label=provider_labels.get(config.default_language) or metadata.provider_label.en_US,
+                        plugin_unique_identifier=metadata.plugin_unique_identifier,
+                        verified=verified_by_provider[requirement.provider],
+                        icon=metadata.icon,
+                        icon_dark=metadata.icon_dark,
+                    )
+                )
+        except (KeyError, TypeError, ValueError, ConnectionError):
+            raise AppDefinitionUnavailableError() from None
+        return {
+            **self._map_parameters(config.parameters),
+            "connection_revision": revision,
+            "requires_end_user_connections": config.requires_end_user_connections,
+            "connection_requirements": tuple(web_requirements),
+        }
+
+    def get_web_plugin_readme(self, app_id: str, tenant_id: str, plugin_unique_identifier: str, language: str) -> str:
+        """Only expose documentation for this App's published personal tool providers."""
+        self._require_web_plugin(app_id, tenant_id, plugin_unique_identifier)
+        return self._plugin_readme(tenant_id, plugin_unique_identifier, language)
+
+    def get_web_plugin_asset(self, app_id: str, tenant_id: str, plugin_unique_identifier: str, file_name: str) -> bytes:
+        """Read an asset relative to the authorized plugin's packaged _assets directory."""
+        self._require_web_plugin(app_id, tenant_id, plugin_unique_identifier)
+        if (
+            any(part in {"", ".", ".."} for part in file_name.split("/"))
+            or "\\" in file_name
+            or any(ord(character) < 32 or ord(character) == 127 for character in file_name)
+        ):
+            raise ValueError("Invalid plugin asset filename.")
+        try:
+            return self._plugin_asset(tenant_id, plugin_unique_identifier, file_name)
+        except ValueError:
+            raise AppDefinitionUnavailableError() from None
+
+    def _require_web_plugin(self, app_id: str, tenant_id: str, plugin_unique_identifier: str) -> None:
+        parameters = self.get_web_parameters(app_id, tenant_id)
+        if not any(
+            requirement.plugin_unique_identifier == plugin_unique_identifier
+            for requirement in parameters["connection_requirements"]
+        ):
+            raise AppDefinitionUnavailableError()
 
     @staticmethod
     def _map_parameters(config: AppParameterConfig | None) -> AppParametersDict:

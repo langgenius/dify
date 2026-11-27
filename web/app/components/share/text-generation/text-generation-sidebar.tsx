@@ -1,10 +1,12 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { FC, RefObject } from 'react'
 import type { InputValueTypes, TextGenerationCustomConfig, TextGenerationRunControl } from './types'
+import type { AccessMode } from '@/models/access-control'
 import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
@@ -13,8 +15,18 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import {
+  InstalledConnectionControls,
+  InstalledConnectionSetup,
+} from '@/app/components/explore/installed-app/connections'
+import UnofficialAppWarning from '@/app/components/share/connections/unofficial-app-warning'
+import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
+import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
-import { AccessMode } from '@/models/access-control'
+import BuildAppLink from '../build-app-link'
+import MyAppsLink from '../my-apps-link'
+import SignIn from '../sign-in'
+import { useWebAppEntry } from '../webapp-entry'
 import RunBatch from './run-batch'
 import RunOnce from './run-once'
 import TextGenerationMenu from './text-generation-menu'
@@ -22,6 +34,10 @@ import TextGenerationMenu from './text-generation-menu'
 type TextGenerationSidebarProps = {
   accessMode: AccessMode
   allTasksRun: boolean
+  connectionsReady?: boolean
+  isConfiguringConnections?: boolean
+  onStartUsingApp?: () => void
+  isResponding?: boolean
   currentTab: string
   customConfig: TextGenerationCustomConfig | null
   inputs: Record<string, InputValueTypes>
@@ -46,8 +62,11 @@ type TextGenerationSidebarProps = {
 }
 
 const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
-  accessMode,
   allTasksRun,
+  connectionsReady = true,
+  isConfiguringConnections = false,
+  onStartUsingApp,
+  isResponding = false,
   currentTab,
   customConfig,
   inputs,
@@ -71,11 +90,68 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   visionConfig,
 }) => {
   const { t } = useTranslation(['share'])
+  const entry = useWebAppEntry()
+  const showAccountFooter =
+    !isInstalledApp && entry && 'account' in entry && entry.parameters.account_login_enabled
+  const showBuildAppLink = showAccountFooter && entry.account === 'authenticated'
+  const showWorkflowLayout = isWorkflow && showAccountFooter
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
+
+  const description = siteInfo.description && (
+    <div>
+      <div
+        ref={handleDescRef}
+        className={cn(
+          'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
+          !descExpanded && 'line-clamp-3',
+          descExpanded && 'max-h-32 overflow-y-auto',
+        )}
+      >
+        {siteInfo.description}
+        {!descExpanded && showDescToggle && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+        )}
+      </div>
+      {showDescToggle && (
+        <button
+          type="button"
+          className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+          onClick={() => setDescExpanded((v) => !v)}
+        >
+          {descExpanded ? (
+            <>
+              <RiArrowUpSLine className="size-3" />
+              {t(($) => $['chat.collapse'], { ns: 'share' })}
+            </>
+          ) : (
+            <>
+              <RiArrowDownSLine className="size-3" />
+              {t(($) => $['chat.expand'], { ns: 'share' })}
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  )
+
+  const connectionSetup =
+    isConfiguringConnections &&
+    onStartUsingApp &&
+    (isInstalledApp ? (
+      <div className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}>
+        <InstalledConnectionSetup onStart={onStartUsingApp} />
+      </div>
+    ) : (
+      <WebAppConnectionSetup
+        onStart={onStartUsingApp}
+        previewSize={showWorkflowLayout ? 'medium' : 'small'}
+        className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}
+      />
+    ))
 
   return (
     <Tabs
@@ -83,82 +159,91 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       onValueChange={onTabChange}
       className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isBelowMd ? (resultExisted ? 'h-[calc(100%-64px)]' : '') : 'w-150 max-w-[50%]',
+        !isBelowMd ? 'w-150 max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
         isInstalledApp && 'rounded-s-2xl',
       )}
     >
       <div
         className={cn(
-          'shrink-0 space-y-4 border-b border-divider-subtle',
-          isBelowMd ? 'p-4 pb-0' : 'bg-components-panel-bg p-8 pb-0',
+          'shrink-0 border-b border-divider-subtle',
+          showWorkflowLayout ? 'relative flex flex-col gap-4 overflow-hidden' : 'space-y-4',
+          (showAccountFooter || !isBelowMd) && 'bg-components-panel-bg',
+          !isBelowMd ? 'p-8 pb-0' : 'p-4 pb-0',
         )}
       >
-        <div className="flex items-center gap-3">
-          <AppIcon
-            fallback={{ content: '🤖', background: appDefaultIconBackground }}
-            size={isBelowMd ? 'small' : 'large'}
-            icon={siteInfo}
-          />
-          <div className="grow truncate system-md-semibold text-text-secondary">
-            {siteInfo.title}
+        {showAccountFooter && <MyAppsLink className="w-full shrink-0 ps-0" />}
+        {showWorkflowLayout ? (
+          <div className="flex flex-col gap-3">
+            <AppIcon
+              fallback={{ content: '🤖', background: appDefaultIconBackground }}
+              size={!isBelowMd ? 'large' : 'small'}
+              icon={siteInfo}
+            />
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <h1 className="min-w-0 grow system-xl-semibold wrap-anywhere text-text-primary">
+                  {siteInfo.title}
+                </h1>
+                {!isConfiguringConnections &&
+                  (isInstalledApp ? (
+                    <InstalledConnectionControls isResponding={isResponding} />
+                  ) : (
+                    <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
+                  ))}
+              </div>
+              {description}
+            </div>
           </div>
-          <TextGenerationMenu
-            hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC}
-            data={siteInfo}
-          />
-        </div>
-        {siteInfo.description && (
-          <div>
-            <div
-              ref={handleDescRef}
-              className={cn(
-                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
-                !descExpanded && 'line-clamp-3',
-                descExpanded && 'max-h-32 overflow-y-auto',
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <AppIcon
+                fallback={{ content: '🤖', background: appDefaultIconBackground }}
+                size={!isBelowMd ? 'large' : 'small'}
+                icon={siteInfo}
+              />
+              <div className="grow truncate system-md-semibold text-text-secondary">
+                {siteInfo.title}
+              </div>
+              {isInstalledApp ? (
+                <InstalledConnectionControls isResponding={isResponding} />
+              ) : (
+                <WebAppConnectionControls
+                  isResponding={isResponding}
+                  showSignIn={!showAccountFooter}
+                />
               )}
-            >
-              {siteInfo.description}
-              {!descExpanded && showDescToggle && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+              {!showAccountFooter && (
+                <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
               )}
             </div>
-            {showDescToggle && (
-              <button
-                type="button"
-                className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                onClick={() => setDescExpanded((v) => !v)}
-              >
-                {descExpanded ? (
-                  <>
-                    <RiArrowUpSLine className="size-3" />
-                    {t(($) => $['chat.collapse'], { ns: 'share' })}
-                  </>
-                ) : (
-                  <>
-                    <RiArrowDownSLine className="size-3" />
-                    {t(($) => $['chat.expand'], { ns: 'share' })}
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+            {description}
+          </>
         )}
-        <TabsList className="w-full">
-          <TabsTab value="create">
-            <span className="ms-2">{t(($) => $['generation.tabs.create'], { ns: 'share' })}</span>
-          </TabsTab>
-          <TabsTab value="batch">
-            <span className="ms-2">{t(($) => $['generation.tabs.batch'], { ns: 'share' })}</span>
-          </TabsTab>
-          {!isWorkflow && (
-            <TabsTab value="saved" className="ms-auto">
-              <span aria-hidden className="i-ri-bookmark-3-line size-4" />
-              <span className="ms-2">{t(($) => $['generation.tabs.saved'], { ns: 'share' })}</span>
-              {savedMessages.length > 0 && <Badge className="ms-1">{savedMessages.length}</Badge>}
+        {(!isConfiguringConnections || showWorkflowLayout) && (
+          <TabsList className={cn('w-full', showWorkflowLayout && 'relative gap-4')}>
+            <TabsTab value="create">
+              <span className={showWorkflowLayout ? 'uppercase' : 'ms-2'}>
+                {t(($) => $['generation.tabs.create'], { ns: 'share' })}
+              </span>
             </TabsTab>
-          )}
-          <TabsIndicator />
-        </TabsList>
+            <TabsTab value="batch">
+              <span className={showWorkflowLayout ? 'uppercase' : 'ms-2'}>
+                {t(($) => $['generation.tabs.batch'], { ns: 'share' })}
+              </span>
+            </TabsTab>
+            {!isWorkflow && (
+              <TabsTab value="saved" className="ms-auto">
+                <span aria-hidden className="i-ri-bookmark-3-line size-4" />
+                <span className="ms-2">
+                  {t(($) => $['generation.tabs.saved'], { ns: 'share' })}
+                </span>
+                {savedMessages.length > 0 && <Badge className="ms-1">{savedMessages.length}</Badge>}
+              </TabsTab>
+            )}
+            <TabsIndicator />
+          </TabsList>
+        )}
       </div>
       <div
         className={cn(
@@ -170,59 +255,118 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             'rounded-b-2xl border-b-[0.5px] border-divider-regular',
         )}
       >
-        <TabsPanel value="create" keepMounted>
-          <RunOnce
-            siteInfo={siteInfo}
-            inputs={inputs}
-            inputsRef={inputsRef}
-            onInputsChange={onInputsChange}
-            promptConfig={promptConfig}
-            onSend={onRunOnceSend}
-            visionConfig={visionConfig}
-            onVisionFilesChange={onVisionFilesChange}
-            runControl={runControl}
-          />
-        </TabsPanel>
-        <TabsPanel value="batch" keepMounted>
-          <RunBatch
-            vars={promptConfig.prompt_variables}
-            onSend={onBatchSend}
-            isAllFinished={allTasksRun}
-          />
-        </TabsPanel>
-        {!isWorkflow && (
-          <TabsPanel value="saved">
-            <SavedItems
-              className={cn(isBelowMd ? 'mt-4' : 'mt-6')}
-              isShowTextToSpeech={textToSpeechConfig?.enabled}
-              list={savedMessages}
-              onRemove={onRemoveSavedMessage}
-              onStartCreateContent={() => onTabChange('create')}
-            />
-          </TabsPanel>
+        {connectionSetup ? (
+          showWorkflowLayout ? (
+            <TabsPanel value={currentTab}>{connectionSetup}</TabsPanel>
+          ) : (
+            connectionSetup
+          )
+        ) : (
+          <>
+            <TabsPanel value="create" keepMounted>
+              <RunOnce
+                siteInfo={siteInfo}
+                inputs={inputs}
+                inputsRef={inputsRef}
+                onInputsChange={onInputsChange}
+                promptConfig={promptConfig}
+                onSend={onRunOnceSend}
+                visionConfig={visionConfig}
+                onVisionFilesChange={onVisionFilesChange}
+                runControl={runControl}
+                disabled={!connectionsReady || (isResponding && !runControl)}
+              />
+            </TabsPanel>
+            <TabsPanel value="batch" keepMounted>
+              <RunBatch
+                vars={promptConfig.prompt_variables}
+                onSend={onBatchSend}
+                isAllFinished={allTasksRun}
+                disabled={!connectionsReady || isResponding}
+              />
+            </TabsPanel>
+            {!isWorkflow && (
+              <TabsPanel value="saved">
+                <SavedItems
+                  className={cn(!isBelowMd ? 'mt-6' : 'mt-4')}
+                  isShowTextToSpeech={textToSpeechConfig?.enabled}
+                  list={savedMessages}
+                  onRemove={onRemoveSavedMessage}
+                  onStartCreateContent={() => onTabChange('create')}
+                />
+              </TabsPanel>
+            )}
+          </>
         )}
       </div>
-      {!customConfig?.remove_webapp_brand && (
+      {!isInstalledApp && (
+        <UnofficialAppWarning
+          className={cn('bg-components-panel-bg', isBelowMd ? 'px-4' : 'px-8')}
+        />
+      )}
+      {(showAccountFooter || !customConfig?.remove_webapp_brand) && (
         <div
           className={cn(
-            'flex shrink-0 items-center gap-1.5 bg-components-panel-bg py-3',
-            isBelowMd ? 'px-4' : 'px-8',
+            'flex shrink-0 items-center bg-components-panel-bg py-3',
+            showAccountFooter
+              ? 'justify-between gap-3 px-6'
+              : !isBelowMd
+                ? 'gap-1.5 px-8'
+                : 'gap-1.5 px-4',
+            showBuildAppLink && 'flex-wrap gap-y-2',
             isBelowMd && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
-          <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['chat.poweredBy'], { ns: 'share' })}
-          </div>
-          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
-            <img
-              src={systemFeatures.branding.workspace_logo}
-              alt="logo"
-              className="block h-5 w-auto"
-            />
-          ) : customConfig?.replace_webapp_logo ? (
-            <img src={customConfig.replace_webapp_logo} alt="logo" className="block h-5 w-auto" />
-          ) : (
-            <DifyLogo alt="Dify" size="small" />
+          {showAccountFooter &&
+            (entry.showSignIn ? (
+              <SignIn className="system-sm-medium" />
+            ) : (
+              <div className="flex min-w-0 items-center gap-2">
+                <TextGenerationMenu
+                  hideLogout={isInstalledApp}
+                  data={siteInfo}
+                  side="top"
+                  align="start"
+                />
+                {showBuildAppLink && (
+                  <>
+                    <Separator
+                      decorative
+                      orientation="vertical"
+                      className="hidden h-4 not-last:block"
+                    />
+                    <BuildAppLink variant="footer" />
+                  </>
+                )}
+              </div>
+            ))}
+          {!customConfig?.remove_webapp_brand && (
+            <div
+              className={cn(
+                'flex items-center gap-1.5',
+                showAccountFooter && 'px-2',
+                showBuildAppLink && 'ms-auto',
+              )}
+            >
+              <div className="system-2xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['chat.poweredBy'], { ns: 'share' })}
+              </div>
+              {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
+                <img
+                  src={systemFeatures.branding.workspace_logo}
+                  alt="logo"
+                  className="block h-5 w-auto"
+                />
+              ) : customConfig?.replace_webapp_logo ? (
+                <img
+                  src={customConfig.replace_webapp_logo}
+                  alt="logo"
+                  className="block h-5 w-auto"
+                />
+              ) : (
+                <DifyLogo alt="Dify" size="small" className="translate-y-0.5" />
+              )}
+            </div>
           )}
         </div>
       )}

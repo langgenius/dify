@@ -31,6 +31,7 @@ from controllers.service_api.wraps import (
 from core.db.session_factory import get_session_maker
 from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.ext_application_services import ApplicationServices
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
@@ -43,6 +44,7 @@ from models.resource_access_token import (
     ResourceAccessTokenResourceType,
 )
 from services.api_token_service import ApiTokenCache, ApiTokenInvalidError
+from services.app_definition_query_service import AppDefinitionQueryService
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -77,8 +79,9 @@ class _AppScopedEndUserServicesStub:
 
 
 class _ApplicationServicesStub:
-    def __init__(self, commands: _RecordingEndUserCommands) -> None:
+    def __init__(self, commands: _RecordingEndUserCommands, definitions: AppDefinitionQueryService) -> None:
         self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
+        self.app_definitions = definitions
 
 
 class _RecordingLoginManager:
@@ -325,6 +328,7 @@ class TestValidateAppToken:
         app: Flask,
         sqlite_session: Session,
         monkeypatch: pytest.MonkeyPatch,
+        account_application_services: ApplicationServices,
         fetch_from: WhereisUserArg,
         method: str,
         path: str,
@@ -352,7 +356,11 @@ class TestValidateAppToken:
         login_manager = _RecordingLoginManager()
         signal = _RecordingSignal()
         app.login_manager = login_manager  # type: ignore[attr-defined]
-        monkeypatch.setattr(wraps_module, "application_services", lambda: _ApplicationServicesStub(commands))
+        monkeypatch.setattr(
+            wraps_module,
+            "application_services",
+            lambda: _ApplicationServicesStub(commands, account_application_services.app_definitions),
+        )
         monkeypatch.setattr(wraps_module, "user_logged_in", signal)
 
         @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=fetch_from, required=True))
@@ -378,6 +386,7 @@ class TestValidateAppToken:
         app: Flask,
         sqlite_session: Session,
         monkeypatch: pytest.MonkeyPatch,
+        account_application_services: ApplicationServices,
     ) -> None:
         """Admission must not hold a pooled connection while end-user provisioning opens its own session."""
         tenant = Tenant(name="Workspace")
@@ -401,7 +410,11 @@ class TestValidateAppToken:
         )
         commands = _SessionStateRecordingEndUserCommands(end_user, sqlite_session)
         app.login_manager = _RecordingLoginManager()  # type: ignore[attr-defined]
-        monkeypatch.setattr(wraps_module, "application_services", lambda: _ApplicationServicesStub(commands))
+        monkeypatch.setattr(
+            wraps_module,
+            "application_services",
+            lambda: _ApplicationServicesStub(commands, account_application_services.app_definitions),
+        )
         monkeypatch.setattr(wraps_module, "user_logged_in", _RecordingSignal())
         expire_on_commit = sqlite_session.expire_on_commit
 

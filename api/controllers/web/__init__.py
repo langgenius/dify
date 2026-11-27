@@ -53,9 +53,14 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespaces and schema models exist."""
 
     from . import (
+        account,
+        account_email,
         app,
         audio,
         completion,
+        connection_oauth,
+        connection_preflight,
+        connections,
         conversation,
         feature,
         files,
@@ -66,7 +71,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         human_input_v2,
         human_input_v2_file_upload,
         login,
+        me,
         message,
+        migration,
         passport,
         remote_files,
         saved_message,
@@ -76,9 +83,14 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     )
 
     return (
+        account,
+        account_email,
         app,
         audio,
         completion,
+        connection_oauth,
+        connection_preflight,
+        connections,
         conversation,
         feature,
         files,
@@ -89,7 +101,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         human_input_v2,
         human_input_v2_file_upload,
         login,
+        me,
         message,
+        migration,
         passport,
         remote_files,
         saved_message,
@@ -100,9 +114,14 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 
 (
+    account,
+    account_email,
     app,
     audio,
     completion,
+    connection_oauth,
+    connection_preflight,
+    connections,
     conversation,
     feature,
     files,
@@ -113,7 +132,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     human_input_v2,
     human_input_v2_file_upload,
     login,
+    me,
     message,
+    migration,
     passport,
     remote_files,
     saved_message,
@@ -125,11 +146,16 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 api.add_namespace(web_ns)
 
 __all__ = [
+    "account",
+    "account_email",
     "api",
     "app",
     "audio",
     "bp",
     "completion",
+    "connection_oauth",
+    "connection_preflight",
+    "connections",
     "conversation",
     "feature",
     "files",
@@ -140,6 +166,7 @@ __all__ = [
     "human_input_v2",
     "human_input_v2_file_upload",
     "login",
+    "me",
     "message",
     "passport",
     "remote_files",

@@ -1,14 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
-import { webAppLoginStatus, webAppLogout } from './common'
-import { getWebAppPassport, setWebAppAccessToken, setWebAppPassport } from './webapp-auth'
+import { webAppLogout } from './common'
+import {
+  getWebAppPassport,
+  setWebAppAccessToken,
+  setWebAppPassport,
+  webAppLoginStatus,
+} from './webapp-auth'
 
 const webAppClientMock = vi.hoisted(() => ({
   login: { status: { get: vi.fn() } },
   logout: { post: vi.fn() },
 }))
 
-vi.mock('./webapp-client', () => ({ webAppClient: webAppClientMock }))
+vi.mock('./webapp', () => ({ webAppClient: webAppClientMock }))
 
 describe('webAppLoginStatus', () => {
   const originalUrl = window.location.href
@@ -66,9 +71,9 @@ describe('webAppLogout', () => {
     localStorage.clear()
   })
 
-  it('clears the stored credentials before logging out remotely', async () => {
+  it('clears the stored account credentials after remote logout', async () => {
     const address = { kind: 'default' as const, code: 'workflow-app' }
-    setWebAppAccessToken('access-token')
+    setWebAppAccessToken('access-token', 'end_user')
     setWebAppPassport(address, 'passport')
     webAppClientMock.logout.post.mockResolvedValue({ result: 'success' })
 

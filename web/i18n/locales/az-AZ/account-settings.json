@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Hesabınızın istifadəçi məlumatları.",
   "account.myAccount": "Hesabım",
   "account.name": "Ad",
+  "account.nameLengthInvalid": "Ad {{min}} ilə {{max}} simvol arasında olmalıdır.",
   "account.newPassword": "Yeni parol",
   "account.notEqual": "İki parol fərqlidir.",
   "account.password": "Parol",

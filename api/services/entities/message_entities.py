@@ -18,6 +18,8 @@ class MessageAccount:
 @dataclass(frozen=True, slots=True)
 class MessageEndUser:
     end_user_id: str
+    # Web App history can be transferred from a guest to an account without rewriting senders.
+    follows_conversation_owner: bool = False
 
 
 type MessageActor = MessageAccount | MessageEndUser

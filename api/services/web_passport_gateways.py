@@ -26,9 +26,15 @@ class DeploymentWebPassportAuthGateway:
         *,
         webapp_auth_enabled: bool,
         get_app_access_mode: Callable[[str], WebAppSettings],
+        is_user_allowed: Callable[[str, str], bool],
     ) -> None:
         self._webapp_auth_enabled = webapp_auth_enabled
         self._get_app_access_mode = get_app_access_mode
+        self._is_user_allowed = is_user_allowed
+
+    def is_account_allowed(self, app_id: str, account_id: str) -> bool:
+        settings = self._get_app_access_mode(app_id)
+        return settings.access_mode not in PERMISSION_CHECK_MODES or self._is_user_allowed(account_id, app_id)
 
     def is_webapp_auth_enabled(self) -> bool:
         return self._webapp_auth_enabled

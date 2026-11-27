@@ -1,0 +1,250 @@
+"""Check explicit selections for a published graph without saving usage relations."""
+
+import time
+from collections.abc import Mapping
+from typing import Annotated, Protocol
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+
+from clients.plugin.auth_entities import CredentialCheckResult
+from constants.end_user_connections import ConnectionCredentialType, NodeConnectionStatus
+from services.end_user_connections.contracts import ConnectionContractInput, ConnectionCredentialChecks
+from services.end_user_connections.entities import (
+    ConnectionAccessRecord,
+    ConnectionCheckSnapshot,
+    NodeConnectionSelection,
+    ToolConnectionTarget,
+    WebConnectionContext,
+)
+from services.end_user_connections.errors import (
+    ConnectionCheckUnavailableError,
+    ConnectionConfigurationError,
+    ConnectionConflictError,
+    ConnectionNotFoundError,
+    ConnectionReauthorizationRequiredError,
+)
+from services.end_user_connections.policy import require_applicable_connection, require_personal_connection_access
+from services.end_user_connections.revision import ConnectionRevisionAcceptance
+from services.end_user_connections.status import resolve_node_connection_status
+
+ConnectionId = Annotated[UUID, Field(strict=False)]
+NodeId = Annotated[str, Field(min_length=1, max_length=255)]
+
+
+class ConnectionPreflightInput(ConnectionContractInput):
+    # Only existing Chatflow Conversations have an authoritative business Session.
+    # None checks a new conversation or a plain Workflow's App/user context.
+    conversation_id: UUID | None = Field(
+        default=None,
+        strict=False,
+        description="Existing Chatflow conversation. Omit for a new conversation or plain Workflow.",
+    )
+    connections: dict[NodeId, ConnectionId | None] = Field(
+        description=(
+            "Explicit choices keyed by independent authorization node ID. "
+            "Missing/null choices remain disconnected; saved choices are never inferred."
+        ),
+    )
+
+
+class ConnectionPreflightStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    node_id: str = Field(description="Independent authorization node ID to use as the selection key.")
+    # Execution consumes the provider from the checked snapshot without re-reading the graph.
+    provider: str = Field(exclude=True)
+    connection_id: str | None
+    # None means availability is unknown because the check could not complete;
+    # it is not a fifth credential/selection status.
+    status: NodeConnectionStatus | None = Field(
+        description="Effective node status; null when availability cannot be determined."
+    )
+    check: CredentialCheckResult | None
+
+
+class ConnectionPreflightView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    workflow_id: str = Field(exclude=True)
+    connection_revision: str = Field(description="Connection contract revision evaluated by this preflight.")
+    connections: tuple[ConnectionPreflightStatus, ...]
+
+    @computed_field
+    @property
+    def ready(self) -> bool:
+        return all(item.status == NodeConnectionStatus.CONNECTED for item in self.connections)
+
+
+class PreflightRequirements(Protocol):
+    def resolve(
+        self,
+        context: WebConnectionContext,
+        workflow_id: str | None,
+        conversation_id: str | None,
+        *,
+        oauth_providers: frozenset[str],
+        connection_revision: str,
+    ) -> tuple[str, str, tuple[ToolConnectionTarget, ...]]: ...
+
+
+class PreflightConnections(Protocol):
+    def access_records(
+        self, context: WebConnectionContext, connection_ids: frozenset[str]
+    ) -> Mapping[str, ConnectionAccessRecord]: ...
+
+    def complete_preflight(
+        self,
+        context: WebConnectionContext,
+        workflow_id: str,
+        conversation_id: str | None,
+        *,
+        revision_acceptance: ConnectionRevisionAcceptance | None,
+    ) -> None: ...
+
+
+class ConnectionPreflightService:
+    def __init__(
+        self,
+        *,
+        requirements: PreflightRequirements,
+        connections: PreflightConnections,
+        checks: ConnectionCredentialChecks,
+    ) -> None:
+        self._requirements = requirements
+        self._connections = connections
+        self._checks = checks
+
+    def check(
+        self, context: WebConnectionContext, command: ConnectionPreflightInput, *, workflow_id: str | None = None
+    ) -> ConnectionPreflightView:
+        """Check explicit choices against the stored graph and submitted authorization revision.
+
+        Return readiness without exposing secrets or saving choices. Revalidate graph
+        requirements and credential revisions after external checks; concurrent changes
+        fail rather than certify stale readiness. Missing and foreign IDs remain
+        indistinguishable, with no Connection metadata disclosed.
+        """
+        conversation_id = str(command.conversation_id) if command.conversation_id is not None else None
+        selections = {key: str(value) if value is not None else None for key, value in command.connections.items()}
+        ids = frozenset(value for value in selections.values() if value is not None)
+        if ids:
+            require_personal_connection_access(context)
+        records = self._connections.access_records(context, ids)
+        oauth_providers = frozenset(
+            record.provider for record in records.values() if record.credential_type == ConnectionCredentialType.OAUTH2
+        )
+        workflow_id, accepted_revision, requirements = self._requirements.resolve(
+            context,
+            workflow_id,
+            conversation_id,
+            oauth_providers=oauth_providers,
+            connection_revision=command.connection_revision,
+        )
+        if requirements:
+            require_personal_connection_access(context)
+        if command.connections.keys() - {target.node_id for target in requirements}:
+            raise ConnectionConfigurationError()
+        snapshots: dict[str, ConnectionCheckSnapshot] = {}
+        unavailable: set[str] = set()
+        for target in requirements:
+            connection_id = selections.get(target.node_id)
+            record = records.get(connection_id) if connection_id is not None else None
+            if record is None:
+                continue
+            try:
+                require_applicable_connection(
+                    context,
+                    record,
+                    workflow_id=workflow_id,
+                    node_id=target.node_id,
+                    target=target,
+                )
+            except ConnectionReauthorizationRequiredError:
+                continue
+            if record.id in snapshots or record.id in unavailable:
+                continue
+            try:
+                outcome = self._checks.check_connection_result(
+                    context, record.id, connection_revision=accepted_revision
+                )
+            except ConnectionNotFoundError:
+                raise ConnectionConflictError() from None
+            except ConnectionCheckUnavailableError:
+                unavailable.add(record.id)
+            else:
+                snapshots[record.id] = ConnectionCheckSnapshot(
+                    connection_id=record.id,
+                    revision=outcome.revision,
+                    result=outcome.view.check,
+                )
+
+        # Resolve again after external checks so Client changes cannot leave a
+        # stale ready response. The final owner/revision read never loads secrets.
+        _, revision, current_requirements = self._requirements.resolve(
+            context,
+            workflow_id,
+            conversation_id,
+            oauth_providers=oauth_providers,
+            connection_revision=command.connection_revision,
+        )
+        if current_requirements != requirements:
+            raise ConnectionConflictError()
+        current = self._connections.access_records(context, ids)
+        for connection_id, record in records.items():
+            expected = snapshots[connection_id].revision if connection_id in snapshots else record.revision
+            latest = current.get(connection_id)
+            if latest is None or latest.revision != expected:
+                raise ConnectionConflictError()
+
+        views: list[ConnectionPreflightStatus] = []
+        for target in requirements:
+            connection_id = selections.get(target.node_id)
+            record = current.get(connection_id) if connection_id is not None else None
+            # Missing and foreign IDs produce the same disconnected response.
+            if connection_id not in records:
+                record = None
+            snapshot = snapshots.get(connection_id) if connection_id is not None else None
+            check = snapshot.result if snapshot is not None else None
+            try:
+                status = resolve_node_connection_status(
+                    context,
+                    selection=NodeConnectionSelection(workflow_id, target.node_id, connection_id),
+                    target=target,
+                    record=record,
+                    check=snapshot,
+                )
+                visible_id = None if status == NodeConnectionStatus.DISCONNECTED else connection_id
+            except ConnectionCheckUnavailableError:
+                status = None
+                visible_id = record.id if record is not None else None
+                if check is None:
+                    check = CredentialCheckResult(
+                        status="temporarily_unavailable",
+                        reason_code="provider_unavailable",
+                        retryable=True,
+                        checked_at=int(time.time()),
+                    )
+            views.append(
+                ConnectionPreflightStatus(
+                    node_id=target.node_id,
+                    provider=target.provider,
+                    connection_id=visible_id,
+                    status=status,
+                    check=check,
+                )
+            )
+        result = ConnectionPreflightView(
+            workflow_id=workflow_id, connection_revision=revision, connections=tuple(views)
+        )
+        self._connections.complete_preflight(
+            context,
+            workflow_id,
+            conversation_id,
+            revision_acceptance=(
+                ConnectionRevisionAcceptance.from_revisions(command.connection_revision, revision)
+                if requirements
+                else None
+            ),
+        )
+        return result

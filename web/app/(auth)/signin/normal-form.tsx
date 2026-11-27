@@ -1,16 +1,18 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
+import { startWebAppAccountSession } from '@/service/webapp-auth'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -18,7 +20,11 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
-import { isInvitationForAccount } from './utils/invitation-account'
+import {
+  getEndUserAccountRedirectUrl,
+  getEndUserLoginContext,
+  isEndUserSignIn,
+} from './utils/end-user-login'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
 type AuthType = 'code' | 'password'
@@ -27,50 +33,65 @@ function NormalForm() {
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isEndUser = isEndUserSignIn(searchParams)
+  const accountInput = getEndUserLoginContext(searchParams, systemFeatures.webapp_url)
+  const accountSession = useQuery(
+    consoleQuery.login.get.queryOptions({
+      input: accountInput ? { query: accountInput } : skipToken,
+      meta: { errorToast: false },
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
+  const message = decodeURIComponent(searchParams.get('message') || '')
+  const inviteToken = decodeURIComponent(searchParams.get('invite_token') || '')
+  const isInviteLink = !isEndUser && Boolean(inviteToken && inviteToken !== 'null')
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
-  const {
-    isPending: isCheckLoading,
-    data: userResp,
-    error: probeError,
-  } = useQuery({
+  const { data: userResp, error: probeError } = useQuery({
     ...userProfileQueryOptions(),
+    enabled: !isEndUser && !isInviteLink,
     throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
   })
-  const isLoggedIn = !!userResp && !probeError
-  const message = decodeURIComponent(searchParams.get('message') || '')
-  const inviteToken = decodeURIComponent(searchParams.get('invite_token') || '')
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isLoggedIn = !isInviteLink && !!userResp && !probeError
+  const accountCallback = getEndUserAccountRedirectUrl(
+    accountSession.data?.redirect_url,
+    accountInput,
+    systemFeatures.webapp_url,
+    accountSession.data?.login_code,
+  )
   const isNonCloudEdition =
     systemFeatures.deployment_edition === 'COMMUNITY' ||
     systemFeatures.deployment_edition === 'ENTERPRISE'
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(null)
 
-  const isInviteLink = Boolean(inviteToken && inviteToken !== 'null')
   const {
     data: invitationCheckResp,
     isPending: isInviteCheckLoading,
     isError: isInviteCheckError,
-  } = useQuery({
-    queryKey: ['signin', 'invite-check', inviteToken],
-    queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
-    enabled: isInviteLink,
-    retry: false,
-    refetchOnWindowFocus: false,
-  })
+  } = useQuery(
+    consoleQuery.activate.check.get.queryOptions({
+      input: { query: { token: inviteToken } },
+      enabled: isInviteLink,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
 
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
-  const isInvitationForCurrentAccount = isInvitationForAccount(
-    invitationCheckResp?.data?.email,
-    userResp?.profile.email,
+  const isInvitationForCurrentAccount = Boolean(
+    invitationCheckResp?.is_valid && invitationCheckResp.data?.is_current_account,
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
   const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
-  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
+  const hasSsoLogin = !isEndUser && systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
@@ -85,25 +106,56 @@ function NormalForm() {
   const noLoginMethodsConfigured =
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
+  const shouldRedirectLoggedInUser = isEndUser
+    ? Boolean(accountSession.data?.logged_in && accountCallback)
+    : isInviteLink
+      ? isInvitationForCurrentAccount
+      : isLoggedIn
   const isLoading =
-    shouldRedirectLoggedInUser || (isInviteLink && (isCheckLoading || isInviteCheckLoading))
+    (isEndUser && Boolean(accountInput) && accountSession.isPending) ||
+    shouldRedirectLoggedInUser ||
+    (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
-    if (!isLoggedIn) return
-
+    if (isEndUser) {
+      if (accountSession.data?.logged_in && accountCallback) {
+        if (!accountInput?.app_code && !accountInput?.code_challenge) startWebAppAccountSession()
+        replaceLoginRedirect({ kind: 'absolute', href: accountCallback }, router.replace, basePath)
+      }
+      return
+    }
     if (isInviteLink) {
       if (!isInvitationForCurrentAccount) return
       router.replace(`/signin/invite-settings?${searchParams.toString()}`)
       return
     }
+    if (!isLoggedIn) return
 
     replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
-  }, [isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
+  }, [
+    accountSession.data,
+    accountCallback,
+    accountInput?.app_code,
+    accountInput?.code_challenge,
+    isEndUser,
+    isInvitationForCurrentAccount,
+    isInviteLink,
+    isLoggedIn,
+    router,
+    searchParams,
+  ])
 
   useEffect(() => {
     if (message) toast.error(message)
   }, [message])
+
+  if (
+    isEndUser &&
+    (!accountInput ||
+      accountSession.isError ||
+      (accountSession.data?.logged_in && !accountCallback))
+  )
+    return <AppUnavailable isUnknownReason />
 
   if (isLoading) {
     return <LoadingPlaceholder />
@@ -248,7 +300,7 @@ function NormalForm() {
             </>
           )}
 
-          {systemFeatures.is_allow_register && authType === 'password' && (
+          {!isEndUser && systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
               <Link className="text-text-accent" href={signupHref}>

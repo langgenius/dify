@@ -35,9 +35,11 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, Site
 from models.workflow import WorkflowType
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
+from services.web_identity_service import WebIdentityService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message, make_workflow
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
@@ -48,6 +50,7 @@ _INPUTS: dict[str, JsonValue] = {"text": "", "list": [], "zero": 0, "flag": Fals
 
 @dataclass
 class _Services:
+    web_identity: WebIdentityService
     conversation_names: ConversationNameService
 
 
@@ -61,6 +64,7 @@ class _Harness:
     repository_factory: sessionmaker[Session]
     api: ExternalApi
     passport: str
+    web_identity: WebIdentityService
     admission_sessions: list[Session]
     repository_sessions: list[Session]
     provider_sessions: list[Session]
@@ -150,16 +154,24 @@ def harness(
 
     event.listen(sqlite_session_factory, "after_begin", track_admission)
     event.listen(repository_factory, "after_begin", track_repository)
-    passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_code": site.code, "app_id": target.id, "end_user_id": end_user.id}
+    )
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)
     event.listen(db.session.session_factory, "after_begin", track_provider)
+    web_identity = WebIdentityService(
+        accounts=SQLAlchemyAccountRepository(sqlite_session_factory),
+        allow_console_login=False,
+        allow_webapp_login=False,
+    )
     app.extensions["application_services"] = _Services(
+        web_identity,
         ConversationNameService(
             conversations=ConversationRepository(session_factory=repository_factory),
             generate_name=DefaultModelConversationNameGenerator(trace_scopes=untraced_scopes()),
-        )
+        ),
     )
     api = ExternalApi(app)
     api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name")
@@ -172,6 +184,7 @@ def harness(
         repository_factory,
         api,
         passport,
+        web_identity,
         admission_sessions,
         repository_sessions,
         provider_sessions,

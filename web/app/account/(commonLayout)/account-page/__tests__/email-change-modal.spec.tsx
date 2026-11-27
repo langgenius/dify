@@ -1,16 +1,11 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EmailChangeModal from '../email-change-modal'
 
 const mockLogout = vi.fn()
-
-vi.mock('@/app/notifications', () => ({
-  toast: { error: vi.fn() },
-}))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -158,11 +153,13 @@ describe('EmailChangeModal', () => {
       screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
     )
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'Error sending verification code: Try again in one minute',
-      ),
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('Try again in one minute')
+    expect(
+      screen.getByRole('dialog', { name: 'accountSettings.account.changeEmail.title' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('textbox', { name: 'accountSettings.account.changeEmail.codeLabel' }),
+    ).not.toBeInTheDocument()
     expect(consoleClient.account.changeEmail.validity.post).not.toHaveBeenCalled()
     expect(mockLogout).not.toHaveBeenCalled()
   })
@@ -185,17 +182,14 @@ describe('EmailChangeModal', () => {
     })
     await user.type(originCode, '123456{Enter}')
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'Error verifying email: Verification code has expired',
-      ),
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('Verification code has expired')
     expect(originCode).toBeVisible()
     expect(
       screen.queryByRole('textbox', { name: 'accountSettings.account.changeEmail.emailLabel' }),
     ).not.toBeInTheDocument()
     expect(consoleClient.account.changeEmail.reset.post).not.toHaveBeenCalled()
 
+    await user.clear(originCode)
     await user.type(originCode, '654321{Enter}')
 
     expect(

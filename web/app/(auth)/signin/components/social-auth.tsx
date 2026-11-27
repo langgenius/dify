@@ -6,7 +6,9 @@ import { API_PREFIX } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
 import { getBrowserTimezone } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 import style from '../page.module.css'
+import { getEndUserSignInUrl } from '../utils/end-user-login'
 
 export default function SocialAuth() {
   const { t } = useTranslation(['login'])
@@ -15,7 +17,10 @@ export default function SocialAuth() {
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${API_PREFIX}${href}`)
-    const params = new URLSearchParams(searchParams.toString())
+    const endUserSignIn = getEndUserSignInUrl(searchParams)
+    const params = endUserSignIn
+      ? new URLSearchParams({ mode: 'end_user', redirect_url: `${basePath}${endUserSignIn}` })
+      : new URLSearchParams(searchParams.toString())
     const timezone = getBrowserTimezone()
     if (timezone) params.set('timezone', timezone)
     params.set('language', locale)

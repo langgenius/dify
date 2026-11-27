@@ -6,6 +6,7 @@ from typing import override
 from sqlalchemy import JSON, ColumnElement, Select, cast, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from graphon.variables import VariableBase
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
@@ -109,7 +110,7 @@ class ConversationVariableRepository(ConversationVariableQuery):
     ) -> ConversationVariableRecord:
         """Apply a pure transformation in the write transaction; it must perform no external I/O."""
         with self._session_factory.begin() as session:
-            stmt = self._variables(session=session, ref=ref)
+            stmt = self._variables(session=session, ref=ref, lock=True)
             row = session.scalar(stmt.where(ConversationVariable.id == variable_id).with_for_update())
             if row is None:
                 raise ConversationVariableNotExistsError()
@@ -135,7 +136,10 @@ class ConversationVariableRepository(ConversationVariableQuery):
         return name.ilike(f"%{escape_like_pattern(variable_name)}%", escape="\\")
 
     @staticmethod
-    def _variables(*, session: Session, ref: EndUserConversationRef) -> Select[tuple[ConversationVariable]]:
+    def _variables(
+        *, session: Session, ref: EndUserConversationRef, lock: bool = False
+    ) -> Select[tuple[ConversationVariable]]:
+        """Require current ownership, locking it for writes before returning the scoped variable query."""
         owner = (
             select(Conversation.id)
             .join(App, App.id == Conversation.app_id)
@@ -153,7 +157,10 @@ class ConversationVariableRepository(ConversationVariableQuery):
                 Conversation.is_deleted.is_(False),
             )
         )
-        if session.scalar(owner) is None:
+        admitted_owner = (
+            owner.with_for_update(of=Conversation) if lock and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED else owner
+        )
+        if session.scalar(admitted_owner) is None:
             raise ConversationNotExistsError(
                 f"Conversation {ref.conversation_id} does not belong to this end user and app."
             )

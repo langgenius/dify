@@ -88,6 +88,28 @@ describe('sign-in policies', () => {
     profile.unsubscribe()
   })
 
+  it.each([signIns[0], signIns[1]])(
+    '%s does not refetch the Console profile after End User sign-in',
+    async (_name, procedure) => {
+      const { client, context } = setup()
+      const profile = observeProfile(client)
+
+      const state = track(
+        (procedure.mutationOptions().onSuccess as Callback)(
+          { result: 'success' },
+          { body: { mode: 'end_user' } },
+          undefined,
+          context,
+        ),
+      )
+      await settle()
+
+      expect(profile.queryFn).not.toHaveBeenCalled()
+      expect(state.done).toBe(true)
+      profile.unsubscribe()
+    },
+  )
+
   it('waits for the reloaded profile after the first account setup', async () => {
     const { client, context } = setup()
     const profile = observeProfile(client)

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isClient } from '@/utils/client'
 import { useEmbeddedChatbotContext } from '../context'
@@ -32,7 +33,7 @@ const Header: FC<IHeaderProps> = ({
   onCreateNewChat,
 }) => {
   const { t } = useTranslation(['share'])
-  const { appData, currentConversationId, inputsForms, allInputsHidden } =
+  const { appData, currentConversationId, inputsForms, allInputsHidden, isResponding } =
     useEmbeddedChatbotContext()
 
   const isIframe = isClient ? window.self !== window.top : false
@@ -92,6 +93,7 @@ const Header: FC<IHeaderProps> = ({
     return (
       <div className="flex h-14 shrink-0 items-center justify-end p-3">
         <div className="flex items-center gap-1">
+          <WebAppConnectionControls isResponding={isResponding} />
           {/* powered by */}
           <div className="shrink-0">
             {!appData?.custom_config?.remove_webapp_brand && (
@@ -190,6 +192,7 @@ const Header: FC<IHeaderProps> = ({
         </div>
       </div>
       <div className="flex items-center gap-1">
+        <WebAppConnectionControls isResponding={isResponding} />
         {showToggleExpandButton && (
           <Tooltip>
             <TooltipTrigger

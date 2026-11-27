@@ -7,10 +7,13 @@ import {
   OAUTH_REGISTRATION_GA_SENT_KEY,
   REGISTRATION_SUCCESS_STORAGE_KEY,
 } from '@/app/components/base/amplitude/registration-session-state'
+import EndUserAccountMenu from '@/app/components/end-user/layout/account-menu'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import EducationUserInfo from '@/app/education/user-info'
+import * as webAppPortal from '@/service/webapp/portal-login'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
+import { installFakeApi, route } from '@/test/fake-api'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import AccountMenu from '../index'
 
@@ -138,6 +141,41 @@ describe('AccountMenu', () => {
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('preferences'),
     )
+  })
+
+  it('sends end-user logout through the Web App portal', async () => {
+    const user = userEvent.setup()
+    const logoutFromPortal = vi.spyOn(webAppPortal, 'logoutFromWebAppPortal').mockResolvedValue()
+    onTestFinished(
+      installFakeApi({
+        routes: [
+          route('GET', 'public', '/account/profile', () => ({
+            name: 'Evan Z',
+            email: 'evan@example.com',
+            avatar: null,
+            avatar_url: null,
+            has_tenant: false,
+            has_owned_tenant: false,
+            interface_language: 'en-US',
+            interface_theme: 'system',
+            is_password_set: false,
+            timezone: 'UTC',
+          })),
+        ],
+      }),
+    )
+    renderWithConsoleQuery(<EndUserAccountMenu />)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'app.endUser.userMenu:{"name":"Evan Z"}' }),
+    )
+    const logoutItem = await screen.findByRole('menuitem', { name: 'common.userProfile.logout' })
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
+
+    await user.click(logoutItem)
+
+    await waitFor(() => expect(logoutFromPortal).toHaveBeenCalledOnce())
+    expect(logout).not.toHaveBeenCalled()
   })
 
   it.each(['main navigation', 'account page', 'education'] as const)(

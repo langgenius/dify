@@ -59,7 +59,7 @@ function installCredentialApi() {
               byProvider: {
                 delete: { post: () => ({ result: 'success' }) },
                 update: { post: () => ({ result: 'success' }) },
-                add: { post: () => ({ result: 'success' }) },
+                add: { post: () => ({ result: 'success', id: 'credential-created' }) },
                 defaultCredential: { post: () => ({ result: 'success' }) },
                 credential: {
                   schema: {

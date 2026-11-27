@@ -44,6 +44,7 @@ export type AppPublisherProps = Pick<PopoverContentProps, 'alignOffset'> & {
   outputs?: WorkflowToolOutputVariable[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
+  hasEndUserAuthTools?: boolean
   missingStartNode?: boolean
   hasTriggerNode?: boolean
   startNodeLimitExceeded?: boolean

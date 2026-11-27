@@ -165,13 +165,16 @@ def _build_account_oauth_service(
         memberships=memberships,
         invitations=AccountActivationOAuthInvitationGateway(tokens=invitation_tokens, accounts=activation_accounts),
         account_claims=RedisOAuthAccountClaimLock(client=redis),
-        registration=AccountLifecycleOAuthRegistrationGateway(accounts=lifecycle),
+        registration=AccountLifecycleOAuthRegistrationGateway(
+            accounts=lifecycle, defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD
+        ),
         workspaces=WorkspaceProvisioningOAuthGateway(workspaces=workspace_provisioning),
         sessions=AccountLifecycleOAuthSessionGateway(accounts=lifecycle),
         registration_policy=policy,
         workspace_policy=policy,
         supported_languages=languages,
         now=naive_utc_now,
+        defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
     )
 
 
@@ -211,6 +214,7 @@ def build_account_services(
             enabled=dify_config.RBAC_ENABLED,
         ),
         capacity=WorkspaceMemberCapacityGateway(workspaces=workspace_repository, redis=redis),
+        first_workspace_provisioning=workspace_provisioning if deployment_edition == DeploymentEdition.CLOUD else None,
     )
     return AccountServices(
         lifecycle=lifecycle,
@@ -239,6 +243,7 @@ def build_account_services(
             sessions=RedisAccountSessionGateway(redis=redis),
             refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(accounts=accounts),
             account_provisioning=workspace_provisioning,
+            account_registration=lifecycle,
             workspace_provisioning=workspace_provisioning,
             email_codes=RedisEmailCodeGateway(redis=redis),
             reset_password_emails=RedisResetPasswordEmailGateway(redis=redis),
@@ -248,6 +253,7 @@ def build_account_services(
             turnstile_verify_required=(
                 deployment_edition == DeploymentEdition.CLOUD and dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED
             ),
+            defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
         ),
         avatar=AccountAvatarService(
             avatars=accounts,
@@ -292,7 +298,9 @@ def build_account_services(
             account_policy=BillingAccountRegistrationPolicyGateway(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
             ),
-            registration=AccountLifecycleRegistrationGateway(accounts=lifecycle),
+            registration=AccountLifecycleRegistrationGateway(
+                accounts=lifecycle, defer_workspace_creation=deployment_edition == DeploymentEdition.CLOUD
+            ),
         ),
         deletion=AccountDeletionService(
             accounts=accounts,

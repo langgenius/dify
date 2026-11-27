@@ -15,9 +15,12 @@ import { BlockEnum, InputVarType, WorkflowRunningStatus } from '../types'
 
 type Props = Readonly<{
   onRun: () => void
+  beforeRun?: () => Promise<boolean>
+  preparingRun?: boolean
+  disabled?: boolean
 }>
 
-const InputsPanel = ({ onRun }: Props) => {
+const InputsPanel = ({ onRun, beforeRun, preparingRun = false, disabled = false }: Props) => {
   const { t } = useTranslation(['workflow'])
   const workflowStore = useWorkflowStore()
   const inputs = useStore((s) => s.inputs)
@@ -78,12 +81,18 @@ const InputsPanel = ({ onRun }: Props) => {
     const canUploadReady = !files?.some(
       (item) => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id,
     )
-    return canRunWorkflow && canUploadReady
-  }, [canRunWorkflow, files])
+    return canRunWorkflow && canUploadReady && !disabled
+  }, [canRunWorkflow, files, disabled])
 
-  const doRun = useCallback(() => {
-    if (!canRun) return
+  const doRun = useCallback(async () => {
+    if (
+      !canRun ||
+      preparingRun ||
+      workflowRunningData?.result?.status === WorkflowRunningStatus.Running
+    )
+      return
     if (!checkInputsForm(initialInputs, variables as any)) return
+    if (beforeRun && !(await beforeRun())) return
     const processedInputs = getProcessedInputs(initialInputs, variables as any)
     // null selects the backend default; an empty string explicitly clears an optional file.
     for (const variable of variables) {
@@ -96,7 +105,18 @@ const InputsPanel = ({ onRun }: Props) => {
     }
     onRun()
     handleRun({ inputs: processedInputs, files })
-  }, [canRun, files, handleRun, initialInputs, onRun, variables, checkInputsForm])
+  }, [
+    canRun,
+    preparingRun,
+    workflowRunningData?.result?.status,
+    beforeRun,
+    files,
+    handleRun,
+    initialInputs,
+    onRun,
+    variables,
+    checkInputsForm,
+  ])
 
   return (
     <>
@@ -116,8 +136,11 @@ const InputsPanel = ({ onRun }: Props) => {
       <div className="flex items-center justify-between px-4 py-2">
         <Button
           variant="primary"
+          loading={preparingRun}
           disabled={
-            !canRun || workflowRunningData?.result?.status === WorkflowRunningStatus.Running
+            !canRun ||
+            preparingRun ||
+            workflowRunningData?.result?.status === WorkflowRunningStatus.Running
           }
           className="w-full"
           onClick={doRun}

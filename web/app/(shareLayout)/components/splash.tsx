@@ -19,16 +19,24 @@ import {
 } from '@/features/app-access-error/state'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { webAppLoginStatus, webAppLogout } from '@/service/common'
 import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
-import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
+import {
+  getAuthenticatedWebAppPassport,
+  getWebAppAccessToken,
+  getWebAppLoginMode,
+  setWebAppAccessToken,
+  setWebAppPassport,
+  webAppLoginStatus,
+  webAppLogout,
+} from '@/service/webapp-auth'
+import { restoreWebAppAccountSession } from '@/service/webapp/account-session'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
-function Splash({ children }: PropsWithChildren) {
+export default function Splash({ children }: PropsWithChildren) {
   const { t } = useTranslation(['common', 'share'])
   const shareCode = useWebAppStore((s) => s.shareCode)
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
@@ -123,6 +131,23 @@ function Splash({ children }: PropsWithChildren) {
 
     const initialize = async () => {
       try {
+        if (!isSigninRoute && address.kind === 'default') {
+          const appUsesAccount = getWebAppLoginMode(address) === 'end_user'
+          const tryAccount =
+            getWebAppLoginMode() === 'end_user' &&
+            webAppAccessMode !== AccessMode.EXTERNAL_MEMBERS &&
+            !getAuthenticatedWebAppPassport(address)
+          if (appUsesAccount || tryAccount) {
+            const restored = await restoreWebAppAccountSession(address, canContinue, {
+              allowLegacyFallback: !appUsesAccount,
+            })
+            if (restored) {
+              redirectOrFinish()
+              return
+            }
+            if (!canContinue() || appUsesAccount || getWebAppLoginMode() !== 'end_user') return
+          }
+        }
         // Public apps still need a valid app passport even when user login is not required.
         const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
           effectiveShareCode,
@@ -142,7 +167,11 @@ function Splash({ children }: PropsWithChildren) {
             })
             if (!canContinue()) return
 
-            setWebAppPassport(address, access_token)
+            setWebAppPassport(
+              address,
+              access_token,
+              getWebAppAccessToken() ? 'authenticated' : 'anonymous',
+            )
             redirectOrFinish()
           } catch (error) {
             if (!canContinue() || isAppAccessError(error)) return
@@ -238,5 +267,3 @@ function Splash({ children }: PropsWithChildren) {
   }
   return <>{children}</>
 }
-
-export default Splash

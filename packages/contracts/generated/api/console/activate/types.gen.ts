@@ -60,6 +60,7 @@ export type ActivationCheckResponse = {
 export type ActivationCheckData = {
   account_status?: string | null
   email: string | null
+  is_current_account?: boolean
   requires_setup?: boolean | null
   workspace_id: string | null
   workspace_name: string | null

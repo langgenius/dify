@@ -1,4 +1,6 @@
-from flask import request
+from contextlib import suppress
+
+from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Unauthorized
@@ -69,6 +71,7 @@ class ActivationCheckData(BaseModel):
     email: str | None
     account_status: str | None = None
     requires_setup: bool | None = None
+    is_current_account: bool = False
 
 
 class ActivationCheckResponse(BaseModel):
@@ -88,6 +91,7 @@ register_schema_models(
 
 @console_ns.route("/activate/check")
 class ActivateCheckApi(Resource):
+    @console_account_only_identity
     @console_ns.doc("check_activation_token")
     @console_ns.doc(description="Check if activation token is valid")
     @console_ns.doc(params=query_params_from_model(ActivateCheckQuery))
@@ -98,17 +102,30 @@ class ActivateCheckApi(Resource):
     )
     @model_validate(ActivateCheckQuery)
     def get(self, args: ActivateCheckQuery):
+        authenticated_account_id: str | None = None
+        if extract_access_token(request) is not None:
+            with suppress(Unauthorized):
+                account, _ = current_account_with_tenant_optional()
+                if account is not None:
+                    authenticated_account_id = account.id
+
         result = application_services().accounts.activation.check(
             InvitationLookup(
                 workspace_id=args.workspace_id,
                 email=args.email,
                 token=args.token,
             ),
+            authenticated_account_id=authenticated_account_id,
         )
-        return ActivationCheckResponse.model_validate(result, from_attributes=True).model_dump(
-            mode="json",
-            exclude_none=True,
+        # response-contract:ignore session-dependent invitation check must not be cached
+        response = make_response(
+            ActivationCheckResponse.model_validate(result, from_attributes=True).model_dump(
+                mode="json",
+                exclude_none=True,
+            )
         )
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
 
 @console_ns.route("/activate")

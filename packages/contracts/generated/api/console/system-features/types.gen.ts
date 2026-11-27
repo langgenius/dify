@@ -4,7 +4,7 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type SystemFeatureModel = {
+export type ConsoleSystemFeatureResponse = {
   agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
@@ -25,7 +25,9 @@ export type SystemFeatureModel = {
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SsoProtocol | null
+  webapp_account_login_enabled: boolean
   webapp_auth: WebAppAuthModel
+  webapp_url: string
 }
 
 export type ErrorResponse = {
@@ -108,7 +110,7 @@ export type GetSystemFeaturesErrors = {
 export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
 
 export type GetSystemFeaturesResponses = {
-  200: SystemFeatureModel
+  200: ConsoleSystemFeatureResponse
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]

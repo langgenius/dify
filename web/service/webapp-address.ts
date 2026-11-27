@@ -1,5 +1,15 @@
+import { basePath } from '@/utils/var'
+
 const WEB_APP_ROUTE_SEGMENTS = new Set(['agent', 'chat', 'chatbot', 'completion', 'workflow'])
 const WEB_APP_SIGNIN_SEGMENTS = new Set(['webapp-signin', 'check-code', 'login'])
+
+export const WEBAPP_PORTAL_LOGIN_CODE = 'login_code'
+
+export function withWebAppPortalLoginCode(destination: URL, loginCode: string) {
+  const url = new URL(destination)
+  url.searchParams.set(WEBAPP_PORTAL_LOGIN_CODE, loginCode)
+  return url
+}
 
 export type WebAppAddress =
   | {
@@ -11,9 +21,20 @@ export type WebAppAddress =
       code: string
     }
 
+export function getWebAppRouteSegment(mode: string) {
+  return mode === 'completion' || mode === 'workflow' ? mode : 'chat'
+}
+
 const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`)
 
-export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
+export const removeWebAppBasePath = (pathname: string) => {
+  const prefix = basePath.replace(/\/$/, '')
+  if (prefix && (pathname === prefix || pathname.startsWith(`${prefix}/`)))
+    return pathname.slice(prefix.length) || '/'
+  return pathname
+}
+
+export const parseWebAppRoute = (pathname: string): WebAppAddress | null => {
   const segments = pathname.split('/').filter(Boolean)
   if (segments[0] === 'environment') {
     const [, route, code, ...rest] = segments
@@ -22,10 +43,21 @@ export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
   }
 
   const [route, code, ...rest] = segments
-  if (!route || !code || rest.length > 0 || !WEB_APP_ROUTE_SEGMENTS.has(route)) return null
+  const isConversationMigration =
+    route === 'chat' && rest.length === 1 && rest[0] === 'migrate-conversations'
+  if (
+    !route ||
+    !code ||
+    (rest.length > 0 && !isConversationMigration) ||
+    !WEB_APP_ROUTE_SEGMENTS.has(route)
+  )
+    return null
   if (WEB_APP_SIGNIN_SEGMENTS.has(code)) return null
   return { kind: 'default', code }
 }
+
+export const parseWebAppAddress = (pathname: string): WebAppAddress | null =>
+  parseWebAppRoute(removeWebAppBasePath(pathname))
 
 export const resolveWebAppAddress = (): WebAppAddress | null => {
   if (typeof globalThis.location === 'undefined') return null
@@ -37,8 +69,12 @@ export const resolveWebAppAddress = (): WebAppAddress | null => {
   if (!redirectParam) return null
 
   try {
-    const redirectUrl = new URL(decodeURIComponent(redirectParam), globalThis.location.origin)
-    return parseWebAppAddress(redirectUrl.pathname)
+    const redirectUrl = new URL(redirectParam, globalThis.location.origin)
+    const address = parseWebAppAddress(redirectUrl.pathname)
+    if (address) return address
+    return parseWebAppAddress(
+      new URL(decodeURIComponent(redirectParam), globalThis.location.origin).pathname,
+    )
   } catch {
     return null
   }

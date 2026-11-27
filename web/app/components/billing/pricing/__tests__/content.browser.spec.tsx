@@ -7,6 +7,7 @@ import appApi from '@/i18n/locales/en-US/app-api.json'
 import billing from '@/i18n/locales/en-US/billing.json'
 import common from '@/i18n/locales/en-US/common.json'
 import education from '@/i18n/locales/en-US/education.json'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, setupFakeApi } from '@/test/fake-api'
 import { PricingContent } from '../content'
@@ -14,7 +15,20 @@ import { PricingContent } from '../content'
 vi.unmock('react-i18next')
 
 const fake = setupFakeApi(() => ({
-  console: { features: { get: () => ({}) } },
+  console: {
+    features: { get: async () => createFeaturesFixture() },
+    account: {
+      education: {
+        get: () => ({
+          is_student: false,
+          allow_refresh: false,
+          can_redeem_discount: false,
+          expire_at: null,
+          result: false,
+        }),
+      },
+    },
+  },
 }))
 
 async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = {}) {

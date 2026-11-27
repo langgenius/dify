@@ -31,6 +31,7 @@ import { ORPCError } from '@orpc/client'
 import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
 import { resolveWebAppAddress } from './webapp-address'
+import { captureWebAppAuthSession, getWebAppLoginMode } from './webapp-auth'
 
 export type IOnDataMoreInfo = {
   event?: string
@@ -215,7 +216,7 @@ const isWebAppAuthorizationError = (data: unknown) => {
   if (
     data.code === 'web_app_access_denied' ||
     data.code === 'web_sso_auth_required' ||
-    data.code === 'unauthorized' ||
+    (data.code === 'unauthorized' && getWebAppLoginMode(resolveWebAppAddress()) !== 'end_user') ||
     data.reason === 'APPDEPLOY_WEB_APP_ACCESS_DENIED'
   )
     return true
@@ -263,6 +264,8 @@ const handleRequestError = (error: unknown, callbacks: StreamCallbacks) => {
 const consumeFrames = async (
   frames: AsyncIterable<unknown> | unknown[],
   callbacks: StreamCallbacks,
+  isRequestCurrent: () => boolean,
+  abortController: AbortController,
 ) => {
   const { onCompleted, onUnhandledEvent } = callbacks
   let isFirstMessage = true
@@ -355,17 +358,33 @@ const consumeFrames = async (
   const iterator = (Array.isArray(frames) ? frames.values() : frames[Symbol.asyncIterator]()) as
     | AsyncIterator<unknown>
     | Iterator<unknown>
+  const retireStream = () => {
+    abortController.abort()
+    void iterator.return?.()
+  }
   while (true) {
+    if (!isRequestCurrent()) {
+      retireStream()
+      return
+    }
     let result: IteratorResult<unknown>
     try {
       result = await iterator.next()
     } catch (error) {
+      if (!isRequestCurrent()) {
+        retireStream()
+        return
+      }
       fail({
         conversationId: field(lastFrame, 'conversation_id'),
         messageId: field(lastFrame, 'message_id') ?? '',
         errorMessage: String(error),
         errorCode: 'stream_read_error',
       })
+      return
+    }
+    if (!isRequestCurrent()) {
+      retireStream()
       return
     }
     if (result.done) break
@@ -381,6 +400,7 @@ const consumeFrames = async (
       return
     }
   }
+  if (!isRequestCurrent()) return
   onCompleted?.()
 }
 
@@ -390,10 +410,20 @@ const consumeFrames = async (
  */
 export function streamEvents(request: StreamRequest, callbacks: StreamCallbacks): void {
   const abortController = new AbortController()
+  const isRequestCurrent = callbacks.isPublicAPI ? captureWebAppAuthSession() : () => true
   callbacks.getAbortController?.(abortController)
   request(streamRequestOptions(abortController.signal)).then(
-    (output) => consumeFrames(toFrames(output), callbacks),
-    (error: unknown) => handleRequestError(error, callbacks),
+    (output) => {
+      if (!isRequestCurrent()) {
+        abortController.abort()
+        return
+      }
+      void consumeFrames(toFrames(output), callbacks, isRequestCurrent, abortController)
+    },
+    (error: unknown) => {
+      if (!isRequestCurrent() || (callbacks.isPublicAPI && abortController.signal.aborted)) return
+      handleRequestError(error, callbacks)
+    },
   )
 }
 

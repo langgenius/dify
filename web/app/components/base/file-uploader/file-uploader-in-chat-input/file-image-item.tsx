@@ -15,6 +15,7 @@ type FileImageItemProps = {
   canPreview?: boolean
   onRemove?: (fileId: string) => void
   onReUpload?: (fileId: string) => void
+  disabled?: boolean
 }
 const FileImageItem = ({
   file,
@@ -23,6 +24,7 @@ const FileImageItem = ({
   canPreview,
   onRemove,
   onReUpload,
+  disabled,
 }: FileImageItemProps) => {
   const { t } = useTranslation(['common', 'custom'])
   const { id, progress, base64Url, url, name } = file
@@ -45,6 +47,7 @@ const FileImageItem = ({
             aria-label={`${t(($) => $['operation.view'], { ns: 'common' })} ${name}`}
             className="block border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => setImagePreviewUrl(base64Url || url || '')}
+            disabled={disabled}
           >
             {image}
           </button>
@@ -58,6 +61,7 @@ const FileImageItem = ({
             size="sm"
             className="pointer-events-none absolute -inset-e-1.5 -top-1.5 z-11 rounded-full opacity-0 group-focus-within/file-image:pointer-events-auto group-focus-within/file-image:opacity-100 group-hover/file-image:pointer-events-auto group-hover/file-image:opacity-100"
             onClick={() => onRemove?.(id)}
+            disabled={disabled}
           >
             <span
               aria-hidden="true"
@@ -81,6 +85,7 @@ const FileImageItem = ({
               aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
               className="rounded-none hover:bg-transparent"
               onClick={() => onReUpload?.(id)}
+              disabled={disabled}
             >
               <span aria-hidden="true" className="i-custom-vender-other-replay-line size-5" />
             </IconButton>
@@ -95,6 +100,7 @@ const FileImageItem = ({
               onClick={() => {
                 downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
               }}
+              disabled={disabled}
             >
               <span aria-hidden="true" className="i-ri-download-line size-4 text-text-tertiary" />
             </IconButton>

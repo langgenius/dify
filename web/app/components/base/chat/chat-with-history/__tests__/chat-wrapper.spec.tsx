@@ -1,12 +1,16 @@
 import type { ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InstalledAppConnectionsState } from '@/app/components/explore/installed-app/connections/provider'
+import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
+import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import type { AppData } from '@/models/share'
 import type { RecordedStreamCall } from '@/test/stream-recorder'
 import type { WorkflowFinishedResponse, WorkflowPausedResponse } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { registerWebAppEventTracker } from '@/app/components/base/amplitude/web-app-event'
+import { InstalledAppConnectionsContext } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import {
   fetchChatList,
@@ -23,6 +27,14 @@ import {
 } from '@/test/fixtures/workflow-process'
 import ChatWrapper from '../chat-wrapper'
 import { ChatWithHistoryContext } from '../context'
+import {
+  chatConnectionEntry,
+  checkedRevision,
+  createChatAccountEntry,
+  createChatConnections,
+  selectedConnectionId,
+  withChatConnections,
+} from './connection-fixture'
 
 const { sseGet, ssePost } = vi.hoisted(() => ({
   sseGet: vi.fn<RecordedStreamCall>(),
@@ -129,17 +141,88 @@ const createHistoryContextValue = (
   ...overrides,
 })
 
-function renderChat(overrides: Partial<ChatWithHistoryContextValue> = {}) {
+function createInstalledChatConnections(conversationId: string): InstalledAppConnectionsState {
+  if (!('parameters' in chatConnectionEntry)) throw new Error('Connection entry required')
+  const selections = { 'github-node': selectedConnectionId }
+  return {
+    installedAppId: 'installed-app-1',
+    isCurrentSession: () => true,
+    status: 'ready',
+    error: null,
+    canRun: true,
+    canConfirm: true,
+    confirmSelection: vi.fn().mockResolvedValue(true),
+    runConfiguration: {
+      connection_revision: checkedRevision,
+      connections: selections,
+      conversation_id: conversationId,
+    },
+    requirements: chatConnectionEntry.parameters.connection_requirements ?? [],
+    credentials: [
+      {
+        id: selectedConnectionId,
+        name: 'Workspace GitHub account',
+        provider: 'langgenius/github/github',
+        credential_type: 'oauth2',
+        credential_status: 'connected',
+        account_label: null,
+        created_at: 1,
+        updated_at: 1,
+        expires_at: null,
+        last_active_at: null,
+        manual_revocation_required_on_expiry: false,
+      },
+    ],
+    preflight: {
+      connection_revision: checkedRevision,
+      ready: true,
+      connections: [
+        {
+          node_id: 'github-node',
+          connection_id: selectedConnectionId,
+          status: 'connected',
+          check: null,
+        },
+      ],
+    },
+    selections,
+    isMutating: false,
+    checking: false,
+    warningCount: 0,
+    onSelect: vi.fn(),
+    retry: vi.fn(),
+  }
+}
+
+function renderChat(
+  overrides: Partial<ChatWithHistoryContextValue> = {},
+  initialConnections?: ConnectionsState | InstalledAppConnectionsState,
+  entry?: WebAppEntryState,
+) {
+  let connections = initialConnections
   let context = createHistoryContextValue(overrides)
-  const tree = () => (
-    <ChatWithHistoryContext.Provider value={context}>
-      <ChatWrapper />
-    </ChatWithHistoryContext.Provider>
-  )
+  const tree = () => {
+    const chat = (
+      // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component.
+      <ChatWithHistoryContext.Provider value={context}>
+        <ChatWrapper />
+      </ChatWithHistoryContext.Provider>
+    )
+    if (connections && 'installedAppId' in connections)
+      return (
+        <InstalledAppConnectionsContext value={connections}>{chat}</InstalledAppConnectionsContext>
+      )
+
+    return withChatConnections({ state: connections, entry, children: chat })
+  }
   const view = renderWithConsoleQuery(tree())
   return {
     ...view,
     context,
+    updateConnections: (next: ConnectionsState | InstalledAppConnectionsState) => {
+      connections = next
+      view.rerender(tree())
+    },
     updateContext: (next: Partial<ChatWithHistoryContextValue>) => {
       context = { ...context, ...next }
       view.rerender(tree())
@@ -166,7 +249,16 @@ const question = (
   id,
   content,
   isAnswer: false,
-  children: [{ id: answerId, content: answer, isAnswer: true, parentMessageId: id, siblingIndex }],
+  children: [
+    {
+      id: answerId,
+      content: answer,
+      isAnswer: true,
+      parentMessageId: id,
+      siblingIndex,
+      children: [],
+    },
+  ],
 })
 const uploadedFile = (id = 'file-1', uploadedId?: string): FileEntity =>
   createChatFileFixture({
@@ -237,6 +329,66 @@ beforeEach(() => {
   unregisterTracker = registerWebAppEventTracker(trackEvent)
 })
 afterEach(() => unregisterTracker())
+
+it('shows the app introduction before the first message and restores it for a new conversation', async () => {
+  const user = userEvent.setup()
+  const appData = createAppData()
+  appData.site.description = 'Find useful sources for your research.'
+  const { updateContext } = renderChat(
+    { appData, currentConversationId: '' },
+    undefined,
+    createChatAccountEntry(true),
+  )
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+  expect(screen.getByText(appData.site.description)).toBeVisible()
+
+  await sendMessage(user, 'Find research about renewable energy')
+
+  expect(
+    screen.queryByRole('heading', { level: 1, name: appData.site.title }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText(appData.site.description)).not.toBeInTheDocument()
+  await act(async () => {
+    stream().onData?.('Here are some useful sources.', true, {
+      messageId: 'research-answer',
+      conversationId: 'research-conversation',
+    })
+    await stream().onCompleted?.()
+  })
+  expect(await screen.findByText('Here are some useful sources.')).toBeVisible()
+  expect(screen.queryByText(appData.site.description)).not.toBeInTheDocument()
+
+  updateContext({ currentConversationId: 'research-conversation' })
+  updateContext({ currentConversationId: '' })
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+  expect(screen.getByText(appData.site.description)).toBeVisible()
+})
+
+it('hides the app introduction while viewing history and restores it when returning to a new chat', () => {
+  const appData = createAppData()
+  appData.site.description = 'Find useful sources for your research.'
+  const { updateContext } = renderChat(
+    { appData, currentConversationId: '' },
+    undefined,
+    createChatAccountEntry(true),
+  )
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+
+  updateContext({ currentConversationId: 'saved-conversation' })
+
+  expect(
+    screen.queryByRole('heading', { level: 1, name: appData.site.title }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText(appData.site.description)).not.toBeInTheDocument()
+
+  updateContext({ currentConversationId: '' })
+
+  expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
+  expect(screen.getByText(appData.site.description)).toBeVisible()
+})
 
 it('sends an opening suggestion and keeps one opening statement in the conversation', async () => {
   const user = userEvent.setup()
@@ -715,6 +867,99 @@ it('does not submit human input when the workflow event connection fails before 
   expect(submitHumanInputForm).not.toHaveBeenCalled()
 })
 
+it('retains a paused form and prevents resuming while required connections are unavailable', async () => {
+  const user = userEvent.setup()
+  const ready = createChatConnections()
+  const { updateConnections } = renderChat(
+    {
+      appPrevChatTree: [
+        { id: 'q1', isAnswer: false, content: 'Previous question', children: [pausedAnswer()] },
+      ],
+    },
+    ready,
+  )
+  await act(async () => events().onWorkflowPaused?.(pausedEvent()))
+  const field = await screen.findByRole('textbox', { name: 'review' })
+  await user.type(field, 'Keep this review')
+  updateConnections({ ...ready, canRun: false, runConfiguration: null })
+  expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
+  expect(field).toHaveValue('Keep this review')
+  expect(screen.getByText('Previous question')).toBeVisible()
+  expect(submitHumanInputForm).not.toHaveBeenCalled()
+
+  updateConnections(ready)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  await waitFor(() =>
+    expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+      'token-1',
+      {
+        inputs: { review: 'Keep this review' },
+        action: 'approve',
+      },
+      undefined,
+    ),
+  )
+})
+
+it.each(['Web App', 'installed app'])(
+  'rechecks %s connections after waiting for a paused workflow subscription before submitting',
+  async (source) => {
+    const user = userEvent.setup()
+    const isInstalledApp = source === 'installed app'
+    const conversationId = '1'
+    const ready = isInstalledApp
+      ? createInstalledChatConnections(conversationId)
+      : createChatConnections()
+    const { updateConnections } = renderChat(
+      {
+        isInstalledApp,
+        currentConversationId: conversationId,
+        appPrevChatTree: [
+          { id: 'q1', isAnswer: false, content: 'Question', children: [pausedAnswer()] },
+        ],
+      },
+      ready,
+    )
+    const submit = isInstalledApp ? submitInstalledForm : submitHumanInputForm
+    const otherSubmit = isInstalledApp ? submitHumanInputForm : submitInstalledForm
+    await user.type(await screen.findByRole('textbox', { name: 'review' }), 'Keep this review')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(submit).not.toHaveBeenCalled()
+    updateConnections(
+      'installedAppId' in ready
+        ? {
+            ...ready,
+            canRun: false,
+            canConfirm: false,
+            runConfiguration: null,
+            preflight: null,
+            checking: true,
+          }
+        : {
+            ...ready,
+            canRun: false,
+            runConfiguration: null,
+            preflight: { ...ready.preflight, status: 'checking', response: null },
+          },
+    )
+    await act(async () => events().onWorkflowPaused?.(pausedEvent()))
+    expect(submit).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this review')
+
+    updateConnections(ready)
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledExactlyOnceWith(
+        'token-1',
+        { inputs: { review: 'Keep this review' }, action: 'approve' },
+        undefined,
+      ),
+    )
+    expect(otherSubmit).not.toHaveBeenCalled()
+  },
+)
+
 it.each([false, true])(
   'shows inputs before the welcome and reveals it after starting chat (mobile=%s)',
   async (isBelowSm) => {
@@ -765,4 +1010,134 @@ it.each([
     appPrevChatTree: [question('q1', 'Question', 'a1', 'Answer')],
   })
   expect(screen.getByRole('img', { name: label })).toHaveTextContent(initial)
+})
+
+it('requires confirmation of restored connections without sending, then sends the checked snapshot', async () => {
+  const user = userEvent.setup()
+  const connections = createChatConnections()
+  const { updateContext } = renderChat({ currentConversationId: '' }, connections)
+
+  expect(screen.queryByPlaceholderText(/common.chat.inputPlaceholder/)).not.toBeInTheDocument()
+  expect(ssePost).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' }))
+  expect(chatInput()).toBeEnabled()
+  expect(ssePost).not.toHaveBeenCalled()
+
+  await sendMessage(user, 'Find repository examples')
+  expect(ssePost).toHaveBeenCalledWith(
+    'chat-messages',
+    {
+      body: expect.objectContaining({
+        connection_revision: checkedRevision,
+        connections: { 'github-node': selectedConnectionId },
+        conversation_id: '',
+        query: 'Find repository examples',
+      }),
+    },
+    expect.objectContaining({ isPublicAPI: true }),
+  )
+
+  connections.runConfiguration!.connections['github-node'] = 'later-selection'
+  expect(ssePost.mock.calls[0]![1]).toMatchObject({
+    body: { connections: { 'github-node': selectedConnectionId } },
+  })
+  await act(async () => {
+    stream().onData?.('Repository examples', true, {
+      messageId: 'answer',
+      conversationId: 'created-conversation',
+    })
+    await stream().onCompleted?.()
+  })
+  updateContext({ currentConversationId: 'created-conversation' })
+  expect(screen.getByText('Repository examples')).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: 'share.connections.setup.startUsingApp' }),
+  ).not.toBeInTheDocument()
+})
+
+it.each(['Research prospects and prepare follow-up emails.', undefined])(
+  'keeps app information and a disabled composer visible when sign-in is required (description: %s)',
+  async (description) => {
+    const user = userEvent.setup()
+    if (!('parameters' in chatConnectionEntry)) throw new Error('Ready entry required')
+    const state = createChatConnections({
+      status: 'sign-in-required',
+      canRun: false,
+      runConfiguration: null,
+    })
+    renderChat(
+      {
+        currentConversationId: '',
+        appData: createAppData({ site: { title: 'Sales Follow-up Assistant', description } }),
+        appParams: createChatConfigFixture({ speech_to_text: { enabled: true } }),
+      },
+      state,
+      { ...chatConnectionEntry, account: 'anonymous', showSignIn: true },
+    )
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Sales Follow-up Assistant' }),
+    ).toBeVisible()
+    if (description) expect(screen.getByText(description)).toBeVisible()
+    expect(screen.getByRole('region', { name: 'share.connections.required.title' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'share.connections.required.signIn' })).toBeEnabled()
+    const input = screen.getByPlaceholderText('share.connections.required.inputPlaceholder')
+    expect(input).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeDisabled()
+    await user.type(input, 'This cannot run{Enter}')
+    expect(input).toHaveValue('')
+    expect(ssePost).not.toHaveBeenCalled()
+  },
+)
+
+it('preserves an existing draft and blocks Enter and regeneration while connections are not ready', async () => {
+  const user = userEvent.setup()
+  const state = createChatConnections()
+  const { updateConnections } = renderChat(
+    {
+      appPrevChatTree: [question('q1', 'Previous question', 'a1', 'Previous answer')],
+    },
+    state,
+  )
+  await user.type(chatInput(), 'Unsent draft')
+
+  updateConnections({
+    ...state,
+    canRun: false,
+    runConfiguration: null,
+    preflight: { ...state.preflight, status: 'checking', response: null },
+  })
+  expect(chatInput()).toBeDisabled()
+  expect(chatInput()).toHaveValue('Unsent draft')
+  await user.keyboard('{Enter}')
+  await user.click(screen.getByRole('button', { name: 'common.operation.regenerate' }))
+  expect(ssePost).not.toHaveBeenCalled()
+
+  updateConnections(state)
+  expect(chatInput()).toBeEnabled()
+  expect(chatInput()).toHaveValue('Unsent draft')
+  await user.click(chatInput())
+  expect(chatInput()).toHaveFocus()
+  await user.keyboard('{Enter}')
+  await waitFor(() => expect(ssePost).toHaveBeenCalled())
+  expect(ssePost.mock.calls[0]![1].body).toMatchObject({
+    query: 'Unsent draft',
+    conversation_id: '1',
+    connection_revision: checkedRevision,
+    connections: { 'github-node': selectedConnectionId },
+  })
+})
+
+it('omits connection fields when an App no longer has personal connection requirements', async () => {
+  const state = createChatConnections({
+    status: 'inactive',
+    services: [],
+    selections: {},
+    runConfiguration: null,
+  })
+  renderChat({ currentConversationId: '' }, state)
+  await sendMessage(userEvent.setup(), 'Use workspace credentials')
+  expect(ssePost.mock.calls[0]![1].body).not.toHaveProperty('connection_revision')
+  expect(ssePost.mock.calls[0]![1].body).not.toHaveProperty('connections')
 })

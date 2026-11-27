@@ -6,6 +6,7 @@ import { APP_UNAVAILABLE_IP_HEADER } from '../document-constants'
 import { getWebAppDocumentResponse } from '../document-response'
 
 const configuration = vi.hoisted(() => ({
+  NEXT_PUBLIC_BASE_PATH: '',
   WEBAPP_ACCESS_PREFLIGHT_URL: 'http://gateway.internal:8080/api/webapp/access-mode' as
     | string
     | undefined,

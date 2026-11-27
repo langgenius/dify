@@ -3,9 +3,10 @@
 import type { ReactNode, Ref } from 'react'
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { lazy, Suspense, useMemo, useRef } from 'react'
+import { Suspense, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -29,10 +30,9 @@ import ContactSupport from './components/contact-support'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
+import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
-
-const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
 export function MainNavLogo() {
   const { data: branding } = useSuspenseQuery({
@@ -142,12 +142,12 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
             )}
           </MainNavLink>
         ))}
+        {!isCurrentWorkspaceDatasetOperator && (
+          <Suspense fallback={null}>
+            <WebAppsSection />
+          </Suspense>
+        )}
       </nav>
-      {!isCurrentWorkspaceDatasetOperator && (
-        <Suspense fallback={null}>
-          <WebAppsSection />
-        </Suspense>
-      )}
       {showEnvTag && (
         <div className="mt-auto shrink-0 px-3 pb-2">
           <EnvNav />
@@ -162,8 +162,37 @@ export function MainNavFooter({
 }: {
   helpMenuTriggerRef?: Ref<HTMLButtonElement>
 }) {
+  const { t } = useTranslation(['navigation'])
+  const { data: visitedAppsHref } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ webapp_account_login_enabled, webapp_url }) =>
+      webapp_account_login_enabled ? `${webapp_url}/my-apps` : null,
+  })
+  const visitedAppsLabel = t(($) => $['mainNav.visitedApps'], { ns: 'navigation' })
+
   return (
-    <div className="w-60">
+    <div className="w-60 shrink-0">
+      {visitedAppsHref !== null && (
+        <nav aria-label={visitedAppsLabel} className="px-2">
+          <div className="px-1 py-1.5">
+            <Separator />
+          </div>
+          <MainNavLink
+            item={{
+              href: visitedAppsHref,
+              label: visitedAppsLabel,
+              active: () => false,
+              icon: 'i-ri-apps-2-line',
+              activeIcon: 'i-ri-apps-2-line',
+            }}
+            pathname=""
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span aria-hidden className="ms-auto i-ri-arrow-right-up-line size-4.5 shrink-0" />
+          </MainNavLink>
+        </nav>
+      )}
       <ContactSupport placement="sidebar" />
       <div className="flex items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
         <div className="flex min-w-0 items-center gap-1 overflow-hidden">

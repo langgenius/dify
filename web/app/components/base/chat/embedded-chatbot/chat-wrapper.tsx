@@ -1,5 +1,4 @@
 import type { FileEntity } from '../../file-uploader/types'
-import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -11,29 +10,32 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
+import ConnectionLoadState from '@/app/components/share/connections/connection-load-state'
+import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
+import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
-import { reportRequestError } from '@/app/query-error-toast'
-import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   chatMessagesSender,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
-  submitHumanInputForm,
 } from '@/service/share'
-import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
+import { getChatRunConnectionFields, useChatHumanInputSubmission } from '../submission'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
 import { isDify } from './utils'
 
 const ChatWrapper = () => {
   const { t } = useTranslation(['share'])
+  const connections = useOptionalWebAppConnections()
+  const [connectionSetupComplete, setConnectionSetupComplete] = useState(false)
   const {
     appData,
     appParams,
@@ -60,6 +62,8 @@ const ChatWrapper = () => {
     initUserVariables,
     appSourceType,
   } = useEmbeddedChatbotContext()
+
+  const connectionsReady = isInstalledApp || (connections?.canRun ?? true)
 
   // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
   const sendOnEnter = useMemo(() => {
@@ -219,6 +223,12 @@ const ChatWrapper = () => {
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+      const connectionFields = getChatRunConnectionFields(
+        connections,
+        currentConversationId,
+        connectionSetupComplete,
+      )
+      if (connectionFields === null) return false
       if (!currentConversationId) setHasSent(true)
       const data: any = {
         query: message,
@@ -226,8 +236,9 @@ const ChatWrapper = () => {
         inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+        ...connectionFields,
       }
-      handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
+      const accepted = handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
@@ -235,8 +246,11 @@ const ChatWrapper = () => {
       })
       if (appSourceType === AppSourceType.webApp && appData?.mode)
         trackWebAppEvent('webapp_run', { app_mode: appData.mode })
+      return accepted
     },
     [
+      connections,
+      connectionSetupComplete,
       currentConversationId,
       currentConversationInputs,
       newConversationInputs,
@@ -367,20 +381,11 @@ const ChatWrapper = () => {
     }
   }, [inputsForms.length, isBelowSm, currentConversationId, collapsed, allInputsHidden])
 
-  const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: HumanInputFormSubmitData) => {
-      const { form_version: formVersion, ...submission } = formData
-      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-      try {
-        if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
-        else await submitHumanInputForm(formToken, submission, formVersion)
-      } catch (error) {
-        reportRequestError(error)
-        throw error
-      }
-    },
-    [isInstalledApp, prepareHumanInputSubmission],
-  )
+  const handleSubmitHumanInputForm = useChatHumanInputSubmission({
+    connectionsReady,
+    isInstalledApp,
+    prepare: prepareHumanInputSubmission,
+  })
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find((item) => item.isOpeningStatement)
@@ -451,6 +456,35 @@ const ChatWrapper = () => {
         ? { type: 'app' as const, appId, appSourceType }
         : undefined
 
+  const isStartingConversation = !currentConversationId && !connectionSetupComplete
+  if (isStartingConversation && connections?.status === 'loading')
+    return <LoadingPlaceholder className="h-full" />
+
+  if (isStartingConversation && connections?.status === 'error' && !connections.services.length)
+    return (
+      <div className="mx-auto w-full max-w-150 p-6">
+        <ConnectionLoadState error onRetry={connections.retry} />
+      </div>
+    )
+
+  if (
+    isStartingConversation &&
+    connections &&
+    connections.services.length > 0 &&
+    (connections.status === 'ready' ||
+      connections.status === 'error' ||
+      connections.status === 'sign-in-required')
+  )
+    return (
+      <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+        {descriptionNode}
+        <WebAppConnectionSetup
+          className="mx-auto w-full max-w-150"
+          onStart={() => setConnectionSetupComplete(true)}
+        />
+      </div>
+    )
+
   return (
     <Chat
       isTryApp={isTryApp}
@@ -470,6 +504,7 @@ const ChatWrapper = () => {
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
+      humanInputFormDisabled={!connectionsReady}
       onHumanInputFormSubmit={handleSubmitHumanInputForm}
       chatNode={
         <>
@@ -486,7 +521,7 @@ const ChatWrapper = () => {
       hideProcessDetail
       theme={theme}
       switchSibling={doSwitchSibling}
-      inputDisabled={inputDisabled}
+      inputDisabled={inputDisabled || Boolean(connections && !connections.canRun)}
       sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url ? (

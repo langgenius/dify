@@ -18,7 +18,10 @@ from controllers.common.errors import PaidPlanRequiredError
 from controllers.openapi import app_workflow
 from controllers.openapi._errors import (
     DraftNotFound,
+    EndUserAuthInTriggerWorkflow,
+    EndUserAuthInWorkflowTool,
     EnvVariableNotFound,
+    OpenApiError,
     RunNotFound,
     SecretMaskNotSecret,
     SecretMaskUnknownId,
@@ -58,6 +61,10 @@ from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowType
 from services.errors.evaluation import EvaluationDisabledError, EvaluationPlanRequiredError
 from services.workflow.graph_diff import draft_token
+from services.workflow.tool_credentials import (
+    WorkflowToolEndUserAuthError,
+    WorkflowTriggerEndUserAuthError,
+)
 from services.workflow_service import WorkflowService
 
 WORKSPACE_ID = "00000000-0000-4000-8000-000000000001"
@@ -555,6 +562,39 @@ def test_publish_refusal_is_a_bad_request(
     stored_app = sqlite_session.get(App, APP_ID)
     assert stored_app is not None
     assert stored_app.workflow_id is None
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [
+        (WorkflowTriggerEndUserAuthError("node-a"), EndUserAuthInTriggerWorkflow),
+        (WorkflowToolEndUserAuthError("node-a"), EndUserAuthInWorkflowTool),
+    ],
+)
+def test_publish_refusal_names_the_end_user_auth_mutual_exclusion(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    raised: ValueError,
+    expected: type[OpenApiError],
+) -> None:
+    """Both publish-time EndUser restrictions answer with their own code and a way out."""
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+
+    def publish_workflow(**_kwargs: object) -> Workflow:
+        raise raised
+
+    monkeypatch.setattr(service, "publish_workflow", publish_workflow)
+    ctx = _app_context(sqlite_session)
+    api = AppPublishApi()
+
+    with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
+        with pytest.raises(expected) as exc:
+            cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
+
+    assert str(raised) in str(exc.value.description)
+    assert exc.value.hint is not None
 
 
 @pytest.mark.parametrize(

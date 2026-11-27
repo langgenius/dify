@@ -34,6 +34,7 @@ type IRunOnceProps = {
   inputsRef: React.RefObject<Record<string, InputValueTypes>>
   onInputsChange: (inputs: Record<string, InputValueTypes>) => void
   onSend: () => void
+  disabled?: boolean
   visionConfig: VisionSettings
   onVisionFilesChange: (files: VisionFile[]) => void
   runControl?: {
@@ -48,6 +49,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   inputsRef,
   onInputsChange,
   onSend,
+  disabled = false,
   visionConfig,
   onVisionFilesChange,
   runControl,
@@ -81,7 +83,7 @@ const RunOnce: FC<IRunOnceProps> = ({
 
   const onSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
-    onSend()
+    if (!disabled) onSend()
   }
   const isRunning = !!runControl
   const stopLabel = t(($) => $['generation.stopRun'], { ns: 'share', defaultValue: 'Stop Run' })
@@ -327,7 +329,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 className="max-md:grow"
                 type={isRunning ? 'button' : 'submit'}
                 variant={isRunning ? 'secondary' : 'primary'}
-                disabled={isRunning && runControl?.isStopping}
+                disabled={isRunning ? runControl?.isStopping : disabled}
                 onClick={handlePrimaryClick}
               >
                 {isRunning ? (

@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { InputValueTypes, Task, TextGenerationRunControl } from './types'
+import type { WorkflowRunSnapshot } from './workflow-run-configuration'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
@@ -14,6 +15,9 @@ import ResDownload from './run-batch/res-download'
 import { TaskStatus } from './types'
 
 type TextGenerationResultPanelProps = {
+  runSnapshot?: WorkflowRunSnapshot
+  onTaskStart?: (taskId?: number) => void
+  connectionsReady?: boolean
   allFailedTaskList: Task[]
   allSuccessTaskList: Task[]
   allTaskList: Task[]
@@ -47,6 +51,9 @@ type TextGenerationResultPanelProps = {
 }
 
 const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
+  runSnapshot,
+  onTaskStart,
+  connectionsReady = true,
   allFailedTaskList,
   allSuccessTaskList,
   allTaskList,
@@ -83,6 +90,8 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   const renderResult = (task?: Task) => (
     <Res
       key={task?.id}
+      runSnapshot={runSnapshot}
+      onTaskStart={onTaskStart}
       isWorkflow={isWorkflow}
       isCallBatchAPI={isCallBatchAPI}
       isBelowMd={isBelowMd}
@@ -186,7 +195,11 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
                 })}
               </AlertTitle>
               <AlertActions>
-                <Button size="small" onClick={handleRetryAllFailedTask}>
+                <Button
+                  size="small"
+                  disabled={!connectionsReady}
+                  onClick={handleRetryAllFailedTask}
+                >
                   {t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
                 </Button>
               </AlertActions>

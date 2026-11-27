@@ -25,13 +25,19 @@ import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
+import TestConnections, { TestConnectionSetup } from './test-connections'
+import { useTestConnections } from './test-connections/use-test-connections'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const appId = useAtomValue(editorAppIdAtom)
+  const connections = useTestConnections()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
+  const isRunActive =
+    workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
+    workflowRunningData?.result.status === WorkflowRunningStatus.Paused
   const isListening = useStore((s) => s.isListening)
   const showInputsPanel = useStore((s) => s.showInputsPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -137,15 +143,22 @@ const WorkflowPreview = () => {
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
-        {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
-        <button
-          type="button"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={() => handleCancelDebugAndPreviewPanel()}
-        >
-          <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-        </button>
+        {`Test Run${workflowRunningData ? formatWorkflowRunIdentifier(workflowRunningData.result.finished_at, workflowRunningData.result.status) : ''}`}
+        <div className="flex items-center gap-1">
+          <TestConnections
+            connections={connections}
+            isResponding={isRunActive}
+            showTrigger={currentTab !== 'INPUT'}
+          />
+          <button
+            type="button"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={() => handleCancelDebugAndPreviewPanel()}
+          >
+            <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
@@ -207,7 +220,26 @@ const WorkflowPreview = () => {
           )}
         >
           {currentTab === 'INPUT' && showInputsPanel && (
-            <InputsPanel onRun={() => switchTab('RESULT')} />
+            <>
+              {connections.nodes.length > 0 && (
+                <div className="px-4 pt-4">
+                  <TestConnectionSetup connections={connections} isResponding={isRunActive} />
+                </div>
+              )}
+              <InputsPanel
+                onRun={() => switchTab('RESULT')}
+                beforeRun={
+                  connections.nodes.length
+                    ? () => connections.beforeRun({ openOnFailure: false })
+                    : undefined
+                }
+                preparingRun={connections.checking}
+                disabled={
+                  connections.nodes.length > 0 &&
+                  (connections.warningCount > 0 || connections.error || isRunActive)
+                }
+              />
+            </>
           )}
           {currentTab === 'RESULT' && (
             <div className="p-2">

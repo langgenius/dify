@@ -1,23 +1,34 @@
 'use client'
+
+import type { WebAppAddress } from '@/service/webapp-address'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getWebAppEntryState, WebAppEntryContext } from '@/app/components/share/webapp-entry'
+import WebAppSignInHandoff from '@/app/components/share/webapp-sign-in-handoff'
 import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { webAppLogout } from '@/service/common'
 import {
+  useGetWebAppAccountStatus,
+  useGetWebAppParams,
   webAppInfoQueryOptions,
   webAppMetaQueryOptions,
-  webAppParamsQueryOptions,
 } from '@/service/share-queries'
-import { resolveWebAppAddress } from '@/service/webapp-address'
+import { getWebAppScopeKey, resolveWebAppAddress } from '@/service/webapp-address'
+import { expireWebAppAccountSession, getWebAppLoginMode, webAppLogout } from '@/service/webapp-auth'
 
-const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
+const AuthenticatedApp = ({
+  address,
+  children,
+}: {
+  address: WebAppAddress
+  children: React.ReactNode
+}) => {
   const { t } = useTranslation(['common'])
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
@@ -27,7 +38,12 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     isLoading: isLoadingAppParams,
     data: appParams,
     error: appParamsError,
-  } = useQuery(webAppParamsQueryOptions())
+  } = useGetWebAppParams(address)
+  const { data: loginStatus, error: loginStatusError } = useGetWebAppAccountStatus(address)
+  useEffect(() => {
+    if (loginStatus?.logged_in === false && getWebAppLoginMode() === 'end_user')
+      expireWebAppAccountSession()
+  }, [loginStatus])
   const {
     isLoading: isLoadingAppInfo,
     data: appInfo,
@@ -41,6 +57,21 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({
     appId: appInfo?.app_id,
     isInstalledApp: false,
+  })
+  const entry = getWebAppEntryState({
+    parameters: appParams,
+    loginStatus,
+    loginStatusError: Boolean(loginStatusError),
+    canAccess: userCanAccessApp?.result,
+    appDataReady: Boolean(
+      appInfo &&
+      appParams &&
+      appMeta &&
+      !isLoadingAppInfo &&
+      !isLoadingAppParams &&
+      !isLoadingAppMeta,
+    ),
+    hasError: Boolean(appInfoError || appParamsError || appMetaError || useCanAccessAppError),
   })
 
   useEffect(() => {
@@ -124,21 +155,29 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
       </div>
     )
   }
-  if (
-    isLoadingAppInfo ||
-    isLoadingAppParams ||
-    isLoadingAppMeta ||
-    !appInfo ||
-    !appParams ||
-    !appMeta
-  ) {
+  if (entry.status === 'loading') {
     return (
       <div className="flex h-full items-center justify-center">
         <LoadingPlaceholder />
       </div>
     )
   }
-  return <>{children}</>
+  return (
+    <WebAppEntryContext value={entry}>
+      <WebAppSignInHandoff>{children}</WebAppSignInHandoff>
+    </WebAppEntryContext>
+  )
+}
+
+const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
+  const address = resolveWebAppAddress()
+  if (!address) return <LoadingPlaceholder />
+
+  return (
+    <AuthenticatedApp key={getWebAppScopeKey(address)} address={address}>
+      {children}
+    </AuthenticatedApp>
+  )
 }
 
 export default React.memo(AuthenticatedLayout)

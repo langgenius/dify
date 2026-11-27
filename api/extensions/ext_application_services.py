@@ -14,10 +14,12 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from clients.plugin.auth import PluginCredentialAuthClient
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.plugin.impl.trigger import PluginTriggerClient
+from core.plugin.plugin_service import PluginService
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -32,12 +34,20 @@ from extensions.application_services.agent import (
     build_agent_version_service,
 )
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
+from extensions.application_services.consumer import build_consumer_service
 from extensions.application_services.data_sources import (
     DataSourceServices,
     build_data_source_credentials,
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
+from extensions.application_services.end_user_connections import (
+    build_end_user_connection_oauth,
+    build_end_user_connection_preflight,
+    build_end_user_connection_runtime,
+    build_end_user_connection_selections,
+    build_end_user_connections,
+)
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import (
     KnowledgeServices,
@@ -83,6 +93,7 @@ from repositories.app_statistic_query_repository import AppStatisticQueryReposit
 from repositories.conversation_repository import ConversationRepository
 from repositories.conversation_variable_repository import ConversationVariableRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
@@ -103,6 +114,7 @@ from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.web_migration_repository import WebMigrationRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
@@ -153,6 +165,7 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.consumer_service import ConsumerService
 from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
@@ -161,7 +174,16 @@ from services.conversation_service import ConversationService
 from services.conversation_variable_command_service import ConversationVariableCommandService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
+from services.end_user_connections.execution import ConnectionExecutionService
+from services.end_user_connections.management import ConnectionService
+from services.end_user_connections.oauth import OAuthConnectionService
+from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.runtime import ConnectionRuntimeService
+from services.end_user_connections.selections import ConnectionSelectionService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.rbac_service import RBACService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -249,6 +271,10 @@ from services.web_authentication_adapters import (
     TokenManagerWebAuthenticationGateway,
 )
 from services.web_authentication_service import WebAuthenticationService
+from services.web_identity_service import WebIdentityService
+from services.web_login_handoff import WebLoginHandoffService
+from services.web_login_handoff_adapters import RedisWebLoginGrantStore
+from services.web_migration_service import WebMigrationService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
@@ -259,6 +285,12 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workflow_test_credential_adapters import (
+    BuilderTestAccessGateway,
+    DraftTestCredentialPlanner,
+    WorkspaceTestCredentialGateway,
+)
+from services.workflow_test_credentials import WorkflowTestCredentialService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
@@ -321,6 +353,7 @@ class ApplicationServices:
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
     annotation_reply: AnnotationReplyService
+    consumer: ConsumerService
     rbac: RBACServices
     agent_apps: AgentAppServices
     workflow_composer: WorkflowComposerGateway
@@ -330,6 +363,7 @@ class ApplicationServices:
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
+    workflow_test_credentials: WorkflowTestCredentialService
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
@@ -395,6 +429,15 @@ class ApplicationServices:
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
+    web_identity: WebIdentityService
+    web_login_handoff: WebLoginHandoffService
+    connection_selections: ConnectionSelectionService
+    end_user_connection_execution: ConnectionExecutionService
+    end_user_connection_runtime: ConnectionRuntimeService
+    web_migration: WebMigrationService
+    end_user_connections: ConnectionService
+    end_user_connection_oauth: OAuthConnectionService
+    end_user_connection_preflight: ConnectionPreflightService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
     tracing: TracingServices
@@ -492,6 +535,13 @@ def build_application_services(
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
+        plugin_verified=PluginService.is_plugin_verified,
+        plugin_readme=PluginService.fetch_plugin_readme,
+        plugin_asset=PluginService.extract_asset,
+        connection_revisions=PluginConnectionRevisions(
+            providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
+            snapshots=EndUserConnectionRepository(session_factory=database_client),
+        ),
         builtin_icon_url_prefix=(
             dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         ),
@@ -587,6 +637,20 @@ def build_application_services(
     file_service = FileService(session_factory=database_client)
     remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
+    web_identity = WebIdentityService(
+        accounts=accounts,
+        allow_console_login=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+        allow_webapp_login=deployment_edition == DeploymentEdition.ENTERPRISE,
+    )
+    web_passport_repository = WebPassportRepository(
+        session_factory=database_client, generate_session_id=lambda: str(uuid4())
+    )
+    web_passport_tokens = PassportTokenGateway(passport=PassportService())
+    web_app_sessions = PassportWebAppSessionGateway(
+        sessions=webapp_access_repository,
+        app_access=webapp_access,
+        identities=web_identity,
+    )
     web_authentication_tokens = TokenManagerWebAuthenticationGateway(
         reset_password_rate_limiter=RateLimiter(
             prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
@@ -595,6 +659,7 @@ def build_application_services(
             redis_client=redis,
         ),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+        identities=web_identity,
     )
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
@@ -643,6 +708,11 @@ def build_application_services(
         trigger_builders=triggers.builders,
         trigger_providers=trigger_providers,
     )
+    end_user_connections = build_end_user_connections(database_client=database_client)
+    end_user_connection_oauth = build_end_user_connection_oauth(database_client=database_client)
+    end_user_connection_preflight = build_end_user_connection_preflight(
+        database_client=database_client, connections=end_user_connections
+    )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
         conversations=conversations,
@@ -666,6 +736,29 @@ def build_application_services(
         repository=messages,
     )
 
+    web_passport = WebPassportService(
+        passports=web_passport_repository,
+        auth=DeploymentWebPassportAuthGateway(
+            webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+            get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
+            is_user_allowed=EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp,
+        ),
+        tokens=web_passport_tokens,
+        identities=web_identity,
+        account_passports_enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+        now=lambda: datetime.now(UTC),
+        access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+    )
+    installed_apps = build_installed_app_services(
+        conversation_queries=conversation_queries,
+        conversation_names=conversation_names,
+        conversation_commands=conversation_commands,
+        app_definitions=app_definitions,
+        database_client=database_client,
+        webapp_access=webapp_access,
+        get_workspace_role=workspace_repository.get_account_role,
+        webapp_auth_enabled=webapp_auth_enabled,
+    )
     return ApplicationServices(
         moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
@@ -694,6 +787,14 @@ def build_application_services(
             enable_task=enable_annotation_reply_task.delay,
             disable_task=disable_annotation_reply_task.delay,
         ),
+        consumer=build_consumer_service(
+            database_client=database_client,
+            access=installed_apps.access,
+            shared_apps_enabled=webapp_auth_enabled,
+            management=end_user_connections,
+            identities=web_identity,
+            tokens=web_passport_tokens,
+        ),
         rbac=rbac,
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
@@ -701,6 +802,25 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
+        workflow_test_credentials=WorkflowTestCredentialService(
+            drafts=AppDefinitionQueryRepository(session_factory=database_client),
+            access=BuilderTestAccessGateway(
+                memberships=AppDefinitionQueryRepository(session_factory=database_client),
+                rbac_enabled=dify_config.RBAC_ENABLED,
+                can_run=lambda scope: RBACService.CheckAccess.check(
+                    scope.tenant_id,
+                    scope.account_id,
+                    scene="app_test_and_run",
+                    resource_type="app",
+                    resource_id=scope.app_id,
+                ),
+            ),
+            planner=DraftTestCredentialPlanner(),
+            credentials=WorkspaceTestCredentialGateway(
+                queries=credential_queries,
+                auth=PluginCredentialAuthClient(),
+            ),
+        ),
         workflow_composer=WorkflowComposerGateway(session_factory=database_client),
         agent_apps=build_agent_app_services(
             database_client=database_client, rbac_members=rbac.members, apps=agent_app_repository
@@ -778,22 +898,11 @@ def build_application_services(
                 login_security=RedisConsoleAuthSecurityGateway(redis=redis),
             ),
             app_access=webapp_access,
-            app_sessions=PassportWebAppSessionGateway(
-                sessions=webapp_access_repository,
-                app_access=webapp_access,
-            ),
+            app_sessions=web_app_sessions,
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
-        installed_apps=build_installed_app_services(
-            conversation_queries=conversation_queries,
-            conversation_names=conversation_names,
-            conversation_commands=conversation_commands,
-            database_client=database_client,
-            webapp_access=webapp_access,
-            get_workspace_role=workspace_repository.get_account_role,
-            webapp_auth_enabled=webapp_auth_enabled,
-        ),
+        installed_apps=installed_apps,
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
             file_service=file_service,
@@ -888,6 +997,7 @@ def build_application_services(
             states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
             enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
             rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
+            require_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
         ),
         recommended_app_queries=recommended_app_queries,
         recommended_app_packages=recommended_app_packages,
@@ -926,19 +1036,34 @@ def build_application_services(
             now=naive_utc_now,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
-        web_passport=WebPassportService(
-            passports=WebPassportRepository(
-                session_factory=database_client,
-                generate_session_id=lambda: str(uuid4()),
-            ),
-            auth=DeploymentWebPassportAuthGateway(
-                webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
-                get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
-            ),
-            tokens=PassportTokenGateway(passport=PassportService()),
+        web_identity=web_identity,
+        web_login_handoff=WebLoginHandoffService(
+            grants=RedisWebLoginGrantStore(redis=redis),
+            onboarding=accounts,
+            apps=web_passport_repository,
+            identities=web_identity,
+            tokens=web_passport_tokens,
+            enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+            app_web_url=dify_config.APP_WEB_URL,
+            console_web_url=dify_config.CONSOLE_WEB_URL,
             now=lambda: datetime.now(UTC),
-            access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),
+        connection_selections=build_end_user_connection_selections(database_client=database_client),
+        end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
+        end_user_connection_runtime=build_end_user_connection_runtime(
+            database_client=database_client, connections=end_user_connections
+        ),
+        web_migration=WebMigrationService(
+            store=WebMigrationRepository(session_factory=database_client),
+            passports=web_passport,
+            tokens=web_passport_tokens,
+            identities=web_identity,
+            tasks=AppTaskControlService(redis_client=redis),
+        ),
+        end_user_connections=end_user_connections,
+        end_user_connection_preflight=end_user_connection_preflight,
+        end_user_connection_oauth=end_user_connection_oauth,
+        web_passport=web_passport,
         api_based_extensions=APIBasedExtensionApplicationService(
             extensions=APIBasedExtensionRepository(session_factory=database_client),
             secrets=WorkspaceTokenCipher(),

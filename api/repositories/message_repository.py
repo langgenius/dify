@@ -18,16 +18,19 @@ from pydantic import JsonValue
 from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
+from repositories.conversation_access import conversation_actor_scope, message_actor_scope
 from repositories.message_projection import snapshot_console_message, snapshot_message
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import (
     ConsoleMessageRecord,
     MessageAccount,
     MessageActor,
+    MessageEndUser,
     MessagePage,
     MessageRecord,
     MessageSource,
@@ -85,6 +88,7 @@ class MessageRepository:
                 conversation_id=conversation_id,
                 first_id=first_id,
                 use_id_tiebreaker=installed_app is not None,
+                actor=actor if isinstance(actor, MessageEndUser) and actor.follows_conversation_owner else None,
             )
             messages = list(session.scalars(statement.limit(limit + 1)))
             has_more = len(messages) > limit
@@ -125,6 +129,7 @@ class MessageRepository:
                 conversation_id=conversation_id,
                 first_id=first_id,
                 use_id_tiebreaker=False,
+                actor=None,
             )
             messages = list(session.scalars(statement.limit(limit)))
             # Console's legacy has_more checks for a strictly older timestamp;
@@ -222,9 +227,23 @@ class MessageRepository:
 
     @staticmethod
     def _page_statement(
-        session: Session, *, app_id: str, conversation_id: str, first_id: str | None, use_id_tiebreaker: bool
+        session: Session,
+        *,
+        app_id: str,
+        conversation_id: str,
+        first_id: str | None,
+        use_id_tiebreaker: bool,
+        actor: MessageActor | None,
     ) -> Select[tuple[Message]]:
         statement = select(Message).where(Message.app_id == app_id, Message.conversation_id == conversation_id)
+        if actor is not None:
+            statement = statement.where(
+                message_actor_scope(
+                    app_id,
+                    account_id=actor.account_id if isinstance(actor, MessageAccount) else None,
+                    end_user_id=None if isinstance(actor, MessageAccount) else actor.end_user_id,
+                )
+            )
         if first_id:
             first_message = session.scalar(statement.where(Message.id == first_id))
             if first_message is None:
@@ -307,9 +326,13 @@ class MessageRepository:
                     session,
                     message_id=message_id,
                     app_id=app_id,
-                    source="console" if isinstance(actor, MessageAccount) else "api",
-                    account_id=account_id,
-                    end_user_id=end_user_id,
+                    actor=actor,
+                    lock=(
+                        dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                        and isinstance(actor, MessageEndUser)
+                        and actor.follows_conversation_owner
+                        and app.mode == AppMode.ADVANCED_CHAT
+                    ),
                 )
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for this app and actor")
@@ -416,9 +439,7 @@ class MessageRepository:
             session,
             message_id=message_id,
             app_id=app_id,
-            source=source,
-            account_id=account_id,
-            end_user_id=end_user_id,
+            actor=actor,
         )
         if message is None:
             raise MessageNotExistsError()
@@ -510,9 +531,7 @@ class MessageRepository:
                 session,
                 message_id=message_id,
                 app_id=app_id,
-                source=source,
-                account_id=account_id,
-                end_user_id=end_user_id,
+                actor=actor,
             )
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for this app and actor")
@@ -612,17 +631,28 @@ class MessageRepository:
         *,
         message_id: str,
         app_id: str,
-        source: str,
-        account_id: str | None,
-        end_user_id: str | None,
+        actor: MessageActor,
+        lock: bool = False,
     ) -> Message | None:
-        """Return the owned message, or None; the other actor kind's ID is None."""
-        return session.scalar(
-            select(Message).where(
-                Message.id == message_id,
-                Message.app_id == app_id,
-                Message.from_source == source,
-                Message.from_account_id == account_id,
-                Message.from_end_user_id == end_user_id,
+        """Read a message scoped to its sender, or to the current owner of transferred Web App history."""
+        account_id = actor.account_id if isinstance(actor, MessageAccount) else None
+        end_user_id = actor.end_user_id if isinstance(actor, MessageEndUser) else None
+        statement = select(Message).where(Message.id == message_id, Message.app_id == app_id)
+        if not isinstance(actor, MessageEndUser) or not actor.follows_conversation_owner:
+            return session.scalar(
+                statement.where(
+                    Message.from_source == ("console" if isinstance(actor, MessageAccount) else "api"),
+                    Message.from_account_id == account_id,
+                    Message.from_end_user_id == end_user_id,
+                )
             )
-        )
+
+        # Lock Web App feedback writes against concurrent guest history migration.
+        statement = statement.where(message_actor_scope(app_id, end_user_id=end_user_id, account_id=account_id))
+        if lock:
+            statement = (
+                statement.join(Conversation, Conversation.id == Message.conversation_id)
+                .where(*conversation_actor_scope(app_id, end_user_id=end_user_id, account_id=account_id))
+                .with_for_update(of=Conversation)
+            )
+        return session.scalar(statement)

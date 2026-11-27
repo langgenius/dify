@@ -14,8 +14,10 @@ import { captureRequestGuard } from './request-guard'
 import { resolveWebAppAddress } from './webapp-address'
 import {
   beginWebAppAuthorizationRecovery,
+  captureWebAppAuthSession,
   clearWebAppPassport,
   completeWebAppAuthorizationRecovery,
+  getWebAppLoginMode,
 } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -26,21 +28,25 @@ const canRecoverWebAppAuthorization = (guard: RequestGuard | undefined) =>
 const isWebAppAuthorizationEndpoint = (url: string) =>
   /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
 
-const recoverEnvironmentWebAppAuthorization = (
+const recoverWebAppAuthorization = (
   error: { code?: string | number; message?: string; reason?: unknown },
   url?: string,
 ) => {
   const address = resolveWebAppAddress()
   if (
-    address?.kind !== 'environment' ||
+    !address ||
+    (address.kind !== 'environment' && getWebAppLoginMode(address) !== 'end_user') ||
     (error.reason !== 'APPDEPLOY_UNAUTHORIZED' && error.code !== 'unauthorized') ||
     (url && isWebAppAuthorizationEndpoint(url))
   )
     return false
 
   if (!beginWebAppAuthorizationRecovery(address)) {
-    requiredWebSSOLogin(error.message, 403)
-    return true
+    if (address.kind === 'environment') {
+      requiredWebSSOLogin(error.message, 403)
+      return true
+    }
+    return false
   }
 
   clearWebAppPassport(address)
@@ -59,15 +65,18 @@ const handleWebAppAuthorizationError = (
     requiredWebSSOLogin(error.message, 403)
     return true
   }
-  return recoverEnvironmentWebAppAuthorization(error, url)
+  return recoverWebAppAuthorization(error, url)
 }
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
+  /** Account-wide Web APIs authenticate with the login Cookie, without an App Passport. */
+  isWebAppAccountAPI?: boolean
   isMarketplaceAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
+  handleUnauthorizedLocally?: boolean
 
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
@@ -174,13 +183,17 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       isPublicAPI,
       otherOptions?.request?.method || (options as RequestInit).method,
     )
+    const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
+    if (!isAuthSessionCurrent())
+      return Promise.reject(new DOMException('The Web App account changed.', 'AbortError'))
     if (err === null) {
       const address = resolveWebAppAddress()
       if (
         isPublicAPI &&
         canRecoverWebAppAuthorization(requestGuard) &&
-        address?.kind === 'environment' &&
+        address &&
+        (address.kind === 'environment' || getWebAppLoginMode(address) === 'end_user') &&
         !isWebAppAuthorizationEndpoint(url)
       )
         completeWebAppAuthorizationRecovery(address)
@@ -189,18 +202,27 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
     if (err instanceof ORPCError && requestGuard?.handleError(err.status, err.data, err))
       return Promise.reject(err)
     if (requestGuard?.isActive() === false) return Promise.reject(err)
+    if (
+      err instanceof ORPCError &&
+      err.status === 401 &&
+      err.code !== 'unauthorized_and_force_logout' &&
+      otherOptionsForBaseFetch.handleUnauthorizedLocally
+    )
+      return Promise.reject(err)
     if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
+      if (otherOptionsForBaseFetch.isWebAppAccountAPI) return Promise.reject(err)
 
       const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
       if (!err.data) {
-        if (err.status === 401) {
+        if (err.status === 401 && !isPublicAPI) {
           discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
           window.location.href = buildSigninUrlWithRedirect()
         }
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(err)
+      if (isPublicAPI && err.code === 'end_user_login_required') return Promise.reject(err)
       // A WebApp sign-in redirect is the feedback for these errors.
       if (handleWebAppAuthorizationError(errRespData, url)) {
         markErrorHandled(err)
@@ -221,7 +243,10 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (isPublicAPI && code === 'unauthorized') {
-        requiredWebSSOLogin()
+        if (getWebAppLoginMode(resolveWebAppAddress()) !== 'end_user') {
+          markErrorHandled(err)
+          requiredWebSSOLogin()
+        }
         return Promise.reject(err)
       }
       // The init page shows a wrong password at its field.
@@ -234,6 +259,10 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
+
+      // Web account proofs have no Console refresh-token flow. The Webapp owner
+      // checks end_user login status and prepares a new App Passport when needed.
+      if (isPublicAPI) return Promise.reject(err)
 
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))

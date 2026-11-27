@@ -1,5 +1,6 @@
 describe('env runtime transport', () => {
   const envKeys = [
+    'NEXT_PUBLIC_APP_WEB_URL',
     'NEXT_PUBLIC_ENABLE_AGENT_V2',
     'NEXT_PUBLIC_ENABLE_HITL_IM',
     'NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS',
@@ -7,6 +8,7 @@ describe('env runtime transport', () => {
     'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
   ] as const
   const attributes = [
+    'data-app-web-url',
     'data-enable-agent-v2',
     'data-enable-hitl-im',
     'data-enable-agent-v-2',
@@ -32,6 +34,20 @@ describe('env runtime transport', () => {
       if (value == null) document.documentElement.removeAttribute(name)
       else document.documentElement.setAttribute(name, value)
     })
+  })
+
+  it('transports the WebApp URL from the server to the browser independently of the Console origin', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_WEB_URL', 'https://webapp.example.com')
+    vi.doMock('../utils/client', () => ({ isClient: false, isServer: true }))
+    const { getDatasetMap } = await import('../env')
+    const dataset = getDatasetMap()
+    document.documentElement.setAttribute('data-app-web-url', String(dataset['data-app-web-url']))
+
+    vi.stubEnv('NEXT_PUBLIC_APP_WEB_URL', 'https://console.example.com')
+    vi.resetModules()
+    vi.doMock('../utils/client', () => ({ isClient: true, isServer: false }))
+    const { env } = await import('../env')
+    expect(env.NEXT_PUBLIC_APP_WEB_URL).toBe('https://webapp.example.com')
   })
 
   it.each([

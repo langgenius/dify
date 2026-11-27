@@ -37,7 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': async () =>
-        (await import('@dify/contracts/api/console/features/zod.gen')).zGetFeaturesResponse.parse({
+        (await import('@/test/console/features-fixture')).createFeaturesFixture({
           is_allow_transfer_workspace: true,
         }),
       'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),

@@ -3,6 +3,7 @@ import { canEmbedPath, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_ALLOW_EMBED: false,
+  NEXT_PUBLIC_BASE_PATH: '',
   NEXT_PUBLIC_CSP_WHITELIST: 'https://example.com',
   NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: '',
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: '',

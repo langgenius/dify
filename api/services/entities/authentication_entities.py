@@ -13,6 +13,7 @@ class StoredAuthenticationToken:
 @dataclass(frozen=True, slots=True)
 class WebAppSessionRecord:
     end_user_session_id: str
+    account_id: str | None
 
 
 @dataclass(frozen=True, slots=True)

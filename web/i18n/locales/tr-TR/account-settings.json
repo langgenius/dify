@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Dify hesabınız ve ilişkili kullanıcı verileri.",
   "account.myAccount": "Hesabım",
   "account.name": "İsim",
+  "account.nameLengthInvalid": "Ad, {{min}} ile {{max}} karakter arasında olmalıdır.",
   "account.newPassword": "Yeni şifre",
   "account.notEqual": "İki şifre aynı değil.",
   "account.password": "Şifre",

@@ -1,6 +1,7 @@
 import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
@@ -13,7 +14,9 @@ import {
 import { useForm, useSelector } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import { toast } from '@/app/notifications'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
@@ -29,9 +32,11 @@ type OAuthClientSettingsProps = {
   editValues?: Record<string, unknown>
   disabled?: boolean
   schemas: FormSchema[]
+  redirectUri?: string
   onRequestAuthorization?: () => Promise<void> | void
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
+  onClientTypeChange?: (type: 'default' | 'custom' | undefined) => void
 }
 const OAuthClientSettings = ({
   pluginPayload,
@@ -41,9 +46,11 @@ const OAuthClientSettings = ({
   editValues,
   disabled,
   schemas,
+  redirectUri,
   onRequestAuthorization,
   hasOriginalClientParams,
   onUpdate,
+  onClientTypeChange,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation(['common', 'plugin'])
   const [doingAction, setDoingAction] = useState(false)
@@ -77,7 +84,7 @@ const OAuthClientSettings = ({
         needCheckValidatedValues: true,
         needTransformWhenSecretFieldIsPristine: true,
       }) || { isCheckValidated: false, values: {} }
-      if (!isCheckValidated) throw new Error('error')
+      if (!isCheckValidated) return false
       const { __oauth_client__, ...restValues } = values
 
       handleSetDoingAction(true)
@@ -85,6 +92,7 @@ const OAuthClientSettings = ({
         client_params: restValues,
         enable_oauth_custom_client: __oauth_client__ === 'custom',
       })
+      onClientTypeChange?.(__oauth_client__ === 'default' ? 'default' : 'custom')
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
 
       onOpenChange?.(false)
@@ -94,7 +102,15 @@ const OAuthClientSettings = ({
     } finally {
       handleSetDoingAction(false)
     }
-  }, [onClose, onOpenChange, onUpdate, setPluginOAuthCustomClient, t, handleSetDoingAction])
+  }, [
+    onClose,
+    onOpenChange,
+    onUpdate,
+    onClientTypeChange,
+    setPluginOAuthCustomClient,
+    t,
+    handleSetDoingAction,
+  ])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     try {
@@ -113,6 +129,9 @@ const OAuthClientSettings = ({
     try {
       handleSetDoingAction(true)
       await deletePluginOAuthCustomClient()
+      onClientTypeChange?.(
+        schemas.some((schema) => schema.name === '__oauth_client__') ? 'default' : undefined,
+      )
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onOpenChange?.(false)
       onClose?.()
@@ -120,12 +139,50 @@ const OAuthClientSettings = ({
     } finally {
       handleSetDoingAction(false)
     }
-  }, [onUpdate, deletePluginOAuthCustomClient, t, handleSetDoingAction, onClose, onOpenChange])
+  }, [
+    onUpdate,
+    onClientTypeChange,
+    schemas,
+    deletePluginOAuthCustomClient,
+    t,
+    handleSetDoingAction,
+    onClose,
+    onOpenChange,
+  ])
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })
   const __oauth_client__ = useSelector(form.store, (s) => s.values.__oauth_client__)
   const isDisabled = disabled || doingAction
+  const hasSystemClient = schemas.some(
+    (schema) =>
+      schema.name === '__oauth_client__' &&
+      schema.type === FormTypeEnum.radio &&
+      schema.options?.some((option) => option.value === 'default'),
+  )
+  const redirectInfo = redirectUri && __oauth_client__ !== 'default' && (
+    <div
+      className={cn(
+        'flex rounded-xl bg-background-section-burn p-4 text-text-secondary',
+        !hasSystemClient && 'mb-4',
+      )}
+    >
+      <div className="me-3 flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
+        <span aria-hidden className="i-ri-information-2-fill size-5 text-text-accent" />
+      </div>
+      <div className="min-w-0 grow">
+        <div className="mb-1.5 system-sm-regular">
+          {hasSystemClient
+            ? t(($) => $['auth.customClientInfo'], { ns: 'plugin' })
+            : t(($) => $['auth.clientInfo'], { ns: 'plugin' })}
+        </div>
+        <div className="flex w-full py-0.5 system-sm-medium">
+          <div className="min-w-0 grow wrap-break-word break-all">{redirectUri}</div>
+          <CopyFeedback content={redirectUri} className="shrink-0" />
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <Dialog open={open} disablePointerDismissal onOpenChange={handleOpenChange}>
@@ -138,12 +195,16 @@ const OAuthClientSettings = ({
           {pluginPayload.detail && (
             <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
           )}
+          {!hasSystemClient && redirectInfo}
           <AuthForm
             formFromProps={form}
             ref={formRef}
             formSchemas={schemas}
             defaultValues={editValues || defaultValues}
             disabled={disabled}
+            renderAfterField={(schema) =>
+              schema.name === '__oauth_client__' && hasSystemClient ? redirectInfo : null
+            }
           />
         </DialogBody>
         <DialogFooter>

@@ -1,0 +1,256 @@
+import type { MenuHandle } from '@langgenius/dify-ui/menu'
+import type { ApiKeyModalDataSource } from '../authorize/api-key-modal'
+import type { Credential, PluginPayload } from '../types'
+import type { EditConnectionDataSource } from './edit-connection-modal'
+import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ApiKeyModal from '../authorize/api-key-modal'
+import { CredentialTypeEnum } from '../types'
+import EditConnectionModal from './edit-connection-modal'
+
+export type ConnectionActionsDataSource = {
+  canManageConnection: (credential: Credential) => boolean
+  canEditConnection: (credential: Credential) => boolean
+  remove: (credential: Credential) => Promise<void>
+  edit: EditConnectionDataSource
+  apiKey: ApiKeyModalDataSource
+}
+
+type ConnectionActionsTriggerProps = {
+  handle: MenuHandle<Credential>
+  credential: Credential
+  dataSource: Pick<ConnectionActionsDataSource, 'canManageConnection'>
+}
+
+export const ConnectionActionsTrigger = ({
+  handle,
+  credential,
+  dataSource,
+}: ConnectionActionsTriggerProps) => {
+  const { t } = useTranslation(['common'])
+  if (!dataSource.canManageConnection(credential)) return null
+
+  return (
+    <MenuTrigger
+      handle={handle}
+      payload={credential}
+      render={
+        <IconButton
+          size="xs"
+          aria-label={t(($) => $['operation.moreActionsFor'], { name: credential.name })}
+        >
+          <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+        </IconButton>
+      }
+    />
+  )
+}
+
+type ConnectionActionsProps = {
+  handle: MenuHandle<Credential>
+  pluginPayload?: PluginPayload
+  providerName?: string
+  onAction: () => void
+  dataSource: ConnectionActionsDataSource
+}
+
+const ConnectionActions = ({
+  handle,
+  pluginPayload,
+  providerName,
+  onAction,
+  dataSource,
+}: ConnectionActionsProps) => {
+  const { t } = useTranslation(['common', 'plugin', 'datasetDocuments'])
+  const { canManageConnection, canEditConnection } = dataSource
+  const [editingCredential, setEditingCredential] = useState<Credential | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteCredential, setDeleteCredential] = useState<Credential | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [replacementCredential, setReplacementCredential] = useState<Credential | null>(null)
+  const [replacementOpen, setReplacementOpen] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [removalFailed, setRemovalFailed] = useState(false)
+  const confirmRemoval = async () => {
+    if (!deleteCredential || !canManageConnection(deleteCredential) || isRemoving) return
+    setIsRemoving(true)
+    setRemovalFailed(false)
+    try {
+      await dataSource.remove(deleteCredential)
+      setDeleteOpen(false)
+    } catch {
+      setRemovalFailed(true)
+    } finally {
+      setIsRemoving(false)
+    }
+  }
+  const editConnection = (credential: Credential) => {
+    if (!canEditConnection(credential)) return
+    onAction()
+    setEditingCredential(credential)
+    setEditOpen(true)
+  }
+  const replaceApiKey = (credential: Credential) => {
+    if (!canEditConnection(credential) || credential.credential_type !== CredentialTypeEnum.API_KEY)
+      return
+    onAction()
+    setReplacementCredential(credential)
+    setReplacementOpen(true)
+  }
+  const requestRemoval = (credential: Credential) => {
+    if (!canManageConnection(credential)) return
+    onAction()
+    setDeleteCredential(credential)
+    setRemovalFailed(false)
+    setDeleteOpen(true)
+  }
+
+  return (
+    <>
+      <Menu handle={handle}>
+        {({ payload }) => {
+          if (!payload || !canManageConnection(payload)) return null
+          const canEdit = canEditConnection(payload)
+          return (
+            <MenuContent align="end" className="w-56 max-w-(--available-width)">
+              <MenuItem
+                className="h-auto min-h-8"
+                disabled={!canEdit}
+                onClick={() => editConnection(payload)}
+              >
+                <span className="px-1 py-0.5 system-md-regular">
+                  {t(($) => $['auth.connection.edit'], { ns: 'plugin' })}
+                </span>
+              </MenuItem>
+              {payload.credential_type === CredentialTypeEnum.OAUTH2 ? (
+                <Tooltip>
+                  <TooltipTrigger render={<div />}>
+                    <MenuItem
+                      className="h-auto min-h-8"
+                      disabled
+                      aria-description={t(($) => $['auth.connection.reauthorizeUnavailable'], {
+                        ns: 'plugin',
+                      })}
+                    >
+                      <span className="px-1 py-0.5 system-md-regular">
+                        {t(($) => $['auth.connection.reauthorize'], { ns: 'plugin' })}
+                      </span>
+                    </MenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent role="tooltip">
+                    {t(($) => $['auth.connection.reauthorizeUnavailable'], { ns: 'plugin' })}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <MenuItem
+                  className="h-auto min-h-8"
+                  disabled={!canEdit}
+                  onClick={() => replaceApiKey(payload)}
+                >
+                  <span className="px-1 py-0.5 system-md-regular">
+                    {t(($) => $['auth.connection.replaceApiKey'], { ns: 'plugin' })}
+                  </span>
+                </MenuItem>
+              )}
+              <MenuItem
+                className="h-auto min-h-8"
+                variant="destructive"
+                onClick={() => requestRemoval(payload)}
+              >
+                <span className="px-1 py-0.5 system-md-regular">
+                  {t(($) => $['operation.remove'], { ns: 'common' })}
+                </span>
+              </MenuItem>
+            </MenuContent>
+          )
+        }}
+      </Menu>
+      {editingCredential && (
+        <EditConnectionModal
+          key={editingCredential.id}
+          credential={editingCredential}
+          dataSource={{
+            ...dataSource.edit,
+            canEdit: dataSource.edit.canEdit && canEditConnection(editingCredential),
+          }}
+          providerName={providerName}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          onCloseComplete={() => setEditingCredential(null)}
+        />
+      )}
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!isRemoving) setDeleteOpen(open)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{deleteCredential?.name}</AlertDialogDescription>
+          </AlertDialogHeader>
+          {removalFailed && (
+            <AlertDialogBody>
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            </AlertDialogBody>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={isRemoving}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              loading={isRemoving}
+              disabled={!deleteCredential || !canManageConnection(deleteCredential)}
+              onClick={() => {
+                void confirmRemoval()
+              }}
+            >
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {replacementCredential && (
+        <ApiKeyModal
+          open={replacementOpen}
+          onOpenChange={setReplacementOpen}
+          dataSource={dataSource.apiKey}
+          pluginPayload={pluginPayload}
+          editValues={{
+            ...replacementCredential.credentials,
+            __name__: replacementCredential.name,
+            __credential_id__: replacementCredential.id,
+            __visibility__: replacementCredential.visibility,
+          }}
+          disabled={!canEditConnection(replacementCredential)}
+          onRemove={() => {
+            if (!canManageConnection(replacementCredential)) return
+            setReplacementOpen(false)
+            requestRemoval(replacementCredential)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+export default memo(ConnectionActions)

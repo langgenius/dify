@@ -47,11 +47,6 @@
       "count": 5
     }
   },
-  "web/app/(auth)/signin/normal-form.tsx": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/plugins/page.tsx": {
     "no-restricted-globals": {
       "count": 1
@@ -1186,14 +1181,6 @@
       "count": 1
     }
   },
-  "web/app/components/explore/item-operation/__tests__/index.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/try-app/app/text-generation.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -1326,7 +1313,7 @@
   },
   "web/app/components/plugins/plugin-auth/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 11
     },
     "react/only-export-components": {
       "count": 3
@@ -1926,7 +1913,7 @@
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
@@ -3005,11 +2992,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/service/webapp-auth.ts": {
-    "no-restricted-globals": {
-      "count": 6
     }
   },
   "web/types/assets.d.ts": {

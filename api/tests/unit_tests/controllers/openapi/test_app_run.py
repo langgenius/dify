@@ -21,7 +21,7 @@ from werkzeug.exceptions import BadRequest, NotFound, TooManyRequests
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import app_run
-from controllers.openapi._errors import AppModeMismatch
+from controllers.openapi._errors import AppModeMismatch, TestCredentialsNotReady
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
     ChatRunPayload,
@@ -52,6 +52,11 @@ from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_test_credentials import (
+    TestCredentialNotReadyError,
+    TestCredentialReadiness,
+    TestCredentialState,
+)
 from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
@@ -94,6 +99,32 @@ def test_translate_maps_value_error_to_a_fixed_bad_request() -> None:
             raise ValueError("variable 'secret_key' of node 42 is missing")
     assert exc.value.code == 400
     assert exc.value.description == "invalid run input"
+
+
+def test_translate_keeps_unready_test_credentials_out_of_the_generic_rejection() -> None:
+    # An unselected builder test credential is a state of the draft, not a malformed
+    # body: collapsing it into "invalid run input" hides the one action that fixes it.
+    readiness = TestCredentialReadiness(
+        credentials=(
+            TestCredentialState(
+                node_id="node-a", node_ids=("node-a",), credential_id=None, check=None, status="disconnected"
+            ),
+            TestCredentialState(
+                node_id="node-b", node_ids=("node-b",), credential_id="cred", check=None, status="connected"
+            ),
+        )
+    )
+
+    with pytest.raises(TestCredentialsNotReady) as exc:
+        with _translate_service_errors():
+            raise TestCredentialNotReadyError(readiness)
+
+    assert exc.value.code == 400
+    assert exc.value.error_code == "test_credentials_not_ready"
+    assert exc.value.hint is not None
+    assert [(detail.type, detail.loc) for detail in exc.value.details or []] == [
+        ("disconnected", ["credentials", "node-a"])
+    ]
 
 
 """Tests for the /openapi/v1 run routes: per-mode bodies and handlers, task stop."""

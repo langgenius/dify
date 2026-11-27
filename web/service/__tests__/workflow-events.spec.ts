@@ -15,6 +15,7 @@ const fetchedURL = () => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  window.history.replaceState({}, '', '/')
 })
 
 describe('workflowRunEventsRequest', () => {
@@ -38,7 +39,14 @@ describe('workflowRunEventsRequest', () => {
     expect(frames).toEqual([{ event: 'workflow_paused' }])
   })
 
-  it('uses the WebApp API for public requests', async () => {
+  it.each([
+    { page: '/workflow/app-code', apiPath: '/api/workflow/run-1/events' },
+    {
+      page: '/environment/workflow/env-code',
+      apiPath: '/api/environment/env-code/workflow/run-1/events',
+    },
+  ])('keeps the WebApp API path and stream query on $page', async ({ page, apiPath }) => {
+    window.history.replaceState({}, '', page)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(eventStreamResponse()))
 
     await workflowRunEventsRequest('run-1', { isPublicAPI: true })({
@@ -47,7 +55,10 @@ describe('workflowRunEventsRequest', () => {
     })
 
     const url = fetchedURL()
-    expect(url.pathname).toBe('/api/workflow/run-1/events')
-    expect(url.searchParams.get('continue_on_pause')).toBe('true')
+    expect(url.pathname).toBe(apiPath)
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      include_state_snapshot: 'true',
+      continue_on_pause: 'true',
+    })
   })
 })

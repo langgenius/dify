@@ -5,6 +5,7 @@ import type {
 import type { InputVar, Node } from '@/app/components/workflow/types'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
+import { getWebAppRouteSegment } from '@/service/webapp-address'
 import { basePath } from '@/utils/var'
 
 export type PublishedWorkflow = WorkflowResponse | null | undefined
@@ -46,13 +47,10 @@ export function getPublishedWorkflowNodes(workflow: PublishedWorkflow) {
 }
 
 export function getBuiltInAccessUrls(appInfo: AppDetailWithSite) {
-  const appMode =
-    appInfo.mode === 'completion' || appInfo.mode === 'workflow' ? appInfo.mode : 'chat'
-
   return {
     api: appInfo.api_base_url ?? '',
     webApp: appInfo.site?.access_token
-      ? `${appInfo.site.app_base_url}${basePath}/${appMode}/${appInfo.site.access_token}`
+      ? `${appInfo.site.app_base_url}${basePath}/${getWebAppRouteSegment(appInfo.mode)}/${appInfo.site.access_token}`
       : '',
   }
 }

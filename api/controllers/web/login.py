@@ -36,9 +36,11 @@ from libs.password import valid_password
 from libs.token import (
     clear_webapp_access_token_from_cookie,
     extract_webapp_access_token,
+    extract_webapp_cookie_token,
     extract_webapp_passport,
 )
 from machinery.context import RequestContext
+from services.entities.account_login_entities import LoginMode
 from services.entities.auth_entities import LoginPayloadBase
 from services.web_authentication_service import (
     WebAccountBannedError,
@@ -71,6 +73,10 @@ class EmailCodeLoginVerifyPayload(BaseModel):
 
 
 class LoginStatusQuery(BaseModel):
+    mode: LoginMode = Field(
+        default=LoginMode.CONSOLE,
+        description="end_user reports actual Account authentication instead of Public App access",
+    )
     app_code: str | None = Field(default=None, description="Web app code")
     user_id: str | None = Field(default=None, description="End user session ID")
 
@@ -147,9 +153,11 @@ class LoginStatusApi(Resource):
     def get(self, query: LoginStatusQuery, _request_context: RequestContext):
         try:
             status = application_services().web_authentication.get_login_status(
+                mode=query.mode,
                 app_code=query.app_code,
                 user_id=query.user_id,
                 access_token=extract_webapp_access_token(request),
+                account_login_token=extract_webapp_cookie_token(request),
                 app_session_token=extract_webapp_passport(query.app_code, request) if query.app_code else None,
             )
         except WebAppAccessAppNotFoundError as error:
@@ -178,7 +186,7 @@ class LogoutApi(Resource):
         response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
         # enterprise SSO sets same site to None in https deployment
         # so we need to logout by calling api
-        clear_webapp_access_token_from_cookie(response, samesite="None")
+        clear_webapp_access_token_from_cookie(request, response, samesite="None")
         return response
 
 

@@ -1,5 +1,7 @@
 from flask_restx import Resource
+from pydantic import Field
 
+from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.console.flask_admission import console_account_admission
 from extensions.ext_application_services import application_services
@@ -18,6 +20,15 @@ from . import console_ns
 from .wraps import cloud_utm_record
 
 
+class ConsoleFeatureResponse(FeatureModel, ResponseModel):
+    """Expose Console feature entry points only after account admission."""
+
+    end_user_auth_enabled: bool = Field(
+        description="Whether Console exposes EndUser authentication configuration for workflow tool nodes. "
+        "Does not control WebApp login, Guest personal Connections, or runtime authorization."
+    )
+
+
 class TrialModelsResponse(ResponseModel):
     trial_models: list[str]
 
@@ -26,13 +37,28 @@ class AppDslVersionResponse(ResponseModel):
     app_dsl_version: str
 
 
+class ConsoleSystemFeatureResponse(SystemFeatureModel):
+    """Extend public bootstrap with the Console WebApp destination and login availability."""
+
+    webapp_url: str = Field(
+        description=(
+            "WebApp frontend base URL, preserving its deployment base path. "
+            "Falls back to the Console frontend URL; an empty string means the same-origin root."
+        ),
+    )
+
+    webapp_account_login_enabled: bool = Field(
+        description="Whether the WebApp Account login flow is enabled for this deployment.",
+    )
+
+
 register_response_schema_models(
     console_ns,
     AppDslVersionResponse,
-    FeatureModel,
+    ConsoleFeatureResponse,
+    ConsoleSystemFeatureResponse,
     LicenseModel,
     LimitationModel,
-    SystemFeatureModel,
     TrialModelsResponse,
     VectorSpaceLimitationModel,
 )
@@ -45,13 +71,26 @@ class FeatureApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[FeatureModel.__name__],
+        console_ns.models[ConsoleFeatureResponse.__name__],
     )
     @console_account_admission()
     @cloud_utm_record
     def get(self, request_context: RequestContext):
-        """Get current workspace features."""
-        return dump_response(FeatureModel, application_services().feature_queries.get_features(request_context))
+        """Get workspace features and Console EndUser auth configuration availability.
+
+        Preconditions: an admitted Console account has an active workspace; the
+        Console feature flag comes only from trusted deployment configuration.
+        Postconditions: preserve workspace features and report the Console-only
+        configuration gate without changing WebApp login, Guest personal-Connection
+        policies, runtime authorization, or state. Feature-query failures propagate unchanged.
+        """
+        return dump_response(
+            ConsoleFeatureResponse,
+            {
+                **application_services().feature_queries.get_features(request_context).model_dump(mode="json"),
+                "end_user_auth_enabled": dify_config.CONSOLE_END_USER_AUTH_ENABLED,
+            },
+        )
 
 
 @console_ns.route("/features/vector-space")
@@ -115,15 +154,30 @@ class SystemFeatureApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[SystemFeatureModel.__name__],
+        console_ns.models[ConsoleSystemFeatureResponse.__name__],
     )
     def get(self):
         """Get the non-sensitive bootstrap snapshot exposed before authentication.
 
         Authentication configuration must be available before the authentication flow can be selected.
         Authenticated license detail is served separately by SystemFeatureLicenseApi.
+
+        Preconditions: no Account, workspace, or app identity is required. URL
+        settings are trusted deployment configuration, never request headers.
+        Postconditions: return the WebApp frontend base URL with its base path
+        intact, using the Console URL when APP_WEB_URL is unset. An empty URL
+        means the same-origin root. Report the deployment setting that admits
+        End User Account login. Issue no credentials and change no state.
+        Feature-query failures propagate unchanged.
         """
-        return dump_response(SystemFeatureModel, application_services().feature_queries.get_public_system_features())
+        return dump_response(
+            ConsoleSystemFeatureResponse,
+            {
+                **application_services().feature_queries.get_public_system_features().model_dump(mode="json"),
+                "webapp_url": (dify_config.APP_WEB_URL or dify_config.CONSOLE_WEB_URL).rstrip("/"),
+                "webapp_account_login_enabled": dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+            },
+        )
 
 
 @console_ns.route("/system-features/license")

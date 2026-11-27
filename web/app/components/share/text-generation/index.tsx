@@ -2,6 +2,7 @@
 import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { FC } from 'react'
 import type { InputValueTypes, TextGenerationRunControl } from './types'
+import type { WorkflowRunSnapshot } from './workflow-run-configuration'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
@@ -9,19 +10,31 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { InstalledAppConnectionsProvider } from '@/app/components/explore/installed-app/connections/provider'
+import { useOptionalInstalledAppConnections } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
+import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
+import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import { toast } from '@/app/notifications'
 import { useSearchParams } from '@/next/navigation'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { useTextGenerationAppState } from './hooks/use-text-generation-app-state'
 import { useTextGenerationBatch } from './hooks/use-text-generation-batch'
 import TextGenerationResultPanel from './text-generation-result-panel'
 import TextGenerationSidebar from './text-generation-sidebar'
+import { captureWorkflowRunConfiguration } from './workflow-run-configuration'
 
 type IMainProps = {
   isInstalledApp?: boolean
+  installedAppId?: string
   isWorkflow?: boolean
 }
-const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
+const TextGenerationContent: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
   const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
+  const webAppConnections = useOptionalWebAppConnections()
+  const installedConnections = useOptionalInstalledAppConnections()
+  const connections = webAppConnections ?? installedConnections
+  const [setupComplete, setSetupComplete] = useState(false)
+  const [runSnapshot, setRunSnapshot] = useState<WorkflowRunSnapshot>()
   const isBelowMd = useMediaQuery('(width < 48rem)', {})
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
@@ -70,7 +83,8 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     controlRetry,
     exportRes,
     handleCompleted,
-    handleRetryAllFailedTask,
+    handleRetryAllFailedTask: retryAllFailedTasks,
+    handleTaskStart,
     handleRunBatch: runBatchExecution,
     isCallBatchAPI,
     noPendingTask,
@@ -94,23 +108,47 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     setResultExisted(true)
   }, [])
   const handleRunOnce = useCallback(() => {
+    if (runControl || (isCallBatchAPI && !allTasksRun)) return
+    const snapshot = captureWorkflowRunConfiguration(connections, installedConnections)
+    if (snapshot === false) return
+    setRunSnapshot(snapshot)
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
     resetBatchExecution()
     showResultPanel()
-  }, [resetBatchExecution, setIsCallBatchAPI, showResultPanel])
+  }, [
+    allTasksRun,
+    connections,
+    installedConnections,
+    isCallBatchAPI,
+    resetBatchExecution,
+    runControl,
+    setIsCallBatchAPI,
+    showResultPanel,
+  ])
   const handleRunBatch = useCallback(
     (data: string[][]) => {
+      if (runControl) return
+      const snapshot = captureWorkflowRunConfiguration(connections, installedConnections)
+      if (snapshot === false) return
       runBatchExecution(data, {
         onStart: () => {
+          setRunSnapshot(snapshot)
           setControlSend(Date.now())
           setControlStopResponding(Date.now())
           showResultPanel()
         },
       })
     },
-    [runBatchExecution, showResultPanel],
+    [connections, installedConnections, runBatchExecution, runControl, showResultPanel],
   )
+  const handleRetryAllFailedTask = () => {
+    if (!allTasksRun || runControl) return
+    const snapshot = captureWorkflowRunConfiguration(connections, installedConnections)
+    if (snapshot === false) return
+    setRunSnapshot(snapshot)
+    retryAllFailedTasks()
+  }
   if (!appId || !siteInfo || !promptConfig) {
     return (
       <div className="flex h-screen items-center">
@@ -136,6 +174,12 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
         isInstalledApp={isInstalledApp}
         isBelowMd={isBelowMd}
         isWorkflow={isWorkflow}
+        connectionsReady={connections?.canRun ?? true}
+        isConfiguringConnections={Boolean(
+          connections && connections.status !== 'inactive' && !setupComplete,
+        )}
+        onStartUsingApp={() => setSetupComplete(true)}
+        isResponding={Boolean(runControl) || (isCallBatchAPI && !allTasksRun)}
         onBatchSend={handleRunBatch}
         onInputsChange={updateInputs}
         onRemoveSavedMessage={handleRemoveSavedMessage}
@@ -152,6 +196,9 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
         visionConfig={visionConfig}
       />
       <TextGenerationResultPanel
+        runSnapshot={runSnapshot}
+        onTaskStart={handleTaskStart}
+        connectionsReady={(connections?.canRun ?? true) && allTasksRun && !runControl}
         allFailedTaskList={allFailedTaskList}
         allSuccessTaskList={allSuccessTaskList}
         allTaskList={allTaskList}
@@ -186,4 +233,26 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     </div>
   )
 }
+const TextGeneration: FC<IMainProps> = (props) => {
+  const address = resolveWebAppAddress()
+  if (props.isInstalledApp && props.isWorkflow && props.installedAppId) {
+    return (
+      <InstalledAppConnectionsProvider
+        key={props.installedAppId}
+        installedAppId={props.installedAppId}
+      >
+        <TextGenerationContent {...props} />
+      </InstalledAppConnectionsProvider>
+    )
+  }
+  if (!props.isInstalledApp && props.isWorkflow && address?.kind === 'default') {
+    return (
+      <WebAppConnectionsProvider address={address}>
+        <TextGenerationContent {...props} />
+      </WebAppConnectionsProvider>
+    )
+  }
+  return <TextGenerationContent {...props} />
+}
+
 export default TextGeneration

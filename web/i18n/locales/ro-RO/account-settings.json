@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Contul Dify și datele de utilizator asociate.",
   "account.myAccount": "Contul meu",
   "account.name": "Nume",
+  "account.nameLengthInvalid": "Numele trebuie să conțină între {{min}} și {{max}} de caractere.",
   "account.newPassword": "Parolă nouă",
   "account.notEqual": "Cele două parole sunt diferite.",
   "account.password": "Parolă",

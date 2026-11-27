@@ -1,5 +1,4 @@
 import { zAppPagination } from '@dify/contracts/api/console/apps/zod.gen'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { createInstance } from 'i18next'
 import { NuqsAdapter } from 'nuqs/adapters/react'
 import { I18nextProvider } from 'react-i18next'
@@ -9,6 +8,7 @@ import appMessages from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
 import time from '@/i18n/locales/en-US/time.json'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
@@ -31,7 +31,7 @@ async function setup(listUrl: string) {
       console: {
         apps: { get: () => noApps, starred: { get: () => noApps } },
         explore: { apps: { get: () => ({ recommended_apps: [], categories: [] }) } },
-        features: { get: () => zGetFeaturesResponse.parse({}) },
+        features: { get: () => createFeaturesFixture() },
         tags: { get: () => [] },
         workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
       },

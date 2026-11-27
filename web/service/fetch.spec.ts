@@ -11,6 +11,12 @@ import { request } from './base'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests low-level public API routing.
 import { base } from './fetch'
 import { isErrorHandled } from './handled-error'
+import {
+  getWebAppPassport,
+  setWebAppAccessToken,
+  setWebAppPassport,
+  startWebAppAccountSession,
+} from './webapp-auth'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -37,6 +43,8 @@ describe('base', () => {
     vi.restoreAllMocks()
     window.history.replaceState({}, '', originalUrl)
     markAppDeletionFailed('deleted-app')
+    localStorage.clear()
+    sessionStorage.clear()
   })
 
   describe('Public API routing', () => {
@@ -183,6 +191,57 @@ describe('base', () => {
   })
 
   describe('Error responses', () => {
+    it('redirects a legacy app to SSO even when another app uses account sign-in', async () => {
+      window.history.replaceState({}, '', '/chat/sso-app')
+      const accountApp = { kind: 'default', code: 'account-app' } as const
+      const ssoApp = { kind: 'default', code: 'sso-app' } as const
+      startWebAppAccountSession()
+      setWebAppPassport(accountApp, 'account-passport', 'authenticated', 'end_user')
+      setWebAppPassport(ssoApp, 'enterprise-passport', 'anonymous')
+      vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        Response.json(
+          { code: 'unauthorized', message: 'Sign in again', status: 401 },
+          { status: 401 },
+        ),
+      )
+
+      await expect(
+        // oxlint-disable-next-line typescript/no-deprecated -- Exercise the public auth error owner through its transport boundary.
+        request('/parameters', {}, { isPublicAPI: true }),
+      ).rejects.toMatchObject({ code: 'unauthorized' })
+
+      expect(window.location.pathname).toBe('/webapp-signin')
+      expect(window.location.reload).not.toHaveBeenCalled()
+      expect(getWebAppPassport(ssoApp)).toBe('enterprise-passport')
+      expect(getWebAppPassport(accountApp)).toBe('account-passport')
+    })
+
+    it('keeps an optional account-login requirement separate from Console refresh and redirects', async () => {
+      window.history.replaceState({}, '', '/chat/account-app')
+      setWebAppAccessToken('expired-proof', 'end_user')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        Response.json(
+          {
+            code: 'end_user_login_required',
+            message: 'Account login required',
+            status: 401,
+          },
+          { status: 401 },
+        ),
+      )
+
+      await expect(
+        // oxlint-disable-next-line typescript/no-deprecated -- Exercise the public auth error owner through its transport boundary.
+        request('/connections', {}, { isPublicAPI: true }),
+      ).rejects.toMatchObject({ code: 'end_user_login_required' })
+
+      expect(fetch).toHaveBeenCalledOnce()
+      expect(refreshAccessTokenOrReLoginMock).not.toHaveBeenCalled()
+      expect(window.location.pathname).toBe('/chat/account-app')
+      expect(toast.error).not.toHaveBeenCalled()
+    })
     it('should preserve structured error details when a 401 response is rejected', async () => {
       // Arrange
       const unauthorizedResponse = new Response(

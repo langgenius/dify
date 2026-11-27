@@ -55,7 +55,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
-  const { createFeaturesFixture } = await import('@/test/console/query-data')
+  const { createFeaturesFixture } = await import('@/test/console/features-fixture')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {

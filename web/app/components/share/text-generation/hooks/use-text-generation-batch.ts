@@ -263,6 +263,18 @@ export const useTextGenerationBatch = ({
     [updateAllTaskList, updateBatchCompletionRes],
   )
 
+  const handleTaskStart = useCallback(
+    (taskId?: number) => {
+      if (taskId === undefined) return
+      updateAllTaskList(
+        allTaskListRef.current.map((task) =>
+          task.id === taskId ? { ...task, status: TaskStatus.running } : task,
+        ),
+      )
+    },
+    [updateAllTaskList],
+  )
+
   const handleRetryAllFailedTask = useCallback(() => {
     setControlRetry(Date.now())
   }, [])
@@ -299,6 +311,7 @@ export const useTextGenerationBatch = ({
     controlRetry,
     exportRes,
     handleCompleted,
+    handleTaskStart,
     handleRetryAllFailedTask,
     handleRunBatch,
     isCallBatchAPI,

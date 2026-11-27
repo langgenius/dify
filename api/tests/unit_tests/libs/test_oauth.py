@@ -1,10 +1,22 @@
 import urllib.parse
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from itsdangerous import TimestampSigner
 
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuth, OAuthUserInfo, decode_oauth_state, encode_oauth_state
+from libs.oauth import (
+    AccountOAuthState,
+    GitHubOAuth,
+    GoogleOAuth,
+    OAuth,
+    OAuthUserInfo,
+    decode_account_oauth_state,
+    decode_oauth_state,
+    encode_account_oauth_state,
+    encode_oauth_state,
+)
 
 
 def test_oauth_base_methods_raise_not_implemented() -> None:
@@ -420,3 +432,29 @@ class TestOAuthUserInfo:
         assert user_info.id == user_data["id"]
         assert user_info.name == user_data["name"]
         assert user_info.email == user_data["email"]
+
+
+def test_account_oauth_state_is_signed_and_expires(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(SECRET_KEY="end-user-state-test-key")
+    now = 1000
+    monkeypatch.setattr(TimestampSigner, "get_timestamp", lambda _self: now)
+    original = AccountOAuthState(
+        mode="end_user", provider="github", nonce="nonce", context={"redirect_url": "/chatbot/code?q=a%26b#result"}
+    )
+    state = encode_account_oauth_state(original)
+    assert decode_account_oauth_state(state) == original
+    with pytest.raises(ValueError, match="Invalid or expired"):
+        decode_account_oauth_state(state + "tampered")
+    now += 601
+    with pytest.raises(ValueError, match="Invalid or expired"):
+        decode_account_oauth_state(state)
+
+
+@pytest.mark.parametrize("provider", [GitHubOAuth, GoogleOAuth])
+def test_provider_authorization_preserves_protected_state(provider: type[OAuth]) -> None:
+    oauth = provider(client_id="client", client_secret="secret", redirect_uri="https://api.example.com/callback")
+    url = oauth.get_authorization_url(state="end_user.signed-context", redirect_url="/ignored-legacy-target")
+    assert urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)["state"] == ["end_user.signed-context"]

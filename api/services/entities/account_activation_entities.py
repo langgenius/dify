@@ -63,6 +63,7 @@ class ActivationCheckData:
     email: str
     account_status: str
     requires_setup: bool
+    is_current_account: bool = False
 
 
 @dataclass(frozen=True, slots=True)

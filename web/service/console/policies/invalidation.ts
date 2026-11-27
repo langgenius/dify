@@ -30,6 +30,7 @@ export const READ_ONLY_POSTS = [
   'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post',
   'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post',
   'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.validate.post',
+  'apps.byAppId.workflows.draft.testCredentials.preflight.post',
   'datasets.indexingEstimate.post',
   'datasets.notionIndexingEstimate.post',
   'datasets.byDatasetId.documents.downloadZip.post',
@@ -113,8 +114,8 @@ const isPreviewRun = (variables: unknown) =>
 
 const namedPolicies: ConsolePolicies = {
   login: { post: skip },
-  // Both reload the page once they succeed.
-  workspaces: { info: { post: skip }, switch: { post: skip } },
+  // These reload the page once they succeed.
+  workspaces: { activate: { post: skip }, info: { post: skip }, switch: { post: skip } },
   logout: { post: skip },
   refreshToken: { post: skip },
   emailCodeLogin: { post: skip, validity: { post: skip } },
