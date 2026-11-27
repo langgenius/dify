@@ -99,6 +99,7 @@ function BadCasePromotionDialog({
   const deleteGoldenMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
       {
+        // Only rolls back a failed promotion; the dialog shows the original failure.
         meta: { errorToast: false },
       },
     ),

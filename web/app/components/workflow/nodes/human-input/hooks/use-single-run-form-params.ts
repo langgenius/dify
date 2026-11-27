@@ -12,6 +12,7 @@ import { editorResourceAtom } from '@/app/components/workflow/editor-resource/st
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { isHumanInputV2NodeData } from '../../human-input-v2/types'
 import { selectHumanInputFormPreview } from '../query-select'
@@ -112,7 +113,10 @@ const useSingleRunFormParams = ({
     },
     onError: (error) => {
       if (error instanceof HumanInputDraftSyncError)
-        toast.error(t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }))
+        toast.error(
+          getRequestErrorMessage(error.cause) ??
+            t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }),
+        )
     },
   })
   const { mutate: generate, mutateAsync: generateAsync, reset: resetGeneration } = generation

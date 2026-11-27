@@ -19,6 +19,7 @@ import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-syn
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import Form from '../../_base/components/before-run-form/form'
 import {
   buildSubmitData,
@@ -290,8 +291,10 @@ const ServerPreviewTrigger = ({
               {preview.isError ? (
                 <p role="alert">
                   {preview.error instanceof HumanInputDraftSyncError
-                    ? t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' })
-                    : t(($) => $.error, { ns: 'common' })}
+                    ? (getRequestErrorMessage(preview.error.cause) ??
+                      t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' }))
+                    : (getRequestErrorMessage(preview.error) ??
+                      t(($) => $.error, { ns: 'common' }))}
                 </p>
               ) : inputVars.length ? (
                 <p className="system-sm-semibold text-text-secondary">

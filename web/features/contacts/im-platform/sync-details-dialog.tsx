@@ -23,6 +23,7 @@ import {
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import { ContactChannelIcon } from '../management/channel-icon'
 import { loadContactImSyncReport, syncResults } from './sync-report'
@@ -184,7 +185,10 @@ function SyncDetailsContent({ runId }: { runId: string }) {
       <DialogBody>
         {runQuery.isError || (itemsQuery.isError && !itemsQuery.data) ? (
           <div role="alert">
-            <p>{t(($) => $['imPlatform.details.loadError'])}</p>
+            <p>
+              {getRequestErrorMessage(runQuery.error ?? itemsQuery.error) ??
+                t(($) => $['imPlatform.details.loadError'])}
+            </p>
             <Button
               onClick={() => {
                 void runQuery.refetch()
@@ -239,7 +243,8 @@ function SyncDetailsContent({ runId }: { runId: string }) {
                 {report.error instanceof ContactImRepositoryError &&
                 report.error.code === ContactImRepositoryErrorCode.SyncRunNotFound
                   ? t(($) => $['imPlatform.details.reportChanged'])
-                  : t(($) => $['imPlatform.details.downloadFailed'])}
+                  : (getRequestErrorMessage(report.error) ??
+                    t(($) => $['imPlatform.details.downloadFailed']))}
               </div>
             )}
             <table
@@ -305,7 +310,8 @@ function SyncDetailsContent({ runId }: { runId: string }) {
             )}
             {itemsQuery.isFetchNextPageError && (
               <p role="alert" className="mt-3 text-text-destructive">
-                {t(($) => $['imPlatform.details.pageError'])}
+                {getRequestErrorMessage(itemsQuery.error) ??
+                  t(($) => $['imPlatform.details.pageError'])}
               </p>
             )}
             <div className="mt-4 flex justify-center">

@@ -18,7 +18,7 @@ import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
-import { billingErrorMessageKey } from '../../../billing-error'
+import { getBillingErrorMessage } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import Professional from '../../assets/professional'
@@ -111,7 +111,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
           },
           {
             onError: (error) => {
-              toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+              toast.error(getBillingErrorMessage(error, t))
             },
           },
         )
@@ -136,7 +136,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
     } catch (error) {
-      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+      toast.error(getBillingErrorMessage(error, t))
     } finally {
       setIsPlanActionPending(false)
     }

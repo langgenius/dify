@@ -76,6 +76,31 @@ export function toastRequestError(error: unknown, message?: string) {
   markErrorHandled(requestError)
 }
 
+const isAbortError = (error: unknown) =>
+  error instanceof DOMException && error.name === 'AbortError'
+
+/**
+ * Reports any failure of a user action that no mutation reports, such as a lookup before an
+ * install: request errors as `toastRequestError` does, and a network failure or timeout with
+ * the default message. A failure that was already reported, a sign-in failure and a
+ * cancellation stay silent.
+ */
+export function toastActionError(error: unknown) {
+  if (isAbortError(error) || isErrorHandled(error)) return
+  if (error instanceof ORPCError && typeof error.status === 'number') {
+    // A client without the console transport, such as the marketplace one, keeps a response body
+    // that is not an oRPC error under `data.body`.
+    const data = error.data as { body?: unknown } | undefined
+    toastRequestError(
+      error,
+      getHttpErrorBodyMessage(error.data) ?? getHttpErrorBodyMessage(data?.body),
+    )
+    return
+  }
+  toast.error(actionFailedMessage())
+  markErrorHandled(error)
+}
+
 /**
  * Every failed write is a separate user action. A mutation sets `meta.errorMessage` to replace
  * the server's message, or `meta.errorToast: false` when its owner presents the failure itself.

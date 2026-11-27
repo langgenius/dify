@@ -20,7 +20,7 @@ type AnnotationDetailsProps = {
   appId: string
   item: Annotation
   isPending: boolean
-  isError: boolean
+  error: unknown
   onSave: AnnotationEditorProps['onSave']
   onRemoved: () => void
 }
@@ -29,7 +29,7 @@ export default function AnnotationDetails({
   appId,
   item,
   isPending,
-  isError,
+  error,
   onSave,
   onRemoved,
 }: AnnotationDetailsProps) {
@@ -63,7 +63,7 @@ export default function AnnotationDetails({
               question={item.question ?? ''}
               answer={item.answer ?? ''}
               isPending={isPending}
-              isError={isError}
+              error={error}
               onSave={onSave}
             />
           </TabsPanel>

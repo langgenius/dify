@@ -1,6 +1,6 @@
 import logging
-import time
 from collections.abc import Callable
+from time import sleep
 
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
@@ -40,6 +40,11 @@ def run_with_db_retry[T](
     attempts: int = DEFAULT_DB_RETRY_ATTEMPTS,
     delays_seconds: tuple[float, ...] = DEFAULT_DB_RETRY_DELAYS_SECONDS,
 ) -> T:
+    """Return the operation's result, retrying transient database disconnects.
+
+    Pass a positive attempt count and a nonempty sequence of delays. Each
+    retry calls the operation again. The final or nonretryable error propagates.
+    """
     for attempt in range(1, attempts + 1):
         try:
             return operation()
@@ -55,7 +60,7 @@ def run_with_db_retry[T](
                 delay,
                 exc_info=True,
             )
-            time.sleep(delay)
+            sleep(delay)
     raise RuntimeError(f"{operation_name} did not complete")
 
 

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 
 export function useSaveExternalApi() {
   const queryClient = useQueryClient()
@@ -22,6 +23,7 @@ export function useSaveExternalApi() {
         queryKey: consoleQuery.datasets.externalKnowledgeApi.get.key(),
       })
     },
-    onError: () => toast.error(t(($) => $['api.actionFailed'])),
+    onError: (error) =>
+      toast.error(getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'])),
   })
 }

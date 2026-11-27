@@ -1,11 +1,11 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ConsoleClient } from '@/service/console'
-import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import CustomWebAppBrand from '../index'
@@ -238,8 +238,18 @@ it.each([0, 100])(
 
 it.each([
   {
-    error: new ORPCError('forbidden', { message: 'Workspace upload denied' }),
+    error: createHttpError(new Response(null, { status: 403 }), {
+      code: 'forbidden',
+      message: 'Workspace upload denied',
+    }),
     message: 'Workspace upload denied',
+  },
+  {
+    error: createHttpError(new Response(null, { status: 413 }), {
+      code: 'file_too_large',
+      message: 'File size exceeded.',
+    }),
+    message: 'File size exceeded.',
   },
   {
     error: new Error('Network unavailable'),

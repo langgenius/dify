@@ -267,7 +267,7 @@ export function List({
                   appId={appId}
                   item={payload}
                   isPending={update.isPending}
-                  isError={update.isError}
+                  error={update.error}
                   onSave={(body, onSuccess) =>
                     update.mutate(
                       { params: { app_id: appId, annotation_id: payload.id }, body },

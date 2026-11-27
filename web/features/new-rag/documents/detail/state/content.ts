@@ -89,6 +89,7 @@ const documentOutlineQueryAtom = atomWithQuery((get) => {
             },
           }
         : skipToken,
+      // The outline is optional; the chunks render flat without it.
       meta: { errorToast: false },
       retry: false,
     },
@@ -107,6 +108,7 @@ const documentMultimodalQueryAtom = atomWithQuery((get) => {
             },
           }
         : skipToken,
+      // The media manifest is optional; the content renders without its images.
       meta: { errorToast: false },
       retry: false,
     },

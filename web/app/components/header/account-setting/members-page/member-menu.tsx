@@ -8,6 +8,7 @@ import { useMutation } from '@tanstack/react-query'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import { AssignRolesContent } from './assign-roles-content'
 import { TransferOwnershipContent } from './transfer-ownership-content'
@@ -51,12 +52,17 @@ export const MemberMenu = memo(
       mutate: updateRolesOfMember,
       isPending: isSavingRoles,
       isError: roleSaveFailed,
+      error: roleSaveError,
       reset: resetRoleSave,
     } = useMutation(
       consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
         meta: { errorToast: false },
       }),
     )
+
+    const roleSaveErrorMessage = roleSaveFailed
+      ? (getRequestErrorMessage(roleSaveError) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
+      : undefined
 
     const handleOpenAssignRoles = () => {
       resetRoleSave()
@@ -119,7 +125,7 @@ export const MemberMenu = memo(
         </Menu>
         {roleSaveFailed && !assignModalOpen && (
           <p role="alert" className="mt-1 system-xs-regular text-text-destructive">
-            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            {roleSaveErrorMessage}
           </p>
         )}
         <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
@@ -133,7 +139,7 @@ export const MemberMenu = memo(
               selectedRoles={selectedRoles}
               allowMultipleRoles={allowMultipleRoles}
               isSubmitting={isSavingRoles}
-              hasSubmitError={roleSaveFailed}
+              submitError={roleSaveErrorMessage}
               onSubmit={handleAssignRolesSubmit}
             />
           </DialogContent>
