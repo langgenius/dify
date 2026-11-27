@@ -125,7 +125,7 @@ export const zWebAppAuthModel = z.object({
 /**
  * ConsoleSystemFeatureResponse
  *
- * Extend public bootstrap with the Console-only WebApp frontend address.
+ * Extend public bootstrap with the Console WebApp destination and login availability.
  */
 export const zConsoleSystemFeatureResponse = z.object({
   agent_tracing_api_collection_enabled: z.boolean(),
@@ -157,6 +157,7 @@ export const zConsoleSystemFeatureResponse = z.object({
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  webapp_account_login_enabled: z.boolean(),
   webapp_auth: zWebAppAuthModel,
   webapp_url: z.string(),
 })

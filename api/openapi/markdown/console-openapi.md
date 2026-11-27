@@ -14298,8 +14298,9 @@ Preconditions: no Account, workspace, or app identity is required. URL
 settings are trusted deployment configuration, never request headers.
 Postconditions: return the WebApp frontend base URL with its base path
 intact, using the Console URL when APP_WEB_URL is unset. An empty URL
-means the same-origin root. Issue no credentials and change no state;
-feature-query failures propagate unchanged.
+means the same-origin root. Report the deployment setting that admits
+End User Account login. Issue no credentials and change no state.
+Feature-query failures propagate unchanged.
 
 #### Responses
 
@@ -25252,7 +25253,7 @@ Frozen form definition and effective expiration in UTC epoch seconds.
 
 #### ConsoleSystemFeatureResponse
 
-Extend public bootstrap with the Console-only WebApp frontend address.
+Extend public bootstrap with the Console WebApp destination and login availability.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -25276,6 +25277,7 @@ Extend public bootstrap with the Console-only WebApp frontend address.
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+| webapp_account_login_enabled | boolean | Whether the WebApp Account login flow is enabled for this deployment. | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 | webapp_url | string | WebApp frontend base URL, preserving its deployment base path. Falls back to the Console frontend URL; an empty string means the same-origin root. | Yes |
 

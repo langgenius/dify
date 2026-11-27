@@ -38,13 +38,17 @@ class AppDslVersionResponse(ResponseModel):
 
 
 class ConsoleSystemFeatureResponse(SystemFeatureModel):
-    """Extend public bootstrap with the Console-only WebApp frontend address."""
+    """Extend public bootstrap with the Console WebApp destination and login availability."""
 
     webapp_url: str = Field(
         description=(
             "WebApp frontend base URL, preserving its deployment base path. "
             "Falls back to the Console frontend URL; an empty string means the same-origin root."
         ),
+    )
+
+    webapp_account_login_enabled: bool = Field(
+        description="Whether the WebApp Account login flow is enabled for this deployment.",
     )
 
 
@@ -162,14 +166,16 @@ class SystemFeatureApi(Resource):
         settings are trusted deployment configuration, never request headers.
         Postconditions: return the WebApp frontend base URL with its base path
         intact, using the Console URL when APP_WEB_URL is unset. An empty URL
-        means the same-origin root. Issue no credentials and change no state;
-        feature-query failures propagate unchanged.
+        means the same-origin root. Report the deployment setting that admits
+        End User Account login. Issue no credentials and change no state.
+        Feature-query failures propagate unchanged.
         """
         return dump_response(
             ConsoleSystemFeatureResponse,
             {
                 **application_services().feature_queries.get_public_system_features().model_dump(mode="json"),
                 "webapp_url": (dify_config.APP_WEB_URL or dify_config.CONSOLE_WEB_URL).rstrip("/"),
+                "webapp_account_login_enabled": dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
             },
         )
 

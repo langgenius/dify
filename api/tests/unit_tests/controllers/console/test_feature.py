@@ -197,6 +197,7 @@ class TestSystemFeatureApi:
         assert result == {
             **system_features.model_dump(),
             "webapp_url": (feature.dify_config.APP_WEB_URL or feature.dify_config.CONSOLE_WEB_URL).rstrip("/"),
+            "webapp_account_login_enabled": feature.dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
         }
         assert result["is_allow_register"] is True
         assert result["enable_learn_app"] is True
@@ -218,7 +219,7 @@ class TestSystemFeatureApi:
         ("", "", ""),
     ],
 )
-def test_public_system_features_exposes_webapp_url_without_authentication(
+def test_public_system_features_exposes_webapp_discovery_without_authentication(
     monkeypatch: pytest.MonkeyPatch,
     account_application_services: ApplicationServices,
     login_enabled: bool,
@@ -252,6 +253,7 @@ def test_public_system_features_exposes_webapp_url_without_authentication(
 
     assert response.status_code == 200
     assert response.get_json()["webapp_url"] == expected_url
+    assert response.get_json()["webapp_account_login_enabled"] is login_enabled
     assert "Set-Cookie" not in response.headers
 
 
@@ -259,27 +261,41 @@ def test_public_system_features_exposes_webapp_url_without_authentication(
 def test_console_system_features_preserves_shared_bootstrap(deployment_edition: DeploymentEdition) -> None:
     features = SystemFeatureModel(agent_tracing_api_collection_enabled=False, deployment_edition=deployment_edition)
 
-    response = feature.ConsoleSystemFeatureResponse(**features.model_dump(mode="json"), webapp_url="/apps")
+    response = feature.ConsoleSystemFeatureResponse(
+        **features.model_dump(mode="json"), webapp_url="/apps", webapp_account_login_enabled=True
+    )
 
-    assert response.model_dump(mode="json") == {**features.model_dump(mode="json"), "webapp_url": "/apps"}
+    assert response.model_dump(mode="json") == {
+        **features.model_dump(mode="json"),
+        "webapp_url": "/apps",
+        "webapp_account_login_enabled": True,
+    }
 
 
-def test_console_system_features_schema_requires_webapp_url() -> None:
+def test_console_system_features_schema_requires_webapp_discovery_fields() -> None:
     schema = feature.ConsoleSystemFeatureResponse.model_json_schema(mode="serialization")
 
     assert "webapp_url" in schema["required"]
     assert schema["properties"]["webapp_url"]["type"] == "string"
     assert "default" not in schema["properties"]["webapp_url"]
-    assert "webapp_url" not in SystemFeatureModel.model_json_schema(mode="serialization")["properties"]
+    field = "webapp_account_login_enabled"
+    assert field in schema["required"]
+    assert schema["properties"][field]["type"] == "boolean"
+    assert "default" not in schema["properties"][field]
+    shared_properties = SystemFeatureModel.model_json_schema(mode="serialization")["properties"]
+    assert {"webapp_url", field}.isdisjoint(shared_properties)
 
 
-def test_console_system_features_cannot_default_missing_webapp_url_to_same_origin() -> None:
+def test_console_system_features_cannot_default_missing_webapp_discovery_fields() -> None:
     with pytest.raises(ValidationError) as error:
         feature.ConsoleSystemFeatureResponse.model_validate(
             {"deployment_edition": DeploymentEdition.COMMUNITY, "agent_tracing_api_collection_enabled": False}
         )
 
-    assert error.value.errors(include_input=False)[0]["loc"] == ("webapp_url",)
+    assert {item["loc"] for item in error.value.errors(include_input=False)} == {
+        ("webapp_url",),
+        ("webapp_account_login_enabled",),
+    }
 
 
 class TestSystemFeatureLicenseApi:

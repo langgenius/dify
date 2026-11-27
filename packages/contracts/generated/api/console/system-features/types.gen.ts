@@ -25,6 +25,7 @@ export type ConsoleSystemFeatureResponse = {
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SsoProtocol | null
+  webapp_account_login_enabled: boolean
   webapp_auth: WebAppAuthModel
   webapp_url: string
 }

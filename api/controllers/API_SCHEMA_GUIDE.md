@@ -89,11 +89,14 @@ trailing slashes are removed, and an empty string means the same-origin root.
 Request hosts and forwarding headers never supply this address. The shared
 `SystemFeatureModel` and Web bootstrap response do not expose this Console-only field.
 
-This extension adds one scalar to the existing Console bootstrap request with no
-extra I/O, credentials, or state changes. SSR timing, caching ownership, and feature
-query failure behavior stay unchanged. A missing field or failed request must not
-be interpreted as confirmed same-origin configuration. WebApp availability is
-independent of whether Account login is enabled; this URL grants no access.
+The Console desktop and mobile navigation use the required boolean
+`webapp_account_login_enabled` to show the Visited apps entry only when
+`WEBAPP_ACCOUNT_PASSPORT_ENABLED` admits End User Account login. The value is
+available from the existing bootstrap result when the navigation first renders.
+
+These two scalars use the existing Console bootstrap request without extra I/O,
+credentials, or state changes. SSR timing, caching ownership, and feature query
+failure behavior stay unchanged. The shared and Web snapshots omit both fields.
 
 ### Console login return targets
 

@@ -23,7 +23,7 @@ it.each([
     const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
       accountProfile: { name: 'Current User', email: 'current@example.com' },
       features: { education: { enabled: false } },
-      systemFeatures: { webapp_url: webappUrl },
+      systemFeatures: { webapp_account_login_enabled: true, webapp_url: webappUrl },
     })
     const { wrapper: NuqsProvider } = createNuqsTestWrapper()
     const screen = await render(
@@ -48,3 +48,30 @@ it.each([
     await expect.element(visitedApps).toBeVisible()
   },
 )
+
+it('hides Visited apps when WebApp Account login is disabled', async () => {
+  onTestFinished(guardUnexpectedFetch())
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    accountProfile: { name: 'Current User', email: 'current@example.com' },
+    features: { education: { enabled: false } },
+    systemFeatures: {
+      webapp_account_login_enabled: false,
+      webapp_url: 'https://webapp.example.com',
+    },
+  })
+  const { wrapper: NuqsProvider } = createNuqsTestWrapper()
+  const screen = await render(
+    <ConsoleProvider>
+      <NuqsProvider>
+        <MainNavFooter />
+      </NuqsProvider>
+    </ConsoleProvider>,
+  )
+
+  await expect
+    .element(screen.getByRole('button', { name: /accountSettings.account.account/ }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('navigation', { name: 'navigation.mainNav.visitedApps' }))
+    .not.toBeInTheDocument()
+})

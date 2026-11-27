@@ -41,6 +41,7 @@ def test_public_system_features_exposes_web_console_url(
     payload = response.get_json()
     console_payload = console_response.get_json()
     console_payload.pop("webapp_url")
+    assert console_payload.pop("webapp_account_login_enabled") is login_enabled
     assert payload == {
         **console_payload,
         "console_web_url": console_url.rstrip("/"),
@@ -78,6 +79,7 @@ def test_web_system_features_schema_requires_console_web_url() -> None:
     assert "anyOf" not in schema["properties"]["console_web_url"]
     assert "default" not in schema["properties"]["console_web_url"]
     assert "console_web_url" not in shared_properties
+    assert "webapp_account_login_enabled" not in schema["properties"]
 
 
 def test_web_system_features_cannot_default_missing_console_web_url() -> None:
