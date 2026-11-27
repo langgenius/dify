@@ -1,6 +1,7 @@
 import type { KnowledgeFsInitialSourcePreviewResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { SourceApi } from './source-server'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import {
@@ -10,6 +11,7 @@ import {
   sourceWorkflow,
 } from './source-fixtures'
 import {
+  connectionResponses,
   pluginResponses,
   resetSourceServer,
   serveDriveConnection,
@@ -28,6 +30,49 @@ afterEach(() => {
 })
 
 describe('Sources: edit-connected', () => {
+  it('retries a connection lookup that failed on its first page', async () => {
+    pluginResponses.data = [notionDatasourcePlugin]
+    connectionResponses.error = apiError({ status: 503, message: 'Connections unavailable' })
+    connectionResponses.refresh.mockImplementation(() => {
+      connectionResponses.error = null
+      serveNotionConnection()
+    })
+    sourceResponses.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-notion',
+              metadata: {
+                parameters: { workspace: 'product' },
+                providerId: 'plugin-daemon-online-document',
+                providerKind: 'online-document',
+                providerName: 'Notion',
+              },
+              type: 'connector',
+              uri: 'notion://connection-notion',
+            }),
+          ],
+        },
+      ],
+    }
+
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await page
+      .getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      })
+      .click()
+    await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
+
+    // A message without a cataloged code gives way to the editor's own text.
+    const failure = page.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' })
+    await expect.element(failure).toBeVisible()
+    await page.getByRole('button', { name: 'common.operation.retry' }).click()
+    await expect.element(failure).not.toBeInTheDocument()
+    expect(connectionResponses.refresh).toHaveBeenCalledOnce()
+  })
+
   it('submits an online document selection in the source PATCH', async () => {
     pluginResponses.data = [notionDatasourcePlugin]
     serveNotionConnection()

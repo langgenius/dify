@@ -9,7 +9,8 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import {
@@ -298,6 +299,7 @@ export function useRetryDocumentTaskAction(
 ) {
   const { t } = useTranslation(['knowledgeSpace'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
+  const describeRequestError = useRequestErrorDescriber()
   const canEdit = useDocumentCanEdit(documentId)
   const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -332,7 +334,10 @@ export function useRetryDocumentTaskAction(
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : (getRequestErrorMessage(error) ?? t(($) => $.taskActionFailed)),
+            : describeRequestError(
+                error,
+                t(($) => $.taskActionFailed),
+              ),
         )
       }
       return false
@@ -342,6 +347,7 @@ export function useRetryDocumentTaskAction(
   }, [
     begin,
     canEdit,
+    describeRequestError,
     finish,
     invalidateDocumentsAndTasks,
     knowledgeSpaceId,
@@ -349,8 +355,8 @@ export function useRetryDocumentTaskAction(
     onWriteDenied,
     retryTask,
     t,
-    tError,
     task,
+    tError,
   ])
 
   return { busy, pending, run }
@@ -359,6 +365,7 @@ export function useRetryDocumentTaskAction(
 export function useReindexDocumentAction(document: LogicalDocument, status: DocumentDisplayStatus) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
+  const describeRequestError = useRequestErrorDescriber()
   const canEdit = useDocumentCanEdit(document.id)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -398,8 +405,10 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : (getRequestErrorMessage(error) ??
-                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
+            : describeRequestError(
+                error,
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+              ),
         )
       }
       return false
@@ -409,6 +418,7 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
   }, [
     begin,
     canEdit,
+    describeRequestError,
     document.id,
     ensureModelReady,
     finish,

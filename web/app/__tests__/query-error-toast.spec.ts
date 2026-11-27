@@ -1,11 +1,13 @@
 import { ORPCError } from '@orpc/client'
+import * as reactI18next from 'react-i18next'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { markErrorHandled } from '@/service/handled-error'
 import { createHttpError } from '@/service/http-error'
+import { createDeferred } from '@/test/deferred'
 import { getQueryClient } from '../get-query-client'
-import { toastRequestError } from '../query-error-toast'
+import { toastActionError, toastRequestError } from '../query-error-toast'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
@@ -45,6 +47,78 @@ describe('query cache error toasts', () => {
     ).rejects.toBeInstanceOf(ORPCError)
 
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('Unavailable')
+  })
+
+  it('reports a failed first load with a cataloged code in translated text', async () => {
+    await expect(
+      queryClient.query({
+        queryKey: nextKey(),
+        queryFn: () =>
+          Promise.reject(httpError(404, { code: 'app_unavailable', message: 'App unavailable.' })),
+      }),
+    ).rejects.toBeInstanceOf(ORPCError)
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.app_unavailable')
+  })
+
+  const withRequestErrorBundle = (loadedBundle: () => boolean) => {
+    const i18n = reactI18next.getI18n()
+    const loaded = createDeferred<void>()
+    const load = vi.fn(() => loaded.promise)
+    const getI18n = vi.spyOn(reactI18next, 'getI18n').mockReturnValue({
+      ...i18n,
+      getResourceBundle: () => (loadedBundle() ? {} : undefined),
+      loadNamespaces: load,
+    })
+    return { load, loaded, restore: () => getI18n.mockRestore() }
+  }
+
+  const failWithCatalogedCode = () =>
+    queryClient
+      .query({
+        queryKey: nextKey(),
+        queryFn: () =>
+          Promise.reject(httpError(404, { code: 'app_unavailable', message: 'App unavailable.' })),
+      })
+      .catch(() => {})
+
+  it('loads the request error translations before reporting the first failure', async () => {
+    let bundle = false
+    const { load, loaded, restore } = withRequestErrorBundle(() => bundle)
+
+    await failWithCatalogedCode()
+    expect(load).toHaveBeenCalledWith('requestErrors')
+    expect(toast.error).not.toHaveBeenCalled()
+
+    bundle = true
+    loaded.resolve()
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.app_unavailable'),
+    )
+    restore()
+  })
+
+  it("keeps the server's message when the translations fail to load", async () => {
+    const { loaded, restore } = withRequestErrorBundle(() => false)
+
+    await failWithCatalogedCode()
+    // A failed resource load still resolves.
+    loaded.resolve()
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith('App unavailable.'))
+    restore()
+  })
+
+  it('leaves a failed read nothing explains to a caller that rethrows it', async () => {
+    const error = httpError(502)
+    await queryClient
+      .query({ queryKey: nextKey(), queryFn: () => Promise.reject(error) })
+      .catch(() => {})
+
+    expect(toast.error).not.toHaveBeenCalled()
+    toastRequestError(error)
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.server'),
+    )
   })
 
   it('leaves a failed first load to an owner that renders its own error state', async () => {
@@ -194,10 +268,27 @@ describe('mutation cache error toasts', () => {
     expect(toast.error).toHaveBeenCalledTimes(2)
   })
 
-  it('falls back to a default message when the server sends none', async () => {
+  it('falls back to generic text for the kind of failure when the server sends no message', async () => {
     await mutate(httpError(502))
 
-    expect(toast.error).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('api.actionFailed'))
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.server')
+  })
+
+  it('translates a cataloged error code instead of showing the server message', async () => {
+    await mutate(
+      httpError(409, {
+        code: 'email_already_in_use',
+        message: 'A user with this email already exists.',
+      }),
+    )
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.email_already_in_use')
+  })
+
+  it('shows the server message of a code that carries upstream detail', async () => {
+    await mutate(httpError(400, { code: 'provider_not_initialize', message: 'Invalid API key' }))
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('Invalid API key')
   })
 
   it('uses the custom message from meta', async () => {
@@ -260,6 +351,55 @@ describe('toastRequestError', () => {
     ['the error is not a request error', new DOMException('Aborted', 'AbortError')],
   ])('does not report when %s', (_case, error) => {
     toastRequestError(error)
+
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('toastActionError', () => {
+  beforeEach(() => {
+    vi.mocked(toast.error).mockClear()
+  })
+
+  it('reports a request failure with the server message and a network failure with generic text', () => {
+    toastActionError(httpError(404, { message: 'Plugin not found' }))
+    // The marketplace client's shape for a response body that is not an oRPC error.
+    toastActionError(
+      new ORPCError('SERVICE_UNAVAILABLE', {
+        status: 503,
+        data: { status: 503, body: { message: 'Marketplace unavailable' } },
+      }),
+    )
+    toastActionError(new TypeError('Failed to fetch'))
+    toastActionError(new DOMException('Signal timed out.', 'TimeoutError'))
+
+    expect(vi.mocked(toast.error).mock.calls).toEqual([
+      ['Plugin not found'],
+      ['Marketplace unavailable'],
+      ['requestErrors.generic.network'],
+      ['requestErrors.generic.timeout'],
+    ])
+  })
+
+  it('translates a cataloged error code', () => {
+    toastActionError(httpError(403, { code: 'paid_plan_required', message: 'Paid plan required' }))
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.code.paid_plan_required')
+  })
+
+  it.each([
+    ['the session expired', httpError(401, { message: 'Unauthorized' })],
+    ['the user cancelled', new DOMException('Aborted', 'AbortError')],
+  ])('does not report when %s', (_case, error) => {
+    toastActionError(error)
+
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('does not report a failure a mutation already reported', () => {
+    const error = httpError(500, { message: 'Install failed' })
+    markErrorHandled(error)
+    toastActionError(error)
 
     expect(toast.error).not.toHaveBeenCalled()
   })

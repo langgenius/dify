@@ -96,6 +96,26 @@ describe('useDSLByCanEdit', () => {
     expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
   })
 
+  it('shows the translated error code when the draft sync before export fails', async () => {
+    mockDoSyncWorkflowDraft.mockImplementation(async (_options, callback) => {
+      callback.onError(
+        createHttpError(
+          { status: 400, statusText: '', headers: new Headers() },
+          { code: 'invalid_input', message: 'Draft is invalid' },
+        ),
+      )
+      return null
+    })
+    const { result } = renderDSL(true)
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+    })
+    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
+      type: 'error',
+      message: 'requestErrors.code.invalid_input',
+    })
+  })
+
   it('allows export when draft synchronization is skipped for read-only access', async () => {
     mockDoSyncWorkflowDraft.mockResolvedValue(null)
     const { result } = renderDSL(false)
@@ -146,9 +166,12 @@ describe('useDSLByCanEdit', () => {
       })
     })
 
-    it('shows the server message when the export request fails', async () => {
+    it('shows the translated error code when the export request fails', async () => {
       mockExportPipelineConfig.mockRejectedValue(
-        createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_input',
+          message: 'Server says why',
+        }),
       )
       const { result } = renderDSL(true)
 
@@ -156,7 +179,10 @@ describe('useDSLByCanEdit', () => {
         expect(await result.current.handleExportDSL()).toBe(false)
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'Server says why' })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'requestErrors.code.invalid_input',
+      })
     })
   })
 
@@ -224,9 +250,12 @@ describe('useDSLByCanEdit', () => {
       })
     })
 
-    it('shows the server message when the draft check fails', async () => {
+    it('shows the translated error code when the draft check fails', async () => {
       mockFetchWorkflowDraft.mockRejectedValue(
-        createHttpError(new Response(null, { status: 403 }), { message: 'Server says why' }),
+        createHttpError(new Response(null, { status: 403 }), {
+          code: 'invalid_input',
+          message: 'Server says why',
+        }),
       )
       const { result } = renderDSL(true)
 
@@ -234,7 +263,10 @@ describe('useDSLByCanEdit', () => {
         await result.current.exportCheck()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'Server says why' })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'requestErrors.code.invalid_input',
+      })
     })
   })
 })

@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getRawInputsFromUrlParams } from '@/app/components/base/chat/utils'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { toastActionError, toastRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -101,10 +101,15 @@ export const useTextGenerationAppState = ({
   const fetchSavedMessages = useCallback(
     async (targetAppId = appId) => {
       if (!targetAppId) return
-      const res = (await doFetchSavedMessage(appSourceType, targetAppId)) as {
-        data: SavedMessage[]
+      try {
+        const res = (await doFetchSavedMessage(appSourceType, targetAppId)) as {
+          data: SavedMessage[]
+        }
+        setSavedMessages(res.data)
+      } catch (error) {
+        // The saved list keeps what it showed, so the failed load is reported here.
+        toastActionError(error)
       }
-      setSavedMessages(res.data)
     },
     [appId, appSourceType],
   )

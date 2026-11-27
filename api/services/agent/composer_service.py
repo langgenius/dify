@@ -447,46 +447,6 @@ class AgentComposerService:
         return state
 
     @classmethod
-    def prepare_agent_composer_draft(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
-    ) -> AgentConfigDraft:
-        """Prepare a persisted normal draft for an explicit configuration write."""
-        with session.no_autoflush:
-            agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-            return cls.get_or_create_normal_agent_draft(
-                session=session, tenant_id=tenant_id, agent=agent, created_by=account_id
-            )
-
-    @classmethod
-    def load_agent_soul_for_debug(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        draft_type: AgentConfigDraftType,
-    ) -> AgentSoulConfig:
-        """Load the same normal or account-owned build draft used by Agent debug chat."""
-        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
-            draft = find_agent_draft(
-                session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                draft_type=draft_type,
-                account_id=account_id,
-            )
-            if draft is None:
-                raise AgentVersionNotFoundError()
-            return AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-        state = cls.load_agent_composer(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            session=session,
-        )
-        return AgentSoulConfig.model_validate(state["agent_soul"])
-
-    @classmethod
     def _load_agent_composer_for_agent(
         cls, *, session: Session, agent: Agent, published_only: bool = False
     ) -> dict[str, Any]:
@@ -624,22 +584,6 @@ class AgentComposerService:
         return state
 
     @classmethod
-    def load_agent_app_build_draft(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
-    ) -> dict[str, Any]:
-        """Load an existing account draft in the legacy Config Inspector transaction."""
-        build_draft = find_agent_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            account_id=account_id,
-        )
-        if build_draft is None:
-            raise AgentVersionNotFoundError()
-        return cls._serialize_build_draft_state(build_draft)
-
-    @classmethod
     def collect_validation_findings(
         cls,
         *,
@@ -669,20 +613,6 @@ class AgentComposerService:
                 "knowledge_dataset_not_found: knowledge sets reference missing or out-of-scope datasets: "
                 + ", ".join(missing_ids)
             )
-
-    @classmethod
-    def resolve_workflow_node_agent_id(
-        cls, *, session: Session, tenant_id: str, app_id: str, node_id: str
-    ) -> str | None:
-        """The draft workflow node binding's agent id, if any (validate-endpoint context)."""
-        try:
-            workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
-        except ValueError:
-            return None
-        binding = cls._get_workflow_binding(
-            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
-        )
-        return binding.agent_id if binding else None
 
     @classmethod
     def prepare_workflow_candidates(

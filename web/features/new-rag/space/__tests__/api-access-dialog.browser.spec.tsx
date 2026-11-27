@@ -3,34 +3,34 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { KnowledgeFsApiAccessDialog } from '../api-access-dialog'
 
 function installApiAccessApi() {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          apiKeys: {
-            get: () => ({
-              data: [
-                {
-                  id: 'workspace-key',
-                  token: 'dataset-existing-secret',
-                  created_at: 1710000000,
-                  last_used_at: null,
-                  type: 'dataset',
-                  dataset_ids: [],
-                  knowledge_space_ids: [],
-                },
-              ],
-            }),
-          },
-          apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com/v1/' }) },
+  const fake = installFakeApi({
+    console: {
+      datasets: {
+        apiKeys: {
+          get: () => ({
+            data: [
+              {
+                id: 'workspace-key',
+                token: 'dataset-existing-secret',
+                created_at: 1710000000,
+                last_used_at: null,
+                type: 'dataset',
+                dataset_ids: [],
+                knowledge_space_ids: [],
+              },
+            ],
+          }),
         },
+        apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com/v1/' }) },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
+  return fake
 }
 
 async function renderDialog(
@@ -57,9 +57,32 @@ async function renderDialog(
 }
 
 describe('KnowledgeFsApiAccessDialog', () => {
+  let fakeApi: ReturnType<typeof installApiAccessApi>
   beforeEach(async () => {
     await page.viewport(800, 700)
-    installApiAccessApi()
+    fakeApi = installApiAccessApi()
+  })
+
+  it('shows why the endpoint is missing when the API base URL fails to load', async () => {
+    fakeApi.use({
+      console: {
+        datasets: {
+          apiBaseInfo: {
+            get: () => {
+              throw apiError({ status: 503, message: 'API gateway unavailable' })
+            },
+          },
+        },
+      },
+    })
+    const screen = await renderDialog({ status: 'active', knowledgeSpaceId: 'space-1' })
+
+    await screen.getByRole('button', { name: 'Open API access' }).click()
+
+    const dialog = screen.getByRole('dialog', { name: 'knowledgeSpace.apiAgentAccess' })
+    // A message without a cataloged code gives way to the dialog's own text.
+    await expect.element(dialog.getByText('dataset.unavailable')).toBeVisible()
+    await expect.element(dialog.getByText('appApi.loading')).not.toBeInTheDocument()
   })
 
   it('moves from Service API details to workspace keys and reopens a fresh dialog', async () => {

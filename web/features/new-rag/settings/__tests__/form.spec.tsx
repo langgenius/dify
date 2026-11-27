@@ -627,11 +627,14 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(pageSaveButton()).toBeEnabled()
     })
 
-    it('shows the server message when the scan policy save fails', async () => {
+    it('shows the translated error code when the scan policy save fails', async () => {
       const user = userEvent.setup()
       const enable = await renderFormWithFileScan()
       serviceMock.putFileScanPolicy.mockRejectedValue(
-        createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_input',
+          message: 'Server says why',
+        }),
       )
 
       await user.click(enable)
@@ -639,7 +642,9 @@ describe('KnowledgeSettingsPage workflows', () => {
       await user.click(await screen.findByRole('option', { name: /Office scanner/ }))
       await user.click(pageSaveButton())
 
-      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+      )
     })
 
     it('drops the scan policy changes on Cancel', async () => {
@@ -1139,17 +1144,22 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(serviceMock.deleteSpace).toHaveBeenCalledTimes(2)
   })
 
-  it('shows the server message when deletion fails', async () => {
+  it('shows the translated error code when deletion fails', async () => {
     const user = userEvent.setup()
     serviceMock.deleteSpace.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      }),
     )
     await renderForm()
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.invalid_input',
+    )
   })
 
   it('keeps the deletion dialog modal until the pending deletion settles', async () => {

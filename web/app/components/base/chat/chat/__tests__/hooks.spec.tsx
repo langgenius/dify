@@ -2661,12 +2661,12 @@ describe('useChat', () => {
 
     it.each([
       [
-        'the server message',
-        createHttpError(new Response(null, { status: 400 }), {
-          code: 'invalid_param',
+        'the translated reason',
+        createHttpError(new Response(null, { status: 404 }), {
+          code: 'conversation_not_found',
           message: 'Server says why',
         }),
-        'appDebug.operation.stopResponding: Server says why',
+        'appDebug.operation.stopResponding: requestErrors.code.conversation_not_found',
       ],
       [
         'the localized fallback',

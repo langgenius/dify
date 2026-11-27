@@ -121,10 +121,12 @@ const loadCreatorProfileCached = cache(
       templatesByCreationId: records.templatesByCreationId,
       inventory: {
         uniqueHandle,
-        pluginHasMore: pluginPage?.hasMore ?? false,
-        templateHasMore: templatePage?.hasMore ?? false,
-        pluginNextPage: 2,
-        templateNextPage: 2,
+        // A failed first page stays loadable so the list can show the failure and retry it.
+        pluginHasMore: pluginPage?.hasMore ?? true,
+        templateHasMore: templatePage?.hasMore ?? true,
+        pluginNextPage: pluginPage ? 2 : 1,
+        templateNextPage: templatePage ? 2 : 1,
+        loadFailed: !pluginPage || !templatePage,
       },
     }
   },
