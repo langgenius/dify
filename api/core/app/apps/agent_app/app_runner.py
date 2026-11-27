@@ -93,7 +93,7 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
 
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
-    """Translate a terminal failure, preserving backend context as the cause of invoke errors."""
+    """Translate a terminal failure, preserving backend context as the cause of translated errors."""
     message = event.error or "Agent backend run did not complete successfully."
     backend_err = AgentBackendRunFailedError(
         event.run_id,
@@ -108,6 +108,10 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
         source_event_id=event.source_event_id,
     )
     if event.error_type is None:
+        if event.reason == "binding_lost":
+            err: Exception = AgentBackendError("The retained agent working environment is no longer available.")
+            err.__cause__ = backend_err
+            return err
         err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
         if err_cls is not None:
             err = err_cls(event.error or None)
@@ -731,9 +735,6 @@ class AgentAppRunner:
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
-                reason = terminal.reason
-                if terminal.error_type is None and reason == "binding_lost":
-                    raise AgentBackendError("The retained agent working environment is no longer available.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")
 
