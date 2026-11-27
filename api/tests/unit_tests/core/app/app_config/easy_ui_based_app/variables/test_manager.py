@@ -5,7 +5,7 @@ from core.app.app_config.easy_ui_based_app.variables.manager import (
     BasicVariablesConfigManager,
 )
 from graphon.variables.input_entities import VariableEntityType
-from models.model import AppModelConfig, AppModelConfigDict
+from models.model import AppModelConfig, AppModelConfigDict, UserInputFormItem
 
 
 def _default_config() -> AppModelConfigDict:
@@ -218,21 +218,17 @@ class TestValidateVariablesAndSetDefaults:
             BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
 
     def test_validate_select_options_default_not_in_options_raises(self) -> None:
-        config: dict[str, object] = {
-            "user_input_form": [
-                {
-                    VariableEntityType.SELECT: {
-                        "label": "Choice",
-                        "variable": "choice",
-                        "options": ["a", "b"],
-                        "default": "c",
-                    }
-                }
-            ]
+        select_item: UserInputFormItem = {
+            VariableEntityType.SELECT: {
+                "label": "Choice",
+                "variable": "choice",
+                "options": ["a", "b"],
+                "default": "c",
+            }
         }
 
         with pytest.raises(ValueError, match="default value in user_input_form must be in the options list"):
-            BasicVariablesConfigManager.validate_variables_and_set_defaults(config)
+            BasicVariablesConfigManager.validate_variables_and_set_defaults({"user_input_form": [select_item]})
 
     def test_validate_select_options_not_list_raises(self) -> None:
         config: dict[str, object] = {
