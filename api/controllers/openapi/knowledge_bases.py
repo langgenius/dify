@@ -8,6 +8,7 @@ from typing import Any
 
 from flask_restx import Resource
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import (
@@ -39,6 +40,7 @@ def knowledge_base_row(record: Mapping[str, Any]) -> KnowledgeBaseRow:
 class KnowledgeBasesApi(Resource):
     @endpoint(
         op="get.knowledge_base",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.LIST,
         summary="Knowledge bases you can use, each with the knowledge-retrieval node data to paste",
         examples=(Example(title="Find product docs", input={"query": "product"}),),

@@ -3168,6 +3168,14 @@ class TestAuthMatrixCases:
             "webapp_access.set",
             "webapp_access.describe.agent",
             "webapp_access.set.agent",
+            "workspaces.describe",
+            "skills.list",
+            "skills.describe",
+            "skills.versions",
+            "skills.export",
+            "skills.publish",
+            "skills.import",
+            "knowledge_bases.list",
         }
 
     @staticmethod
