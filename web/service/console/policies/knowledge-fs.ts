@@ -156,15 +156,17 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           replayRuns: {
             post: {
               mutationOptions: {
-                onSuccess: (run, { params }, _result, { client }) => {
+                onSuccess: async (run, { params }, _result, { client }) => {
                   const replayRuns =
                     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns
+                  const queryKey = replayRuns.byRunId.get.queryKey({
+                    input: {
+                      params: { control_space_id: params.control_space_id, run_id: run.id },
+                    },
+                  })
+                  await client.cancelQueries({ queryKey, exact: true })
                   client.setQueryData(
-                    replayRuns.byRunId.get.queryKey({
-                      input: {
-                        params: { control_space_id: params.control_space_id, run_id: run.id },
-                      },
-                    }),
+                    queryKey,
                     // Polling may already hold a newer revision of the run.
                     (current) => (current && current.revision >= run.revision ? current : run),
                   )
@@ -269,22 +271,30 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
             mutationOptions: {
               // Each scanner reports how many knowledge bases select it.
               meta: { alsoInvalidate: ['fileScan'] },
-              onSuccess: (policy, variables, _result, context) => {
-                context.client.setQueryData(
+              onSuccess: async (policy, variables, _result, context) => {
+                const queryKey =
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
                     input: { params: variables.params },
-                  }),
-                  policy,
-                )
+                  })
+                await context.client.cancelQueries({ queryKey, exact: true })
+                context.client.setQueryData(queryKey, policy)
               },
             },
           },
         },
         delete: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
+            onSuccess: async (_data, variables, _result, context) => {
+              const lists = { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'query' }) }
+              const infiniteLists = {
+                queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'infinite' }),
+              }
+              await Promise.all([
+                context.client.cancelQueries(lists),
+                context.client.cancelQueries(infiniteLists),
+              ])
               context.client.setQueriesData(
-                { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'query' }) },
+                lists,
                 (list: KnowledgeFsSpaceListResponse | undefined) => {
                   if (
                     !list?.data.some(
@@ -301,7 +311,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                 },
               )
               context.client.setQueriesData(
-                { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'infinite' }) },
+                infiniteLists,
                 (list: InfiniteData<KnowledgeFsSpaceListResponse, unknown> | undefined) => {
                   if (
                     !list?.pages.some((page) =>

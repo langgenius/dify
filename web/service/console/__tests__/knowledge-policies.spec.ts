@@ -43,6 +43,24 @@ const succeed = <TVariables>(
 const seed = (...keys: QueryKey[]) => keys.forEach((key) => queryClient.setQueryData(key, {}))
 const isInvalidated = (key: QueryKey) => queryClient.getQueryState(key)?.isInvalidated ?? false
 
+// Starts a read of `queryKey` that answers with `data` only when the returned function is called.
+const startRead = (queryKey: QueryKey, data: unknown) => {
+  let respond: ((value: unknown) => void) | undefined
+  const read = queryClient
+    .query({
+      queryKey,
+      queryFn: () =>
+        new Promise((resolve) => {
+          respond = resolve
+        }),
+    })
+    .catch(() => undefined)
+  return async () => {
+    respond?.(data)
+    await read
+  }
+}
+
 describe('dataset mutation policies', () => {
   it('refreshes the running upgrades after an upgrade starts', async () => {
     const datasets = consoleQuery.datasets.get.queryKey({ input: { query: {} } })
@@ -135,6 +153,22 @@ describe('dataset mutation policies', () => {
 
     expect(queryClient.getQueryData(list)?.data.map((api) => api.id)).toEqual(['api-2'])
     expect(isInvalidated(list)).toBe(true)
+  })
+
+  it('keeps a deleted external knowledge API out of the list a pre-delete read returns', async () => {
+    const list = consoleQuery.datasets.externalKnowledgeApi.get.queryKey({ input: {} })
+    const before = { data: [{ id: 'api-1' }, { id: 'api-2' }] }
+    queryClient.setQueryData(list, before as never)
+    const finishRead = startRead(list, before)
+
+    await succeed(
+      consoleQuery.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.delete.mutationOptions(),
+      {},
+      { params: { external_knowledge_api_id: 'api-1' } },
+    )
+    await finishRead()
+
+    expect(queryClient.getQueryData(list)?.data.map((api) => api.id)).toEqual(['api-2'])
   })
 })
 
@@ -235,6 +269,26 @@ describe('pipeline mutation policies', () => {
     ).toEqual(['template-2'])
     expect(isInvalidated(customized)).toBe(true)
   })
+
+  it('keeps a deleted customized template out of the list a pre-delete read returns', async () => {
+    const customized = consoleQuery.rag.pipeline.templates.get.queryKey({
+      input: { query: { type: 'customized' } },
+    })
+    const before = { pipeline_templates: [{ id: 'template-1' }, { id: 'template-2' }] }
+    queryClient.setQueryData(customized, before as never)
+    const finishRead = startRead(customized, before)
+
+    await succeed(
+      consoleQuery.rag.pipeline.customized.templates.byTemplateId.delete.mutationOptions(),
+      {},
+      { params: { template_id: 'template-1' } },
+    )
+    await finishRead()
+
+    expect(
+      queryClient.getQueryData(customized)?.pipeline_templates.map((template) => template.id),
+    ).toEqual(['template-2'])
+  })
 })
 
 describe('knowledge space mutation policies', () => {
@@ -289,6 +343,20 @@ describe('knowledge space mutation policies', () => {
 
     await succeed(post, { id: 'run-1', revision: 1 }, variables)
     expect(queryClient.getQueryData(detail)).toEqual({ id: 'run-1', revision: 2 })
+  })
+
+  it('keeps a saved file scan policy over a read that started before the save', async () => {
+    const policy = space().fileScanPolicy.get.queryKey(input())
+    const finishRead = startRead(policy, { scanner_ids: [] })
+    const saved = { scanner_ids: ['scanner-1'] }
+
+    await succeed(space().fileScanPolicy.put.mutationOptions(), saved, {
+      params,
+      body: {} as never,
+    })
+    await finishRead()
+
+    expect(queryClient.getQueryData(policy)).toEqual(saved)
   })
 
   it.each([

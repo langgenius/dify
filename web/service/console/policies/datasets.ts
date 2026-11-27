@@ -17,35 +17,37 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           mutationOptions: {
             // Each scanner reports how many knowledge bases select it.
             meta: { alsoInvalidate: ['fileScan'] },
-            onSuccess: (policy, variables, _result, context) => {
-              context.client.setQueryData(
-                consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
-                  input: { params: variables.params },
-                }),
-                policy,
-              )
+            onSuccess: async (policy, variables, _result, context) => {
+              const queryKey = consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
+                input: { params: variables.params },
+              })
+              await context.client.cancelQueries({ queryKey, exact: true })
+              context.client.setQueryData(queryKey, policy)
             },
           },
         },
       },
       delete: {
         mutationOptions: {
-          onSuccess: (_data, variables, _result, context) => {
+          onSuccess: async (_data, variables, _result, context) => {
+            const lists = { queryKey: consoleQuery.datasets.get.key({ type: 'query' }) }
+            const infiniteLists = { queryKey: consoleQuery.datasets.get.key({ type: 'infinite' }) }
+            await Promise.all([
+              context.client.cancelQueries(lists),
+              context.client.cancelQueries(infiniteLists),
+            ])
+            context.client.setQueriesData(lists, (list: DatasetListResponse | undefined) => {
+              if (!list?.data.some((item) => item.id === variables.params.dataset_id)) return list
+              const total = Math.max(0, list.total - 1)
+              return {
+                ...list,
+                data: list.data.filter((item) => item.id !== variables.params.dataset_id),
+                total,
+                has_more: list.page * list.limit < total,
+              }
+            })
             context.client.setQueriesData(
-              { queryKey: consoleQuery.datasets.get.key({ type: 'query' }) },
-              (list: DatasetListResponse | undefined) => {
-                if (!list?.data.some((item) => item.id === variables.params.dataset_id)) return list
-                const total = Math.max(0, list.total - 1)
-                return {
-                  ...list,
-                  data: list.data.filter((item) => item.id !== variables.params.dataset_id),
-                  total,
-                  has_more: list.page * list.limit < total,
-                }
-              },
-            )
-            context.client.setQueriesData(
-              { queryKey: consoleQuery.datasets.get.key({ type: 'infinite' }) },
+              infiniteLists,
               (list: InfiniteData<DatasetListResponse, unknown> | undefined) => {
                 if (
                   !list?.pages.some((page) =>
@@ -208,16 +210,18 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         },
         delete: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
+            onSuccess: async (_data, variables, _result, context) => {
               const documentIds = new Set(variables.query?.document_id ?? [])
               const input = { params: variables.params }
+              const lists = {
+                queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                  type: 'query',
+                  input,
+                }),
+              }
+              await context.client.cancelQueries(lists)
               context.client.setQueriesData(
-                {
-                  queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                    type: 'query',
-                    input,
-                  }),
-                },
+                lists,
                 (list: DocumentWithSegmentsListResponse | undefined) => {
                   if (!list) return list
                   const data = list.data.filter((document) => !documentIds.has(document.id))
@@ -321,11 +325,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               mutationOptions: {
                 // Shows the switch's new state at once, then waits for the field list that shows
                 // the built-in fields.
-                onSettled: (_data, error, { params }, _result, { client }) => {
+                onSettled: async (_data, error, { params }, _result, { client }) => {
                   if (error) return
                   const queryKey = consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
                     input: { params: { dataset_id: params.dataset_id } },
                   })
+                  await client.cancelQueries({ queryKey, exact: true })
                   client.setQueryData(
                     queryKey,
                     (data) =>
@@ -353,10 +358,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
       byExternalKnowledgeApiId: {
         delete: {
           mutationOptions: {
-            onSuccess: (_data, { params }, _result, { client }) => {
+            onSuccess: async (_data, { params }, _result, { client }) => {
               const queryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryKey({
                 input: {},
               })
+              await client.cancelQueries({ queryKey, exact: true })
               client.setQueryData(
                 queryKey,
                 (previous) =>
@@ -377,8 +383,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
       post: {
         mutationOptions: {
           // Writes the new key into its list, so the one-time secret shows at once.
-          onSuccess: (created, _variables, _onMutateResult, context) =>
-            addCreatedKeyToLists(context.client, consoleQuery.datasets.apiKeys.get.key(), created),
+          onSuccess: async (created, _variables, _onMutateResult, context) => {
+            const listKey = consoleQuery.datasets.apiKeys.get.key()
+            await context.client.cancelQueries({ queryKey: listKey })
+            addCreatedKeyToLists(context.client, listKey, created)
+          },
         },
       },
       byApiKeyId: {

@@ -22,8 +22,9 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
             },
             delete: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
+                onSuccess: async (_data, { params }, _result, { client }) => {
                   const queryKey = customizedPipelineTemplatesKey(consoleQuery)
+                  await client.cancelQueries({ queryKey, exact: true })
                   client.setQueryData(
                     queryKey,
                     (current) =>
