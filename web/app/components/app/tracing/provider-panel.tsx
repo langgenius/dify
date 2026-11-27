@@ -10,6 +10,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ProviderCapabilities } from './provider-capabilities'
+import providerIcons from './provider-icons.module.css'
 import { tracingProviders } from './providers'
 import { usesAgentTracePipeline } from './resource'
 
@@ -44,7 +45,7 @@ export function ProviderPanel({
     ...systemFeaturesQueryOptions(),
     select: (features) => features.agent_tracing_api_collection_enabled,
   })
-  const iconClassName = tracingProviders[type].panelIcon
+  const iconClassName = cn(providerIcons[`${type}Big`], tracingProviders[type].panelIconWidth)
   const hasConfigured = !!config
   const projectUrl = config?.tracing_config?.project_url
 
