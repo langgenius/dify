@@ -137,6 +137,36 @@ describe('personal portal sign-in context', () => {
     },
   )
 
+  it.each(['', '/web'])('accepts a same-origin App handoff with Webapp base "%s"', (webappUrl) => {
+    const path = '/chat/my-app?input=hello%20world#turn-2'
+    const context = getEndUserLoginContext(
+      new URLSearchParams({
+        is_end_user: '1',
+        app_code: 'my-app',
+        code_challenge: 'a'.repeat(43),
+        redirect_url: path,
+      }),
+      webappUrl,
+    )
+    const target = `${webappUrl}${path}`
+    expect(context?.redirect_url).toBe(target)
+    const query = new URLSearchParams({
+      redirect_url: target,
+      login_code: 'one-use-code',
+      mode: 'end_user',
+    })
+    const callback = `${webappUrl}/webapp-signin?${query}`
+    const destination = new URL(target, location.origin)
+    destination.searchParams.set('mode', 'end_user')
+    destination.searchParams.set('login_code', 'one-use-code')
+    destination.searchParams.set('redirect_url', target)
+
+    expect(getEndUserAccountRedirectUrl(callback, context, webappUrl)).toBe(destination.href)
+    expect(
+      getEndUserAccountRedirectUrl(`https://external.example${callback}`, context, webappUrl),
+    ).toBeNull()
+  })
+
   it.each([
     '/web/chat/my-app',
     '/console/chat/my-app',

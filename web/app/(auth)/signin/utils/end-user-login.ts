@@ -30,10 +30,8 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams, webappUr
     let apiRedirectUrl: string
     if (appCode) {
       if (!challenge || address?.kind !== 'default' || address.code !== appCode) return null
-      apiRedirectUrl = new URL(
-        `${webappUrl.replace(/\/$/, '')}${redirectUrl}`,
-        globalThis.location?.origin ?? RELATIVE_REDIRECT_ORIGIN,
-      ).href
+      const webappTarget = `${webappUrl.replace(/\/$/, '')}${redirectUrl}`
+      apiRedirectUrl = webappTarget.startsWith('/') ? webappTarget : new URL(webappTarget).href
     } else {
       const portal = getPersonalPortalUrl(redirectUrl, '')
       if (!portal || (challenge !== null && portal.pathname !== '/my-apps')) return null
@@ -129,9 +127,11 @@ function getAccountLoginCallbackUrl(
   expectedReturnUrl: string | null | undefined,
 ) {
   if (!raw || !expectedReturnUrl) return null
+  if (UNSAFE_REDIRECT_CHARACTERS.test(raw) || raw.startsWith('//')) return null
   try {
-    const url = new URL(raw)
-    const target = new URL(expectedReturnUrl, url.origin)
+    const origin = globalThis.location?.origin ?? RELATIVE_REDIRECT_ORIGIN
+    const url = new URL(raw, origin)
+    const target = new URL(expectedReturnUrl, origin)
     const code = url.searchParams.get('login_code')
     if (
       !['http:', 'https:'].includes(url.protocol) ||
