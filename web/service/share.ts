@@ -359,11 +359,18 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
         : await consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
     return selectAppParameters(parameters)
   }
-  const { show_thoughts, ...parameters } = await webAppClient.parameters.get()
+  const parameters = await webAppClient.parameters.get()
   return {
-    ...parameters,
     ...selectAppParameters(parameters),
-    show_thoughts: show_thoughts ? { enabled: show_thoughts.enabled ?? false } : undefined,
+    account_login_enabled: parameters.account_login_enabled,
+    allow_anonymous_end_user_auth: parameters.allow_anonymous_end_user_auth,
+    connection_requirements: parameters.connection_requirements,
+    connection_revision: parameters.connection_revision,
+    console_web_url: parameters.console_web_url,
+    requires_end_user_connections: parameters.requires_end_user_connections,
+    show_thoughts: parameters.show_thoughts
+      ? { enabled: parameters.show_thoughts.enabled ?? false }
+      : undefined,
   }
 }
 
