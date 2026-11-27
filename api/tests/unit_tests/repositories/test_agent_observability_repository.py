@@ -1,14 +1,22 @@
 import csv
 import json
+from collections.abc import Generator, Iterable
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from io import StringIO
 from sqlite3 import Connection
+from tempfile import TemporaryFile
+from typing import TextIO
 
 import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
-from sqlalchemy import Select, select
+from psycopg2 import OperationalError as PostgresOperationalError
+from psycopg2 import errors as postgres_errors
+from sqlalchemy import Connection as SQLAlchemyConnection
+from sqlalchemy import Engine, Select, event, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
@@ -37,6 +45,7 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories import agent_observability_repository as observability_repository_module
+from repositories import log_export_queries
 from repositories.agent_observability_repository import (
     AgentLogQueryParams,
     AgentObservabilityQueries,
@@ -520,9 +529,17 @@ class TestAgentObservabilityQueriesCases:
         ) == AgentLogExportCounts(log_count=0, row_count=0)
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "retry_page", [None, "ids", "rows"], ids=["baseline", "staging-conflict", "batch-disconnect"]
+    )
     def test_write_agent_log_csv_matches_preview_across_sources_and_batches(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        retry_page: str | None,
     ) -> None:
+        """Keep the mixed-source CSV ordered and complete when staging or a batch is retried."""
         monkeypatch.setattr(observability_repository_module, "_LOG_EXPORT_BATCH_SIZE", 2)
         timestamp = datetime(2026, 7, 23, 7, 0, 19)
         app = _agent_observability_service_app(mode=AppMode.AGENT)
@@ -591,8 +608,90 @@ class TestAgentObservabilityQueriesCases:
         )
         assert logs.count_export_logs(context, agent.id, filters) == AgentLogExportCounts(log_count=3, row_count=3)
         resolved_filters = logs.resolve_log_export_filters(context, agent.id, filters)
+        writer = AgentLogCsvWriter(logs=logs)
         output = StringIO(newline="")
-        assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=resolved_filters, output=output) == 3
+        assert writer.write_csv(context, agent.id, filters=resolved_filters, output=output) == 3
+
+        if retry_page is not None:
+            progress: list[int] = []
+            staging_attempts: list[int] = []
+            detail_attempts: list[tuple[str, tuple[object, ...], int]] = []
+            connections: list[object] = []
+            monkeypatch.setattr(log_export_queries, "sleep", lambda _delay: None)
+            monkeypatch.setattr(
+                log_export_queries, "_log_export_requires_standby", lambda _session: retry_page == "rows"
+            )
+
+            @contextmanager
+            def partial_scratch_file(*, mode: str, encoding: str) -> Generator[TextIO]:
+                assert mode == "w+t"
+                with TemporaryFile(mode="w+t", encoding=encoding) as scratch:
+                    write_lines = scratch.writelines
+
+                    def interrupt_first_write(lines: Iterable[str]) -> None:
+                        staging_attempts.append(len(progress))
+                        if len(staging_attempts) == 1:
+                            scratch.write(next(iter(lines)))
+                            assert scratch.tell() > 0
+                            error = postgres_errors.SerializationFailure(
+                                "canceling statement due to conflict with recovery"
+                            )
+                            error.__setstate__({"pgcode": "40001"})
+                            raise OperationalError(None, None, error)
+                        assert scratch.tell() == 0
+                        assert scratch.read(1) == ""
+                        write_lines(lines)
+
+                    monkeypatch.setattr(scratch, "writelines", interrupt_first_write)
+                    yield scratch
+
+            def interrupt_second_batch(
+                connection: SQLAlchemyConnection,
+                _cursor: object,
+                statement: str,
+                parameters: tuple[object, ...],
+                _context: object,
+                _executemany: object,
+            ) -> None:
+                if "workflow_node_executions.id IN" not in statement:
+                    return
+                detail_attempts.append((statement, parameters, len(progress)))
+                connections.append(connection.connection.dbapi_connection)
+                if len(detail_attempts) == 2:
+                    error = PostgresOperationalError("connection reset by peer")
+                    raise OperationalError(statement, parameters, error, connection_invalidated=True)
+
+            if retry_page == "ids":
+                monkeypatch.setattr(observability_repository_module, "TemporaryFile", partial_scratch_file)
+            else:
+                event.listen(sqlite_engine, "before_cursor_execute", interrupt_second_batch)
+            retried_csv = StringIO(newline="")
+            try:
+                assert (
+                    writer.write_csv(
+                        context, agent.id, filters=resolved_filters, output=retried_csv, report_rows=progress.append
+                    )
+                    == 3
+                )
+            finally:
+                if retry_page == "rows":
+                    event.remove(sqlite_engine, "before_cursor_execute", interrupt_second_batch)
+
+            if retry_page == "ids":
+                assert staging_attempts == [0, 0]
+                reason = "recovery conflict"
+            else:
+                assert detail_attempts[1] == detail_attempts[2]
+                assert detail_attempts[1][2] == 2
+                assert connections[1] is not connections[2]
+                reason = "standby disconnect"
+            assert progress == [1, 2, 3]
+            assert retried_csv.getvalue() == output.getvalue()
+            assert (
+                f"Retrying agent log export page after PostgreSQL {reason}: agent=agent-1 page={retry_page}"
+                in caplog.text
+            )
+
         assert output.getvalue().startswith("\ufeff")
         reader = csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))
         assert reader.fieldnames == [

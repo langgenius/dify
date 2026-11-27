@@ -9,9 +9,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from functools import partial
 from itertools import batched
 from tempfile import TemporaryFile
-from typing import Any
+from typing import Any, TextIO
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -42,7 +43,7 @@ from repositories.app.agent_runtime_app import (
     find_runtime_resolvable_agent,
     resolve_agent_runtime_app,
 )
-from repositories.log_export_count import execute_log_export_count
+from repositories.log_export_queries import execute_log_export_count, read_log_export_with_retry
 from services.agent.observability_contracts import (
     AgentLogExportCounts,
     AgentLogExportFilters,
@@ -1755,45 +1756,82 @@ class SQLAlchemyAgentObservabilityRepository:
     ) -> Generator[AgentLogExportRow]:
         """Stage matching IDs in timestamp order and yield detached log rows in bounded read batches.
 
-        Stop if the Agent's runtime App changes. Rows removed before a batch read are omitted.
+        Retry eligible standby failures before writing rows from the staged selection or batch.
+        Stop if the runtime App changes after staging. Rows removed before a batch read are omitted.
         """
         with TemporaryFile(mode="w+t", encoding="utf-8") as id_file:
-            with self._existing_runtime(tenant_id=tenant_id, agent_id=agent_id) as (session, app):
-                app_id = app.id
-                selected = AgentObservabilityQueries(session).matching_export_logs(
-                    app=app, agent_id=agent_id, params=self._export_log_params(filters)
-                )
-                if selected is None:
-                    return
-                # Only IDs are streamed to disk during the initial scan.
-                statement = (
-                    select(selected.c.source, selected.c.row_id)
-                    .order_by(selected.c.created_at, selected.c.source, selected.c.row_id)
-                    .execution_options(yield_per=1000)
-                )
-                with session.execute(statement) as result:
-                    id_file.writelines(f"{source}\t{row_id}\n" for source, row_id in result)
+            app_id = read_log_export_with_retry(
+                self._session_factory,
+                agent_id,
+                "ids",
+                partial(
+                    self._stage_export_ids, tenant_id=tenant_id, agent_id=agent_id, filters=filters, output=id_file
+                ),
+                export_kind="agent",
+            )
             id_file.seek(0)
             selected_ids = (line.rstrip("\n").split("\t", 1) for line in id_file)
             for batch in batched(selected_ids, _LOG_EXPORT_BATCH_SIZE, strict=False):
                 webapp_ids = tuple(row_id for source, row_id in batch if source == "webapp")
                 workflow_ids = tuple(row_id for source, row_id in batch if source == "workflow")
-                with self._existing_runtime(tenant_id=tenant_id, agent_id=agent_id) as (session, app):
-                    if app.id != app_id:
-                        raise AgentObservabilityNotFoundError
-                    queries = AgentObservabilityQueries(session)
-                    rows_by_source = {
-                        "webapp": {
-                            row.message_id: row for row in queries.read_export_webapp_rows(app=app, row_ids=webapp_ids)
-                        },
-                        "workflow": {
-                            row.message_id: row
-                            for row in queries.read_export_workflow_rows(
-                                app=app, agent_id=agent_id, row_ids=workflow_ids
-                            )
-                        },
-                    }
+                rows_by_source = read_log_export_with_retry(
+                    self._session_factory,
+                    agent_id,
+                    "rows",
+                    partial(
+                        self._read_export_batch,
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        app_id=app_id,
+                        webapp_ids=webapp_ids,
+                        workflow_ids=workflow_ids,
+                    ),
+                    export_kind="agent",
+                )
                 yield from (row for source, row_id in batch if (row := rows_by_source[source].get(row_id)) is not None)
+
+    def _stage_export_ids(
+        self, session: Session, *, tenant_id: str, agent_id: str, filters: AgentLogExportFilters, output: TextIO
+    ) -> str:
+        """Replace the scratch selection with matching IDs and return the scoped runtime App ID."""
+        app = self._require_existing_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
+        output.seek(0)
+        output.truncate()
+        selected = AgentObservabilityQueries(session).matching_export_logs(
+            app=app, agent_id=agent_id, params=self._export_log_params(filters)
+        )
+        if selected is not None:
+            statement = (
+                select(selected.c.source, selected.c.row_id)
+                .order_by(selected.c.created_at, selected.c.source, selected.c.row_id)
+                .execution_options(yield_per=1000)
+            )
+            with session.execute(statement) as result:
+                output.writelines(f"{source}\t{row_id}\n" for source, row_id in result)
+        return app.id
+
+    def _read_export_batch(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        app_id: str,
+        webapp_ids: tuple[str, ...],
+        workflow_ids: tuple[str, ...],
+    ) -> dict[str, dict[str, AgentLogExportRow]]:
+        """Materialize the staged batch within the original runtime App, or raise if it changed."""
+        app = self._require_existing_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
+        if app.id != app_id:
+            raise AgentObservabilityNotFoundError
+        queries = AgentObservabilityQueries(session)
+        return {
+            "webapp": {row.message_id: row for row in queries.read_export_webapp_rows(app=app, row_ids=webapp_ids)},
+            "workflow": {
+                row.message_id: row
+                for row in queries.read_export_workflow_rows(app=app, agent_id=agent_id, row_ids=workflow_ids)
+            },
+        }
 
     def search_log_identities(
         self, context: RequestContext, agent_id: str, *, keyword: str

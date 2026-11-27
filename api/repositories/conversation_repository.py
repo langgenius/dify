@@ -1,23 +1,15 @@
 """Persist conversations within their end-user, installed-account, or Console app scope."""
 
-import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
-from enum import StrEnum
 from functools import partial
-from random import uniform
-from time import sleep
 from typing import cast
 from uuid import UUID
 
-from psycopg2 import Error as PostgreSQLDriverError
-from psycopg2 import OperationalError as PostgreSQLDriverOperationalError
-from psycopg2 import extensions as pg_extensions
 from pydantic import JsonValue
 from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null, or_, select, tuple_, update
-from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
@@ -32,7 +24,7 @@ from models.web import PinnedConversation
 from models.workflow import WorkflowRun
 from repositories.app.console_repository import find_console_app
 from repositories.conversation_lifecycle import retire_conversation, retire_debug_conversation_workspaces
-from repositories.log_export_count import execute_log_export_count
+from repositories.log_export_queries import execute_log_export_count, read_log_export_with_retry
 from repositories.message_projection import snapshot_console_message
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (
@@ -75,54 +67,12 @@ from services.installed_app_access_service import InstalledAppNotFoundError, Ins
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20
 _LOG_EXPORT_BATCH_SIZE = 500
-_LOG_EXPORT_RECOVERY_RETRY_DELAYS = (1.0, 2.0, 4.0)
-_LOG_EXPORT_RECOVERY_CONFLICT_MESSAGES = (
-    "canceling statement due to conflict with recovery",
-    "terminating connection due to conflict with recovery",
-)
 _CONSOLE_APP_MODES_BY_KIND: dict[ConsoleConversationKind, frozenset[AppMode]] = {
     "completion": frozenset({AppMode.COMPLETION}),
     "chat": frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}),
 }
 _CONSOLE_LOG_APP_MODES = _CONSOLE_APP_MODES_BY_KIND["completion"] | _CONSOLE_APP_MODES_BY_KIND["chat"]
 _CONVERSATION_EXPORT_APP_MODES = _CONSOLE_LOG_APP_MODES - {AppMode.AGENT}
-logger = logging.getLogger(__name__)
-
-
-class _LogExportPageRetryReason(StrEnum):
-    RECOVERY_CONFLICT = "recovery conflict"
-    STANDBY_DISCONNECT = "standby disconnect"
-
-
-def _log_export_requires_standby(session: Session) -> bool:
-    """Inspect the live driver's effective connection policy before the page executes."""
-    connection = session.connection()
-    driver = connection.connection.driver_connection
-    if not isinstance(driver, pg_extensions.connection):
-        return False
-    key = "conversation_log_export_requires_standby"
-    # Connection.info lives with the pooled connection, and libpq resolves the DSN and environment.
-    if key not in connection.info:
-        connection.info[key] = driver.get_dsn_parameters().get("target_session_attrs") == "standby"
-    return connection.info[key] is True and driver.get_parameter_status("in_hot_standby") != "off"
-
-
-def _log_export_retry_reason(error: DBAPIError, *, requires_standby: bool) -> _LogExportPageRetryReason | None:
-    """Recognize explicit recovery conflicts or confirmed disconnects on standby-only connections."""
-    cause = error.orig
-    if not isinstance(cause, PostgreSQLDriverError) or cause.pgcode not in (None, "40001"):
-        return None
-    message = (cause.diag.message_primary or str(cause).partition("\n")[0]).lower()
-    if any(marker in message for marker in _LOG_EXPORT_RECOVERY_CONFLICT_MESSAGES):
-        return _LogExportPageRetryReason.RECOVERY_CONFLICT
-    if (
-        requires_standby
-        and error.connection_invalidated
-        and isinstance(cause, PostgreSQLDriverOperationalError)
-        and cause.pgcode is None
-    ):
-        return _LogExportPageRetryReason.STANDBY_DISCONNECT
-    return None
 
 
 class ConversationRepository:
@@ -466,7 +416,8 @@ class ConversationRepository:
         conversation_cursor: tuple[datetime, str] | None = None
         has_more_conversations = True
         while has_more_conversations:
-            conversation_ids, statuses, conversation_cursor = self._read_log_export_page(
+            conversation_ids, statuses, conversation_cursor = read_log_export_with_retry(
+                self._session_factory,
                 scope.app_id,
                 "conversation",
                 partial(
@@ -476,12 +427,14 @@ class ConversationRepository:
                     end_before=end_before,
                     cursor=conversation_cursor,
                 ),
+                export_kind="conversation",
             )
             has_more_conversations = conversation_cursor is not None
             message_cursor: tuple[datetime, str] | None = None
             has_more_messages = bool(conversation_ids)
             while has_more_messages:
-                rows = self._read_log_export_page(
+                rows = read_log_export_with_retry(
+                    self._session_factory,
                     scope.app_id,
                     "message",
                     partial(
@@ -492,6 +445,7 @@ class ConversationRepository:
                         end_before=end_before,
                         cursor=message_cursor,
                     ),
+                    export_kind="conversation",
                 )
                 batch = rows[:_LOG_EXPORT_BATCH_SIZE]
                 has_more_messages = len(rows) > _LOG_EXPORT_BATCH_SIZE
@@ -499,54 +453,6 @@ class ConversationRepository:
                 if has_more_messages:
                     last = batch[-1]
                     message_cursor = (last.created_at, last.message_id)
-
-    def _read_log_export_page[PageT](self, app_id: str, page_type: str, read: Callable[[Session], PageT]) -> PageT:
-        """Return one complete page with a fresh session per attempt and raise the last failure when done."""
-        retry_delays = _LOG_EXPORT_RECOVERY_RETRY_DELAYS
-        for attempt, delay in enumerate((*retry_delays, None), start=1):
-            requires_standby = False
-            try:
-                with self._session_factory() as session:
-                    requires_standby = _log_export_requires_standby(session)
-                    try:
-                        return read(session)
-                    except DBAPIError as error:
-                        if _log_export_retry_reason(error, requires_standby=requires_standby) is not None:
-                            try:
-                                session.invalidate()
-                            except DBAPIError:
-                                logger.warning("Failed to discard a conversation log export page connection")
-                        raise
-            except DBAPIError as error:
-                reason = _log_export_retry_reason(error, requires_standby=requires_standby)
-                sqlstate = error.orig.pgcode if isinstance(error.orig, PostgreSQLDriverError) else None
-                if reason is None or delay is None:
-                    logger.warning(
-                        "Conversation log export page failed: app=%s page=%s attempt=%s/%s "
-                        "reason=%s error=%s sqlstate=%s connection_invalidated=%s",
-                        app_id,
-                        page_type,
-                        attempt,
-                        len(retry_delays) + 1,
-                        reason or "not retryable",
-                        type(error.orig).__name__,
-                        sqlstate,
-                        error.connection_invalidated,
-                    )
-                    raise
-                logger.warning(
-                    "Retrying conversation log export page after PostgreSQL %s: "
-                    "app=%s page=%s retry=%s/%s sqlstate=%s connection_invalidated=%s",
-                    reason,
-                    app_id,
-                    page_type,
-                    attempt,
-                    len(retry_delays),
-                    sqlstate,
-                    error.connection_invalidated,
-                )
-                sleep(delay + uniform(0, 0.25))  # noqa: S311
-        raise AssertionError("Log export page retry loop exhausted without returning or raising")
 
     def _console_log_export_selection(
         self,

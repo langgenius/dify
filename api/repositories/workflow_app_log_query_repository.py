@@ -21,7 +21,7 @@ from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunSta
 from models.model import AppMode
 from models.trigger import WorkflowTriggerLog
 from repositories.app.console_repository import find_console_app
-from repositories.log_export_count import execute_log_export_count
+from repositories.log_export_queries import execute_log_export_count, read_log_export_with_retry
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentity, ConsoleLogIdentitySource
 from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
@@ -75,7 +75,10 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
     def iter_log_export_rows(
         self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
     ) -> Iterator[WorkflowLogExportRow]:
-        """Yield one row per matching run in log order, closing the read session before yielding each page."""
+        """Yield one row per matching run in log order.
+
+        Retry eligible standby failures at the same cursor and close the read session before yielding each page.
+        """
         end_before = naive_utc_now()
         matching_log = (
             self._matching_export_logs(scope=scope, filters=filters)
@@ -144,8 +147,13 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                         literal(cursor[1], type_=WorkflowAppLog.id.type),
                     )
                 )
-            with self._session_factory() as session:
-                batch = session.execute(page).tuples().all()
+            batch = read_log_export_with_retry(
+                self._session_factory,
+                scope.app_id,
+                "run",
+                lambda session, query=page: session.execute(query).tuples().all(),
+                export_kind="workflow",
+            )
             for (
                 created_at,
                 _log_id,
