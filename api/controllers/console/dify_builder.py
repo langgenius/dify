@@ -349,7 +349,7 @@ def _task_control(session_id: str, body, actor: Actor, *, operation: TaskControl
         if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
             raise NotFound("Session not found.") from None
         if error.reason_code == "execution_permission_denied":
-            raise Forbidden("Task permission denied.") from None
+            raise Forbidden() from None
         if error.reason_code in {
             "native_runtime_unavailable",
             "native_profile_unavailable",

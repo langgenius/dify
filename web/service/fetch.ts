@@ -158,7 +158,6 @@ async function base<T>(
     },
   })
 
-  // Preserve the original body for the retry after an authentication refresh.
   const res = await client(request ? request.clone() : fetchPathname, {
     ...init,
     headers,

@@ -20,8 +20,6 @@ import {
   difyBuilderCanvasRefreshingAtom,
   difyBuilderCheckMaterialAtom,
   difyBuilderDraftAtom,
-  difyBuilderModelReadonlyAtom,
-  difyBuilderResetAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
   difyBuilderStartChecklistFixAtom,
@@ -379,7 +377,6 @@ it('creates a file-only Build with uploaded refs and restores its text on reject
     'app-1',
     '',
     builderModel,
-    false,
     attachments,
   )
   runtime.session.startBuild.mockResolvedValueOnce(false)

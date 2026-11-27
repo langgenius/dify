@@ -1,19 +1,3 @@
-"""Verify the workflow persistence layer fans Inspector deltas to redis pub/sub.
-
-The hook lives in ``services/workflow_persistence.py``:
-every ``_handle_node_*`` and the terminal ``_handle_graph_run_*`` handlers
-call into ``services.workflow.inspector_events.publish_node_changed`` /
-``publish_workflow_completed`` after the DB write succeeds. Those calls are
-the only thing the Inspector SSE stream listens to, so any future refactor of
-the persistence layer must keep them in place.
-
-We don't reconstruct a full workflow engine here — the handlers are tested
-in isolation by patching just the moving parts they touch
-(``_workflow_execution`` + ``_node_execution_cache``) and asserting against
-the publisher module's call sites. This keeps the test compact and tied to
-the contract, not the implementation.
-"""
-
 from __future__ import annotations
 
 import time
@@ -94,9 +78,35 @@ from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersi
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
 from tests.workflow_test_utils import build_test_graph_init_params
 
+"""Verify the workflow persistence layer fans Inspector deltas to redis pub/sub.
+
+The hook lives in ``services/workflow_persistence.py``:
+every ``_handle_node_*`` and the terminal ``_handle_graph_run_*`` handlers
+call into ``services.workflow.inspector_events.publish_node_changed`` /
+``publish_workflow_completed`` after the DB write succeeds. Those calls are
+the only thing the Inspector SSE stream listens to, so any future refactor of
+the persistence layer must keep them in place.
+
+We don't reconstruct a full workflow engine here — the handlers are tested
+in isolation by patching just the moving parts they touch
+(``_workflow_execution`` + ``_node_execution_cache``) and asserting against
+the publisher module's call sites. This keeps the test compact and tied to
+the contract, not the implementation.
+"""
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Graph-level publish hooks
+# ──────────────────────────────────────────────────────────────────────────────
+
 
 def _graph_event(**kwargs: Any) -> MagicMock:
     return MagicMock(**kwargs)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Node-level publish hooks
+# ──────────────────────────────────────────────────────────────────────────────
 
 
 def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> NodeRunStartedEvent:
@@ -926,20 +936,25 @@ class TestPersistenceLayerCases:
             )
 
             with app.app_context():
-                layer._handle_graph_run_started(GraphRunStartedEvent())
+                layer._handle_graph_run_started()
             assert calls == [("app", "tenant", "workflow-id", "run-id", "conv-id")]
 
         def test_get_execution_id_requires_system_variable(self):
             layer, _, _, _ = _make_layer(build_system_variables())
+
             with pytest.raises(ValueError, match="workflow_execution_id must be provided"):
                 layer._get_execution_id()
 
         def test_prepare_workflow_inputs_excludes_conversation_id(self, monkeypatch: pytest.MonkeyPatch):
             layer, _, _, _ = _make_layer()
+
             monkeypatch.setattr(
-                "core.workflow.workflow_entry.WorkflowEntry.handle_special_values", lambda inputs: inputs
+                "core.workflow.workflow_entry.WorkflowEntry.handle_special_values",
+                lambda inputs: inputs,
             )
+
             inputs = layer._prepare_workflow_inputs()
+
             assert "sys.conversation_id" not in inputs
             assert inputs[f"sys.{SystemVariableKey.WORKFLOW_EXECUTION_ID.value}"] == "run-id"
 
@@ -954,6 +969,7 @@ class TestPersistenceLayerCases:
         )
         def test_fail_running_node_executions_marks_only_live_attempts_failed(self, status):
             layer, _, node_repo, _ = _make_layer()
+
             execution = WorkflowNodeExecution(
                 id="exec-id",
                 workflow_id="workflow-id",
@@ -966,7 +982,9 @@ class TestPersistenceLayerCases:
                 created_at=_naive_utc_now(),
             )
             layer._node_execution_cache[execution.id] = execution
+
             layer._fail_running_node_executions(error_message="boom")
+
             if status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.RETRY):
                 assert execution.status == WorkflowNodeExecutionStatus.FAILED
                 assert execution.error == "boom"
@@ -992,6 +1010,7 @@ class TestPersistenceLayerCases:
                 created_at=started_at,
             )
             layer.set_node_execution_history([execution])
+
             layer.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
             layer.on_event(
                 NodeRunSucceededEvent(
@@ -1003,6 +1022,7 @@ class TestPersistenceLayerCases:
                     node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
                 )
             )
+
             assert execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
             assert execution.elapsed_time == 2.0
             assert execution.index == 4
@@ -1016,7 +1036,9 @@ class TestPersistenceLayerCases:
             for _ in range(2):
                 runtime_state.increment_node_run_steps()
             runtime_state.set_output("out", "v")
+
             layer.on_event(GraphRunSucceededEvent(outputs={"ok": True}))
+
             saved = exec_repo.synchronously_saved[-1]
             assert saved.status == WorkflowExecutionStatus.SUCCEEDED
             assert saved.total_tokens == 3
@@ -1031,7 +1053,9 @@ class TestPersistenceLayerCases:
             for _ in range(4):
                 runtime_state.increment_node_run_steps()
             runtime_state._graph_execution = SimpleNamespace(exceptions_count=2)
+
             layer.on_event(GraphRunPartialSucceededEvent(outputs={"ok": True}, exceptions_count=2))
+
             saved = exec_repo.synchronously_saved[-1]
             assert saved.status == WorkflowExecutionStatus.PARTIAL_SUCCEEDED
             assert saved.exceptions_count == 2
@@ -1044,6 +1068,7 @@ class TestPersistenceLayerCases:
                 trace_scope=_trace_scope(recorder, _empty_correlation()), workflow_execution_repo=workflow_repo
             )
             layer.on_event(GraphRunStartedEvent())
+
             running = WorkflowNodeExecution(
                 id="node-exec",
                 workflow_id="workflow-id",
@@ -1055,7 +1080,9 @@ class TestPersistenceLayerCases:
                 created_at=_naive_utc_now(),
             )
             layer._node_execution_cache[running.id] = running
+
             layer.on_event(GraphRunFailedEvent(error="boom", exceptions_count=1))
+
             assert node_repo.saved
             assert exec_repo.synchronously_saved[-1].status == WorkflowExecutionStatus.FAILED
             assert [event.payload for event in recorder.events] == [
@@ -1118,7 +1145,9 @@ class TestPersistenceLayerCases:
         def test_handle_graph_run_aborted_sets_status(self):
             layer, exec_repo, _, _ = _make_layer()
             layer.on_event(GraphRunStartedEvent())
+
             layer.on_event(GraphRunAbortedEvent(reason=None, outputs={}))
+
             saved = exec_repo.synchronously_saved[-1]
             assert saved.status == WorkflowExecutionStatus.STOPPED
             assert saved.error_message
@@ -1126,6 +1155,7 @@ class TestPersistenceLayerCases:
         def test_handle_node_started_and_retry(self):
             layer, _, node_repo, _ = _make_layer(node_run_indices={"exec": 1})
             layer.on_event(GraphRunStartedEvent())
+
             start_event = NodeRunStartedEvent(
                 id="exec",
                 node_id="node",
@@ -1135,9 +1165,11 @@ class TestPersistenceLayerCases:
                 predecessor_node_id="prev",
             )
             layer.on_event(start_event)
+
             assert node_repo.saved
             assert "exec" in layer._node_execution_cache
             assert node_repo.saved[-1].created_at == start_event.start_at
+
             retry_event = NodeRunRetryEvent(
                 id="exec",
                 node_id="node",
@@ -1153,6 +1185,7 @@ class TestPersistenceLayerCases:
         def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
             layer, _, node_repo, _ = _make_layer(node_run_indices={"agent-exec": 1})
             layer.on_event(GraphRunStartedEvent())
+
             layer.on_event(
                 NodeRunStartedEvent(
                     id="agent-exec",
@@ -1163,6 +1196,7 @@ class TestPersistenceLayerCases:
                     start_at=_naive_utc_now(),
                 )
             )
+
             assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
             assert node_repo.saved == []
 
@@ -1179,6 +1213,7 @@ class TestPersistenceLayerCases:
                     start_at=started_at,
                 )
             )
+
             for retry_index in (1, 2):
                 layer.on_event(
                     NodeRunRetryEvent(
@@ -1197,6 +1232,7 @@ class TestPersistenceLayerCases:
                         ),
                     )
                 )
+
             layer.on_event(
                 NodeRunSucceededEvent(
                     id="exec",
@@ -1211,6 +1247,7 @@ class TestPersistenceLayerCases:
                     ),
                 )
             )
+
             saved_execution = node_repo.saved_exec_data[-1]
             assert saved_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
             assert saved_execution.process_data["request"] == "successful-attempt"
@@ -1287,7 +1324,11 @@ class TestPersistenceLayerCases:
             started_at = _naive_utc_now()
             layer.on_event(
                 NodeRunStartedEvent(
-                    id="exec", node_id="node", node_type=BuiltinNodeTypes.LLM, node_title="LLM", start_at=started_at
+                    id="exec",
+                    node_id="node",
+                    node_type=BuiltinNodeTypes.LLM,
+                    node_title="LLM",
+                    start_at=started_at,
                 )
             )
             layer.on_event(
@@ -1302,6 +1343,7 @@ class TestPersistenceLayerCases:
                     node_run_result=NodeRunResult(outputs={"attempt": 1}),
                 )
             )
+
             if event_type is GraphRunFailedEvent:
                 terminal_event = event_type(error="terminal failure")
             elif event_type is GraphRunAbortedEvent:
@@ -1317,6 +1359,7 @@ class TestPersistenceLayerCases:
                 )
             node_repo.saved.clear()
             layer.on_event(terminal_event)
+
             saved_execution = node_repo.saved[-1]
             assert saved_execution.status == expected_status
             assert saved_execution.error == "terminal failure"
@@ -1346,7 +1389,9 @@ class TestPersistenceLayerCases:
                 )
             )
             assert node_repo.synchronously_saved == []
+
             layer.persist_unfinished_nodes_synchronously()
+
             saved_execution = node_repo.synchronously_saved[-1]
             assert saved_execution.status == WorkflowNodeExecutionStatus.RETRY
             assert saved_execution.finished_at is None
@@ -1356,11 +1401,17 @@ class TestPersistenceLayerCases:
             layer, _, _, _ = _make_layer(node_run_indices={"exec": 1})
             layer.on_event(GraphRunStartedEvent())
             start_event = NodeRunStartedEvent(
-                id="exec", node_id="node", node_type=BuiltinNodeTypes.LLM, node_title="LLM", start_at=_naive_utc_now()
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.LLM,
+                node_title="LLM",
+                start_at=_naive_utc_now(),
             )
             layer.on_event(start_event)
+
             domain_execution = layer._node_execution_cache["exec"]
             domain_execution.inputs = {"old": True}
+
             result = NodeRunResult(
                 inputs={"new": True},
                 outputs={"out": 1},
@@ -1379,6 +1430,7 @@ class TestPersistenceLayerCases:
                 node_run_result=result,
             )
             layer.on_event(pause_event)
+
             assert domain_execution.status == WorkflowNodeExecutionStatus.PAUSED
             assert domain_execution.inputs == {"old": True}
             assert domain_execution.process_data == {
@@ -1392,9 +1444,14 @@ class TestPersistenceLayerCases:
             started_at = _naive_utc_now()
             layer.on_event(
                 NodeRunStartedEvent(
-                    id="exec", node_id="node", node_type=BuiltinNodeTypes.AGENT, node_title="Agent", start_at=started_at
+                    id="exec",
+                    node_id="node",
+                    node_type=BuiltinNodeTypes.AGENT,
+                    node_title="Agent",
+                    start_at=started_at,
                 )
             )
+
             layer.on_event(
                 NodeRunRetryEvent(
                     id="exec",
@@ -1408,10 +1465,11 @@ class TestPersistenceLayerCases:
                         process_data={
                             "workflow_agent_binding_id": "workflow-binding-1",
                             "workflow_tool_invocation_id": "tool-call-1",
-                        }
+                        },
                     ),
                 )
             )
+
             assert layer._node_execution_cache["exec"].process_data["workflow_agent_binding_id"] == "workflow-binding-1"
             assert layer._node_execution_cache["exec"].process_data["workflow_tool_invocation_id"] == "tool-call-1"
 
@@ -1422,5 +1480,6 @@ class TestPersistenceLayerCases:
 
         def test_get_workflow_execution_raises_when_uninitialized(self):
             layer, _, _, _ = _make_layer()
+
             with pytest.raises(ValueError, match="workflow execution not initialized"):
                 layer._get_workflow_execution()

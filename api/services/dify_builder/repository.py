@@ -702,7 +702,6 @@ class SqlDifyBuilderRepository:
             DifyBuilderExecutionRequest.context["policy_version"].as_string() == "builder-native-test-v1"
         )
 
-
     def _clear_execution_settlement(
         self, sql: Session, session: DomainSession, context: DifyBuilderContext
     ) -> LifecycleSettlement:
