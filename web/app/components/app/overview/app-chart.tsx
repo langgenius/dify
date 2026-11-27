@@ -8,6 +8,7 @@ import type { ChartRow } from './app-chart-utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useQueries } from '@tanstack/react-query'
+import dayjs from 'dayjs'
 import ReactECharts from 'echarts-for-react/esm/core'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -502,8 +503,13 @@ export function AppCharts({ id, period, appMode }: AppChartsProps) {
       : appMode === 'completion'
         ? completionCharts
         : chatCharts
+  // The statistics API treats `end` as exclusive, so request through the end of the selected date.
+  const statisticsQuery = period.query && {
+    start: period.query.start,
+    end: dayjs(period.query.end).add(1, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+  }
   const queries = useQueries({
-    queries: configs.map((config) => config.queryOptions(id, period.query)),
+    queries: configs.map((config) => config.queryOptions(id, statisticsQuery)),
   })
   const pending = queries.some((query) => query.isPending)
   const retryFailedQueries = () => {
