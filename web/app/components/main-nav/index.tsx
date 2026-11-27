@@ -158,14 +158,19 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
 }
 
 export function MainNavFooter({
+  accountRowRef,
   helpMenuTriggerRef,
 }: {
+  accountRowRef?: Ref<HTMLDivElement>
   helpMenuTriggerRef?: Ref<HTMLButtonElement>
 }) {
   return (
     <div className="w-60">
       <ContactSupport placement="sidebar" />
-      <div className="flex items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
+      <div
+        ref={accountRowRef}
+        className="flex items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]"
+      >
         <div className="flex min-w-0 items-center gap-1 overflow-hidden">
           <AccountSection />
         </div>
@@ -183,6 +188,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
     select: (data) => data.branding.enabled,
   })
   const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
+  const accountRowRef = useRef<HTMLDivElement>(null)
 
   return (
     <aside
@@ -195,9 +201,10 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
       <div className="isolate w-60 shrink-0">
         <StepByStepTourMount
           recoveryAnchorRef={brandingEnabled ? undefined : helpMenuTriggerRef}
+          checklistAnchorRef={accountRowRef}
           className="relative z-1 ms-2.5 -mb-1 h-8 w-45.75 overflow-visible"
         />
-        <MainNavFooter helpMenuTriggerRef={helpMenuTriggerRef} />
+        <MainNavFooter accountRowRef={accountRowRef} helpMenuTriggerRef={helpMenuTriggerRef} />
       </div>
     </aside>
   )

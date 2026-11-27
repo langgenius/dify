@@ -114,11 +114,13 @@ const getActiveGuideIndexes = (
 type StepByStepTourMountProps = {
   className?: string
   recoveryAnchorRef?: RefObject<HTMLButtonElement | null>
+  checklistAnchorRef?: RefObject<HTMLElement | null>
 }
 
 export default function StepByStepTourMount({
   className,
   recoveryAnchorRef,
+  checklistAnchorRef,
 }: StepByStepTourMountProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -744,10 +746,10 @@ export default function StepByStepTourMount({
                   {visible && (
                     <PopoverPortal className="aria-hidden:invisible">
                       <PopoverPositioner
+                        anchor={checklistAnchorRef}
                         side="top"
                         align="start"
-                        // The expanded checklist covers its pill.
-                        sideOffset={({ anchor }) => -anchor.height}
+                        sideOffset={checklistAnchorRef ? -4 : ({ anchor }) => -anchor.height}
                         collisionPadding={8}
                         collisionAvoidance={{
                           side: 'shift',
