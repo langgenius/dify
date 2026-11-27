@@ -100,12 +100,13 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
           onClick={showEndpointModal}
           disabled={isPending}
           focusableWhenDisabled
-          aria-busy={isPending}
         >
           <span
             aria-hidden
             className={
-              isPending ? 'i-ri-loader-4-line size-4 animate-spin' : 'i-ri-add-line size-4'
+              isPending
+                ? 'i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none'
+                : 'i-ri-add-line size-4'
             }
           />
         </IconButton>

@@ -121,12 +121,13 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
               onClick={showEndpointModalConfirm}
               disabled={isUpdating}
               focusableWhenDisabled
-              aria-busy={isUpdating}
             >
               <span
                 aria-hidden
                 className={
-                  isUpdating ? 'i-ri-loader-4-line size-4 animate-spin' : 'i-ri-edit-line size-4'
+                  isUpdating
+                    ? 'i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none'
+                    : 'i-ri-edit-line size-4'
                 }
               />
             </IconButton>

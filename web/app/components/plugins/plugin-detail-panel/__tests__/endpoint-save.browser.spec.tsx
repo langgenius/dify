@@ -93,7 +93,6 @@ it.each(['create', 'edit'] as const)(
 
     await userEvent.keyboard('{Escape}')
     await expect.element(dialog).not.toBeInTheDocument()
-    await expect.element(opener).toHaveAttribute('aria-busy', 'true')
     await expect.element(opener).toHaveAttribute('aria-disabled', 'true')
     await expect.element(opener).toHaveFocus()
     await userEvent.keyboard('{Enter}')
