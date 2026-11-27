@@ -15,10 +15,7 @@ import { createErrorToastCaches } from '@/app/query-error-toast'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import {
-  appWorkflowQueryOptions,
-  appWorkflowVersionsInfiniteQueryOptions,
-} from '@/service/workflow-queries'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
