@@ -1,6 +1,6 @@
 """Workspace membership, invitation and ownership use cases with application-owned ports."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Protocol
 
@@ -34,6 +34,7 @@ from services.workspace.contracts import (
     WorkspaceMemberPage,
     WorkspaceMemberRecord,
     WorkspaceMemberRemoval,
+    WorkspaceMemberRemovalRequest,
     WorkspaceMemberRole,
     WorkspaceMemberRoleSubject,
     WorkspaceMembership,
@@ -128,23 +129,6 @@ class WorkspaceMemberStore(Protocol):
         actor_account_id: str | None = None,
     ) -> WorkspaceMemberWrite: ...
 
-    def remove_member(
-        self,
-        *,
-        workspace_id: str,
-        account_id: str,
-        owner_id: str,
-        actor_account_id: str,
-        keep_as_platform_contact: bool,
-    ) -> WorkspaceMemberRemoval:
-        """Delete the scoped membership and transfer its resources in one transaction.
-
-        If requested, the active member's existing Contact identity becomes a Platform
-        Contact in the same transaction. Otherwise any Platform entry for that member
-        in this workspace is removed.
-        """
-        ...
-
     def update_member_role(
         self,
         *,
@@ -156,12 +140,25 @@ class WorkspaceMemberStore(Protocol):
     ) -> None: ...
 
 
+class WorkspaceMemberRemovalStore(Protocol):
+    def remove_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        owner_id: str,
+        actor_account_id: str,
+    ) -> WorkspaceMemberRemoval:
+        """Transfer resources and delete an existing membership in the caller's transaction."""
+        ...
+
+
+type BeginMemberRemoval = Callable[[WorkspaceMemberRemovalRequest], AbstractContextManager[WorkspaceMemberRemovalStore]]
+
+
 class WorkspaceMemberAccessGateway(Protocol):
     @property
     def rbac_enabled(self) -> bool: ...
-
-    @property
-    def platform_contacts_enabled(self) -> bool: ...
 
     def ensure_role_enabled(self, role: str) -> None: ...
 
@@ -195,11 +192,13 @@ class WorkspaceMemberService:
         self,
         *,
         workspaces: WorkspaceMemberStore,
+        begin_member_removal: BeginMemberRemoval,
         accounts: AccountSnapshotQuery,
         access: WorkspaceMemberAccessGateway,
         invitation_links: WorkspaceInvitationLinks,
     ) -> None:
         self._workspaces = workspaces
+        self._begin_member_removal = begin_member_removal
         self._accounts = accounts
         self._access = access
         self._invitation_links = invitation_links
@@ -217,26 +216,20 @@ class WorkspaceMemberService:
         operator_id: str,
         member_id: str | None,
         action: str,
-        *,
-        keep_as_platform_contact: bool = False,
-    ) -> None:
-        """Authorize a membership action, including any Platform Contact retention on removal."""
+    ) -> frozenset[str] | None:
+        """Authorize the action and return the actor's RBAC keys, or None under legacy roles."""
         if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
         if member_id == operator_id:
             raise CannotOperateSelfError("Cannot operate self.")
-        if keep_as_platform_contact and not self._access.platform_contacts_enabled:
-            raise NoPermissionError("Keeping Platform Contacts requires Enterprise.")
         if self._access.rbac_enabled:
             permission = "workspace.member.manage" if action in {"add", "remove"} else "workspace.role.manage"
             permissions = self._access.permission_keys(workspace_id, operator_id)
             if permission not in permissions:
                 raise NoPermissionError(f"No permission to {action} member.")
-            if keep_as_platform_contact and "contact.manage" not in permissions:
-                raise NoPermissionError("No permission to manage contacts.")
             if action == "remove" and member_id and self._access.is_owner(workspace_id, operator_id, member_id):
                 raise NoPermissionError(f"No permission to {action} member.")
-            return
+            return frozenset(permissions)
         role = self.get_role(workspace_id, operator_id)
         if role not in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}:
             raise NoPermissionError(f"No permission to {action} member.")
@@ -247,6 +240,8 @@ class WorkspaceMemberService:
             and self.get_role(workspace_id, member_id) == TenantAccountRole.OWNER
         ):
             raise NoPermissionError(f"No permission to {action} member.")
+
+        return None
 
     def join_member(
         self,
@@ -300,8 +295,9 @@ class WorkspaceMemberService:
         Postconditions on success: the membership is gone, the member's resources belong to the
         workspace owner, and no invitation link for the account in this workspace is accepted.
         The account and its invitations to other workspaces are kept.
-        Requested Contact retention leaves the same Contact ID visible as a Platform Contact.
-        Otherwise the Contact is no longer visible in this workspace.
+        When IM is centrally managed, Platform entry changes commit with the membership deletion.
+        Retention keeps the existing Contact ID; opting out removes the workspace's Platform entry.
+        With central management disabled, removal skips Platform Contacts entirely.
 
         Raises:
             AccountNotFoundError: The member account does not exist.
@@ -313,13 +309,9 @@ class WorkspaceMemberService:
         account = self._accounts.get(account_id)
         if account is None:
             raise AccountNotFoundError()
-        self.check_permission(
-            workspace_id, operator_id, account_id, "remove", keep_as_platform_contact=keep_as_platform_contact
-        )
+        permission_keys = self.check_permission(workspace_id, operator_id, account_id, "remove")
         if self.get_role(workspace_id, account_id) is None:
             raise MemberNotInTenantError("Member not in tenant.")
-        if keep_as_platform_contact and account.status != "active":
-            raise NoPermissionError("Only active members can be kept as Platform Contacts.")
         owner_id = (
             self._access.owner_id(workspace_id, operator_id)
             if self._access.rbac_enabled
@@ -327,14 +319,19 @@ class WorkspaceMemberService:
         )
         if owner_id is None:
             raise ValueError(f"Workspace owner not found for tenant {workspace_id}.")
-        self._invitation_links.revoke_pending(workspace_id, account.email, account_id=account_id, keep_token=None)
-        removal = self._workspaces.remove_member(
+        request = WorkspaceMemberRemovalRequest(
             workspace_id=workspace_id,
             account_id=account_id,
-            owner_id=owner_id,
             actor_account_id=operator_id,
+            account_status=account.status,
+            permission_keys=permission_keys,
             keep_as_platform_contact=keep_as_platform_contact,
         )
+        with self._begin_member_removal(request) as members:
+            self._invitation_links.revoke_pending(workspace_id, account.email, account_id=account_id, keep_token=None)
+            removal = members.remove_member(
+                workspace_id=workspace_id, account_id=account_id, owner_id=owner_id, actor_account_id=operator_id
+            )
         self._access.member_removed(workspace_id, removal)
 
     def update_role(self, workspace_id: str, member_id: str, new_role: str, operator_id: str) -> None:

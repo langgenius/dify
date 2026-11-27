@@ -20,7 +20,7 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpaceState,
     KnowledgeFSLifecycleOutbox,
 )
-from repositories.workspace.workspace_repository import WorkspaceRepository
+from repositories.workspace.workspace_repository import WorkspaceMemberRemovalRepository, WorkspaceRepository
 from tests.helpers.unit.services.knowledge_fs_fakes import claims_summary, revoke_payload
 
 _TABLES = (
@@ -95,12 +95,13 @@ def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
     sqlite_session.add_all([space, member_permission, revision, _audit(tenant, space, member.id, "3")])
     sqlite_session.commit()
 
-    WorkspaceRepository(sqlite_session_factory).remove_member(
-        workspace_id=tenant.id,
-        account_id=member.id,
-        owner_id=owner.id,
-        actor_account_id=owner.id,
-    )
+    with sqlite_session_factory.begin() as session:
+        WorkspaceMemberRemovalRepository(session).remove_member(
+            workspace_id=tenant.id,
+            account_id=member.id,
+            owner_id=owner.id,
+            actor_account_id=owner.id,
+        )
     sqlite_session.expire_all()
 
     command = sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox))
@@ -139,12 +140,13 @@ def test_remove_member_with_only_greenfield_audit_anchor(
     sqlite_session.add(anchor)
     sqlite_session.commit()
 
-    WorkspaceRepository(sqlite_session_factory).remove_member(
-        workspace_id=tenant.id,
-        account_id=member.id,
-        owner_id=owner.id,
-        actor_account_id=owner.id,
-    )
+    with sqlite_session_factory.begin() as session:
+        WorkspaceMemberRemovalRepository(session).remove_member(
+            workspace_id=tenant.id,
+            account_id=member.id,
+            owner_id=owner.id,
+            actor_account_id=owner.id,
+        )
     sqlite_session.expire_all()
 
     assert anchor.owner_account_id == member.id

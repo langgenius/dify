@@ -451,6 +451,16 @@ class SQLAlchemyContactRepository(ContactRepository, EnterpriseContactRepository
         self._session.flush()
 
     @override
+    def retain_platform_entry_for_account(
+        self, tenant_id: TenantId, account_id: AccountId, added_by_account_id: AccountId
+    ) -> None:
+        """Keep the member's current Contact in this workspace, raising if there is no Contact to retain."""
+        contact = self.get_contact_by_account_id(tenant_id, account_id)
+        if contact is None:
+            raise ContactError(ContactErrorCode.NOT_FOUND, "Workspace member has no Contact to retain")
+        self.create_platform_entry(tenant_id, contact.id, added_by_account_id)
+
+    @override
     def delete_platform_entry_for_account(self, tenant_id: TenantId, account_id: AccountId) -> None:
         """Remove the Account's Platform entry in this tenant, if present, regardless of Account status."""
         contact_id = sa.select(HumanInputContactIdentity.id).where(

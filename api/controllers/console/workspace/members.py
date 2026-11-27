@@ -79,7 +79,7 @@ class MemberRoleUpdatePayload(BaseModel):
 class MemberRemovalQuery(BaseModel):
     keep_as_platform_contact: bool = Field(
         default=False,
-        description="Keep the removed member in the workspace Contacts as a Platform Contact. Enterprise only.",
+        description="Keep the member as a Platform Contact after removal. Ignored when im_centrally_managed is false.",
     )
 
 

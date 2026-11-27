@@ -16091,7 +16091,7 @@ performs no writes or provider I/O. Storage failures propagate normally.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| keep_as_platform_contact | query | Keep the removed member in the workspace Contacts as a Platform Contact. Enterprise only. | No | boolean |
+| keep_as_platform_contact | query | Keep the member as a Platform Contact after removal. Ignored when im_centrally_managed is false. | No | boolean |
 | member_id | path |  | Yes | string (uuid) |
 
 #### Responses

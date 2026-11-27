@@ -255,11 +255,6 @@ class DeploymentWorkspaceMemberAccessGateway:
     def rbac_enabled(self) -> bool:
         return dify_config.RBAC_ENABLED
 
-    @property
-    def platform_contacts_enabled(self) -> bool:
-        """Report the deployment capability for platform-managed Contacts."""
-        return FeatureService.is_im_centrally_managed()
-
     def permission_keys(self, workspace_id: str, actor_id: str) -> set[str]:
         permissions = RBACService.MyPermissions.get(workspace_id, actor_id)
         return set(permissions.workspace.permission_keys)

@@ -523,6 +523,7 @@ def build_application_services(
     workspace_repository = WorkspaceRepository(session_factory=database_client)
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     workspace_members, workspace_provisioning = build_workspace_membership_services(
+        database_client=database_client,
         workspaces=workspace_repository,
         accounts=accounts,
         invitation_tokens=invitation_tokens,

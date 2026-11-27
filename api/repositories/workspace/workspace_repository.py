@@ -7,7 +7,6 @@ from typing import override
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.shared import AccountId, TenantId
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
 from models.account import (
@@ -24,8 +23,6 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App
 from repositories.account.repository import SQLAlchemyAccountRepository
-from repositories.human_input_v2.contact import ContactError, ContactErrorCode
-from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
@@ -50,7 +47,7 @@ from services.workspace.contracts import (
     WorkspaceRecord,
     WorkspaceSnapshot,
 )
-from services.workspace.member_service import WorkspaceMemberQuery, WorkspaceMemberStore
+from services.workspace.member_service import WorkspaceMemberQuery, WorkspaceMemberRemovalStore, WorkspaceMemberStore
 from services.workspace.service import WorkspaceQuery, WorkspaceStore
 
 
@@ -505,66 +502,6 @@ class WorkspaceRepository(
             return WorkspaceMemberWrite(workspace_id, account_id, role.value, account.status.value, created)
 
     @override
-    def remove_member(
-        self,
-        *,
-        workspace_id: str,
-        account_id: str,
-        owner_id: str,
-        actor_account_id: str,
-        keep_as_platform_contact: bool = False,
-    ) -> WorkspaceMemberRemoval:
-        """Remove a membership and transfer its resources to ``owner_id`` without deleting the account.
-
-        Retention requires an active account with an existing Contact in this workspace.
-        Otherwise any Platform entry in this workspace is removed. The Platform entry
-        change, membership deletion, and resource transfers commit or roll back together.
-        """
-        with self._session_factory.begin() as session:
-            account = session.get(Account, account_id)
-            membership = session.scalar(
-                select(TenantAccountJoin)
-                .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id)
-                .limit(1)
-            )
-            if account is None or membership is None:
-                raise MemberNotInTenantError("Member not in tenant.")
-            contacts = SQLAlchemyContactRepository(session)
-            if keep_as_platform_contact:
-                contact = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(account_id))
-                if contact is None:
-                    raise ContactError(ContactErrorCode.NOT_FOUND, "Workspace member has no Contact to retain")
-                contacts.create_platform_entry(TenantId(workspace_id), contact.id, AccountId(actor_account_id))
-            else:
-                contacts.delete_platform_entry_for_account(TenantId(workspace_id), AccountId(account_id))
-            session.execute(
-                update(App)
-                .where(App.tenant_id == workspace_id, App.maintainer == account_id)
-                .values(maintainer=owner_id)
-            )
-            session.execute(
-                update(Dataset)
-                .where(Dataset.tenant_id == workspace_id, Dataset.maintainer == account_id)
-                .values(maintainer=owner_id)
-            )
-            from services.knowledge_fs.membership_changes import (
-                KnowledgeFSWorkspaceMembershipChange,
-                apply_workspace_membership_change,
-            )
-
-            apply_workspace_membership_change(
-                session=session,
-                tenant_id=workspace_id,
-                actor_account_id=actor_account_id,
-                account_ids=(account_id,),
-                change=KnowledgeFSWorkspaceMembershipChange.MEMBER_REMOVED,
-                removed_account_id=account_id,
-                replacement_owner_account_id=owner_id,
-            )
-            session.delete(membership)
-            return WorkspaceMemberRemoval(account_id, account.email)
-
-    @override
     def update_member_role(
         self,
         *,
@@ -653,3 +590,53 @@ class WorkspaceRepository(
                 "replace_webapp_logo": changes.replace_webapp_logo,
             }
             return replace(snapshot, custom_config=changes)
+
+
+class WorkspaceMemberRemovalRepository(WorkspaceMemberRemovalStore):
+    """Membership and resource writes bound to the member-removal transaction."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    @override
+    def remove_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        owner_id: str,
+        actor_account_id: str,
+    ) -> WorkspaceMemberRemoval:
+        """Transfer resources to the owner and delete the membership, or raise if it is missing."""
+        account = self._session.get(Account, account_id)
+        membership = self._session.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id)
+            .limit(1)
+        )
+        if account is None or membership is None:
+            raise MemberNotInTenantError("Member not in tenant.")
+        self._session.execute(
+            update(App).where(App.tenant_id == workspace_id, App.maintainer == account_id).values(maintainer=owner_id)
+        )
+        self._session.execute(
+            update(Dataset)
+            .where(Dataset.tenant_id == workspace_id, Dataset.maintainer == account_id)
+            .values(maintainer=owner_id)
+        )
+        from services.knowledge_fs.membership_changes import (
+            KnowledgeFSWorkspaceMembershipChange,
+            apply_workspace_membership_change,
+        )
+
+        apply_workspace_membership_change(
+            session=self._session,
+            tenant_id=workspace_id,
+            actor_account_id=actor_account_id,
+            account_ids=(account_id,),
+            change=KnowledgeFSWorkspaceMembershipChange.MEMBER_REMOVED,
+            removed_account_id=account_id,
+            replacement_owner_account_id=owner_id,
+        )
+        self._session.delete(membership)
+        return WorkspaceMemberRemoval(account_id, account.email)
