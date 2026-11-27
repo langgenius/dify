@@ -98,8 +98,12 @@ class MarkdownExtractor(BaseExtractor):
         return markdown_tups
 
     def remove_images(self, content: str) -> str:
-        """Get a dictionary of a markdown file from its path."""
-        pattern = r"!{1}\[\[(.*)\]\]"
+        """Remove inline and wiki image references from text, preserving text between images.
+
+        Accepts Markdown text and returns text with matching image references removed;
+        ordinary hyperlinks and the input string are otherwise unchanged. Performs no I/O.
+        """
+        pattern = r"!\[\[.*?\]\]|!\[[^\]]*\]\([^)]*\)"
         content = re.sub(pattern, "", content)
         return content
 
@@ -128,10 +132,10 @@ class MarkdownExtractor(BaseExtractor):
         except Exception as e:
             raise RuntimeError(f"Error loading {filepath}") from e
 
-        if self._remove_hyperlinks:
-            content = self.remove_hyperlinks(content)
-
         if self._remove_images:
             content = self.remove_images(content)
+
+        if self._remove_hyperlinks:
+            content = self.remove_hyperlinks(content)
 
         return self.markdown_to_tups(content)
