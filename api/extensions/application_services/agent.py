@@ -137,7 +137,7 @@ def build_agent_app_services(
             preview_enabled=FeatureService.is_agent_preview_enabled,
             generate=AppGenerateService.generate,
         ),
-        config_assets=AgentConfigService(configs=configs, files=config_files, session_factory=database_client),
+        config_assets=AgentConfigService(configs=configs, files=config_files),
         knowledge=AgentKnowledgeGateway(configs=configs),
         composer=AgentAppComposer(
             store=apps,

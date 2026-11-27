@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import io
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
+from http import HTTPStatus
 from pathlib import Path
 from types import SimpleNamespace
 from typing import override
@@ -15,8 +17,9 @@ from unittest.mock import patch
 import pytest
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.protocol import CreateRunRequest
-from sqlalchemy import Select, event, select
+from sqlalchemy import Select, event, select, text
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from typing_extensions import TypedDict
 
@@ -126,7 +129,7 @@ def _snapshot(*, soul: AgentSoulConfig | None = None) -> AgentConfigSnapshot:
 
 
 def _service(sqlite_session: Session) -> AgentConfigService:
-    """Bind service-owned sessions to the current test's isolated SQLite engine."""
+    """Bind the real repositories to the current test's isolated SQLite engine."""
 
     return _service_for_sessions(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
 
@@ -134,11 +137,12 @@ def _service(sqlite_session: Session) -> AgentConfigService:
 def _service_for_sessions(
     sessions: sessionmaker[Session], *, write_session: Session | None = None
 ) -> AgentConfigService:
-    """Build the real read repositories and share a writer session only when testing locks."""
+    """Use a preloaded writer session to test locks, or open fresh SQLite sessions by default."""
     return AgentConfigService(
-        configs=AgentConfigRepository(session_factory=sessions),
+        configs=AgentConfigRepository(
+            session_factory=(lambda: write_session) if write_session is not None else sessions
+        ),
         files=FileGrantRepository(session_factory=sessions),
-        session_factory=(lambda: write_session) if write_session is not None else sessions,
     )
 
 
@@ -150,6 +154,41 @@ def _persist_target(
 ) -> None:
     sqlite_session.add_all([_agent(tenant_id=tenant_id), version])
     sqlite_session.commit()
+
+
+@contextmanager
+def _observe_config_storage_reads(
+    root: Path, sessions: sessionmaker[Session]
+) -> Generator[tuple[OpenDALStorage, list[bool]]]:
+    """Use a real filesystem backend and record whether a repository query transaction is open at each read."""
+    query_sessions: set[Session] = set()
+    read_transactions: list[bool] = []
+
+    def record_query(state: ORMExecuteState) -> None:
+        """Record actual repository sessions during the operation under test."""
+        if state.is_select:
+            query_sessions.add(state.session)
+
+    class ObservedStorage(OpenDALStorage):
+        @override
+        def load_once(self, filename: str) -> bytes:
+            """Observe verified database activity, then read the actual file on disk."""
+            assert query_sessions
+            read_transactions.append(any(session.in_transaction() for session in query_sessions))
+            return super().load_once(filename)
+
+    local_storage = ObservedStorage(scheme="fs", root=str(root))
+    previous_runner = storage.storage_runner if "storage_runner" in vars(storage) else None
+    event.listen(sessions, "do_orm_execute", record_query)
+    storage.storage_runner = local_storage
+    try:
+        yield local_storage, read_transactions
+    finally:
+        event.remove(sessions, "do_orm_execute", record_query)
+        if previous_runner is None:
+            del storage.storage_runner
+        else:
+            storage.storage_runner = previous_runner
 
 
 def _target(
@@ -724,21 +763,36 @@ def test_request_download_rejects_config_source_from_another_tenant(sqlite_sessi
     assert (exc_info.value.code, exc_info.value.status_code) == ("config_file_not_found", 404)
 
 
-@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
-def test_push_file_for_console_rejects_snapshot_writes(sqlite_session: Session) -> None:
+@pytest.mark.parametrize(
+    ("batch", "error_code", "status"),
+    [
+        pytest.param(False, "config_not_writable", HTTPStatus.FORBIDDEN, id="single"),
+        pytest.param(True, "upload_file_not_found", HTTPStatus.NOT_FOUND, id="batch"),
+    ],
+)
+def test_console_file_upload_preserves_error_order_for_missing_file_and_snapshot(
+    sqlite_session: Session, batch: bool, error_code: str, status: HTTPStatus
+) -> None:
+    """Single upload rejects the immutable target first, while batch checks the source first."""
     _persist_target(sqlite_session, _snapshot())
 
-    with pytest.raises(AgentConfigServiceError, match="editable drafts") as exc_info:
-        _service(sqlite_session).push_file_for_console(
-            tenant_id=TENANT,
-            agent_id=AGENT,
-            user_id=USER,
-            config_version_id=SNAPSHOT,
-            config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-            upload_file_id=UPLOAD_FILE,
-        )
+    service = _service(sqlite_session)
+    target: _PromptTarget = {
+        "tenant_id": TENANT,
+        "agent_id": AGENT,
+        "user_id": USER,
+        "config_version_id": SNAPSHOT,
+        "config_version_kind": AgentConfigVersionKind.SNAPSHOT,
+    }
+    submit_file = (
+        partial(service.push_files_for_console, **target, upload_file_ids=[UPLOAD_FILE])
+        if batch
+        else partial(service.push_file_for_console, **target, upload_file_id=UPLOAD_FILE)
+    )
+    with pytest.raises(AgentConfigServiceError) as error:
+        submit_file()
 
-    assert exc_info.value.code == "config_not_writable"
+    assert (error.value.code, error.value.status_code) == (error_code, status)
     sqlite_session.expire_all()
     persisted = sqlite_session.get(AgentConfigSnapshot, SNAPSHOT)
     assert persisted is not None
@@ -746,7 +800,7 @@ def test_push_file_for_console_rejects_snapshot_writes(sqlite_session: Session) 
 
 
 @pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, UploadFile)], indirect=True)
-def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming(sqlite_session: Session) -> None:
+def test_push_file_for_console_preserves_uploaded_file_metadata(sqlite_session: Session) -> None:
     _persist_target(sqlite_session, _draft())
     upload_file = UploadFile(
         tenant_id=TENANT,
@@ -828,69 +882,93 @@ def test_upload_skill_for_console_maps_package_validation_failures(sqlite_sessio
     assert persisted.config_snapshot.config_skills == []
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_prepare_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session) -> None:
-    service = _service(sqlite_session)
+def test_push_rejects_non_tool_file_skill_refs(sqlite_session: Session) -> None:
+    """Reject a valid workspace upload used as a skill archive and leave the draft unchanged."""
+    _persist_target(
+        sqlite_session, _draft(version_id=BUILD_DRAFT, draft_type=AgentConfigDraftType.DEBUG_BUILD, account_id=USER)
+    )
+    _persist_upload(sqlite_session, file_id=UPLOAD_FILE, name="alpha.zip")
 
     with pytest.raises(AgentConfigServiceError, match="tool files") as exc_info:
-        service._prepare_skill_updates(
+        _service(sqlite_session).push(
             tenant_id=TENANT,
+            agent_id=AGENT,
             user_id=USER,
-            updates=[
-                ConfigPushSkillItem.model_validate(
-                    {"name": "alpha", "file_ref": {"kind": "upload_file", "id": "upload-1"}}
-                )
-            ],
+            config_version_id=BUILD_DRAFT,
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            payload=ConfigPushPayload(
+                skills=[
+                    ConfigPushSkillItem.model_validate(
+                        {"name": "alpha", "file_ref": {"kind": "upload_file", "id": UPLOAD_FILE}}
+                    )
+                ]
+            ),
         )
 
-    assert exc_info.value.code == "invalid_skill_file_ref"
+    assert (exc_info.value.code, exc_info.value.status_code) == ("invalid_skill_file_ref", HTTPStatus.BAD_REQUEST)
+    sqlite_session.expire_all()
+    assert sqlite_session.get_one(AgentConfigDraft, BUILD_DRAFT).config_snapshot.config_skills == []
 
 
 @pytest.mark.parametrize(
     ("error_code", "message"),
     [
-        ("skill_name_mismatch", "skill name does not match requested config key"),
-        ("invalid_archive", "stored tool file is not a valid skill archive"),
+        ("skill_name_mismatch", "skill package name must match the requested config skill name"),
+        ("invalid_archive", "skill archive is not a valid zip"),
     ],
 )
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_prepare_skill_updates_maps_normalizer_failures(
+def test_push_maps_invalid_skill_archive_and_preserves_draft(
     error_code: str,
     message: str,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    tmp_path: Path,
 ) -> None:
-    service = _service(sqlite_session)
+    """Read the workspace archive outside SQL and preserve the draft when real normalization fails."""
+    original = _soul(config_note="Keep this note")
+    _persist_target(
+        sqlite_session,
+        _draft(version_id=BUILD_DRAFT, draft_type=AgentConfigDraftType.DEBUG_BUILD, account_id=USER, soul=original),
+    )
+    archive = (
+        _zip_bytes({"SKILL.md": b"---\nname: beta\ndescription: Test skill\n---\n# Skill\n"})
+        if error_code == "skill_name_mismatch"
+        else b"bad-archive"
+    )
     tool_file = ToolFile(
-        user_id=USER,
+        user_id=END_USER,
         tenant_id=TENANT,
         conversation_id=None,
         file_key="tool-files/alpha.zip",
         mimetype="application/zip",
         name="alpha.zip",
-        size=1,
+        size=len(archive),
     )
+    sqlite_session.add(tool_file)
+    sqlite_session.commit()
 
-    with (
-        patch.object(service, "_require_tool_file_source", return_value=tool_file),
-        patch(f"{MODULE}.storage.load_once", return_value=b"bad-archive"),
-        patch.object(
-            service._skill_normalizer,
-            "normalize",
-            side_effect=SkillPackageError(error_code, message, status_code=400),
-        ),
-    ):
+    with _observe_config_storage_reads(tmp_path, sqlite_session_factory) as (local_storage, read_transactions):
+        local_storage.save(tool_file.file_key, archive)
         with pytest.raises(AgentConfigServiceError, match=message) as exc_info:
-            service._prepare_skill_updates(
+            _service_for_sessions(sqlite_session_factory).push(
                 tenant_id=TENANT,
+                agent_id=AGENT,
                 user_id=USER,
-                updates=[
-                    ConfigPushSkillItem.model_validate(
-                        {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
-                    )
-                ],
+                config_version_id=BUILD_DRAFT,
+                config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                payload=ConfigPushPayload(
+                    skills=[
+                        ConfigPushSkillItem.model_validate(
+                            {"name": "alpha", "file_ref": {"kind": "tool_file", "id": tool_file.id}}
+                        )
+                    ],
+                    note="This edit should not be saved",
+                ),
             )
-
-    assert exc_info.value.code == error_code
+    assert read_transactions == [False]
+    assert (exc_info.value.code, exc_info.value.status_code) == (error_code, HTTPStatus.BAD_REQUEST)
+    sqlite_session.expire_all()
+    assert sqlite_session.get_one(AgentConfigDraft, BUILD_DRAFT).config_snapshot == original
 
 
 def test_apply_env_text_supports_delete_comments_export_and_keeps_unmentioned_values() -> None:
@@ -1257,23 +1335,6 @@ def test_preview_file_releases_transaction_before_storage(
     )
     _persist_target(sqlite_session, _draft(soul=AgentSoulConfig(config_files=[file_ref])))
 
-    file_sessions: list[Session] = []
-    read_transactions: list[tuple[bool, ...]] = []
-
-    def record_file_query(state: ORMExecuteState) -> None:
-        """Record sessions selecting file metadata for the preview."""
-        if state.is_select and state.bind_mapper is not None and state.bind_mapper.class_ in (ToolFile, UploadFile):
-            file_sessions.append(state.session)
-
-    class ObservedStorage(OpenDALStorage):
-        @override
-        def load_once(self, filename: str) -> bytes:
-            """Capture transaction state, then read the actual file from storage."""
-            read_transactions.append(tuple(session.in_transaction() for session in file_sessions))
-            return super().load_once(filename)
-
-    local_storage = ObservedStorage(scheme="fs", root=str(tmp_path))
-    local_storage.save(key, payload)
     preview_file = partial(
         _service_for_sessions(sqlite_session_factory).preview_file,
         tenant_id=TENANT,
@@ -1283,10 +1344,8 @@ def test_preview_file_releases_transaction_before_storage(
         name=name,
         user_id=USER,
     )
-    previous_runner = storage.storage_runner if "storage_runner" in vars(storage) else None
-    event.listen(sqlite_session_factory, "do_orm_execute", record_file_query)
-    storage.storage_runner = local_storage
-    try:
+    with _observe_config_storage_reads(tmp_path, sqlite_session_factory) as (local_storage, read_transactions):
+        local_storage.save(key, payload)
         if is_foreign:
             with pytest.raises(AgentConfigServiceError) as caught:
                 preview_file()
@@ -1301,13 +1360,7 @@ def test_preview_file_releases_transaction_before_storage(
                 "binary": False,
                 "text": payload.decode(),
             }
-            assert read_transactions == [(False,)]
-    finally:
-        event.remove(sqlite_session_factory, "do_orm_execute", record_file_query)
-        if previous_runner is None:
-            del storage.storage_runner
-        else:
-            storage.storage_runner = previous_runner
+            assert read_transactions == [False]
 
 
 def test_preview_skill_file_returns_text_preview(sqlite_session: Session) -> None:
@@ -1601,6 +1654,37 @@ def test_push_files_for_console_rejects_published_snapshots_without_mutation(sql
     snapshot = sqlite_session.get(AgentConfigSnapshot, SNAPSHOT)
     assert snapshot is not None
     assert snapshot.config_snapshot.config_files == []
+
+
+def test_update_note_rolls_back_when_database_rejects_draft_write(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """Surface a rejected SQL UPDATE and preserve the committed Build draft in a fresh session."""
+    original = _soul(config_note="Original note")
+    _persist_target(
+        sqlite_session,
+        _draft(version_id=BUILD_DRAFT, draft_type=AgentConfigDraftType.DEBUG_BUILD, account_id=USER, soul=original),
+    )
+    sqlite_session.execute(
+        text(
+            "CREATE TRIGGER reject_config_update BEFORE UPDATE ON agent_config_drafts "
+            "BEGIN SELECT RAISE(ABORT, 'test rejects config update'); END"
+        )
+    )
+    sqlite_session.commit()
+
+    with pytest.raises(IntegrityError, match="test rejects config update"):
+        _service_for_sessions(sqlite_session_factory).update_note(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=BUILD_DRAFT,
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            note="Failed note",
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.get_one(AgentConfigDraft, BUILD_DRAFT).config_snapshot == original
 
 
 @pytest.mark.parametrize("dirty_cached_draft", [False, True], ids=["cached", "dirty-cached"])
