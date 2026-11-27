@@ -9,7 +9,8 @@ export function apiBasedExtensionPolicies(
       mutationOptions: {
         onSuccess: async (createdExtension, _variables, _onMutateResult, context) => {
           const queryKey = consoleQuery.apiBasedExtension.get.queryKey()
-          await context.client.cancelQueries({ queryKey, exact: true })
+          if (context.client.isFetching({ queryKey, exact: true }))
+            await context.client.cancelQueries({ queryKey, exact: true })
           context.client.setQueryData(
             queryKey,
             (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
@@ -23,7 +24,8 @@ export function apiBasedExtensionPolicies(
         mutationOptions: {
           onSuccess: async (updatedExtension, variables, _onMutateResult, context) => {
             const queryKey = consoleQuery.apiBasedExtension.get.queryKey()
-            await context.client.cancelQueries({ queryKey, exact: true })
+            if (context.client.isFetching({ queryKey, exact: true }))
+              await context.client.cancelQueries({ queryKey, exact: true })
             context.client.setQueryData(
               queryKey,
               (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
@@ -38,7 +40,8 @@ export function apiBasedExtensionPolicies(
         mutationOptions: {
           onSuccess: async (_data, variables, _onMutateResult, context) => {
             const queryKey = consoleQuery.apiBasedExtension.get.queryKey()
-            await context.client.cancelQueries({ queryKey, exact: true })
+            if (context.client.isFetching({ queryKey, exact: true }))
+              await context.client.cancelQueries({ queryKey, exact: true })
             context.client.setQueryData(
               queryKey,
               (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>

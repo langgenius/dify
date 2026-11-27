@@ -217,10 +217,16 @@ export function workspacePluginPolicies(
             mutationOptions: {
               onSuccess: async (response, _variables, _result, context) => {
                 if (response.task)
-                  await context.client.cancelQueries({
-                    queryKey: pluginTaskListKey(consoleQuery),
-                    exact: true,
-                  })
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -231,10 +237,16 @@ export function workspacePluginPolicies(
             mutationOptions: {
               onSuccess: async (response, _variables, _result, context) => {
                 if (response.task)
-                  await context.client.cancelQueries({
-                    queryKey: pluginTaskListKey(consoleQuery),
-                    exact: true,
-                  })
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -245,10 +257,16 @@ export function workspacePluginPolicies(
             mutationOptions: {
               onSuccess: async (response, _variables, _result, context) => {
                 if (response.task)
-                  await context.client.cancelQueries({
-                    queryKey: pluginTaskListKey(consoleQuery),
-                    exact: true,
-                  })
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -261,10 +279,16 @@ export function workspacePluginPolicies(
             mutationOptions: {
               onSuccess: async (response, _variables, _result, context) => {
                 if (response.task)
-                  await context.client.cancelQueries({
-                    queryKey: pluginTaskListKey(consoleQuery),
-                    exact: true,
-                  })
+                  if (
+                    context.client.isFetching({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
+                  )
+                    await context.client.cancelQueries({
+                      queryKey: pluginTaskListKey(consoleQuery),
+                      exact: true,
+                    })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },

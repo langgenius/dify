@@ -83,7 +83,8 @@ export function humanInputPolicies(
               onSuccess: async (data, _variables, _onMutateResult, context) => {
                 const queryKey =
                   consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey()
-                await context.client.cancelQueries({ queryKey, exact: true })
+                if (context.client.isFetching({ queryKey, exact: true }))
+                  await context.client.cancelQueries({ queryKey, exact: true })
                 context.client.setQueryData(queryKey, data)
                 void context.client.resetQueries({
                   queryKey:

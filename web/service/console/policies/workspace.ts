@@ -153,9 +153,14 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
               meta: { alsoInvalidate: humanInputContactPaths },
               // The row leaves at once; the refetch confirms it.
               onSuccess: async (_data, variables, _result, context) => {
-                await context.client.cancelQueries({
-                  queryKey: consoleQuery.workspaces.current.members.get.key(),
-                })
+                if (
+                  context.client.isFetching({
+                    queryKey: consoleQuery.workspaces.current.members.get.key(),
+                  })
+                )
+                  await context.client.cancelQueries({
+                    queryKey: consoleQuery.workspaces.current.members.get.key(),
+                  })
                 context.client.setQueriesData(
                   { queryKey: consoleQuery.workspaces.current.members.get.key() },
                   (members: AccountWithRoleListResponse | undefined) =>
@@ -181,7 +186,8 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             // Show the new group right away; the settled refetch confirms it.
             onSuccess: async (data, _variables, _result, { client }) => {
               const queryKey = consoleQuery.workspaces.current.networkAccessGroups.get.queryKey()
-              await client.cancelQueries({ queryKey, exact: true })
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
               client.setQueryData(queryKey, (current) => {
                 if (!current) return current
                 if (current.groups.some((group) => group.id === data.group.id)) return current
@@ -263,10 +269,14 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                           data: page.data.filter((role) => role.id !== params.role_id),
                         }
                       : page
-                  await Promise.all([
-                    client.cancelQueries({ queryKey: roles.key({ type: 'query' }) }),
-                    client.cancelQueries({ queryKey: roles.key({ type: 'infinite' }) }),
-                  ])
+                  if (
+                    client.isFetching({ queryKey: roles.key({ type: 'query' }) }) ||
+                    client.isFetching({ queryKey: roles.key({ type: 'infinite' }) })
+                  )
+                    await Promise.all([
+                      client.cancelQueries({ queryKey: roles.key({ type: 'query' }) }),
+                      client.cancelQueries({ queryKey: roles.key({ type: 'infinite' }) }),
+                    ])
                   client.setQueriesData<RbacRoleList>(
                     { queryKey: roles.key({ type: 'query' }) },
                     (data) => data && removeRole(data),
@@ -476,7 +486,11 @@ async function removeAccessPolicyRows(
   const listKeys = [lists.apps, lists.datasets, lists.agents].map((list) =>
     list.accessPolicy.get.key({ type: 'infinite' }),
   )
-  await Promise.all(listKeys.map((queryKey) => client.cancelQueries({ queryKey })))
+  // Cancel only running reads: an await with nothing to cancel would move the write past the
+  // delete dialog's own callback.
+  const running = listKeys.filter((queryKey) => client.isFetching({ queryKey }))
+  if (running.length)
+    await Promise.all(running.map((queryKey) => client.cancelQueries({ queryKey })))
   for (const queryKey of listKeys)
     client.setQueriesData<InfiniteData<WorkspaceAccessMatrix>>(
       { queryKey },

@@ -8,7 +8,8 @@ export function onboardingPolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
           mutationOptions: {
             onSuccess: async (state, _variables, _result, { client }) => {
               const queryKey = consoleQuery.onboarding.stepByStepTour.state.get.queryKey()
-              await client.cancelQueries({ queryKey, exact: true })
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
               client.setQueryData(queryKey, state)
             },
           },

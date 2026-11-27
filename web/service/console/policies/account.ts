@@ -34,7 +34,8 @@ export function authPolicies(
           // The install redirect reads the finished status right away.
           onSuccess: async (_data, _variables, _result, { client }) => {
             const queryKey = consoleQuery.init.get.queryKey()
-            await client.cancelQueries({ queryKey, exact: true })
+            if (client.isFetching({ queryKey, exact: true }))
+              await client.cancelQueries({ queryKey, exact: true })
             client.setQueryData(queryKey, { status: 'finished' })
           },
         },
@@ -96,9 +97,14 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
           // token is written into the cached lists instead of waiting for their refetch.
           onSuccess: async (created, _variables, _onMutateResult, context) => {
             const { secret: _secret, ...token } = created
-            await context.client.cancelQueries({
-              queryKey: consoleQuery.account.personalAccessTokens.get.key(),
-            })
+            if (
+              context.client.isFetching({
+                queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+              })
+            )
+              await context.client.cancelQueries({
+                queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+              })
             context.client.setQueriesData<PersonalAccessTokenListResponse>(
               { queryKey: consoleQuery.account.personalAccessTokens.get.key() },
               (list) =>
