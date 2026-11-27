@@ -453,7 +453,10 @@ class SQLAlchemyContactRepository(ContactRepository, EnterpriseContactRepository
     @override
     def delete_platform_entry_for_account(self, tenant_id: TenantId, account_id: AccountId) -> None:
         """Remove the Account's Platform entry in this tenant, if present, regardless of Account status."""
-        contact_id = sa.select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == account_id)
+        contact_id = sa.select(HumanInputContactIdentity.id).where(
+            HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
+            HumanInputContactIdentity.account_id == account_id,
+        )
         self._session.execute(
             sa.delete(HumanInputPlatformContactWorkspaceEntry).where(
                 HumanInputPlatformContactWorkspaceEntry.tenant_id == tenant_id,
