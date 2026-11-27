@@ -7,8 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from clients.plugin.auth_entities import CredentialCheckResult
-from constants.end_user_connections import ConnectionCredentialType, NodeConnectionStatus
+from clients.plugin.auth_entities import AuthReasonCode, CredentialCheckResult
+from constants.end_user_connections import ConnectionCredentialType, CredentialCheckStatus, NodeConnectionStatus
 from services.end_user_connections.contracts import ConnectionContractInput, ConnectionCredentialChecks
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
@@ -220,8 +220,8 @@ class ConnectionPreflightService:
                 visible_id = record.id if record is not None else None
                 if check is None:
                     check = CredentialCheckResult(
-                        status="temporarily_unavailable",
-                        reason_code="provider_unavailable",
+                        status=CredentialCheckStatus.TEMPORARILY_UNAVAILABLE,
+                        reason_code=AuthReasonCode.PROVIDER_UNAVAILABLE,
                         retryable=True,
                         checked_at=int(time.time()),
                     )

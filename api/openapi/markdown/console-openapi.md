@@ -24263,6 +24263,12 @@ Audio size exceeded. {message}
 | ---- | ---- | ----------- | -------- |
 | text | string | Transcribed text from audio | Yes |
 
+#### AuthReasonCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthReasonCode | string |  |  |
+
 #### AuthenticationFailedError
 
 Invalid email or password.
@@ -25708,9 +25714,17 @@ Payload for creating a new snippet.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | checked_at | integer |  | Yes |
-| reason_code | string, <br>**Available values:** "credential_expired", "credential_invalid", "credential_revoked", "provider_network_error", "provider_rate_limited", "provider_timeout", "provider_unavailable" |  | Yes |
+| reason_code | [AuthReasonCode](#authreasoncode) |  | Yes |
 | retryable | boolean |  | Yes |
-| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+| status | [CredentialCheckStatus](#credentialcheckstatus) |  | Yes |
+
+#### CredentialCheckStatus
+
+Outcome of a single provider check, separate from stored credential state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckStatus | string | Outcome of a single provider check, separate from stored credential state. |  |
 
 #### CredentialCheckUnavailableError
 
@@ -29294,6 +29308,12 @@ Sandbox inspector is unavailable.
 | name | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 
+#### InstalledAppListMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InstalledAppListMode | string |  |  |
+
 #### InstalledAppListResponse
 
 | Name | Type | Description | Required |
@@ -29372,7 +29392,7 @@ The app is not available in this app library.
 | app_id | string | App ID to filter by | No |
 | cursor | string | Opaque cursor returned by the previous page | No |
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
-| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter, using the same values as Studio<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| mode | [InstalledAppListMode](#installedapplistmode) | App mode filter, using the same values as Studio | No |
 | name | string | App name to search for | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created" | Sort by app modification or creation time, using the same values as Studio. When omitted, pinned apps come first, then recently used apps. Restart pagination when changing sort order. | No |
 
@@ -38037,7 +38057,7 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | reason_code | string |  | Yes |
 | retryable | boolean |  | Yes |
-| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+| status | [CredentialCheckStatus](#credentialcheckstatus) |  | Yes |
 
 #### TestCredentialPreflightResponse
 
@@ -38061,7 +38081,13 @@ Tag type
 | credential_id | string |  | Yes |
 | node_id | string |  | Yes |
 | node_ids | [ string ] |  | Yes |
-| status | string, <br>**Available values:** "connected", "disconnected", "incompatible", "invalid", "reconnect_required", "temporarily_unavailable" | *Enum:* `"connected"`, `"disconnected"`, `"incompatible"`, `"invalid"`, `"reconnect_required"`, `"temporarily_unavailable"` | Yes |
+| status | [TestCredentialStatus](#testcredentialstatus) |  | Yes |
+
+#### TestCredentialStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TestCredentialStatus | string |  |  |
 
 #### TestCredentialsNotReadyError
 

@@ -17,11 +17,11 @@ from werkzeug import Request
 from werkzeug.test import EnvironBuilder
 
 from clients.plugin.auth import PluginCredentialAuthClient
-from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
+from clients.plugin.auth_entities import AuthReasonCode, CredentialCheckResult, OAuthRevokeResult, OAuthRevokeStatus
 from clients.plugin.errors import PluginNotImplementedError
 from clients.plugin.identifiers import plugin_id_from_unique_identifier
 from configs import dify_config
-from constants.end_user_connections import END_USER_OAUTH_CONTEXT_PREFIX, OAuthClientSource
+from constants.end_user_connections import END_USER_OAUTH_CONTEXT_PREFIX, CredentialCheckStatus, OAuthClientSource
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.plugin.entities.plugin_daemon import CredentialType, PluginOAuthCredentialsResponse
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
@@ -328,15 +328,15 @@ class PluginConnectionOAuthGateway:
             while cause is not None:
                 if isinstance(cause, PluginNotImplementedError):
                     return CredentialCheckResult(
-                        status="invalid",
-                        reason_code="credential_expired",
+                        status=CredentialCheckStatus.INVALID,
+                        reason_code=AuthReasonCode.CREDENTIAL_EXPIRED,
                         retryable=False,
                         checked_at=int(time.time()),
                     )
                 cause = cause.__cause__ or cause.__context__
             return CredentialCheckResult(
-                status="temporarily_unavailable",
-                reason_code="provider_unavailable",
+                status=CredentialCheckStatus.TEMPORARILY_UNAVAILABLE,
+                reason_code=AuthReasonCode.PROVIDER_UNAVAILABLE,
                 retryable=True,
                 checked_at=int(time.time()),
             )
@@ -359,12 +359,12 @@ class PluginConnectionOAuthGateway:
             )
         except PluginNotImplementedError:
             return CredentialCheckResult(
-                status="unsupported", reason_code=None, retryable=False, checked_at=int(time.time())
+                status=CredentialCheckStatus.UNSUPPORTED, reason_code=None, retryable=False, checked_at=int(time.time())
             )
         except (PluginDaemonError, httpx.HTTPError):
             return CredentialCheckResult(
-                status="temporarily_unavailable",
-                reason_code="provider_unavailable",
+                status=CredentialCheckStatus.TEMPORARILY_UNAVAILABLE,
+                reason_code=AuthReasonCode.PROVIDER_UNAVAILABLE,
                 retryable=True,
                 checked_at=int(time.time()),
             )
@@ -386,10 +386,12 @@ class PluginConnectionOAuthGateway:
                 credentials=credentials,
             )
         except PluginNotImplementedError:
-            return OAuthRevokeResult(status="unsupported", reason_code=None, retryable=False)
+            return OAuthRevokeResult(status=OAuthRevokeStatus.UNSUPPORTED, reason_code=None, retryable=False)
         except (PluginDaemonError, httpx.HTTPError):
             return OAuthRevokeResult(
-                status="temporarily_unavailable", reason_code="provider_unavailable", retryable=True
+                status=OAuthRevokeStatus.TEMPORARILY_UNAVAILABLE,
+                reason_code=AuthReasonCode.PROVIDER_UNAVAILABLE,
+                retryable=True,
             )
 
 

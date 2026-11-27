@@ -11,6 +11,7 @@ Additional modes record future accepted use without backfilling historical use.
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from typing import Final, Literal, Protocol
 from uuid import UUID
 
@@ -63,10 +64,16 @@ class ConsumerApp(BaseModel):
     continuation: str = Field(exclude=True)
 
 
+class ConsumerAppView(StrEnum):
+    RECENT = "recent"
+    FAVORITES = "favorites"
+    SHARED = "shared"
+
+
 class ConsumerAppsQuery(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
-    view: Literal["recent", "favorites", "shared"] = "recent"
+    view: ConsumerAppView = ConsumerAppView.RECENT
     name: str | None = Field(default=None, max_length=255)
     cursor: str | None = Field(default=None, max_length=2048)
     limit: int = Field(default=20, ge=1, le=100)
@@ -277,7 +284,7 @@ class ConsumerService:
         data: list[ConsumerApp] = []
         after = query.cursor
         last = after
-        shared_ids = self._shared_apps() if query.view == "shared" else None
+        shared_ids = self._shared_apps() if query.view is ConsumerAppView.SHARED else None
         while True:
             candidates = self._apps.candidates(
                 identity, query, after=after, limit=query.limit + 1, shared_ids=shared_ids

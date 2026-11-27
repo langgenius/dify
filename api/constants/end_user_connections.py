@@ -10,6 +10,15 @@ class ConnectionCredentialType(StrEnum):
     OAUTH2 = "oauth2"
 
 
+class CredentialCheckStatus(StrEnum):
+    """Outcome of a single provider check, separate from stored credential state."""
+
+    VALID = "valid"
+    INVALID = "invalid"
+    TEMPORARILY_UNAVAILABLE = "temporarily_unavailable"
+    UNSUPPORTED = "unsupported"
+
+
 class ConnectionCredentialStatus(StrEnum):
     """Last known credential lifecycle state, not readiness for a particular node.
 

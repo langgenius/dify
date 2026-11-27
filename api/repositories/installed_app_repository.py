@@ -193,8 +193,8 @@ class SQLAlchemyInstalledAppRepository(InstalledAppAccessStore, InstalledAppUsag
         if name and (normalized_name := name.strip()):
             escaped_name = escape_like_pattern(normalized_name)
             statement = statement.where(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-        if mode != "all":
-            statement = statement.where(App.mode == mode)
+        if mode != InstalledAppListMode.ALL:
+            statement = statement.where(App.mode == mode.value)
         if cursor is not None:
             statement = statement.where(_installed_app_cursor_filter(cursor))
         with self._session_factory() as session:

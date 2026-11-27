@@ -1173,26 +1173,6 @@ export const zInstalledAppParametersResponse = z.object({
 })
 
 /**
- * CredentialCheckResult
- */
-export const zCredentialCheckResult = z.object({
-  checked_at: z.int(),
-  reason_code: z
-    .enum([
-      'credential_expired',
-      'credential_invalid',
-      'credential_revoked',
-      'provider_network_error',
-      'provider_rate_limited',
-      'provider_timeout',
-      'provider_unavailable',
-    ])
-    .nullable(),
-  retryable: z.boolean(),
-  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
-})
-
-/**
  * NodeConnectionStatus
  *
  * The current selection's effective status for one published Tool node.
@@ -1203,25 +1183,6 @@ export const zNodeConnectionStatus = z.enum([
   'invalid',
   'reconnect_required',
 ])
-
-/**
- * ConnectionPreflightStatus
- */
-export const zConnectionPreflightStatus = z.object({
-  check: zCredentialCheckResult.nullable(),
-  connection_id: z.string().nullable(),
-  node_id: z.string(),
-  status: zNodeConnectionStatus.nullable(),
-})
-
-/**
- * InstalledConnectionPreflightResponse
- */
-export const zInstalledConnectionPreflightResponse = z.object({
-  connection_revision: z.string(),
-  connections: z.array(zConnectionPreflightStatus),
-  ready: z.boolean().readonly(),
-})
 
 /**
  * SimpleFeedback
@@ -1267,6 +1228,60 @@ export const zSavedMessageInfiniteScrollPagination = z.object({
   data: z.array(zSavedMessageItem),
   has_more: z.boolean(),
   limit: z.int(),
+})
+
+/**
+ * AuthReasonCode
+ */
+export const zAuthReasonCode = z.enum([
+  'credential_expired',
+  'credential_invalid',
+  'credential_revoked',
+  'provider_network_error',
+  'provider_rate_limited',
+  'provider_timeout',
+  'provider_unavailable',
+])
+
+/**
+ * CredentialCheckStatus
+ *
+ * Outcome of a single provider check, separate from stored credential state.
+ */
+export const zCredentialCheckStatus = z.enum([
+  'invalid',
+  'temporarily_unavailable',
+  'unsupported',
+  'valid',
+])
+
+/**
+ * CredentialCheckResult
+ */
+export const zCredentialCheckResult = z.object({
+  checked_at: z.int(),
+  reason_code: zAuthReasonCode.nullable(),
+  retryable: z.boolean(),
+  status: zCredentialCheckStatus,
+})
+
+/**
+ * ConnectionPreflightStatus
+ */
+export const zConnectionPreflightStatus = z.object({
+  check: zCredentialCheckResult.nullable(),
+  connection_id: z.string().nullable(),
+  node_id: z.string(),
+  status: zNodeConnectionStatus.nullable(),
+})
+
+/**
+ * InstalledConnectionPreflightResponse
+ */
+export const zInstalledConnectionPreflightResponse = z.object({
+  connection_revision: z.string(),
+  connections: z.array(zConnectionPreflightStatus),
+  ready: z.boolean().readonly(),
 })
 
 /**

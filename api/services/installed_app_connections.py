@@ -10,7 +10,8 @@ from dataclasses import dataclass, replace
 from typing import Any, Protocol
 from uuid import UUID
 
-from clients.plugin.auth_entities import CredentialCheckResult
+from clients.plugin.auth_entities import AuthReasonCode, CredentialCheckResult
+from constants.end_user_connections import CredentialCheckStatus
 from context.connection_execution import (
     ConnectionExecutionContext,
     ExecutionConnectionSelection,
@@ -249,8 +250,8 @@ class InstalledAppConnectionService:
                     status = error.status
                 if status == "temporarily_unavailable" and check is None:
                     check = CredentialCheckResult(
-                        status="temporarily_unavailable",
-                        reason_code="provider_unavailable",
+                        status=CredentialCheckStatus.TEMPORARILY_UNAVAILABLE,
+                        reason_code=AuthReasonCode.PROVIDER_UNAVAILABLE,
                         retryable=True,
                         checked_at=int(time.time()),
                     )

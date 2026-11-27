@@ -866,17 +866,9 @@ export type ConnectionCredentialType = 'api-key' | 'oauth2'
 
 export type CredentialCheckResult = {
   checked_at: number
-  reason_code:
-    | 'credential_expired'
-    | 'credential_invalid'
-    | 'credential_revoked'
-    | 'provider_network_error'
-    | 'provider_rate_limited'
-    | 'provider_timeout'
-    | 'provider_unavailable'
-    | null
+  reason_code: AuthReasonCode | null
   retryable: boolean
-  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
+  status: CredentialCheckStatus
 }
 
 export type NodeConnectionStatus = 'connected' | 'disconnected' | 'invalid' | 'reconnect_required'
@@ -955,6 +947,17 @@ export type RetrieverResource = {
   title?: string | null
   word_count?: number | null
 }
+
+export type AuthReasonCode =
+  | 'credential_expired'
+  | 'credential_invalid'
+  | 'credential_revoked'
+  | 'provider_network_error'
+  | 'provider_rate_limited'
+  | 'provider_timeout'
+  | 'provider_unavailable'
+
+export type CredentialCheckStatus = 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
 
 export type AgentToolActivity = {
   call_limit?: ToolCallLimitMetadata | null

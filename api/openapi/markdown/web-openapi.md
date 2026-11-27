@@ -1999,6 +1999,12 @@ Audio size exceeded. {message}
 | ---- | ---- | ----------- | -------- |
 | AudioTooLargeError |  | Audio size exceeded. {message} |  |
 
+#### AuthReasonCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthReasonCode | string |  |  |
+
 #### AuthenticationFailedError
 
 Invalid email or password.
@@ -2121,11 +2127,17 @@ Completion request failed.
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
 
+#### ConnectionClaimErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimErrorCode | string |  |  |
+
 #### ConnectionClaimErrorResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_busy", "end_user_login_required", "migration_not_ready", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_busy"`, `"end_user_login_required"`, `"migration_not_ready"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| code | [ConnectionClaimErrorCode](#connectionclaimerrorcode) |  | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
@@ -2429,9 +2441,17 @@ The conversation was not found for this user and app.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | checked_at | integer |  | Yes |
-| reason_code | string, <br>**Available values:** "credential_expired", "credential_invalid", "credential_revoked", "provider_network_error", "provider_rate_limited", "provider_timeout", "provider_unavailable" |  | Yes |
+| reason_code | [AuthReasonCode](#authreasoncode) |  | Yes |
 | retryable | boolean |  | Yes |
-| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+| status | [CredentialCheckStatus](#credentialcheckstatus) |  | Yes |
+
+#### CredentialCheckStatus
+
+Outcome of a single provider check, separate from stored credential state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckStatus | string | Outcome of a single provider check, separate from stored credential state. |  |
 
 #### CredentialCheckUnavailableError
 

@@ -2910,13 +2910,7 @@ export type TestCredentialState = {
   credential_id: string | null
   node_id: string
   node_ids: Array<string>
-  status:
-    | 'connected'
-    | 'disconnected'
-    | 'incompatible'
-    | 'invalid'
-    | 'reconnect_required'
-    | 'temporarily_unavailable'
+  status: TestCredentialStatus
 }
 
 export type WorkflowDraftVariableWithoutValueResponse = {
@@ -3828,8 +3822,16 @@ export type CheckResultView = {
 export type TestCredentialCheck = {
   reason_code: string | null
   retryable: boolean
-  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
+  status: CredentialCheckStatus
 }
+
+export type TestCredentialStatus =
+  | 'connected'
+  | 'disconnected'
+  | 'incompatible'
+  | 'invalid'
+  | 'reconnect_required'
+  | 'temporarily_unavailable'
 
 export type AppAgentPromptResponse = {
   first_prompt?: string
@@ -4475,6 +4477,8 @@ export type AgentComposerKnowledgeDatasetCandidateResponse = {
   missing?: boolean
   name?: string | null
 }
+
+export type CredentialCheckStatus = 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
 
 export type ToolProviderType =
   | 'api'

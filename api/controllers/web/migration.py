@@ -1,5 +1,6 @@
 """Whole-Guest Web resource migration after Account login."""
 
+from enum import StrEnum
 from typing import Annotated, Literal
 
 from flask import request
@@ -61,17 +62,19 @@ class ConnectionClaimSuccessResponse(ResponseModel):
     )
 
 
+class ConnectionClaimErrorCode(StrEnum):
+    APP_NOT_FOUND = "app_not_found"
+    CONNECTION_CLAIM_UNAVAILABLE = "connection_claim_unavailable"
+    CONNECTION_CONFLICT = "connection_conflict"
+    END_USER_BUSY = "end_user_busy"
+    END_USER_LOGIN_REQUIRED = "end_user_login_required"
+    MIGRATION_NOT_READY = "migration_not_ready"
+    UNAUTHORIZED = "unauthorized"
+    WEB_APP_ACCESS_DENIED = "web_app_access_denied"
+
+
 class ConnectionClaimErrorResponse(ResponseModel):
-    code: Literal[
-        "app_not_found",
-        "connection_claim_unavailable",
-        "connection_conflict",
-        "end_user_busy",
-        "end_user_login_required",
-        "migration_not_ready",
-        "unauthorized",
-        "web_app_access_denied",
-    ]
+    code: ConnectionClaimErrorCode
     message: str
     status: int
 
@@ -108,29 +111,39 @@ class ConnectionClaimResponse(ResponseModel):
 def claim_error_response(failure: ConnectionClaimFailure) -> ConnectionClaimErrorResponse:
     error = failure.error
     if isinstance(error, GuestMigrationNotReadyError):
-        return ConnectionClaimErrorResponse(code="migration_not_ready", status=409, message=str(error))
+        return ConnectionClaimErrorResponse(
+            code=ConnectionClaimErrorCode.MIGRATION_NOT_READY, status=409, message=str(error)
+        )
     if isinstance(error, EndUserBusyError):
-        return ConnectionClaimErrorResponse(code="end_user_busy", status=409, message=str(error))
+        return ConnectionClaimErrorResponse(code=ConnectionClaimErrorCode.END_USER_BUSY, status=409, message=str(error))
     if isinstance(error, ConnectionIdentityError):
-        return ConnectionClaimErrorResponse(code="unauthorized", status=401, message=str(error))
+        return ConnectionClaimErrorResponse(code=ConnectionClaimErrorCode.UNAUTHORIZED, status=401, message=str(error))
     if isinstance(error, WebPassportNotFoundError):
         return ConnectionClaimErrorResponse(
-            code="app_not_found", status=404, message=str(WebAppNotFoundError.description)
+            code=ConnectionClaimErrorCode.APP_NOT_FOUND, status=404, message=str(WebAppNotFoundError.description)
         )
     if isinstance(error, (WebPassportAuthenticationRequiredError, WebPassportUnauthorizedError)):
         return ConnectionClaimErrorResponse(
-            code="end_user_login_required", status=401, message=str(ConnectionLoginRequiredError.description)
+            code=ConnectionClaimErrorCode.END_USER_LOGIN_REQUIRED,
+            status=401,
+            message=str(ConnectionLoginRequiredError.description),
         )
     if isinstance(error, WebPassportAccessDeniedError):
         return ConnectionClaimErrorResponse(
-            code="web_app_access_denied", status=401, message=str(WebAppAuthAccessDeniedError.description)
+            code=ConnectionClaimErrorCode.WEB_APP_ACCESS_DENIED,
+            status=401,
+            message=str(WebAppAuthAccessDeniedError.description),
         )
     if isinstance(error, ConnectionConflictError):
         return ConnectionClaimErrorResponse(
-            code="connection_conflict", status=409, message=str(ConnectionConflictHTTPError.description)
+            code=ConnectionClaimErrorCode.CONNECTION_CONFLICT,
+            status=409,
+            message=str(ConnectionConflictHTTPError.description),
         )
     if isinstance(error, ConnectionClaimUnavailableError):
-        return ConnectionClaimErrorResponse(code="connection_claim_unavailable", status=503, message=str(error))
+        return ConnectionClaimErrorResponse(
+            code=ConnectionClaimErrorCode.CONNECTION_CLAIM_UNAVAILABLE, status=503, message=str(error)
+        )
     raise error
 
 

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
-from constants.end_user_connections import ConnectionCredentialStatus, OAuthClientSource
+from clients.plugin.auth_entities import AuthReasonCode, CredentialCheckResult, OAuthRevokeResult
+from constants.end_user_connections import ConnectionCredentialStatus, CredentialCheckStatus, OAuthClientSource
 from services.end_user_connections.contracts import ConnectionCheckOutcome, ConnectionCheckView
 from services.end_user_connections.entities import (
     ConnectionManagementContext,
@@ -224,8 +224,8 @@ class OAuthConnectionLifecycleService:
             now = datetime.now(UTC).replace(tzinfo=None)
             if outcome.expires_at is not None and outcome.expires_at <= now:
                 result = CredentialCheckResult(
-                    status="invalid",
-                    reason_code="credential_expired",
+                    status=CredentialCheckStatus.INVALID,
+                    reason_code=AuthReasonCode.CREDENTIAL_EXPIRED,
                     retryable=False,
                     checked_at=int(datetime.now(UTC).timestamp()),
                 )

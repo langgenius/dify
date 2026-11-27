@@ -3,16 +3,24 @@
 from collections.abc import Sequence, Set
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Protocol
+from enum import StrEnum
+from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
 from services.entities.app_list_entities import AppListSortBy
 from services.installed_app_access_service import InstalledAppRef
 
-InstalledAppListMode = Literal[
-    "completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"
-]
+
+class InstalledAppListMode(StrEnum):
+    COMPLETION = "completion"
+    CHAT = "chat"
+    ADVANCED_CHAT = "advanced-chat"
+    WORKFLOW = "workflow"
+    AGENT_CHAT = "agent-chat"
+    AGENT = "agent"
+    CHANNEL = "channel"
+    ALL = "all"
 
 
 class InstalledAppCursor(BaseModel):

@@ -9,9 +9,9 @@ from typing import Any, Protocol
 import httpx
 
 from clients.plugin.auth import PluginCredentialAuthClient
-from clients.plugin.auth_entities import CredentialCheckResult
+from clients.plugin.auth_entities import AuthReasonCode, CredentialCheckResult
 from clients.plugin.errors import PluginNotImplementedError
-from constants.end_user_connections import ConnectionCredentialType
+from constants.end_user_connections import ConnectionCredentialType, CredentialCheckStatus
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.encrypter import decrypt_token, encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -189,12 +189,12 @@ class PluginApiKeyCredentialGateway:
             )
         except PluginNotImplementedError:
             return CredentialCheckResult(
-                status="unsupported", reason_code=None, retryable=False, checked_at=int(time.time())
+                status=CredentialCheckStatus.UNSUPPORTED, reason_code=None, retryable=False, checked_at=int(time.time())
             )
         except (PluginDaemonError, httpx.HTTPError):
             return CredentialCheckResult(
-                status="temporarily_unavailable",
-                reason_code="provider_unavailable",
+                status=CredentialCheckStatus.TEMPORARILY_UNAVAILABLE,
+                reason_code=AuthReasonCode.PROVIDER_UNAVAILABLE,
                 retryable=True,
                 checked_at=int(time.time()),
             )

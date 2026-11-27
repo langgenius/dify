@@ -4,13 +4,14 @@ import json
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import Literal, NotRequired, TypedDict, override
+from typing import NotRequired, TypedDict, override
 
 import httpx
 from itsdangerous import BadData, URLSafeTimedSerializer
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from configs import dify_config
+from constants.account_auth import LoginMode
 from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ ACCOUNT_OAUTH_STATE_MAX_AGE = 600
 
 
 class AccountOAuthState(BaseModel):
-    mode: Literal["console", "end_user"]
+    mode: LoginMode
     provider: str
     nonce: str
     context: OAuthState
@@ -52,7 +53,7 @@ class AccountOAuthState(BaseModel):
 
 def encode_account_oauth_state(state: AccountOAuthState) -> str:
     serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="account-oauth-login")
-    return ACCOUNT_OAUTH_STATE_PREFIX + serializer.dumps(state.model_dump())
+    return ACCOUNT_OAUTH_STATE_PREFIX + serializer.dumps(state.model_dump(mode="json"))
 
 
 def decode_account_oauth_state(state: str) -> AccountOAuthState:

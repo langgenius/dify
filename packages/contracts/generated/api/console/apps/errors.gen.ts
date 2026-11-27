@@ -601,11 +601,24 @@ const zTriggerNodeLimitExceededError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zTestCredentialStatus = /* @__PURE__ */ (() =>
+  z.enum([
+    'connected',
+    'disconnected',
+    'incompatible',
+    'invalid',
+    'reconnect_required',
+    'temporarily_unavailable',
+  ]))()
+
+const zCredentialCheckStatus = /* @__PURE__ */ (() =>
+  z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']))()
+
 const zTestCredentialCheck = /* @__PURE__ */ (() =>
   z.object({
     reason_code: z.string().nullable(),
     retryable: z.boolean(),
-    status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
+    status: zCredentialCheckStatus,
   }))()
 
 const zTestCredentialState = /* @__PURE__ */ (() =>
@@ -614,14 +627,7 @@ const zTestCredentialState = /* @__PURE__ */ (() =>
     credential_id: z.string().nullable(),
     node_id: z.string(),
     node_ids: z.array(z.string()),
-    status: z.enum([
-      'connected',
-      'disconnected',
-      'incompatible',
-      'invalid',
-      'reconnect_required',
-      'temporarily_unavailable',
-    ]),
+    status: zTestCredentialStatus,
   }))()
 
 const zTestCredentialReadiness = /* @__PURE__ */ (() =>

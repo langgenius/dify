@@ -134,6 +134,15 @@ export type AudioTooLargeError = ErrorResponse & {
   status: 413
 }
 
+export type AuthReasonCode =
+  | 'credential_expired'
+  | 'credential_invalid'
+  | 'credential_revoked'
+  | 'provider_network_error'
+  | 'provider_rate_limited'
+  | 'provider_timeout'
+  | 'provider_unavailable'
+
 export type AuthenticationFailedError = ErrorResponse & {
   code: 'authentication_failed'
   status: 401
@@ -228,16 +237,18 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionClaimErrorCode =
+  | 'app_not_found'
+  | 'connection_claim_unavailable'
+  | 'connection_conflict'
+  | 'end_user_busy'
+  | 'end_user_login_required'
+  | 'migration_not_ready'
+  | 'unauthorized'
+  | 'web_app_access_denied'
+
 export type ConnectionClaimErrorResponse = {
-  code:
-    | 'app_not_found'
-    | 'connection_claim_unavailable'
-    | 'connection_conflict'
-    | 'end_user_busy'
-    | 'end_user_login_required'
-    | 'migration_not_ready'
-    | 'unauthorized'
-    | 'web_app_access_denied'
+  code: ConnectionClaimErrorCode
   message: string
   status: number
 }
@@ -461,18 +472,12 @@ export type ConversationRenamePayload = (
 
 export type CredentialCheckResult = {
   checked_at: number
-  reason_code:
-    | 'credential_expired'
-    | 'credential_invalid'
-    | 'credential_revoked'
-    | 'provider_network_error'
-    | 'provider_rate_limited'
-    | 'provider_timeout'
-    | 'provider_unavailable'
-    | null
+  reason_code: AuthReasonCode | null
   retryable: boolean
-  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
+  status: CredentialCheckStatus
 }
+
+export type CredentialCheckStatus = 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
 
 export type CredentialCheckUnavailableError = ErrorResponse & {
   code: 'credential_check_unavailable'

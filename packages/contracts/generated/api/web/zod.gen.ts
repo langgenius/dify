@@ -88,6 +88,19 @@ export const zAudioToTextResponse = z.object({
 })
 
 /**
+ * AuthReasonCode
+ */
+export const zAuthReasonCode = z.enum([
+  'credential_expired',
+  'credential_invalid',
+  'credential_revoked',
+  'provider_network_error',
+  'provider_rate_limited',
+  'provider_timeout',
+  'provider_unavailable',
+])
+
+/**
  * BinaryFileResponse
  */
 export const zBinaryFileResponse = z.custom<Blob | File>(
@@ -205,19 +218,24 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ConnectionClaimErrorCode
+ */
+export const zConnectionClaimErrorCode = z.enum([
+  'app_not_found',
+  'connection_claim_unavailable',
+  'connection_conflict',
+  'end_user_busy',
+  'end_user_login_required',
+  'migration_not_ready',
+  'unauthorized',
+  'web_app_access_denied',
+])
+
+/**
  * ConnectionClaimErrorResponse
  */
 export const zConnectionClaimErrorResponse = z.object({
-  code: z.enum([
-    'app_not_found',
-    'connection_claim_unavailable',
-    'connection_conflict',
-    'end_user_busy',
-    'end_user_login_required',
-    'migration_not_ready',
-    'unauthorized',
-    'web_app_access_denied',
-  ]),
+  code: zConnectionClaimErrorCode,
   message: z.string(),
   status: z.int(),
 })
@@ -402,23 +420,25 @@ export const zConversationRenamePayload = z.intersection(
 )
 
 /**
+ * CredentialCheckStatus
+ *
+ * Outcome of a single provider check, separate from stored credential state.
+ */
+export const zCredentialCheckStatus = z.enum([
+  'invalid',
+  'temporarily_unavailable',
+  'unsupported',
+  'valid',
+])
+
+/**
  * CredentialCheckResult
  */
 export const zCredentialCheckResult = z.object({
   checked_at: z.int(),
-  reason_code: z
-    .enum([
-      'credential_expired',
-      'credential_invalid',
-      'credential_revoked',
-      'provider_network_error',
-      'provider_rate_limited',
-      'provider_timeout',
-      'provider_unavailable',
-    ])
-    .nullable(),
+  reason_code: zAuthReasonCode.nullable(),
   retryable: z.boolean(),
-  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
+  status: zCredentialCheckStatus,
 })
 
 /**

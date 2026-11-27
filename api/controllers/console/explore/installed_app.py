@@ -44,7 +44,9 @@ class InstalledAppUpdatePayload(BaseModel):
 class InstalledAppsListQuery(BaseModel):
     app_id: str | None = Field(default=None, description="App ID to filter by")
     name: str | None = Field(default=None, max_length=100, description="App name to search for")
-    mode: InstalledAppListMode = Field(default="all", description="App mode filter, using the same values as Studio")
+    mode: InstalledAppListMode = Field(
+        default=InstalledAppListMode.ALL, description="App mode filter, using the same values as Studio"
+    )
     sort_by: AppListSortBy | None = Field(
         default=None,
         description=(

@@ -7,9 +7,12 @@ refresh lifecycle, independently of the production EndUser Client choice.
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol
+from enum import StrEnum
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, computed_field
+
+from constants.end_user_connections import CredentialCheckStatus
 
 
 @dataclass(frozen=True)
@@ -43,12 +46,16 @@ class TestCredentialCheck(BaseModel):
 
     reason_code: str | None
     retryable: bool
-    status: Literal["invalid", "temporarily_unavailable", "unsupported", "valid"]
+    status: CredentialCheckStatus
 
 
-TestCredentialStatus = Literal[
-    "connected", "disconnected", "incompatible", "invalid", "reconnect_required", "temporarily_unavailable"
-]
+class TestCredentialStatus(StrEnum):
+    CONNECTED = "connected"
+    DISCONNECTED = "disconnected"
+    INCOMPATIBLE = "incompatible"
+    INVALID = "invalid"
+    RECONNECT_REQUIRED = "reconnect_required"
+    TEMPORARILY_UNAVAILABLE = "temporarily_unavailable"
 
 
 class TestCredentialState(BaseModel):
@@ -69,7 +76,7 @@ class TestCredentialReadiness(BaseModel):
     @computed_field
     @property
     def ready(self) -> bool:
-        return all(item.status == "connected" for item in self.credentials)
+        return all(item.status is TestCredentialStatus.CONNECTED for item in self.credentials)
 
 
 @dataclass(frozen=True)
@@ -132,6 +139,15 @@ class TestCredentialGateway(Protocol):
     def resolve(self, scope: BuilderScope, requirement: TestCredentialRequirement) -> ResolvedTestCredential: ...
 
 
+def _check_failure(status: CredentialCheckStatus) -> TestCredentialStatus | None:
+    """Translate an unsuccessful provider check; valid and unsupported checks are admissible."""
+    if status is CredentialCheckStatus.INVALID:
+        return TestCredentialStatus.INVALID
+    if status is CredentialCheckStatus.TEMPORARILY_UNAVAILABLE:
+        return TestCredentialStatus.TEMPORARILY_UNAVAILABLE
+    return None
+
+
 class WorkflowTestCredentialService:
     def __init__(
         self,
@@ -173,26 +189,29 @@ class WorkflowTestCredentialService:
             raise TestCredentialError("The node has no independent EndUser authentication source.")
         requirement = requirements[0]
         if requirement.credential_id is None:
-            raise TestCredentialUnavailableError("disconnected")
+            raise TestCredentialUnavailableError(TestCredentialStatus.DISCONNECTED)
         resolved = self._credentials.resolve(scope, requirement)
-        if resolved.check.status not in {"valid", "unsupported"}:
-            raise TestCredentialUnavailableError(resolved.check.status)
+        if (failure := _check_failure(resolved.check.status)) is not None:
+            raise TestCredentialUnavailableError(failure)
         return resolved
 
     def _state(self, scope: BuilderScope, requirement: TestCredentialRequirement) -> TestCredentialState:
         credential_id = requirement.credential_id
         check = None
-        status: TestCredentialStatus = "disconnected"
+        status = TestCredentialStatus.DISCONNECTED
         if credential_id is not None:
             try:
                 resolved = self._credentials.resolve(scope, requirement)
                 check = resolved.check
-                status = "connected" if check.status in {"valid", "unsupported"} else check.status
-                if check.status == "invalid" and check.reason_code in {"credential_expired", "credential_revoked"}:
-                    status = "reconnect_required"
+                status = _check_failure(check.status) or TestCredentialStatus.CONNECTED
+                if status is TestCredentialStatus.INVALID and check.reason_code in {
+                    "credential_expired",
+                    "credential_revoked",
+                }:
+                    status = TestCredentialStatus.RECONNECT_REQUIRED
             except TestCredentialUnavailableError as exc:
                 status = exc.status
-                if status == "disconnected":
+                if status is TestCredentialStatus.DISCONNECTED:
                     credential_id = None
         return TestCredentialState(
             node_id=requirement.node_id,

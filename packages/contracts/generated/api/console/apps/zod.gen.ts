@@ -4194,60 +4194,16 @@ export const zWorkflowRunSnapshotView = z.object({
 })
 
 /**
- * TestCredentialCheck
+ * TestCredentialStatus
  */
-export const zTestCredentialCheck = z.object({
-  reason_code: z.string().nullable(),
-  retryable: z.boolean(),
-  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
-})
-
-/**
- * TestCredentialState
- */
-export const zTestCredentialState = z.object({
-  check: zTestCredentialCheck.nullable(),
-  credential_id: z.string().nullable(),
-  node_id: z.string(),
-  node_ids: z.array(z.string()),
-  status: z.enum([
-    'connected',
-    'disconnected',
-    'incompatible',
-    'invalid',
-    'reconnect_required',
-    'temporarily_unavailable',
-  ]),
-})
-
-/**
- * TestCredentialPreflightResponse
- */
-export const zTestCredentialPreflightResponse = z.object({
-  credentials: z.array(zTestCredentialState),
-  ready: z.boolean().readonly(),
-})
-
-/**
- * TestCredentialReadiness
- */
-export const zTestCredentialReadiness = z.object({
-  credentials: z.array(zTestCredentialState),
-  ready: z.boolean().readonly(),
-})
-
-/**
- * TestCredentialsNotReadyError
- *
- * Required test credentials are not ready.
- */
-export const zTestCredentialsNotReadyError = zErrorResponse.and(
-  z.object({
-    code: z.literal('test_credentials_not_ready'),
-    details: zTestCredentialReadiness.optional(),
-    status: z.literal(400),
-  }),
-)
+export const zTestCredentialStatus = z.enum([
+  'connected',
+  'disconnected',
+  'incompatible',
+  'invalid',
+  'reconnect_required',
+  'temporarily_unavailable',
+])
 
 /**
  * AppAgentPromptResponse
@@ -5392,6 +5348,67 @@ export const zAgentComposerCandidatesResponse = z.object({
   truncated: z.boolean().optional().default(false),
   variant: zComposerVariant,
 })
+
+/**
+ * CredentialCheckStatus
+ *
+ * Outcome of a single provider check, separate from stored credential state.
+ */
+export const zCredentialCheckStatus = z.enum([
+  'invalid',
+  'temporarily_unavailable',
+  'unsupported',
+  'valid',
+])
+
+/**
+ * TestCredentialCheck
+ */
+export const zTestCredentialCheck = z.object({
+  reason_code: z.string().nullable(),
+  retryable: z.boolean(),
+  status: zCredentialCheckStatus,
+})
+
+/**
+ * TestCredentialState
+ */
+export const zTestCredentialState = z.object({
+  check: zTestCredentialCheck.nullable(),
+  credential_id: z.string().nullable(),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  status: zTestCredentialStatus,
+})
+
+/**
+ * TestCredentialPreflightResponse
+ */
+export const zTestCredentialPreflightResponse = z.object({
+  credentials: z.array(zTestCredentialState),
+  ready: z.boolean().readonly(),
+})
+
+/**
+ * TestCredentialReadiness
+ */
+export const zTestCredentialReadiness = z.object({
+  credentials: z.array(zTestCredentialState),
+  ready: z.boolean().readonly(),
+})
+
+/**
+ * TestCredentialsNotReadyError
+ *
+ * Required test credentials are not ready.
+ */
+export const zTestCredentialsNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('test_credentials_not_ready'),
+    details: zTestCredentialReadiness.optional(),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ToolProviderType

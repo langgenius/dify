@@ -7,6 +7,7 @@ from uuid import UUID
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResponse
 from clients.plugin.errors import PluginNotImplementedError
+from constants.end_user_connections import CredentialCheckStatus
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ToolInvokeFrom, ToolProviderType
@@ -22,6 +23,7 @@ from services.workflow_test_credentials import (
     TestCredentialCheck,
     TestCredentialError,
     TestCredentialRequirement,
+    TestCredentialStatus,
     TestCredentialUnavailableError,
 )
 
@@ -116,9 +118,9 @@ class WorkspaceTestCredentialGateway:
         records = self._queries.list_tools(workspace_id=scope.tenant_id, provider=provider, actor_id=scope.account_id)
         record = next((item for item in records if item.id == requirement.credential_id), None)
         if record is None:
-            raise TestCredentialUnavailableError("disconnected")
+            raise TestCredentialUnavailableError(TestCredentialStatus.DISCONNECTED)
         if record.credential_type.value not in requirement.allowed_types:
-            raise TestCredentialUnavailableError("incompatible")
+            raise TestCredentialUnavailableError(TestCredentialStatus.INCOMPATIBLE)
         return record
 
     def resolve(self, scope: BuilderScope, requirement: TestCredentialRequirement) -> ResolvedTestCredential:
@@ -132,14 +134,14 @@ class WorkspaceTestCredentialGateway:
         try:
             UUID(requirement.credential_id or "")
         except ValueError:
-            raise TestCredentialUnavailableError("disconnected") from None
+            raise TestCredentialUnavailableError(TestCredentialStatus.DISCONNECTED) from None
         record = self._record(scope, requirement)
         try:
             provider = ToolManager.get_builtin_provider(requirement.provider, scope.tenant_id)
             if not isinstance(provider, PluginToolProviderController):
-                raise TestCredentialUnavailableError("incompatible")
+                raise TestCredentialUnavailableError(TestCredentialStatus.INCOMPATIBLE)
             if record.credential_type not in provider.get_supported_credential_types():
-                raise TestCredentialUnavailableError("incompatible")
+                raise TestCredentialUnavailableError(TestCredentialStatus.INCOMPATIBLE)
             tool = ToolManager.get_tool_runtime(
                 provider_type=ToolProviderType(requirement.provider_type),
                 provider_id=requirement.provider,
@@ -151,7 +153,7 @@ class WorkspaceTestCredentialGateway:
                 credential_id=record.id,
             )
             if tool.runtime.credential_id != record.id or tool.runtime.credential_type != record.credential_type:
-                raise TestCredentialUnavailableError("incompatible")
+                raise TestCredentialUnavailableError(TestCredentialStatus.INCOMPATIBLE)
             checked_record = self._record(scope, requirement)
             try:
                 result: CredentialCheckResponse = self._auth.check_provider_credentials(
@@ -163,18 +165,20 @@ class WorkspaceTestCredentialGateway:
                     plugin_unique_identifier=provider.plugin_unique_identifier,
                 )
             except PluginNotImplementedError:
-                result = CredentialCheckResponse(status="unsupported", reason_code=None, retryable=False)
+                result = CredentialCheckResponse(
+                    status=CredentialCheckStatus.UNSUPPORTED, reason_code=None, retryable=False
+                )
         except TestCredentialUnavailableError:
             raise
         except Exception:
             # Legacy refresh failures do not reliably distinguish invalid grants
             # from outages. Preserve that uncertainty without invalidating rows.
-            raise TestCredentialUnavailableError("temporarily_unavailable") from None
+            raise TestCredentialUnavailableError(TestCredentialStatus.TEMPORARILY_UNAVAILABLE) from None
         current = self._record(scope, requirement)
         if current.credential_type != record.credential_type:
-            raise TestCredentialUnavailableError("incompatible")
+            raise TestCredentialUnavailableError(TestCredentialStatus.INCOMPATIBLE)
         if current.credentials != checked_record.credentials:
-            raise TestCredentialUnavailableError("temporarily_unavailable")
+            raise TestCredentialUnavailableError(TestCredentialStatus.TEMPORARILY_UNAVAILABLE)
         return ResolvedTestCredential(
             credential_id=record.id,
             credential_type=record.credential_type.value,

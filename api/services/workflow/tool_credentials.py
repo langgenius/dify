@@ -1,7 +1,8 @@
 """Static tool credential configuration and projections, with no runtime provider lookup."""
 
 from collections.abc import Mapping
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -12,26 +13,41 @@ from graphon.nodes.tool.entities import ToolNodeData
 from services.end_user_connections.revision import AuthorizationRequirementSnapshot
 
 
+class ToolCredentialSource(StrEnum):
+    WORKSPACE = "workspace"
+    END_USER = "end_user"
+    REUSE_NODE = "reuse_node"
+
+
+class ToolOAuthClientType(StrEnum):
+    DEFAULT = "default"
+    CUSTOM = "custom"
+
+
 class EndUserAuthConfig(BaseModel):
     """Missing values represent an unfinished draft, not an executable configuration."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    allowed_credential_types: list[Literal["api-key", "oauth2"]] | None = Field(default=None, max_length=2)
-    oauth_client_type: Literal["default", "custom"] | None = None
+    allowed_credential_types: list[ConnectionCredentialType] | None = Field(default=None, max_length=2)
+    oauth_client_type: ToolOAuthClientType | None = None
     purpose: str | None = Field(default=None, max_length=50)
 
     @property
     def oauth_client_source(self) -> OAuthClientSource | None:
         if self.oauth_client_type is None:
             return None
-        return OAuthClientSource.PLATFORM if self.oauth_client_type == "default" else OAuthClientSource.WORKSPACE
+        return (
+            OAuthClientSource.PLATFORM
+            if self.oauth_client_type is ToolOAuthClientType.DEFAULT
+            else OAuthClientSource.WORKSPACE
+        )
 
     @field_validator("allowed_credential_types")
     @classmethod
     def validate_unique_credential_types(
-        cls, value: list[Literal["api-key", "oauth2"]] | None
-    ) -> list[Literal["api-key", "oauth2"]] | None:
+        cls, value: list[ConnectionCredentialType] | None
+    ) -> list[ConnectionCredentialType] | None:
         if value is not None and len(value) != len(set(value)):
             raise ValueError("Authentication methods must not contain duplicates.")
         return value
@@ -48,7 +64,7 @@ class ToolCredentialConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # Reuse delegates the effective source and settings to the referenced node.
-    credential_source: Literal["workspace", "end_user", "reuse_node"] = "workspace"
+    credential_source: ToolCredentialSource = ToolCredentialSource.WORKSPACE
     credential_id: str | None = None
     end_user_auth: EndUserAuthConfig | None = None
     reuse_node_id: str | None = Field(default=None, min_length=1)
@@ -109,9 +125,7 @@ def get_tool_connection_requirements(graph: Mapping[str, Any]) -> tuple[ToolConn
                 title=title if isinstance(title, str) and title else node_id,
                 purpose=auth.purpose,
                 provider=normalize_tool_provider_id(data["provider_id"]),
-                allowed_credential_types=tuple(
-                    sorted(ConnectionCredentialType(value) for value in auth.allowed_credential_types)
-                ),
+                allowed_credential_types=tuple(sorted(auth.allowed_credential_types)),
             )
         )
     return tuple(requirements)
