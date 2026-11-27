@@ -1,6 +1,6 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,22 +28,21 @@ const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
 
-  const queryClient = useQueryClient()
   const { refetch: getPipelineTemplateInfo } = useQuery(
     consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
-      context: { silent: true },
       input: { params: { template_id: pipeline.id }, query: { type } },
       enabled: false,
       select: selectPipelineTemplate,
+      // handleUseTemplate fetches on demand and reports a failure itself.
+      meta: { errorToast: false },
     }),
   )
   const { mutate: createDataset } = useMutation(
-    consoleQuery.rag.pipeline.dataset.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.rag.pipeline.dataset.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const invalidDatasetList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-  }, [queryClient])
 
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo, error } = await getPipelineTemplateInfo()
@@ -62,7 +61,6 @@ const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
       {
         onSuccess: async (newDataset) => {
           toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
-          invalidDatasetList()
           if (newDataset.pipeline_id)
             await handleCheckPluginDependencies(newDataset.pipeline_id, true)
           trackEvent('create_datasets_with_pipeline', {
@@ -85,7 +83,6 @@ const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
     t,
     handleCheckPluginDependencies,
     push,
-    invalidDatasetList,
     pipeline.name,
     pipeline.id,
     type,
@@ -101,7 +98,7 @@ const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
 
   const { mutate: exportPipelineDSL, isPending: isExporting } = useMutation(
     consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

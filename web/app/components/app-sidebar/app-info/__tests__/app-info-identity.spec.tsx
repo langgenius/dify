@@ -1,11 +1,12 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import AppDetailSection from '../../app-detail-section'
 
-let pathname = '/app/app-1/configuration'
+let pathname = `/app/${TEST_APP_ID}/configuration`
 let currentApp = createAppDetailFixture({ name: 'First app' })
 const mockConsoleState = vi.hoisted(() => ({
   current: {
@@ -36,7 +37,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 
 describe('AppInfoView identity in the app detail sidebar', () => {
   beforeEach(() => {
-    pathname = '/app/app-1/configuration'
+    pathname = `/app/${TEST_APP_ID}/configuration`
     currentApp = createAppDetailFixture({
       name: 'First app',
       permission_keys: ['app.acl.edit', 'app.acl.view_layout'],
@@ -79,5 +80,28 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     view.rerender(<AppDetailSection />)
     expect(screen.getByText('Second app')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('returns focus to the actions trigger after a menu-opened dialog is dismissed', async () => {
+    const user = userEvent.setup()
+    const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: currentApp.id } } }),
+      currentApp,
+    )
+    renderWithConsoleQuery(<AppDetailSection />, {
+      queryClient,
+      systemFeatures: { rbac_enabled: false, enable_app_deploy: false },
+      features: {},
+    })
+
+    const trigger = screen.getByRole('button', { name: /moreActionsFor/ })
+    await user.click(trigger)
+    await user.click(await screen.findByRole('menuitem', { name: 'app.editApp' }))
+    expect(await screen.findByRole('textbox', { name: 'app.newApp.name' })).toHaveFocus()
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(trigger).toHaveFocus()
   })
 })

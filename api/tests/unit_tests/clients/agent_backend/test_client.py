@@ -1,4 +1,8 @@
+import subprocess
+import sys
 from collections.abc import Callable, Iterator
+from pathlib import Path
+from textwrap import dedent
 from typing import override
 
 import pytest
@@ -174,6 +178,103 @@ def test_dify_agent_backend_run_client_maps_timeout_error() -> None:
         DifyAgentBackendRunClient(TimeoutClient()).wait_run("run-1")
 
     assert str(exc_info.value) == "timeout"
+
+
+@pytest.mark.parametrize("scenario", ["numeric", "hostname", "hostname-resolved"])
+def test_gevent_cancel_deadline_with_saturated_resolver(scenario: str) -> None:
+    """Exercise the real gevent resolver and TCP socket without patching the pytest process."""
+    script = dedent(
+        """
+        import sys
+
+        import gevent
+        from gevent import monkey
+
+        gevent.config.resolver = "thread"
+        monkey.patch_all()
+
+        import socket
+        import time
+
+        import httpx
+        from dify_agent.client import Client
+        from gevent import socket as gevent_socket
+
+        from clients.agent_backend import AgentBackendTimeoutError, DifyAgentBackendRunClient
+
+        scenario = sys.argv[1]
+        budget = 0.2
+        pool = gevent.get_hub().threadpool
+        pool.maxsize = 1
+        gate = monkey.get_original("_thread", "allocate_lock")()
+        gate.acquire()
+        blockers = []
+        lookups = []
+        connections = []
+        getaddrinfo = socket.getaddrinfo
+        connect = socket.socket.connect
+
+        def hold_resolver_thread():
+            with gate:
+                pass
+
+        def occupy_pool():
+            blockers.append(pool.spawn(hold_resolver_thread))
+
+        def resolve(host, *args, **kwargs):
+            lookups.append(host)
+            addresses = getaddrinfo(host, *args, **kwargs)
+            if scenario == "hostname-resolved":
+                occupy_pool()
+            return addresses
+
+        def connect_then_stall(sock, address):
+            # Run gevent's real address handling before simulating a stalled connect.
+            connect(sock, address)
+            connections.append(address)
+            timeout = sock.gettimeout()
+            assert 0 < timeout <= budget, timeout
+            gevent.sleep(timeout)
+            raise TimeoutError("connect timed out")
+
+        try:
+            with socket.socket() as listener, httpx.Client(trust_env=False) as http_client:
+                listener.bind(("127.0.0.1", 0))
+                listener.listen()
+                port = listener.getsockname()[1]
+                host = "127.0.0.1" if scenario == "numeric" else "localhost"
+                socket.getaddrinfo = gevent_socket.getaddrinfo = resolve
+                socket.socket.connect = connect_then_stall
+                if scenario != "hostname-resolved":
+                    occupy_pool()
+                sdk = Client(base_url=f"http://{host}:{port}", sync_http_client=http_client)
+                client = DifyAgentBackendRunClient(sdk)
+
+                started_at = time.monotonic()
+                with gevent.Timeout(2.0):
+                    try:
+                        client.cancel_run_and_wait("run-1", timeout_seconds=budget)
+                    except AgentBackendTimeoutError:
+                        pass
+                    else:
+                        raise AssertionError("Expected the SDK deadline to expire")
+
+                assert time.monotonic() - started_at < 1.0
+                assert len(blockers) == 1 and not blockers[0].ready()
+                assert lookups == ([] if scenario == "numeric" else ["localhost"]), lookups
+                assert connections == ([] if scenario == "hostname" else [("127.0.0.1", port)]), connections
+        finally:
+            gate.release()
+            for blocker in blockers:
+                blocker.get(timeout=2.0)
+        """
+    )
+    subprocess.run(
+        [sys.executable, "-c", script, scenario],
+        cwd=Path(__file__).resolve().parents[4],
+        check=True,
+        timeout=10,
+    )
 
 
 def test_dify_agent_backend_run_client_maps_stream_error() -> None:

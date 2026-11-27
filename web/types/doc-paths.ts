@@ -1,112 +1,11 @@
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 //
-// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-08-27T05:58:11.503Z
+// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/docs/evaluation/docs.json
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
 export type DocsProduct = 'cloud' | 'self-host'
-
-// Cloud paths
-type CloudPath =
-  | '/cloud/use-dify/build/additional-features'
-  | '/cloud/use-dify/build/agent'
-  | '/cloud/use-dify/build/chatbot'
-  | '/cloud/use-dify/build/goto-anything'
-  | '/cloud/use-dify/build/new-agent/build'
-  | '/cloud/use-dify/build/new-agent/overview'
-  | '/cloud/use-dify/build/orchestrate-node'
-  | '/cloud/use-dify/build/predefined-error-handling-logic'
-  | '/cloud/use-dify/build/shortcut-key'
-  | '/cloud/use-dify/build/snippet'
-  | '/cloud/use-dify/build/text-generator'
-  | '/cloud/use-dify/build/version-control'
-  | '/cloud/use-dify/build/workflow-chatflow'
-  | '/cloud/use-dify/debug/error-type'
-  | '/cloud/use-dify/debug/history-and-logs'
-  | '/cloud/use-dify/debug/step-run'
-  | '/cloud/use-dify/debug/variable-inspect'
-  | '/cloud/use-dify/getting-started/introduction'
-  | '/cloud/use-dify/knowledge-base/overview'
-  | '/cloud/use-dify/knowledge-base/upgrade-from-classic'
-  | '/cloud/use-dify/knowledge/connect-external-knowledge-base'
-  | '/cloud/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
-  | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/readme'
-  | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/sync-from-notion'
-  | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/sync-from-website'
-  | '/cloud/use-dify/knowledge/create-knowledge/introduction'
-  | '/cloud/use-dify/knowledge/create-knowledge/setting-indexing-methods'
-  | '/cloud/use-dify/knowledge/external-knowledge-api'
-  | '/cloud/use-dify/knowledge/integrate-knowledge-within-application'
-  | '/cloud/use-dify/knowledge/knowledge-pipeline/authorize-data-source'
-  | '/cloud/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline'
-  | '/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration'
-  | '/cloud/use-dify/knowledge/knowledge-pipeline/manage-knowledge-base'
-  | '/cloud/use-dify/knowledge/knowledge-pipeline/publish-knowledge-pipeline'
-  | '/cloud/use-dify/knowledge/knowledge-pipeline/readme'
-  | '/cloud/use-dify/knowledge/knowledge-pipeline/upload-files'
-  | '/cloud/use-dify/knowledge/knowledge-request-rate-limit'
-  | '/cloud/use-dify/knowledge/knowledge-storage-limit'
-  | '/cloud/use-dify/knowledge/manage-knowledge/introduction'
-  | '/cloud/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents'
-  | '/cloud/use-dify/knowledge/metadata'
-  | '/cloud/use-dify/knowledge/readme'
-  | '/cloud/use-dify/knowledge/test-retrieval'
-  | '/cloud/use-dify/monitor/analysis'
-  | '/cloud/use-dify/monitor/annotation-reply'
-  | '/cloud/use-dify/monitor/integrations/integrate-aliyun'
-  | '/cloud/use-dify/monitor/integrations/integrate-arize'
-  | '/cloud/use-dify/monitor/integrations/integrate-langfuse'
-  | '/cloud/use-dify/monitor/integrations/integrate-langsmith'
-  | '/cloud/use-dify/monitor/integrations/integrate-opik'
-  | '/cloud/use-dify/monitor/integrations/integrate-phoenix'
-  | '/cloud/use-dify/monitor/integrations/integrate-weave'
-  | '/cloud/use-dify/monitor/logs'
-  | '/cloud/use-dify/nodes/agent'
-  | '/cloud/use-dify/nodes/answer'
-  | '/cloud/use-dify/nodes/code'
-  | '/cloud/use-dify/nodes/doc-extractor'
-  | '/cloud/use-dify/nodes/http-request'
-  | '/cloud/use-dify/nodes/human-input'
-  | '/cloud/use-dify/nodes/ifelse'
-  | '/cloud/use-dify/nodes/iteration'
-  | '/cloud/use-dify/nodes/knowledge-retrieval'
-  | '/cloud/use-dify/nodes/list-operator'
-  | '/cloud/use-dify/nodes/llm'
-  | '/cloud/use-dify/nodes/loop'
-  | '/cloud/use-dify/nodes/output'
-  | '/cloud/use-dify/nodes/parameter-extractor'
-  | '/cloud/use-dify/nodes/question-classifier'
-  | '/cloud/use-dify/nodes/start'
-  | '/cloud/use-dify/nodes/template'
-  | '/cloud/use-dify/nodes/tools'
-  | '/cloud/use-dify/nodes/trigger/overview'
-  | '/cloud/use-dify/nodes/trigger/plugin-trigger'
-  | '/cloud/use-dify/nodes/trigger/schedule-trigger'
-  | '/cloud/use-dify/nodes/trigger/webhook-trigger'
-  | '/cloud/use-dify/nodes/user-input'
-  | '/cloud/use-dify/nodes/variable-aggregator'
-  | '/cloud/use-dify/nodes/variable-assigner'
-  | '/cloud/use-dify/publish/README'
-  | '/cloud/use-dify/publish/publish-mcp'
-  | '/cloud/use-dify/publish/publish-to-marketplace'
-  | '/cloud/use-dify/publish/webapp/chatflow-webapp'
-  | '/cloud/use-dify/publish/webapp/embedding-in-websites'
-  | '/cloud/use-dify/publish/webapp/web-app-settings'
-  | '/cloud/use-dify/publish/webapp/workflow-webapp'
-  | '/cloud/use-dify/workspace/api-extension/api-extension'
-  | '/cloud/use-dify/workspace/api-extension/cloudflare-worker'
-  | '/cloud/use-dify/workspace/api-extension/external-data-tool-api-extension'
-  | '/cloud/use-dify/workspace/api-extension/moderation-api-extension'
-  | '/cloud/use-dify/workspace/app-management'
-  | '/cloud/use-dify/workspace/model-providers'
-  | '/cloud/use-dify/workspace/personal-account-management'
-  | '/cloud/use-dify/workspace/plugins'
-  | '/cloud/use-dify/workspace/readme'
-  | '/cloud/use-dify/workspace/subscription-management'
-  | '/cloud/use-dify/workspace/team-members-management'
-  | '/cloud/use-dify/workspace/tools'
 
 // UseDify paths
 type UseDifyPath =
@@ -129,7 +28,19 @@ type UseDifyPath =
   | '/use-dify/debug/history-and-logs'
   | '/use-dify/debug/step-run'
   | '/use-dify/debug/variable-inspect'
+  | '/use-dify/evaluate/custom-evaluators'
+  | '/use-dify/evaluate/metrics'
+  | '/use-dify/evaluate/run-evaluations'
   | '/use-dify/getting-started/introduction'
+  | '/use-dify/knowledge-base/create-knowledge-base'
+  | '/use-dify/knowledge-base/maintain-knowledge-base'
+  | '/use-dify/knowledge-base/multimodal-retrieval'
+  | '/use-dify/knowledge-base/overview'
+  | '/use-dify/knowledge-base/retrieval-settings'
+  | '/use-dify/knowledge-base/review-indexed-documents'
+  | '/use-dify/knowledge-base/test-and-tune'
+  | '/use-dify/knowledge-base/upgrade-from-classic'
+  | '/use-dify/knowledge-base/use-knowledge-in-apps'
   | '/use-dify/knowledge/connect-external-knowledge-base'
   | '/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
   | '/use-dify/knowledge/create-knowledge/import-text-data/readme'
@@ -138,6 +49,8 @@ type UseDifyPath =
   | '/use-dify/knowledge/create-knowledge/introduction'
   | '/use-dify/knowledge/create-knowledge/setting-indexing-methods'
   | '/use-dify/knowledge/external-knowledge-api'
+  | '/use-dify/knowledge/file-security-scan'
+  | '/use-dify/knowledge/file-security-scan-custom-endpoint'
   | '/use-dify/knowledge/integrate-knowledge-within-application'
   | '/use-dify/knowledge/knowledge-pipeline/authorize-data-source'
   | '/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline'
@@ -151,6 +64,7 @@ type UseDifyPath =
   | '/use-dify/knowledge/manage-knowledge/introduction'
   | '/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents'
   | '/use-dify/knowledge/metadata'
+  | '/use-dify/knowledge/overview'
   | '/use-dify/knowledge/readme'
   | '/use-dify/knowledge/test-retrieval'
   | '/use-dify/monitor/analysis'
@@ -172,6 +86,7 @@ type UseDifyPath =
   | '/use-dify/nodes/ifelse'
   | '/use-dify/nodes/iteration'
   | '/use-dify/nodes/knowledge-retrieval'
+  | '/use-dify/nodes/knowledge-retrieval-v2'
   | '/use-dify/nodes/list-operator'
   | '/use-dify/nodes/llm'
   | '/use-dify/nodes/loop'
@@ -189,6 +104,7 @@ type UseDifyPath =
   | '/use-dify/nodes/variable-aggregator'
   | '/use-dify/nodes/variable-assigner'
   | '/use-dify/publish/README'
+  | '/use-dify/publish/ip-access-control'
   | '/use-dify/publish/publish-mcp'
   | '/use-dify/publish/publish-to-marketplace'
   | '/use-dify/publish/webapp/chatflow-webapp'
@@ -199,7 +115,14 @@ type UseDifyPath =
   | '/use-dify/workspace/api-extension/cloudflare-worker'
   | '/use-dify/workspace/api-extension/external-data-tool-api-extension'
   | '/use-dify/workspace/api-extension/moderation-api-extension'
-  | '/use-dify/workspace/app-management'
+  | '/use-dify/workspace/channels/dingtalk'
+  | '/use-dify/workspace/channels/feishu-lark'
+  | '/use-dify/workspace/channels/ms-teams'
+  | '/use-dify/workspace/channels/overview'
+  | '/use-dify/workspace/channels/slack'
+  | '/use-dify/workspace/channels/wecom'
+  | '/use-dify/workspace/contacts'
+  | '/use-dify/workspace/export-import-apps'
   | '/use-dify/workspace/model-providers'
   | '/use-dify/workspace/personal-account-management'
   | '/use-dify/workspace/plugins'
@@ -249,32 +172,26 @@ type ApiReferencePath =
   | '/api-reference/guides/human-input-flow'
   | '/api-reference/guides/knowledge'
   | '/api-reference/guides/knowledge-base'
+  | '/api-reference/guides/knowledge-base-api'
   | '/api-reference/guides/streaming'
   | '/api-reference/guides/workflow'
 
 // Cli paths
 type CliPath =
-  | '/cli/authenticate'
-  | '/cli/common-tasks'
-  | '/cli/install'
-  | '/cli/integrate-agents/auth-for-agent-deployments'
-  | '/cli/integrate-agents/error-handling-and-retries-for-agents'
-  | '/cli/integrate-agents/install-the-difyctl-skill'
-  | '/cli/integrate-agents/overview'
+  | '/cli/build-apps'
+  | '/cli/create-and-update-apps-from-dsl-files'
+  | '/cli/find-and-run-commands'
+  | '/cli/get-started'
+  | '/cli/manage-sign-in'
   | '/cli/overview'
   | '/cli/personal-access-tokens'
-  | '/cli/quick-start'
-  | '/cli/reference/apps'
-  | '/cli/reference/auth-and-contexts'
   | '/cli/reference/command-index'
-  | '/cli/reference/environment-variables'
-  | '/cli/reference/global-flags'
-  | '/cli/reference/help'
-  | '/cli/reference/output-formats-and-exit-codes'
-  | '/cli/reference/skills'
-  | '/cli/reference/version'
-  | '/cli/reference/workspaces'
-  | '/cli/troubleshooting'
+  | '/cli/reference/configuration'
+  | '/cli/reference/results-errors-and-exit-codes'
+  | '/cli/run-apps'
+  | '/cli/scripts-and-ci'
+  | '/cli/update-or-uninstall'
+  | '/cli/upgrade-across-1-18'
 
 // DevelopPlugin paths
 type DevelopPluginPath =
@@ -310,124 +227,13 @@ type DevelopPluginPath =
   | '/develop-plugin/getting-started/cli'
   | '/develop-plugin/getting-started/getting-started-dify-plugin'
   | '/develop-plugin/publishing/faq/faq'
-  | '/develop-plugin/publishing/marketplace-listing/plugin-auto-publish-pr'
   | '/develop-plugin/publishing/marketplace-listing/release-by-file'
   | '/develop-plugin/publishing/marketplace-listing/release-overview'
-  | '/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace'
   | '/develop-plugin/publishing/marketplace-listing/release-to-individual-github-repo'
+  | '/develop-plugin/publishing/marketplace-listing/submit-plugin-to-marketplace'
   | '/develop-plugin/publishing/standards/contributor-covenant-code-of-conduct'
   | '/develop-plugin/publishing/standards/privacy-protection-guidelines'
   | '/develop-plugin/publishing/standards/third-party-signature-verification'
-
-// SelfHost paths
-type SelfHostPath =
-  | '/self-host/deploy/advanced-deployments/local-source-code'
-  | '/self-host/deploy/advanced-deployments/start-the-frontend-docker-container'
-  | '/self-host/deploy/configuration/environments'
-  | '/self-host/deploy/overview'
-  | '/self-host/deploy/platform-guides/bt-panel'
-  | '/self-host/deploy/platform-guides/dify-premium'
-  | '/self-host/deploy/quick-start/docker-compose'
-  | '/self-host/deploy/quick-start/faqs'
-  | '/self-host/deploy/troubleshooting/common-issues'
-  | '/self-host/deploy/troubleshooting/docker-issues'
-  | '/self-host/deploy/troubleshooting/integrations'
-  | '/self-host/deploy/troubleshooting/storage-and-migration'
-  | '/self-host/deploy/troubleshooting/weaviate-v4-migration'
-  | '/self-host/use-dify/build/additional-features'
-  | '/self-host/use-dify/build/agent'
-  | '/self-host/use-dify/build/chatbot'
-  | '/self-host/use-dify/build/goto-anything'
-  | '/self-host/use-dify/build/new-agent/build'
-  | '/self-host/use-dify/build/new-agent/overview'
-  | '/self-host/use-dify/build/orchestrate-node'
-  | '/self-host/use-dify/build/predefined-error-handling-logic'
-  | '/self-host/use-dify/build/shortcut-key'
-  | '/self-host/use-dify/build/skills'
-  | '/self-host/use-dify/build/snippet'
-  | '/self-host/use-dify/build/text-generator'
-  | '/self-host/use-dify/build/version-control'
-  | '/self-host/use-dify/build/workflow-chatflow'
-  | '/self-host/use-dify/build/workflow-collaboration'
-  | '/self-host/use-dify/debug/error-type'
-  | '/self-host/use-dify/debug/history-and-logs'
-  | '/self-host/use-dify/debug/step-run'
-  | '/self-host/use-dify/debug/variable-inspect'
-  | '/self-host/use-dify/getting-started/introduction'
-  | '/self-host/use-dify/knowledge/connect-external-knowledge-base'
-  | '/self-host/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
-  | '/self-host/use-dify/knowledge/create-knowledge/import-text-data/readme'
-  | '/self-host/use-dify/knowledge/create-knowledge/import-text-data/sync-from-notion'
-  | '/self-host/use-dify/knowledge/create-knowledge/import-text-data/sync-from-website'
-  | '/self-host/use-dify/knowledge/create-knowledge/introduction'
-  | '/self-host/use-dify/knowledge/create-knowledge/setting-indexing-methods'
-  | '/self-host/use-dify/knowledge/external-knowledge-api'
-  | '/self-host/use-dify/knowledge/integrate-knowledge-within-application'
-  | '/self-host/use-dify/knowledge/knowledge-pipeline/authorize-data-source'
-  | '/self-host/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline'
-  | '/self-host/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration'
-  | '/self-host/use-dify/knowledge/knowledge-pipeline/manage-knowledge-base'
-  | '/self-host/use-dify/knowledge/knowledge-pipeline/publish-knowledge-pipeline'
-  | '/self-host/use-dify/knowledge/knowledge-pipeline/readme'
-  | '/self-host/use-dify/knowledge/knowledge-pipeline/upload-files'
-  | '/self-host/use-dify/knowledge/manage-knowledge/introduction'
-  | '/self-host/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents'
-  | '/self-host/use-dify/knowledge/metadata'
-  | '/self-host/use-dify/knowledge/readme'
-  | '/self-host/use-dify/knowledge/test-retrieval'
-  | '/self-host/use-dify/monitor/analysis'
-  | '/self-host/use-dify/monitor/annotation-reply'
-  | '/self-host/use-dify/monitor/integrations/integrate-aliyun'
-  | '/self-host/use-dify/monitor/integrations/integrate-arize'
-  | '/self-host/use-dify/monitor/integrations/integrate-langfuse'
-  | '/self-host/use-dify/monitor/integrations/integrate-langsmith'
-  | '/self-host/use-dify/monitor/integrations/integrate-opik'
-  | '/self-host/use-dify/monitor/integrations/integrate-phoenix'
-  | '/self-host/use-dify/monitor/integrations/integrate-weave'
-  | '/self-host/use-dify/monitor/logs'
-  | '/self-host/use-dify/nodes/agent'
-  | '/self-host/use-dify/nodes/answer'
-  | '/self-host/use-dify/nodes/code'
-  | '/self-host/use-dify/nodes/doc-extractor'
-  | '/self-host/use-dify/nodes/http-request'
-  | '/self-host/use-dify/nodes/human-input'
-  | '/self-host/use-dify/nodes/ifelse'
-  | '/self-host/use-dify/nodes/iteration'
-  | '/self-host/use-dify/nodes/knowledge-retrieval'
-  | '/self-host/use-dify/nodes/list-operator'
-  | '/self-host/use-dify/nodes/llm'
-  | '/self-host/use-dify/nodes/loop'
-  | '/self-host/use-dify/nodes/output'
-  | '/self-host/use-dify/nodes/parameter-extractor'
-  | '/self-host/use-dify/nodes/question-classifier'
-  | '/self-host/use-dify/nodes/start'
-  | '/self-host/use-dify/nodes/template'
-  | '/self-host/use-dify/nodes/tools'
-  | '/self-host/use-dify/nodes/trigger/overview'
-  | '/self-host/use-dify/nodes/trigger/plugin-trigger'
-  | '/self-host/use-dify/nodes/trigger/schedule-trigger'
-  | '/self-host/use-dify/nodes/trigger/webhook-trigger'
-  | '/self-host/use-dify/nodes/user-input'
-  | '/self-host/use-dify/nodes/variable-aggregator'
-  | '/self-host/use-dify/nodes/variable-assigner'
-  | '/self-host/use-dify/publish/README'
-  | '/self-host/use-dify/publish/publish-mcp'
-  | '/self-host/use-dify/publish/publish-to-marketplace'
-  | '/self-host/use-dify/publish/webapp/chatflow-webapp'
-  | '/self-host/use-dify/publish/webapp/embedding-in-websites'
-  | '/self-host/use-dify/publish/webapp/web-app-settings'
-  | '/self-host/use-dify/publish/webapp/workflow-webapp'
-  | '/self-host/use-dify/workspace/api-extension/api-extension'
-  | '/self-host/use-dify/workspace/api-extension/cloudflare-worker'
-  | '/self-host/use-dify/workspace/api-extension/external-data-tool-api-extension'
-  | '/self-host/use-dify/workspace/api-extension/moderation-api-extension'
-  | '/self-host/use-dify/workspace/app-management'
-  | '/self-host/use-dify/workspace/model-providers'
-  | '/self-host/use-dify/workspace/personal-account-management'
-  | '/self-host/use-dify/workspace/plugins'
-  | '/self-host/use-dify/workspace/readme'
-  | '/self-host/use-dify/workspace/team-members-management'
-  | '/self-host/use-dify/workspace/tools'
 
 // Deploy paths
 type DeployPath =
@@ -443,6 +249,7 @@ type DeployPath =
   | '/deploy/troubleshooting/docker-issues'
   | '/deploy/troubleshooting/integrations'
   | '/deploy/troubleshooting/storage-and-migration'
+  | '/deploy/troubleshooting/weaviate-server-migration-path'
   | '/deploy/troubleshooting/weaviate-v4-migration'
 
 // API Reference endpoint paths
@@ -479,6 +286,22 @@ type ApiEndpointReferencePath =
   | '/api-reference/conversations/list-conversations'
   | '/api-reference/conversations/rename-conversation'
   | '/api-reference/conversations/update-conversation-variable'
+  | '/api-reference/deletion-jobs/get-deletion-batch'
+  | '/api-reference/deletion-jobs/get-deletion-job'
+  | '/api-reference/documents-and-chunks/delete-document'
+  | '/api-reference/documents-and-chunks/delete-document-file'
+  | '/api-reference/documents-and-chunks/delete-document-files-in-batch'
+  | '/api-reference/documents-and-chunks/get-chunk'
+  | '/api-reference/documents-and-chunks/get-document'
+  | '/api-reference/documents-and-chunks/get-document-by-file'
+  | '/api-reference/documents-and-chunks/get-document-file'
+  | '/api-reference/documents-and-chunks/get-document-outline'
+  | '/api-reference/documents-and-chunks/list-chunks'
+  | '/api-reference/documents-and-chunks/list-document-files'
+  | '/api-reference/documents-and-chunks/list-document-revisions'
+  | '/api-reference/documents-and-chunks/list-documents'
+  | '/api-reference/documents-and-chunks/re-index-documents'
+  | '/api-reference/documents-and-chunks/update-document-metadata'
   | '/api-reference/documents/create-document-by-file'
   | '/api-reference/documents/create-document-by-text'
   | '/api-reference/documents/delete-document'
@@ -498,6 +321,13 @@ type ApiEndpointReferencePath =
   | '/api-reference/files/upload-file'
   | '/api-reference/human-input/get-human-input-form'
   | '/api-reference/human-input/submit-human-input-form'
+  | '/api-reference/indexing-tasks/cancel-indexing-task'
+  | '/api-reference/indexing-tasks/get-bulk-task'
+  | '/api-reference/indexing-tasks/get-document-indexing-task'
+  | '/api-reference/indexing-tasks/get-indexing-task'
+  | '/api-reference/indexing-tasks/list-background-tasks'
+  | '/api-reference/indexing-tasks/list-document-indexing-tasks'
+  | '/api-reference/indexing-tasks/retry-indexing-task'
   | '/api-reference/knowledge-bases/create-an-empty-knowledge-base'
   | '/api-reference/knowledge-bases/delete-knowledge-base'
   | '/api-reference/knowledge-bases/get-knowledge-base'
@@ -516,6 +346,43 @@ type ApiEndpointReferencePath =
   | '/api-reference/metadata/update-document-metadata-in-batch'
   | '/api-reference/metadata/update-metadata-field'
   | '/api-reference/models/get-available-models'
+  | '/api-reference/queries/create-query-token'
+  | '/api-reference/queries/run-query'
+  | '/api-reference/query-records/get-query-record'
+  | '/api-reference/query-records/list-missing-chunks'
+  | '/api-reference/query-records/list-query-chunks'
+  | '/api-reference/query-records/list-query-conflicts'
+  | '/api-reference/query-records/list-query-records'
+  | '/api-reference/research-tasks/cancel-research-task'
+  | '/api-reference/research-tasks/create-research-task'
+  | '/api-reference/research-tasks/get-research-task'
+  | '/api-reference/research-tasks/list-research-task-results'
+  | '/api-reference/research-tasks/list-research-tasks'
+  | '/api-reference/research-tasks/plan-research-task'
+  | '/api-reference/settings/get-knowledge-base-settings'
+  | '/api-reference/settings/get-settings-migration'
+  | '/api-reference/settings/update-knowledge-base-settings'
+  | '/api-reference/source-syncs-and-imports/cancel-source-run'
+  | '/api-reference/source-syncs-and-imports/get-source-run'
+  | '/api-reference/source-syncs-and-imports/import-selected-pages'
+  | '/api-reference/source-syncs-and-imports/import-source-items'
+  | '/api-reference/source-syncs-and-imports/import-website-pages'
+  | '/api-reference/source-syncs-and-imports/list-crawl-preview-pages'
+  | '/api-reference/source-syncs-and-imports/list-source-runs'
+  | '/api-reference/source-syncs-and-imports/preview-website-crawl'
+  | '/api-reference/source-syncs-and-imports/retry-source-run'
+  | '/api-reference/source-syncs-and-imports/sync-source'
+  | '/api-reference/sources/create-source'
+  | '/api-reference/sources/delete-source'
+  | '/api-reference/sources/get-source'
+  | '/api-reference/sources/get-sync-policy'
+  | '/api-reference/sources/list-source-connections'
+  | '/api-reference/sources/list-source-files'
+  | '/api-reference/sources/list-source-pages'
+  | '/api-reference/sources/list-sources'
+  | '/api-reference/sources/test-source-credentials'
+  | '/api-reference/sources/update-source'
+  | '/api-reference/sources/update-sync-policy'
   | '/api-reference/tags/create-knowledge-tag'
   | '/api-reference/tags/create-tag-binding'
   | '/api-reference/tags/delete-knowledge-tag'
@@ -532,7 +399,6 @@ type ApiEndpointReferencePath =
 
 // Base path without language prefix
 type DocPathWithoutLangBase =
-  | CloudPath
   | UseDifyPath
   | HomePath
   | LearnPath
@@ -540,7 +406,6 @@ type DocPathWithoutLangBase =
   | ApiReferencePath
   | CliPath
   | DevelopPluginPath
-  | SelfHostPath
   | DeployPath
   | ApiEndpointReferencePath
 
@@ -561,6 +426,7 @@ export const docPathProductAvailability = {
   '/deploy/troubleshooting/docker-issues': ['self-host'],
   '/deploy/troubleshooting/integrations': ['self-host'],
   '/deploy/troubleshooting/storage-and-migration': ['self-host'],
+  '/deploy/troubleshooting/weaviate-server-migration-path': ['self-host'],
   '/deploy/troubleshooting/weaviate-v4-migration': ['self-host'],
   '/use-dify/build/additional-features': ['cloud', 'self-host'],
   '/use-dify/build/agent': ['cloud', 'self-host'],
@@ -581,7 +447,19 @@ export const docPathProductAvailability = {
   '/use-dify/debug/history-and-logs': ['cloud', 'self-host'],
   '/use-dify/debug/step-run': ['cloud', 'self-host'],
   '/use-dify/debug/variable-inspect': ['cloud', 'self-host'],
+  '/use-dify/evaluate/custom-evaluators': ['cloud'],
+  '/use-dify/evaluate/metrics': ['cloud'],
+  '/use-dify/evaluate/run-evaluations': ['cloud'],
   '/use-dify/getting-started/introduction': ['cloud', 'self-host'],
+  '/use-dify/knowledge-base/create-knowledge-base': ['cloud'],
+  '/use-dify/knowledge-base/maintain-knowledge-base': ['cloud'],
+  '/use-dify/knowledge-base/multimodal-retrieval': ['cloud'],
+  '/use-dify/knowledge-base/overview': ['cloud'],
+  '/use-dify/knowledge-base/retrieval-settings': ['cloud'],
+  '/use-dify/knowledge-base/review-indexed-documents': ['cloud'],
+  '/use-dify/knowledge-base/test-and-tune': ['cloud'],
+  '/use-dify/knowledge-base/upgrade-from-classic': ['cloud'],
+  '/use-dify/knowledge-base/use-knowledge-in-apps': ['cloud'],
   '/use-dify/knowledge/connect-external-knowledge-base': ['cloud', 'self-host'],
   '/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text': ['cloud', 'self-host'],
   '/use-dify/knowledge/create-knowledge/import-text-data/readme': ['cloud', 'self-host'],
@@ -590,6 +468,8 @@ export const docPathProductAvailability = {
   '/use-dify/knowledge/create-knowledge/introduction': ['cloud', 'self-host'],
   '/use-dify/knowledge/create-knowledge/setting-indexing-methods': ['cloud', 'self-host'],
   '/use-dify/knowledge/external-knowledge-api': ['cloud', 'self-host'],
+  '/use-dify/knowledge/file-security-scan': ['cloud', 'self-host'],
+  '/use-dify/knowledge/file-security-scan-custom-endpoint': ['cloud', 'self-host'],
   '/use-dify/knowledge/integrate-knowledge-within-application': ['cloud', 'self-host'],
   '/use-dify/knowledge/knowledge-pipeline/authorize-data-source': ['cloud', 'self-host'],
   '/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline': ['cloud', 'self-host'],
@@ -603,6 +483,7 @@ export const docPathProductAvailability = {
   '/use-dify/knowledge/manage-knowledge/introduction': ['cloud', 'self-host'],
   '/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents': ['cloud', 'self-host'],
   '/use-dify/knowledge/metadata': ['cloud', 'self-host'],
+  '/use-dify/knowledge/overview': ['cloud'],
   '/use-dify/knowledge/readme': ['cloud', 'self-host'],
   '/use-dify/knowledge/test-retrieval': ['cloud', 'self-host'],
   '/use-dify/monitor/analysis': ['cloud', 'self-host'],
@@ -624,6 +505,7 @@ export const docPathProductAvailability = {
   '/use-dify/nodes/ifelse': ['cloud', 'self-host'],
   '/use-dify/nodes/iteration': ['cloud', 'self-host'],
   '/use-dify/nodes/knowledge-retrieval': ['cloud', 'self-host'],
+  '/use-dify/nodes/knowledge-retrieval-v2': ['cloud'],
   '/use-dify/nodes/list-operator': ['cloud', 'self-host'],
   '/use-dify/nodes/llm': ['cloud', 'self-host'],
   '/use-dify/nodes/loop': ['cloud', 'self-host'],
@@ -641,6 +523,7 @@ export const docPathProductAvailability = {
   '/use-dify/nodes/variable-aggregator': ['cloud', 'self-host'],
   '/use-dify/nodes/variable-assigner': ['cloud', 'self-host'],
   '/use-dify/publish/README': ['cloud', 'self-host'],
+  '/use-dify/publish/ip-access-control': ['cloud'],
   '/use-dify/publish/publish-mcp': ['cloud', 'self-host'],
   '/use-dify/publish/publish-to-marketplace': ['cloud', 'self-host'],
   '/use-dify/publish/webapp/chatflow-webapp': ['cloud', 'self-host'],
@@ -651,7 +534,14 @@ export const docPathProductAvailability = {
   '/use-dify/workspace/api-extension/cloudflare-worker': ['cloud', 'self-host'],
   '/use-dify/workspace/api-extension/external-data-tool-api-extension': ['cloud', 'self-host'],
   '/use-dify/workspace/api-extension/moderation-api-extension': ['cloud', 'self-host'],
-  '/use-dify/workspace/app-management': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/dingtalk': ['self-host'],
+  '/use-dify/workspace/channels/feishu-lark': ['self-host'],
+  '/use-dify/workspace/channels/ms-teams': ['self-host'],
+  '/use-dify/workspace/channels/overview': ['self-host'],
+  '/use-dify/workspace/channels/slack': ['self-host'],
+  '/use-dify/workspace/channels/wecom': ['self-host'],
+  '/use-dify/workspace/contacts': ['self-host'],
+  '/use-dify/workspace/export-import-apps': ['cloud', 'self-host'],
   '/use-dify/workspace/model-providers': ['cloud', 'self-host'],
   '/use-dify/workspace/personal-account-management': ['cloud', 'self-host'],
   '/use-dify/workspace/plugins': ['cloud', 'self-host'],

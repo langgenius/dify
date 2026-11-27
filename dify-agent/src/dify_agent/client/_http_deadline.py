@@ -3,25 +3,37 @@
 HTTP/1.1 caches the read timeout for the response body. A NetworkBackend and
 NetworkStream adapter enforce the budget when httpcore performs the actual I/O.
 The budget is active only while sending a request or reading a raw response chunk.
+Synchronous TCP connections use resolved socket addresses. Hostname lookups
+share a bounded number of resolver slots and can finish after a request expires.
 """
 
 from __future__ import annotations
 
+import math
 import socket
 import ssl
+import threading
+import time
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator, Mapping
 from contextlib import AbstractContextManager, asynccontextmanager, contextmanager, nullcontext
 from contextvars import ContextVar
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from typing import Any, override
 
 import httpcore
 import httpx
+from httpcore._backends.sync import SyncStream
 
 type RemainingTime = Callable[[], float]
 type SocketOption = tuple[int, int, int] | tuple[int, int, bytes | bytearray] | tuple[int, int, None, int]
+type _AddressInfo = tuple[
+    socket.AddressFamily, socket.SocketKind, int, str, tuple[int, bytes] | tuple[str, int] | tuple[str, int, int, int]
+]
 
 _remaining_time: ContextVar[RemainingTime | None] = ContextVar("dify_agent_http_remaining_time", default=None)
 _EXPIRED = "HTTP request exceeded its deadline"
+_MAX_CONCURRENT_DNS_RESOLUTIONS = 32
+_dns_resolution_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT_DNS_RESOLUTIONS)
 
 
 @contextmanager
@@ -33,13 +45,25 @@ def _use_budget(budget: RemainingTime | None) -> Iterator[None]:
         _remaining_time.reset(token)
 
 
+def _normalize_phase_timeout(timeout: float | None, error_type: type[Exception]) -> float | None:
+    """Use None for an unbounded phase and reject invalid numeric timeouts."""
+    if timeout is None or timeout == math.inf:
+        return None
+    if math.isnan(timeout) or timeout < 0:
+        raise error_type(_EXPIRED)
+    return timeout
+
+
 def _limit(timeout: float | None, error_type: type[Exception]) -> float | None:
+    timeout = _normalize_phase_timeout(timeout, error_type)
     budget = _remaining_time.get()
     if budget is None:
         return timeout
     remaining = budget()
-    if remaining <= 0:
+    if math.isnan(remaining) or remaining <= 0:
         raise error_type(_EXPIRED)
+    if math.isinf(remaining):
+        return timeout
     return remaining if timeout is None else min(timeout, remaining)
 
 
@@ -137,7 +161,7 @@ class _SyncBackend(httpcore.NetworkBackend):
     ) -> httpcore.NetworkStream:
         backend = self._backend
         if _remaining_time.get() is not None and isinstance(backend, httpcore.SyncBackend):
-            stream = _connect_tcp_with_deadline(backend, host, port, timeout, local_address, socket_options)
+            stream = _connect_tcp_with_deadline(host, port, timeout, local_address, socket_options)
         else:
             stream = backend.connect_tcp(
                 host, port, _limit(timeout, httpcore.ConnectTimeout), local_address, socket_options
@@ -157,40 +181,117 @@ class _SyncBackend(httpcore.NetworkBackend):
         self._backend.sleep(_limit(seconds, httpcore.ConnectTimeout) or 0.0)
 
 
+def _resolve_tcp_addresses(host: str, port: int, timeout: float | None) -> list[_AddressInfo]:
+    """Build numeric addresses directly or share one connect budget across slot wait and DNS."""
+    raw_ip, separator, scope = host.partition("%")
+    try:
+        address = ip_address(raw_ip if ":" in host else host)
+    except ValueError:
+        address = None
+    if isinstance(address, IPv4Address) and not separator:
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (str(address), port))]
+    if isinstance(address, IPv6Address) and (not separator or (scope.isascii() and scope.isdigit())):
+        scope_id = int(scope) if separator else 0
+        return [(socket.AF_INET6, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (str(address), port, 0, scope_id))]
+
+    timeout = _normalize_phase_timeout(timeout, httpcore.ConnectTimeout)
+    initial_budget = _limit(None, httpcore.ConnectTimeout)
+    started_at = time.monotonic()
+
+    def remaining_resolve_timeout() -> float | None:
+        current_budget = _limit(None, httpcore.ConnectTimeout)
+        if timeout is None:
+            return current_budget
+        elapsed = (
+            initial_budget - current_budget
+            if initial_budget is not None and current_budget is not None
+            else time.monotonic() - started_at
+        )
+        remaining = timeout - elapsed
+        if remaining <= 0:
+            raise httpcore.ConnectTimeout(_EXPIRED)
+        return remaining if current_budget is None else min(remaining, current_budget)
+
+    getaddrinfo = socket.getaddrinfo
+    semaphore = _dns_resolution_semaphore
+    finished = threading.Event()
+    result: list[_AddressInfo] | BaseException | None = None
+
+    def resolve() -> None:
+        nonlocal result
+        try:
+            result = getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+        except BaseException as exc:
+            result = exc
+        finally:
+            semaphore.release()
+            finished.set()
+
+    if not semaphore.acquire(timeout=remaining_resolve_timeout()):
+        raise httpcore.ConnectTimeout(_EXPIRED)
+    try:
+        remaining_resolve_timeout()
+        # Keep the slot until the lookup returns, even if the caller times out.
+        threading.Thread(target=resolve, daemon=True).start()
+    except BaseException:
+        semaphore.release()
+        raise
+    resolve_wait = remaining_resolve_timeout()
+    if not finished.wait(resolve_wait):
+        raise httpcore.ConnectTimeout(_EXPIRED)
+    if not isinstance(result, TimeoutError):
+        remaining_resolve_timeout()
+    if isinstance(result, BaseException):
+        raise result
+    assert result is not None
+    return result
+
+
 def _connect_tcp_with_deadline(
-    backend: httpcore.SyncBackend,
     host: str,
     port: int,
     timeout: float | None,
     local_address: str | None,
     socket_options: Iterable[SocketOption] | None,
 ) -> httpcore.NetworkStream:
-    """Try resolved addresses under one deadline and return an open httpcore stream."""
-    _limit(None, httpcore.ConnectTimeout)
+    """Use the request deadline and connect to socket addresses without resolving them again."""
+    resolve_timeout = _limit(timeout, httpcore.ConnectTimeout)
     try:
-        addresses = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+        addresses = _resolve_tcp_addresses(host, port, resolve_timeout)
     except TimeoutError as exc:
         raise httpcore.ConnectTimeout(str(exc)) from exc
     except OSError as exc:
         _limit(None, httpcore.ConnectTimeout)
         raise httpcore.ConnectError(str(exc)) from exc
+    _limit(None, httpcore.ConnectTimeout)
 
-    options = tuple(socket_options) if socket_options is not None else None
+    options = tuple(socket_options) if socket_options is not None else ()
     last_error: httpcore.ConnectError | httpcore.ConnectTimeout | None = None
-    for family, _, _, _, address in addresses:
-        address_host, address_port = address[:2]
-        if not isinstance(address_host, str) or not isinstance(address_port, int):
-            continue
-        if family == socket.AF_INET6 and len(address) == 4 and address[3]:
-            address_host = f"{address_host}%{address[3]}"
+    for family, socktype, protocol, _, address in addresses:
         connect_timeout = _limit(timeout, httpcore.ConnectTimeout)
+        sock = None
         try:
-            # A numeric host gives the backend one address. The backend still
-            # handles source binding, TCP options, and TLS/proxy stream support.
-            stream = backend.connect_tcp(address_host, address_port, connect_timeout, local_address, options)
-        except (httpcore.ConnectError, httpcore.ConnectTimeout) as exc:
+            sock = socket.socket(family, socktype, protocol)
+            sock.settimeout(connect_timeout)
+            if local_address is not None:
+                sock.bind((local_address, 0))
+            sock.connect(address)
+            for option in options:
+                sock.setsockopt(*option)
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            # Preserve httpcore 1.0.9's TLS and socket metadata behavior.
+            stream = SyncStream(sock)
+        except OSError as exc:
+            if sock is not None:
+                sock.close()
             _limit(None, httpcore.ConnectTimeout)
-            last_error = exc
+            error_type = httpcore.ConnectTimeout if isinstance(exc, TimeoutError) else httpcore.ConnectError
+            last_error = error_type(str(exc))
+            last_error.__cause__ = exc
+        except BaseException:
+            if sock is not None:
+                sock.close()
+            raise
         else:
             try:
                 _limit(None, httpcore.ConnectTimeout)
@@ -284,15 +385,14 @@ def _attach_deadline_backends(client: httpx.Client | httpx.AsyncClient) -> None:
 
 
 def _update_timeouts(request: httpx.Request, configured: httpx.Timeout) -> None:
-    """Publish current numeric phase timeouts, also for injected transports."""
+    """Publish normalized phase timeouts and apply the current request budget."""
     remaining = _limit(None, httpx.ReadTimeout)
-    if remaining is not None:
-        request.extensions["timeout"].update(
-            {
-                phase: remaining if limit is None else min(limit, remaining)
-                for phase, limit in configured.as_dict().items()
-            }
-        )
+    for phase, timeout in configured.as_dict().items():
+        limit = _normalize_phase_timeout(timeout, httpx.ReadTimeout)
+        if remaining is not None:
+            limit = remaining if limit is None else min(limit, remaining)
+        if remaining is not None or limit != timeout:
+            request.extensions.setdefault("timeout", {})[phase] = limit
 
 
 class _SyncBody(httpx.SyncByteStream):

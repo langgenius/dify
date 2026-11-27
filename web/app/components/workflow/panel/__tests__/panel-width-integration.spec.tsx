@@ -15,12 +15,12 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggers.get': async () => [],
       'appDslVersion.get': async () => ({ app_dsl_version: '0.6.0' }),
       'workspaces.current.agentProviders.get': async () => [],
       'apps.byAppId.workflows.draft.environmentVariables.get': async () => ({ items: [] }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.triggers.get': async () => [],
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
     }),
   }

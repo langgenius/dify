@@ -92,19 +92,16 @@ export const applyToNewApp = async ({
   const appMode = MODE_TO_APP_MODE[mode]
   const name = (appName ?? '').trim() || deriveAppName(instruction)
   const appIcon = (icon ?? '').trim() || '🤖'
-  const app = await consoleClient.apps.post(
-    {
-      body: {
-        name,
-        mode: appMode,
-        icon_type: 'emoji',
-        icon: appIcon,
-        icon_background: '#FFEAD5',
-        description: instruction.trim().slice(0, 200),
-      },
+  const app = await consoleClient.apps.post({
+    body: {
+      name,
+      mode: appMode,
+      icon_type: 'emoji',
+      icon: appIcon,
+      icon_background: '#FFEAD5',
+      description: instruction.trim().slice(0, 200),
     },
-    { context: { silent: true } },
-  )
+  })
 
   // Sync the generated graph into the brand-new app's draft. ``createApp``
   // already succeeded so the app exists; if the sync fails (network blip,
@@ -115,23 +112,17 @@ export const applyToNewApp = async ({
   // so the caller can route to /apps where the orphan is still recoverable
   // by hand.
   try {
-    await consoleClient.apps.byAppId.workflows.draft.post(
-      {
-        params: { app_id: app.id },
-        body: {
-          graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
-          features: {},
-          conversation_variables: [],
-        },
+    await consoleClient.apps.byAppId.workflows.draft.post({
+      params: { app_id: app.id },
+      body: {
+        graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
+        features: {},
+        conversation_variables: [],
       },
-      { context: { silent: true } },
-    )
+    })
   } catch (syncErr) {
     try {
-      await consoleClient.apps.byAppId.delete(
-        { params: { app_id: app.id } },
-        { context: { silent: true } },
-      )
+      await consoleClient.apps.byAppId.delete({ params: { app_id: app.id } })
     } catch (deleteErr) {
       throw new WorkflowApplyOrphanError(app.id, deleteErr)
     }
@@ -170,27 +161,21 @@ export const applyToCurrentApp = async ({
   // failure as "no existing draft" and sync without a hash.
   let existing: WorkflowResponse | null = null
   try {
-    existing = await consoleClient.apps.byAppId.workflows.draft.get(
-      { params: { app_id: appId } },
-      { context: { silent: true } },
-    )
+    existing = await consoleClient.apps.byAppId.workflows.draft.get({ params: { app_id: appId } })
   } catch {
     existing = null
   }
 
   try {
-    await consoleClient.apps.byAppId.workflows.draft.post(
-      {
-        params: { app_id: appId },
-        body: {
-          graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
-          features: existing?.features ?? {},
-          conversation_variables: existing?.conversation_variables ?? [],
-          ...(existing?.hash ? { hash: existing.hash } : {}),
-        },
+    await consoleClient.apps.byAppId.workflows.draft.post({
+      params: { app_id: appId },
+      body: {
+        graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
+        features: existing?.features ?? {},
+        conversation_variables: existing?.conversation_variables ?? [],
+        ...(existing?.hash ? { hash: existing.hash } : {}),
       },
-      { context: { silent: true } },
-    )
+    })
   } catch (e) {
     // 409 → draft was edited in another tab between our fetch and sync.
     // Translate the HTTP error into a domain error so the caller

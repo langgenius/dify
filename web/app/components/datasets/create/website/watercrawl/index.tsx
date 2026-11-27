@@ -11,6 +11,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
 import Crawling from '../base/crawling'
@@ -173,7 +174,10 @@ const WaterCrawl: FC<Props> = ({
           setCrawlErrorMessage('')
         }
       } catch (e) {
-        setCrawlErrorMessage(t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' })!)
+        setCrawlErrorMessage(
+          getRequestErrorMessage(e) ??
+            t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),
+        )
         console.log(e)
       } finally {
         setStep(Step.finished)

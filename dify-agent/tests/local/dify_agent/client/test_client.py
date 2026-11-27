@@ -3,11 +3,14 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import math
 import socket
 from collections import deque
 from collections.abc import AsyncIterator, Buffer, Callable, Iterable, Iterator
 from contextlib import aclosing, closing
 from datetime import UTC, datetime
+from threading import BoundedSemaphore, Event, Thread
+from time import monotonic, sleep
 from typing import cast, override
 
 import httpcore
@@ -17,6 +20,7 @@ import pytest
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.client import _client as client_module
+from dify_agent.client import _http_deadline as http_deadline
 from dify_agent.client import (
     Client,
     DifyAgentClientError,
@@ -587,12 +591,19 @@ def test_wait_run_checks_deadline_after_closing_terminal_status_response(
 
 
 @pytest.mark.parametrize("sync", [False, True], ids=["async", "sync"])
-@pytest.mark.parametrize("status", ["succeeded", "running"])
-def test_wait_run_with_zero_timeout_checks_status_once(deadline_clock: DeadlineClock, sync: bool, status: str) -> None:
+@pytest.mark.parametrize(
+    ("timeout_seconds", "status"),
+    [(0.0, "succeeded"), (0.0, "running"), (math.inf, "succeeded")],
+    ids=["zero-succeeded", "zero-running", "infinite"],
+)
+def test_wait_run_uses_configured_timeouts_for_zero_and_infinite_budgets(
+    deadline_clock: DeadlineClock, sync: bool, timeout_seconds: float, status: str
+) -> None:
     requests: list[httpx.Request] = []
+    request_timeout = httpx.Timeout(7.5, connect=3.0)
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.extensions["timeout"] == httpx.Timeout(7.5).as_dict()
+        assert request.extensions["timeout"] == request_timeout.as_dict()
         requests.append(request)
         deadline_clock.now += 0.25
         return httpx.Response(200, json=_run_status_json(status))
@@ -601,14 +612,14 @@ def test_wait_run_with_zero_timeout_checks_status_once(deadline_clock: DeadlineC
 
     async def wait_async() -> RunStatusResponse:
         async with httpx.AsyncClient(transport=transport) as http_client:
-            client = Client(base_url="http://testserver", timeout=7.5, async_http_client=http_client)
-            return await client.wait_run("run-1", timeout_seconds=0)
+            client = Client(base_url="http://testserver", timeout=request_timeout, async_http_client=http_client)
+            return await client.wait_run("run-1", timeout_seconds=timeout_seconds)
 
     def wait() -> RunStatusResponse:
         if sync:
             with httpx.Client(transport=transport) as http_client:
-                client = Client(base_url="http://testserver", timeout=7.5, sync_http_client=http_client)
-                return client.wait_run_sync("run-1", timeout_seconds=0)
+                client = Client(base_url="http://testserver", timeout=request_timeout, sync_http_client=http_client)
+                return client.wait_run_sync("run-1", timeout_seconds=timeout_seconds)
         return asyncio.run(wait_async())
 
     if status == "succeeded":
@@ -619,6 +630,21 @@ def test_wait_run_with_zero_timeout_checks_status_once(deadline_clock: DeadlineC
 
     assert [(request.method, request.url.path) for request in requests] == [("GET", "/runs/run-1")]
     assert deadline_clock.now == 0.25
+
+
+@pytest.mark.parametrize("invalid", [-1.0, -math.inf, math.nan], ids=["negative", "negative-infinity", "nan"])
+def test_wait_and_stream_reject_invalid_timing_options(invalid: float) -> None:
+    def unexpected_request(_request: httpx.Request) -> httpx.Response:
+        pytest.fail("Invalid timing options must fail before opening the request")
+
+    with httpx.Client(transport=httpx.MockTransport(unexpected_request)) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        with pytest.raises(DifyAgentValidationError, match="timeout_seconds must be non-negative"):
+            client.wait_run_sync("run-1", timeout_seconds=invalid)
+        with pytest.raises(DifyAgentValidationError, match="poll_interval_seconds must be non-negative"):
+            client.wait_run_sync("run-1", poll_interval_seconds=invalid)
+        with pytest.raises(DifyAgentValidationError, match="reconnect_delay_seconds must be non-negative"):
+            list(client.stream_events_sync("run-1", reconnect_delay_seconds=invalid))
 
 
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
@@ -1669,6 +1695,111 @@ def _patch_sync_socket(monkeypatch: pytest.MonkeyPatch, name: str, replacement: 
         monkeypatch.setattr(module, name, replacement)
 
 
+def _observe_resolver_wait(monkeypatch: pytest.MonkeyPatch, observe: Callable[[float | None], None]) -> None:
+    """Record the resolver's Event.wait budget while using normal thread synchronization."""
+
+    class ResolverEvent(Event):
+        @override
+        def wait(self, timeout: float | None = None) -> bool:
+            observe(timeout)
+            return super().wait(timeout)
+
+    class ResolverThreading:
+        Event = ResolverEvent
+        Thread = Thread
+
+    monkeypatch.setattr(http_deadline, "threading", ResolverThreading)
+
+
+def _script_sync_status_socket(monkeypatch: pytest.MonkeyPatch, clock: DeadlineClock) -> ScriptedNetwork:
+    """Serve a terminal status through the default httpcore backend with scripted DNS and socket I/O."""
+    body = json.dumps(_run_status_json("succeeded")).encode()
+    script = ScriptedNetwork(clock, [(0.0, _response_headers(len(body)) + body)])
+
+    def resolve(
+        host: str, port: int, family: int = 0, kind: int = socket.SOCK_STREAM
+    ) -> list[tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[str, int]]]:
+        assert host == "testserver"
+        assert family == 0 and kind == socket.SOCK_STREAM
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("192.0.2.1", port))]
+
+    class StatusSocket(socket.socket):
+        @override
+        def connect(self, address: object) -> None:
+            assert address == ("192.0.2.1", 80)
+            script.connect(self.gettimeout())
+
+        @override
+        def send(self, data: Buffer, flags: int = 0, /) -> int:
+            buffer = bytes(data)
+            script.write(buffer, self.gettimeout())
+            return len(buffer)
+
+        @override
+        def recv(self, bufsize: int, flags: int = 0, /) -> bytes:
+            return script.read(self.gettimeout())
+
+    _patch_sync_socket(monkeypatch, "getaddrinfo", resolve)
+    _patch_sync_socket(monkeypatch, "socket", StatusSocket)
+    return script
+
+
+@pytest.mark.parametrize(
+    ("poll", "timeout", "expected_connect", "expected_read"),
+    [
+        (False, httpx.Timeout(5.0, connect=3.0), 3.0, 5.0),
+        (True, httpx.Timeout(5.0, connect=3.0), 3.0, 5.0),
+        (False, httpx.Timeout(math.inf), None, None),
+    ],
+    ids=["get", "wait", "unbounded-http-phases"],
+)
+def test_sync_infinite_total_timeout_keeps_http_phase_timeouts(
+    monkeypatch: pytest.MonkeyPatch,
+    poll: bool,
+    timeout: httpx.Timeout,
+    expected_connect: float | None,
+    expected_read: float | None,
+) -> None:
+    script = _script_sync_status_socket(monkeypatch, DeadlineClock())
+    with httpx.Client(trust_env=False) as http_client:
+        client = Client(base_url="http://testserver", timeout=timeout, sync_http_client=http_client)
+        get_status = client.wait_run_sync if poll else client.get_run_sync
+        assert get_status("run-1", timeout_seconds=math.inf).status == "succeeded"
+
+    assert script.requests == [b"GET /runs/run-1 HTTP/1.1"]
+    assert [call for call in script.calls if call[0] in {"connect", "read"}] == [
+        ("connect", expected_connect),
+        ("read", expected_read),
+    ]
+
+
+def test_infinite_injected_budget_preserves_the_finite_dns_connect_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = DeadlineClock()
+    monkeypatch.setattr(http_deadline, "time", clock)
+    script = _script_sync_status_socket(monkeypatch, clock)
+    semaphore = BoundedSemaphore(1)
+    acquire = semaphore.acquire
+    waits: list[float | None] = []
+
+    def acquire_after_slot_wait(*, timeout: float | None = None) -> bool:
+        assert timeout == 3.0
+        clock.now += 2.0
+        return acquire(timeout=timeout)
+
+    monkeypatch.setattr(semaphore, "acquire", acquire_after_slot_wait)
+    monkeypatch.setattr(http_deadline, "_dns_resolution_semaphore", semaphore)
+    _observe_resolver_wait(monkeypatch, waits.append)
+    timeout = httpx.Timeout(5.0, connect=3.0)
+    with httpx.Client(trust_env=False) as http_client:
+        request = http_client.build_request("GET", "http://testserver/runs/run-1", timeout=timeout)
+        with http_deadline.stream_sync(http_client, request, timeout, lambda: math.inf) as response:
+            response.read()
+            assert response.json()["status"] == "succeeded"
+
+    assert waits == [1.0]
+    assert [call for call in script.calls if call[0] in {"connect", "read"}] == [("connect", 3.0), ("read", 5.0)]
+
+
 def test_sync_tcp_address_attempts_share_request_deadline(
     deadline_clock: DeadlineClock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1678,10 +1809,9 @@ def test_sync_tcp_address_attempts_share_request_deadline(
     def resolve(
         host: str, port: int, family: int = 0, kind: int = socket.SOCK_STREAM
     ) -> list[tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[str, int]]]:
-        assert host == "testserver" or host in addresses
+        assert host == "testserver"
         assert family == 0 and kind == socket.SOCK_STREAM
-        candidates = addresses if host == "testserver" else [host]
-        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (ip, port)) for ip in candidates]
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (ip, port)) for ip in addresses]
 
     class SlowConnectSocket(socket.socket):
         @override
@@ -1708,6 +1838,296 @@ def test_sync_tcp_address_attempts_share_request_deadline(
     ]
     assert all(sock.fileno() == -1 for sock, _, _ in attempts)
     assert deadline_clock.now == 5.0
+
+
+@pytest.mark.parametrize(
+    ("host", "family", "sockaddr"),
+    [
+        ("127.0.0.1", socket.AF_INET, ("127.0.0.1", 80)),
+        ("[::1]", socket.AF_INET6, ("::1", 80, 0, 0)),
+        ("[fe80::1%7]", socket.AF_INET6, ("fe80::1", 80, 0, 7)),
+    ],
+    ids=["ipv4", "ipv6", "ipv6-numeric-scope"],
+)
+def test_sync_numeric_address_connects_within_deadline_without_dns(
+    deadline_clock: DeadlineClock,
+    monkeypatch: pytest.MonkeyPatch,
+    host: str,
+    family: socket.AddressFamily,
+    sockaddr: tuple[str, int] | tuple[str, int, int, int],
+) -> None:
+    attempts: list[socket.socket] = []
+
+    def unexpected_lookup(*_args: object) -> None:
+        pytest.fail("A numeric address must bypass DNS resolution")
+
+    class SlowConnectSocket(socket.socket):
+        @override
+        def connect(self, address: object) -> None:
+            attempts.append(self)
+            assert self.family == family
+            assert address == sockaddr
+            timeout = self.gettimeout()
+            assert timeout == 5.0
+            deadline_clock.now += timeout
+            raise TimeoutError("connect timed out")
+
+    _patch_sync_socket(monkeypatch, "getaddrinfo", unexpected_lookup)
+    _patch_sync_socket(monkeypatch, "socket", SlowConnectSocket)
+    with httpx.Client(trust_env=False) as http_client:
+        client = Client(base_url=f"http://{host}", sync_http_client=http_client)
+        with pytest.raises(DifyAgentTimeoutError, match="cancel_run_sync timed out"):
+            client.cancel_run_and_wait_sync("run-1", timeout_seconds=5.0)
+
+    assert len(attempts) == 1
+    assert attempts[0].fileno() == -1
+    assert deadline_clock.now == 5.0
+
+
+def test_sync_dns_exhaustion_prevents_tcp_connection(
+    deadline_clock: DeadlineClock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def resolve(
+        host: str, port: int, family: int, kind: int
+    ) -> list[tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[str, int]]]:
+        assert host == "testserver"
+        assert family == 0 and kind == socket.SOCK_STREAM
+        deadline_clock.now += 6.0
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("192.0.2.1", port))]
+
+    class UnexpectedSocket(socket.socket):
+        @override
+        def connect(self, address: object) -> None:
+            pytest.fail(f"Attempted TCP connect to {address} after DNS exhausted the deadline")
+
+    _patch_sync_socket(monkeypatch, "getaddrinfo", resolve)
+    _patch_sync_socket(monkeypatch, "socket", UnexpectedSocket)
+    with httpx.Client(trust_env=False) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        with pytest.raises(DifyAgentTimeoutError, match="cancel_run_sync timed out"):
+            client.cancel_run_and_wait_sync("run-1", timeout_seconds=5.0)
+    assert deadline_clock.now == 6.0
+
+
+@pytest.mark.parametrize(
+    ("url_host", "resolver_host"),
+    [("testserver", "testserver"), ("[fe80::1%lo]", "fe80::1%lo")],
+    ids=["hostname", "ipv6-interface-scope"],
+)
+def test_sync_dns_timeout_returns_while_resolver_is_blocked(
+    monkeypatch: pytest.MonkeyPatch, url_host: str, resolver_host: str
+) -> None:
+    started = Event()
+    release = Event()
+    finished = Event()
+
+    def resolve(
+        host: str, _port: int, family: int, kind: int
+    ) -> list[tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[str, int]]]:
+        assert host == resolver_host
+        assert family == 0 and kind == socket.SOCK_STREAM
+        started.set()
+        try:
+            release.wait(5.0)
+            return []
+        finally:
+            finished.set()
+
+    _patch_sync_socket(monkeypatch, "getaddrinfo", resolve)
+    try:
+        with httpx.Client(trust_env=False) as http_client:
+            client = Client(base_url=f"http://{url_host}", sync_http_client=http_client)
+            with pytest.raises(DifyAgentTimeoutError, match="cancel_run_sync timed out"):
+                client.cancel_run_and_wait_sync("run-1", timeout_seconds=0.25)
+        assert started.is_set()
+        assert not finished.is_set()
+    finally:
+        release.set()
+        if started.is_set():
+            assert finished.wait(2.0)
+
+
+def test_sync_dns_caps_abandoned_lookups_and_recovers_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
+    release = Event()
+    lookups: list[str] = []
+    monkeypatch.setattr(http_deadline, "_dns_resolution_semaphore", BoundedSemaphore(2))
+
+    def resolve(
+        host: str, port: int, family: int, kind: int
+    ) -> list[tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[str, int]]]:
+        assert family == 0 and kind == socket.SOCK_STREAM
+        lookups.append(host)
+        release.wait(5.0)
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("192.0.2.1", port))]
+
+    class RefusedSocket(socket.socket):
+        @override
+        def connect(self, address: object) -> None:
+            assert address == ("192.0.2.1", 80)
+            raise ConnectionRefusedError("resolved address was tried")
+
+    _patch_sync_socket(monkeypatch, "getaddrinfo", resolve)
+    _patch_sync_socket(monkeypatch, "socket", RefusedSocket)
+    with httpx.Client(trust_env=False) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        try:
+            for expected_lookups in (1, 2, 2):
+                with pytest.raises(DifyAgentTimeoutError, match="cancel_run_sync timed out"):
+                    client.cancel_run_and_wait_sync("run-1", timeout_seconds=0.2)
+                assert lookups == ["testserver"] * expected_lookups
+        finally:
+            release.set()
+        with pytest.raises(DifyAgentClientError, match="resolved address was tried"):
+            client.cancel_run_sync("run-1", timeout_seconds=2.0)
+
+    assert lookups == ["testserver"] * 3
+
+
+@pytest.mark.parametrize(
+    ("request_timeout", "connect_timeout", "resolution_fails"),
+    [(5.0, 10.0, False), (10.0, 3.0, False), (10.0, 3.0, True)],
+    ids=["request-budget", "connect-budget", "connect-budget-resolver-error"],
+)
+def test_sync_dns_capacity_wait_and_lookup_share_the_connect_budget(
+    deadline_clock: DeadlineClock,
+    monkeypatch: pytest.MonkeyPatch,
+    request_timeout: float,
+    connect_timeout: float,
+    resolution_fails: bool,
+) -> None:
+    connect_budget = min(request_timeout, connect_timeout)
+    waiting = Event()
+    allow_resolution = Event()
+    semaphore = BoundedSemaphore(1)
+    assert semaphore.acquire()
+    acquire = semaphore.acquire
+
+    def acquire_with_observation(*, timeout: float | None = None) -> bool:
+        assert timeout == connect_budget
+        waiting.set()
+        return acquire(timeout=timeout)
+
+    def observe_resolver_wait(timeout: float | None) -> None:
+        assert timeout == connect_budget - 2.0
+        allow_resolution.set()
+
+    def release_waiter() -> None:
+        if waiting.wait(2.0):
+            deadline_clock.now += 2.0
+        semaphore.release()
+
+    def resolve(
+        host: str, port: int, family: int, kind: int
+    ) -> list[tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[str, int]]]:
+        assert host == "testserver"
+        assert family == 0 and kind == socket.SOCK_STREAM
+        assert allow_resolution.wait(2.0)
+        assert deadline_clock.now == 2.0
+        deadline_clock.now += 1.0
+        if resolution_fails:
+            raise OSError("Lookup failed at the connect deadline")
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("192.0.2.1", port))]
+
+    class SlowConnectSocket(socket.socket):
+        @override
+        def connect(self, address: object) -> None:
+            assert request_timeout < connect_timeout, "TCP attempted after DNS exhausted the connect budget"
+            assert address == ("192.0.2.1", 80)
+            timeout = self.gettimeout()
+            assert timeout == 2.0
+            deadline_clock.now += timeout
+            raise TimeoutError("connect timed out")
+
+    monkeypatch.setattr(semaphore, "acquire", acquire_with_observation)
+    monkeypatch.setattr(http_deadline, "_dns_resolution_semaphore", semaphore)
+    _observe_resolver_wait(monkeypatch, observe_resolver_wait)
+    _patch_sync_socket(monkeypatch, "getaddrinfo", resolve)
+    _patch_sync_socket(monkeypatch, "socket", SlowConnectSocket)
+    releaser = Thread(target=release_waiter, daemon=True)
+    releaser.start()
+    try:
+        with httpx.Client(trust_env=False) as http_client:
+            client = Client(
+                base_url="http://testserver",
+                timeout=httpx.Timeout(10.0, connect=connect_timeout),
+                sync_http_client=http_client,
+            )
+            with pytest.raises(DifyAgentTimeoutError, match="cancel_run_sync timed out"):
+                client.cancel_run_and_wait_sync("run-1", timeout_seconds=request_timeout)
+    finally:
+        allow_resolution.set()
+        waiting.set()
+        releaser.join(timeout=2.0)
+
+    assert deadline_clock.now == connect_budget
+
+
+def test_sync_blocked_dns_uses_connect_time_left_after_waiting_for_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
+    connect_timeout = 0.5
+    slot_delay = 0.15
+    waiting_for_slot = Event()
+    lookup_started = Event()
+    finish_lookup = Event()
+    lookup_finished = Event()
+    semaphore = BoundedSemaphore(1)
+    assert semaphore.acquire()
+    acquire = semaphore.acquire
+
+    def acquire_with_observation(*, timeout: float | None = None) -> bool:
+        waiting_for_slot.set()
+        return acquire(timeout=timeout)
+
+    def release_slot() -> None:
+        if waiting_for_slot.wait(2.0):
+            sleep(slot_delay)
+        semaphore.release()
+
+    def observe_resolver_wait(timeout: float | None) -> None:
+        assert timeout is not None
+        # A tolerance for thread scheduling still distinguishes a reused connect timeout.
+        assert 0.0 < timeout <= connect_timeout - slot_delay / 2
+
+    def resolve(
+        host: str, _port: int, family: int, kind: int
+    ) -> list[tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[str, int]]]:
+        assert host == "testserver"
+        assert family == 0 and kind == socket.SOCK_STREAM
+        lookup_started.set()
+        try:
+            assert finish_lookup.wait(5.0)
+            return []
+        finally:
+            lookup_finished.set()
+
+    def unexpected_connect(_sock: socket.socket, address: object) -> None:
+        pytest.fail(f"Attempted TCP connect to {address} while DNS was blocked")
+
+    monkeypatch.setattr(semaphore, "acquire", acquire_with_observation)
+    monkeypatch.setattr(http_deadline, "_dns_resolution_semaphore", semaphore)
+    _observe_resolver_wait(monkeypatch, observe_resolver_wait)
+    _patch_sync_socket(monkeypatch, "getaddrinfo", resolve)
+    monkeypatch.setattr(socket.socket, "connect", unexpected_connect)
+    with httpx.Client(trust_env=False) as http_client:
+        client = Client(
+            base_url="http://testserver",
+            timeout=httpx.Timeout(2.0, connect=connect_timeout),
+            sync_http_client=http_client,
+        )
+        releaser = Thread(target=release_slot, daemon=True)
+        releaser.start()
+        try:
+            started_at = monotonic()
+            with pytest.raises(DifyAgentTimeoutError, match="cancel_run_sync timed out"):
+                client.cancel_run_and_wait_sync("run-1", timeout_seconds=2.0)
+            assert monotonic() - started_at < 1.5
+            assert lookup_started.is_set()
+            assert not lookup_finished.is_set()
+        finally:
+            finish_lookup.set()
+            waiting_for_slot.set()
+            releaser.join(timeout=2.0)
+            if lookup_started.is_set():
+                assert lookup_finished.wait(2.0)
 
 
 def test_sync_partial_writes_share_request_deadline(
@@ -2146,49 +2566,50 @@ def test_stream_events_yields_terminal_event_after_closing_response(
 
 
 @pytest.mark.parametrize("sync", [True, False], ids=["sync", "async"])
-@pytest.mark.parametrize("stop_reason", ["cancel", "timeout"])
-def test_stream_events_checks_stop_after_closing_terminal_response(
-    deadline_clock: DeadlineClock, sync: bool, stop_reason: str
+@pytest.mark.parametrize("deadline_expires", [False, True], ids=["stop", "stop-and-timeout"])
+def test_stream_events_delivers_accepted_terminal_event_while_deadline_remains(
+    deadline_clock: DeadlineClock, sync: bool, deadline_expires: bool
 ) -> None:
     stopped = False
     calls = 0
+    terminal_event = _run_succeeded_event()
 
     def stop_on_close() -> None:
         nonlocal stopped
-        if stop_reason == "cancel":
-            stopped = True
-        else:
+        stopped = True
+        if deadline_expires:
             deadline_clock.now = 2.0
 
-    stream = ScriptedSSEStream(iter([_event_frame(_run_succeeded_event()).encode()]), on_close=stop_on_close)
+    stream = ScriptedSSEStream(iter([_event_frame(terminal_event).encode()]), on_close=stop_on_close)
 
     def handler(_request: httpx.Request) -> httpx.Response:
         nonlocal calls
         calls += 1
         return httpx.Response(200, stream=stream)
 
-    expected_error = DifyAgentStreamError if stop_reason == "cancel" else DifyAgentTimeoutError
-    expected_message = "cancelled by the caller" if stop_reason == "cancel" else "exceeded its timeout"
     transport = httpx.MockTransport(handler)
 
-    async def scenario() -> None:
+    async def read_async() -> list[RunEvent]:
         async with httpx.AsyncClient(transport=transport) as http_client:
             client = Client(base_url="http://testserver", async_http_client=http_client)
-            async with aclosing(
-                client.stream_events("run-1", should_stop=lambda: stopped, timeout_seconds=1)
-            ) as events:
-                with pytest.raises(expected_error, match=expected_message):
-                    _ = await anext(events)
+            return [
+                event async for event in client.stream_events("run-1", should_stop=lambda: stopped, timeout_seconds=1)
+            ]
 
-    if sync:
+    def read_events() -> list[RunEvent]:
+        if not sync:
+            return asyncio.run(read_async())
         with httpx.Client(transport=transport) as http_client:
             client = Client(base_url="http://testserver", sync_http_client=http_client)
-            with closing(client.stream_events_sync("run-1", should_stop=lambda: stopped, timeout_seconds=1)) as events:
-                with pytest.raises(expected_error, match=expected_message):
-                    _ = next(events)
-    else:
-        asyncio.run(scenario())
+            return list(client.stream_events_sync("run-1", should_stop=lambda: stopped, timeout_seconds=1))
 
+    if deadline_expires:
+        with pytest.raises(DifyAgentTimeoutError, match="exceeded its timeout"):
+            read_events()
+    else:
+        assert read_events() == [terminal_event]
+
+    assert stopped
     assert stream.closed
     assert calls == 1
 

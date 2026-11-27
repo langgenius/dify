@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "تعذّر حذف جهة الاتصال. حاول مجددًا.",
   "directory.removalSingleTitle": "حذف {{name}}؟",
   "directory.resultCount": "النتائج: {{count}}",
-  "imPlatform.action.configure": "تكوين",
   "imPlatform.action.configureChannel": "تكوين {{provider}}",
   "imPlatform.action.connect": "اتصال",
   "imPlatform.action.copied": "تم النسخ",

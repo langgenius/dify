@@ -1,7 +1,8 @@
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import { sseGet } from '@/service/base'
+import { streamEvents } from '@/service/event-stream'
+import { workflowRunEventsRequest } from '@/service/workflow-events'
 
 type ContainerSize = {
   clientWidth: number
@@ -9,73 +10,72 @@ type ContainerSize = {
 }
 
 type WorkflowRunEventHandlers = {
-  handleWorkflowStarted: NonNullable<IOtherOptions['onWorkflowStarted']>
-  handleWorkflowFinished: NonNullable<IOtherOptions['onWorkflowFinished']>
+  handleWorkflowStarted: NonNullable<StreamCallbacks['onWorkflowStarted']>
+  handleWorkflowFinished: NonNullable<StreamCallbacks['onWorkflowFinished']>
   handleWorkflowFailed: (error?: string) => void
   handleWorkflowNodeStarted: (
-    params: Parameters<NonNullable<IOtherOptions['onNodeStarted']>>[0],
+    params: Parameters<NonNullable<StreamCallbacks['onNodeStarted']>>[0],
     containerParams: ContainerSize,
   ) => void
-  handleWorkflowNodeFinished: NonNullable<IOtherOptions['onNodeFinished']>
-  handleWorkflowNodeHumanInputRequired: NonNullable<IOtherOptions['onHumanInputRequired']>
-  handleWorkflowNodeHumanInputFormFilled: NonNullable<IOtherOptions['onHumanInputFormFilled']>
-  handleWorkflowNodeHumanInputFormTimeout: NonNullable<IOtherOptions['onHumanInputFormTimeout']>
+  handleWorkflowNodeFinished: NonNullable<StreamCallbacks['onNodeFinished']>
+  handleWorkflowNodeHumanInputRequired: NonNullable<StreamCallbacks['onHumanInputRequired']>
+  handleWorkflowNodeHumanInputFormFilled: NonNullable<StreamCallbacks['onHumanInputFormFilled']>
+  handleWorkflowNodeHumanInputFormTimeout: NonNullable<StreamCallbacks['onHumanInputFormTimeout']>
   handleWorkflowNodeIterationStarted: (
-    params: Parameters<NonNullable<IOtherOptions['onIterationStart']>>[0],
+    params: Parameters<NonNullable<StreamCallbacks['onIterationStart']>>[0],
     containerParams: ContainerSize,
   ) => void
-  handleWorkflowNodeIterationNext: NonNullable<IOtherOptions['onIterationNext']>
-  handleWorkflowNodeIterationFinished: NonNullable<IOtherOptions['onIterationFinish']>
+  handleWorkflowNodeIterationNext: NonNullable<StreamCallbacks['onIterationNext']>
+  handleWorkflowNodeIterationFinished: NonNullable<StreamCallbacks['onIterationFinish']>
   handleWorkflowNodeLoopStarted: (
-    params: Parameters<NonNullable<IOtherOptions['onLoopStart']>>[0],
+    params: Parameters<NonNullable<StreamCallbacks['onLoopStart']>>[0],
     containerParams: ContainerSize,
   ) => void
-  handleWorkflowNodeLoopNext: NonNullable<IOtherOptions['onLoopNext']>
-  handleWorkflowNodeLoopFinished: NonNullable<IOtherOptions['onLoopFinish']>
-  handleWorkflowNodeRetry: NonNullable<IOtherOptions['onNodeRetry']>
-  handleWorkflowAgentLog: NonNullable<IOtherOptions['onAgentLog']>
-  handleWorkflowTextChunk: NonNullable<IOtherOptions['onTextChunk']>
-  handleWorkflowTextReplace: NonNullable<IOtherOptions['onTextReplace']>
-  handleWorkflowReasoning: NonNullable<IOtherOptions['onReasoning']>
+  handleWorkflowNodeLoopNext: NonNullable<StreamCallbacks['onLoopNext']>
+  handleWorkflowNodeLoopFinished: NonNullable<StreamCallbacks['onLoopFinish']>
+  handleWorkflowNodeRetry: NonNullable<StreamCallbacks['onNodeRetry']>
+  handleWorkflowAgentLog: NonNullable<StreamCallbacks['onAgentLog']>
+  handleWorkflowTextChunk: NonNullable<StreamCallbacks['onTextChunk']>
+  handleWorkflowTextReplace: NonNullable<StreamCallbacks['onTextReplace']>
+  handleWorkflowReasoning: NonNullable<StreamCallbacks['onReasoning']>
   handleWorkflowPaused: () => void
 }
 
 type UserCallbackHandlers = {
-  onWorkflowStarted?: IOtherOptions['onWorkflowStarted']
-  onWorkflowFinished?: IOtherOptions['onWorkflowFinished']
-  onNodeStarted?: IOtherOptions['onNodeStarted']
-  onNodeFinished?: IOtherOptions['onNodeFinished']
-  onIterationStart?: IOtherOptions['onIterationStart']
-  onIterationNext?: IOtherOptions['onIterationNext']
-  onIterationFinish?: IOtherOptions['onIterationFinish']
-  onLoopStart?: IOtherOptions['onLoopStart']
-  onLoopNext?: IOtherOptions['onLoopNext']
-  onLoopFinish?: IOtherOptions['onLoopFinish']
-  onNodeRetry?: IOtherOptions['onNodeRetry']
-  onAgentLog?: IOtherOptions['onAgentLog']
-  onError?: IOtherOptions['onError']
-  onWorkflowPaused?: IOtherOptions['onWorkflowPaused']
-  onHumanInputRequired?: IOtherOptions['onHumanInputRequired']
-  onHumanInputFormFilled?: IOtherOptions['onHumanInputFormFilled']
-  onHumanInputFormTimeout?: IOtherOptions['onHumanInputFormTimeout']
-  onCompleted?: IOtherOptions['onCompleted']
+  onWorkflowStarted?: StreamCallbacks['onWorkflowStarted']
+  onWorkflowFinished?: StreamCallbacks['onWorkflowFinished']
+  onNodeStarted?: StreamCallbacks['onNodeStarted']
+  onNodeFinished?: StreamCallbacks['onNodeFinished']
+  onIterationStart?: StreamCallbacks['onIterationStart']
+  onIterationNext?: StreamCallbacks['onIterationNext']
+  onIterationFinish?: StreamCallbacks['onIterationFinish']
+  onLoopStart?: StreamCallbacks['onLoopStart']
+  onLoopNext?: StreamCallbacks['onLoopNext']
+  onLoopFinish?: StreamCallbacks['onLoopFinish']
+  onNodeRetry?: StreamCallbacks['onNodeRetry']
+  onAgentLog?: StreamCallbacks['onAgentLog']
+  onError?: StreamCallbacks['onError']
+  onWorkflowPaused?: StreamCallbacks['onWorkflowPaused']
+  onHumanInputRequired?: StreamCallbacks['onHumanInputRequired']
+  onHumanInputFormFilled?: StreamCallbacks['onHumanInputFormFilled']
+  onHumanInputFormTimeout?: StreamCallbacks['onHumanInputFormTimeout']
+  onCompleted?: StreamCallbacks['onCompleted']
 }
 
 type CallbackContext = {
   clientWidth: number
   clientHeight: number
-  runHistoryUrl: string
   isInWorkflowDebug: boolean
   fetchInspectVars: (params: Record<string, never>) => void
   invalidAllLastRun: () => void
-  invalidateRunHistory: (url: string) => void
+  invalidateRunHistory: () => void
   clearAbortController: () => void
   clearListeningState: () => void
   getWorkflowRunningData: () => unknown
   trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
   handlers: WorkflowRunEventHandlers
   callbacks: UserCallbackHandlers
-  restCallback: IOtherOptions
+  restCallback: StreamCallbacks
 }
 
 type BaseCallbacksContext = CallbackContext & {
@@ -83,7 +83,7 @@ type BaseCallbacksContext = CallbackContext & {
 }
 
 type FinalCallbacksContext = CallbackContext & {
-  baseSseOptions: IOtherOptions
+  baseSseOptions: StreamCallbacks
   player: AudioPlayer | null
   setAbortController: (controller: AbortController) => void
 }
@@ -91,7 +91,6 @@ type FinalCallbacksContext = CallbackContext & {
 export const createBaseWorkflowRunCallbacks = ({
   clientWidth,
   clientHeight,
-  runHistoryUrl,
   isInWorkflowDebug,
   fetchInspectVars,
   invalidAllLastRun,
@@ -104,7 +103,7 @@ export const createBaseWorkflowRunCallbacks = ({
   callbacks,
   restCallback,
   getOrCreatePlayer,
-}: BaseCallbacksContext): IOtherOptions => {
+}: BaseCallbacksContext): StreamCallbacks => {
   const {
     handleWorkflowStarted,
     handleWorkflowFinished,
@@ -149,11 +148,11 @@ export const createBaseWorkflowRunCallbacks = ({
   } = callbacks
   let hasStartedResumeStream = false
 
-  const wrappedOnError: IOtherOptions['onError'] = (params, code) => {
+  const wrappedOnError: StreamCallbacks['onError'] = (params, code) => {
     clearAbortController()
     handleWorkflowFailed(params)
     const workflowData = getWorkflowRunningData()
-    invalidateRunHistory(runHistoryUrl)
+    invalidateRunHistory()
     clearListeningState()
 
     if (onError) onError(params, code)
@@ -161,24 +160,24 @@ export const createBaseWorkflowRunCallbacks = ({
     trackWorkflowRunFailed(params, workflowData)
   }
 
-  const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError, errorMessage) => {
+  const wrappedOnCompleted: StreamCallbacks['onCompleted'] = async (hasError, errorMessage) => {
     clearAbortController()
     clearListeningState()
     if (onCompleted) onCompleted(hasError, errorMessage)
   }
 
-  const baseSseOptions: IOtherOptions = {
+  const baseSseOptions: StreamCallbacks = {
     ...restCallback,
     onWorkflowStarted: (params) => {
       handleWorkflowStarted(params)
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
 
       if (onWorkflowStarted) onWorkflowStarted(params)
     },
     onWorkflowFinished: (params) => {
       clearListeningState()
       handleWorkflowFinished(params)
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
 
       if (onWorkflowFinished) onWorkflowFinished(params)
       if (isInWorkflowDebug) {
@@ -259,12 +258,11 @@ export const createBaseWorkflowRunCallbacks = ({
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
       if (onWorkflowPaused) onWorkflowPaused(params)
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
-        const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
-        sseGet(url, {}, baseSseOptions)
+        streamEvents(workflowRunEventsRequest(params.workflow_run_id), baseSseOptions)
       }
     },
     onHumanInputRequired: (params) => {
@@ -289,7 +287,6 @@ export const createBaseWorkflowRunCallbacks = ({
 export const createFinalWorkflowRunCallbacks = ({
   clientWidth,
   clientHeight,
-  runHistoryUrl,
   isInWorkflowDebug,
   fetchInspectVars,
   invalidAllLastRun,
@@ -304,7 +301,7 @@ export const createFinalWorkflowRunCallbacks = ({
   baseSseOptions,
   player,
   setAbortController,
-}: FinalCallbacksContext): IOtherOptions => {
+}: FinalCallbacksContext): StreamCallbacks => {
   const {
     handleWorkflowFinished,
     handleWorkflowFailed,
@@ -346,14 +343,14 @@ export const createFinalWorkflowRunCallbacks = ({
   } = callbacks
   let hasStartedResumeStream = false
 
-  const finalCallbacks: IOtherOptions = {
+  const finalCallbacks: StreamCallbacks = {
     ...baseSseOptions,
     getAbortController: (controller: AbortController) => {
       setAbortController(controller)
     },
     onWorkflowFinished: (params) => {
       handleWorkflowFinished(params)
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
 
       if (onWorkflowFinished) onWorkflowFinished(params)
       if (isInWorkflowDebug) {
@@ -365,7 +362,7 @@ export const createFinalWorkflowRunCallbacks = ({
       clearAbortController()
       handleWorkflowFailed(params)
       const workflowData = getWorkflowRunningData()
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
       clearListeningState()
 
       if (onError) onError(params, code)
@@ -440,12 +437,11 @@ export const createFinalWorkflowRunCallbacks = ({
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
       if (onWorkflowPaused) onWorkflowPaused(params)
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
-        const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
-        sseGet(url, {}, finalCallbacks)
+        streamEvents(workflowRunEventsRequest(params.workflow_run_id), finalCallbacks)
       }
     },
     onHumanInputRequired: (params) => {

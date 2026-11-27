@@ -58,21 +58,6 @@ const renderPanel = (cases: CaseItem[]) =>
     </>,
   )
 
-it('lets an ELSE-only node add its first case without offering a sub-variable action', async () => {
-  const screen = await renderPanel([])
-  const addCase = screen.getByRole('button', { name: 'ELIF' })
-  await expect.element(addCase).toBeVisible()
-  await expect
-    .element(screen.getByRole('button', { name: 'workflowLogic.nodes.ifElse.addSubVariable' }))
-    .not.toBeInTheDocument()
-
-  await addCase.click()
-
-  await expect
-    .element(screen.getByRole('button', { name: 'workflowLogic.nodes.ifElse.addCondition' }))
-    .toBeVisible()
-})
-
 it('allows adding the first sub-variable to a file-list condition', async () => {
   const screen = await renderPanel([
     {

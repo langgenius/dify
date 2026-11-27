@@ -22,6 +22,7 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 
 const EDUCATION_AUTOCOMPLETE_PAGE_SIZE = 40
 
@@ -50,7 +51,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
       }),
       initialPageParam: 0,
       getNextPageParam: (lastPage) => (lastPage.has_next ? lastPage.curr_page + 1 : undefined),
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
     enabled: hasSearchQuery && !!debouncedSearchQuery,
     placeholderData: keepPreviousData,
@@ -67,7 +68,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const errorMessage =
     isDefinedError(error) && error.code === 'billing_unavailable'
       ? t(($) => $['errors.unavailable'], { ns: 'billing' })
-      : t(($) => $['dynamicSelect.error'], { ns: 'common' })
+      : (getRequestErrorMessage(error) ?? t(($) => $['dynamicSelect.error'], { ns: 'common' }))
   const shouldShowEmpty = shouldOpenPopup && footerState === null && suggestions.length === 0
   const canLoadMore = shouldOpenPopup && hasNextPage && !isLoading && !isError
 

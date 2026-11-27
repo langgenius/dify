@@ -23,13 +23,18 @@ from core.entities.provider_configuration import ProviderConfigurations
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeBadRequestError
 from libs.external_api import ExternalApi
+from machinery.context import RequestContext
 from models.model import AppMode, AppModelConfig
+from services.agent.console_runtime import AgentConsoleConversationMissingError, AgentConsolePreviewDisabledError
+from services.agent.errors import AgentNotFoundError
 from services.agent.workspace_service import AgentWorkspaceError
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
@@ -44,6 +49,14 @@ _MODEL_ID = "gpt-4o-mini"
 @pytest.mark.parametrize(
     ("error", "expected_type", "description"),
     [
+        (
+            AgentConsoleConversationMissingError(),
+            completion_module.AgentChatConversationNotFoundError,
+            "Conversation Not Exists.",
+        ),
+        (AgentConsolePreviewDisabledError(), console_errors.AgentPreviewUnavailableError, None),
+        (AgentAppNotFoundError(), AgentNotFoundError, "Agent not found."),
+        (AgentNotFoundError(), AgentNotFoundError, "Agent not found."),
         (ConversationNotExistsError(), NotFound, "Conversation Not Exists."),
         (ConversationCompletedError(), console_errors.ConversationCompletedError, None),
         (AppModelConfigBrokenError(), console_errors.AppUnavailableError, None),
@@ -88,25 +101,24 @@ def test_chat_and_finalization_share_console_error_mapping(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     unbound_session: Session,
+    account_application_services: ApplicationServices,
 ) -> None:
-    def fail(**_kwargs: object) -> None:
+    """Both entry points preserve Console errors and apply their own empty-error fallback."""
+
+    def fail(*_args: object, **_kwargs: object) -> None:
         raise error
 
     monkeypatch.setattr(completion_module.AppGenerateService, "generate", fail)
-    monkeypatch.setattr(completion_module.AppGenerateService, "finalize_agent_build_chat", fail)
-    monkeypatch.setattr(
-        completion_module, "_resolve_current_user_agent_debug_conversation_id", lambda **_kwargs: "conv"
-    )
+    monkeypatch.setitem(app.extensions, "application_services", account_application_services)
+    monkeypatch.setattr(account_application_services.agent_apps.runtime, "finalize_build_chat", fail)
 
     def invoke() -> object:
         if finalization:
-            return completion_module._create_build_chat_finalization_message(
-                session=unbound_session,
-                current_user=make_account(),
-                app_model=make_app(mode=AppMode.AGENT),
-                current_tenant_id=_TENANT_ID,
-                agent_id="agent-1",
+            context = RequestContext(
+                request_id="finalize", trace_id=None, account_id="account-1", active_workspace_id=_TENANT_ID
             )
+            resource = completion_module.AgentBuildChatFinalizeApi()
+            return unwrap(resource.post)(resource, context, uuid4())
         return completion_module._generate_chat_message(
             session=unbound_session,
             current_user=make_account(),
@@ -117,9 +129,9 @@ def test_chat_and_finalization_share_console_error_mapping(
 
     with app.test_request_context(), pytest.raises(expected_type) as caught:
         invoke()
-    if expected_type in (AgentAppGeneratorError, AgentAppRuntimeRequestBuildError, ValueError):
+    if type(error) is expected_type:
         assert caught.value is error
-    elif not isinstance(error, console_errors.CompletionRequestError):
+    else:
         assert caught.value.__cause__ is error
     if isinstance(error, AgentBackendError | AgentWorkspaceError) and not str(error):
         description = "Build chat finalization failed." if finalization else "Agent request failed."

@@ -37,6 +37,7 @@ class RecordingLLM(LargeLanguageModel):
         super().__init__(provider_schema=template.provider_schema, model_runtime=template.model_runtime)
         self.parts = parts
         self.invocations = 0
+        self.credential_calls: list[dict[str, Any]] = []
         self.stream_closed = False
         self.last_prompt_messages: list[PromptMessage] | None = None
 
@@ -55,6 +56,7 @@ class RecordingLLM(LargeLanguageModel):
         request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult | Generator[LLMResultChunk]:
         self.invocations += 1
+        self.credential_calls.append(dict(credentials))
         self.last_prompt_messages = prompt_messages
         if stream:
             return self._stream(model)

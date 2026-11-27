@@ -17,7 +17,6 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { isDefinedError } from '@orpc/client'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -45,6 +44,7 @@ import {
 import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import { startIpPolicyForm } from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { AccessControlChipAffix } from './chip-affix'
 import { getAccessControlChipState, getAccessControlStatusChipState } from './chip-status'
 import { AccessControlConfigPanel } from './config-panel'
@@ -133,7 +133,6 @@ function AccessControlSession({
   const bindingQuery = useQuery(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
       input: { params: { app_id: appId } },
-      context: { silent: true },
       retry: false,
       enabled: canFetchNetworkAccess && Boolean(appId),
     }),
@@ -165,19 +164,20 @@ function AccessControlSession({
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.checkCurrentIp.get
   const ipCheck = useQuery(
     checkCurrentIp.queryOptions({
-      input: selectedPolicyId ? { params: { group_id: selectedPolicyId } } : skipToken,
-      enabled:
+      input:
         canFetchNetworkAccess &&
         canEditBinding &&
         bindingQuery.data?.entitled === true &&
         open &&
-        view === 'config',
-      context: { silent: true },
-      staleTime: 0,
+        view === 'config' &&
+        selectedPolicyId
+          ? { params: { group_id: selectedPolicyId } }
+          : skipToken,
+      meta: { errorToast: false },
       retry: false,
     }),
   )
-  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
+  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ meta: { errorToast: false } }))
 
   if (!canFetchNetworkAccess) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null
@@ -347,28 +347,7 @@ function AccessControlSession({
             expected_version: binding?.version ?? 0,
           },
         },
-        {
-          onSuccess: (data) => {
-            queryClient.setQueryData(
-              consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
-                input: { params: { app_id: appId } },
-              }),
-              (current) => (current ? { ...current, ...data } : current),
-            )
-            onSuccess?.()
-          },
-          onError: (error) => {
-            if (!isDefinedError(error) || error.code !== 'network_access_version_conflict') return
-            void queryClient.invalidateQueries({
-              queryKey: consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
-                input: { params: { app_id: appId } },
-              }),
-            })
-            void queryClient.invalidateQueries({
-              queryKey: consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
-            })
-          },
-        },
+        { onSuccess: () => onSuccess?.() },
       )
       .then(
         () => {
@@ -573,6 +552,7 @@ function AccessControlSession({
                       ? 'error'
                       : undefined
                 }
+                ipCheckErrorMessage={getRequestErrorMessage(saveCheck.error ?? ipCheck.error)}
                 onRetryIpCheck={() => {
                   saveCheck.reset()
                   void ipCheck.refetch()
@@ -627,20 +607,7 @@ function AccessControlSession({
                   },
                 },
                 {
-                  onSuccess: (data) => {
-                    queryClient.setQueryData(
-                      consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions()
-                        .queryKey,
-                      (current) => {
-                        if (!current) return current
-                        if (current.groups.some((group) => group.id === data.group.id))
-                          return current
-                        return {
-                          ...current,
-                          groups: [...current.groups, data.group],
-                        }
-                      },
-                    )
+                  onSuccess: () => {
                     if (policyDialogSessionRef.current !== session) return
                     setPolicyFormSession(null)
                     setView('config')
@@ -694,7 +661,8 @@ function AccessControlSession({
             )}
             {saveCheck.isError && (
               <p role="alert" className="system-sm-regular text-text-warning">
-                {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+                {getRequestErrorMessage(saveCheck.error) ??
+                  t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
               </p>
             )}
           </div>

@@ -18,7 +18,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { isDefinedError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +27,7 @@ import { getCountQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { InvitationResultsContent } from '../invitation-results-content'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
@@ -50,7 +51,7 @@ type InviteFormProps = {
   isEmailSetup: boolean
   isPending: boolean
   errorCode: InviteFieldErrorCode | null
-  hasError: boolean
+  error: unknown
   results: InvitationResults | undefined
   onSubmit: (
     emails: string[],
@@ -65,7 +66,7 @@ function InviteForm({
   isEmailSetup,
   isPending,
   errorCode,
-  hasError,
+  error,
   results,
   onSubmit,
   onDismissError,
@@ -90,8 +91,9 @@ function InviteForm({
         ? { role: t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' }) }
         : undefined
   const formError =
-    hasError && !fieldErrors
-      ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
+    error && !fieldErrors
+      ? (getRequestErrorMessage(error) ??
+        t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }))
       : null
   const memberLimit = features
     ? getCountQuota(
@@ -244,7 +246,6 @@ function InviteForm({
 export function InviteModal({ onSend }: InviteModalProps) {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
-  const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const { data: isEmailSetup } = useSuspenseQuery({
@@ -255,17 +256,8 @@ export function InviteModal({ onSend }: InviteModalProps) {
     !isEmailSetup && results.some(({ status }) => status === 'success')
   const { mutate, reset, isPending, error, data } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (response) => {
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.members.get.key(),
-        })
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
-            input: { params: { workspace_id: response.tenant_id } },
-          }),
-        })
         const results = response.invitation_results
         onSend(results.map(({ email }) => email.toLowerCase()))
         if (results.every(({ status }) => status === 'success') && !showsInvitationLinks(results))
@@ -335,7 +327,7 @@ export function InviteModal({ onSend }: InviteModalProps) {
                 isPending={isBusy}
                 // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
                 errorCode={isDefinedError(error) ? error.code : null}
-                hasError={!!error}
+                error={error}
                 results={data?.invitation_results}
                 onSubmit={handleSubmit}
                 onDismissError={() => {

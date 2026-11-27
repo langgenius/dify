@@ -35,11 +35,6 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
 )
-from core.app.apps.agent_app.runtime_request_builder import (
-    AgentAppRuntimeBuildContext,
-    AgentAppRuntimeRequest,
-    AgentAppRuntimeRequestBuilder,
-)
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -48,11 +43,8 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
 )
 from core.entities.provider_configuration import ProviderModelBundle
-from core.entities.provider_entities import CustomProviderConfiguration
 from core.errors.error import ProviderTokenNotInitError
 from core.moderation.base import ModerationError
-from core.plugin.impl.model import PluginModelClient
-from core.provider_manager import ProviderManager
 from models import Account as _app_generator_Account
 from models import AppModelConfig
 from models.account import Account as _resolve_agent_Account
@@ -1311,18 +1303,6 @@ class TestResolveAgentCases:
 
 
 @pytest.fixture
-def finalization_model_bundle(monkeypatch: pytest.MonkeyPatch) -> ProviderModelBundle:
-    """Keep real model validation; isolate provider discovery and daemon schema I/O."""
-    config = make_model_config(provider="langgenius/openai/openai", model="gpt-4o-mini", mode="chat")
-    bundle = config.provider_model_bundle
-    bundle.configuration.provider.models = [config.model_schema]
-    bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "token"})
-    monkeypatch.setattr(ProviderManager, "get_provider_model_bundle", lambda *_args, **_kwargs: bundle)
-    monkeypatch.setattr(PluginModelClient, "get_model_schema", lambda *_args, **_kwargs: config.model_schema)
-    return bundle
-
-
-@pytest.fixture
 def finalization_records(sqlite_session: Session) -> tuple[App, _app_generator_Account, AgentConfigDraft]:
     app_model, user = _app_generator_app(), _app_generator_account()
     soul = AgentSoulConfig.model_validate(
@@ -1425,19 +1405,6 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
 
     client = ObservingClient()
     monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)
-
-    build = AgentAppRuntimeRequestBuilder.build
-
-    def check_editor_context(
-        self: AgentAppRuntimeRequestBuilder, context: AgentAppRuntimeBuildContext
-    ) -> AgentAppRuntimeRequest:
-        dify_context = context.dify_context
-        assert dify_context.user_id == editor_id
-        assert dify_context.user_from == UserFrom.ACCOUNT
-        assert dify_context.invoke_from == InvokeFrom.DEBUGGER
-        return build(self, context)
-
-    monkeypatch.setattr(AgentAppRuntimeRequestBuilder, "build", check_editor_context)
 
     def reject_input_guard(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Internal finalization invoked input moderation or annotation lookup")

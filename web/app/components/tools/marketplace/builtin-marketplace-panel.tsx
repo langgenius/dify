@@ -28,7 +28,7 @@ export function BuiltinMarketplacePanel({
 
   return (
     <>
-      <div ref={toolListTailRef} />
+      <div ref={toolListTailRef} aria-hidden className="h-px shrink-0" />
       <Marketplace
         marketplace={marketplace}
         searchPluginText={keywords}

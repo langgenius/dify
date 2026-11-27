@@ -700,7 +700,7 @@ def _compatible_session_snapshot() -> SessionSnapshot:
 
 def _runner(
     client: AgentBackendRunClient,
-    store: _FakeSessionStore,
+    store: AgentAppWorkspaceStore,
     *,
     text_delta_debounce_seconds: float = 0,
 ) -> AgentAppRunner:
@@ -1690,6 +1690,85 @@ def test_stopped_task_persists_partial_usage(sqlite_session: Session) -> None:
     assert message.total_price == Decimal("0.21")
     assert message.message_metadata is not None
     assert json.loads(message.message_metadata)["usage"]["total_tokens"] == 21
+
+
+def test_stop_during_terminal_response_close_persists_snapshot_and_usage(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Keep the succeeded backend result when Stop becomes visible during SSE cleanup."""
+    with sqlite_session_factory.begin() as session:
+        app = make_app(app_id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
+        workspace = AgentWorkspace(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+            owner_id="conv-1",
+            owner_scope_key="root",
+            backend_workspace_ref="backend-workspace-1",
+        )
+        binding = AgentWorkspaceBinding(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workspace_id=workspace.id,
+            agent_id="agent-1",
+            agent_config_version_id="snap-1",
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+            base_home_snapshot_id="home-1",
+            backend_binding_ref="backend-binding-1",
+        )
+        conversation = make_conversation(
+            conversation_id="conv-1",
+            app_id=app.id,
+            mode=AppMode.AGENT,
+            from_source=ConversationFromSource.API,
+            from_end_user_id="user-1",
+            invoke_from=ModelInvokeFrom.WEB_APP,
+            agent_workspace_binding_id=binding.id,
+        )
+        session.add_all([app, conversation, workspace, binding, _message_record()])
+        binding_id = binding.id
+
+    queue = _FakeQueueManager()
+    snapshot = SessionSnapshot(layers={"history": {"messages": []}})
+    terminal = RunSucceededEvent(
+        run_id="run-1",
+        id="1-0",
+        data=RunSucceededEventData(
+            output="answer",
+            session_snapshot=snapshot,
+            usage=AgentRunUsage(prompt_tokens=7, completion_tokens=5, total_price=Decimal("0.12")),
+        ),
+    )
+
+    class StopOnCloseStream(httpx.SyncByteStream):
+        @override
+        def __iter__(self) -> Iterator[bytes]:
+            yield f"data: {terminal.model_dump_json()}\n\n".encode()
+
+        @override
+        def close(self) -> None:
+            queue.request_stop()
+
+    requests: list[tuple[str, str]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append((request.method, request.url.path))
+        if request.url.path == "/runs":
+            return httpx.Response(201, json={"run_id": "run-1", "status": "running"})
+        if request.url.path == "/runs/run-1/events/sse":
+            return httpx.Response(200, stream=StopOnCloseStream())
+        return httpx.Response(409, json={"detail": "Run already succeeded"})
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http_client:
+        client = DifyAgentBackendRunClient(Client(base_url="http://agent-backend", sync_http_client=http_client))
+        with pytest.raises(GenerateTaskStoppedError):
+            _run(_runner(client, AgentAppWorkspaceStore()), queue)
+
+    assert requests == [("POST", "/runs"), ("GET", "/runs/run-1/events/sse")]
+    with sqlite_session_factory() as observer:
+        message = observer.get_one(Message, "msg-1")
+        assert (message.message_tokens, message.answer_tokens, message.total_price) == (7, 5, Decimal("0.12"))
+        assert observer.get_one(AgentWorkspaceBinding, binding_id).session_snapshot == snapshot.model_dump_json()
 
 
 def test_cancel_and_wait_failure_preserves_stopped_app_outcome() -> None:

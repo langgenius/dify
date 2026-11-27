@@ -15,9 +15,11 @@ from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelCon
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.entities.provider_configuration import ProviderModelBundle
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.provider_manager import ProviderManager
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.llm_entities import LLMMode
@@ -29,6 +31,18 @@ from models.model import App, AppMode, Conversation, Message
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 PROVIDER = "langgenius/openai/openai"
+
+
+@pytest.fixture
+def finalization_model_bundle(monkeypatch: pytest.MonkeyPatch) -> ProviderModelBundle:
+    """Keep real model validation with local provider discovery and a fixed model schema."""
+    config = make_model_config(provider=PROVIDER, model="gpt-4o-mini", mode=LLMMode.CHAT)
+    bundle = config.provider_model_bundle
+    bundle.configuration.provider.models = [config.model_schema]
+    bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "token"})
+    monkeypatch.setattr(ProviderManager, "get_provider_model_bundle", lambda *_args, **_kwargs: bundle)
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", lambda *_args, **_kwargs: config.model_schema)
+    return bundle
 
 
 @pytest.fixture

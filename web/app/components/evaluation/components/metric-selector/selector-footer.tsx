@@ -1,12 +1,15 @@
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import Link from '@/next/link'
+import DocLearnMoreLink from '../doc-learn-more-link'
 
 type SelectorFooterProps = {
   title: string
   description: string
   infoLabel: string
   infoDescription: string
+  infoDocPath?: DocPathWithoutLang
   createLabel: string
   createHref?: string
   disabled?: boolean
@@ -18,6 +21,7 @@ const SelectorFooter = ({
   description,
   infoLabel,
   infoDescription,
+  infoDocPath,
   createLabel,
   createHref,
   disabled = false,
@@ -44,6 +48,12 @@ const SelectorFooter = ({
           <InfotipTrigger aria-label={infoLabel} />
           <InfotipContent aria-label={infoLabel} className="max-w-72">
             {infoDescription}
+            {infoDocPath && (
+              <>
+                {' '}
+                <DocLearnMoreLink path={infoDocPath} />
+              </>
+            )}
           </InfotipContent>
         </Infotip>
         {createHref && (
