@@ -48,5 +48,8 @@ it('reports original property names from JSON Pointer paths', () => {
     },
   }
   const details = validateInput(schema, { 'a/b': { '~1': 'wrong', '': 'wrong' } })
-  expect(details.map((detail) => detail.loc)).toEqual([['a/b', '~1'], ['a/b', '']])
+  expect(details.map((detail) => detail.loc)).toEqual([
+    ['a/b', '~1'],
+    ['a/b', ''],
+  ])
 })
