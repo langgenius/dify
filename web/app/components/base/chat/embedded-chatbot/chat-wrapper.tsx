@@ -10,8 +10,10 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
+import ConnectionLoadState from '@/app/components/share/connections/connection-load-state'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -454,11 +456,24 @@ const ChatWrapper = () => {
         ? { type: 'app' as const, appId, appSourceType }
         : undefined
 
+  const isStartingConversation = !currentConversationId && !connectionSetupComplete
+  if (isStartingConversation && connections?.status === 'loading')
+    return <LoadingPlaceholder className="h-full" />
+
+  if (isStartingConversation && connections?.status === 'error' && !connections.services.length)
+    return (
+      <div className="mx-auto w-full max-w-150 p-6">
+        <ConnectionLoadState error onRetry={connections.retry} />
+      </div>
+    )
+
   if (
+    isStartingConversation &&
     connections &&
-    connections.status !== 'inactive' &&
-    !currentConversationId &&
-    !connectionSetupComplete
+    connections.services.length > 0 &&
+    (connections.status === 'ready' ||
+      connections.status === 'error' ||
+      connections.status === 'sign-in-required')
   )
     return (
       <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">

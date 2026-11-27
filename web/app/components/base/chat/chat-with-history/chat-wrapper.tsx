@@ -12,9 +12,11 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { InstalledConnectionSetup } from '@/app/components/explore/installed-app/connections'
 import { useOptionalInstalledAppConnections } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
+import ConnectionLoadState from '@/app/components/share/connections/connection-load-state'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionDialog from '@/app/components/share/connections/webapp-connection-dialog'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
@@ -319,13 +321,15 @@ const ChatWrapper = () => {
   const [descExpanded, setDescExpanded] = useState(false)
 
   const description = appData?.site.description
-  const showConnectionSetup = Boolean(
-    connections &&
-    connections.status !== 'inactive' &&
-    !currentConversationId &&
-    !connectionSetupComplete,
+  const isStartingConversation = !currentConversationId && !connectionSetupComplete
+  const hasRequiredConnections = Boolean(
+    webAppConnections?.services.length ?? installedConnections?.requirements.length,
   )
   const signInRequired = connections?.status === 'sign-in-required'
+  const showConnectionSetup =
+    isStartingConversation &&
+    hasRequiredConnections &&
+    (connections?.status === 'ready' || connections?.status === 'error' || signInRequired)
   const showConnectionSignIn = showConnectionSetup && signInRequired
   const showIntroduction =
     (!!description || showConnectionSetup) && !currentConversationId && !hasSent
@@ -452,6 +456,16 @@ const ChatWrapper = () => {
       : appId
         ? { type: 'app' as const, appId, appSourceType }
         : undefined
+
+  if (isStartingConversation && connections?.status === 'loading')
+    return <LoadingPlaceholder className="h-full" />
+
+  if (isStartingConversation && connections?.status === 'error' && !hasRequiredConnections)
+    return (
+      <div className="mx-auto w-full max-w-150 p-6">
+        <ConnectionLoadState error onRetry={() => void connections.retry()} />
+      </div>
+    )
 
   if (showConnectionSetup && !showConnectionSignIn)
     return (
