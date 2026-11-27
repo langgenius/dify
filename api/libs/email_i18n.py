@@ -15,7 +15,6 @@ from typing import Any, Protocol
 from flask import render_template
 from pydantic import BaseModel, Field
 
-from extensions.ext_mail import mail
 from services.entities.feature_entities import BrandingModel
 from services.system_feature_service import SystemFeatureService
 
@@ -147,12 +146,29 @@ class EmailSender(Protocol):
         ...
 
 
+class MailClient(Protocol):
+    """Port for the configured mail extension; bound at app initialization."""
+
+    def is_inited(self) -> bool:
+        """Return whether a provider has been configured."""
+        ...
+
+    def send(self, to: str, subject: str, html: str, from_: str = "") -> None:
+        """Send through the configured provider, propagating delivery failures."""
+        ...
+
+
+# The extension bootstrap installs the singleton gateway. Before bootstrap,
+# internationalized mail keeps the existing no-send behavior.
+mail: MailClient | None = None
+
+
 class FlaskMailSender:
-    """Flask-Mail based email sender."""
+    """Forward email to the mail gateway installed by the extension."""
 
     def send_email(self, to: str, subject: str, html_content: str):
-        """Send email using Flask-Mail."""
-        if mail.is_inited():
+        """Send when initialized; otherwise do not deliver or mutate state."""
+        if mail is not None and mail.is_inited():
             mail.send(to=to, subject=subject, html=html_content)
 
 

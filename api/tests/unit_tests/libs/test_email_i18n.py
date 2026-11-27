@@ -551,6 +551,32 @@ class TestEmailI18nIntegration:
             # Restore original mail
             libs.email_i18n.mail = original_mail
 
+    def test_flask_mail_sender_before_extension_bootstrap(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An unbound gateway must not try network I/O."""
+        from libs import email_i18n
+
+        monkeypatch.setattr(email_i18n, "mail", None)
+        email_i18n.FlaskMailSender().send_email("test@example.com", "Subject", "<p>Body</p>")
+
+    def test_mail_extension_wires_the_i18n_gateway(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Extension bootstrap must wire the same initialized sender used by tasks."""
+        from configs import DifyConfig
+        from extensions import ext_mail
+        from libs import email_i18n
+
+        gateway = ext_mail.Mail()
+        monkeypatch.setattr(email_i18n, "mail", None)
+        monkeypatch.setattr(ext_mail, "mail", gateway)
+        monkeypatch.setattr(ext_mail, "dify_config", DifyConfig(MAIL_TYPE="rasket", RASKET_API_KEY="rk_test_key"))
+
+        from dify_app import DifyApp
+
+        app = DifyApp(__name__)
+        ext_mail.init_app(app)
+
+        assert email_i18n.mail is gateway
+        assert gateway.is_inited()
+
     def test_flask_mail_sender_initialized(self) -> None:
         """Test FlaskMailSender when mail is initialized"""
         sender = FlaskMailSender()
