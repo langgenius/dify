@@ -1,4 +1,4 @@
-"""Revision b43e8c1d9a72's PostgreSQL builder origin backfill, also used at rollout cutover."""
+"""PostgreSQL Builder origin backfill shared by the End User revision and rollout cutover."""
 
 import sqlalchemy as sa
 from sqlalchemy.engine import Connection

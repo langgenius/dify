@@ -1,15 +1,8 @@
-import importlib.util
 import json
-from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
-import sqlalchemy as sa
-from alembic.migration import MigrationContext
-from alembic.operations import Operations
 from sqlalchemy.orm import Session, sessionmaker
 
 from context.connection_execution import (
@@ -182,38 +175,6 @@ def test_celery_serialization_preserves_references_and_rejects_replacement(execu
     )
     with pytest.raises(ValueError, match="immutable"):
         _update_workflow_run_from_execution(run, changed)
-
-
-@dataclass(frozen=True)
-class ContextMigration:
-    upgrade: Callable[[], None]
-    downgrade: Callable[[], None]
-
-
-def test_nullable_context_migration_preserves_existing_runs() -> None:
-    path = (
-        Path(__file__).resolve().parents[3]
-        / "migrations/versions/2026_10_22_1000-d64a3c92f810_add_run_connection_context.py"
-    )
-    spec = importlib.util.spec_from_file_location("run_context_migration", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    migration = ContextMigration(module.upgrade, module.downgrade)
-    engine = sa.create_engine("sqlite://")
-    with engine.begin() as connection:
-        connection.exec_driver_sql("CREATE TABLE workflow_runs (id TEXT PRIMARY KEY, graph TEXT)")
-        connection.exec_driver_sql("INSERT INTO workflow_runs VALUES ('legacy', '{}')")
-        vars(module)["op"] = Operations(MigrationContext.configure(connection))
-        migration.upgrade()
-        assert connection.exec_driver_sql("SELECT connection_context FROM workflow_runs").scalar() is None
-        migration.downgrade()
-        assert connection.exec_driver_sql("SELECT graph FROM workflow_runs").scalar() == "{}"
-        assert "connection_context" not in {
-            column["name"] for column in sa.inspect(connection).get_columns("workflow_runs")
-        }
-    engine.dispose()
 
 
 def test_logstore_keeps_the_same_secret_free_run_snapshot(

@@ -2,7 +2,6 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from importlib import import_module
 from threading import Barrier
 from uuid import uuid4
 
@@ -16,6 +15,7 @@ from repositories.app.console_repository import ConsoleAppRepository
 from services.consumer_service import ConsumerIdentity
 from tests.helpers.consumer import new_consumer_run
 from tests.helpers.end_user_api_key import make_harness
+from tests.helpers.end_user_auth_migration import end_user_auth_revision
 
 
 def test_first_usage_and_favorite_preserve_both_updates(db_session_with_containers: Session) -> None:
@@ -75,9 +75,8 @@ def test_recent_backfill_does_not_import_console_favorites(db_session_with_conta
         session.add(
             AppStar(account_id=base.context.account_id, tenant_id=base.context.tenant_id, app_id=base.context.app_id)
         )
-    migration = import_module("migrations.versions.2026_11_04_1200-6a1f3e8c2d47_add_account_webapps")
     with sessions.begin() as session:
-        migration.backfill_recent_usage(session.connection())
+        end_user_auth_revision.backfill_recent_usage(session.connection())
     with sessions() as session:
         state = session.scalar(select(AccountWebApp).where(AccountWebApp.account_id == base.context.account_id))
         assert state is not None

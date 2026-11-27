@@ -1,8 +1,7 @@
-"""Exercise migration retries against a real PostgreSQL catalog and transaction manager."""
+"""Exercise retries of the squashed revision against PostgreSQL's catalog and transaction manager."""
 
 from collections.abc import Iterator
 from datetime import datetime
-from importlib import import_module
 from uuid import uuid4
 
 import pytest
@@ -14,16 +13,12 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from testcontainers.postgres import PostgresContainer
 
 from migrations.builder_workspace_origin_v1 import backfill_at_cutover
-
-_LINK = "2026_10_16_1000-b27e8d49a103_link_browser_end_users_to_accounts"
-_CONSUMER_INDEXES = "2026_10_30_1600-b73e9c40a215_add_consumer_execution_indexes"
-_BUILDER_ORIGIN = "2026_11_03_1000-b43e8c1d9a72_record_builder_workspace_origin"
-_MESSAGE_INDEX = "2026_11_11_1600-2c7e9a4b1d60_add_message_app_workflow_run_index"
+from tests.helpers.end_user_auth_migration import create_end_user_parent_schema, end_user_auth_revision
 
 
 @pytest.fixture
 def migration_database(postgres_container: PostgresContainer) -> Iterator[Connection]:
-    """Provide an isolated schema on the CI PostgreSQL worker, without touching its app tables."""
+    """Provide the parent schema in an isolated namespace without touching the worker's app tables."""
     engine = sa.create_engine(
         URL.create(
             "postgresql+psycopg2",
@@ -39,6 +34,20 @@ def migration_database(postgres_container: PostgresContainer) -> Iterator[Connec
         with engine.connect() as bind:
             bind.execute(sa.schema.CreateSchema(schema))
             bind.execute(sa.text("SELECT pg_catalog.set_config('search_path', :schema, false)"), {"schema": schema})
+            parent = create_end_user_parent_schema(bind)
+            bind.execute(
+                parent.tables["end_users"].insert(),
+                [
+                    {
+                        "id": str(uuid4()),
+                        "tenant_id": "11111111-1111-1111-1111-111111111111",
+                        "app_id": "22222222-2222-2222-2222-222222222222",
+                        "type": "browser",
+                        "session_id": "guest",
+                    }
+                    for _ in range(2)
+                ],
+            )
             bind.commit()
             try:
                 yield bind
@@ -50,35 +59,27 @@ def migration_database(postgres_container: PostgresContainer) -> Iterator[Connec
         engine.dispose()
 
 
-def _apply(bind: Connection, migration_name: str, *, upgrade: bool = True) -> None:
-    """Apply the DDL without stamping; a second invocation represents recovery before the stamp."""
+def _apply(bind: Connection, *, upgrade: bool = True, interrupt_before_stamp: bool = False) -> None:
+    """Run the revision in Alembic's transaction, optionally rolling back the unstamped final DDL."""
     assert not bind.in_transaction()
-    migration = import_module(f"migrations.versions.{migration_name}")
     context = MigrationContext.configure(bind)
     with Operations.context(context), context.begin_transaction():
         if upgrade:
-            migration.upgrade()
+            end_user_auth_revision.upgrade()
         else:
-            migration.downgrade()
-
-
-def _end_users(bind: Connection) -> None:
-    """Create the prior table with two unrelated guest rows in one scope."""
-    bind.exec_driver_sql("CREATE TABLE end_users (id int PRIMARY KEY, tenant_id text, app_id text, type text)")
-    bind.exec_driver_sql(
-        "INSERT INTO end_users VALUES (1, 'tenant', 'app', 'browser'), (2, 'tenant', 'app', 'browser')"
-    )
+            end_user_auth_revision.downgrade()
+        if interrupt_before_stamp:
+            raise RuntimeError("interrupted before Alembic stamp")
 
 
 def _index_id(bind: Connection, name: str) -> int | None:
-    """Read an index's catalog identity, or None if absent, without mutations."""
+    """Read the catalog identity of a present index without changing its definition."""
     return bind.scalar(sa.text("SELECT CAST(pg_catalog.to_regclass(:name) AS oid)"), {"name": name})
 
 
 def test_link_attaches_a_completed_unique_index_without_rebuilding(migration_database: Connection) -> None:
-    """Recover after the index commit, keep guest rows, and enforce the original unique key."""
+    """Recover an index committed before constraint attachment; preserve guests and enforce linked uniqueness."""
     bind = migration_database
-    _end_users(bind)
     bind.exec_driver_sql("ALTER TABLE end_users ADD COLUMN account_id UUID")
     bind.exec_driver_sql(
         "CREATE UNIQUE INDEX end_user_app_account_key ON end_users (tenant_id, app_id, type, account_id)"
@@ -87,8 +88,7 @@ def test_link_attaches_a_completed_unique_index_without_rebuilding(migration_dat
     assert index_id is not None
     bind.commit()
 
-    _apply(bind, _LINK)
-    _apply(bind, _LINK)
+    _apply(bind)
     keys = sa.inspect(bind).get_unique_constraints("end_users")
     assert [(key["name"], key["column_names"]) for key in keys] == [
         ("end_user_app_account_key", ["tenant_id", "app_id", "type", "account_id"])
@@ -98,105 +98,144 @@ def test_link_attaches_a_completed_unique_index_without_rebuilding(migration_dat
     bind.commit()
 
     with pytest.raises(IntegrityError, match="end_user_app_account_key"), bind.begin():
-        bind.execute(sa.text("UPDATE end_users SET account_id = '11111111-1111-1111-1111-111111111111'"))
+        bind.execute(sa.text("UPDATE end_users SET account_id = '33333333-3333-3333-3333-333333333333'"))
 
-    _apply(bind, _LINK, upgrade=False)
-    _apply(bind, _LINK, upgrade=False)
+    _apply(bind, upgrade=False)
     assert bind.scalar(sa.text("SELECT count(*) FROM end_users")) == 2
     assert _index_id(bind, "end_user_app_account_key") is None
 
 
 def test_link_refuses_an_abandoned_invalid_unique_index(migration_database: Connection) -> None:
-    """Leave invalid concurrent-build residue for inspection instead of attaching or replacing it."""
+    """Leave invalid build residue for inspection rather than replacing or attaching it."""
     bind = migration_database
-    _end_users(bind)
     bind.exec_driver_sql("ALTER TABLE end_users ADD COLUMN account_id UUID")
-    bind.exec_driver_sql("UPDATE end_users SET account_id = '11111111-1111-1111-1111-111111111111'")
+    bind.exec_driver_sql("UPDATE end_users SET account_id = '33333333-3333-3333-3333-333333333333'")
     bind.commit()
 
     with pytest.raises(IntegrityError):
-        _apply(bind, _LINK)
+        _apply(bind)
     index_id = _index_id(bind, "end_user_app_account_key")
     assert index_id is not None
     assert not sa.inspect(bind).get_unique_constraints("end_users")
     bind.commit()
 
     with pytest.raises(RuntimeError, match="unhealthy"):
-        _apply(bind, _LINK)
+        _apply(bind)
     assert _index_id(bind, "end_user_app_account_key") == index_id
     assert bind.scalar(sa.text("SELECT count(*) FROM end_users WHERE account_id IS NOT NULL")) == 2
 
 
-def test_consumer_indexes_resume_after_only_one_build_commits(migration_database: Connection) -> None:
-    """Keep a previously completed index and complete the missing workflow index."""
+def test_upgrade_and_downgrade_resume_after_committed_indexes_but_no_stamp(migration_database: Connection) -> None:
+    """Reuse a partial index build and roll back the final DDL when interrupted before either stamp."""
     bind = migration_database
-    _end_users(bind)
     bind.exec_driver_sql("ALTER TABLE end_users ADD COLUMN account_id UUID")
-    bind.exec_driver_sql(
-        "CREATE TABLE workflow_runs (tenant_id text, app_id text, created_by_role text, "
-        "created_by text, triggered_from text, created_at timestamp)"
-    )
     bind.exec_driver_sql(
         "CREATE INDEX end_user_account_apps_idx ON end_users (account_id, type, tenant_id, app_id, id)"
     )
-    index_id = _index_id(bind, "end_user_account_apps_idx")
-    assert index_id is not None
+    first_index = _index_id(bind, "end_user_account_apps_idx")
+    assert first_index is not None
     bind.commit()
 
-    _apply(bind, _CONSUMER_INDEXES)
-    assert _index_id(bind, "end_user_account_apps_idx") == index_id
-    assert _index_id(bind, "workflow_run_end_user_recent_idx") is not None
+    with pytest.raises(RuntimeError, match="interrupted before Alembic stamp"):
+        _apply(bind, interrupt_before_stamp=True)
+    index_ids = {
+        name: _index_id(bind, name)
+        for name in (
+            "end_user_app_account_key",
+            "end_user_account_apps_idx",
+            "workflow_run_end_user_recent_idx",
+            "message_app_workflow_run_idx",
+            "upload_file_owner_idx",
+            "tool_file_owner_idx",
+        )
+    }
+    assert index_ids["end_user_account_apps_idx"] == first_index
+    assert all(index_id is not None for index_id in index_ids.values())
+    inspector = sa.inspect(bind)
+    assert "first_workspace_created_at" in {column["name"] for column in inspector.get_columns("accounts")}
+    assert "be_end_user_at" not in {column["name"] for column in inspector.get_columns("accounts")}
+    assert not inspector.has_table("end_user_connections")
+    assert not inspector.has_table("account_webapps")
     bind.commit()
-    _apply(bind, _CONSUMER_INDEXES, upgrade=False)
-    _apply(bind, _CONSUMER_INDEXES, upgrade=False)
-    assert _index_id(bind, "end_user_account_apps_idx") is None
-    assert _index_id(bind, "workflow_run_end_user_recent_idx") is None
+
+    _apply(bind)
+    assert {name: _index_id(bind, name) for name in index_ids} == index_ids
+    assert _index_id(bind, "upload_file_tenant_idx") is None
+    assert sa.inspect(bind).has_table("account_webapps")
+    bind.commit()
+
+    with pytest.raises(RuntimeError, match="interrupted before Alembic stamp"):
+        _apply(bind, upgrade=False, interrupt_before_stamp=True)
+    assert all(_index_id(bind, name) is None for name in index_ids if name != "end_user_app_account_key")
+    assert _index_id(bind, "end_user_app_account_key") == index_ids["end_user_app_account_key"]
+    tenant_index = _index_id(bind, "upload_file_tenant_idx")
+    assert tenant_index is not None
+    assert sa.inspect(bind).has_table("account_webapps")
+    bind.commit()
+
+    _apply(bind, upgrade=False)
+    assert _index_id(bind, "upload_file_tenant_idx") == tenant_index
+    assert _index_id(bind, "end_user_app_account_key") is None
+    assert not sa.inspect(bind).has_table("account_webapps")
+    assert bind.scalar(sa.text("SELECT count(*) FROM end_users")) == 2
 
 
-def test_message_index_retries_preserve_healthy_and_conflicting_relations(migration_database: Connection) -> None:
-    """Replay both directions without replacing healthy indexes or dropping unrelated relations."""
+def test_conflicting_message_index_is_not_reused_or_removed(migration_database: Connection) -> None:
+    """A same-name index on an unrelated table blocks either direction without being altered."""
     bind = migration_database
-    bind.exec_driver_sql("CREATE TABLE messages (app_id text, workflow_run_id text, conversation_id text)")
-    bind.commit()
-    _apply(bind, _MESSAGE_INDEX)
-    index_name = "message_app_workflow_run_idx"
-    index_id = _index_id(bind, index_name)
-    assert index_id is not None
-    bind.commit()
-    _apply(bind, _MESSAGE_INDEX)
-    assert _index_id(bind, index_name) == index_id
-    bind.commit()
-    _apply(bind, _MESSAGE_INDEX, upgrade=False)
-    _apply(bind, _MESSAGE_INDEX, upgrade=False)
-
-    bind.exec_driver_sql("CREATE TABLE unrelated (app_id text, workflow_run_id text, conversation_id text)")
-    bind.exec_driver_sql(
+    bind.exec_driver_sql("CREATE TABLE unrelated (app_id uuid, workflow_run_id uuid, conversation_id uuid)")
+    conflicting_index = (
         "CREATE INDEX message_app_workflow_run_idx ON unrelated (app_id, workflow_run_id, conversation_id)"
     )
-    conflicting_id = _index_id(bind, index_name)
-    assert conflicting_id is not None
+    bind.exec_driver_sql(conflicting_index)
+    index_id = _index_id(bind, "message_app_workflow_run_idx")
+    assert index_id is not None
     bind.commit()
-    for upgrade in (True, False):
-        with pytest.raises(RuntimeError, match="conflicts with the required index"):
-            _apply(bind, _MESSAGE_INDEX, upgrade=upgrade)
-    assert _index_id(bind, index_name) == conflicting_id
+
+    with pytest.raises(RuntimeError, match="conflicts with the required index"):
+        _apply(bind)
+    assert _index_id(bind, "message_app_workflow_run_idx") == index_id
+    bind.exec_driver_sql("DROP INDEX message_app_workflow_run_idx")
+    bind.commit()
+
+    _apply(bind)
+    bind.exec_driver_sql("DROP INDEX message_app_workflow_run_idx")
+    bind.exec_driver_sql(conflicting_index)
+    index_id = _index_id(bind, "message_app_workflow_run_idx")
+    assert index_id is not None
+    bind.commit()
+    with pytest.raises(RuntimeError, match="conflicts with the required index"):
+        _apply(bind, upgrade=False)
+    assert _index_id(bind, "message_app_workflow_run_idx") == index_id
+    assert sa.inspect(bind).has_table("account_webapps")
+
+
+def test_downgrade_rejects_a_conflicting_account_constraint(migration_database: Connection) -> None:
+    """Check the account key before committing any index changes during rollback."""
+    bind = migration_database
+    _apply(bind)
+    bind.exec_driver_sql(
+        "ALTER TABLE end_users DROP CONSTRAINT end_user_app_account_key, "
+        "ADD CONSTRAINT end_user_app_account_key UNIQUE (id)"
+    )
+    bind.commit()
+
+    with pytest.raises(RuntimeError, match="does not match the required end-user account key"):
+        _apply(bind, upgrade=False)
+    assert _index_id(bind, "upload_file_tenant_idx") is None
+    assert _index_id(bind, "upload_file_owner_idx") is not None
+    assert sa.inspect(bind).has_table("account_webapps")
 
 
 def test_builder_backfill_keeps_committed_batches_and_catches_late_legacy_writes(
     migration_database: Connection,
 ) -> None:
-    """Interrupt the second batch, finish the interrupted upgrade, and run the cutover pass."""
+    """Retry a partial backfill and run cutover before admitting new writes with deliberate nulls."""
     bind = migration_database
-    bind.exec_driver_sql(
-        "CREATE TABLE accounts (id uuid PRIMARY KEY, status text NOT NULL, initialized_at timestamp, "
-        "created_at timestamp NOT NULL)"
-    )
-    bind.exec_driver_sql("CREATE TABLE tenants (id uuid PRIMARY KEY, created_at timestamp NOT NULL)")
-    bind.exec_driver_sql("CREATE TABLE tenant_account_joins (tenant_id uuid, account_id uuid, role text)")
     bind.exec_driver_sql("""
-        INSERT INTO accounts
+        INSERT INTO accounts (id, status, created_at)
         SELECT CAST('00000000-0000-0000-0000-' || lpad(id::text, 12, '0') AS uuid),
-               'active', NULL, TIMESTAMP '2026-01-01'
+               'active', TIMESTAMP '2026-01-01'
         FROM generate_series(1, 1001) AS id
     """)
     bind.exec_driver_sql("""
@@ -215,7 +254,7 @@ def test_builder_backfill_keeps_committed_batches_and_catches_late_legacy_writes
     bind.commit()
 
     with pytest.raises(DBAPIError, match="interrupted batch"):
-        _apply(bind, _BUILDER_ORIGIN)
+        _apply(bind)
     assert bind.scalar(sa.text("SELECT count(*) FROM accounts WHERE first_workspace_created_at IS NOT NULL")) == 1000
     bind.exec_driver_sql("DROP TRIGGER fail_later_batch ON accounts")
     bind.exec_driver_sql("""
@@ -223,7 +262,7 @@ def test_builder_backfill_keeps_committed_batches_and_catches_late_legacy_writes
         WHERE id = '00000000-0000-0000-0000-000000000001'
     """)
     bind.commit()
-    _apply(bind, _BUILDER_ORIGIN)
+    _apply(bind)
 
     bind.exec_driver_sql("""
         INSERT INTO accounts (id, status, created_at) VALUES
@@ -235,11 +274,11 @@ def test_builder_backfill_keeps_committed_batches_and_catches_late_legacy_writes
     backfill_rows = (
         bind.execute(
             sa.text("""
-        SELECT first_workspace_created_at FROM accounts
-        WHERE id IN ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001',
-                     '00000000-0000-0000-0000-000000001001', '00000000-0000-0000-0000-000000001002')
-        ORDER BY id
-    """)
+            SELECT first_workspace_created_at FROM accounts
+            WHERE id IN ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001',
+                         '00000000-0000-0000-0000-000000001001', '00000000-0000-0000-0000-000000001002')
+            ORDER BY id
+        """)
         )
         .scalars()
         .all()

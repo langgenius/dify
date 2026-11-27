@@ -3,16 +3,14 @@ Single-database configuration for Flask.
 End User authentication: online PostgreSQL rollout
 ==================================================
 
-Use one migration runner and retain the PR's revision IDs if any environment
-has stamped them. The PostgreSQL migrations commit nullable-column changes
-before data scans. An independently committed index build or drop can finish
-before Alembic records its revision. Rerun the upgrade/downgrade to reconcile a
-matching healthy index or an already completed drop. Inspect conflicting indexes
-and abandoned invalid builds before retrying; never drop a healthy index as
-routine recovery. Offline SQL assumes the declared starting schema and must
-be executed with its transaction boundaries intact.
+Use one migration runner. PostgreSQL commits short column changes, concurrent
+indexes, and Builder backfill batches before the final schema changes and
+Alembic stamp. If interrupted, retry the same direction: reuse matching healthy
+indexes and accept completed drops. Inspect conflicts and abandoned invalid
+builds before retrying; never drop a healthy index as routine recovery. Offline
+SQL assumes the exact starting schema and must retain its transaction boundaries.
 
-Builder origin (revision b43e8c1d9a72) is backfilled in 1,000-account batches.
+Builder origin is backfilled in batches of at most 1,000 accounts.
 In an online rollout the first pass can run with the legacy release serving.
 A legacy write can land behind a batch cursor or after the first pass finishes.
 Before enabling the new Account/Workspace writers:
@@ -32,5 +30,7 @@ Retry step 3 with writers still drained if interrupted. Committed origins are
 not overwritten, and accounts with no legacy origin remain NULL. Do not run the
 legacy pass after the new onboarding flow has started writing. For a stopped
 upgrade with no overlapping legacy writes, the initial pass is sufficient.
-MySQL retains its existing DDL and portable backfill path.
+MySQL retains ordinary DDL and the portable backfill. Schedule for its lock
+impact. MySQL DDL can commit implicitly, including before the revision stamp;
+inspect or restore the schema after an interruption before retrying.
 
