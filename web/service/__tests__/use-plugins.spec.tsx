@@ -449,248 +449,18 @@ describe('normalizeInstalledPluginDetail', () => {
   })
 })
 
-describe('use-plugins mutations', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('optimistically updates category auto-upgrade cache before the request finishes', async () => {
-    const queryClient = createQueryClient()
-    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
-      input: { query: { category: PluginCategoryEnum.model } },
-    })
-    const previousAutoUpgrade = {
-      strategy_setting: AUTO_UPDATE_STRATEGY.latest,
-      upgrade_time_of_day: 0,
-      upgrade_mode: AUTO_UPDATE_MODE.exclude,
-      exclude_plugins: [],
-      include_plugins: [],
-    }
-    const nextAutoUpgrade = {
-      ...previousAutoUpgrade,
-      upgrade_time_of_day: 3600,
-    }
-    let resolvePost!: (value: unknown) => void
-    mockPost.mockReturnValue(
-      new Promise((resolve) => {
-        resolvePost = resolve
-      }),
-    )
-    queryClient.setQueryData(queryKey, {
-      category: PluginCategoryEnum.model,
-      auto_upgrade: previousAutoUpgrade,
-    })
-
-    const { result } = renderHook(
-      () => useMutationPluginAutoUpgradeSettings({ category: PluginCategoryEnum.model }),
-      { wrapper: createWrapper(queryClient) },
-    )
-
-    act(() => {
-      result.current.mutate(nextAutoUpgrade)
-    })
-
-    await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith('/workspaces/current/plugin/auto-upgrade/change', {
-        body: {
-          category: PluginCategoryEnum.model,
-          auto_upgrade: nextAutoUpgrade,
-        },
-      })
-    })
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toEqual({
-        category: PluginCategoryEnum.model,
-        auto_upgrade: nextAutoUpgrade,
-      })
-    })
-
-    await act(async () => resolvePost({}))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  })
-
-  it('optimistically updates plugin permission cache before the request finishes', async () => {
-    const queryClient = createQueryClient()
-    const queryKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
-    const previousPermission: Permissions = {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    }
-    const nextPermission: Permissions = {
-      install_permission: PermissionType.everyone,
-      debug_permission: PermissionType.admin,
-    }
-    let resolvePost!: (value: unknown) => void
-    mockPost.mockReturnValue(
-      new Promise((resolve) => {
-        resolvePost = resolve
-      }),
-    )
-    queryClient.setQueryData(queryKey, previousPermission)
-
-    const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    act(() => {
-      result.current.mutate(nextPermission)
-    })
-
-    await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith('/workspaces/current/plugin/permission/change', {
-        body: nextPermission,
-      })
-    })
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toEqual(nextPermission)
-    })
-
-    await act(async () => resolvePost({}))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  })
-
-  it('rolls back category auto-upgrade cache when the request fails', async () => {
-    const queryClient = createQueryClient()
-    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
-      input: { query: { category: PluginCategoryEnum.model } },
-    })
-    const previousAutoUpgrade = {
-      strategy_setting: AUTO_UPDATE_STRATEGY.latest,
-      upgrade_time_of_day: 0,
-      upgrade_mode: AUTO_UPDATE_MODE.exclude,
-      exclude_plugins: [],
-      include_plugins: [],
-    }
-    const nextAutoUpgrade = {
-      ...previousAutoUpgrade,
-      upgrade_time_of_day: 3600,
-    }
-    let rejectPost!: (reason?: unknown) => void
-    mockPost.mockReturnValue(
-      new Promise((_resolve, reject) => {
-        rejectPost = reject
-      }),
-    )
-    queryClient.setQueryData(queryKey, {
-      category: PluginCategoryEnum.model,
-      auto_upgrade: previousAutoUpgrade,
-    })
-
-    const { result } = renderHook(
-      () => useMutationPluginAutoUpgradeSettings({ category: PluginCategoryEnum.model }),
-      { wrapper: createWrapper(queryClient) },
-    )
-
-    const mutation = result.current.mutateAsync(nextAutoUpgrade).catch(() => undefined)
-
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toEqual({
-        category: PluginCategoryEnum.model,
-        auto_upgrade: nextAutoUpgrade,
-      })
-    })
-
-    rejectPost(new Error('auto-upgrade update failed'))
-
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toEqual({
-        category: PluginCategoryEnum.model,
-        auto_upgrade: previousAutoUpgrade,
-      })
-    })
-    await mutation
-  })
-
-  it('clears optimistic category auto-upgrade cache when the request fails without previous cache', async () => {
-    const queryClient = createQueryClient()
-    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
-      input: { query: { category: PluginCategoryEnum.model } },
-    })
-    const nextAutoUpgrade = {
-      strategy_setting: AUTO_UPDATE_STRATEGY.latest,
-      upgrade_time_of_day: 3600,
-      upgrade_mode: AUTO_UPDATE_MODE.exclude,
-      exclude_plugins: [],
-      include_plugins: [],
-    }
-    let rejectPost!: (reason?: unknown) => void
-    mockPost.mockReturnValue(
-      new Promise((_resolve, reject) => {
-        rejectPost = reject
-      }),
-    )
-
-    const { result } = renderHook(
-      () => useMutationPluginAutoUpgradeSettings({ category: PluginCategoryEnum.model }),
-      { wrapper: createWrapper(queryClient) },
-    )
-
-    const mutation = result.current.mutateAsync(nextAutoUpgrade).catch(() => undefined)
-
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toEqual({
-        category: PluginCategoryEnum.model,
-        auto_upgrade: nextAutoUpgrade,
-      })
-    })
-
-    rejectPost(new Error('auto-upgrade update failed'))
-
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toBeUndefined()
-    })
-    await mutation
-  })
-
-  it('rolls back plugin permission cache when the request fails', async () => {
-    const queryClient = createQueryClient()
-    const queryKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
-    const previousPermission: Permissions = {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    }
-    const nextPermission: Permissions = {
-      install_permission: PermissionType.everyone,
-      debug_permission: PermissionType.admin,
-    }
-    let rejectPost!: (reason?: unknown) => void
-    mockPost.mockReturnValue(
-      new Promise((_resolve, reject) => {
-        rejectPost = reject
-      }),
-    )
-    queryClient.setQueryData(queryKey, previousPermission)
-
-    const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    const mutation = result.current.mutateAsync(nextPermission).catch(() => undefined)
-
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toEqual(nextPermission)
-    })
-
-    rejectPost(new Error('permission update failed'))
-
-    await waitFor(() => {
-      expect(queryClient.getQueryData(queryKey)).toEqual(previousPermission)
-    })
-    await mutation
-  })
-})
-
-// Two quick saves of one setting: the earlier one settling must not overwrite the later one's
-// optimistic value.
-describe('overlapping plugin setting saves', () => {
+describe('plugin setting saves', () => {
   const permissionKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
-  const autoUpgradeKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
-    input: { query: { category: PluginCategoryEnum.model } },
-  })
+  const autoUpgradeKey = (category: PluginCategoryEnum) =>
+    consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+      input: { query: { category } },
+    })
   const admins: Permissions = {
     install_permission: PermissionType.admin,
     debug_permission: PermissionType.admin,
   }
+  const everyone: Permissions = { ...admins, install_permission: PermissionType.everyone }
+  const noOne: Permissions = { ...admins, install_permission: PermissionType.noOne }
   const autoUpgrade = {
     strategy_setting: AUTO_UPDATE_STRATEGY.latest,
     upgrade_time_of_day: 0,
@@ -703,67 +473,39 @@ describe('overlapping plugin setting saves', () => {
     vi.clearAllMocks()
   })
 
-  it('keeps the later permission when the earlier save fails', async () => {
+  it('keeps the saved permission while a save is pending, then shows the accepted one', async () => {
     const queryClient = createQueryClient()
-    const first = createDeferred<unknown>()
-    const second = createDeferred<unknown>()
-    mockPost.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const request = createDeferred<unknown>()
+    mockPost.mockReturnValueOnce(request.promise)
     queryClient.setQueryData(permissionKey, admins)
-    const everyone = { ...admins, install_permission: PermissionType.everyone }
-    const noOne = { ...admins, install_permission: PermissionType.noOne }
     const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
       wrapper: createWrapper(queryClient),
     })
 
-    const firstSave = result.current.mutateAsync(everyone).catch(() => undefined)
-    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1))
-    const secondSave = result.current.mutateAsync(noOne)
-    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2))
+    act(() => result.current.mutate(everyone))
+    await waitFor(() => expect(result.current.isPending).toBe(true))
+    expect(queryClient.getQueryData(permissionKey)).toEqual(admins)
 
-    await act(async () => {
-      first.reject(new Error('permission update failed'))
-      await firstSave
-    })
-    expect(queryClient.getQueryData(permissionKey)).toEqual(noOne)
-
-    await act(async () => {
-      second.resolve({})
-      await secondSave
-    })
-    expect(queryClient.getQueryData(permissionKey)).toEqual(noOne)
+    await act(async () => request.resolve({}))
+    await waitFor(() => expect(queryClient.getQueryData(permissionKey)).toEqual(everyone))
   })
 
-  it('restores the value before both saves when two overlapping saves fail together', async () => {
+  it('leaves the permission untouched when a save fails', async () => {
     const queryClient = createQueryClient()
-    const first = createDeferred<unknown>()
-    const second = createDeferred<unknown>()
-    mockPost.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    mockPost.mockRejectedValueOnce(new Error('permission update failed'))
     queryClient.setQueryData(permissionKey, admins)
     const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
       wrapper: createWrapper(queryClient),
     })
 
-    const firstSave = result.current
-      .mutateAsync({ ...admins, install_permission: PermissionType.everyone })
-      .catch(() => undefined)
-    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1))
-    const secondSave = result.current
-      .mutateAsync({ ...admins, install_permission: PermissionType.noOne })
-      .catch(() => undefined)
-    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2))
-
-    // Both fail in one batch: each sees the other still pending while its callbacks run.
     await act(async () => {
-      first.reject(new Error('permission update failed'))
-      second.reject(new Error('permission update failed'))
-      await Promise.all([firstSave, secondSave])
+      await result.current.mutateAsync(everyone).catch(() => undefined)
     })
 
-    await waitFor(() => expect(queryClient.getQueryData(permissionKey)).toEqual(admins))
-    expect(queryClient.getQueryState(permissionKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryData(permissionKey)).toEqual(admins)
   })
 
-  it('restores the value before both saves when two saves start in one tick and both fail', async () => {
+  it('leaves the permission untouched when two saves started in one tick both fail', async () => {
     const queryClient = createQueryClient()
     const first = createDeferred<unknown>()
     const second = createDeferred<unknown>()
@@ -773,68 +515,85 @@ describe('overlapping plugin setting saves', () => {
       wrapper: createWrapper(queryClient),
     })
 
-    // Both are pending before either one's onMutate resumes.
     let saves: Promise<unknown>[] = []
     act(() => {
       saves = [
-        result.current
-          .mutateAsync({ ...admins, install_permission: PermissionType.everyone })
-          .catch(() => undefined),
-        result.current
-          .mutateAsync({ ...admins, install_permission: PermissionType.noOne })
-          .catch(() => undefined),
+        result.current.mutateAsync(everyone).catch(() => undefined),
+        result.current.mutateAsync(noOne).catch(() => undefined),
       ]
     })
     await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2))
-
     await act(async () => {
       first.reject(new Error('permission update failed'))
       second.reject(new Error('permission update failed'))
       await Promise.all(saves)
     })
 
-    await waitFor(() => expect(queryClient.getQueryData(permissionKey)).toEqual(admins))
+    expect(queryClient.getQueryData(permissionKey)).toEqual(admins)
   })
 
-  it('keeps the later auto-upgrade setting when the earlier save fails', async () => {
+  it('shows the last accepted permission when saves finish out of order', async () => {
     const queryClient = createQueryClient()
     const first = createDeferred<unknown>()
     const second = createDeferred<unknown>()
     mockPost.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
-    queryClient.setQueryData(autoUpgradeKey, {
-      category: PluginCategoryEnum.model,
-      auto_upgrade: autoUpgrade,
+    queryClient.setQueryData(permissionKey, admins)
+    const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
+      wrapper: createWrapper(queryClient),
     })
-    const { result } = renderHook(
-      () => useMutationPluginAutoUpgradeSettings({ category: PluginCategoryEnum.model }),
-      { wrapper: createWrapper(queryClient) },
-    )
-    const later = { ...autoUpgrade, upgrade_time_of_day: 7200 }
 
-    const firstSave = result.current
-      .mutateAsync({ ...autoUpgrade, upgrade_time_of_day: 3600 })
-      .catch(() => undefined)
-    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1))
-    const secondSave = result.current.mutateAsync(later)
+    const firstSave = result.current.mutateAsync(everyone)
+    const secondSave = result.current.mutateAsync(noOne)
     await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2))
-
-    await act(async () => {
-      first.reject(new Error('auto-upgrade update failed'))
-      await firstSave
-    })
-    expect(queryClient.getQueryData(autoUpgradeKey)).toEqual({
-      category: PluginCategoryEnum.model,
-      auto_upgrade: later,
-    })
+    // Nothing shows before the server accepts a save, so no earlier value can win over it.
+    expect(queryClient.getQueryData(permissionKey)).toEqual(admins)
 
     await act(async () => {
       second.resolve({})
       await secondSave
     })
-    expect(queryClient.getQueryData(autoUpgradeKey)).toEqual({
-      category: PluginCategoryEnum.model,
-      auto_upgrade: later,
+    expect(queryClient.getQueryData(permissionKey)).toEqual(noOne)
+    await act(async () => {
+      first.resolve({})
+      await firstSave
     })
+    expect(queryClient.getQueryData(permissionKey)).toEqual(everyone)
+  })
+
+  it('writes an accepted auto-upgrade setting for the category it was saved for', async () => {
+    const queryClient = createQueryClient()
+    const request = createDeferred<unknown>()
+    mockPost.mockReturnValueOnce(request.promise)
+    queryClient.setQueryData(autoUpgradeKey(PluginCategoryEnum.model), {
+      category: PluginCategoryEnum.model,
+      auto_upgrade: autoUpgrade,
+    })
+    const next = { ...autoUpgrade, upgrade_time_of_day: 3600 }
+    const { result, rerender } = renderHook(
+      ({ category }) => useMutationPluginAutoUpgradeSettings({ category }),
+      {
+        wrapper: createWrapper(queryClient),
+        initialProps: { category: PluginCategoryEnum.model as PluginCategoryEnum },
+      },
+    )
+
+    act(() => result.current.mutate(next))
+    await waitFor(() => expect(result.current.isPending).toBe(true))
+    expect(queryClient.getQueryData(autoUpgradeKey(PluginCategoryEnum.model))).toEqual({
+      category: PluginCategoryEnum.model,
+      auto_upgrade: autoUpgrade,
+    })
+    // The user moves to another category before the save lands.
+    rerender({ category: PluginCategoryEnum.tool })
+
+    await act(async () => request.resolve({}))
+    await waitFor(() =>
+      expect(queryClient.getQueryData(autoUpgradeKey(PluginCategoryEnum.model))).toEqual({
+        category: PluginCategoryEnum.model,
+        auto_upgrade: next,
+      }),
+    )
+    expect(queryClient.getQueryData(autoUpgradeKey(PluginCategoryEnum.tool))).toBeUndefined()
   })
 })
 

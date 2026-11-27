@@ -28,13 +28,7 @@ import {
   zDatasourceProviderEntity,
   zEndpointProviderDeclarationResponse,
 } from '@dify/contracts/api/console/workspaces/zod.gen'
-import {
-  hashKey,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
@@ -44,7 +38,6 @@ import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/p
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { pluginTaskListInput, upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
-import { invalidateQueryKeys } from '@/service/console/policies/shared'
 import { pluginTaskListQueryOptions } from '@/service/plugin-install-queries'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
@@ -883,69 +876,12 @@ const areAutoUpgradeSettingsEqual = (
 //   return isAdmin
 // }
 
-// Overlapping saves of one setting: the value before the first of them, and how they ended.
-// A batch starts with the first save that finds none, and ends once no save of it is pending.
-type SaveBatch = { previous: unknown; succeeded: boolean; failed: boolean }
-const saveBatches = new WeakMap<QueryClient, Map<string, SaveBatch>>()
-
-function saveBatchOf(queryClient: QueryClient, mutationKey: QueryKey) {
-  let batches = saveBatches.get(queryClient)
-  if (!batches) saveBatches.set(queryClient, (batches = new Map()))
-  return { batches, id: hashKey(mutationKey) }
-}
-
-// The setting a save started for; the caller may have moved to another one since.
-type SaveTarget = { mutationKey: QueryKey; queryKey: QueryKey }
-
-async function writeOptimistically(
-  queryClient: QueryClient,
-  target: SaveTarget,
-  value: unknown,
-): Promise<SaveTarget> {
-  const { mutationKey, queryKey } = target
-  // Before any await: two saves starting in one tick are both pending by the time either
-  // resumes, so a pending count cannot tell which one came first.
-  const { batches, id } = saveBatchOf(queryClient, mutationKey)
-  if (!batches.has(id))
-    batches.set(id, {
-      previous: queryClient.getQueryData(queryKey),
-      succeeded: false,
-      failed: false,
-    })
+// Settings saves are not optimistic: the setting keeps its saved value while a save is
+// pending, shows the accepted value once the server confirms it, and is read again afterwards
+// (the invalidation fallback waits until no plugin write is pending).
+async function writeSavedSetting(queryClient: QueryClient, queryKey: QueryKey, value: unknown) {
   if (queryClient.isFetching({ queryKey })) await queryClient.cancelQueries({ queryKey })
   queryClient.setQueryData(queryKey, value)
-  return target
-}
-
-/**
- * Settles a save once no save of the setting is pending (see README "Optimistic updates").
- *
- * A save stays pending until its callbacks finish, so saves ending together would each see
- * the others: the check runs after the callbacks, and whichever finishes last settles the
- * batch. When a save failed and none succeeded, the value before the batch comes back; after a
- * failure the setting is read again. After successes alone the invalidation fallback refreshes
- * the plugin settings.
- */
-function settleSave(queryClient: QueryClient, target: SaveTarget | undefined, failed: boolean) {
-  if (!target) return
-  const { mutationKey, queryKey } = target
-  const { batches, id } = saveBatchOf(queryClient, mutationKey)
-  const batch = batches.get(id)
-  if (batch) {
-    if (failed) batch.failed = true
-    else batch.succeeded = true
-  }
-  setTimeout(() => {
-    if (queryClient.isMutating({ mutationKey }) > 0) return
-    const settled = batches.get(id)
-    batches.delete(id)
-    if (!settled?.failed) return
-    if (!settled.succeeded) {
-      if (settled.previous === undefined) queryClient.removeQueries({ queryKey })
-      else queryClient.setQueryData(queryKey, settled.previous)
-    }
-    void invalidateQueryKeys(queryClient, [queryKey])
-  })
 }
 
 const permissionChangeKey = () =>
@@ -968,15 +904,8 @@ export const useMutationPluginPermissionSettings = ({
     mutationFn: (payload: Permissions) => {
       return consoleClient.workspaces.current.plugin.permission.change.post({ body: payload })
     },
-    onMutate: (payload) =>
-      writeOptimistically(
-        queryClient,
-        { mutationKey: permissionChangeKey(), queryKey: pluginPermissionSettingsQueryKey() },
-        payload,
-      ),
-    onError: (_error, _payload, target) => settleSave(queryClient, target, true),
-    onSuccess: (_data, _payload, target) => {
-      settleSave(queryClient, target, false)
+    onSuccess: async (_data, payload) => {
+      await writeSavedSetting(queryClient, pluginPermissionSettingsQueryKey(), payload)
       onSuccess?.()
     },
   })
@@ -1001,27 +930,18 @@ export const useMutationPluginAutoUpgradeSettings = ({
         },
       })
     },
-    onMutate: (payload) =>
-      writeOptimistically(
-        queryClient,
-        {
-          mutationKey: autoUpgradeChangeKey(category),
-          queryKey: pluginAutoUpgradeSettingsQueryKey(category),
-        },
-        { category, auto_upgrade: payload },
-      ),
-    onError: (_error, _payload, target) => settleSave(queryClient, target, true),
-    onSuccess: (_data, _payload, target) => {
-      settleSave(queryClient, target, false)
+    // The category this save started for; the caller may have moved to another one since.
+    onMutate: () => ({ category }),
+    onSuccess: async (_data, payload, { category: savedCategory }) => {
+      await writeSavedSetting(queryClient, pluginAutoUpgradeSettingsQueryKey(savedCategory), {
+        category: savedCategory,
+        auto_upgrade: payload,
+      })
       onSuccess?.()
     },
   })
 }
 
-/**
- * Saves the changed parts of the reference settings as separate writes, so a failed part rolls
- * back alone and overlaps with the single-setting saves are counted per setting.
- */
 export const useMutationReferenceSettings = ({
   category,
   currentReferenceSetting,

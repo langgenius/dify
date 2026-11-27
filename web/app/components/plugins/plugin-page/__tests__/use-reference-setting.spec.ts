@@ -256,7 +256,7 @@ describe('saving reference settings', () => {
     })
     expect(toastSuccess).toHaveBeenCalledWith('common.api.actionSuccess')
   })
-  it('keeps the later save when an earlier one succeeds while it is pending', async () => {
+  it('shows each accepted save and reads the setting again once no save is pending', async () => {
     const first = createDeferred<object>()
     const second = createDeferred<object>()
     requests.autoUpgrade.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
@@ -279,8 +279,9 @@ describe('saving reference settings', () => {
     })
     await act(async () => first.resolve({}))
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1))
+    // The accepted value shows; the read waits while the later save is pending.
+    expect(result.current.referenceSetting?.auto_upgrade).toEqual(earlier)
     expect(requests.getAutoUpgrade).toHaveBeenCalledTimes(1)
-    expect(result.current.referenceSetting?.auto_upgrade).toEqual(later)
 
     requests.getAutoUpgrade.mockResolvedValue({
       category: PluginCategoryEnum.tool,
