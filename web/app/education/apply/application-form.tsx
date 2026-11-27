@@ -27,6 +27,7 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
@@ -48,6 +49,7 @@ type EducationApplyError = ErrorFromErrorMap<
 function educationApplyErrorMessage(
   error: EducationApplyError,
   t: TFunction<['billing', 'common', 'education']>,
+  describeRequestError: (error: unknown, fallback?: string) => string,
 ) {
   const code = isDefinedError(error) ? error.code : undefined
   switch (code) {
@@ -56,7 +58,7 @@ function educationApplyErrorMessage(
     case 'education_activate_limit':
       return t(($) => $.tooManyAttempts, { ns: 'education' })
     default:
-      return getBillingErrorMessage(error, t)
+      return getBillingErrorMessage(error, t, describeRequestError)
   }
 }
 
@@ -67,6 +69,7 @@ type EducationApplyPageProps = {
 
 const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const { t } = useTranslation(['billing', 'common', 'education'])
+  const describeRequestError = useRequestErrorDescriber()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')
   const [agreements, setAgreements] = useState<string[]>([])
@@ -138,7 +141,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
         },
         {
           onError: (error) => {
-            toast.error(getBillingErrorMessage(error, t))
+            toast.error(getBillingErrorMessage(error, t, describeRequestError))
           },
         },
       )
@@ -302,7 +305,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
           </Button>
           {submitError && (
             <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
-              {educationApplyErrorMessage(submitError, t)}
+              {educationApplyErrorMessage(submitError, t, describeRequestError)}
             </p>
           )}
           <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]" />

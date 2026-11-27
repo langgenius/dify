@@ -162,17 +162,17 @@ it.each([
   else expect(submit()).toBeEnabled()
 })
 
-it('shows the server message when creation fails', async () => {
+it('shows the translated reason when creation fails', async () => {
   api.add.mockRejectedValueOnce(
     createHttpError(new Response(null, { status: 400 }), {
-      code: 'invalid_param',
+      code: 'app_unavailable',
       message: 'Server says why',
     }),
   )
   const { user, onAdded } = await setup()
   await fill(user)
   await user.click(submit())
-  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.app_unavailable')
   expect(onAdded).not.toHaveBeenCalled()
 })
 

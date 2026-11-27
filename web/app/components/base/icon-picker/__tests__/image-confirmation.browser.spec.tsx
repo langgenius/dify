@@ -82,7 +82,7 @@ async function expectSavedImage(id: string, file: File) {
 it('keeps the image draft after an upload failure and saves the retried bytes', async () => {
   await page.viewport(640, 600)
   fake.console.files.upload.post.mockRejectedValueOnce(
-    apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }),
+    apiError({ status: 415, code: 'unsupported_file_type', message: 'Upload failed' }),
   )
   fake.console.files.upload.post.mockResolvedValueOnce({
     id: fileId('retried-image'),
@@ -91,7 +91,9 @@ it('keeps the image draft after an upload failure and saves the retried bytes', 
   })
   const file = await selectImage()
   await save().click()
-  await expect.element(page.getByRole('alert')).toHaveTextContent('Upload failed')
+  await expect
+    .element(page.getByRole('alert'))
+    .toHaveTextContent('requestErrors.code.unsupported_file_type')
   await expect.element(saved()).toHaveTextContent(JSON.stringify(defaultIcon))
   await save().click()
   await expectSavedImage(fileId('retried-image'), file)

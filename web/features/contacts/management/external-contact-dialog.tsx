@@ -17,9 +17,9 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getImageUploadErrorMessage } from '@/app/components/base/image-uploader/utils'
 import { consoleQuery } from '@/service/console'
 import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import AvatarInnerRing from './assets/avatar-inner-ring.svg'
 import AvatarOuterRing from './assets/avatar-outer-ring.svg'
@@ -61,6 +61,7 @@ function ExternalContactForm({
 }: Omit<ExternalContactDialogProps, 'open'> & { onBusyChange: (busy: boolean) => void }) {
   const { t } = useTranslation(['contacts', 'common'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const create = useMutation(
     consoleQuery.workspaces.current.humanInput.v2.contacts.external.post.mutationOptions({
       meta: { errorToast: false },
@@ -117,10 +118,9 @@ function ExternalContactForm({
         onSuccess: ({ id }) => setUploadedAvatar({ id, url: URL.createObjectURL(file) }),
         onError: (error) =>
           setAvatarError(
-            getImageUploadErrorMessage(
+            describeRequestError(
               error,
               tCommon(($) => $['imageUploader.uploadFromComputerUploadError']),
-              tCommon,
             ),
           ),
       },

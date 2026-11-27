@@ -273,12 +273,12 @@ describe('CreateSubscriptionButton', () => {
 
   it.each([
     [
-      'the server message',
+      'the translated reason',
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'paid_plan_required',
         message: 'Server says why',
       }),
-      'Server says why',
+      'requestErrors.code.paid_plan_required',
     ],
     [
       'the localized fallback',

@@ -7,7 +7,8 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import {
@@ -91,6 +92,7 @@ function useDocumentInvalidation() {
 export function useBulkReindexAction() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
+  const describeRequestError = useRequestErrorDescriber()
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -156,8 +158,10 @@ export function useBulkReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : (getRequestErrorMessage(error) ??
-                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
+            : describeRequestError(
+                error,
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+              ),
         )
       }
     } finally {
@@ -166,6 +170,7 @@ export function useBulkReindexAction() {
   }, [
     begin,
     canWrite,
+    describeRequestError,
     ensureModelReady,
     finish,
     knowledgeSpaceId,

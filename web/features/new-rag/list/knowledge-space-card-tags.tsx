@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { TagSelector } from '@/features/tag-management/tag-selector'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 export function KnowledgeSpaceCardTags({
   knowledgeSpace,
@@ -18,6 +18,7 @@ export function KnowledgeSpaceCardTags({
   onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const canEdit = knowledgeSpace.permission_keys.includes('knowledge_space_edit')
   // The latest submitted selection stays authoritative until every queued replacement and the
@@ -60,8 +61,10 @@ export function KnowledgeSpaceCardTags({
         })
       } catch (error) {
         toast.error(
-          getRequestErrorMessage(error) ??
+          describeRequestError(
+            error,
             t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          ),
         )
       }
       nextTagIds = queue.next

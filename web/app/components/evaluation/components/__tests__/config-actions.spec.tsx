@@ -97,12 +97,23 @@ describe('EvaluationConfigActions', () => {
 
   it.each([
     [
-      'the server message',
+      'the localized failure over a generic server message',
       createHttpError(
         { status: 400, statusText: '', headers: new Headers() },
-        { message: 'Metric answer_correctness needs expected_output' },
+        { code: 'bad_request', message: 'Metric answer_correctness needs expected_output' },
       ),
-      'Metric answer_correctness needs expected_output',
+      'evaluation.config.saveFailed',
+    ],
+    [
+      'the reason the configuration was rejected',
+      createHttpError(
+        { status: 400, statusText: '', headers: new Headers() },
+        {
+          code: 'evaluation_config_invalid',
+          message: 'answer_relevancy needs a default embedding model.',
+        },
+      ),
+      'answer_relevancy needs a default embedding model.',
     ],
     [
       'the generic message without one',
