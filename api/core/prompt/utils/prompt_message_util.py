@@ -7,7 +7,6 @@ from graphon.model_runtime.entities import (
     AudioPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageContentType,
     PromptMessageRole,
     TextPromptMessageContent,
 )
@@ -115,18 +114,30 @@ class PromptMessageUtil:
             text = ""
             prompt_files: list[SavedPromptFile] = []
             if isinstance(prompt_message.content, list):
+                # Completion prompts can carry any uploaded file type. Save images and audio
+                # like chat mode does; other file contents have no saved representation.
                 for content in prompt_message.content:
-                    if content.type == PromptMessageContentType.TEXT:
-                        text += content.data
-                    else:
-                        content = cast(ImagePromptMessageContent, content)
-                        prompt_files.append(
-                            {
-                                "type": "image",
-                                "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
-                                "detail": content.detail.value,
-                            }
-                        )
+                    match content:
+                        case TextPromptMessageContent():
+                            text += content.data
+                        case ImagePromptMessageContent():
+                            prompt_files.append(
+                                {
+                                    "type": "image",
+                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                    "detail": content.detail.value,
+                                }
+                            )
+                        case AudioPromptMessageContent():
+                            prompt_files.append(
+                                {
+                                    "type": "audio",
+                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                    "format": content.format,
+                                }
+                            )
+                        case _:
+                            pass
             else:
                 text = cast(str, prompt_message.content)
 
