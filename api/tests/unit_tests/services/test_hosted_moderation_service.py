@@ -43,7 +43,9 @@ class _VerdictCache:
 
 def test_checks_only_distinct_misses_across_turns_and_phases() -> None:
     client = _BatchClient()
-    service = BatchedHostedModerationService(client=client, cache=_VerdictCache())
+    service = BatchedHostedModerationService(
+        client=client, cache=_VerdictCache(), batch_max_items=32, batch_max_text_bytes=8192
+    )
     service.check_segments(_CONTEXT, rule=_RULE, segments=["system", "first turn", "system", ""], phase="input")
     service.check_segments(_CONTEXT, rule=_RULE, segments=["answer"], phase="output")
     service.check_segments(
@@ -54,7 +56,9 @@ def test_checks_only_distinct_misses_across_turns_and_phases() -> None:
 
 def test_cached_rejection_uses_current_phase_and_does_not_reclassify() -> None:
     client = _BatchClient()
-    service = BatchedHostedModerationService(client=client, cache=_VerdictCache())
+    service = BatchedHostedModerationService(
+        client=client, cache=_VerdictCache(), batch_max_items=32, batch_max_text_bytes=8192
+    )
     with pytest.raises(ModerationRejectedError, match="Output rejected"):
         service.check_segments(_CONTEXT, rule=_RULE, segments=["safe", "blocked"], phase="output")
     with pytest.raises(ModerationRejectedError, match="Input rejected"):
@@ -74,7 +78,7 @@ def test_cached_rejection_uses_current_phase_and_does_not_reclassify() -> None:
 )
 def test_batches_preserve_order_and_segment_contents(texts: list[str], sizes: list[int]) -> None:
     client = _BatchClient()
-    service = BatchedHostedModerationService(client=client, cache=None)
+    service = BatchedHostedModerationService(client=client, cache=None, batch_max_items=32, batch_max_text_bytes=8192)
     service.check_segments(_CONTEXT, rule=_RULE, segments=texts, phase="input")
     assert [len(batch) for batch in client.calls] == sizes
     assert [text for batch in client.calls for text in batch] == texts
@@ -83,7 +87,7 @@ def test_batches_preserve_order_and_segment_contents(texts: list[str], sizes: li
 def test_incomplete_batch_does_not_approve_or_cache_any_returned_verdict() -> None:
     client = _BatchClient()
     cache = _VerdictCache()
-    service = BatchedHostedModerationService(client=client, cache=cache)
+    service = BatchedHostedModerationService(client=client, cache=cache, batch_max_items=32, batch_max_text_bytes=8192)
     client.incomplete = True
     with pytest.raises(HostedModerationUnavailableError, match="invalid batch verdicts"):
         service.check_segments(_CONTEXT, rule=_RULE, segments=["one", "two"], phase="input")
@@ -93,9 +97,17 @@ def test_incomplete_batch_does_not_approve_or_cache_any_returned_verdict() -> No
     assert client.calls == [("one", "two"), ("one", "two")]
 
 
+@pytest.mark.parametrize(("max_items", "max_text_bytes"), [(0, 8192), (32, 0)])
+def test_batch_limits_must_be_positive(max_items: int, max_text_bytes: int) -> None:
+    with pytest.raises(ValueError, match="batch limits must be positive"):
+        BatchedHostedModerationService(
+            client=_BatchClient(), cache=None, batch_max_items=max_items, batch_max_text_bytes=max_text_bytes
+        )
+
+
 def test_missing_platform_credentials_cannot_use_a_cached_approval() -> None:
     cache = _VerdictCache()
     cache.store(_CONTEXT.tenant_id, {"cached": False})
-    service = BatchedHostedModerationService(client=None, cache=cache)
+    service = BatchedHostedModerationService(client=None, cache=cache, batch_max_items=32, batch_max_text_bytes=8192)
     with pytest.raises(HostedModerationUnavailableError, match="credentials are not configured"):
         service.check_segments(_CONTEXT, rule=_RULE, segments=["cached"], phase="input")

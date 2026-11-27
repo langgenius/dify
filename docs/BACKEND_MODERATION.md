@@ -58,12 +58,19 @@ at model assembly.
 ### Batch transport and verdict cache
 
 The service deduplicates exact segments, looks up existing verdicts, and sends
-only misses. Each batch contains at most 32 strings and 8 KiB of UTF-8 text,
-except that an individually oversized segment is sent alone without being
-changed. These are local batching bounds, not OpenAI limits. Results must
-contain one strict boolean per input, in input order. A true verdict rejects
-the invocation; a missing or malformed result is an unavailable check, not
-approval. Streaming checks and releases each existing buffer independently.
+only misses. API and worker processes accept these positive integer settings:
+
+| Environment variable | Default | Scope |
+| --- | ---: | --- |
+| `MODERATION_NON_STREAM_SEGMENT_SIZE` | 2000 | Characters per input or non-streaming output segment. |
+| `HOSTED_MODERATION_BATCH_MAX_ITEMS` | 32 | Segments per platform moderation request. |
+| `HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES` | 8192 | Combined UTF-8 text bytes per platform batch, excluding JSON overhead. |
+
+These are local limits, not OpenAI limits. Batching never cuts a segment again:
+an individually oversized segment is sent alone. Results must contain one
+strict boolean per input, in input order. A true verdict rejects the invocation;
+a missing or malformed result is an unavailable check, not approval. Streaming
+checks and releases each existing buffer independently.
 
 Redis stores only HMAC-SHA256 digests scoped to the tenant, credential,
 endpoint, organization, and requested model, plus the boolean verdict. Positive

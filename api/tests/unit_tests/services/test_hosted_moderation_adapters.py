@@ -167,7 +167,10 @@ def test_a_rebuilt_service_reuses_redis_verdicts_and_only_sends_new_segments(
     def service() -> BatchedHostedModerationService:
         client = _client()
         return BatchedHostedModerationService(
-            client=client, cache=RedisHostedModerationVerdictCache(redis, ttl=600, hash_key=client.cache_key)
+            client=client,
+            cache=RedisHostedModerationVerdictCache(redis, ttl=600, hash_key=client.cache_key),
+            batch_max_items=32,
+            batch_max_text_bytes=8192,
         )
 
     responses.extend(
@@ -194,7 +197,7 @@ def test_stream_uses_cache_only_after_outage_and_retries_on_the_next_invocation(
     client = _client()
     cache = RedisHostedModerationVerdictCache(_Redis(), ttl=600, hash_key=client.cache_key)
     cache.store(context.tenant_id, {"flag": True})
-    service = BatchedHostedModerationService(client=client, cache=cache)
+    service = BatchedHostedModerationService(client=client, cache=cache, batch_max_items=32, batch_max_text_bytes=8192)
     guard = build_llm_moderation_guard(
         context,
         service=service,

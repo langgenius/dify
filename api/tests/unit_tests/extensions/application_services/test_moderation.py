@@ -15,7 +15,11 @@ from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelIns
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_manager
 from core.workflow.node_runtime import DifyPreparedPollingLLM
 from enums import DeploymentEdition
-from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
+from extensions.application_services.moderation import (
+    build_llm_moderation_guard,
+    build_moderation_service,
+    build_platform_moderation_service,
+)
 from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.entities.llm_entities import (
     LLMPollingResult,
@@ -424,6 +428,40 @@ def test_platform_switch_applies_to_manager_cache_and_preserves_explicit_policy(
     bundle.configuration.system_configuration.quota_configurations[0].quota_limit = -1
     unlimited = ModelInstance(bundle, "test-model", credentials={})
     assert isinstance(unlimited.moderation, LLMModerationGuard) is expected
+
+
+def test_platform_moderation_applies_the_configured_segment_and_batch_limits(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(
+        HOSTED_OPENAI_API_KEY="server-key",
+        HOSTED_MODERATION_CACHE_TTL=0,
+        MODERATION_NON_STREAM_SEGMENT_SIZE=4,
+        HOSTED_MODERATION_BATCH_MAX_ITEMS=2,
+        HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES=6,
+    )
+    batches: list[list[str]] = []
+
+    def moderate(request: httpx.Request) -> httpx.Response:
+        texts: list[str] = json.loads(request.content)["input"]
+        batches.append(texts)
+        return httpx.Response(200, json={"results": [{"flagged": False} for _ in texts]})
+
+    guard = build_llm_moderation_guard(
+        AppRequestContext(tenant_id="test-tenant-id", app_id=""),
+        service=build_platform_moderation_service(),
+        rule=ModerationRule(
+            type="openai_moderation",
+            config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}},
+        ),
+        platform=True,
+    )
+    messages = [UserPromptMessage(content=text) for text in ["a", "b", "abcdXY", "\u754c\u754c", "d"]]
+    with httpx.Client(transport=httpx.MockTransport(moderate)) as transport:
+        monkeypatch.setattr(ssrf_module, "_get_ssrf_client", lambda _verify: transport)
+        guard.check_inputs(messages)
+
+    assert batches == [["a", "b"], ["abcd", "XY"], ["\u754c\u754c"], ["d"]]
 
 
 @pytest.mark.parametrize(

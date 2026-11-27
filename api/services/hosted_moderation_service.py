@@ -15,9 +15,6 @@ from services.moderation_service import (
 
 logger = logging.getLogger(__name__)
 
-_MAX_BATCH_ITEMS = 32
-_MAX_BATCH_TEXT_BYTES = 8192
-
 
 class HostedModerationUnavailableError(ModerationError):
     """No trustworthy verdict is available from the platform backend; the message is safe to log."""
@@ -42,8 +39,8 @@ class HostedModerationVerdictCache(Protocol):
     def store(self, tenant_id: str, verdicts: Mapping[str, bool]) -> None: ...
 
 
-def _batches(texts: Iterable[str]) -> Iterator[list[str]]:
-    """Bound item count and total UTF-8 text size without changing any segment.
+def _batches(texts: Iterable[str], *, max_items: int, max_text_bytes: int) -> Iterator[list[str]]:
+    """Pack segments with positive item and UTF-8 byte budgets without changing them.
 
     An individually oversized segment stays in its own batch to preserve the
     caller's moderation boundary.
@@ -52,7 +49,7 @@ def _batches(texts: Iterable[str]) -> Iterator[list[str]]:
     size = 0
     for text in texts:
         text_size = len(text.encode())
-        if batch and (len(batch) == _MAX_BATCH_ITEMS or size + text_size > _MAX_BATCH_TEXT_BYTES):
+        if batch and (len(batch) == max_items or size + text_size > max_text_bytes):
             yield batch
             batch = []
             size = 0
@@ -66,11 +63,20 @@ class BatchedHostedModerationService:
     """Treat known rejections as final and keep unavailable verdicts distinct from approvals."""
 
     def __init__(
-        self, *, client: HostedModerationBatchClient | None, cache: HostedModerationVerdictCache | None
+        self,
+        *,
+        client: HostedModerationBatchClient | None,
+        cache: HostedModerationVerdictCache | None,
+        batch_max_items: int,
+        batch_max_text_bytes: int,
     ) -> None:
-        """Bind a platform client without I/O. No client means missing credentials; no cache disables reuse."""
+        """Bind the client and positive batch limits without I/O; None means no credentials or cache, respectively."""
+        if batch_max_items <= 0 or batch_max_text_bytes <= 0:
+            raise ValueError("Moderation batch limits must be positive.")
         self._client = client
         self._cache = cache
+        self._batch_max_items = batch_max_items
+        self._batch_max_text_bytes = batch_max_text_bytes
 
     def check_segments(
         self,
@@ -107,7 +113,8 @@ class BatchedHostedModerationService:
         if self._client is None:
             raise HostedModerationUnavailableError("Hosted moderation credentials are not configured.")
 
-        for batch in _batches(text for text in texts if cached.get(text) is not False):
+        misses = (text for text in texts if cached.get(text) is not False)
+        for batch in _batches(misses, max_items=self._batch_max_items, max_text_bytes=self._batch_max_text_bytes):
             verdicts = self._client.moderate(batch)
             if len(verdicts) != len(batch) or any(not isinstance(flagged, bool) for flagged in verdicts):
                 raise HostedModerationUnavailableError("Hosted moderation returned invalid batch verdicts.")

@@ -1,4 +1,4 @@
-from pydantic import Field, NonNegativeInt
+from pydantic import Field, NonNegativeInt, PositiveInt
 from pydantic_settings import BaseSettings
 
 
@@ -365,6 +365,16 @@ class HostedModerationConfig(BaseSettings):
     HOSTED_MODERATION_ENABLED: bool = Field(
         description="Enable automatic platform moderation for Cloud AI-credit LLMs; ignored in other editions",
         default=False,
+    )
+
+    HOSTED_MODERATION_BATCH_MAX_ITEMS: PositiveInt = Field(
+        description="Maximum number of text segments per platform moderation request",
+        default=32,
+    )
+
+    HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES: PositiveInt = Field(
+        description="UTF-8 text budget per platform moderation batch; oversized segments are sent alone",
+        default=8192,
     )
 
     HOSTED_MODERATION_CACHE_TTL: NonNegativeInt = Field(

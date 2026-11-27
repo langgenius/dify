@@ -36,19 +36,26 @@ if TYPE_CHECKING:
 
 
 def build_platform_moderation_service() -> BatchedHostedModerationService:
-    """Bind OpenAI and optional Redis from server settings; do not require an installed plugin or reserve credits."""
+    """Bind platform credentials, batch limits, and optional Redis without I/O or credit effects."""
     api_key = dify_config.HOSTED_OPENAI_API_KEY
-    if not api_key or not api_key.strip():
-        return BatchedHostedModerationService(client=None, cache=None)
-    client = OpenAIHostedModerationClient(
-        http_client=ssrf_proxy,
-        api_key=api_key,
-        base_url=dify_config.HOSTED_OPENAI_API_BASE,
-        organization=dify_config.HOSTED_OPENAI_API_ORGANIZATION,
+    client: OpenAIHostedModerationClient | None = None
+    cache: RedisHostedModerationVerdictCache | None = None
+    if api_key and api_key.strip():
+        client = OpenAIHostedModerationClient(
+            http_client=ssrf_proxy,
+            api_key=api_key,
+            base_url=dify_config.HOSTED_OPENAI_API_BASE,
+            organization=dify_config.HOSTED_OPENAI_API_ORGANIZATION,
+        )
+        ttl = dify_config.HOSTED_MODERATION_CACHE_TTL
+        if ttl:
+            cache = RedisHostedModerationVerdictCache(redis_client, ttl=ttl, hash_key=client.cache_key)
+    return BatchedHostedModerationService(
+        client=client,
+        cache=cache,
+        batch_max_items=dify_config.HOSTED_MODERATION_BATCH_MAX_ITEMS,
+        batch_max_text_bytes=dify_config.HOSTED_MODERATION_BATCH_MAX_TEXT_BYTES,
     )
-    ttl = dify_config.HOSTED_MODERATION_CACHE_TTL
-    cache = RedisHostedModerationVerdictCache(redis_client, ttl=ttl, hash_key=client.cache_key) if ttl else None
-    return BatchedHostedModerationService(client=client, cache=cache)
 
 
 def bind_hosted_llm_moderation(
