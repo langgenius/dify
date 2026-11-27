@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import final, override
 
-from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
+from core.app.apps.execution_coordinator import get_app_task_stop_reason
 from graphon.engine.command import AbortCommand, Command, CommandChannel
 
 logger = logging.getLogger(__name__)
@@ -72,26 +72,23 @@ class StopFlagCommandChannel(CommandChannel):
     """Translate the legacy Redis stop flag into one GraphEngine abort command."""
 
     _task_id: str
-    _abort_reason: str
     _abort_emitted: bool
 
-    def __init__(
-        self,
-        *,
-        task_id: str,
-        abort_reason: str = "User requested stop",
-    ) -> None:
+    def __init__(self, *, task_id: str) -> None:
         self._task_id = task_id
-        self._abort_reason = abort_reason
         self._abort_emitted = False
 
     @override
     def fetch_commands(self) -> list[Command]:
-        if self._abort_emitted or not is_app_task_stop_flag_set(self._task_id):
+        if self._abort_emitted:
+            return []
+
+        reason = get_app_task_stop_reason(self._task_id)
+        if reason is None:
             return []
 
         self._abort_emitted = True
-        return [AbortCommand(reason=self._abort_reason)]
+        return [AbortCommand(reason=reason)]
 
     @override
     def send_command(self, command: Command) -> None:
