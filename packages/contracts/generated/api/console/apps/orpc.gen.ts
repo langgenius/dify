@@ -5624,20 +5624,16 @@ export const get91 = oc
   .output(zGetAppsResponse)
 
 /**
- * Validate the admitted caller's request before creating the app under the active Builder setting
- *
- * Create a new application. A name is required when App Builder is disabled.
+ * Create a new application
  */
 export const post71 = oc
   .route({
-    description: 'Create a new application. A name is required when App Builder is disabled.',
+    description: 'Create a new application',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postApps',
     path: '/apps',
     successStatus: 201,
-    summary:
-      "Validate the admitted caller's request before creating the app under the active Builder setting",
     tags: ['console'],
   })
   .input(z.object({ body: zPostAppsBody }))

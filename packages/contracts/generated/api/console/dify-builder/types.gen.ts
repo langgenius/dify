@@ -200,7 +200,6 @@ export type DifyBuilderStreamEventResponse =
 export type DifyBuilderCreateBuildSessionPayload = {
   app_id: string
   attachments?: Array<DifyBuilderAttachmentPayload>
-  derive_app_name?: boolean
   goal_text?: string
   model_config?: SessionModel | null
   scenario: 'build'

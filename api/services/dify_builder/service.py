@@ -1423,9 +1423,7 @@ class DifyBuilderService:
         initial ``start_build`` command (parallels ``create_fix_session``). The goal is
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
-        session_id, action = self.prepare_build_session(
-            app_id, actor, goal_text, model_config, attachments=attachments
-        )
+        session_id, action = self.prepare_build_session(app_id, actor, goal_text, model_config, attachments=attachments)
         if action is not None:
             self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
@@ -1442,9 +1440,7 @@ class DifyBuilderService:
         dispatching the initial ``start_build`` advance."""
         from services.dify_builder.wiring import stream_advance_frames
 
-        session_id, action = self.prepare_build_session(
-            app_id, actor, goal_text, model_config, attachments=attachments
-        )
+        session_id, action = self.prepare_build_session(app_id, actor, goal_text, model_config, attachments=attachments)
         initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
@@ -2346,7 +2342,6 @@ class DifyBuilderService:
     def _release_workflow_writer(self, session_id: str, token: str) -> None:
         self._repo.release_workflow_writer(session_id, token=token)
         self._session_lock.release(session_id, token)
-
 
     def dispatch(self, session_id: str, action: Action, actor: Actor, *, opening: bool = False) -> str:
         """Reserve one workflow writer and enqueue once; uncertain ACKs retain ownership."""

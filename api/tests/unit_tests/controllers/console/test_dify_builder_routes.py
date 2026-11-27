@@ -982,9 +982,7 @@ class _RequestSqlWorld(NamedTuple):
 
 
 @pytest.fixture
-def request_sql_world(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, mocker: pytest_mock.MockerFixture
-) -> Iterator[_RequestSqlWorld]:
+def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[_RequestSqlWorld]:
     """The task control routes and their authenticated request SQL boundaries.
 
     ``db`` of the console wraps, the controller and the wiring is one real ``scoped_session`` over

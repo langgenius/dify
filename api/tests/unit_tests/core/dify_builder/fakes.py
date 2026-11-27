@@ -796,7 +796,6 @@ class StubAgent(DifyBuilderAgent):
         return {}
 
     @override
-
     def propose_plan_v1(
         self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
     ) -> WorkflowPlan | None:

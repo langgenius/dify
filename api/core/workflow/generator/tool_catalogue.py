@@ -124,7 +124,7 @@ class LegacyToolFallbackSelection:
 
 
 def build_tool_catalogue(
-    tenant_id: str, *, on_source_error: Callable[[str], None] | None = None
+    tenant_id: str, *, on_source_error: Callable[[str], None] | None = None, complete_plugins: bool = False
 ) -> list[ToolCatalogueEntry]:
     """
     Enumerate installed tools for the given tenant.
@@ -143,7 +143,11 @@ def build_tool_catalogue(
         ToolManager.list_hardcoded_providers()
     )
     try:
-        providers.extend(ToolManager.list_plugin_providers(tenant_id))
+        providers.extend(
+            ToolManager.list_plugin_providers(tenant_id, complete=True)
+            if complete_plugins
+            else ToolManager.list_plugin_providers(tenant_id)
+        )
     except Exception:
         if on_source_error is not None:
             on_source_error("plugin_inventory")

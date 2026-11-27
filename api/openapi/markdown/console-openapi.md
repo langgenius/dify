@@ -2050,9 +2050,7 @@ Get list of applications with pagination and filtering
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps
-**Validate the admitted caller's request before creating the app under the active Builder setting**
-
-Create a new application. A name is required when App Builder is disabled.
+Create a new application
 
 #### Request Body
 
@@ -15382,23 +15380,6 @@ Generate a Dify workflow graph from natural language
 | 400 | Invalid request parameters | **application/json**: [WorkflowGenerateRejectedResponse](#workflowgeneraterejectedresponse)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /workflow-generate/improve
-Expand a workflow-generator instruction with the details it leaves unstated
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WorkflowInstructionImprovePayload](#workflowinstructionimprovepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Instruction returned successfully | **application/json**: [WorkflowInstructionImproveResponse](#workflowinstructionimproveresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /workflow-generate/stream
 Stream a Dify workflow graph (plan then result) via SSE
 
@@ -25982,8 +25963,7 @@ The conversation was not found for this user and app.
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
-| name | string | App name; derived from prompt when omitted | No |
-| prompt | string | Goal prompt the app was created from; used to derive the name | No |
+| name | string | App name | Yes |
 
 #### CreateIMBindingRequest
 
@@ -27339,7 +27319,6 @@ Lifecycle control uses Session CAS, never a graph revision.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
 | attachments | [ [DifyBuilderAttachmentPayload](#difybuilderattachmentpayload) ] |  | No |
-| derive_app_name | boolean |  | No |
 | goal_text | string |  | No |
 | model_config | [SessionModel](#sessionmodel) |  | No |
 | scenario | string |  | Yes |
@@ -41911,33 +41890,6 @@ request validation and response serialization.
 | x | number |  | Yes |
 | y | number |  | Yes |
 | zoom | number |  | Yes |
-
-#### WorkflowInstructionImprovePayload
-
-Payload for the workflow-generator instruction-improvement endpoint.
-
-Backs the composer's "Add missing details" action. It runs before an app
-exists and before the user picks a model, so the rewrite comes from the
-tenant's default model. The underlying generator never raises -- the
-original text with ``changed: false`` is a valid 200 (soft-fail).
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| instruction | string | The build instruction to expand | Yes |
-| language | string | Optional language to write the rewrite in | No |
-| mode | string, <br>**Available values:** "advanced-chat", "workflow", <br>**Default:** workflow | Target app mode the instruction is written for<br>*Enum:* `"advanced-chat"`, `"workflow"` | No |
-
-#### WorkflowInstructionImproveResponse
-
-``instruction`` is always usable: the rewrite, or the caller's own text.
-
-``changed`` is what distinguishes the two, so a client can tell an
-improvement from a soft failure without diffing the strings itself.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| changed | boolean |  | Yes |
-| instruction | string |  | Yes |
 
 #### WorkflowInstructionSuggestionsPayload
 

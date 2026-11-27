@@ -215,7 +215,11 @@ class WorkflowGeneratorService:
         tool_catalogue_text = ""
         installed_tools: set[tuple[str, str]] | None = None
         try:
-            tool_catalogue_entries = build_tool_catalogue(tenant_id)
+            tool_catalogue_entries = (
+                build_tool_catalogue(tenant_id, complete_plugins=True)
+                if model_instance_override is not None
+                else build_tool_catalogue(tenant_id)
+            )
             installed_tools = installed_tool_keys(tool_catalogue_entries)
         except Exception:
             logger.exception("Workflow generator: failed to build tool catalogue for tenant %s", tenant_id)
