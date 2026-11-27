@@ -31,6 +31,8 @@ import {
   providerLogoMap,
 } from '../utils'
 import styles from './quota-panel.module.css'
+import { TokenerAllowanceDetails } from './tokener-allowance-details'
+import { formatUsdMicro, formatUtcAllowancePeriod } from './tokener-amount-format'
 import { useTrialCredits } from './use-trial-credits'
 
 const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map((key) => ({
@@ -74,25 +76,10 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
 
 type TokenerMetering = NonNullable<ModelProviderCreditsResponse['tokener_metering']>
 
-const formatUsdMicro = (rawMicroAmount: string) => {
-  if (!/^-?\d+$/.test(rawMicroAmount)) return '—'
-
-  const microAmount = BigInt(rawMicroAmount)
-  const isNegative = microAmount < 0n
-  const absoluteMicroAmount = isNegative ? -microAmount : microAmount
-  const dollars = absoluteMicroAmount / 1_000_000n
-  const microDollars = (absoluteMicroAmount % 1_000_000n).toString().padStart(6, '0')
-  const fractionalDollars = microDollars.replace(/0+$/, '').padEnd(2, '0')
-  return `${isNegative ? '-$' : '$'}${new Intl.NumberFormat().format(dollars)}.${fractionalDollars}`
-}
-
 const formatDecimalInteger = (value: string) => {
   if (!/^\d+$/.test(value)) return '—'
   return new Intl.NumberFormat().format(BigInt(value))
 }
-
-const formatUtcAllowancePeriod = (startsAt: string, endsAt: string) =>
-  `${startsAt.slice(0, 10)} – ${endsAt.slice(0, 10)}`
 
 type TokenerQuotaPanelProps = {
   bootstrapStatus?: ModelProviderCreditsResponse['tokener_bootstrap_status']
@@ -145,7 +132,7 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
   // An allowance is usable only when the service reports it active. Older
   // metering responses did not include entitlement_status, so keep displaying
   // their optional allowance without inventing a processing state.
-  const allowance = entitlementMessageKey ? null : metering.allowance
+  const allowance = entitlementMessageKey || metering.plan_allowance ? null : metering.allowance
   return (
     <div
       role="group"
@@ -214,6 +201,10 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             {t(($) => $[entitlementMessageKey], { ns: 'modelProvider' })}
           </div>
         )}
+        <TokenerAllowanceDetails
+          planAllowance={metering.plan_allowance}
+          purchasedAvailableUsdMicro={metering.purchased_available_usd_micro}
+        />
         {allowance && (
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-divider-subtle pt-2">
             <div className="flex items-baseline gap-1">
