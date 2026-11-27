@@ -19296,6 +19296,12 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/mcp
+**Delete an external MCP provider in the current workspace**
+
+Requires an initialized account with MCP management permission and a UUID
+provider ID. Success means deletion committed. Invalid, absent, or foreign
+IDs leave providers unchanged and retain their existing error responses.
+
 #### Request Body
 
 | Required | Schema |

@@ -28,6 +28,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.workspace.mcp_provider import MCPProviderDeleteMixin
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -308,10 +309,6 @@ class MCPProviderUpdatePayload(MCPProviderBasePayload):
     provider_id: str
 
 
-class MCPProviderDeletePayload(BaseModel):
-    provider_id: str
-
-
 class MCPAuthPayload(BaseModel):
     provider_id: str
     authorization_code: str | None = None
@@ -468,7 +465,6 @@ register_schema_models(
     ToolOAuthCustomClientPayload,
     MCPProviderCreatePayload,
     MCPProviderUpdatePayload,
-    MCPProviderDeletePayload,
     MCPAuthPayload,
 )
 register_response_schema_models(
@@ -1382,7 +1378,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp")
-class ToolProviderMCPApi(Resource):
+class ToolProviderMCPApi(MCPProviderDeleteMixin, Resource):
     @console_ns.expect(console_ns.models[MCPProviderCreatePayload.__name__])
     @console_ns.response(
         200, "MCP provider created successfully", console_ns.models[ToolProviderApiEntityResponse.__name__]
@@ -1490,21 +1486,6 @@ class ToolProviderMCPApi(Resource):
                 validation_result=validation_result,
                 identity_mode=identity_mode,
             )
-
-        return SimpleResultResponse(result="success").model_dump(mode="json")
-
-    @console_ns.expect(console_ns.models[MCPProviderDeletePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
-    @with_current_tenant_id
-    @model_validate(MCPProviderDeletePayload)
-    def delete(self, req_data: MCPProviderDeletePayload, current_tenant_id: str):
-        with sessionmaker(db.engine).begin() as session:
-            service = MCPToolManageService(session=session)
-            service.delete_provider(tenant_id=current_tenant_id, provider_id=req_data.provider_id)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 

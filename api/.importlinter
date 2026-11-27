@@ -1232,6 +1232,37 @@ forbidden_modules =
     core.tools
     models.engine
 
+[importlinter:contract:mcp-provider-service-boundary]
+name = External MCP provider application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.mcp_provider_service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-mcp-provider-controller-boundary]
+name = External MCP provider deletion reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.workspace.mcp_provider
+forbidden_modules =
+    core.db
+    extensions.ext_database
+    models
+    repositories
+    services.tools.mcp_tools_manage_service
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:app-mcp-server-service-boundary]
 name = App MCP server application service is framework and persistence neutral
 type = forbidden

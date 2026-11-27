@@ -5610,12 +5610,22 @@ export const update4 = {
   byProviderId: byProviderId2,
 }
 
+/**
+ * Delete an external MCP provider in the current workspace
+ *
+ * Requires an initialized account with MCP management permission and a UUID
+ * provider ID. Success means deletion committed. Invalid, absent, or foreign
+ * IDs leave providers unchanged and retain their existing error responses.
+ */
 export const delete24 = oc
   .route({
+    description:
+      'Requires an initialized account with MCP management permission and a UUID\nprovider ID. Success means deletion committed. Invalid, absent, or foreign\nIDs leave providers unchanged and retain their existing error responses.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteWorkspacesCurrentToolProviderMcp',
     path: '/workspaces/current/tool-provider/mcp',
+    summary: 'Delete an external MCP provider in the current workspace',
     tags: ['console'],
   })
   .input(z.object({ body: zDeleteWorkspacesCurrentToolProviderMcpBody }))

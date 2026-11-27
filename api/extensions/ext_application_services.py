@@ -88,6 +88,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.mcp_provider_repository import MCPProviderRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.message_repository import MessageRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
@@ -178,6 +179,7 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
+from services.mcp_provider_service import MCPProviderService
 from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
@@ -339,6 +341,7 @@ class ApplicationServices:
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
+    mcp_providers: MCPProviderService
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
@@ -667,6 +670,7 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        mcp_providers=MCPProviderService(providers=MCPProviderRepository(session_factory=database_client)),
         moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
