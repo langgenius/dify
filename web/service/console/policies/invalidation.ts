@@ -65,11 +65,14 @@ export const READ_ONLY_POSTS = [
   'workspaces.current.toolProvider.api.test.pre.post',
 ] as const
 
-// Builds `{ a: { b: skip } }` from 'a.b'.
-const skipAt = (path: string): ConsolePolicies =>
+// A read sent as POST: skips the fallback and never holds back another write's refresh.
+const readOnly = { mutationOptions: { meta: { invalidate: false, readOnly: true } } } as const
+
+// Builds `{ a: { b: readOnly } }` from 'a.b'.
+const readOnlyAt = (path: string): ConsolePolicies =>
   path
     .split('.')
-    .reduceRight<unknown>((node, segment) => ({ [segment]: node }), skip) as ConsolePolicies
+    .reduceRight<unknown>((node, segment) => ({ [segment]: node }), readOnly) as ConsolePolicies
 
 const tagBinding = {
   mutationOptions: {
@@ -179,5 +182,5 @@ const namedPolicies: ConsolePolicies = {
 
 export const invalidationPolicies: ConsolePolicies = mergePolicies<ConsolePolicies>(
   namedPolicies,
-  ...READ_ONLY_POSTS.map(skipAt),
+  ...READ_ONLY_POSTS.map(readOnlyAt),
 )

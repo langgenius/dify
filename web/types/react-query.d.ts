@@ -27,6 +27,8 @@ declare module '@tanstack/react-query' {
        * `service/console/README.md`.
        */
       invalidate?: false | ((variables: unknown) => boolean)
+      /** A read sent as POST: it never holds back another write's refresh while pending. */
+      readOnly?: true
       /**
        * Console paths (`'agent'`, `'workspaces.current.features'`) the fallback refreshes besides
        * the mutation's own domain, for known cross-domain effects.

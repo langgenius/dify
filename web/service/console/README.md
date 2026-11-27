@@ -78,7 +78,8 @@ the first resource under `workspaces` (`workspaces.current.<resource>`,
 awaited and starts after the mutation's callbacks. It marks every query under the domain
 stale and refetches the observed ones, restarting a read already running; unobserved reads
 (an awaited `queryClient.query()`) are only marked stale, never cancelled. While another
-mutation of the same domain is pending it waits, so the last one refreshes for all. A read
+mutation of the same domain is pending it waits, so the last one refreshes for all; writes
+that opt out of refreshing (autosaves) count, reads sent as POST (`meta.readOnly`) do not. A read
 that remounts its owner on new data and is kept current by it (a streaming chat's history)
 sets `meta: { invalidateAfterWrites: false }` in its `queryOptions` policy.
 

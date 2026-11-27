@@ -410,18 +410,51 @@ describe('mutation invalidation fallback', () => {
     expect(appsList).toHaveBeenCalledTimes(2)
   })
 
-  it('does not wait for a pending mutation of another domain or one that opts out', async () => {
+  it('waits for a pending opted-out write of the domain, such as an autosave', async () => {
+    const client = createClient()
+    const appsList = await mountQuery(client, appsListKey())
+    const autosave = createDeferred<string>()
+
+    const saving = mutate(client, {
+      mutationKey:
+        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationKey(),
+      meta: { invalidate: false },
+      mutationFn: () => autosave.promise,
+    })
+    // A comment write succeeds while the autosave is pending.
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+    expect(appsList).toHaveBeenCalledTimes(1)
+
+    tick()
+    autosave.resolve('saved')
+    await saving
+    await vi.waitFor(() => expect(appsList).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not wait for a pending read sent as POST', async () => {
+    const client = createClient()
+    const appsList = await mountQuery(client, appsListKey())
+    const never = createDeferred<string>()
+
+    void mutate(client, {
+      mutationKey: renameApp(),
+      meta: { invalidate: false, readOnly: true },
+      mutationFn: () => never.promise,
+    })
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+
+    expect(appsList).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not wait for a pending mutation of another domain', async () => {
     const client = createClient()
     const appsList = await mountQuery(client, appsListKey())
     const never = createDeferred<string>()
 
     void mutate(client, {
       mutationKey: consoleQuery.datasets.post.mutationKey(),
-      mutationFn: () => never.promise,
-    })
-    void mutate(client, {
-      mutationKey: renameApp(),
-      meta: { invalidate: false },
       mutationFn: () => never.promise,
     })
     await mutate(client, { mutationKey: renameApp() })

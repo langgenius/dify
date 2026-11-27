@@ -46,6 +46,22 @@ function consolePathKey(path: string): QueryKey {
 type Participant = { domain: string; targets: string[] }
 
 /**
+ * The domain a pending write holds back, or `undefined` for a read: a path ending in `get`,
+ * a read sent as POST (`meta.readOnly`) or a per-call read-only use such as a preview run.
+ * Writes that opt out of refreshing (`invalidate: false`, such as autosaves) still count: a
+ * refresh while they are pending could land a read from before them.
+ */
+function writeDomainOf(mutation: AnyMutation): string | undefined {
+  const path = procedurePathOf(mutation)
+  if (!path?.length || path.at(-1) === 'get') return undefined
+  const meta = mutation.options.meta
+  if (meta?.readOnly) return undefined
+  if (typeof meta?.invalidate === 'function' && !meta.invalidate(mutation.state.variables))
+    return undefined
+  return domainOf(path)
+}
+
+/**
  * Whether the fallback refreshes after this mutation, and what. Reads run through
  * `mutationOptions` (a path ending in `get`) and mutations that set `meta.invalidate: false`
  * do not take part.
@@ -98,20 +114,21 @@ export function createMutationInvalidation() {
         if (event.type !== 'updated') return
         if (event.action.type !== 'success' && event.action.type !== 'error') return
         const { mutation } = event
-        const participant = participantOf(mutation)
-        if (!participant) return
+        const domain = writeDomainOf(mutation)
+        if (!domain) return
 
         // A callback that throws after the request succeeded still refreshes.
-        const { domain, targets } = participant
-        if (succeeded.has(mutation)) {
+        const participant = participantOf(mutation)
+        if (participant && succeeded.has(mutation)) {
           const entry = deferred.get(domain) ?? new Set()
-          for (const target of targets) entry.add(target)
+          for (const target of participant.targets) entry.add(target)
           deferred.set(domain, entry)
         }
 
+        // The last pending write of the domain, opted out or not, flushes what the others left.
         const siblingPending = mutationCache
           .findAll({ status: 'pending' })
-          .some((other) => other !== mutation && participantOf(other)?.domain === domain)
+          .some((other) => other !== mutation && writeDomainOf(other) === domain)
         if (siblingPending) return
 
         const entry = deferred.get(domain)
