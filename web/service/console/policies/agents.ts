@@ -116,9 +116,7 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               const listKey = consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
                 input: { params: { agent_id: variables.params.agent_id } },
               })
-              if (context.client.isFetching({ queryKey: listKey }))
-                await context.client.cancelQueries({ queryKey: listKey })
-              addCreatedKeyToLists(context.client, listKey, created)
+              return addCreatedKeyToLists(context.client, listKey, created)
             },
           },
         },

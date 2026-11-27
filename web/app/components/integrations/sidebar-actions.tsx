@@ -123,11 +123,13 @@ export function IntegrationSidebarUtilityActions({
   canDebugger,
   permission,
   showPermissionQuickPanel,
+  permissionUpdatePending = false,
   onPermissionChange,
 }: {
   canDebugger: boolean
   permission?: Permissions
   showPermissionQuickPanel: boolean
+  permissionUpdatePending?: boolean
   onPermissionChange: (key: PermissionSettingKey, value: PermissionType) => void
 }) {
   const { t } = useTranslation(['plugin'])
@@ -168,7 +170,11 @@ export function IntegrationSidebarUtilityActions({
             sideOffset={4}
             className="border-0 bg-transparent p-0 shadow-none"
           >
-            <PermissionQuickPanel permission={permission} onChange={onPermissionChange} />
+            <PermissionQuickPanel
+              permission={permission}
+              disabled={permissionUpdatePending}
+              onChange={onPermissionChange}
+            />
           </PopoverContent>
         </Popover>
       )}

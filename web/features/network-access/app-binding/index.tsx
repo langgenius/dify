@@ -414,6 +414,7 @@ function AccessControlSession({
       { params: { group_id: groupId } },
       {
         onSuccess: (check) => {
+          // Only the current attempt shows its result; a discarded one must not overwrite it.
           if (saveAttemptRef.current !== attempt) return
           queryClient.setQueryData(
             checkCurrentIp.queryKey({ input: { params: { group_id: groupId } } }),

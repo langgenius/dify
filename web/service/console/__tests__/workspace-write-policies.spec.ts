@@ -92,26 +92,38 @@ describe('skill metadata policy', () => {
 })
 
 describe('member invitation policies', () => {
-  it('refreshes seats, members, and the workspace pending invitations after inviting', async () => {
-    const { context, invalidatedKeys } = setup()
+  it('leaves seats, members, and pending invitations to the fallback after inviting', () => {
+    const options = consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions()
 
-    await consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions().onSuccess!(
-      { result: 'success', tenant_id: 'workspace-1', invitation_results: [] },
-      { body: { emails: ['a@example.com'], role: 'normal', language: 'en-US' } },
-      undefined,
-      context,
-    )
+    expect(options.onSuccess).toBeUndefined()
+    expect(options.meta?.alsoInvalidate).toEqual([
+      'features',
+      'workspaces.byWorkspaceId.members.pendingInvitations',
+    ])
+  })
+
+  it('waits only for the pending invitations after a successful revoke', async () => {
+    const { context, invalidatedKeys } = setup()
+    const revoke = consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post
+    const variables = {
+      params: { workspace_id: 'workspace-1' },
+      body: { email: 'a@example.com' },
+    } as Parameters<NonNullable<ReturnType<typeof revoke.mutationOptions>['onSettled']>>[2]
+
+    await revoke.mutationOptions().onSettled!(undefined, null, variables, undefined, context)
 
     expect(invalidatedKeys()).toEqual([
-      consoleQuery.features.get.queryKey(),
-      consoleQuery.workspaces.current.members.get.key(),
       consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
         input: { params: { workspace_id: 'workspace-1' } },
       }),
     ])
+    expect(revoke.mutationOptions().meta?.alsoInvalidate).toEqual([
+      'features',
+      'workspaces.current.members',
+    ])
   })
 
-  it('refreshes the same caches after a revoke, even a failed one', async () => {
+  it('refreshes members and seats too after a failed revoke', async () => {
     const { context, invalidatedKeys } = setup()
     const revoke = consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post
 
@@ -304,13 +316,13 @@ describe('mutations and the refetches they start', () => {
       ),
     )
     await settle()
-    expect(plugins.queryFn).toHaveBeenCalledTimes(2)
+    // Plugin counts refresh through the invalidation fallback after a success.
+    expect(plugins.queryFn).toHaveBeenCalledTimes(1)
     expect(state.done).toBe(false)
 
     list.refetch.resolve({ loaded: true })
     await settle()
     expect(state.done).toBe(true)
-    plugins.refetch.resolve({ loaded: true })
   })
 
   it('waits for the agent access settings, not agent lists, after changing the scope', async () => {
@@ -333,13 +345,13 @@ describe('mutations and the refetches they start', () => {
       ),
     )
     await settle()
-    expect(agents.queryFn).toHaveBeenCalledTimes(2)
+    // Agent lists refresh through the invalidation fallback.
+    expect(agents.queryFn).toHaveBeenCalledTimes(1)
     expect(state.done).toBe(false)
 
     settings.refetch.resolve({ loaded: true })
     await settle()
     expect(state.done).toBe(true)
-    agents.refetch.resolve({ loaded: true })
   })
 })
 
