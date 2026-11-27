@@ -38,14 +38,15 @@ Await the primary source; detach everything else:
   a dialog, "deploy latest", resending a batch), so a late refetch would let them act
   on the old row. Creates that reveal a one-time secret (tokens, API keys) write the
   created entry into the list instead, so the secret shows without waiting.
-- **Secondary, `void`:** plan and quota, counts, catalogs and option lists, other
+- **Secondary, not awaited:** plan and quota, counts, catalogs and option lists, other
   resources' lists or details, summaries. Awaiting them would delay success feedback
-  and keep `isPending` buttons pending on unrelated refetches.
+  and keep `isPending` buttons pending on unrelated refetches. The fallback refreshes
+  the mutation's own domain; declare other domains with `alsoInvalidate` (see
+  [Cache updates after writes]).
 
 When the policy and the caller both define `onMutate`, each side receives its own
-result in later callbacks. Other
-options (`retry`, `context`, `meta`) still merge shallowly: the caller's value
-wins.
+result in later callbacks. `meta` merges by key; other options (`retry`, `context`)
+still merge shallowly: the caller's value wins.
 
 Pass callbacks to `mutationOptions()`. Spreading `...mutationOptions()` into
 `useMutation` and then setting a callback, or calling a policy callback by hand,
@@ -67,6 +68,41 @@ would keep the pre-write response, and an unobserved query's read keeps running.
 The helper cancels those fetches before invalidating, so the refetch starts after
 the write. Observed queries with data are left to `invalidateQueries`, which
 restarts them without showing earlier data.
+
+## Cache updates after writes
+
+Every successful console mutation refreshes the active queries of its own domain in
+the background (`mutation-invalidation.ts`). The domain is the first path segment, or
+the first resource under `workspaces` (`workspaces.current.<resource>`,
+`workspaces.byWorkspaceId.<resource>`) and `enterprise.<service>`. The refresh is never
+awaited and starts after the mutation's callbacks. It marks every query under the domain
+stale and refetches the observed ones, restarting a read already running; unobserved reads
+(an awaited `queryClient.query()`) are only marked stale, never cancelled. While another
+mutation of the same domain is pending it waits, so the last one refreshes for all; writes
+that opt out of refreshing (autosaves) count, reads sent as POST (`meta.readOnly`) do not. A read
+that remounts its owner on new data and is kept current by it (a streaming chat's history)
+sets `meta: { invalidateAfterWrites: false }` in its `queryOptions` policy.
+
+A policy that writes into the cache (`setQueryData`, `setQueriesData`) first awaits
+`cancelQueries` for those keys, so a read that started before the write cannot land over it.
+Known trade-off: a query a policy already refreshed is fetched once more.
+
+- **Write a policy** only for the primary source a flow must wait for (an awaited
+  refresh) or for writing the response into the cache.
+- **Rely on the fallback** for everything else in the domain. Declare other domains a
+  write changes with `meta: { alsoInvalidate: ['agent', 'workspaces.current.features'] }`
+  in its policy, and set `meta: { invalidate: false }` when it changes no cached data
+  or its owner reconciles the cache itself (autosaves that write the response). A function
+  (`invalidate: (variables) => boolean`) decides per call, for a write endpoint also used
+  read-only, such as a pipeline run with `is_preview`. Opt-outs
+  and declarations without another policy live in `policies/invalidation.ts`;
+  `__tests__/mutation-coverage.spec.ts` fails for a write none of these cover.
+- **Call sites invalidate directly** only for a user-driven refresh or retry, a refresh
+  after a failed request, or a stream or task event. A hand-written `useMutation`
+  without the oRPC `mutationKey` is not seen by the fallback; use `mutationOptions()`.
+- **Optimistic updates** cancel the queries first, and settle (roll back or refresh)
+  only when `queryClient.isMutating({ mutationKey }) === 1`, so the first of two quick
+  writes does not overwrite the second's optimistic value.
 
 ## Freshness
 
@@ -92,3 +128,4 @@ into the legacy extension form schema. Moderation and external-data-tool workflo
 consume this adapter and retain their own configuration and submission behavior.
 
 [Browser transport]: ./browser.ts
+[Cache updates after writes]: #cache-updates-after-writes
