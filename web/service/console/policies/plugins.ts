@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleQuery, WorkspaceCurrentPolicies } from './types'
-import { upsertStartedPluginTask } from '../plugin-task-cache'
+import { pluginTaskListInput, upsertStartedPluginTask } from '../plugin-task-cache'
 import { invalidateQueryKeys } from './shared'
 
 // MCP edits and deletes report a refused write in the body as `result: 'error'`.
@@ -215,7 +215,12 @@ export function workspacePluginPolicies(
         marketplace: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  await context.client.cancelQueries({
+                    queryKey: pluginTaskListKey(consoleQuery),
+                    exact: true,
+                  })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -224,7 +229,12 @@ export function workspacePluginPolicies(
         pkg: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  await context.client.cancelQueries({
+                    queryKey: pluginTaskListKey(consoleQuery),
+                    exact: true,
+                  })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -233,7 +243,12 @@ export function workspacePluginPolicies(
         github: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  await context.client.cancelQueries({
+                    queryKey: pluginTaskListKey(consoleQuery),
+                    exact: true,
+                  })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -244,7 +259,12 @@ export function workspacePluginPolicies(
         marketplace: {
           post: {
             mutationOptions: {
-              onSuccess: (response, _variables, _result, context) => {
+              onSuccess: async (response, _variables, _result, context) => {
+                if (response.task)
+                  await context.client.cancelQueries({
+                    queryKey: pluginTaskListKey(consoleQuery),
+                    exact: true,
+                  })
                 upsertStartedPluginTask(consoleQuery, context.client, response)
               },
             },
@@ -338,4 +358,9 @@ function invalidateBuiltinOAuthClientQueries(
     oauth.clientSchema.get.key(input),
     oauth.customClient.get.key(input),
   ])
+}
+
+// The task list a started install or upgrade is written into.
+function pluginTaskListKey(query: ConsoleQuery) {
+  return query.workspaces.current.plugin.tasks.get.queryKey({ input: pluginTaskListInput })
 }

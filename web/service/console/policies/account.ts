@@ -32,8 +32,10 @@ export function authPolicies(
       post: {
         mutationOptions: {
           // The install redirect reads the finished status right away.
-          onSuccess: (_data, _variables, _result, { client }) => {
-            client.setQueryData(consoleQuery.init.get.queryKey(), { status: 'finished' })
+          onSuccess: async (_data, _variables, _result, { client }) => {
+            const queryKey = consoleQuery.init.get.queryKey()
+            await client.cancelQueries({ queryKey, exact: true })
+            client.setQueryData(queryKey, { status: 'finished' })
           },
         },
       },
@@ -92,8 +94,11 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
         mutationOptions: {
           // The dialog shows the one-time secret as soon as the create resolves, so the new
           // token is written into the cached lists instead of waiting for their refetch.
-          onSuccess: (created, _variables, _onMutateResult, context) => {
+          onSuccess: async (created, _variables, _onMutateResult, context) => {
             const { secret: _secret, ...token } = created
+            await context.client.cancelQueries({
+              queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+            })
             context.client.setQueriesData<PersonalAccessTokenListResponse>(
               { queryKey: consoleQuery.account.personalAccessTokens.get.key() },
               (list) =>

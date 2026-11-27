@@ -152,7 +152,10 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
               // Contacts list workspace members.
               meta: { alsoInvalidate: humanInputContactPaths },
               // The row leaves at once; the refetch confirms it.
-              onSuccess: (_data, variables, _result, context) => {
+              onSuccess: async (_data, variables, _result, context) => {
+                await context.client.cancelQueries({
+                  queryKey: consoleQuery.workspaces.current.members.get.key(),
+                })
                 context.client.setQueriesData(
                   { queryKey: consoleQuery.workspaces.current.members.get.key() },
                   (members: AccountWithRoleListResponse | undefined) =>
@@ -176,15 +179,14 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
           mutationOptions: {
             meta: { alsoInvalidate: [appNetworkAccessGroupPath] },
             // Show the new group right away; the settled refetch confirms it.
-            onSuccess: (data, _variables, _result, { client }) => {
-              client.setQueryData(
-                consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
-                (current) => {
-                  if (!current) return current
-                  if (current.groups.some((group) => group.id === data.group.id)) return current
-                  return { ...current, groups: [...current.groups, data.group] }
-                },
-              )
+            onSuccess: async (data, _variables, _result, { client }) => {
+              const queryKey = consoleQuery.workspaces.current.networkAccessGroups.get.queryKey()
+              await client.cancelQueries({ queryKey, exact: true })
+              client.setQueryData(queryKey, (current) => {
+                if (!current) return current
+                if (current.groups.some((group) => group.id === data.group.id)) return current
+                return { ...current, groups: [...current.groups, data.group] }
+              })
             },
             onSettled: (_data, error, _variables, _result, { client }) => {
               if (error) return
@@ -251,7 +253,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 // Removing a role changes the roles shown on member rows.
                 meta: { alsoInvalidate: ['workspaces.current.members'] },
                 // The role leaves at once; the refetch confirms it.
-                onSettled: (_data, error, { params }, _result, { client }) => {
+                onSettled: async (_data, error, { params }, _result, { client }) => {
                   if (error) return
                   const roles = consoleQuery.workspaces.current.rbac.roles.get
                   const removeRole = (page: RbacRoleList): RbacRoleList =>
@@ -261,6 +263,10 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                           data: page.data.filter((role) => role.id !== params.role_id),
                         }
                       : page
+                  await Promise.all([
+                    client.cancelQueries({ queryKey: roles.key({ type: 'query' }) }),
+                    client.cancelQueries({ queryKey: roles.key({ type: 'infinite' }) }),
+                  ])
                   client.setQueriesData<RbacRoleList>(
                     { queryKey: roles.key({ type: 'query' }) },
                     (data) => data && removeRole(data),
@@ -444,7 +450,7 @@ function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client
   return invalidateQueryKeys(client, [query.workspaces.current.rbac.key()])
 }
 
-function removeAccessPolicyRows(
+async function removeAccessPolicyRows(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
   policyId: string,
@@ -467,9 +473,13 @@ function removeAccessPolicyRows(
       })),
     }
   }
-  for (const list of [lists.apps, lists.datasets, lists.agents])
+  const listKeys = [lists.apps, lists.datasets, lists.agents].map((list) =>
+    list.accessPolicy.get.key({ type: 'infinite' }),
+  )
+  await Promise.all(listKeys.map((queryKey) => client.cancelQueries({ queryKey })))
+  for (const queryKey of listKeys)
     client.setQueriesData<InfiniteData<WorkspaceAccessMatrix>>(
-      { queryKey: list.accessPolicy.get.key({ type: 'infinite' }) },
+      { queryKey },
       (data) => data && removeRule(data),
     )
 }

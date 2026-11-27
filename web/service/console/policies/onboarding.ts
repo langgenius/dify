@@ -6,11 +6,10 @@ export function onboardingPolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
       state: {
         patch: {
           mutationOptions: {
-            onSuccess: (state, _variables, _result, { client }) => {
-              client.setQueryData(
-                consoleQuery.onboarding.stepByStepTour.state.get.queryKey(),
-                state,
-              )
+            onSuccess: async (state, _variables, _result, { client }) => {
+              const queryKey = consoleQuery.onboarding.stepByStepTour.state.get.queryKey()
+              await client.cancelQueries({ queryKey, exact: true })
+              client.setQueryData(queryKey, state)
             },
           },
         },

@@ -80,11 +80,11 @@ export function humanInputPolicies(
         imSyncRuns: {
           post: {
             mutationOptions: {
-              onSuccess: (data, _variables, _onMutateResult, context) => {
-                context.client.setQueryData(
-                  consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey(),
-                  data,
-                )
+              onSuccess: async (data, _variables, _onMutateResult, context) => {
+                const queryKey =
+                  consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey()
+                await context.client.cancelQueries({ queryKey, exact: true })
+                context.client.setQueryData(queryKey, data)
                 void context.client.resetQueries({
                   queryKey:
                     consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.results.key(),

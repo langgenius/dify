@@ -2,6 +2,7 @@ import type { InfiniteData, MutationFunctionContext, QueryKey } from '@tanstack/
 import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { pluginTaskListInput } from '@/service/console/plugin-task-cache'
 import { createDeferred } from '@/test/deferred'
 
 type Callback = (...args: unknown[]) => unknown
@@ -239,4 +240,90 @@ describe('human input channel writes', () => {
     expect(keys).toContainEqual(v2.imSyncRuns.key())
     expect(keys).toContainEqual(v2.channels.key())
   })
+})
+
+describe('policy writes over a read already in flight', () => {
+  type Case = [string, () => unknown, QueryKey, unknown, unknown, unknown, unknown]
+  const workspace = consoleQuery.workspaces.current
+  it.each<Case>([
+    [
+      'init status after setup',
+      () => consoleQuery.init.post.mutationOptions().onSuccess,
+      consoleQuery.init.get.queryKey(),
+      { status: 'not_started' },
+      { result: 'success' },
+      { body: { password: 'secret' } },
+      { status: 'finished' },
+    ],
+    [
+      'API extension list after a delete',
+      () => consoleQuery.apiBasedExtension.byId.delete.mutationOptions().onSuccess,
+      consoleQuery.apiBasedExtension.get.queryKey(),
+      [{ id: 'ext-1' }, { id: 'ext-2' }],
+      undefined,
+      { params: { id: 'ext-1' } },
+      [{ id: 'ext-2' }],
+    ],
+    [
+      'latest IM sync run after a sync starts',
+      () => workspace.humanInput.v2.imSyncRuns.post.mutationOptions().onSuccess,
+      workspace.humanInput.v2.imSyncRuns.latest.get.queryKey(),
+      { id: 'run-1' },
+      { id: 'run-2' },
+      {},
+      { id: 'run-2' },
+    ],
+    [
+      'tour state after a patch',
+      () => consoleQuery.onboarding.stepByStepTour.state.patch.mutationOptions().onSuccess,
+      consoleQuery.onboarding.stepByStepTour.state.get.queryKey(),
+      { step: 1 },
+      { step: 2 },
+      { body: { step: 2 } },
+      { step: 2 },
+    ],
+    [
+      'archive download task after it starts',
+      () => consoleQuery.workflowRunArchives.downloads.post.mutationOptions().onSuccess,
+      consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryKey({
+        input: { params: { download_id: 'download-1' } },
+      }),
+      { download_id: 'download-1', status: 'pending' },
+      { download_id: 'download-1', status: 'running' },
+      {},
+      { download_id: 'download-1', status: 'running' },
+    ],
+    [
+      'member list after a removal',
+      () => workspace.members.byMemberId.delete.mutationOptions().onSuccess,
+      workspace.members.get.queryKey({ input: {} } as never),
+      { accounts: [{ id: 'member-1' }, { id: 'member-2' }] },
+      undefined,
+      { params: { member_id: 'member-1' } },
+      { accounts: [{ id: 'member-2' }] },
+    ],
+    [
+      'plugin task list after an install starts',
+      () => workspace.plugin.install.marketplace.post.mutationOptions().onSuccess,
+      workspace.plugin.tasks.get.queryKey({ input: pluginTaskListInput }),
+      { tasks: [{ id: 'task-1' }] },
+      { task: { id: 'task-2' } },
+      { body: {} },
+      { tasks: [{ id: 'task-2' }, { id: 'task-1' }] },
+    ],
+  ])(
+    'the %s is not overwritten by the earlier read',
+    async (_name, callback, key, cached, data, variables, written) => {
+      const { client, context } = setup()
+      client.setQueryData(key, cached)
+      const read = createDeferred<unknown>()
+      void client.query({ queryKey: key, queryFn: () => read.promise }).catch(() => undefined)
+
+      await (callback() as Callback)(data, variables, undefined, context)
+      read.resolve(cached)
+      await settle()
+
+      expect(client.getQueryData(key)).toEqual(written)
+    },
+  )
 })
