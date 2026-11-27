@@ -36,3 +36,17 @@ it('reports missing required, wrong types and bad enums in the 422 detail shape'
 it('lets unknown keys through to the server', () => {
   expect(validateInput(run, { app_id: 'a', inputs: {}, extra: 1 })).toEqual([])
 })
+
+it('reports original property names from JSON Pointer paths', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      'a/b': {
+        type: 'object',
+        properties: { '~1': { type: 'number' }, '': { type: 'number' } },
+      },
+    },
+  }
+  const details = validateInput(schema, { 'a/b': { '~1': 'wrong', '': 'wrong' } })
+  expect(details.map((detail) => detail.loc)).toEqual([['a/b', '~1'], ['a/b', '']])
+})
