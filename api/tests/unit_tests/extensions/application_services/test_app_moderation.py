@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -6,6 +7,7 @@ from threading import Barrier
 from time import perf_counter
 from typing import Literal, override
 
+import httpx
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
@@ -46,6 +48,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
+from core.helper import ssrf_proxy as ssrf_module
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.factory import get_app_moderation
@@ -71,7 +74,7 @@ from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message
 from models.provider import ProviderType
-from services.moderation_adapters import HostedOpenAIModerationGateway, LLMModerationGuard
+from services.moderation_adapters import LLMModerationGuard
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
@@ -86,11 +89,7 @@ from services.moderation_service import (
     ModerationVerdict,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_config
-from tests.helpers.unit.core.model_moderation_fixtures import (
-    RecordingHostedModerationClient,
-    RecordingLLM,
-    make_tenant_moderation_provider,
-)
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingLLM, make_tenant_moderation_provider
 from tests.helpers.unit.model_factories import make_account, make_conversation, make_message
 from tests.workflow_test_utils import build_test_variable_pool
 
@@ -466,21 +465,23 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
     hosted: bool,
     registered: bool,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
+    config_overrides(
+        DEPLOYMENT_EDITION=edition,
+        HOSTED_MODERATION_ENABLED=enabled,
+        HOSTED_OPENAI_API_KEY="platform-key",
+        HOSTED_MODERATION_CACHE_TTL=0,
+    )
     code_based_extension.init()
     tenant_provider, tenant_client = make_tenant_moderation_provider()
     monkeypatch.setattr("core.model_manager.create_plugin_provider_manager", lambda **_: tenant_provider)
-    hosted_client = RecordingHostedModerationClient()
-    hosted_service = ModerationService(
-        gateway=HostedOpenAIModerationGateway(
-            client=hosted_client,
-            credentials={"openai_api_key": "platform-key"},
-            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
-        )
-    )
-    monkeypatch.setattr(
-        "extensions.application_services.moderation.build_platform_moderation_service", lambda: hosted_service
-    )
+    hosted_batches: list[list[str]] = []
+
+    def moderate(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == "Bearer platform-key"
+        texts: list[str] = json.loads(request.content)["input"]
+        hosted_batches.append(texts)
+        return httpx.Response(200, json={"results": [{"flagged": "blocked" in text} for text in texts]})
+
     flask_app = Flask(__name__)
     monkeypatch.setattr("core.moderation.input_moderation.get_app_moderation", get_app_moderation)
     monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", get_app_moderation)
@@ -528,7 +529,8 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
         app_mode=AppMode.CHAT,
         message_id="message-1",
     )
-    with flask_app.app_context():
+    with httpx.Client(transport=httpx.MockTransport(moderate)) as transport, flask_app.app_context():
+        monkeypatch.setattr(ssrf_module, "_get_ssrf_client", lambda _verify: transport)
         pipeline = BasedGenerateTaskPipeline(application_generate_entity=entity, queue_manager=queue, stream=False)
         assert AppRunner().moderation_for_inputs(
             app_id=config.app_id,
@@ -553,13 +555,15 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
                 "App output replacement"
             )
 
-    selected_client, unused_client = (hosted_client, tenant_client) if hosted else (tenant_client, hosted_client)
-    key = "platform-key" if hosted else "tenant-key"
-    assert not unused_client.calls
-    assert [(credentials, text) for _, _, _, _, credentials, text, _ in selected_client.calls] == [
-        ({"openai_api_key": key}, "safe input"),
-        ({"openai_api_key": key}, "blocked output"),
-    ]
+    if hosted:
+        assert hosted_batches == [["safe input"], ["blocked output"]]
+        assert not tenant_client.calls
+    else:
+        assert not hosted_batches
+        assert [(credentials, text) for _, _, _, _, credentials, text, _ in tenant_client.calls] == [
+            ({"openai_api_key": "tenant-key"}, "safe input"),
+            ({"openai_api_key": "tenant-key"}, "blocked output"),
+        ]
 
 
 @pytest.mark.parametrize("phase", ["input", "output"])
