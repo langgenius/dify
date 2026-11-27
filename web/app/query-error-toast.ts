@@ -1,10 +1,16 @@
 import type { Mutation, Query } from '@tanstack/react-query'
+import type { RequestErrorTranslator } from '@/service/request-error-message'
 import { ORPCError } from '@orpc/client'
 import { MutationCache, QueryCache } from '@tanstack/react-query'
 import { getI18n } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isErrorHandled, markErrorHandled } from '@/service/handled-error'
 import { getHttpErrorBodyMessage } from '@/service/http-error'
+import {
+  describeRequestError,
+  isExplainedRequestError,
+  resolveRequestErrorMessage,
+} from '@/service/request-error-message'
 
 const DEDUPE_WINDOW_MS = 10000
 
@@ -24,6 +30,34 @@ function getReportableRequestError(error: unknown) {
 // Reporting runs outside React too, before i18n may be ready; the toast must never throw.
 const actionFailedMessage = () =>
   getI18n()?.t(($) => $['api.actionFailed'], { ns: 'common' }) || 'Action failed'
+
+/**
+ * Runs `report` with the request error translations, loading them first when no component has
+ * yet. Without i18n, such as before it starts, it gets none and the caller keeps its own text.
+ */
+function withRequestErrorTranslator(report: (t: RequestErrorTranslator | undefined) => void) {
+  const i18n = getI18n()
+  if (!i18n) return report(undefined)
+  // A failed resource load still resolves `loadNamespaces` and can mark the namespace loaded, so
+  // the bundle itself decides whether translations exist.
+  const isAvailable = () =>
+    !!i18n.getResourceBundle(i18n.resolvedLanguage ?? i18n.language, 'requestErrors')
+  const translate = () => report(isAvailable() ? i18n.getFixedT(null, 'requestErrors') : undefined)
+  if (isAvailable()) return translate()
+  i18n.loadNamespaces('requestErrors').then(translate, () => report(undefined))
+}
+
+/** The message for a failed request: translated by its code, or the server's own. */
+function requestErrorMessage(
+  error: ORPCError<string, unknown>,
+  t: RequestErrorTranslator | undefined,
+  fallback?: string,
+) {
+  if (t) return resolveRequestErrorMessage(error, { t, fallback })
+  const serverMessage = getHttpErrorBodyMessage(error.data)
+  if (serverMessage) return { message: serverMessage, source: 'server' as const }
+  return { message: fallback ?? actionFailedMessage(), source: 'generic' as const }
+}
 
 // A polling query fails once per interval, so a message is shown once per window per query.
 const queryToasts = new Map<string, Map<string, number>>()
@@ -48,20 +82,26 @@ function reportQueryError(error: unknown, query: AnyQuery) {
   if (query.meta?.errorToast === false) return
   const requestError = getReportableRequestError(error)
   if (!requestError) return
-  const message = query.meta?.errorMessage ?? getHttpErrorBodyMessage(requestError.data)
-  if (!message) return
-
-  const now = Date.now()
-  pruneExpiredQueryToasts(now)
-  const messages = queryToasts.get(query.queryHash) ?? new Map<string, number>()
-  queryToasts.set(query.queryHash, messages)
-  // Once reported, a caller that rethrows the error, such as a mutation awaiting this query,
-  // must not report it again.
+  const errorMessage = query.meta?.errorMessage
+  // A read nothing explains stays with its owner's error state, and with a caller that rethrows
+  // it, such as a mutation awaiting this query, which reports it with its own text.
+  if (!errorMessage && !isExplainedRequestError(requestError)) return
+  // Once reported, a caller that rethrows the error must not report it again.
   markErrorHandled(requestError)
-  const expiresAt = messages.get(message)
-  if (expiresAt !== undefined && now < expiresAt) return
-  messages.set(message, now + DEDUPE_WINDOW_MS)
-  toast.error(message)
+  withRequestErrorTranslator((t) => {
+    const { message } = errorMessage
+      ? { message: errorMessage }
+      : requestErrorMessage(requestError, t)
+
+    const now = Date.now()
+    pruneExpiredQueryToasts(now)
+    const messages = queryToasts.get(query.queryHash) ?? new Map<string, number>()
+    queryToasts.set(query.queryHash, messages)
+    const expiresAt = messages.get(message)
+    if (expiresAt !== undefined && now < expiresAt) return
+    messages.set(message, now + DEDUPE_WINDOW_MS)
+    toast.error(message)
+  })
 }
 
 /**
@@ -71,9 +111,10 @@ function reportQueryError(error: unknown, query: AnyQuery) {
 export function toastRequestError(error: unknown, message?: string) {
   const requestError = getReportableRequestError(error)
   if (!requestError) return
-  toast.error(message ?? getHttpErrorBodyMessage(requestError.data) ?? actionFailedMessage())
   // A nested mutation or a caller that rethrows the same error must not report it again.
   markErrorHandled(requestError)
+  if (message) return toast.error(message)
+  withRequestErrorTranslator((t) => toast.error(requestErrorMessage(requestError, t).message))
 }
 
 const isAbortError = (error: unknown) =>
@@ -82,7 +123,7 @@ const isAbortError = (error: unknown) =>
 /**
  * Reports any failure of a user action that no mutation reports, such as a lookup before an
  * install: request errors as `toastRequestError` does, and a network failure or timeout with
- * the default message. A failure that was already reported, a sign-in failure and a
+ * a generic message for its kind. A failure that was already reported, a sign-in failure and a
  * cancellation stay silent.
  */
 export function toastActionError(error: unknown) {
@@ -91,14 +132,13 @@ export function toastActionError(error: unknown) {
     // A client without the console transport, such as the marketplace one, keeps a response body
     // that is not an oRPC error under `data.body`.
     const data = error.data as { body?: unknown } | undefined
-    toastRequestError(
-      error,
-      getHttpErrorBodyMessage(error.data) ?? getHttpErrorBodyMessage(data?.body),
-    )
+    toastRequestError(error, getHttpErrorBodyMessage(data?.body))
     return
   }
-  toast.error(actionFailedMessage())
   markErrorHandled(error)
+  withRequestErrorTranslator((t) =>
+    toast.error(t ? describeRequestError(error, { t }) : actionFailedMessage()),
+  )
 }
 
 /**
