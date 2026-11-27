@@ -15,11 +15,11 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/api'
-import { getRequestErrorMessage } from '@/service/http-error'
 import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,
 } from '@/service/marketplace-templates'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 type ImportFromMarketplaceTemplateModalProps = {
   templateId: string
@@ -33,6 +33,7 @@ const ImportFromMarketplaceTemplateModal = ({
   onConfirm,
 }: ImportFromMarketplaceTemplateModalProps) => {
   const { t } = useTranslation(['app', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
   const template = data?.data
   const [importing, setImporting] = useState(false)
@@ -67,14 +68,16 @@ const ImportFromMarketplaceTemplateModal = ({
       onConfirm(dsl)
     } catch (error) {
       toast.error(
-        getRequestErrorMessage(error) ??
+        describeRequestError(
+          error,
           t(($) => $['marketplace.template.importFailed'], { ns: 'app' }),
+        ),
       )
     } finally {
       setImporting(false)
       isImportingRef.current = false
     }
-  }, [templateId, onConfirm, t])
+  }, [templateId, onConfirm, t, describeRequestError])
 
   return (
     <Dialog

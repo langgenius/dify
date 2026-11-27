@@ -7,7 +7,7 @@ import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/lo
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
@@ -56,7 +56,7 @@ const ExternalMemberSSOAuth = () => {
           toast.error('SSO protocol is not supported.')
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
   }, [protocol, redirectUrl, router])
 

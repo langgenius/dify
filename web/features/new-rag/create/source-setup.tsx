@@ -9,9 +9,9 @@ import { useAtom } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleClient } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ConnectedSourceConfiguration } from '../sources/setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from '../sources/setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from '../sources/setup/datasource-parameter-form'
@@ -121,6 +121,7 @@ function CreateSourceSetupSession({
   shouldPreservePreviewOnUnmount,
 }: CreateSourceSetupProps) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
+  const describeRequestError = useRequestErrorDescriber()
   const {
     datasourcePluginsQuery,
     datasourceAuthQuery,
@@ -136,7 +137,7 @@ function CreateSourceSetupSession({
   const [selection, setSelection] = useAtom(createSourceSelectionAtom)
   const currentSelection = selection?.sessionKey === sessionKey ? selection : undefined
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
-  const [crawlErrorMessage, setCrawlErrorMessage] = useState<string>()
+  const [crawlFailure, setCrawlFailure] = useState<{ error: unknown }>()
   const crawlActionLabelId = useId()
   const [stoppingPreview, setStoppingPreview] = useState(false)
   const [previewPages, setPreviewPages] = useState<CrawlPreviewPage[]>([])
@@ -197,13 +198,13 @@ function CreateSourceSetupSession({
         setCrawlState('stopped')
       } else if (response.status === 'failed') {
         if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
-        setCrawlErrorMessage(undefined)
+        setCrawlFailure(undefined)
         setCrawlState('error')
       } else {
         setCrawlState('running')
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       // Keep the job handle and running state so Stop can be retried and unmount
       // cleanup can still revoke a task whose cancellation response was lost.
       setCrawlState('running')
@@ -289,7 +290,7 @@ function CreateSourceSetupSession({
       if (crawlAttemptRef.current !== attempt) return
       if (response.status !== 'completed' || !response.result) {
         previewJobIdRef.current = undefined
-        setCrawlErrorMessage(undefined)
+        setCrawlFailure(undefined)
         setCrawlState(response.status === 'canceled' ? 'stopped' : 'error')
         return
       }
@@ -314,7 +315,7 @@ function CreateSourceSetupSession({
               params: { job_id: jobId },
             })
             .catch(() => {})
-        setCrawlErrorMessage(getRequestErrorMessage(error))
+        setCrawlFailure({ error })
         setCrawlState('error')
       }
     }
@@ -479,7 +480,12 @@ function CreateSourceSetupSession({
               ))}
             {crawlState === 'error' && (
               <p role="alert" className="system-xs-regular text-text-destructive">
-                {crawlErrorMessage ?? t(($) => $.crawlStartFailed)}
+                {crawlFailure
+                  ? describeRequestError(
+                      crawlFailure.error,
+                      t(($) => $.crawlStartFailed),
+                    )
+                  : t(($) => $.crawlStartFailed)}
               </p>
             )}
             {crawlState === 'stopped' && (

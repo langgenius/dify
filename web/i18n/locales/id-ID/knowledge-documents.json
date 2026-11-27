@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Tidak ada dokumen yang cocok dengan pencarian ini.",
   "parentChildChunkCount": "{{parentCount}} induk / {{childCount}} anak",
   "partialDocumentResults": "Mungkin ada dokumen lain yang cocok. Muat lebih banyak untuk melanjutkan pencarian.",
+  "reindexConfirmDescription": "Pengindeksan ulang membuat ulang semua potongan dan entri indeks dari file sumber. Suntingan pada potongan di basis pengetahuan, misalnya menggunakan pernyataan dokumen lain saat menyelesaikan konflik, akan ditimpa oleh isi file sumber. Pencarian tetap menggunakan indeks saat ini hingga pengindeksan ulang selesai.",
+  "reindexConfirmTitle": "Indeks ulang dari file sumber?",
   "reindexDocument": "Indeks ulang",
   "retrievalCountValue": "{{value}} dalam 7 hari terakhir",
   "retryReindexDocument": "Indeks ulang lagi",

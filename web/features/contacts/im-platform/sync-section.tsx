@@ -7,7 +7,8 @@ import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { CONTACT_IM_SYNC_POLL_INTERVAL_MS } from './hooks'
 
@@ -19,6 +20,7 @@ export function ContactImDirectorySyncSection({
   onViewDetails: (runId: string) => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const { canManage } = useContactsImPlatformOrganization()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns
@@ -79,7 +81,10 @@ export function ContactImDirectorySyncSection({
       : runQuery.isPending
         ? t(($) => $['imPlatform.sync.loading'])
         : requestError
-          ? (getRequestErrorMessage(runQuery.error) ?? t(($) => $['imPlatform.sync.startFailed']))
+          ? describeRequestError(
+              runQuery.error,
+              t(($) => $['imPlatform.sync.startFailed']),
+            )
           : undefined
   return (
     <div className="mt-2 rounded-xl bg-background-section-burn px-4 py-3">
@@ -143,8 +148,10 @@ export function ContactImDirectorySyncSection({
       )}
       {(requestError || startSync.isError) && (
         <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {getRequestErrorMessage(startSync.error ?? runQuery.error) ??
-            t(($) => $['imPlatform.sync.startFailed'])}
+          {describeRequestError(
+            startSync.error ?? runQuery.error,
+            t(($) => $['imPlatform.sync.startFailed']),
+          )}
           {requestError && (
             <Button className="ms-3" onClick={() => runQuery.refetch()} size="small">
               {t(($) => $['imPlatform.action.retry'])}

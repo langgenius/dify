@@ -154,7 +154,7 @@ it('keeps deletion open after failure and removes the row after retry', async ()
   pending.reject(
     apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' }),
   )
-  await expect.element(dialog.getByRole('alert')).toHaveTextContent('Internal server error')
+  await expect.element(dialog.getByRole('alert')).toHaveTextContent('Action failed')
   await expect.element(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeEnabled()
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect.element(dialog).not.toBeInTheDocument()
@@ -205,7 +205,7 @@ it('returns to Create token if a refresh removes the row while deletion is open'
   await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
 })
 
-it('reports why the saved token could not load', async () => {
+it('reports that the saved token could not load', async () => {
   fake.console.account.personalAccessTokens.byTokenId.get.mockRejectedValue(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Token storage unavailable' }),
   )
@@ -213,5 +213,5 @@ it('reports why the saved token could not load', async () => {
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect
     .element(screen.getByRole('dialog').getByRole('alert'))
-    .toMatchTextContent(/Token storage unavailable/)
+    .toMatchTextContent(/Could not load access tokens/)
 })

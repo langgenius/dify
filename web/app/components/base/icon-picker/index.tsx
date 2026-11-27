@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { resolveEmoji } from '@/utils/emoji'
 import { EmojiIconEditor } from './emoji-icon-editor'
 import { defaultEmojiBackground, getRandomEmoji, getRandomEmojiBackground } from './emoji-styles'
@@ -145,6 +145,7 @@ function IconPickerSession({
   initialFocusRef: RefCallback<HTMLElement>
 }) {
   const { t } = useTranslation(['app', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const imageEnabled = enableImageUpload && !DISABLE_UPLOAD_IMAGE_AS_ICON
   const [activeTab, setActiveTab] = useState<IconPickerValue['type']>(
     defaultValue?.type === 'image' && imageEnabled ? 'image' : 'emoji',
@@ -197,8 +198,10 @@ function IconPickerSession({
   const uploadError =
     preparationError ||
     (upload.isError
-      ? (getRequestErrorMessage(upload.error) ??
-        t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }))
+      ? describeRequestError(
+          upload.error,
+          t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+        )
       : '')
   const handleImageChange = (value: ImageIconInputValue | null) => {
     if (uploading) return

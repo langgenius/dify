@@ -23,10 +23,16 @@ export const useInitialData = (
 
         const type = VAR_TYPE_MAP[item.type]
         const variableName = item.variable
-        const defaultValue = lastRunInputData?.[variableName] || item.default_value
+        const savedValue = lastRunInputData?.[variableName]
+        if (type === BaseFieldType.checkbox) {
+          acc[variableName] =
+            typeof savedValue === 'boolean' ? savedValue : item.default_value === true
+          return acc
+        }
+
+        const defaultValue = savedValue || item.default_value
         if (stringFieldTypes.includes(type)) acc[variableName] = defaultValue ?? ''
         if (type === BaseFieldType.numberInput) acc[variableName] = defaultValue ?? 0
-        if (type === BaseFieldType.checkbox) acc[variableName] = defaultValue ?? false
         if (fileFieldTypes.includes(type)) acc[variableName] = defaultValue ?? []
         return acc
       },

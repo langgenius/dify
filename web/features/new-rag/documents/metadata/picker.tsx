@@ -17,7 +17,7 @@ import {
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { DocumentMetadataCreateForm } from './create-form'
 
 const metadataTypeIcon = {
@@ -53,6 +53,7 @@ export function DocumentMetadataPicker({
 }: DocumentMetadataPickerProps) {
   const { t } = useTranslation(['knowledgeCitation', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const failed = error != null
   const popoverActionsRef = useRef<PopoverActions>(null)
   const [view, setView] = useState<'create' | 'select'>('select')
@@ -140,8 +141,10 @@ export function DocumentMetadataPicker({
             {failed && !loading && (
               <div className="flex h-20 flex-col items-center justify-center gap-1 px-3 text-center">
                 <span role="status" className="system-xs-regular text-text-tertiary">
-                  {getRequestErrorMessage(error) ??
-                    t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' })}
+                  {describeRequestError(
+                    error,
+                    t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }),
+                  )}
                 </span>
                 <Button onClick={onRetry} size="small" variant="ghost">
                   {tCommon(($) => $['operation.retry'])}

@@ -46,14 +46,11 @@ describe('skill metadata policy', () => {
 
     // The PATCH response has no files: the file tree must not be cleared.
     expect(client.getQueryData(detailKey)).toMatchObject({ display_name: 'Renamed', files })
-    expect(invalidatedKeys()).toEqual(
-      expect.arrayContaining([
-        detailKey,
-        skills.bySkillId.versions.get.key({ input: { params } }),
-        skills.get.key({ type: 'query' }),
-      ]),
-    )
-    expect(invalidatedKeys()).not.toContainEqual(skills.tags.get.key())
+    // Versions and skill lists refresh through the fallback; agents list the skills bound to them.
+    expect(invalidatedKeys()).toEqual([detailKey])
+    expect(skills.bySkillId.patch.mutationOptions().meta?.alsoInvalidate).toEqual([
+      'workspaces.current.agents',
+    ])
   })
 
   it('shows the refetched detail, not an older response that lands afterwards', async () => {
@@ -80,7 +77,7 @@ describe('skill metadata policy', () => {
     expect(client.getQueryData(detailKey)).toEqual(fresh)
   })
 
-  it('refreshes the tag catalog only when tags change', async () => {
+  it('leaves the tag catalog to the fallback when tags change', async () => {
     const { context, invalidatedKeys } = setup()
 
     await skills.bySkillId.patch.mutationOptions().onSuccess!(
@@ -90,31 +87,43 @@ describe('skill metadata policy', () => {
       context,
     )
 
-    expect(invalidatedKeys()).toContainEqual(skills.tags.get.key())
+    expect(invalidatedKeys()).not.toContainEqual(skills.tags.get.key())
   })
 })
 
 describe('member invitation policies', () => {
-  it('refreshes seats, members, and the workspace pending invitations after inviting', async () => {
-    const { context, invalidatedKeys } = setup()
+  it('leaves seats, members, and pending invitations to the fallback after inviting', () => {
+    const options = consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions()
 
-    await consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions().onSuccess!(
-      { result: 'success', tenant_id: 'workspace-1', invitation_results: [] },
-      { body: { emails: ['a@example.com'], role: 'normal', language: 'en-US' } },
-      undefined,
-      context,
-    )
+    expect(options.onSuccess).toBeUndefined()
+    expect(options.meta?.alsoInvalidate).toEqual([
+      'features',
+      'workspaces.byWorkspaceId.members.pendingInvitations',
+    ])
+  })
+
+  it('waits only for the pending invitations after a successful revoke', async () => {
+    const { context, invalidatedKeys } = setup()
+    const revoke = consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post
+    const variables = {
+      params: { workspace_id: 'workspace-1' },
+      body: { email: 'a@example.com' },
+    } as Parameters<NonNullable<ReturnType<typeof revoke.mutationOptions>['onSettled']>>[2]
+
+    await revoke.mutationOptions().onSettled!(undefined, null, variables, undefined, context)
 
     expect(invalidatedKeys()).toEqual([
-      consoleQuery.features.get.queryKey(),
-      consoleQuery.workspaces.current.members.get.key(),
       consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
         input: { params: { workspace_id: 'workspace-1' } },
       }),
     ])
+    expect(revoke.mutationOptions().meta?.alsoInvalidate).toEqual([
+      'features',
+      'workspaces.current.members',
+    ])
   })
 
-  it('refreshes the same caches after a revoke, even a failed one', async () => {
+  it('refreshes members and seats too after a failed revoke', async () => {
     const { context, invalidatedKeys } = setup()
     const revoke = consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post
 
@@ -140,13 +149,15 @@ describe('member invitation policies', () => {
 describe('workflow publish policies', () => {
   const workflows = consoleQuery.apps.byAppId.workflows
   const params = { app_id: 'app-1' }
-  const defaultMetricsKey =
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key({
-      type: 'query',
-      input: { params: { evaluate_target_id: 'app-1', evaluate_target_type: 'apps' } },
-    })
+  // Evaluation metrics and pickers, roster agents, and deployments read the published workflow.
+  const publishedWorkflowReaders = [
+    'byEvaluateTargetType',
+    'workspaces.current.availableEvaluationWorkflows',
+    'agent',
+    'enterprise.appDeploy',
+  ]
 
-  it('refreshes evaluation metrics after a standard publish', async () => {
+  it('waits for the published workflow and declares its readers after a standard publish', async () => {
     const { context, invalidatedKeys } = setup()
     const publish = workflows.publish.post.mutationOptions()
 
@@ -157,10 +168,11 @@ describe('workflow publish policies', () => {
       context,
     )
 
-    expect(invalidatedKeys()).toContainEqual(defaultMetricsKey)
+    expect(invalidatedKeys()).toEqual([workflows.publish.get.key({ input: { params } })])
+    expect(publish.meta?.alsoInvalidate).toEqual(publishedWorkflowReaders)
   })
 
-  it('refreshes the app, its workflow, and evaluation lists after an evaluation publish', async () => {
+  it('waits for the published workflow and declares its readers after an evaluation publish', async () => {
     const { context, invalidatedKeys } = setup()
     const publish = workflows.publish.evaluation.post.mutationOptions()
 
@@ -171,15 +183,9 @@ describe('workflow publish policies', () => {
       context,
     )
 
-    expect(invalidatedKeys()).toEqual(
-      expect.arrayContaining([
-        workflows.publish.get.key({ input: { params } }),
-        consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
-        consoleQuery.apps.byAppId.triggers.get.key({ input: { params } }),
-        consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
-        defaultMetricsKey,
-      ]),
-    )
+    // The app detail and triggers are in the apps domain and refresh through the fallback.
+    expect(invalidatedKeys()).toEqual([workflows.publish.get.key({ input: { params } })])
+    expect(publish.meta?.alsoInvalidate).toEqual(publishedWorkflowReaders)
   })
 
   it('awaits the app detail refresh after converting the workflow kind', async () => {
@@ -194,9 +200,10 @@ describe('workflow publish policies', () => {
     )
 
     expect(invalidatedKeys()).toEqual([
-      workflows.publish.get.key({ input: { params } }),
-      consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
       consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
+    ])
+    expect(convert.meta?.alsoInvalidate).toEqual([
+      'workspaces.current.availableEvaluationWorkflows',
     ])
   })
 })
@@ -309,13 +316,13 @@ describe('mutations and the refetches they start', () => {
       ),
     )
     await settle()
-    expect(plugins.queryFn).toHaveBeenCalledTimes(2)
+    // Plugin counts refresh through the invalidation fallback after a success.
+    expect(plugins.queryFn).toHaveBeenCalledTimes(1)
     expect(state.done).toBe(false)
 
     list.refetch.resolve({ loaded: true })
     await settle()
     expect(state.done).toBe(true)
-    plugins.refetch.resolve({ loaded: true })
   })
 
   it('waits for the agent access settings, not agent lists, after changing the scope', async () => {
@@ -338,13 +345,13 @@ describe('mutations and the refetches they start', () => {
       ),
     )
     await settle()
-    expect(agents.queryFn).toHaveBeenCalledTimes(2)
+    // Agent lists refresh through the invalidation fallback.
+    expect(agents.queryFn).toHaveBeenCalledTimes(1)
     expect(state.done).toBe(false)
 
     settings.refetch.resolve({ loaded: true })
     await settle()
     expect(state.done).toBe(true)
-    agents.refetch.resolve({ loaded: true })
   })
 })
 

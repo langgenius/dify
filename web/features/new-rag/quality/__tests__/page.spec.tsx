@@ -561,10 +561,10 @@ describe('QualityPage', () => {
     )
   })
 
-  it('shows a failed CSV import once, with the server reason in the dialog', async () => {
+  it('shows a failed CSV import once, with the translated reason in the dialog', async () => {
     const message = 'This workspace cannot import more golden questions'
     serviceMock.bulkImport.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 422 }), { message }),
+      createHttpError(new Response(null, { status: 422 }), { code: 'limit_exceeded', message }),
     )
     const user = userEvent.setup()
     renderPage({ errorToasts: true })
@@ -582,7 +582,9 @@ describe('QualityPage', () => {
       screen.getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }).at(-1)!,
     )
 
-    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(message)
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.limit_exceeded',
+    )
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -646,7 +648,7 @@ describe('QualityPage', () => {
     expect(screen.queryByText('dataset.unknownError')).not.toBeInTheDocument()
   })
 
-  it('shows a failed evidence search once, with the server reason at the search field', async () => {
+  it('shows a failed evidence search once, with its own text for an uncataloged server message', async () => {
     const message = 'Evidence search timed out'
     serviceMock.matchEvidence.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 500 }), { message }),
@@ -664,7 +666,9 @@ describe('QualityPage', () => {
       screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
     )
 
-    expect(await within(screen.getByRole('dialog')).findByText(message)).toBeVisible()
+    expect(
+      await within(screen.getByRole('dialog')).findByText('dataset.unknownError'),
+    ).toBeVisible()
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -1267,6 +1271,7 @@ describe('QualityPage', () => {
       async (input: { params: { question_id: string } }) => {
         if (input.params.question_id === 'golden-2')
           throw createHttpError(new Response(null, { status: 409 }), {
+            code: 'invalid_input',
             message: 'Server says why',
           })
       },
@@ -1283,7 +1288,9 @@ describe('QualityPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Server says why'))
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('requestErrors.code.invalid_input'),
+    )
     expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(2)
     expect(
       screen.getByRole('checkbox', {
@@ -1435,8 +1442,12 @@ describe('QualityPage', () => {
     await user.keyboard('{Escape}')
     expect(dialog).toBeInTheDocument()
 
-    importResult.reject(createHttpError(new Response(null, { status: 422 }), { message }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(message)
+    importResult.reject(
+      createHttpError(new Response(null, { status: 422 }), { code: 'limit_exceeded', message }),
+    )
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.limit_exceeded',
+    )
     expect(toast.error).not.toHaveBeenCalled()
   })
 

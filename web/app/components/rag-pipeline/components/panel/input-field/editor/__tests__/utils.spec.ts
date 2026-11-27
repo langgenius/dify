@@ -63,6 +63,23 @@ describe('input-field editor utils', () => {
     expect(convertFormDataToINputField(checkboxField).default_value).toBe(false)
   })
 
+  it.each([
+    [undefined, false],
+    ['', false],
+    [true, true],
+  ] as const)('saves checkbox default %j as %j', (defaultValue, expected) => {
+    const result = convertFormDataToINputField({
+      type: PipelineInputVarType.checkbox,
+      label: 'Enabled',
+      variable: 'enabled',
+      default: defaultValue,
+      required: false,
+      allowedTypesAndExtensions: {},
+    })
+
+    expect(result.default_value).toBe(expected)
+  })
+
   it('should fall back to the default input variable template', () => {
     const result = convertToInputFieldFormData()
 

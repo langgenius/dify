@@ -12,7 +12,8 @@ import { toast } from '@/app/notifications'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
 import {
@@ -74,6 +75,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeDocuments'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const deploymentEdition = useAtomValueRawSync(deploymentEditionAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -263,7 +265,10 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           const failureKey = await knowledgeFsRequestFailureMessageKey(error)
           const reason = failureKey
             ? tError(($) => $[failureKey])
-            : (getRequestErrorMessage(error) ?? t(($) => $.documentUploadFailed))
+            : describeRequestError(
+                error,
+                t(($) => $.documentUploadFailed),
+              )
           toast.error(
             completed
               ? t(($) => $.documentUploadIncomplete, {
@@ -279,13 +284,14 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       }
     },
     [
-      canUpload,
       cancel,
+      canUpload,
       checkUploadQuota,
       completedUploadCount,
+      denyWrite,
+      describeRequestError,
       ensureModelReady,
       formatExclusionDetails,
-      denyWrite,
       refreshDocuments,
       stageFiles,
       supportBatchUpload,
@@ -306,12 +312,15 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         toast.error(
           failureKey
             ? tError(($) => $[failureKey])
-            : (getRequestErrorMessage(error) ?? t(($) => $.documentUploadFailed)),
+            : describeRequestError(
+                error,
+                t(($) => $.documentUploadFailed),
+              ),
         )
         throw error
       }
     },
-    [checkUploadQuota, stageFiles, t, tError],
+    [checkUploadQuota, describeRequestError, stageFiles, t, tError],
   )
 
   const onSubmit = useCallback(

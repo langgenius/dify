@@ -96,7 +96,7 @@ from models.skill import (
     SkillVersionManifestFile,
 )
 from models.tools import ToolFile
-from repositories.agent_skill_bindings import copy_agent_bindings, publish_agent_bindings
+from repositories.agent.agent_skill_bindings import copy_agent_bindings, publish_agent_bindings
 from services.agent.roster_service import AgentRosterService
 from services.file_service import FileService
 

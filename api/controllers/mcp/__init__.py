@@ -20,18 +20,19 @@ mcp_ns = Namespace("mcp", description="MCP operations", path="/")
 def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespaces and schema models exist."""
 
-    from . import mcp
+    from . import knowledge_agent, mcp
 
-    return (mcp,)
+    return (knowledge_agent, mcp)
 
 
-(mcp,) = _register_controllers()
+(knowledge_agent, mcp) = _register_controllers()
 
 api.add_namespace(mcp_ns)
 
 __all__ = [
     "api",
     "bp",
+    "knowledge_agent",
     "mcp",
     "mcp_ns",
 ]

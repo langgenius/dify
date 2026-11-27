@@ -4,14 +4,12 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
-import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import ContactSupport from '@/app/components/main-nav/components/contact-support'
+import { EnvironmentBadge } from '@/app/components/main-nav/components/environment-badge'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'
 import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
 import { detailSidebarModeAtom, setDetailSidebarModeAtom } from './state'
@@ -48,10 +46,6 @@ export function DetailSidebarFrame({
   renderTop,
   renderSection,
 }: DetailSidebarFrameProps) {
-  const { data: currentEnv } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.meta.currentEnv,
-  })
   const compact = useMediaQuery('(width < 48rem)', {})
   const storedMode = useAtomValue(detailSidebarModeAtom)
   const setStoredMode = useSetAtom(setDetailSidebarModeAtom)
@@ -69,7 +63,6 @@ export function DetailSidebarFrame({
       : 'collapsed'
   const visibleExpanded = sidebarView !== 'collapsed'
   const overlayExpanded = sidebarView === 'preview' || (compact && expanded)
-  const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   function handleToggleDetailNavigation() {
     if (compact) {
@@ -161,11 +154,7 @@ export function DetailSidebarFrame({
           {renderSection({
             expand: visibleExpanded,
           })}
-          {showEnvTag && visibleExpanded && (
-            <div className="mt-auto shrink-0 px-3 pb-2">
-              <EnvNav />
-            </div>
-          )}
+          {visibleExpanded && <EnvironmentBadge />}
         </div>
         <ContactSupport placement="sidebar" compact={!visibleExpanded} />
         <div

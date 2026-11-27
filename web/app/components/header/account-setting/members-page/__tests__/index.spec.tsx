@@ -5,8 +5,9 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { MembersPage } from '../index'
 
 const {
@@ -186,7 +187,10 @@ describe('MembersPage removal', () => {
       contactsEnabled.mockReturnValue(enabled)
       accounts[1] = { ...accounts[1]!, status }
       const user = userEvent.setup()
-      const { queryClient } = await renderMembersPage()
+      // Contacts refresh through the invalidation fallback, as in the app.
+      const { queryClient } = await renderMembersPage({
+        queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
+      })
       queryClient.setQueryData(contactOptionsKey, { cached: true })
       const dialog = await openAdminRemoval(user)
       expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
@@ -199,7 +203,9 @@ describe('MembersPage removal', () => {
       await waitFor(() =>
         expect(removeMember).toHaveBeenCalledExactlyOnceWith({ params: { member_id: '2' } }),
       )
-      expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true)
+      await waitFor(() =>
+        expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true),
+      )
     },
   )
 })
@@ -336,7 +342,9 @@ describe('MembersPage', () => {
         }),
       )
     })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.invalid_role',
+    )
     expect(within(dialog).getByText('Next role')).toBeInTheDocument()
     await user.click(save)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

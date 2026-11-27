@@ -1,13 +1,13 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
+import { isDefinedError, ORPCError } from '@orpc/client'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { toastActionError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -124,9 +124,13 @@ export const useWorkflowInit = () => {
       setSyncWorkflowDraftHash(initialData.hash, res.graph)
       setIsLoading(false)
     } catch (error: unknown) {
-      if (!(error instanceof ORPCError) || error.code !== 'draft_workflow_not_exist') {
+      const draftMissing =
+        error instanceof ORPCError &&
+        isDefinedError(error) &&
+        error.code === 'draft_workflow_not_exist'
+      if (!draftMissing) {
         // The editor stays on its loading state, so the failure is reported here.
-        toastActionError(error)
+        reportRequestError(error)
         return
       }
       const isAdvancedChat = appDetail.mode === 'advanced-chat'
@@ -177,8 +181,12 @@ export const useWorkflowInit = () => {
         setSyncWorkflowDraftHash(res.hash, initialGraph)
       } catch (saveError) {
         // A concurrent initialization created the draft first, so loading it below still succeeds.
-        if (!(saveError instanceof ORPCError) || saveError.code !== 'draft_workflow_not_sync') {
-          toastActionError(saveError)
+        const draftAlreadySaved =
+          saveError instanceof ORPCError &&
+          isDefinedError(saveError) &&
+          saveError.code === 'draft_workflow_not_sync'
+        if (!draftAlreadySaved) {
+          reportRequestError(saveError)
           return
         }
       }

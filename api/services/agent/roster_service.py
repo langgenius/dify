@@ -23,26 +23,27 @@ from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import agent_soul_has_model
 from models.enums import ConversationFromSource
 from models.model import App, Conversation
-from repositories.agent_roster_queries import (
-    build_roster_agents_stmt,
-    load_published_workflows_by_agent_id,
-    load_reference_counts_by_agent_id,
-)
-from repositories.agent_version_queries import visible_version_ids, visible_version_operations
-from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
-from repositories.app.agent_debug_conversations import (
+from repositories.agent.agent_app_queries import get_app_backing_agent, get_roster_agent_app
+from repositories.agent.agent_debug_conversations import (
     count_agent_debug_conversation_messages,
     create_agent_debug_conversation,
     get_or_create_agent_debug_conversation,
 )
-from repositories.app.agent_runtime_app import (
+from repositories.agent.agent_roster_queries import (
+    build_roster_agents_stmt,
+    load_published_workflows_by_agent_id,
+    load_reference_counts_by_agent_id,
+    project_referencing_workflow,
+)
+from repositories.agent.agent_runtime_app import (
     create_backing_agent_for_app,
     create_hidden_backing_app,
     ensure_workflow_agent_backing_app,
-    find_runtime_app,
     find_runtime_resolvable_agent,
     resolve_agent_runtime_app,
 )
+from repositories.agent.agent_version_queries import visible_version_ids, visible_version_operations
+from services.agent.agent_app_contracts import AgentReferencingWorkflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
@@ -52,7 +53,6 @@ from services.agent.errors import (
 )
 from services.agent.knowledge_spaces import validate_agent_knowledge_spaces
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
-from services.app.agent_app_contracts import AgentReferencingWorkflow
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
@@ -545,23 +545,6 @@ class AgentRosterService:
             return None
         return agent.app_id
 
-    def get_existing_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
-        """Resolve an existing runtime App without creating or committing state.
-
-        Workflow-only Agents must already have a hidden backing App. Their
-        parent workflow App must never stand in for a missing runtime App.
-        """
-        agent = find_runtime_resolvable_agent(self._session, tenant_id=tenant_id, agent_id=agent_id)
-        if agent is None:
-            raise AgentNotFoundError()
-        app_id = agent.backing_app_id if agent.scope == AgentScope.WORKFLOW_ONLY else self.runtime_backing_app_id(agent)
-        if not app_id:
-            raise AgentNotFoundError()
-        app = find_runtime_app(self._session, tenant_id=tenant_id, app_id=app_id)
-        if app is None:
-            raise AgentNotFoundError()
-        return app
-
     def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the Agent's runtime App, materializing a hidden backing App when required."""
         app = resolve_agent_runtime_app(self._session, tenant_id=tenant_id, agent_id=agent_id)
@@ -734,21 +717,7 @@ class AgentRosterService:
     ) -> dict[str, list[AgentReferencingWorkflow]]:
         """Return the legacy response shape for current published references in this tenant."""
         return {
-            agent_id: [
-                AgentReferencingWorkflow(
-                    app_id=reference.app.id,
-                    app_name=reference.app.name,
-                    app_icon_type=reference.app.icon_type.value if reference.app.icon_type else None,
-                    app_icon=reference.app.icon,
-                    app_icon_background=reference.app.icon_background,
-                    app_mode=str(reference.app.mode),
-                    app_updated_at=to_timestamp(reference.app.updated_at),
-                    workflow_id=reference.workflow_id,
-                    workflow_version=reference.workflow_version,
-                    node_ids=list(reference.node_ids),
-                )
-                for reference in references
-            ]
+            agent_id: [project_referencing_workflow(reference) for reference in references]
             for agent_id, references in load_published_workflows_by_agent_id(
                 self._session, tenant_id=tenant_id, agent_ids=agent_ids
             ).items()

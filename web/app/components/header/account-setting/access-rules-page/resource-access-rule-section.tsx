@@ -73,26 +73,6 @@ export function ResourceAccessRuleSection({
     }
   }
 
-  const removeDeletedRule = (id: string) => {
-    const { queryKey } = rulesOptions
-    void queryClient.cancelQueries({ queryKey, exact: true })
-    queryClient.setQueryData(queryKey, (data) => {
-      if (!data?.pages.some((page) => page.items?.some((row) => row.policy?.id === id))) return data
-
-      return {
-        ...data,
-        pages: data.pages.map((page) => ({
-          ...page,
-          items: page.items?.filter((row) => row.policy?.id !== id),
-          pagination: page.pagination && {
-            ...page.pagination,
-            total_count: Math.max(0, page.pagination.total_count - 1),
-          },
-        })),
-      }
-    })
-  }
-
   return (
     <>
       <AccessRuleSection
@@ -127,7 +107,6 @@ export function ResourceAccessRuleSection({
             false)
         }
         fallbackFocusRef={headingTriggerRef}
-        onDeleted={removeDeletedRule}
       />
       {modal && (modal.mode === 'view' || canManage) && (
         <PermissionSetModal

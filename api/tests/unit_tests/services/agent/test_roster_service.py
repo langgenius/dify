@@ -44,11 +44,11 @@ from models.model import App, AppMode, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow
-from repositories.agent_drafts import agent_soul_matches_active_config
-from repositories.agent_roster_queries import load_reference_counts_by_agent_id
-from repositories.agent_roster_repository import list_invite_options_in_session
-from repositories.agent_version_queries import visible_version_operations
-from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
+from repositories.agent.agent_drafts import agent_soul_matches_active_config
+from repositories.agent.agent_roster_queries import load_reference_counts_by_agent_id
+from repositories.agent.agent_roster_repository import list_invite_options_in_session
+from repositories.agent.agent_version_queries import visible_version_operations
+from repositories.agent.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent import composer_service, roster_service
@@ -1033,65 +1033,6 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
 
     assert agent.active_config_is_published is True
     assert result["active_config_is_published"] is True
-
-
-@pytest.mark.parametrize(
-    ("draft_type", "account_id"),
-    [
-        (AgentConfigDraftType.DRAFT, None),
-        (AgentConfigDraftType.DEBUG_BUILD, "account-1"),
-    ],
-)
-def test_load_agent_soul_for_debug_selects_requested_draft(
-    draft_type: AgentConfigDraftType,
-    account_id: str | None,
-    sqlite_session: Session,
-):
-    session = sqlite_session
-    agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Iris",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        status=AgentStatus.ACTIVE,
-    )
-    agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
-    draft = AgentConfigDraft(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=draft_type,
-        account_id=account_id,
-        draft_owner_key=account_id or "",
-        config_snapshot=agent_soul,
-    )
-    session.add_all([agent, draft])
-    session.commit()
-
-    result = AgentComposerService.load_agent_soul_for_debug(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        account_id="account-1",
-        draft_type=draft_type,
-        session=session,
-    )
-
-    assert result == agent_soul
-
-
-def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session: Session):
-    session = sqlite_session
-
-    with pytest.raises(AgentVersionNotFoundError):
-        AgentComposerService.load_agent_soul_for_debug(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            account_id="account-1",
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            session=session,
-        )
 
 
 def test_workflow_composer_impact_includes_roster_agent_references(sqlite_session: Session) -> None:

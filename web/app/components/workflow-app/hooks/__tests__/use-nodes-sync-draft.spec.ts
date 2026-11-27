@@ -1390,7 +1390,7 @@ describe('useNodesSyncDraft', () => {
         await result.current.doSyncWorkflowDraft()
       })
 
-      expect(toastError).toHaveBeenCalledExactlyOnceWith('api.actionFailed')
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.unknown')
     })
 
     it('saves a directed sync request locally even before leader status arrives', async () => {

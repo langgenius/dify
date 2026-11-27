@@ -23,7 +23,7 @@ import { ModelCostNotice } from '@/features/new-rag/components/model-cost-notice
 import { CreationModelField } from '@/features/new-rag/create/model-settings'
 import { createRequestId } from '@/features/new-rag/request-id'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   UPGRADE_MODEL_KEYS,
   upgradeModelsFingerprint,
@@ -44,6 +44,7 @@ export function KnowledgeUpgradeDialog({
   const { t } = useTranslation(['knowledgeUpgrade', 'knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tModels } = useTranslation(['knowledgeSettings', 'modelProvider', 'knowledgeCreate'])
+  const describeRequestError = useRequestErrorDescriber()
   const docLink = useDocLink()
   const cancelRef = useRef<HTMLButtonElement>(null)
   const modelCostNoticeId = useId()
@@ -181,8 +182,10 @@ export function KnowledgeUpgradeDialog({
               <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
                 {modelsRejected
                   ? t(($) => $['upgrade.modelsUnavailable'], { ns: 'knowledgeUpgrade' })
-                  : (getRequestErrorMessage(startMutation.error ?? discoveryQuery.error) ??
-                    t(($) => $['upgrade.startFailed'], { ns: 'knowledgeUpgrade' }))}
+                  : describeRequestError(
+                      startMutation.error ?? discoveryQuery.error,
+                      t(($) => $['upgrade.startFailed'], { ns: 'knowledgeUpgrade' }),
+                    )}
               </p>
             )}
           </AlertDialogDescription>

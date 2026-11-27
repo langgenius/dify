@@ -11,7 +11,7 @@ import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAvatarInitial } from '@/utils/avatar'
 import { InvitationResultsContent } from './invitation-results-content'
 import { RoleBadges } from './role-badges'
@@ -57,6 +57,7 @@ type InvitedRowProps = {
 
 export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
+  const describeRequestError = useRequestErrorDescriber()
   const locale = useLocale()
   const { data: isEmailSetup } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -94,8 +95,10 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
             ? t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' })
             : code === 'invalid_role'
               ? t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' })
-              : (getRequestErrorMessage(error) ??
-                t(($) => $['api.actionFailed'], { ns: 'common' })),
+              : describeRequestError(
+                  error,
+                  t(($) => $['api.actionFailed'], { ns: 'common' }),
+                ),
         )
       },
     }),

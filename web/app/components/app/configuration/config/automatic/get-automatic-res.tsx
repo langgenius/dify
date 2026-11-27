@@ -17,7 +17,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useAutoGenModel } from '../auto-gen-model-storage'
@@ -254,7 +254,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       }
       if (!hasError) addVersion(apiRes)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     } finally {
       setLoadingFalse()
     }

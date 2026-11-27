@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.model_entities import DefaultModelSetting, ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.entities.provider_configuration import configuration_for_model
 from core.entities.provider_entities import CredentialConfiguration
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -833,15 +834,16 @@ class ModelProviderService:
 
     def get_model_parameter_rules(self, tenant_id: str, provider: str, model: str) -> list[ParameterRule]:
         """
-        get model parameter rules.
-        Only supports LLM.
+        Get LLM parameter rules using credentials from the same route as inference.
 
         :param tenant_id: workspace id
         :param provider: provider name
         :param model: model name
         :return:
         """
-        provider_configuration = self._get_provider_configuration(tenant_id, provider)
+        provider_configuration = configuration_for_model(
+            self._get_provider_configuration(tenant_id, provider), ModelType.LLM, model
+        )
 
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)

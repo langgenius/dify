@@ -390,10 +390,11 @@ describe('FireCrawl', () => {
       expect(screen.queryByText('Network error')).not.toBeInTheDocument()
     })
 
-    it('shows the server message when task creation fails with an HTTP error', async () => {
+    it('shows the translated error code when task creation fails with an HTTP error', async () => {
       const user = userEvent.setup()
       mockCreateFirecrawlTask.mockRejectedValueOnce(
         createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_input',
           message: 'Firecrawl API key is invalid',
         }),
       )
@@ -403,7 +404,7 @@ describe('FireCrawl', () => {
       await user.type(getUrlInput(), 'https://example.com')
       await user.click(screen.getByRole('button', { name: /run/i }))
 
-      expect(await screen.findByText('Firecrawl API key is invalid')).toBeInTheDocument()
+      expect(await screen.findByText('requestErrors.code.invalid_input')).toBeInTheDocument()
       expect(screen.queryByText(/unknownError/i)).not.toBeInTheDocument()
     })
 

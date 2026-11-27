@@ -11,7 +11,8 @@ import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-ta
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -42,20 +43,23 @@ export function DocumentTaskRow({
   cancelActionCount,
   documentTitle,
   documentsPending,
-  onSettled,
+  onFailed,
   retryActionCount,
   task,
 }: {
   cancelActionCount: number
   documentTitle?: string
   documentsPending: boolean
-  onSettled: () => Promise<unknown>
+  // A rejected cancel or retry may still have reached the server; the fallback refreshes after
+  // a successful one.
+  onFailed: () => Promise<unknown>
   retryActionCount: number
   task: BackgroundTask
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canEdit = useAtomValueRawSync(documentCanEditAtom)
@@ -67,7 +71,7 @@ export function DocumentTaskRow({
   currentLifecycleRef.current = currentLifecycle
   const [actionFailure, setActionFailure] = useState<{
     lifecycle: string
-    message?: string
+    error: unknown
     messageKey?: KnowledgeFsTaskFailureMessageKey
   }>()
   const cancelTask = useMutation(
@@ -179,11 +183,10 @@ export function DocumentTaskRow({
       if (currentLifecycleRef.current === actionLifecycle)
         setActionFailure({
           lifecycle: actionLifecycle,
-          message: getRequestErrorMessage(error),
+          error,
           messageKey,
         })
-    } finally {
-      void onSettled()
+      void onFailed()
     }
   }
 
@@ -223,7 +226,10 @@ export function DocumentTaskRow({
           <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
             {actionFailureMessageKey
               ? tError(($) => $[actionFailureMessageKey])
-              : (actionFailure.message ?? t(($) => $.taskActionFailed))}
+              : describeRequestError(
+                  actionFailure.error,
+                  t(($) => $.taskActionFailed),
+                )}
           </p>
         )}
       </div>

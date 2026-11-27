@@ -27,7 +27,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ContactImBindingContent } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { providerMetadata, toDetailView } from './credentials'
@@ -54,6 +54,7 @@ function ConfigurationSession({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const channels = consoleQuery.workspaces.current.humanInput.v2.channels
   const email = useQuery(
     channels.email.byChannelId.get.queryOptions({
@@ -84,8 +85,10 @@ function ConfigurationSession({
         {detail.isError ? (
           <div role="alert" className="p-6">
             <p>
-              {getRequestErrorMessage(detail.error) ??
-                t(($) => $['imPlatform.loadError.description'])}
+              {describeRequestError(
+                detail.error,
+                t(($) => $['imPlatform.loadError.description']),
+              )}
             </p>
             <Button onClick={() => detail.refetch()}>
               {t(($) => $['imPlatform.action.retry'])}
@@ -120,6 +123,7 @@ function ConfigurationSession({
 export function ContactsImPlatformManagementSurface() {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const organization = useContactsImPlatformOrganization()
   const { data: deploymentEdition } = useQuery({
     ...systemFeaturesQueryOptions(),
@@ -233,8 +237,10 @@ export function ContactsImPlatformManagementSurface() {
       >
         <div className="system-md-semibold">{t(($) => $['imPlatform.loadError.title'])}</div>
         <p>
-          {getRequestErrorMessage(integrationsQuery.error ?? providersQuery.error) ??
-            t(($) => $['imPlatform.loadError.description'])}
+          {describeRequestError(
+            integrationsQuery.error ?? providersQuery.error,
+            t(($) => $['imPlatform.loadError.description']),
+          )}
         </p>
         <Button
           onClick={() => {
@@ -398,8 +404,10 @@ export function ContactsImPlatformManagementSurface() {
                 {channelError(deleteMutation.error).code ===
                 ContactImRepositoryErrorCode.ConfigurationUpdated
                   ? t(($) => $['imPlatform.configurationUpdated'])
-                  : (getRequestErrorMessage(deleteMutation.error) ??
-                    t(($) => $['imPlatform.delete.failed']))}
+                  : describeRequestError(
+                      deleteMutation.error,
+                      t(($) => $['imPlatform.delete.failed']),
+                    )}
               </div>
             </AlertDialogBody>
           )}

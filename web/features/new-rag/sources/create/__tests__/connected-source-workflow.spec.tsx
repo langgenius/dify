@@ -1212,7 +1212,7 @@ describe('ConnectedSourceWorkflow', () => {
     expect(clientMock.createWorkflowImport).toHaveBeenCalledOnce()
   })
 
-  it('shows a failed import once, with the server reason next to the submit button', async () => {
+  it('shows a failed import once, with the translated reason next to the submit button', async () => {
     const user = userEvent.setup()
     const message = 'Too many pages are selected for this plan'
     clientMock.listDatasourceAuth.mockResolvedValue({
@@ -1242,7 +1242,7 @@ describe('ConnectedSourceWorkflow', () => {
       ],
     })
     clientMock.createWorkflowImport.mockRejectedValue(
-      createHttpError(new Response(null, { status: 422 }), { message }),
+      createHttpError(new Response(null, { status: 422 }), { code: 'limit_exceeded', message }),
     )
     // The source is still a preview, so the import did not happen.
     clientMock.getSource.mockResolvedValue(sourceResponse({ name: 'Team wiki', version: 4 }))
@@ -1254,7 +1254,7 @@ describe('ConnectedSourceWorkflow', () => {
     await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.limit_exceeded')
     expect(toast.error).not.toHaveBeenCalled()
     expect(view.onCompleted).not.toHaveBeenCalled()
   })

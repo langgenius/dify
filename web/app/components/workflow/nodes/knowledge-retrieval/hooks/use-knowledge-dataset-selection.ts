@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { fetchDatasets } from '@/service/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '../utils'
@@ -54,7 +54,7 @@ const useKnowledgeDatasetSelection = ({
         // otherwise remove saved conditions after a failed load.
         setSelectedDatasetsLoaded(true)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
       }
     })()
   }, [inputRef])

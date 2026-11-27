@@ -17,7 +17,6 @@ import {
   skipToken,
   useMutation,
   useQuery,
-  useQueryClient,
   useSuspenseQueries,
   useSuspenseQuery,
 } from '@tanstack/react-query'
@@ -32,7 +31,7 @@ import ErrorBoundary from '@/app/components/base/error-boundary'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -180,7 +179,7 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
       setAllChatItems((items) => mergeUniqueChatItems(items, newItems))
     } catch (error) {
       console.error(error)
-      toastRequestError(error)
+      reportRequestError(error)
       setHasMore(false)
     } finally {
       setIsLoading(false)
@@ -410,20 +409,12 @@ export function ConversationDetail({ appDetail, conversationId }: ConversationDe
   const detailQuery = isChatMode ? chat : completion
   const detail = detailQuery.data
   const modelInfo = getLogModelInfo(detail?.model_config?.model)
-  const queryClient = useQueryClient()
   const feedbackMutation = useMutation(consoleQuery.apps.byAppId.feedbacks.post.mutationOptions())
   const handleFeedback: FeedbackFunc = async (messageId, { rating, content }) => {
     await feedbackMutation.mutateAsync({
       params: { app_id: appDetail.id },
       body: { message_id: messageId, rating, content: content ?? undefined },
     })
-    // Feedback has no shared policy yet; the completion detail shows the saved rating.
-    if (!isChatMode)
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.apps.byAppId.completionConversations.byConversationId.get.queryKey({
-          input,
-        }),
-      })
   }
 
   return (

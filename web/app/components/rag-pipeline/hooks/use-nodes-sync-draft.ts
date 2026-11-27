@@ -10,7 +10,7 @@ import {
   useNodesReadOnlyByCanEdit,
 } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { toastActionError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { API_PREFIX } from '@/config'
 import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { consoleClient } from '@/service/console'
@@ -95,7 +95,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           const isDraftNotSync = isDefined && error.code === 'draft_workflow_not_sync'
           if (isDraftNotSync && !notRefreshWhenSyncError) handleRefreshWorkflowDraft()
           // A conflict reloads the draft; a caller that passes `onError` presents other failures.
-          if (!isDraftNotSync && !callback?.onError) toastActionError(error)
+          if (!isDraftNotSync && !callback?.onError) reportRequestError(error)
           callback?.onError?.(error)
           return
         }

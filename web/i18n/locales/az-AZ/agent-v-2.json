@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Alətlər agentə vebdə axtarış etmək və ya tətbiqlərinizi çağırmaq kimi əməliyyatlar yerinə yetirməyə imkan verir",
   "agentDetail.configure.tools.empty.title": "Hələ alət yoxdur",
   "agentDetail.configure.tools.label": "Alətlər",
-  "agentDetail.configure.tools.moreActions": "{{name}} aləti üçün əlavə əməliyyatlar",
   "agentDetail.configure.tools.removeAction": "{{name}} alətini çıxar",
   "agentDetail.configure.tools.removeProvider": "Bütün alətləri çıxar",
   "agentDetail.configure.tools.richTip": "İş sahənizdən Dify alətləri əlavə edin. <docLink>Ətraflı öyrənin</docLink>\n\nAgentin təcrid olunmuş mühitində quraşdırdığı alətlər burada görünmür, lakin agent onlardan istifadə edə bilir.",
@@ -373,5 +372,17 @@
   "agentDetail.versionHistory.restore": "Bərpa et",
   "agentDetail.versionHistory.versionName": "Versiya {{version}}",
   "agentDetail.versionHistory.viewOnly": "Yalnız baxış",
-  "exportAgent": "Agent-i ixrac et"
+  "exportAgent": "Agent-i ixrac et",
+  "toolCallLimit.invalid": "0-dan böyük tam ədəd daxil edin.",
+  "toolCallLimit.label": "{{toolName}} üçün çağırış limiti",
+  "toolCallLimit.maximum": "Maksimum çağırış sayı",
+  "toolCallLimit.notExecuted": "İcra edilmədi",
+  "toolCallLimit.reached": "Çağırış limitinə çatıldı (hər icra üçün {{limit}}). Bu sorğu icra edilmədi.",
+  "toolCallLimit.reason": "Səbəb",
+  "toolCallLimit.set": "Limit təyin et",
+  "toolCallLimit.summary_one": "Hər icra üçün {{count}} çağırış",
+  "toolCallLimit.summary_other": "Hər icra üçün {{count}} çağırış",
+  "toolCallLimit.title": "Hər icra üçün çağırış limiti",
+  "toolCallLimit.used_one": "{{limit}} çağırışdan {{used}} istifadə olunub",
+  "toolCallLimit.used_other": "{{limit}} çağırışdan {{used}} istifadə olunub"
 }

@@ -25,7 +25,8 @@ import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-ta
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -297,6 +298,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const title = useDocumentsTaskRowTitle(task)
   const { canRead, canWrite, includeCancelTarget, includeRetryTarget, knowledgeSpaceId } =
@@ -308,7 +310,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const [pending, setPending] = useState(false)
   const [actionFailure, setActionFailure] = useState<{
     lifecycle: string
-    message?: string
+    error: unknown
     messageKey?: KnowledgeFsTaskFailureMessageKey
   }>()
   const mountedRef = useRef(true)
@@ -336,6 +338,8 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
       { meta: { errorToast: false } },
     ),
   )
+  // A rejected cancel or retry may still have reached the server; the fallback refreshes after
+  // a successful one.
   const refreshDocumentsAndTasks = () => {
     void Promise.allSettled([
       queryClient.invalidateQueries({
@@ -356,6 +360,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
     const closeButton = taskDrawerCloseButton(focusTarget)
     setPending(true)
     setActionFailure(undefined)
+    let failed = false
     try {
       const input = {
         params: {
@@ -379,6 +384,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
         onTaskUpdated(updated as DocumentProcessingTask)
       if (document.activeElement === focusTarget) closeButton?.focus()
     } catch (error) {
+      failed = true
       const messageKey = await knowledgeFsRequestFailureMessageKey(error)
       // A 403 is also how a knowledge rate limit fails, so the failure stays recorded while write
       // access is rechecked; it is shown only if that access holds.
@@ -393,7 +399,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
       ) {
         setActionFailure({
           lifecycle: actionLifecycle,
-          message: getRequestErrorMessage(error),
+          error,
           messageKey,
         })
       }
@@ -401,7 +407,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
       pendingActionRef.current = false
       if (mountedRef.current) {
         setPending(false)
-        if (canReadRef.current) refreshDocumentsAndTasks()
+        if (failed && canReadRef.current) refreshDocumentsAndTasks()
       }
     }
   }
@@ -442,7 +448,10 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
         <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
           {actionFailureMessageKey
             ? tError(($) => $[actionFailureMessageKey])
-            : (actionFailure.message ?? t(($) => $.taskActionFailed))}
+            : describeRequestError(
+                actionFailure.error,
+                t(($) => $.taskActionFailed),
+              )}
         </p>
       )}
       <div className="flex items-center gap-1">

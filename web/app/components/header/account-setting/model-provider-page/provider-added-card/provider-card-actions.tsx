@@ -37,7 +37,7 @@ import {
   checkGitHubPluginUpdate,
 } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import {
   invalidateMarketplacePluginLists,
   useMarketplace,
@@ -182,7 +182,7 @@ function ProviderCardActions(props: Props) {
         setInfoOpen(true)
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
   }
   const handleUpdate = async () => {
@@ -206,7 +206,7 @@ function ProviderCardActions(props: Props) {
         setUpdateOpen(true)
       }
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
     }
   }
   const remove = useMutation(
