@@ -73,6 +73,7 @@ from controllers.console.app.completion import (
     AgentChatMessageApi,
     AgentChatMessageStopApi,
 )
+from controllers.console.app.message import AgentChatMessageListApi
 from controllers.console.wraps import _is_setup_completed
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.impl import base as plugin_http
@@ -265,6 +266,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
+        api.add_resource(AgentChatMessageListApi, "/agent/<uuid:agent_id>/chat-messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
         api.add_resource(AgentAppCopyApi, "/agent/<uuid:agent_id>/copy")
