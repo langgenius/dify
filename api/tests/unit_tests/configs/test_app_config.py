@@ -193,6 +193,26 @@ def test_deployment_edition_accepts_every_supported_value(edition: DeploymentEdi
     assert config.DEPLOYMENT_EDITION is edition
 
 
+@pytest.mark.parametrize(
+    ("edition", "allow_anonymous", "passport_enabled"),
+    [("COMMUNITY", True, False), ("ENTERPRISE", False, False), ("CLOUD", False, True)],
+)
+def test_end_user_auth_defaults_and_explicit_overrides(
+    edition: str, allow_anonymous: bool, passport_enabled: bool
+) -> None:
+    defaults = _make_config(DEPLOYMENT_EDITION=edition)
+    assert defaults.END_USER_AUTH_ALLOW_ANONYMOUS is allow_anonymous
+    assert defaults.WEBAPP_ACCOUNT_PASSPORT_ENABLED is passport_enabled
+
+    overrides = _make_config(
+        DEPLOYMENT_EDITION=edition,
+        END_USER_AUTH_ALLOW_ANONYMOUS=not allow_anonymous,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=not passport_enabled,
+    )
+    assert overrides.END_USER_AUTH_ALLOW_ANONYMOUS is not allow_anonymous
+    assert overrides.WEBAPP_ACCOUNT_PASSPORT_ENABLED is not passport_enabled
+
+
 def test_new_user_default_plugin_ids_are_parsed() -> None:
     config = _make_config(
         NEW_USER_DEFAULT_PLUGIN_IDS="langgenius/openai, langgenius/gemini",

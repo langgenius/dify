@@ -6,7 +6,6 @@ from pydantic import model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
-from enums import DeploymentEdition
 from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
@@ -95,16 +94,13 @@ class DifyConfig(
 
     @model_validator(mode="after")
     def resolve_edition_defaults(self) -> Self:
+        """Fill omitted settings after validation; explicit overrides survive revalidation."""
+        defaults = self._end_user_auth_defaults
+        # Preserve fields_set so revalidation can still distinguish overrides from defaults.
         if "END_USER_AUTH_ALLOW_ANONYMOUS" not in self.model_fields_set:
-            object.__setattr__(
-                self, "END_USER_AUTH_ALLOW_ANONYMOUS", self.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY
-            )
+            object.__setattr__(self, "END_USER_AUTH_ALLOW_ANONYMOUS", defaults.allow_anonymous)
         if "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in self.model_fields_set:
-            # Keep the derived default out of fields_set so revalidation still
-            # distinguishes it from an explicit environment or remote setting.
-            object.__setattr__(
-                self, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", self.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-            )
+            object.__setattr__(self, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", defaults.account_passport_enabled)
         return self
 
     @model_validator(mode="after")

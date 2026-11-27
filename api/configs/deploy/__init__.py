@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Final, NamedTuple
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -11,6 +12,19 @@ class IMEventTransportMode(StrEnum):
 
     WEBHOOK = "WEBHOOK"
     STREAM = "STREAM"
+
+
+class _EndUserAuthDefaults(NamedTuple):
+    allow_anonymous: bool
+    account_passport_enabled: bool
+
+
+# Bootstrap profiles supply omitted setting values; they do not grant feature access.
+_END_USER_AUTH_DEFAULTS: Final = {
+    DeploymentEdition.COMMUNITY: _EndUserAuthDefaults(allow_anonymous=True, account_passport_enabled=False),
+    DeploymentEdition.ENTERPRISE: _EndUserAuthDefaults(allow_anonymous=False, account_passport_enabled=False),
+    DeploymentEdition.CLOUD: _EndUserAuthDefaults(allow_anonymous=False, account_passport_enabled=True),
+}
 
 
 class DeploymentConfig(BaseSettings):
@@ -38,6 +52,11 @@ class DeploymentConfig(BaseSettings):
         description="Product edition of the application.",
         default=DeploymentEdition.COMMUNITY,
     )
+
+    @property
+    def _end_user_auth_defaults(self) -> _EndUserAuthDefaults:
+        """Return the settings profile after validation has resolved the deployment edition."""
+        return _END_USER_AUTH_DEFAULTS[self.DEPLOYMENT_EDITION]
 
     HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE: IMEventTransportMode = Field(
         IMEventTransportMode.WEBHOOK,

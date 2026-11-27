@@ -896,7 +896,7 @@ def build_application_services(
             app_access=webapp_access,
             app_sessions=web_app_sessions,
             audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
-            private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
+            private_app_access_enabled=webapp_auth_enabled,
         ),
         installed_apps=installed_apps,
         web_app_runtime=WebAppRuntimeQueryService(
@@ -993,7 +993,9 @@ def build_application_services(
             states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
             enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
             rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
-            require_workspace_creation=deployment_edition == DeploymentEdition.CLOUD,
+            require_workspace_creation=SystemFeatureService.requires_first_workspace_activation(
+                deployment_edition=deployment_edition
+            ),
         ),
         recommended_app_queries=recommended_app_queries,
         recommended_app_packages=recommended_app_packages,
