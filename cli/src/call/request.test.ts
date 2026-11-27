@@ -29,6 +29,24 @@ const listFolder = async (p: string) => {
 }
 const deps: FileDeps = { readFile, isFolder, listFolder }
 
+it.each(['', 'doc[part]', 'doc]', '[doc', 'doc][]'])(
+  'refuses an unrepresentable file map key %j',
+  async (key) => {
+    await expect(
+      buildRequest(run, { app_id: 'a', inputs: {}, files: { [key]: './r.pdf' } }, deps),
+    ).rejects.toMatchObject({ code: 'input_invalid' })
+  },
+)
+
+it('keeps slashes and Unicode in file map keys', async () => {
+  const req = await buildRequest(
+    run,
+    { app_id: 'a', inputs: {}, files: { 'docs/报告': './r.pdf' } },
+    deps,
+  )
+  expect((req.form!.get('files[docs/报告]') as File).name).toBe('r.pdf')
+})
+
 it('splits path, query and body', async () => {
   const req = await buildRequest(list, { workspace_id: 'ws 1', page: 2 }, deps)
   expect(req).toMatchObject({

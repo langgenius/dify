@@ -182,13 +182,18 @@ async function appendFileField(target: FieldTarget, value: unknown): Promise<voi
     return
   }
   if (isRecord(value)) {
-    for (const [key, item] of Object.entries(value))
+    for (const [key, item] of Object.entries(value)) {
+      if (key === '' || RESERVED_KEY_CHARS.test(key))
+        throw inputInvalid(
+          `file field "${field}" has invalid key "${key}"; keys must be non-empty and cannot contain "[" or "]"`,
+        )
       await appendFileParts({
         ...target,
         name: partName(field, key, Array.isArray(item)),
         value: item,
         label: `${field}.${key}`,
       })
+    }
     return
   }
   await appendFileParts({
