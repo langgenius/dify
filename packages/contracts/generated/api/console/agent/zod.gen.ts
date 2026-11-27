@@ -1266,6 +1266,8 @@ export const zAgentLogConversationItemResponse = z.object({
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   end_user_id: z.string().nullish(),
+  from_account_name: z.string().nullish(),
+  from_end_user_session_id: z.string().nullish(),
   id: z.string(),
   message_count: z.int(),
   operation_rate: z.number().nullish(),

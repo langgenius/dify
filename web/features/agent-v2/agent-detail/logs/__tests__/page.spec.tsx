@@ -329,6 +329,32 @@ describe('AgentLogsPage', () => {
       expect(updatedHeader).toHaveAttribute('aria-sort', 'ascending')
     })
 
+    it('shows caller identities for direct conversations and keeps workflow user IDs', async () => {
+      const direct = populatedLogsResponse.data[0]!
+      const workflow = workflowLogsResponse.data[0]!
+      mocks.logsQueryFn.mockResolvedValue({
+        ...populatedLogsResponse,
+        data: [
+          { ...direct, from_end_user_session_id: 'customer-42', from_account_name: 'Editor' },
+          { ...direct, id: 'account', from_account_name: 'Console member' },
+          { ...direct, id: 'missing', title: 'Missing caller' },
+          { ...workflow, end_user_id: 'workflow-user' },
+        ],
+        total: 4,
+      })
+
+      renderPage()
+
+      expect(await screen.findByRole('cell', { name: 'customer-42' })).toBeInTheDocument()
+      expect(screen.getByRole('cell', { name: 'Console member' })).toBeInTheDocument()
+      expect(screen.getByRole('cell', { name: 'workflow-user' })).toBeInTheDocument()
+      const missing = screen.getByRole('row', { name: /Missing caller/ })
+      expect(within(missing).queryByText(direct.end_user_id!)).not.toBeInTheDocument()
+      expect(within(missing).getAllByRole('cell')[3]).toHaveTextContent(
+        'agentV2.agentDetail.logs.notAvailable',
+      )
+    })
+
     it('should expose unread status in the matching log row', async () => {
       const readLog = populatedLogsResponse.data[0]!
       mocks.logsQueryFn.mockResolvedValue({

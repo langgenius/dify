@@ -159,6 +159,8 @@ class AgentLogConversationItemResponse(ResponseModel):
     conversation_id: str
     title: str | None = None
     end_user_id: str | None = None
+    from_end_user_session_id: str | None = None
+    from_account_name: str | None = None
     message_count: int
     user_rate: float | None = None
     operation_rate: float | None = None

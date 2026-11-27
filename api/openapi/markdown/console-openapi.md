@@ -21754,6 +21754,8 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | end_user_id | string |  | No |
+| from_account_name | string |  | No |
+| from_end_user_session_id | string |  | No |
 | id | string |  | Yes |
 | message_count | integer |  | Yes |
 | operation_rate | number |  | No |

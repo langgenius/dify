@@ -25,7 +25,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
-from models.model import App, Conversation, Message, MessageAgentThought, MessageFeedback
+from models.model import App, Conversation, EndUser, Message, MessageAgentThought, MessageFeedback
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionModel,
@@ -335,6 +335,8 @@ class AgentObservabilityQueries:
         stmt = (
             select(
                 Conversation,
+                EndUser.session_id.label("from_end_user_session_id"),
+                Account.name.label("from_account_name"),
                 func.count(Message.id).label("message_count"),
                 func.max(Message.created_at).label("created_at"),
                 func.max(Message.updated_at).label("updated_at"),
@@ -344,8 +346,17 @@ class AgentObservabilityQueries:
                 ).label("failed_count"),
             )
             .join(Message, Message.conversation_id == Conversation.id)
+            .outerjoin(
+                EndUser,
+                and_(
+                    EndUser.id == Conversation.from_end_user_id,
+                    EndUser.tenant_id == app.tenant_id,
+                    EndUser.app_id == app.id,
+                ),
+            )
+            .outerjoin(Account, Account.id == Conversation.from_account_id)
             .where(Message.app_id == app.id, Conversation.app_id == app.id)
-            .group_by(Conversation.id)
+            .group_by(Conversation.id, EndUser.session_id, Account.name)
         )
         stmt = self._apply_observability_filters(stmt, params=params, source_filter=source_filter)
         rows = list(self._session.execute(stmt).all())
@@ -356,6 +367,8 @@ class AgentObservabilityQueries:
         return [
             self._serialize_conversation_log(
                 conversation=row[0],
+                from_end_user_session_id=row.from_end_user_session_id,
+                from_account_name=row.from_account_name,
                 message_count=row.message_count,
                 paused_count=row.paused_count,
                 failed_count=row.failed_count,
@@ -736,6 +749,8 @@ class AgentObservabilityQueries:
         cls,
         *,
         conversation: Conversation,
+        from_end_user_session_id: str | None,
+        from_account_name: str | None,
         message_count: int,
         paused_count: int,
         failed_count: int,
@@ -750,6 +765,8 @@ class AgentObservabilityQueries:
             "conversation_id": conversation.id,
             "title": conversation.name,
             "end_user_id": conversation.from_end_user_id,
+            "from_end_user_session_id": from_end_user_session_id,
+            "from_account_name": from_account_name,
             "message_count": int(message_count or 0),
             "user_rate": user_rate,
             "operation_rate": operation_rate,

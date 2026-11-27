@@ -46,11 +46,11 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from models import Account
 from models.agent import Agent, AgentScope, AgentSource
-from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, MessageStatus
 from models.model import App, AppMode, MessageAgentThought
 from services.enterprise.base import EnterpriseRequest
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.helpers.unit.model_factories import make_conversation, make_message
+from tests.helpers.unit.model_factories import make_conversation, make_end_user, make_message
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 from tests.unit_tests.core.app.apps.agent_app.test_app_runner import _StoppedQueueManager
 
@@ -327,6 +327,41 @@ def test_agent_chat_history_and_logs_return_persisted_activity_without_tracing(h
             harness.client.get(f"/console/api/agent/{foreign_agent_id}/{path}", headers=harness.headers).status_code
             == HTTPStatus.NOT_FOUND
         )
+
+
+def test_service_api_log_shows_external_caller(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent(published=True)
+    end_user_id = str(uuid4())
+    user = make_end_user(
+        end_user_id=end_user_id,
+        tenant_id=harness.tenant_id,
+        app_id=app_id,
+        end_user_type=EndUserType.SERVICE_API,
+        session_id="customer-42",
+    )
+    conversation = make_conversation(
+        mode=AppMode.AGENT, app_id=app_id, from_source=ConversationFromSource.API, from_end_user_id=user.id
+    )
+    message = make_message(
+        app_id=app_id,
+        conversation_id=conversation.id,
+        from_end_user_id=user.id,
+        from_source=ConversationFromSource.API,
+        invoke_from=InvokeFrom.SERVICE_API,
+        inputs={},
+        query="hello",
+        message={},
+        answer="hello",
+    )
+    with harness.sessions.begin() as session:
+        session.add_all([user, conversation, message])
+
+    response = harness.client.get(f"/console/api/agent/{agent_id}/logs?sources=service-api", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    (row,) = response.get_json()["data"]
+    assert row["end_user_id"] == end_user_id
+    assert row["from_end_user_session_id"] == "customer-42"
+    assert row["from_account_name"] is None
 
 
 def test_logs_and_messages_respect_agent_scope_and_account_timezone(harness: Harness) -> None:

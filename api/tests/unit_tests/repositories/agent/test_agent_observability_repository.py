@@ -43,7 +43,7 @@ from repositories.agent.agent_observability_repository import (
     AgentStatisticsQueryParams,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
 
 def test_log_message_thoughts_are_page_scoped_batched_and_detached(
@@ -604,8 +604,41 @@ class TestAgentObservabilityQueriesCases:
             source_filter=AgentObservabilityQueries.resolve_source_filter("webapp"),
         )
 
+        assert rows[0]["message_count"] == 2
         assert rows[0]["user_rate"] == 0.5
         assert rows[0]["operation_rate"] == 1.0
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("source", "tenant_id", "app_id", "expected_identity"),
+        [
+            ("service-api", "tenant-1", "app-1", "customer-42"),
+            ("web-app", "tenant-1", "app-1", "customer-42"),
+            ("web-app", "another-tenant", "app-1", None),
+            ("web-app", "tenant-1", "another-app", None),
+            ("web-app", "tenant-1", None, None),
+        ],
+    )
+    def test_direct_log_caller_identity(
+        sqlite_session: Session, source: str, tenant_id: str, app_id: str | None, expected_identity: str | None
+    ) -> None:
+        app = _agent_observability_service_app()
+        account = make_account()
+        user = make_end_user(tenant_id=tenant_id, app_id=app_id, session_id="customer-42")
+        conversation = _agent_observability_service_conversation()
+        conversation.from_account_id = account.id
+        message = _agent_observability_service_message()
+        message.invoke_from = _workflow_tool_agent_statistics_InvokeFrom(source)
+        sqlite_session.add_all([app, account, user, conversation, message])
+        sqlite_session.flush()
+
+        logs = AgentObservabilityQueries(sqlite_session).list_logs(
+            app=app, agent_id="agent-1", params=AgentLogQueryParams(sources=(source,))
+        )
+        (row,) = logs["data"]
+        assert row["end_user_id"] == user.id
+        assert row["from_end_user_session_id"] == expected_identity
+        assert row["from_account_name"] == account.name
 
     @staticmethod
     def test_list_workflow_logs_uses_node_executions_without_messages(sqlite_session: Session) -> None:
