@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Protocol
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.base import ModerationAction as LegacyModerationAction
 from core.moderation.factory import ModerationFactory
-from core.plugin.entities.plugin import PluginInstallationSource
-from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMStructuredOutput
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -22,10 +20,9 @@ from graphon.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from machinery.context import AppRequestContext
 from services.api_based_extension_application_service import APIBasedExtensionSecretCipher, APIBasedExtensionStore
+from services.hosted_moderation_service import HostedModerationUnavailableError
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
@@ -46,181 +43,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class HostedModerationPluginClient(Protocol):
-    """Keep installed-tenant dispatch distinct from server-selected direct fallback."""
-
-    def invoke_moderation(
-        self,
-        tenant_id: str,
-        user_id: str | None,
-        plugin_id: str,
-        provider: str,
-        model: str,
-        credentials: dict[str, Any],
-        text: str,
-        *,
-        plugin_unique_identifier: str | None = None,
-    ) -> bool: ...
-
-    def invoke_moderation_direct(
-        self,
-        tenant_id: str,
-        user_id: str | None,
-        plugin_id: str,
-        provider: str,
-        model: str,
-        credentials: dict[str, Any],
-        text: str,
-        *,
-        plugin_unique_identifier: str,
-    ) -> bool: ...
-
-
-class TenantModerationPluginResolver(Protocol):
-    """Resolve an installed official, verified OpenAI plugin in the supplied tenant."""
-
-    def resolve(self, tenant_id: str) -> str | None: ...
-
-
-class TenantModerationPluginCatalogue(Protocol):
-    """Tenant-scoped provider declarations and signed-manifest verification supplied by infrastructure."""
-
-    def fetch_plugin_model_providers(self, *, tenant_id: str) -> Sequence[PluginModelProviderDeclaration]: ...
-
-    def is_plugin_verified(self, tenant_id: str, plugin_unique_identifier: str) -> bool: ...
-
-
-class VerifiedTenantModerationPluginResolver:
-    """Admit only Marketplace OpenAI installations whose manifest is verified."""
-
-    def __init__(self, catalogue: TenantModerationPluginCatalogue) -> None:
-        """Bind catalogue access without discovery or manifest I/O."""
-        self._catalogue = catalogue
-
-    def resolve(self, tenant_id: str) -> str | None:
-        """Return a trusted tenant identifier or None; discovery failures propagate to the fallback owner."""
-        providers = self._catalogue.fetch_plugin_model_providers(tenant_id=tenant_id)
-        return next(
-            (
-                provider.plugin_unique_identifier
-                for provider in providers
-                if provider.provider == "langgenius/openai/openai"
-                and ModelType.MODERATION in provider.supported_model_types
-                and provider.plugin_unique_identifier.startswith("langgenius/openai:")
-                and provider.installation_source == PluginInstallationSource.Marketplace
-                and self._catalogue.is_plugin_verified(tenant_id, provider.plugin_unique_identifier)
-            ),
-            None,
-        )
-
-
-class HostedOpenAIModerationGateway:
-    """Use a verified tenant plugin before the configured fallback, without credit accounting."""
-
-    def __init__(
-        self,
-        *,
-        client: HostedModerationPluginClient,
-        credentials: Mapping[str, object] | None,
-        plugin_unique_identifier: str,
-        tenant_plugins: TenantModerationPluginResolver | None = None,
-    ) -> None:
-        """Bind platform credentials and lazy plugin selection without external I/O.
-
-        None credentials represent unavailable platform configuration, not user
-        credential fallback. A None resolver selects only the configured plugin.
-        Fallback identifier validation is deferred until needed so a valid tenant
-        plugin does not depend on SRE supplying a fallback package.
-        """
-        self._client = client
-        self._credentials = dict(credentials) if credentials is not None else None
-        self._tenant_plugins = tenant_plugins
-        self._tenant_identifiers: dict[str, str | None] = {}
-        self._plugin_unique_identifier = plugin_unique_identifier.strip()
-
-    @staticmethod
-    def _validate_identifier(plugin_unique_identifier: str) -> None:
-        """Require a pinned official OpenAI identifier before any direct daemon dispatch."""
-        plugin_id, separator, package_identity = plugin_unique_identifier.partition(":")
-        version, checksum_separator, checksum = package_identity.partition("@")
-        valid_package = separator and version and checksum_separator and checksum
-        if not valid_package or plugin_id != "langgenius/openai":
-            raise ValueError("Hosted moderation requires a pinned langgenius/openai plugin identifier.")
-
-    def _invoke(self, context: AppRequestContext, text: str, identifier: str, *, direct: bool) -> bool:
-        """Invoke an admitted package; direct fallback never resolves a tenant installation.
-
-        The caller selects direct dispatch only for the SRE-pinned fallback.
-        Both routes retain platform credentials, tenant context, and strict verdict validation.
-        """
-        self._validate_identifier(identifier)
-        if self._credentials is None:
-            raise InvokeAuthorizationError("Hosted moderation credentials are not configured.")
-        if not text:
-            return False
-        invoke = self._client.invoke_moderation_direct if direct else self._client.invoke_moderation
-        flagged = invoke(
-            tenant_id=context.tenant_id,
-            user_id=None,
-            plugin_id="langgenius/openai",
-            provider="openai",
-            model="omni-moderation-latest",
-            credentials=self._credentials,
-            text=text,
-            plugin_unique_identifier=identifier,
-        )
-        if not isinstance(flagged, bool):
-            raise ValueError("Hosted moderation returned an invalid verdict.")
-        return flagged
-
-    def _evaluate(self, context: AppRequestContext, text: str) -> tuple[bool, str]:
-        """Try the trusted tenant package first; fallback only on absence or failure, never rejection."""
-        if self._tenant_plugins is not None:
-            try:
-                if context.tenant_id not in self._tenant_identifiers:
-                    self._tenant_identifiers[context.tenant_id] = self._tenant_plugins.resolve(context.tenant_id)
-                identifier = self._tenant_identifiers[context.tenant_id]
-                if identifier is not None:
-                    return self._invoke(context, text, identifier, direct=False), "tenant"
-            except Exception as error:
-                self._tenant_identifiers[context.tenant_id] = None
-                logger.warning(
-                    "Tenant moderation plugin failed; trying configured fallback. tenant_id=%s app_id=%s error_type=%s",
-                    context.tenant_id,
-                    context.app_id,
-                    type(error).__name__,
-                )
-        if not self._plugin_unique_identifier:
-            raise InvokeAuthorizationError(
-                "No trusted tenant OpenAI plugin or configured moderation fallback is available."
-            )
-        return self._invoke(context, text, self._plugin_unique_identifier, direct=True), "configured"
-
-    def check(
-        self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
-    ) -> ModerationVerdict:
-        """Return a verdict through the tenant-first platform-funded route and log rejections.
-
-        No ModelManager, ModelInstance, tenant API key, or credit reservation is
-        used. Missing credentials or failure of both plugin routes propagates.
-        Logs identify the scope and phase but never include moderated text.
-        """
-        if rule.type != "openai_moderation":
-            raise ValueError("Hosted moderation requires the OpenAI moderation rule.")
-        if self._credentials is None:
-            raise InvokeAuthorizationError("Hosted moderation credentials are not configured.")
-        flagged, source = self._evaluate(context, request.text)
-        if flagged:
-            logger.warning(
-                "Platform moderation rejected content. tenant_id=%s app_id=%s phase=%s plugin_source=%s",
-                context.tenant_id,
-                context.app_id,
-                phase,
-                source,
-            )
-        return ModerationVerdict(flagged=flagged, message=rule.config[f"{phase}s_config"].get("preset_response", ""))
-
-
 class ChainedLLMModerationPolicy:
     """Apply enabled platform moderation together with an explicitly configured tenant policy."""
 
@@ -236,12 +58,12 @@ class ChainedLLMModerationPolicy:
         return self._policies[0].tenant_id
 
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
-        """Require every bound policy to approve inputs before model or quota effects."""
+        """Enforce every bound input policy before model or quota effects."""
         for policy in self._policies:
             policy.check_inputs(prompt_messages)
 
     def check_result(self, result: LLMResult) -> None:
-        """Require every policy to approve a completed result without modifying it."""
+        """Enforce every bound output policy without modifying the completed result."""
         for policy in self._policies:
             policy.check_result(result)
 
@@ -388,32 +210,35 @@ def result_text(result: LLMResult) -> str:
     return "\n".join(parts)
 
 
-class LLMModerationGuard:
-    """Check model inputs and segmented outputs before exposing them to the caller.
+type ModerationCheck = Callable[[Iterable[str], ModerationPhase], None]
 
-    Non-streaming output checks all text segments before returning the original
-    result. Streaming output checks each independent threshold-sized segment
-    before yielding its chunks. Segments never reuse previously checked text. The
-    guard owns and closes the provider stream. Model quota accounting completes
-    before output checks; rejection never refunds completed model usage.
+
+class LLMModerationGuard:
+    """Enforce model moderation without changing the request or response text.
+
+    Only recognized platform backend failures allow unchecked segments through.
+    After an outage, the rest of the current stream uses cached verdicts only.
+    A rejected segment is never delivered. The guard closes the provider stream
+    and never retries model generation or refunds completed usage.
     """
 
     def __init__(
         self,
         *,
         tenant_id: str,
-        check: Callable[[str, ModerationPhase], None],
+        check: ModerationCheck,
         check_input: bool,
         check_output: bool,
         non_stream_segment_size: int,
         stream_segment_size: int,
         platform: bool = False,
+        check_cached: ModerationCheck | None = None,
     ) -> None:
-        """Bind a nonempty tenant, phase enablement, and positive segment limits.
+        """Bind a tenant, phase enablement, and positive segment limits without I/O.
 
-        Both limits are mandatory, matching model assembly configuration. Disabled
-        phases perform no inspection or I/O. Failures propagate through the
-        caller's normal exception and workflow event channels.
+        Disabled phases do no work. On a platform backend outage, streaming
+        switches to the cache-only checker if supplied; otherwise it has no
+        further verdicts to enforce. Explicit policies always propagate failures.
         """
         if not tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
@@ -422,6 +247,7 @@ class LLMModerationGuard:
                 raise ValueError("Moderation segment sizes must be positive.")
         self._tenant_id = tenant_id
         self._check = check
+        self._check_cached = check_cached
         self._check_input = check_input
         self._check_output = check_output
         self._non_stream_segment_size = non_stream_segment_size
@@ -434,7 +260,7 @@ class LLMModerationGuard:
         return self._tenant_id
 
     def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
-        """Approve every input segment before model/quota effects.
+        """Enforce input verdicts before model/quota effects, unless the platform backend is unavailable.
 
         Platform policies preserve independent message boundaries;
         explicitly supplied policies retain the joined prompt representation.
@@ -445,25 +271,23 @@ class LLMModerationGuard:
                 if self._platform
                 else [prompt_text(prompt_messages)]
             )
-            for text in texts:
-                for segment in self._segments(text, self._non_stream_segment_size):
-                    self._check_segment(segment, "input")
+            segments = (segment for text in texts for segment in self._segments(text, self._non_stream_segment_size))
+            self._check_segments(self._check, segments, "input")
 
     def check_result(self, result: LLMResult) -> None:
-        """Approve every non-streaming output segment, including structured content, without mutation."""
+        """Check non-streaming output, including structure, without changing the result."""
         if self._check_output:
-            for segment in self._segments(result_text(result), self._non_stream_segment_size):
-                self._check_segment(segment, "output")
+            segments = self._segments(result_text(result), self._non_stream_segment_size)
+            self._check_segments(self._check, segments, "output")
 
-    def _check_segment(self, text: str, phase: ModerationPhase) -> None:
-        """Approve one segment or raise a typed app error without exposing backend failure details.
+    def _check_segments(self, check: ModerationCheck, segments: Iterable[str], phase: ModerationPhase) -> bool:
+        """Return False only for a recognized platform outage that allows the invocation to proceed.
 
-        The bound checker owns the verdict. Rejections retain their phase and
-        configured message; other checker failures are logged and chained to a
-        safe unavailable error. Neither failure permits delivery or model retry.
+        A rejection always raises. Strict-policy and unexpected failures become
+        a safe unavailable error with the original cause retained.
         """
         try:
-            self._check(text, phase)
+            check(segments, phase)
         except ModerationRejectedError as error:
             rejection = (
                 PlatformModerationRejectedInvocationError(error.phase, str(error))
@@ -472,12 +296,21 @@ class LLMModerationGuard:
             )
             raise rejection from error
         except Exception as error:
+            if self._platform and isinstance(error, HostedModerationUnavailableError):
+                logger.warning(
+                    "Platform moderation unavailable; skipping unchecked segments. tenant_id=%s phase=%s reason=%s",
+                    self._tenant_id,
+                    phase,
+                    error,
+                )
+                return False
             logger.exception("Moderation %s check failed", phase)
             unavailable = ModerationUnavailableInvocationError()
             raise unavailable from error
+        return True
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
-        """Return the original approved result or a guarded stream, propagating all failures.
+        """Return the original result or a guarded stream; only platform unavailability is recoverable.
 
         Model invocation and accounting must already be complete or owned by the
         supplied stream. No model retry or accounting refund occurs on rejection.
@@ -511,12 +344,13 @@ class LLMModerationGuard:
         return "".join(parts)
 
     def _check_stream_segments(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
-        """Check each independent segment before release and close the stream on every exit.
+        """Check each buffer before release and close the stream on every exit.
 
-        Tool names are inspected alongside content and arguments, but collected
-        separately so repeated name fields do not interrupt argument fragments
-        within the same segment.
+        After a platform outage, keep enforcing cached flags but make no more
+        upstream checks in this stream. Tool names are collected separately so
+        repeated names do not interrupt argument fragments within a buffer.
         """
+        check: ModerationCheck | None = self._check
         segment_size = self._stream_segment_size
         chunks: list[LLMResultChunk] = []
         fragment_parts: list[str] = []
@@ -534,7 +368,8 @@ class LLMModerationGuard:
                         fragment_length += len(tool.function.name)
                 if fragment_length >= segment_size:
                     text = "\n".join(["".join(fragment_parts), *tool_names])
-                    self._check_segment(text, "output")
+                    if check is not None and not self._check_segments(check, (text,), "output"):
+                        check = self._check_cached
                     yield from chunks
                     chunks = []
                     fragment_parts = []
@@ -543,8 +378,8 @@ class LLMModerationGuard:
 
             if chunks:
                 text = "\n".join(["".join(fragment_parts), *tool_names])
-                if text:
-                    self._check_segment(text, "output")
+                if text and check is not None:
+                    self._check_segments(check, (text,), "output")
                 yield from chunks
         finally:
             response.close()
