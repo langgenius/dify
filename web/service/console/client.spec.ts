@@ -1117,9 +1117,11 @@ describe('consoleQuery app mutation defaults', () => {
       ),
     ]
 
-    // Creates write the new key and refresh in the background (the dialog shows the
-    // one-time secret at once); deletes wait for the list the key leaves.
-    expect(results.slice(0, 2)).toEqual([undefined, undefined])
+    // Creates write the new key (the app create after cancelling reads of its list) and
+    // refresh in the background, so the dialog shows the one-time secret at once; deletes wait
+    // for the list the key leaves.
+    await expect(results[0]).resolves.toBeUndefined()
+    expect(results[1]).toBeUndefined()
     for (const result of results.slice(2)) expect(result).toBeInstanceOf(Promise)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({

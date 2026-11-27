@@ -28,12 +28,14 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
         publish: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, variables, _onMutateResult, context) => {
-                context.client.setQueryData(
+              onSuccess: async (_data, variables, _onMutateResult, context) => {
+                const snippetKey =
                   consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryKey({
                     input: { params: { snippet_id: variables.params.snippet_id } },
-                  }),
-                  (snippet) => (snippet ? { ...snippet, is_published: true } : snippet),
+                  })
+                await context.client.cancelQueries({ queryKey: snippetKey, exact: true })
+                context.client.setQueryData(snippetKey, (snippet) =>
+                  snippet ? { ...snippet, is_published: true } : snippet,
                 )
                 // Waits for the version list (reloaded from its first page) and the published
                 // workflow the new version is read from.
@@ -93,34 +95,26 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
               agentComposer: {
                 put: {
                   mutationOptions: {
-                    onSuccess: (composerState, variables, _onMutateResult, context) => {
-                      context.client.setQueryData(
+                    onSuccess: async (composerState, variables, _onMutateResult, context) => {
+                      const composerKey =
                         consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                          {
-                            input: {
-                              params: variables.params,
-                            },
-                          },
-                        ),
-                        composerState,
-                      )
+                          { input: { params: variables.params } },
+                        )
+                      await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                      context.client.setQueryData(composerKey, composerState)
                     },
                   },
                 },
                 copyFromRoster: {
                   post: {
                     mutationOptions: {
-                      onSuccess: (composerState, variables, _onMutateResult, context) => {
-                        context.client.setQueryData(
+                      onSuccess: async (composerState, variables, _onMutateResult, context) => {
+                        const composerKey =
                           consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                            {
-                              input: {
-                                params: variables.params,
-                              },
-                            },
-                          ),
-                          composerState,
-                        )
+                            { input: { params: variables.params } },
+                          )
+                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        context.client.setQueryData(composerKey, composerState)
                       },
                     },
                   },
@@ -131,17 +125,13 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                       meta: { alsoInvalidate: ['agent'] },
                       // The composer is written from the response; waits for the roster agent
                       // list and the saved agent's detail.
-                      onSuccess: (composerState, variables, _onMutateResult, context) => {
-                        context.client.setQueryData(
+                      onSuccess: async (composerState, variables, _onMutateResult, context) => {
+                        const composerKey =
                           consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                            {
-                              input: {
-                                params: variables.params,
-                              },
-                            },
-                          ),
-                          composerState,
-                        )
+                            { input: { params: variables.params } },
+                          )
+                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        context.client.setQueryData(composerKey, composerState)
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'
                             ? composerState.binding.agent_id

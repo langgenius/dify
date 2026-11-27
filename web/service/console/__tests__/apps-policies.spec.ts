@@ -1,6 +1,7 @@
 import type { MutationFunctionContext, QueryKey } from '@tanstack/react-query'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDeferred } from '@/test/deferred'
 
 type MutationCallback = (...args: unknown[]) => unknown
 
@@ -515,4 +516,118 @@ describe('MCP provider policies', () => {
       expect(invalidatedKeys()).toEqual([])
     },
   )
+})
+
+describe('policy writes and reads started before them', () => {
+  type ConsoleQuery = Awaited<ReturnType<typeof setup>>['consoleQuery']
+  type Case = {
+    name: string
+    options: (query: ConsoleQuery) => { onSuccess?: unknown }
+    key: (query: ConsoleQuery) => QueryKey
+    cached: unknown
+    data: unknown
+    variables: unknown
+    written: unknown
+    // Another cache entry the policy reads before it writes.
+    seed?: (query: ConsoleQuery) => [QueryKey, unknown]
+  }
+  const appParams = { app_id: 'app-1' }
+  const workflow = { id: 'workflow-1', marked_name: 'v1' }
+  const renamed = { id: 'workflow-1', marked_name: 'v2' }
+  const node = { snippet_id: 'snippet-1', node_id: 'node-1' }
+  const site = { params: { app_id: 'app-1', environment_id: 'env-1' } }
+  const cases: Case[] = [
+    {
+      name: 'an app save writes its detail',
+      options: (query) => query.apps.byAppId.put.mutationOptions(),
+      key: (query) => query.apps.byAppId.get.queryKey({ input: { params: appParams } }),
+      cached: { id: 'app-1', name: 'Old' },
+      data: { id: 'app-1', name: 'New' },
+      variables: { params: appParams, body: { name: 'New' } },
+      written: { id: 'app-1', name: 'New' },
+    },
+    {
+      // The deployment detail is the one cache the rename writes but does not refresh.
+      name: 'a workflow version rename writes the deployed version',
+      options: (query) => query.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions(),
+      key: (query) =>
+        query.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey({
+          input: { params: { ...appParams, environment_id: 'env-1' } },
+        }),
+      cached: { environment_deployment: { deployment: { current_version: workflow } } },
+      data: renamed,
+      variables: { params: { ...appParams, workflow_id: 'workflow-1' }, body: {} },
+      written: { environment_deployment: { deployment: { current_version: renamed } } },
+    },
+    {
+      name: 'an agent save writes its detail',
+      options: (query) => query.agent.byAgentId.put.mutationOptions(),
+      key: (query) =>
+        query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'a-1' } } }),
+      cached: { id: 'a-1', name: 'Old' },
+      data: { id: 'a-1', name: 'New' },
+      variables: { params: { agent_id: 'a-1' }, body: {} },
+      written: { id: 'a-1', name: 'New' },
+    },
+    {
+      // The skill lists are written from the saved skill but refresh only through the fallback.
+      name: 'a skill rename writes the skill lists',
+      options: (query) => query.workspaces.current.skills.bySkillId.patch.mutationOptions(),
+      key: (query) =>
+        query.workspaces.current.skills.get.queryKey({
+          input: { query: { page: 1, limit: 10, keyword: 'Old' } },
+        }),
+      seed: (query) => [
+        query.workspaces.current.skills.bySkillId.get.queryKey({
+          input: { params: { skill_id: 'skill-1' } },
+        }),
+        { id: 'skill-1', name: 'Old' },
+      ],
+      cached: { data: [{ id: 'skill-1', name: 'Old' }] },
+      data: { id: 'skill-1', name: 'New' },
+      variables: { params: { skill_id: 'skill-1' }, body: { name: 'New' } },
+      written: { data: [expect.objectContaining({ id: 'skill-1', name: 'New' })] },
+    },
+    {
+      name: 'a snippet agent composer save writes the composer',
+      options: (query) =>
+        query.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+      key: (query) =>
+        query.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+          input: { params: node },
+        }),
+      cached: { draft: 'old' },
+      data: { draft: 'new' },
+      variables: { params: node, body: {} },
+      written: { draft: 'new' },
+    },
+    {
+      name: 'an environment site token reset writes the site',
+      options: (query) =>
+        query.enterprise.appDeploy.accessService.resetEnvironmentSiteAccessToken.mutationOptions(),
+      key: (query) =>
+        query.enterprise.appDeploy.accessService.getEnvironmentSite.queryKey({ input: site }),
+      cached: { access_token: 'old' },
+      data: { access_token: 'new' },
+      variables: site,
+      written: { access_token: 'new' },
+    },
+  ]
+
+  it.each(cases)('keeps what $name over a read started before it', async (testCase) => {
+    const { client, consoleQuery, success } = await setup()
+    const queryKey = testCase.key(consoleQuery)
+    if (testCase.seed) client.setQueryData(...testCase.seed(consoleQuery))
+    client.setQueryData(queryKey, testCase.cached)
+    const staleRead = createDeferred<unknown>()
+    const pendingRead = client
+      .query({ queryKey, queryFn: () => staleRead.promise, staleTime: 0 })
+      .catch(() => undefined)
+
+    await success(testCase.options(consoleQuery), testCase.data, testCase.variables)
+    staleRead.resolve(testCase.cached)
+    await pendingRead
+
+    expect(client.getQueryData(queryKey)).toEqual(testCase.written)
+  })
 })

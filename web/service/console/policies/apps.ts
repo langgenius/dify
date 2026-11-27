@@ -80,30 +80,17 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                 // the comment are stopped first, and a failed resolve puts both back.
                 mutationOptions: {
                   onMutate: async ({ params }, context) => {
-                    await Promise.all([
-                      context.client.cancelQueries({
-                        queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
-                          input: { params: { app_id: params.app_id } },
-                        }),
-                      }),
-                      context.client.cancelQueries({
-                        queryKey:
-                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
-                            input: { params },
-                          }),
-                      }),
-                    ])
-                    setCommentResolved(consoleQuery, context.client, params, {
+                    await setCommentResolved(consoleQuery, context.client, params, {
                       resolved: true,
                     })
                   },
-                  onError: (_error, { params }, _result, context) => {
-                    setCommentResolved(consoleQuery, context.client, params, {
+                  onError: async (_error, { params }, _result, context) => {
+                    await setCommentResolved(consoleQuery, context.client, params, {
                       resolved: false,
                     })
                   },
-                  onSuccess: (result, { params }, _result, context) => {
-                    setCommentResolved(consoleQuery, context.client, params, {
+                  onSuccess: async (result, { params }, _result, context) => {
+                    await setCommentResolved(consoleQuery, context.client, params, {
                       resolved: result.resolved,
                       resolved_at: result.resolved_at,
                       resolved_by: result.resolved_by,
@@ -194,17 +181,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       trace: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
-              context.client.setQueryData(
-                consoleQuery.apps.byAppId.trace.get.queryKey({
-                  input: { params: variables.params },
-                }),
-                {
-                  ...variables.body,
-                  capture_content: variables.body.capture_content ?? false,
-                  capture_agent: variables.body.capture_agent ?? true,
-                },
-              )
+            onSuccess: async (_data, variables, _result, context) => {
+              const queryKey = consoleQuery.apps.byAppId.trace.get.queryKey({
+                input: { params: variables.params },
+              })
+              await context.client.cancelQueries({ queryKey, exact: true })
+              context.client.setQueryData(queryKey, {
+                ...variables.body,
+                capture_content: variables.body.capture_content ?? false,
+                capture_agent: variables.body.capture_agent ?? true,
+              })
             },
             // A conflict means another save landed first: reloads what it changed. A saved status
             // is written above and confirmed by a background read.
@@ -315,10 +301,11 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         refresh: {
           post: {
             mutationOptions: {
-              onSuccess: (server, { params }, _result, { client }) => {
+              onSuccess: async (server, { params }, _result, { client }) => {
                 const queryKey = consoleQuery.apps.byAppId.server.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 })
+                await client.cancelQueries({ queryKey, exact: true })
                 client.setQueryData(queryKey, (previous) =>
                   previous?.id === server.id
                     ? { ...previous, server_code: server.server_code }
@@ -347,12 +334,13 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       networkAccessGroup: {
         put: {
           mutationOptions: {
-            onSuccess: (data, { params }, _result, { client }) => {
-              client.setQueryData(
-                consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
-                  input: { params: { app_id: params.app_id } },
-                }),
-                (current) => (current ? { ...current, ...data } : current),
+            onSuccess: async (data, { params }, _result, { client }) => {
+              const queryKey = consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
+                input: { params: { app_id: params.app_id } },
+              })
+              await client.cancelQueries({ queryKey, exact: true })
+              client.setQueryData(queryKey, (current) =>
+                current ? { ...current, ...data } : current,
               )
             },
             // A version conflict means another write landed first: waits for the app's binding to
@@ -376,9 +364,15 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       apiEnable: {
         post: {
           mutationOptions: {
-            onSettled: (data, error, variables, _onMutateResult, context) => {
+            onSettled: async (data, error, variables, _onMutateResult, context) => {
               if (error || !data) return
 
+              await context.client.cancelQueries({
+                queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                  input: { params: variables.params },
+                }),
+                exact: true,
+              })
               context.client.setQueryData<AppDetailWithSite>(
                 consoleQuery.apps.byAppId.get.queryKey({ input: { params: variables.params } }),
                 (detail) =>
@@ -414,13 +408,12 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       },
       put: {
         mutationOptions: {
-          onSuccess: (data, variables, _onMutateResult, context) => {
-            context.client.setQueryData(
-              consoleQuery.apps.byAppId.get.queryKey({
-                input: { params: variables.params },
-              }),
-              data,
-            )
+          onSuccess: async (data, variables, _onMutateResult, context) => {
+            const detailKey = consoleQuery.apps.byAppId.get.queryKey({
+              input: { params: variables.params },
+            })
+            await context.client.cancelQueries({ queryKey: detailKey, exact: true })
+            context.client.setQueryData(detailKey, data)
             // The detail is written above; waits for the app lists it edits.
             return invalidateQueryKeys(context.client, [
               consoleQuery.apps.get.key(),
@@ -434,15 +427,26 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         post: {
           mutationOptions: {
             meta: { alsoInvalidate: ['agent'] },
-            onSettled: (data, error, variables, _onMutateResult, context) => {
+            onSettled: async (data, error, variables, _onMutateResult, context) => {
               if (error || !data) return
 
-              updateAgentsOfApp(consoleQuery, context.client, variables.params.app_id, (agent) => ({
-                ...agent,
-                enable_site: data.enable_site,
-                updated_at: data.updated_at,
-                updated_by: data.updated_by,
-              }))
+              await context.client.cancelQueries({
+                queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                  input: { params: variables.params },
+                }),
+                exact: true,
+              })
+              await updateAgentsOfApp(
+                consoleQuery,
+                context.client,
+                variables.params.app_id,
+                (agent) => ({
+                  ...agent,
+                  enable_site: data.enable_site,
+                  updated_at: data.updated_at,
+                  updated_by: data.updated_by,
+                }),
+              )
 
               context.client.setQueryData<AppDetailWithSite>(
                 consoleQuery.apps.byAppId.get.queryKey({ input: { params: variables.params } }),
@@ -481,20 +485,30 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           post: {
             mutationOptions: {
               meta: { alsoInvalidate: ['agent'] },
-              onSettled: (data, error, variables, _onMutateResult, context) => {
+              onSettled: async (data, error, variables, _onMutateResult, context) => {
                 if (error || !data) return
 
-                updateAgentsOfApp(consoleQuery, context.client, variables.params.app_id, (agent) =>
-                  agent.site
-                    ? {
-                        ...agent,
-                        site: {
-                          ...agent.site,
-                          code: data.code ?? agent.site.code,
-                          access_token: data.code ?? agent.site.access_token,
-                        },
-                      }
-                    : agent,
+                await context.client.cancelQueries({
+                  queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                    input: { params: variables.params },
+                  }),
+                  exact: true,
+                })
+                await updateAgentsOfApp(
+                  consoleQuery,
+                  context.client,
+                  variables.params.app_id,
+                  (agent) =>
+                    agent.site
+                      ? {
+                          ...agent,
+                          site: {
+                            ...agent.site,
+                            code: data.code ?? agent.site.code,
+                            access_token: data.code ?? agent.site.access_token,
+                          },
+                        }
+                      : agent,
                 )
 
                 const { code } = data
@@ -635,14 +649,14 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         byWorkflowId: {
           patch: {
             mutationOptions: {
-              onSuccess: (data, variables, _result, context) => {
-                syncAppWorkflowVersionCaches(
+              onSuccess: async (data, variables, _result, context) => {
+                await syncAppWorkflowVersionCaches(
                   context.client,
                   consoleQuery,
                   variables.params.app_id,
                   data,
                 )
-                const deploymentsKey = syncWorkflowDeploymentCaches(
+                const deploymentsKey = await syncWorkflowDeploymentCaches(
                   context.client,
                   consoleQuery,
                   variables.params.app_id,
@@ -680,34 +694,26 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               agentComposer: {
                 put: {
                   mutationOptions: {
-                    onSuccess: (composerState, variables, _onMutateResult, context) => {
-                      context.client.setQueryData(
+                    onSuccess: async (composerState, variables, _onMutateResult, context) => {
+                      const composerKey =
                         consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                          {
-                            input: {
-                              params: variables.params,
-                            },
-                          },
-                        ),
-                        composerState,
-                      )
+                          { input: { params: variables.params } },
+                        )
+                      await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                      context.client.setQueryData(composerKey, composerState)
                     },
                   },
                 },
                 copyFromRoster: {
                   post: {
                     mutationOptions: {
-                      onSuccess: (composerState, variables, _onMutateResult, context) => {
-                        context.client.setQueryData(
+                      onSuccess: async (composerState, variables, _onMutateResult, context) => {
+                        const composerKey =
                           consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                            {
-                              input: {
-                                params: variables.params,
-                              },
-                            },
-                          ),
-                          composerState,
-                        )
+                            { input: { params: variables.params } },
+                          )
+                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        context.client.setQueryData(composerKey, composerState)
                       },
                     },
                   },
@@ -718,17 +724,13 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                       meta: { alsoInvalidate: ['agent'] },
                       // The composer is written from the response; waits for the roster agent
                       // list and the saved agent's detail.
-                      onSuccess: (composerState, variables, _onMutateResult, context) => {
-                        context.client.setQueryData(
+                      onSuccess: async (composerState, variables, _onMutateResult, context) => {
+                        const composerKey =
                           consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                            {
-                              input: {
-                                params: variables.params,
-                              },
-                            },
-                          ),
-                          composerState,
-                        )
+                            { input: { params: variables.params } },
+                          )
+                        await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+                        context.client.setQueryData(composerKey, composerState)
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'
                             ? composerState.binding.agent_id
@@ -758,14 +760,13 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         post: {
           mutationOptions: {
             // Writes the new key into its list, so the one-time secret shows at once.
-            onSuccess: (created, variables, _onMutateResult, context) =>
-              addCreatedKeyToLists(
-                context.client,
-                consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
-                  input: { params: { resource_id: variables.params.resource_id } },
-                }),
-                created,
-              ),
+            onSuccess: async (created, variables, _onMutateResult, context) => {
+              const listKey = consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+                input: { params: { resource_id: variables.params.resource_id } },
+              })
+              await context.client.cancelQueries({ queryKey: listKey })
+              addCreatedKeyToLists(context.client, listKey, created)
+            },
           },
         },
         byApiKeyId: {
@@ -786,42 +787,46 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
   }
 }
 
-// A comment's resolved state, on its thread and in its app's comment list.
-function setCommentResolved(
+// A comment's resolved state, on its thread and in its app's comment list. Reads running for
+// the comment are stopped first, so none started before the write lands over it.
+async function setCommentResolved(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
   params: { app_id: string; comment_id: string },
   fields: { resolved: boolean; resolved_at?: number | null; resolved_by?: string | null },
 ) {
-  client.setQueryData(
-    query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({ input: { params } }),
-    (detail) => (detail ? { ...detail, ...fields } : detail),
-  )
-  client.setQueryData(
-    query.apps.byAppId.workflow.comments.get.queryKey({
-      input: { params: { app_id: params.app_id } },
-    }),
-    (list) =>
-      list
-        ? {
-            ...list,
-            data: list.data.map((comment) =>
-              comment.id === params.comment_id
-                ? { ...comment, resolved: fields.resolved }
-                : comment,
-            ),
-          }
-        : list,
+  const detailKey = query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+    input: { params },
+  })
+  const listKey = query.apps.byAppId.workflow.comments.get.queryKey({
+    input: { params: { app_id: params.app_id } },
+  })
+  await Promise.all([
+    client.cancelQueries({ queryKey: detailKey, exact: true }),
+    client.cancelQueries({ queryKey: listKey, exact: true }),
+  ])
+  client.setQueryData(detailKey, (detail) => (detail ? { ...detail, ...fields } : detail))
+  client.setQueryData(listKey, (list) =>
+    list
+      ? {
+          ...list,
+          data: list.data.map((comment) =>
+            comment.id === params.comment_id ? { ...comment, resolved: fields.resolved } : comment,
+          ),
+        }
+      : list,
   )
 }
 
-// Writes the agents backed by an app; their detail is keyed by agent, not app.
-function updateAgentsOfApp(
+// Writes the agents backed by an app; their detail is keyed by agent, not app. Agent detail
+// reads are stopped first, so none started before the write lands over it.
+async function updateAgentsOfApp(
   query: ConsoleQuery,
   client: QueryClient,
   appId: string,
   update: (agent: AgentAppDetailWithSite) => AgentAppDetailWithSite,
 ) {
+  await client.cancelQueries({ queryKey: query.agent.byAgentId.get.key() })
   client.setQueriesData<AgentAppDetailWithSite>(
     { queryKey: query.agent.byAgentId.get.key() },
     (agent) => (agent?.app_id === appId ? update(agent) : agent),

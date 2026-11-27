@@ -62,8 +62,8 @@ it.each(['rename', 'delete'] as const)(
     }
 
     await vi.waitFor(() => expect(client.getQueryState(agentResults[0]!)?.isInvalidated).toBe(true))
-    // The unobserved pre-write read is joined, not cancelled (someone may await it): it resolves
-    // with its own response, a known trade-off of the fallback.
+    // The policy cancels the unobserved pre-write read before writing: whoever awaits it gets
+    // the catalog as it was when the read started.
     staleRead.resolve([agentTag])
     await expect(pendingRead).resolves.toEqual([agentTag])
     for (const key of agentResults) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
@@ -71,6 +71,45 @@ it.each(['rename', 'delete'] as const)(
     expect(client.getQueryState(appCatalog)?.isInvalidated).toBe(true)
     // A renamed or deleted tag may be on any tagged resource, so app lists refresh too.
     expect(client.getQueryState(appResults)?.isInvalidated).toBe(true)
+  },
+)
+
+it.each(['rename', 'delete'] as const)(
+  'keeps the %s over an unobserved Agent tag catalog read started before it',
+  async (operation) => {
+    const client = createTestQueryClient()
+    const tag = { id: 'agent-tag', name: 'Research', type: 'agent' }
+    const otherTag = { id: 'other-tag', name: 'Finance', type: 'agent' }
+    const catalog = consoleQuery.tags.get.queryKey({ input: { query: { type: 'agent' } } })
+    client.setQueryData(catalog, [tag, otherTag])
+    const staleRead = createDeferred<TagResponse[]>()
+    call.mockReturnValueOnce(staleRead.promise)
+    const pendingRead = client
+      .query(
+        consoleQuery.tags.get.queryOptions({ input: { query: { type: 'agent' } }, staleTime: 0 }),
+      )
+      .catch(() => undefined)
+
+    const params = { tag_id: tag.id }
+    const renamedTag = { ...tag, name: 'Research 2' }
+    if (operation === 'rename') {
+      call.mockResolvedValueOnce(renamedTag)
+      await new MutationObserver(client, consoleQuery.tags.byTagId.patch.mutationOptions()).mutate({
+        params,
+        body: { name: renamedTag.name },
+      })
+    } else {
+      call.mockResolvedValueOnce(undefined)
+      await new MutationObserver(client, consoleQuery.tags.byTagId.delete.mutationOptions()).mutate(
+        { params },
+      )
+    }
+    staleRead.resolve([tag, otherTag])
+    await pendingRead
+
+    expect(client.getQueryData(catalog)).toEqual(
+      operation === 'rename' ? [renamedTag, otherTag] : [otherTag],
+    )
   },
 )
 

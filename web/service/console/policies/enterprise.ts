@@ -7,14 +7,12 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
       accessService: {
         updateEnvironmentApi: {
           mutationOptions: {
-            onSuccess: (updated, variables, _result, context) => {
+            onSuccess: async (updated, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              context.client.setQueryData(
+              const accessKey =
                 consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
                   input: { params: { app_id, environment_id } },
-                }).queryKey,
-                updated,
-              )
+                }).queryKey
               const list =
                 consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
                   {
@@ -27,6 +25,13 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                     input: { params: { app_id, environment_id } },
                   },
                 )
+              // Reads started before the save must not overwrite what it writes.
+              await Promise.all(
+                [accessKey, list.queryKey, detail.queryKey].map((queryKey) =>
+                  context.client.cancelQueries({ queryKey, exact: true }),
+                ),
+              )
+              context.client.setQueryData(accessKey, updated)
               context.client.setQueryData(
                 list.queryKey,
                 (current) =>
@@ -62,14 +67,12 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
         },
         updateEnvironmentSite: {
           mutationOptions: {
-            onSuccess: (updated, variables, _result, context) => {
+            onSuccess: async (updated, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              context.client.setQueryData(
+              const accessKey =
                 consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryOptions({
                   input: { params: { app_id, environment_id } },
-                }).queryKey,
-                updated,
-              )
+                }).queryKey
               const list =
                 consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions(
                   {
@@ -82,6 +85,13 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                     input: { params: { app_id, environment_id } },
                   },
                 )
+              // Reads started before the save must not overwrite what it writes.
+              await Promise.all(
+                [accessKey, list.queryKey, detail.queryKey].map((queryKey) =>
+                  context.client.cancelQueries({ queryKey, exact: true }),
+                ),
+              )
+              context.client.setQueryData(accessKey, updated)
               context.client.setQueryData(
                 list.queryKey,
                 (current) =>
@@ -117,16 +127,16 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
         },
         updateEnvironmentWebAppAccessMode: {
           mutationOptions: {
-            onSuccess: (site, { params }, _result, { client }) => {
+            onSuccess: async (site, { params }, _result, { client }) => {
               const input = {
                 params: { app_id: params.app_id, environment_id: params.environment_id },
               }
-              client.setQueryData(
+              const siteKey =
                 consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryKey({
                   input,
-                }),
-                site,
-              )
+                })
+              await client.cancelQueries({ queryKey: siteKey, exact: true })
+              client.setQueryData(siteKey, site)
               // The site comes from the response; waits for the subjects the save may replace.
               return client.invalidateQueries({
                 queryKey:
@@ -139,29 +149,29 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
         },
         resetEnvironmentSiteAccessToken: {
           mutationOptions: {
-            onSuccess: (site, { params }, _result, { client }) => {
-              client.setQueryData(
+            onSuccess: async (site, { params }, _result, { client }) => {
+              const siteKey =
                 consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryKey({
                   input: {
                     params: { app_id: params.app_id, environment_id: params.environment_id },
                   },
-                }),
-                site,
-              )
+                })
+              await client.cancelQueries({ queryKey: siteKey, exact: true })
+              client.setQueryData(siteKey, site)
             },
           },
         },
         createEnvironmentApiKey: {
           mutationOptions: {
             // Writes the new key into its list, so the one-time secret shows at once.
-            onSuccess: (created, variables, _result, context) =>
-              addCreatedKeyToLists(
-                context.client,
+            onSuccess: async (created, variables, _result, context) => {
+              const listKey =
                 consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
                   input: { params: variables.params },
-                }),
-                created,
-              ),
+                })
+              await context.client.cancelQueries({ queryKey: listKey })
+              addCreatedKeyToLists(context.client, listKey, created)
+            },
           },
         },
         deleteEnvironmentApiKey: {

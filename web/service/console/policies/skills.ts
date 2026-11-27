@@ -1,5 +1,5 @@
 import type { RouterUtils } from '@orpc/tanstack-query'
-import type { QueryClient } from '@tanstack/react-query'
+import type { QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsoleQuery, WorkspaceCurrentPolicies } from './types'
 import { setSkillDetailCache } from '../skill-cache'
@@ -39,10 +39,12 @@ export function skillPolicies(
         publish: {
           post: {
             mutationOptions: {
-              onSuccess: (version, { params }, _result, { client }) => {
+              onSuccess: async (version, { params }, _result, { client }) => {
                 const detailKey = consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
                   input: { params: { skill_id: params.skill_id } },
                 })
+                // Reads started before the publish must not overwrite the written version.
+                await cancelSkillDetailCacheReads(consoleQuery, client, detailKey)
                 const detail = client.getQueryData(detailKey)
                 if (detail)
                   setSkillDetailCache(consoleQuery, client, params.skill_id, {
@@ -75,8 +77,8 @@ export function skillPolicies(
               const detailKey = consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
                 input,
               })
-              // A detail refetch started before the save must not overwrite it.
-              await client.cancelQueries({ queryKey: detailKey })
+              // A detail or list read started before the save must not overwrite it.
+              await cancelSkillDetailCacheReads(consoleQuery, client, detailKey)
               const cached = client.getQueryData(detailKey)
               if (cached)
                 setSkillDetailCache(consoleQuery, client, params.skill_id, { ...cached, ...skill })
@@ -171,6 +173,20 @@ export function skillPolicies(
       },
     },
   }
+}
+
+// Cancels the reads `setSkillDetailCache` writes: the skill's detail and the skill lists.
+function cancelSkillDetailCacheReads(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  detailKey: QueryKey,
+) {
+  const { skills } = query.workspaces.current
+  return Promise.all([
+    client.cancelQueries({ queryKey: detailKey, exact: true }),
+    client.cancelQueries({ queryKey: skills.get.key({ type: 'query' }) }),
+    client.cancelQueries({ queryKey: skills.get.key({ type: 'infinite' }) }),
+  ])
 }
 
 // Refreshes a skill's versions; the returned promise waits for the version list only.
