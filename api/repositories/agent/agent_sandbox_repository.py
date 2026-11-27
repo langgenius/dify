@@ -5,6 +5,7 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.agent.workspace import WorkspaceOwnerScope
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
     read_workflow_agent_session_branch,
@@ -17,7 +18,7 @@ from models.enums import AppStatus
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.agent.agent_app_repository import AgentAppRepository
-from services.agent.roster_service import AgentRosterService
+from repositories.agent.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent.sandbox_contracts import (
     AgentSandboxBinding,
     AgentSandboxBindingNotFoundError,
@@ -25,7 +26,6 @@ from services.agent.sandbox_contracts import (
     SandboxCaller,
     WorkflowSandboxAppNotFoundError,
 )
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 
 class AgentSandboxRepository:
@@ -74,6 +74,11 @@ class AgentSandboxRepository:
         caller_id: str,
         account_id: str,
     ) -> AgentSandboxBinding:
+        """Resolve an active binding for an admitted Agent App and account.
+
+        Check the caller and binding in one read session. A missing or mismatched
+        owner raises AgentSandboxBindingNotFoundError without modifying any row.
+        """
         with self._session_factory() as session:
             caller: AgentConfigDraft | Conversation | None
             if caller_type == "build_draft":
@@ -83,7 +88,7 @@ class AgentSandboxRepository:
                         Agent.tenant_id == tenant_id,
                     )
                 )
-                if agent is None or AgentRosterService.runtime_backing_app_id(agent) != app_id:
+                if agent is None or (agent.backing_app_id or agent.app_id) != app_id:
                     caller = None
                 else:
                     caller = session.scalar(
@@ -123,8 +128,7 @@ class AgentSandboxRepository:
                 raise AgentSandboxBindingNotFoundError(
                     "this caller has no active Agent Workspace Binding",
                 )
-            binding = AgentWorkspaceService.get_active_binding(
-                session=session,
+            binding = AgentWorkspaceRepository(session=session).get_active_binding(
                 tenant_id=tenant_id,
                 binding_id=caller.agent_workspace_binding_id,
                 expected_owner_scope=owner_scope,
@@ -188,8 +192,7 @@ class AgentSandboxRepository:
             raise AgentSandboxBindingNotFoundError(
                 "this Workflow Agent node execution has invalid session policy"
             ) from error
-        binding = AgentWorkspaceService.get_active_binding(
-            session=session,
+        binding = AgentWorkspaceRepository(session=session).get_active_binding(
             tenant_id=tenant_id,
             binding_id=execution.agent_workspace_binding_id,
             expected_owner_scope=resolve_workflow_agent_workspace_owner_scope(
