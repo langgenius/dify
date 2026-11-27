@@ -19,5 +19,5 @@ class WeaviateVectorTest(AbstractVectorTest):
         )
 
 
-def test_weaviate_vector(setup_mock_redis):
+def test_weaviate_vector(setup_real_redis):
     WeaviateVectorTest().run_all_tests()
