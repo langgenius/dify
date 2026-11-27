@@ -171,10 +171,10 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     case str():
                         # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
                         # and also '0' for False and '1' for True
-                        match value.lower():
-                            case "true" | "yes" | "y" | "1":
+                        match value.strip().lower():
+                            case "true" | "yes" | "y" | "on" | "1":
                                 return True
-                            case "false" | "no" | "n" | "0":
+                            case "false" | "no" | "n" | "off" | "0":
                                 return False
                             case _:
                                 return bool(value)
