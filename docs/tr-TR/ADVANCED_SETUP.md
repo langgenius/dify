@@ -54,3 +54,9 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 ### Sealos ile Dağıtım
 
 [Sealos App Store](https://sealos.io/products/app-store/dify/) kullanarak Dify'ı tek tıkla dağıtın
+
+## Dify Kaynaklarını Kod Olarak Yönetme
+
+Workspace kaynaklarını — uygulamalar (DSL), model/araç kimlik bilgileri, eklentiler ve uygulama API anahtarları — kod olarak yönetin ve aynı yapılandırmayı birden çok ortama uygulayın.
+
+- [@wylswz tarafından resmi olmayan Terraform Provider](https://github.com/wylswz/dify-unofficial-terraform-provider)

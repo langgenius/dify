@@ -55,3 +55,9 @@ Distribuite Dify con un clic in AKS utilizzando [Azure DevOps Pipeline Helm Char
 ### Distribuzione con Sealos
 
 Distribuite Dify con un clic tramite [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
+## Gestire le risorse di Dify come codice
+
+Gestisci le risorse del workspace — app (DSL), credenziali di modelli/strumenti, plugin e chiavi API delle app — come codice e applica la stessa configurazione a più ambienti.
+
+- [Provider Terraform non ufficiale di @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)

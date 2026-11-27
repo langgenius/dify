@@ -55,3 +55,9 @@ Grafanaにダッシュボードをインポートし、DifyのPostgreSQLデー�
 ### Sealosを使用したデプロイ
 
 [Sealos App Store](https://sealos.io/products/app-store/dify/)を使用してDifyをワンクリックでデプロイできます
+
+## コードとしてDifyリソースを管理
+
+アプリ（DSL）、モデル/ツール認証情報、プラグイン、アプリAPIキーなどのワークスペースリソースをコードとして管理し、同じ設定を複数の環境に適用できます。
+
+- [Unofficial Terraform Provider by @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)

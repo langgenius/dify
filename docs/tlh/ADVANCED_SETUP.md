@@ -49,3 +49,9 @@ wa'logh nIqHom neH ghun deployment toy'wI' [CDK](https://aws.amazon.com/cdk/) lo
 ### Sealos lo'laH Deploy
 
 [Sealos App Store](https://sealos.io/products/app-store/dify/) lo'laH Dify wa'DIch click 'e' Deploy
+
+## Dify Resources lo' Code 'e' Manage
+
+workspace resources — apps (DSL), model/tool credentials, plugins, app API keys — code 'e' manage 'ej rap configuration multiple environments 'e' apply.
+
+- [Unofficial Terraform Provider by @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)

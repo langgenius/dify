@@ -55,3 +55,9 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 ### Sealos를 사용한 배포
 
 [Sealos App Store](https://sealos.io/products/app-store/dify/)를 사용하여 Dify를 원클릭으로 배포할 수 있습니다
+
+## 코드로 Dify 리소스 관리
+
+앱(DSL), 모델/도구 자격 증명, 플러그인, 앱 API 키 등 워크스페이스 리소스를 코드로 관리하고 동일한 구성을 여러 환경에 적용할 수 있습니다.
+
+- [@wylswz의 비공식 Terraform Provider](https://github.com/wylswz/dify-unofficial-terraform-provider)

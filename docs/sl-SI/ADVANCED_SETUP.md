@@ -54,3 +54,9 @@ Z enim klikom namestite Dify v AKS z uporabo [Azure Devops Pipeline Helm Chart b
 ### Namestitev s Sealos
 
 Z enim klikom namestite Dify prek [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
+## Upravljanje virov Dify kot koda
+
+Upravljajte vire delovnega prostora — aplikacije (DSL), poverilnice modelov/orodij, vtičnike in ključe API aplikacij — kot kodo in enako konfiguracijo uporabite v več okoljih.
+
+- [Neuradni Terraform Provider @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)

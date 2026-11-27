@@ -55,3 +55,9 @@ Implante o Dify no AKS com um clique usando [Azure Devops Pipeline Helm Chart by
 ### Implantação com Sealos
 
 Implante o Dify com um clique usando a [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
+## Gerenciando recursos do Dify como código
+
+Gerencie recursos do workspace — apps (DSL), credenciais de modelo/ferramenta, plugins e chaves de API de app — como código e aplique a mesma configuração em vários ambientes.
+
+- [Provedor Terraform não oficial por @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)

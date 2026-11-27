@@ -55,3 +55,9 @@
 ### استخدام Sealos للنشر
 
 انشر Dify بنقرة واحدة باستخدام [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
+## إدارة موارد Dify كرمز
+
+أدر موارد مساحة العمل — التطبيقات (DSL) وبيانات اعتماد النموذج/الأداة والإضافات ومفاتيح API للتطبيقات — كرمز، وطبّق التكوين نفسه على بيئات متعددة.
+
+- [مزود Terraform غير رسمي بواسطة @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)
