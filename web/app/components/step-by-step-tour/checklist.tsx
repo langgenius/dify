@@ -1,16 +1,119 @@
 'use client'
 
-import type { ComponentProps, RefObject } from 'react'
+import type { DialogPopupProps, DialogTriggerProps } from '@langgenius/dify-ui/dialog'
+import type { ComponentProps, ReactNode, RefObject } from 'react'
 import type { StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Dialog,
+  DialogDescription,
+  DialogPopup,
+  DialogPortal,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
-import { useEffect, useId } from 'react'
+import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
+import { createContext, use, useEffect, useId, useRef } from 'react'
 import { waitForAccessibleElement } from './wait-for-accessible-element'
 
-export type FloatingChecklistProps = {
-  className?: string
+type TourChecklistContextValue = {
+  popupRef: RefObject<HTMLDivElement | null>
+  titleId: string
+  triggerRef: RefObject<HTMLButtonElement | null>
+}
+
+const TourChecklistContext = createContext<TourChecklistContextValue | null>(null)
+
+function useTourChecklistContext() {
+  const context = use(TourChecklistContext)
+  if (!context) throw new Error('TourChecklist parts must be rendered inside <TourChecklist>.')
+  return context
+}
+
+type TourChecklistProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  children: ReactNode
+}
+
+export function TourChecklist({ open, onOpenChange, children }: TourChecklistProps) {
+  const popupRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const titleId = useId()
+
+  return (
+    <Dialog
+      modal={false}
+      open={open}
+      onOpenChange={(nextOpen, { event, reason }) => {
+        if (nextOpen) {
+          onOpenChange(true)
+          return
+        }
+        // Only the checklist's own keyboard exits minimize it: Escape from inside it or its
+        // trigger, and Tab past it through a focus guard. Outside presses keep it open.
+        const target = event.target instanceof Element ? event.target : null
+        const escapedFromChecklist =
+          reason === 'escape-key' &&
+          Boolean(
+            target && (popupRef.current?.contains(target) || triggerRef.current?.contains(target)),
+          )
+        const tabbedOut =
+          reason === 'focus-out' && Boolean(target?.hasAttribute('data-base-ui-focus-guard'))
+        if (reason === 'trigger-press' || escapedFromChecklist || tabbedOut) onOpenChange(false)
+      }}
+    >
+      <TourChecklistContext value={{ popupRef, titleId, triggerRef }}>
+        {children}
+      </TourChecklistContext>
+    </Dialog>
+  )
+}
+
+export function TourChecklistTrigger({ ref, ...props }: DialogTriggerProps) {
+  const { triggerRef } = useTourChecklistContext()
+  const mergedRef = useMergedRefs(triggerRef, ref)
+  return <DialogTrigger ref={mergedRef} {...props} />
+}
+
+type TourChecklistContentProps = Pick<DialogPopupProps, 'initialFocus'> & {
+  restoreFocus?: () => boolean
+  children: ReactNode
+}
+
+export function TourChecklistContent({
+  initialFocus,
+  restoreFocus,
+  children,
+}: TourChecklistContentProps) {
+  const { popupRef, titleId, triggerRef } = useTourChecklistContext()
+
+  return (
+    <DialogPortal className="aria-hidden:invisible">
+      <DialogPopup
+        ref={popupRef}
+        aria-labelledby={titleId}
+        initialFocus={initialFocus}
+        finalFocus={() => (restoreFocus?.() === false ? false : triggerRef.current)}
+        className="fixed inset-s-2 bottom-14 flex max-h-[calc(100dvh-4.5rem)] w-80 max-w-[calc(100vw-16px)] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur bg-clip-padding shadow-[0_8px_8px_-4px_var(--color-shadow-shadow-1),0_20px_24px_-4px_var(--color-shadow-shadow-5)] backdrop-blur-[10px]"
+      >
+        {children}
+      </DialogPopup>
+    </DialogPortal>
+  )
+}
+
+function TourChecklistTitle({ children }: { children: ReactNode }) {
+  const { titleId } = useTourChecklistContext()
+  return (
+    <h2 id={titleId} className="system-xl-semibold text-text-secondary">
+      {children}
+    </h2>
+  )
+}
+
+export type TourChecklistBodyProps = {
   title: string
   duration: string
   progress: {
@@ -37,8 +140,7 @@ export type FloatingChecklistProps = {
   onUncompleteTask: (taskId: StepByStepTourTaskId) => void
 }
 
-export function FloatingChecklist({
-  className,
+export function TourChecklistBody({
   title,
   duration,
   progress,
@@ -53,22 +155,14 @@ export function FloatingChecklist({
   onSkip,
   onStartTask,
   onUncompleteTask,
-}: FloatingChecklistProps) {
+}: TourChecklistBodyProps) {
   return (
-    <section
-      aria-label={title}
-      className={cn(
-        'flex max-h-[calc(100vh-16px)] w-[320px] max-w-[calc(100vw-16px)] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur bg-clip-padding shadow-[0_8px_8px_-4px_var(--color-shadow-shadow-1),0_20px_24px_-4px_var(--color-shadow-shadow-5)] backdrop-blur-[10px]',
-        className,
-      )}
-    >
+    <>
       <div className="flex w-full shrink-0 flex-col gap-2 px-4 pt-4 pb-1">
         <div className="flex w-full items-start gap-1">
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <PopoverTitle className="system-xl-semibold text-text-secondary">{title}</PopoverTitle>
-            <PopoverDescription className="system-xs-regular text-text-tertiary">
-              {duration}
-            </PopoverDescription>
+            <TourChecklistTitle>{title}</TourChecklistTitle>
+            <DialogDescription>{duration}</DialogDescription>
           </div>
           {!completionPrompt && (
             <>
@@ -112,7 +206,7 @@ export function FloatingChecklist({
           <TourCompletionPrompt {...completionPrompt} closeButtonRef={closeButtonRef} />
         )}
       </div>
-    </section>
+    </>
   )
 }
 
@@ -123,7 +217,7 @@ function TourCompletionPrompt({
   onDismiss,
   title,
   closeButtonRef,
-}: NonNullable<FloatingChecklistProps['completionPrompt']> & {
+}: NonNullable<TourChecklistBodyProps['completionPrompt']> & {
   closeButtonRef: RefObject<HTMLButtonElement | null>
 }) {
   const titleId = useId()
@@ -164,14 +258,14 @@ function TourCompletionPrompt({
   )
 }
 
-export function MinimizedTourPill({
+export function TourChecklistPill({
   title,
   progress,
   className,
   ...props
 }: {
   title: string
-  progress: FloatingChecklistProps['progress']
+  progress: TourChecklistBodyProps['progress']
 } & ComponentProps<'button'>) {
   return (
     <button
