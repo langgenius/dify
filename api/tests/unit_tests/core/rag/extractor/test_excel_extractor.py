@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
@@ -274,6 +275,154 @@ class TestExcelExtractor:
 
         assert len(docs) == 1
         assert docs[0].page_content == '"note":"he said \\"hi\\"";"plain":"text"'
+
+    def test_extract_xls_preserves_stored_text_cells(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Regression test: pandas applies numeric dtype inference when parsing legacy
+        # .xls files, rewriting stored text cells such as "00123" or "1e3" into
+        # 123 / 1000.0. The extractor must restore the original text via xlrd's
+        # stored cell types.
+        import xlrd
+
+        class FakeSheet:
+            nrows = 3
+            ncols = 5
+            _types = [
+                [xlrd.XL_CELL_TEXT] * 5,
+                [xlrd.XL_CELL_TEXT, xlrd.XL_CELL_TEXT, xlrd.XL_CELL_TEXT, xlrd.XL_CELL_NUMBER, xlrd.XL_CELL_TEXT],
+                [xlrd.XL_CELL_TEXT, xlrd.XL_CELL_TEXT, xlrd.XL_CELL_TEXT, xlrd.XL_CELL_NUMBER, xlrd.XL_CELL_TEXT],
+            ]
+            _values = [
+                ["Code", "ScientificText", "DecimalText", "Quantity", "Note"],
+                ["00123", "1e3", "01.20", 7.0, 'he said "hi"'],
+                ["00456", "2e3", "03.40", 9.0, "second"],
+            ]
+
+            def cell_type(self, row: int, col: int) -> int:
+                return self._types[row][col]
+
+            def cell_value(self, row: int, col: int) -> str | float:
+                return self._values[row][col]
+
+        class FakeBook:
+            def sheet_by_name(self, name: str | int) -> FakeSheet:
+                assert name == "Sheet1"
+                return FakeSheet()
+
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+            book = FakeBook()
+
+            def parse(self, sheet_name: str | int) -> pd.DataFrame:
+                assert sheet_name == "Sheet1"
+                # Mirrors pandas' numeric dtype inference on a real legacy .xls.
+                return pd.DataFrame(
+                    [
+                        {
+                            "Code": 123,
+                            "ScientificText": 1000.0,
+                            "DecimalText": 1.2,
+                            "Quantity": 7,
+                            "Note": 'he said "hi"',
+                        },
+                        {"Code": 456, "ScientificText": 2000.0, "DecimalText": 3.4, "Quantity": 9, "Note": "second"},
+                    ]
+                )
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        extractor = ExcelExtractor("/tmp/sample.xls")
+        docs = extractor.extract()
+
+        assert len(docs) == 2
+        assert (
+            docs[0].page_content
+            == '"Code":"00123";"ScientificText":"1e3";"DecimalText":"01.20";"Quantity":"7";"Note":"he said \\"hi\\""'
+        )
+        assert (
+            docs[1].page_content
+            == '"Code":"00456";"ScientificText":"2e3";"DecimalText":"03.40";"Quantity":"9";"Note":"second"'
+        )
+        assert all(doc.metadata == {"source": "/tmp/sample.xls"} for doc in docs)
+
+    def test_extract_xls_stored_text_cells_with_numpy_integer_index(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # The row label from iterrows() may be a numpy integer rather than a plain int;
+        # the stored-text override must still apply.
+        import numpy as np
+        import xlrd
+
+        class FakeSheet:
+            nrows = 2
+            ncols = 1
+
+            def cell_type(self, row: int, col: int) -> int:
+                return xlrd.XL_CELL_TEXT
+
+            def cell_value(self, row: int, col: int) -> str:
+                return ["Code", "00123"][row]
+
+        class FakeBook:
+            def sheet_by_name(self, name: str | int) -> FakeSheet:
+                return FakeSheet()
+
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+            book = FakeBook()
+
+            def parse(self, sheet_name: str | int) -> pd.DataFrame:
+                return pd.DataFrame({"Code": [123]}, index=pd.Index([np.int64(0)], dtype=object))
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        df = FakeExcelFile().parse("Sheet1")
+        assert type(next(df.iterrows())[0]) is np.int64
+
+        docs = ExcelExtractor("/tmp/sample.xls").extract()
+
+        assert [doc.page_content for doc in docs] == ['"Code":"00123"']
+
+    def test_extract_xls_without_xlrd_book_keeps_legacy_behavior(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # A mocked ExcelFile without a .book attribute (no xlrd workbook) must not
+        # change existing behavior.
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name: str | int) -> pd.DataFrame:
+                return pd.DataFrame([{"A": "x", "B": 1}])
+
+        assert not hasattr(FakeExcelFile(), "book")
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        extractor = ExcelExtractor("/tmp/sample.xls")
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == '"A":"x";"B":"1"'
+
+    def test_extract_xls_preserves_numeric_looking_text(self) -> None:
+        # Real BIFF cells are needed here: a mocked DataFrame cannot expose pandas' type inference.
+        # Fixture and tests contributed by PointerL; native-value expectations follow
+        # this PR's stored-type approach (native values keep their baseline serialized
+        # form: Quantity stays 7/9, Amount 7.0, Enabled 1.0/0.0).
+        file_path = Path(__file__).resolve().parents[4] / "fixtures" / "rag" / "text_identifiers.xls"
+
+        docs = ExcelExtractor(str(file_path)).extract()
+
+        assert [doc.page_content for doc in docs[:2]] == [
+            '"Code":"00123";"ScientificText":"1e3";"DecimalText":"01.20";"Quantity":"7";"Note":"he said \\"hi\\""',
+            '"Code":"00456";"ScientificText":"2e3";"DecimalText":"03.40";"Quantity":"9";"Note":"second"',
+        ]
+        assert all(doc.metadata == {"source": str(file_path)} for doc in docs)
+
+    def test_extract_xls_preserves_native_values_and_skips_empty_rows(self) -> None:
+        file_path = Path(__file__).resolve().parents[4] / "fixtures" / "rag" / "text_identifiers.xls"
+
+        docs = ExcelExtractor(str(file_path)).extract()
+
+        assert len(docs) == 4
+        assert [doc.page_content for doc in docs[2:]] == [
+            '"Amount":"7.0";"Enabled":"1.0";"Date":"2026-01-02 00:00:00";"Note":"he said \\"hi\\""',
+            '"Amount":"2.5";"Enabled":"0.0";"Date":"2026-03-04 05:06:07";"Note":"plain"',
+        ]
 
     def test_extract_unsupported_extension_raises(self):
         extractor = ExcelExtractor("/tmp/sample.txt")
