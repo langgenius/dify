@@ -152,7 +152,9 @@ describe('trusted current IP and allowlist editing', () => {
       Response.json({ message: 'IP unavailable' }, { status: 503 }),
     )
     render(<DialogHarness />)
-    expect(await screen.findByText('IP unavailable')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Unable to check your IP address. Please try again.'),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add it' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('Your current IP is 203.0.113.42')).toBeInTheDocument()

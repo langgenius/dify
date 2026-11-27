@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { AppSourceType } from '@/service/share'
 import {
   createHumanInputFormFixture,
@@ -94,6 +95,7 @@ describe('GenerationItem HITL routing', () => {
     'waits for preparation before submitting when ready is %s',
     async (ready) => {
       const user = userEvent.setup()
+      const toastError = vi.spyOn(toast, 'error')
       let resolvePreparation: ((ready: boolean) => void) | undefined
       const prepareHumanInputSubmission = vi.fn(
         () =>
@@ -132,6 +134,9 @@ describe('GenerationItem HITL routing', () => {
         )
       } else {
         expect(mocks.submitShare).not.toHaveBeenCalled()
+        // The form shows the preparation failure inline, so nothing reports it again.
+        expect(await screen.findByText('common.api.actionFailed')).toBeInTheDocument()
+        expect(toastError).not.toHaveBeenCalled()
       }
     },
   )

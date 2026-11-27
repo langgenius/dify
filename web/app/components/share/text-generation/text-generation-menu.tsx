@@ -17,7 +17,7 @@ import {
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
@@ -44,7 +44,7 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
     try {
       await webAppLogout(resolveWebAppAddress())
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
