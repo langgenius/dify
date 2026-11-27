@@ -9,12 +9,7 @@ export type EditConnectionDataSource = {
   canEdit: boolean
   canUse: boolean
   resetSession?: () => void
-  save: (args: {
-    credential: Credential
-    name: string
-    visibility: string
-    setDefault: boolean
-  }) => Promise<void>
+  save: (args: { credential: Credential; name: string; setDefault: boolean }) => Promise<void>
 }
 
 type EditConnectionModalProps = {
@@ -65,7 +60,7 @@ export default function EditConnectionModal({
               : t(($) => $['auth.connection.save'], { ns: 'plugin' })
           }
           initialName={credential.name}
-          initialVisibility={credential.visibility || PermissionLevel.allTeamMembers}
+          visibility={credential.visibility || PermissionLevel.allTeamMembers}
           canEdit={dataSource.canEdit}
           canSetDefault={dataSource.canUse}
           saveLabel={t(($) => $['operation.save'], { ns: 'common' })}

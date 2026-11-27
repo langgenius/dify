@@ -20,6 +20,7 @@ const credential: Credential = {
 
 const renderModal = (
   save: EditConnectionDataSource['save'] = vi.fn().mockResolvedValue(undefined),
+  connection = credential,
 ) => {
   const onOpenChange = vi.fn()
   const Example = () => {
@@ -29,7 +30,7 @@ const renderModal = (
         <button onClick={() => setOpen(true)}>Open edit dialog</button>
         <EditConnectionModal
           providerName="Gmail"
-          credential={credential}
+          credential={connection}
           dataSource={{ canEdit: true, canUse: true, save }}
           onCloseComplete={() => {}}
           open={open}
@@ -47,11 +48,6 @@ const renderModal = (
 
 const nameInput = () => screen.getByRole('textbox', { name: 'plugin.auth.connection.name' })
 const saveButton = () => screen.getByRole('button', { name: 'common.operation.save' })
-const chooseScope = async (user: ReturnType<typeof userEvent.setup>, option: string) => {
-  await user.click(screen.getByRole('combobox', { name: 'plugin.auth.whoCanUse' }))
-  await user.click(await screen.findByRole('option', { name: option }))
-}
-
 describe('EditConnectionModal', () => {
   it('saves trimmed metadata with an initially unchecked workspace-default option', async () => {
     const user = userEvent.setup()
@@ -63,7 +59,6 @@ describe('EditConnectionModal', () => {
     expect(save).toHaveBeenCalledExactlyOnceWith({
       credential,
       name: 'Personal Gmail',
-      visibility: PermissionLevel.allTeamMembers,
       setDefault: false,
     })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -82,23 +77,17 @@ describe('EditConnectionModal', () => {
     expect(save).not.toHaveBeenCalled()
   })
 
-  it('clears the default choice when switching to Only me and saves that scope', async () => {
+  it('shows the saved private scope and offers no workspace-default option', async () => {
     const user = userEvent.setup()
-    const { save } = renderModal()
-    await user.click(screen.getByRole('checkbox'))
-    expect(
-      screen.getByRole('button', { name: 'plugin.auth.connection.saveAsDefault' }),
-    ).toBeVisible()
-    await chooseScope(user, 'datasetSettings.form.permissionsOnlyMe')
+    const privateConnection = { ...credential, visibility: PermissionLevel.onlyMe }
+    const { save } = renderModal(undefined, privateConnection)
+    expect(screen.getByText('datasetSettings.form.permissionsOnlyMe')).toBeVisible()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    await chooseScope(user, 'plugin.auth.connection.allWorkspaceMembers')
-    expect(screen.getByRole('checkbox')).not.toBeChecked()
-    await chooseScope(user, 'datasetSettings.form.permissionsOnlyMe')
     await user.click(saveButton())
     expect(save).toHaveBeenCalledExactlyOnceWith({
-      credential,
+      credential: privateConnection,
       name: 'Workspace Gmail',
-      visibility: PermissionLevel.onlyMe,
       setDefault: false,
     })
   })
@@ -123,7 +112,6 @@ describe('EditConnectionModal', () => {
     expect(save).toHaveBeenLastCalledWith({
       credential,
       name: 'Retry Gmail',
-      visibility: PermissionLevel.allTeamMembers,
       setDefault: true,
     })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
