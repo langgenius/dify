@@ -232,6 +232,40 @@ def test_message_records_carry_identity_correlation_and_usage(sqlite_session_fac
 
 
 @pytest.mark.usefixtures("records")
+@pytest.mark.parametrize(
+    ("usage", "first_token", "generation_time"),
+    [
+        ({"time_to_first_token": 0, "time_to_generate": 1.25}, 0.0, 1.25),
+        ({"time_to_first_token": "0.5", "time_to_generate": 1}, None, 1.0),
+        ({"time_to_first_token": True, "time_to_generate": -1}, None, None),
+        ({"time_to_first_token": float("inf"), "time_to_generate": 1}, None, 1.0),
+        ({"time_to_first_token": 0.5, "time_to_generate": []}, 0.5, None),
+        ({"time_to_first_token": None}, None, None),
+        ([], None, None),
+    ],
+)
+def test_message_trace_uses_only_valid_streaming_durations(
+    sqlite_session_factory: sessionmaker[Session],
+    usage: object,
+    first_token: float | None,
+    generation_time: float | None,
+) -> None:
+    """A trace reports usable durations and requires valid first-token timing to mark streaming."""
+    with sqlite_session_factory.begin() as session:
+        message = session.get_one(Message, MESSAGE_ID)
+        message.message_metadata = json.dumps({"usage": usage})
+
+    record = _assembler(sqlite_session_factory).assemble(
+        _event(MessageCompleted(message_id=MESSAGE_ID, conversation_id="conversation-1"))
+    )
+
+    assert isinstance(record, MessageTraceInfo)
+    assert record.gen_ai_server_time_to_first_token == first_token
+    assert record.llm_streaming_time_to_generate == generation_time
+    assert record.is_streaming_request is (first_token is not None)
+
+
+@pytest.mark.usefixtures("records")
 def test_events_are_read_only_through_their_own_workspace(sqlite_session_factory: sessionmaker[Session]) -> None:
     with pytest.raises(SourceNotReadyError):
         _assembler(sqlite_session_factory).assemble(
