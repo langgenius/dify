@@ -263,7 +263,7 @@ class _PartialToolInventoryError(Exception):
 
 def _list_tools(tenant_id: str) -> list[ToolCatalogueEntry]:
     failures: list[str] = []
-    entries = list(build_tool_catalogue(tenant_id, on_source_error=failures.append))
+    entries = list(build_tool_catalogue(tenant_id, on_source_error=failures.append, complete_plugins=True))
     if failures:
         raise _PartialToolInventoryError(entries)
     return entries

@@ -31,6 +31,7 @@ import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
+import { useStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'

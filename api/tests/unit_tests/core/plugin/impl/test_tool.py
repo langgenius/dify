@@ -89,7 +89,7 @@ class TestPluginToolManager:
             "core.plugin.impl.tool.PluginInstaller.list_installed_plugin_ids", return_value=["org/plugin"]
         )
 
-        result = manager.fetch_tool_providers("tenant-1")
+        result = manager.fetch_complete_tool_providers("tenant-1")
 
         assert request_mock.call_count == 1
         assert {call.args for call in installed_ids.call_args_list} == {("tenant-1", PluginCategory.Tool)}
@@ -213,7 +213,7 @@ class TestFetchToolProvidersPagination:
     def test_exactly_one_full_page_reads_the_empty_final_page(self, monkeypatch: pytest.MonkeyPatch) -> None:
         daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(256)})
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert len(result) == 256
         pages = daemon.list_tools_requests()
@@ -223,7 +223,7 @@ class TestFetchToolProvidersPagination:
     def test_more_than_one_page_returns_every_provider_with_stable_ids(self, monkeypatch: pytest.MonkeyPatch) -> None:
         daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(300)})
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert len(result) == 300
         assert len(set(_ids(result))) == 300
@@ -239,7 +239,7 @@ class TestFetchToolProvidersPagination:
             providers_by_tenant={"tenant-1": _providers(300), "tenant-2": _providers(3, prefix="other")},
         )
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert not any("other" in name for name in _ids(result))
         assert {r.path for r in daemon.list_tools_requests()} == {"/plugin/tenant-1/management/tools"}
@@ -250,7 +250,7 @@ class TestFetchToolProvidersPagination:
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(300)}, fail_on_page=2)
 
         with pytest.raises(PluginDaemonError, match="500|page failed"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_duplicate_identities_across_pages_are_deduplicated(self, monkeypatch: pytest.MonkeyPatch) -> None:
         page_one = _providers(256)
@@ -258,7 +258,7 @@ class TestFetchToolProvidersPagination:
         tenant_rows = [*page_one, page_one[10], *_providers(5, prefix="tail")]
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": tenant_rows})
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert len(result) == 261
         assert len(set(_ids(result))) == 261
@@ -267,7 +267,7 @@ class TestFetchToolProvidersPagination:
         daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(300)}, ignore_page=True)
 
         with pytest.raises(ValueError, match="repeated tool provider page"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
         assert len(daemon.list_tools_requests()) == 2
 
     def test_paging_is_bounded_and_fails_explicitly_rather_than_claiming_completeness(
@@ -276,7 +276,7 @@ class TestFetchToolProvidersPagination:
         daemon = _daemon(monkeypatch, endless_unique_pages=True, max_requests=200)
 
         with pytest.raises(ValueError, match="full tool provider pages"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
         assert 2 <= len(daemon.list_tools_requests()) < 200
 
 
@@ -287,7 +287,7 @@ class TestFetchToolProvidersWithinPageDedup:
         rows = _providers(5)
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": [*rows, rows[2]]})
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert sorted(_ids(result)) == sorted(set(_ids(result)))
         assert len(result) == 5
@@ -298,7 +298,7 @@ class TestFetchToolProvidersWithinPageDedup:
         # page 1 is full (255 unique + 1 repeat); page 2 is short
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": [*rows, rows[0], *tail]})
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert sorted(_ids(result)) == sorted(set(_ids(result)))
         assert len(result) == 258
@@ -372,7 +372,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
             list_tools_pages={1: rows[:256], 2: rows[255:299]},
         )
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert sorted(_ids(result)) == sorted(f"aaa/p_{i:03d}/p_{i:03d}" for i in range(300))
         assert len(result) == 300
@@ -389,7 +389,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
     ) -> None:
         daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(300)})
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert len(result) == 300
         id_requests = _installed_id_requests(daemon)
@@ -402,7 +402,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
     def test_an_empty_installed_id_list_yields_no_plugin_providers(self, monkeypatch: pytest.MonkeyPatch) -> None:
         daemon = _daemon(monkeypatch, providers_by_tenant={})
 
-        assert PluginToolManager().fetch_tool_providers("tenant-1") == []
+        assert PluginToolManager().fetch_complete_tool_providers("tenant-1") == []
         assert _installed_id_requests(daemon)
         assert _batch_ids(daemon) == []
         assert _single_ids(daemon) == []
@@ -417,7 +417,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
             list_tools_pages={1: rows[:4]},
         )
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert sorted(_ids(result)) == sorted(set(_ids(result)))
         assert len(result) == 5
@@ -428,7 +428,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         rows = _providers(300)
         daemon = _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: rows[:40]})
 
-        result = PluginToolManager().fetch_tool_providers("tenant-1")
+        result = PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
         assert len(result) == 300
         batches = _batch_ids(daemon)
@@ -450,7 +450,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": _providers(3)}, **failures)
 
         with pytest.raises(_INVENTORY_FAILURES):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     @pytest.mark.parametrize(
         "corrupt",
@@ -487,7 +487,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         )
 
         with pytest.raises(_INVENTORY_FAILURES):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def _single_defect(
         self,
@@ -513,7 +513,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         self._single_defect(monkeypatch, fail_routes=frozenset({SINGLE_TOOL}))
 
         with pytest.raises(_INVENTORY_FAILURES):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_an_unparsable_single_provider_fails_the_fetch(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from tests.unit_tests.services.dify_builder.installed_tool_inventory import SINGLE_TOOL
@@ -521,7 +521,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         self._single_defect(monkeypatch, malformed_routes=frozenset({SINGLE_TOOL}))
 
         with pytest.raises(_INVENTORY_FAILURES):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     @pytest.mark.parametrize(
         "mismatch",
@@ -546,7 +546,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         self._single_defect(monkeypatch, single_payload_hook=mismatch)
 
         with pytest.raises(_INVENTORY_FAILURES):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_a_bulk_provider_that_is_not_installed_fails_the_fetch(self, monkeypatch: pytest.MonkeyPatch) -> None:
         rows = _providers(5)
@@ -557,7 +557,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         )
 
         with pytest.raises(ValueError, match="is not installed"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_an_installed_set_that_changes_during_the_fetch_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         rows = _providers(5)
@@ -569,7 +569,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         )
 
         with pytest.raises(ValueError, match="installed tool plugins changed"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_an_installed_id_list_beyond_the_inventory_bound_fails_before_recovery(
         self, monkeypatch: pytest.MonkeyPatch
@@ -578,7 +578,7 @@ class TestFetchToolProvidersAuthoritativeInventory:
         daemon = _daemon(monkeypatch, providers_by_tenant={}, installed_ids_by_tenant={"tenant-1": oversized})
 
         with pytest.raises(ValueError, match="inventory bound exceeded"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
         assert _batch_ids(daemon) == []
         assert _single_ids(daemon) == []
 
@@ -605,7 +605,7 @@ class TestFetchToolProvidersRecoveryControls:
         )
 
         with pytest.raises(_INVENTORY_FAILURES):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_recovered_and_bulk_providers_resolve_output_schemas_alike(self, monkeypatch: pytest.MonkeyPatch) -> None:
         rows = _providers(5)
@@ -620,7 +620,7 @@ class TestFetchToolProvidersRecoveryControls:
         monkeypatch.setattr("core.plugin.impl.tool.resolve_dify_schema_refs", lambda _schema: {"resolved": True})
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: rows[:4]})
 
-        result = {p.declaration.identity.name: p for p in PluginToolManager().fetch_tool_providers("tenant-1")}
+        result = {p.declaration.identity.name: p for p in PluginToolManager().fetch_complete_tool_providers("tenant-1")}
 
         assert len(result) == 5
         for name in ("aaa/p_000/p_000", "aaa/p_004/p_004"):  # bulk, recovered
@@ -646,7 +646,7 @@ class TestFetchToolProviderMetadataConsistency:
         _daemon(monkeypatch, providers_by_tenant={"tenant-1": rows}, list_tools_pages={1: [*rows, upgraded]})
 
         with pytest.raises(ValueError, match="conflicting metadata"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_a_recovered_provider_whose_raw_provider_field_disagrees_fails(
         self, monkeypatch: pytest.MonkeyPatch
@@ -660,7 +660,7 @@ class TestFetchToolProviderMetadataConsistency:
         )
 
         with pytest.raises(ValueError, match="disagrees with its plugin id"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_a_bulk_unique_identifier_of_another_plugin_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         rows = _providers(5)
@@ -672,7 +672,7 @@ class TestFetchToolProviderMetadataConsistency:
         )
 
         with pytest.raises(ValueError, match="another plugin"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
     def test_installation_and_recovered_provider_agreeing_on_a_foreign_unique_identifier_fail(
         self, monkeypatch: pytest.MonkeyPatch
@@ -690,7 +690,7 @@ class TestFetchToolProviderMetadataConsistency:
         )
 
         with pytest.raises(ValueError, match="another plugin|metadata disagrees"):
-            PluginToolManager().fetch_tool_providers("tenant-1")
+            PluginToolManager().fetch_complete_tool_providers("tenant-1")
 
 
 def test_provider_failure_observation_records_only_canonical_tool_identity(mocker: MockerFixture) -> None:
