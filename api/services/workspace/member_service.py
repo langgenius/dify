@@ -140,7 +140,8 @@ class WorkspaceMemberStore(Protocol):
         """Delete the scoped membership and transfer its resources in one transaction.
 
         If requested, the active member's existing Contact identity becomes a Platform
-        Contact in the same transaction. Otherwise no Platform entry is written.
+        Contact in the same transaction. Otherwise any Platform entry for that member
+        in this workspace is removed.
         """
         ...
 
@@ -300,6 +301,7 @@ class WorkspaceMemberService:
         workspace owner, and no invitation link for the account in this workspace is accepted.
         The account and its invitations to other workspaces are kept.
         Requested Contact retention leaves the same Contact ID visible as a Platform Contact.
+        Otherwise the Contact is no longer visible in this workspace.
 
         Raises:
             AccountNotFoundError: The member account does not exist.

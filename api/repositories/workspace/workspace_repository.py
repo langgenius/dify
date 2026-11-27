@@ -49,7 +49,7 @@ from services.workspace.contracts import (
     WorkspaceRecord,
     WorkspaceSnapshot,
 )
-from services.workspace.member_service import WorkspaceMemberQuery
+from services.workspace.member_service import WorkspaceMemberQuery, WorkspaceMemberStore
 from services.workspace.service import WorkspaceQuery, WorkspaceStore
 
 
@@ -61,6 +61,7 @@ class WorkspaceRepository(
     ConsoleAuthWorkspaceQuery,
     DeviceWorkspaceQuery,
     WorkspaceMemberQuery,
+    WorkspaceMemberStore,
     DiscoveryWorkspaces,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -333,6 +334,7 @@ class WorkspaceRepository(
                 raise WorkspaceNotFoundError()
             return replace(self._account_snapshot(session, tenant, account_id), current=True)
 
+    @override
     def get(self, workspace_id: str) -> WorkspaceSnapshot | None:
         with self._session_factory() as session:
             tenant = session.get(Tenant, workspace_id)
@@ -370,6 +372,7 @@ class WorkspaceRepository(
             ).first()
             return replace(self._snapshot(row[0], row[1].role), current=row[1].current) if row else None
 
+    @override
     def member_role(self, workspace_id: str, account_id: str | None) -> TenantAccountRole | None:
         if not account_id:
             return None
@@ -450,6 +453,7 @@ class WorkspaceRepository(
             rows = session.execute(select(Account.id, Account.email).where(Account.id.in_(account_ids), ~membership))
             return dict(rows.tuples().all())
 
+    @override
     def owner_id(self, workspace_id: str) -> str | None:
         with self._session_factory() as session:
             return session.scalar(
@@ -458,6 +462,7 @@ class WorkspaceRepository(
                 .limit(1)
             )
 
+    @override
     def upsert_member(
         self,
         *,
@@ -502,6 +507,7 @@ class WorkspaceRepository(
                 )
             return WorkspaceMemberWrite(workspace_id, account_id, role.value, account.status.value, created)
 
+    @override
     def remove_member(
         self,
         *,
@@ -513,8 +519,9 @@ class WorkspaceRepository(
     ) -> WorkspaceMemberRemoval:
         """Remove a membership and transfer its resources to ``owner_id`` without deleting the account.
 
-        Retention requires an active account and reuses its stable Contact identity. The
-        Platform entry, membership deletion, and resource changes commit or roll back together.
+        Retention requires an active account and reuses its stable Contact identity.
+        Otherwise any Platform entry in this workspace is removed. The Platform entry
+        change, membership deletion, and resource transfers commit or roll back together.
         """
         with self._session_factory.begin() as session:
             account = session.get(Account, account_id)
@@ -549,13 +556,16 @@ class WorkspaceRepository(
                 removed_account_id=account_id,
                 replacement_owner_account_id=owner_id,
             )
+            contacts = SQLAlchemyContactRepository(session)
             if keep_as_platform_contact:
-                contacts = SQLAlchemyContactRepository(session)
                 contact_id = contacts.provision_account_backed_contact(AccountId(account_id))
                 contacts.create_platform_entry(TenantId(workspace_id), contact_id, AccountId(actor_account_id))
+            else:
+                contacts.delete_platform_entry_for_account(TenantId(workspace_id), AccountId(account_id))
             session.delete(membership)
             return WorkspaceMemberRemoval(account_id, account.email)
 
+    @override
     def update_member_role(
         self,
         *,

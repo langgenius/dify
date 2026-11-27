@@ -155,6 +155,10 @@ class EnterpriseContactRepository(Protocol):
 
     def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId) -> None: ...
 
+    def delete_platform_entry_for_account(self, tenant_id: TenantId, account_id: AccountId) -> None:
+        """Remove this tenant's Platform entry if present, preserving the Account's Contact identity."""
+        ...
+
 
 @dataclass(frozen=True, slots=True)
 class IMBinding:

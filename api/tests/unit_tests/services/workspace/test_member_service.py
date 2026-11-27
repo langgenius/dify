@@ -207,6 +207,38 @@ class TestMemberServiceCases:
             assert contact is None
 
     @staticmethod
+    def test_removing_rejoined_member_clears_only_this_workspaces_platform_entry(
+        account_domain: AccountDomain, sqlite_session: Session, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        account_domain.access.platform_contacts_enabled = True
+        account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=True)
+
+        contacts = SQLAlchemyContactRepository(sqlite_session)
+        retained = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(member_id))
+        assert retained is not None
+        assert retained.type is ContactType.PLATFORM
+        other_workspace = Tenant(name="Other workspace")
+        sqlite_session.add(other_workspace)
+        contacts.create_platform_entry(TenantId(other_workspace.id), retained.id, AccountId(owner_id))
+        sqlite_session.commit()
+
+        account_domain.members.join_member(
+            workspace_id=workspace_id,
+            account_id=member_id,
+            email="member@example.com",
+            role=TenantAccountRole.NORMAL,
+            operator_account_id=owner_id,
+        )
+        account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=False)
+
+        assert account_domain.members.get_role(workspace_id, member_id) is None
+        assert contacts.get_contacts_by_id(TenantId(workspace_id), retained.id) is None
+        other_contact = contacts.get_contacts_by_id(TenantId(other_workspace.id), retained.id)
+        assert other_contact is not None
+        assert other_contact.type is ContactType.PLATFORM
+
+    @staticmethod
     @pytest.mark.parametrize("platform_contacts_enabled", [False, True])
     def test_contact_retention_requires_enterprise_and_contact_permission(
         account_domain: AccountDomain, members: tuple[str, str, str], platform_contacts_enabled: bool

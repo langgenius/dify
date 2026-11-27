@@ -151,6 +151,9 @@ class _EnterpriseContactPort:
     def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId) -> None:
         self.deleted.append((tenant_id, contact_id))
 
+    def delete_platform_entry_for_account(self, tenant_id: TenantId, account_id: AccountId) -> None:
+        raise AssertionError(f"Member removal is outside this contract: {tenant_id}, {account_id}")
+
 
 def _platform_contact() -> Contact:
     return Contact(
