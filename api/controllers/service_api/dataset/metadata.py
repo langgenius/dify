@@ -3,7 +3,7 @@ from uuid import UUID
 
 from flask_login import current_user
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_response_schema_models, register_schema_model, register_schema_models
@@ -27,6 +27,7 @@ from services.knowledge.entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.knowledge.metadata.validation import MetadataValueError
 from services.knowledge.resource_scope import DatasetRef
 
 BUILT_IN_METADATA_ACTION_PARAM = {
@@ -361,5 +362,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
             )
         except MetadataResourceNotFoundError as exc:
             raise NotFound(str(exc)) from exc
+        except MetadataValueError as exc:
+            raise BadRequest(str(exc)) from exc
 
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200

@@ -21,6 +21,7 @@ from services.knowledge.entities.knowledge_entities import (
     MetadataOperationData,
 )
 from services.knowledge.metadata.application import MetadataService
+from services.knowledge.metadata.validation import MetadataValueError
 from services.knowledge.resource_scope import DatasetRef
 
 
@@ -82,6 +83,43 @@ def _create_metadata(db_session: Session, *, dataset: Dataset, created_by: str, 
 
 
 class TestMetadataPartialUpdate:
+    @pytest.mark.parametrize("partial_update", [True, False])
+    @pytest.mark.parametrize("field_type", ["number", "time"])
+    def test_invalid_batch_preserves_documents_and_bindings(
+        self,
+        db_session_with_containers: Session,
+        tenant_id: str,
+        user_id: str,
+        partial_update: bool,
+        field_type: str,
+    ) -> None:
+        session = db_session_with_containers
+        dataset = _create_dataset(session, tenant_id=tenant_id)
+        documents = [
+            _create_document(session, dataset_id=dataset.id, tenant_id=tenant_id, doc_metadata={"existing": "keep"})
+            for _ in range(2)
+        ]
+        field = _create_metadata(session, dataset=dataset, created_by=user_id, name="year")
+        field.type = field_type
+        session.commit()
+        operations = [
+            DocumentMetadataOperation(
+                document_id=document.id,
+                partial_update=partial_update,
+                metadata_list=[MetadataDetail(id=field.id, name=field.name, value=value)],
+            )
+            for document, value in zip(documents, [2025, "abc"], strict=True)
+        ]
+        with pytest.raises(MetadataValueError):
+            _metadata_service(session).update_documents_metadata(
+                DatasetRef(tenant_id, dataset.id), MetadataOperationData(operation_data=operations), actor_id=user_id
+            )
+        session.expire_all()
+        assert all(document.doc_metadata == {"existing": "keep"} for document in documents)
+        assert not session.scalars(
+            select(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset.id)
+        ).all()
+
     @pytest.fixture
     def tenant_id(self) -> str:
         return str(uuid4())
