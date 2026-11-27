@@ -23,7 +23,12 @@ from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
-from repositories.conversation_access import message_actor_scope, message_sender_scope, transferred_web_message_scope
+from repositories.conversation_access import (
+    conversation_actor_scope,
+    message_actor_scope,
+    message_sender_scope,
+    transferred_web_message_scope,
+)
 from repositories.message_projection import snapshot_console_message, snapshot_message
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import (
@@ -606,24 +611,30 @@ class MessageRepository:
         """Return a message for an admitted actor or None, without disclosing a foreign sender.
 
         Read callers check conversation availability separately, preserving their own
-        missing/deleted conversation responses. Web writes also require current
-        conversation ownership and lock it when transfers are enabled.
+        missing/deleted conversation responses. Writes require current conversation
+        ownership; Web writes also lock it when transfers are enabled.
         """
         end_user_id = actor.end_user_id if isinstance(actor, MessageEndUser) else None
         account_id = actor.account_id if isinstance(actor, MessageAccount) else None
         sender = message_sender_scope(app_id, end_user_id=end_user_id, account_id=account_id)
         statement = select(Message).where(Message.id == message_id)
-        if isinstance(actor, MessageEndUser) and actor.is_web_app:
-            if write:
-                statement = statement.join(Conversation, Conversation.id == Message.conversation_id).where(
-                    message_actor_scope(app_id, end_user_id=actor.end_user_id, account_id=None)
+        web_actor = actor if isinstance(actor, MessageEndUser) and actor.is_web_app else None
+        if write:
+            statement = statement.join(Conversation, Conversation.id == Message.conversation_id)
+            if web_actor is not None:
+                statement = statement.where(
+                    message_actor_scope(app_id, end_user_id=web_actor.end_user_id, account_id=None)
                 )
                 if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
                     statement = statement.with_for_update(of=Conversation)
             else:
                 statement = statement.where(
-                    or_(sender, transferred_web_message_scope(app_id, end_user_id=actor.end_user_id))
+                    sender, *conversation_actor_scope(app_id, end_user_id=end_user_id, account_id=account_id)
                 )
+        elif web_actor is not None:
+            statement = statement.where(
+                or_(sender, transferred_web_message_scope(app_id, end_user_id=web_actor.end_user_id))
+            )
         else:
             statement = statement.where(sender)
         return session.scalar(statement)

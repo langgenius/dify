@@ -130,7 +130,12 @@ class EndUserHistory:
                 headers = {
                     HEADER_NAME_APP_CODE: self.site_code,
                     HEADER_NAME_PASSPORT: PassportService().issue(
-                        {"app_id": self.app.id, "app_code": self.site_code, "end_user_id": actor.id}
+                        {
+                            "sub": "Web API Passport",
+                            "app_id": self.app.id,
+                            "app_code": self.site_code,
+                            "end_user_id": actor.id,
+                        }
                     ),
                 }
             else:

@@ -27,7 +27,7 @@ def _workflow_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return make_end_user(end_user_id="eu-1")
+    return make_end_user(end_user_id="eu-1", app_id="app-1")
 
 
 def _workflow_run(

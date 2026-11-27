@@ -89,7 +89,7 @@ def seed_installed_connections(
         tenant_id=tenant.id,
         user_id=account.id,
         provider="vendor/calendar/calendar",
-        name="Team OAuth",
+        name=f"Team OAuth {app.id}",
         credential_type=CredentialType.OAUTH2,
         encrypted_credentials='{"token":"encrypted"}',
     )

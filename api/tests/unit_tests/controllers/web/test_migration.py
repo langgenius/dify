@@ -1252,7 +1252,7 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(
     harness: ClaimHarness, mode: AppMode
 ) -> None:
     from models.enums import CreatorUserRole
-    from models.model import MessageFeedback
+    from models.model import Message, MessageFeedback
     from models.web import PinnedConversation, SavedMessage
     from models.workflow import WorkflowRun
     from repositories.conversation_access import (
@@ -1267,6 +1267,7 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(
     from services.audio_service import AudioService
     from services.conversation_service import ConversationService
     from services.entities.conversation_entities import EndUserConversationRef
+    from services.entities.message_entities import MessageEndUser
     from services.errors.conversation import ConversationNotExistsError
     from services.saved_message_service import SavedMessageActor
 
@@ -1296,9 +1297,16 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(
         with pytest.raises(ConversationNotExistsError):
             ConversationService.get_conversation(app, conversation_id, guest, session=session)
         messages = MessageRepository(session_factory=base.sessions)
-        message = messages._get_message(
-            session, app_id=app.id, message_id=message_id, source="api", account_id=None, end_user_id=account.id
+        context = messages.get_suggested_questions_context(
+            session=session,
+            app_id=app.id,
+            app_owner_tenant_id=app.tenant_id,
+            expected_app_mode=app.mode,
+            actor=MessageEndUser(account.id, is_web_app=True),
+            message_id=message_id,
         )
+        assert context.conversation.id == conversation_id
+        message = session.get(Message, message_id)
         assert message is not None
         assert message.from_end_user_id == guest.id
         assert (
@@ -1314,21 +1322,24 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(
             variable_name=None,
         )
         assert variables.data[0].variable.value == "state"
-        assert (
-            messages._get_message(
-                session, app_id=app.id, message_id=message_id, source="api", account_id=None, end_user_id=guest.id
+        with pytest.raises(ConversationNotExistsError):
+            messages.get_suggested_questions_context(
+                session=session,
+                app_id=app.id,
+                app_owner_tenant_id=app.tenant_id,
+                expected_app_mode=app.mode,
+                actor=MessageEndUser(guest.id, is_web_app=True),
+                message_id=message_id,
             )
-            is None
-        )
         assert (
             AudioService._get_message_by_ref(
-                session, MessageRef(AppRef(app.tenant_id, app.id), message_id, end_user_id=account.id)
+                session, MessageRef(AppRef(app.tenant_id, app.id), message_id, end_user_id=account.id, is_web_app=True)
             )
             is not None
         )
         assert (
             AudioService._get_message_by_ref(
-                session, MessageRef(AppRef(app.tenant_id, app.id), message_id, end_user_id=guest.id)
+                session, MessageRef(AppRef(app.tenant_id, app.id), message_id, end_user_id=guest.id, is_web_app=True)
             )
             is None
         )
