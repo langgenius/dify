@@ -32,15 +32,22 @@ export const preprocessLaTeX = (content: string) => {
 }
 
 /**
+ * Balance think tags, inferring an opening tag for leading orphan reasoning
+ * and discarding later orphan closing tags.
  * Insert missing </think> before a nested <think> and at end of content.
  * Tool-call interruptions often drop the close tag, which nests the reply
  * inside the thinking HTML (github.com/langgenius/dify/issues/41558).
  */
 export const closeUnclosedThinkTags = (content: string, trailingClose = '</think>') => {
-  if (typeof content !== 'string' || !content.includes('<think>')) return content
+  if (typeof content !== 'string') return content
 
   const open = '<think>'
   const close = '</think>'
+  const firstOpen = content.indexOf(open)
+  const firstClose = content.indexOf(close)
+  if (firstClose !== -1 && (firstOpen === -1 || firstClose < firstOpen)) content = open + content
+  if (!content.includes(open)) return content
+
   let result = ''
   let inside = false
   let contentSinceOpen = false
@@ -60,7 +67,7 @@ export const closeUnclosedThinkTags = (content: string, trailingClose = '</think
       continue
     }
     if (content.startsWith(close, i)) {
-      result += close
+      if (inside) result += close
       inside = false
       contentSinceOpen = false
       i += close.length
