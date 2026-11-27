@@ -758,7 +758,14 @@ export default function StepByStepTourMount({
                         <PopoverPopup
                           ref={checklistPopupRef}
                           initialFocus={checklistCloseButtonRef}
-                          finalFocus={() => (hasActiveGuide ? false : restoreTriggerRef.current)}
+                          finalFocus={() =>
+                            activeGuide &&
+                            document.querySelector(
+                              getStepByStepTourTargetSelector(activeGuide.target),
+                            )
+                              ? false
+                              : restoreTriggerRef.current
+                          }
                         >
                           {floatingChecklist}
                         </PopoverPopup>

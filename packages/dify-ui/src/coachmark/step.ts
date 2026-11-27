@@ -80,11 +80,18 @@ const isInsideViewport = ({ height, left, top, width }: Rect) =>
 const STARTING_STYLE_SELECTOR = '[data-starting-style]'
 
 const isStarting = (element: Element) =>
-  element.matches(STARTING_STYLE_SELECTOR) || !!element.querySelector(STARTING_STYLE_SELECTOR)
+  !!element.closest(STARTING_STYLE_SELECTOR) || !!element.querySelector(STARTING_STYLE_SELECTOR)
 
-const isFinitelyRunning = (animation: Animation) =>
-  animation.playState === 'running' &&
-  Number.isFinite(Number(animation.effect?.getComputedTiming().endTime))
+const getSettlingAnimations = (elements: Element[]) =>
+  (document.getAnimations?.() ?? []).filter((animation) => {
+    const effectTarget = animation.effect instanceof KeyframeEffect ? animation.effect.target : null
+    return (
+      animation.playState === 'running' &&
+      Number.isFinite(Number(animation.effect?.getComputedTiming().endTime)) &&
+      !!effectTarget &&
+      elements.some((element) => effectTarget.contains(element) || element.contains(effectTarget))
+    )
+  })
 
 export function measure(target: HTMLElement, parts: HTMLElement[]): Geometry {
   const targetRect = toRect(target.getBoundingClientRect())
@@ -215,10 +222,9 @@ export function useShownStep<Payload>(
       if (!nextTarget || !parts) return
       if (waitsForAccess && isBehindHiddenBoundary(nextTarget)) return
       if (!nextTarget.isConnected) return
-      if (parts.some(isStarting)) return
-      const animations = parts
-        .flatMap((part) => part.getAnimations({ subtree: true }))
-        .filter(isFinitelyRunning)
+      const elements = [nextTarget, ...parts]
+      if (elements.some(isStarting)) return
+      const animations = getSettlingAnimations(elements)
       if (animations.length > 0) {
         void Promise.allSettled(animations.map((animation) => animation.finished)).then(
           checker.schedule,
@@ -274,11 +280,16 @@ export function useShownStep<Payload>(
 
   const shownParts = shown?.parts
   React.useLayoutEffect(() => {
-    if (!shownTarget || !shownParts || shownDetached) return
-    const step = { parts: shownParts, target: shownTarget }
+    if (!shownTarget || !shownParts || !shownTargetKey || shownDetached) return
+    const step = { parts: shownParts, target: shownTarget, targetKey: shownTargetKey }
 
     const follower = scheduler(() => {
-      if (!step.target.isConnected || !isVisibleRect(toRect(step.target.getBoundingClientRect()))) {
+      if (
+        !step.target.isConnected ||
+        !isVisibleRect(toRect(step.target.getBoundingClientRect())) ||
+        (typeof step.targetKey === 'string' &&
+          document.querySelector(step.targetKey) !== step.target)
+      ) {
         setShown((current) =>
           current?.target === step.target && !current.detached
             ? { ...current, detached: true }
@@ -314,7 +325,7 @@ export function useShownStep<Payload>(
       follower.cancel()
       stopObserving()
     }
-  }, [shownDetached, shownParts, shownTarget, store])
+  }, [shownDetached, shownParts, shownTarget, shownTargetKey, store])
 
   return [shown, setShown] as const
 }

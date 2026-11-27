@@ -726,3 +726,77 @@ it('waits for a highlight part to leave its starting style before measuring it',
   await expect.element(screen.getByRole('dialog', { name: 'Start here' })).toBeVisible()
   expect(screen.getByTestId('spotlight').element().getBoundingClientRect().bottom).toBe(244)
 })
+
+it('moves to the new element when a selector target is reassigned', async () => {
+  function ListDemo({ first }: { first: 'a' | 'b' }) {
+    return (
+      <React.Fragment>
+        <button
+          type="button"
+          data-tour-first={first === 'a' ? '' : undefined}
+          style={{ margin: 40 }}
+        >
+          Card A
+        </button>
+        <button
+          type="button"
+          data-tour-first={first === 'b' ? '' : undefined}
+          style={{ margin: 40 }}
+        >
+          Card B
+        </button>
+        <Coachmark open target="[data-tour-first]">
+          <CoachmarkPortal>
+            <CoachmarkSpotlight data-testid="spotlight" />
+            <CoachmarkPositioner>
+              <CoachmarkPopup>
+                <CoachmarkTitle>First card</CoachmarkTitle>
+                <CoachmarkClose>Skip</CoachmarkClose>
+              </CoachmarkPopup>
+            </CoachmarkPositioner>
+          </CoachmarkPortal>
+        </Coachmark>
+      </React.Fragment>
+    )
+  }
+  const screen = await render(<ListDemo first="a" />)
+  await expect.element(screen.getByRole('dialog', { name: 'First card' })).toBeVisible()
+
+  await screen.rerender(<ListDemo first="b" />)
+  const cardB = screen.getByRole('button', { name: 'Card B', includeHidden: true }).element()
+  await expect
+    .poll(() => screen.getByTestId('spotlight').query()?.getBoundingClientRect().top)
+    .toBeCloseTo(cardB.getBoundingClientRect().top - 4, 0)
+})
+
+it('waits for an animating ancestor of the target before measuring it', async () => {
+  const container = document.createElement('div')
+  container.style.cssText = 'position: fixed; top: 200px; left: 40px'
+  const target = document.createElement('button')
+  target.textContent = 'Dialog target'
+  target.style.cssText = 'width: 120px; height: 40px'
+  container.append(target)
+  document.body.append(container)
+  const animation = container.animate([{ scale: 0.5 }, { scale: 1 }], { duration: 300 })
+  onTestFinished(() => container.remove())
+
+  function AnimatedDemo() {
+    return (
+      <Coachmark open target={target}>
+        <CoachmarkPortal>
+          <CoachmarkSpotlight data-testid="spotlight" />
+          <CoachmarkPositioner>
+            <CoachmarkPopup>
+              <CoachmarkTitle>Animated step</CoachmarkTitle>
+              <CoachmarkClose>Skip</CoachmarkClose>
+            </CoachmarkPopup>
+          </CoachmarkPositioner>
+        </CoachmarkPortal>
+      </Coachmark>
+    )
+  }
+  const screen = await render(<AnimatedDemo />)
+  await expect.element(screen.getByRole('dialog', { name: 'Animated step' })).toBeVisible()
+  expect(animation.playState).toBe('finished')
+  expect(screen.getByTestId('spotlight').element().getBoundingClientRect().width).toBe(128)
+})
