@@ -28,8 +28,12 @@ from core.credit_usage import (
 )
 from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import ModelLoadBalancingConfiguration, ProviderQuotaType
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle, bind_model_route
+from core.entities.provider_entities import (
+    ModelLoadBalancingConfiguration,
+    ProviderQuotaType,
+    current_quota_configuration,
+)
 from core.errors.error import InsufficientHostedCreditsError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
@@ -1072,26 +1076,15 @@ class ModelManager:
         model_type: ModelType,
         model: str,
     ) -> None:
+        """Reject IDs outside the selected System bucket before reading credentials; Custom is unrestricted by it."""
         configuration = provider_model_bundle.configuration
         if configuration.using_provider_type != ProviderType.SYSTEM:
             return
 
-        # Hosted allowlists retain the existing comma-separated format. Model names
-        # are matched exactly; model-type-specific entries will be introduced later.
-        quota_configuration = next(
-            (
-                quota
-                for quota in configuration.system_configuration.quota_configurations
-                if quota.quota_type == configuration.system_configuration.current_quota_type
-            ),
-            None,
-        )
-        if quota_configuration is None or not quota_configuration.restrict_models:
-            return
-        if any(restricted_model.model == model for restricted_model in quota_configuration.restrict_models):
-            return
-
-        raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
+        quota = current_quota_configuration(configuration.system_configuration)
+        allowed_names = quota.allowed_model_names if quota is not None else None
+        if allowed_names is not None and model not in allowed_names:
+            raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
 
     @staticmethod
     def _model_instance_class(provider_model_bundle: ProviderModelBundle) -> type[ModelInstance]:
@@ -1119,6 +1112,7 @@ class ModelManager:
         They resolve only workspace-owned credentials even if the provider prefers
         system hosting, without mutating the provider or consulting its hosted
         credential cache. Missing custom credentials do not fall back to hosting.
+        Otherwise, eligible zero-credit models stay on System when the credit pool is exhausted.
         A bound LLM policy must match tenant_id before provider lookup.
         """
         if model_type == ModelType.LLM and self._moderation is not None and self._moderation.tenant_id != tenant_id:
@@ -1131,6 +1125,8 @@ class ModelManager:
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
+        if not require_custom_credentials:
+            provider_model_bundle = bind_model_route(provider_model_bundle, model)
         configuration = provider_model_bundle.configuration
         if require_custom_credentials and configuration.using_provider_type != ProviderType.CUSTOM:
             configuration = configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM})
