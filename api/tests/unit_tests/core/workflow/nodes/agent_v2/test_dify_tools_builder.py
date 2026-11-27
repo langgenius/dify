@@ -334,6 +334,33 @@ def test_builds_core_tool_with_file_llm_parameter():
     assert runtime_provider.last_use_default_for_missing_form_parameters is True
 
 
+@pytest.mark.parametrize(
+    ("tool_factory", "tool_name", "param"),
+    [(_files_tool, "inspect", "documents"), (_file_tool, "asr", "audio_file")],
+)
+def test_builds_workflow_tool_exposes_file_inputs(tool_factory, tool_name: str, param: str):
+    """Workflow tools must expose FILE/FILES inputs; otherwise the child workflow runs with files=[].
+
+    Unlike other core tools, a workflow tool's file input is a Start-node variable that
+    nothing injects on the caller's behalf - only the model can fill it.
+    """
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(tool_factory()))
+    tool = {
+        "provider_id": "workflow-tool-1",
+        "provider_type": "workflow",
+        "tool_name": tool_name,
+        "credential_type": "unauthorized",
+    }
+    tools = AgentSoulToolsConfig.model_validate({"dify_tools": [tool]})
+    result = builder.build_layers(
+        tenant_id="tenant-1", app_id="app-1", user_id="user-1", tools=tools, invoke_from=InvokeFrom.DEBUGGER
+    )
+    assert result.core_tools is not None
+    schema = result.core_tools.tools[0].parameters_json_schema
+    assert param in schema["properties"]
+    assert schema["required"] == [param]
+
+
 def test_builds_plugin_tool_with_file_llm_parameter_schema():
     runtime_provider = FakeRuntimeProvider(_file_tool())
     builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
