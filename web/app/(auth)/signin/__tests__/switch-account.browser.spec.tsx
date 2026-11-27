@@ -11,7 +11,7 @@ vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: vi.fn() }))
 const logout = vi.fn()
 const fake = setupFakeApi({ routes: [route('POST', 'console', '/logout', logout)] })
 
-it('keeps account login blocked after logout fails and lets the user retry', async () => {
+it('asks before logging out and lets the user retry a failed logout', async () => {
   const params = new URLSearchParams({
     is_end_user: '1',
     app_code: 'current-app',
@@ -37,10 +37,14 @@ it('keeps account login blocked after logout fails and lets the user retry', asy
     </Wrapper>,
   )
 
+  const switchAccount = screen.getByRole('button', { name: 'oauth.switchAccount' })
+  await expect.element(switchAccount).toBeEnabled()
+  expect(fake.route('POST', 'console', '/logout')).not.toHaveBeenCalled()
+  await switchAccount.click()
   await expect.element(screen.getByRole('alert')).toHaveTextContent('Logout failed')
   expect(fake.route('POST', 'console', '/logout')).toHaveBeenCalledOnce()
   await screen.getByRole('button', { name: 'common.operation.retry' }).click()
-  await expect.element(screen.getByRole('progressbar', { name: 'common.loading' })).toBeVisible()
+  await expect.element(switchAccount).toHaveAttribute('aria-disabled', 'true')
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
   expect(fake.route('POST', 'console', '/logout')).toHaveBeenCalledTimes(2)
 })

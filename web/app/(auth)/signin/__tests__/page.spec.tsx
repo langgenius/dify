@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -79,7 +80,7 @@ describe('SignIn', () => {
   it.each([
     { destination: '/chat/current-app?conversation=existing#turn-2', appCode: 'current-app' },
     { destination: '/my-apps', appCode: undefined },
-  ])('logs out first for $destination', async ({ destination, appCode }) => {
+  ])('logs out after confirmation for $destination', async ({ destination, appCode }) => {
     const logout = createDeferred<Response>()
     navigationMocks.request.mockReturnValueOnce(logout.promise)
     navigationMocks.basePath = '/console'
@@ -99,7 +100,9 @@ describe('SignIn', () => {
       { systemFeatures: { webapp_url: 'https://apps.example/web' } },
     )
 
-    expect(await screen.findByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+    const switchAccount = await screen.findByRole('button', { name: 'oauth.switchAccount' })
+    expect(navigationMocks.request).not.toHaveBeenCalled()
+    await userEvent.click(switchAccount)
     await vi.waitFor(() => expect(navigationMocks.request).toHaveBeenCalledOnce())
     expect(screen.queryByText('Sign-in form')).not.toBeInTheDocument()
     expect(replace).not.toHaveBeenCalled()
