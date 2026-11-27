@@ -108,7 +108,6 @@ const ChatInputArea = ({
   const [query, setQuery] = useState('')
   const canSend = !disabled && !readonly && !!query.trim()
   const isFeatureBarReadonly = featureBarReadonly ?? readonly
-  const isFeatureBarDisabled = featureBarDisabled || (disabled && featureBarReadonly !== false)
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   if ((disabled || readonly) && showVoiceInput) setShowVoiceInput(false)
   const filesStore = useFileStore()
@@ -423,9 +422,9 @@ const ChatInputArea = ({
         <div className="pointer-events-auto">
           <FeatureBar
             showFileUpload={showFileUpload}
-            disabled={isFeatureBarDisabled}
+            disabled={featureBarDisabled}
             onFeatureBarClick={
-              isFeatureBarDisabled || isFeatureBarReadonly ? noop : onFeatureBarClick
+              featureBarDisabled || isFeatureBarReadonly ? noop : onFeatureBarClick
             }
             hideEditEntrance={isFeatureBarReadonly}
           />

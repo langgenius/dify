@@ -251,7 +251,6 @@ describe('ChatInputArea', () => {
     it('disables the entire composer while preserving its draft and attachment actions for reactivation', async () => {
       const user = userEvent.setup()
       const onSend = vi.fn()
-      const onFeatureBarClick = vi.fn()
       initialFiles.value = [
         makeFile({ supportFileType: SupportUploadFileTypes.image, progress: -1 }),
         makeFile({
@@ -265,8 +264,6 @@ describe('ChatInputArea', () => {
         visionConfig: mockVisionConfig,
         speechToTextConfig: { enabled: true },
         speechToTextTarget,
-        showFeatureBar: true,
-        onFeatureBarClick,
         onSend,
       }
       const { rerender } = render(<ChatInputArea {...props} />)
@@ -289,7 +286,6 @@ describe('ChatInputArea', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
       expect(onSend).not.toHaveBeenCalled()
       expect(startVoiceRecorder).not.toHaveBeenCalled()
-      expect(onFeatureBarClick).not.toHaveBeenCalled()
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
       rerender(<ChatInputArea {...props} />)
