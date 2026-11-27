@@ -21,11 +21,18 @@ import AppIcon from '@/app/components/base/app-icon'
 export type ReuseFromNodeProps = {
   nodes?: ReusableNode[]
   value?: ReuseFromNodeReference
+  readOnly?: boolean
   onChange?: (node: ReusableNode) => void
   onLocate?: (nodeId: string) => void
 }
 
-const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeProps) => {
+const ReuseFromNode = ({
+  nodes = [],
+  value,
+  readOnly = false,
+  onChange,
+  onLocate,
+}: ReuseFromNodeProps) => {
   const { t } = useTranslation(['plugin'])
   const noNodesId = useId()
   const selectedNode = nodes.find((node) => node.id === value?.id)
@@ -45,7 +52,7 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
       <Select
         items={nodes.map((node) => ({ value: node.id, label: node.title }))}
         value={value?.id ?? null}
-        disabled={!nodes.length}
+        disabled={readOnly || !nodes.length}
         readOnly={removed && !nodes.length}
         onValueChange={(nodeId) => {
           const node = nodes.find((item) => item.id === nodeId)

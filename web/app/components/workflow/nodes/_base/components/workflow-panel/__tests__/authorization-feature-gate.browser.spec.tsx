@@ -22,6 +22,12 @@ import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import ToolAuthorization from '../tool-authorization'
 
 const features = vi.fn<() => Promise<GetFeaturesResponse>>()
+let oauthSupported = false
+
+beforeEach(() => {
+  oauthSupported = false
+})
+
 setupFakeApi({
   console: {
     features: { get: () => features() },
@@ -54,10 +60,23 @@ setupFakeApi({
                         credential_type: 'api-key',
                       },
                     ],
-                    supported_credential_types: ['api-key'],
+                    supported_credential_types: oauthSupported
+                      ? ['api-key', 'oauth2']
+                      : ['api-key'],
                   }),
                 },
                 schema: { byCredentialType: { get: () => [] } },
+              },
+              oauth: {
+                clientSchema: {
+                  get: () => ({
+                    schema: [],
+                    is_oauth_custom_client_enabled: false,
+                    is_system_oauth_params_exists: true,
+                    client_params: {},
+                    redirect_uri: 'https://example.com/oauth/callback',
+                  }),
+                },
               },
             },
           },
@@ -81,6 +100,7 @@ async function setup(
   enabled: boolean,
   saved: Partial<ToolNodeType> = {},
   featureRequest?: Promise<GetFeaturesResponse>,
+  readOnly = false,
 ) {
   const { queryClient, wrapper: ConsoleProviders } = createConsoleQueryWrapper({
     features: { end_user_auth_enabled: enabled },
@@ -88,6 +108,7 @@ async function setup(
   })
   onTestFinished(() => queryClient.clear())
   const stores = createStoresFromOptions({
+    initialStoreState: { canvasReadOnly: readOnly },
     // boundary: the editor's draft transport is injected; graph mutation and synchronization hooks remain real.
     hooksStoreProps: { doSyncWorkflowDraft: vi.fn(async () => ({ hash: 'saved', updatedAt: 1 })) },
   })
@@ -128,6 +149,17 @@ async function setup(
       ...saved,
     },
   })
+  const sourceNode = createNode({
+    id: 'available-source',
+    type: 'default',
+    data: {
+      ...node.data,
+      title: 'Source tool',
+      credential_source: ToolCredentialSource.Workspace,
+      credential_id: 'workspace-key',
+      reuse_node_id: undefined,
+    },
+  })
   const screen = await render(
     <ConsoleProviders>
       <WorkflowProviders>
@@ -135,7 +167,7 @@ async function setup(
           <TooltipProvider>
             <ReactFlowProvider>
               <div style={{ width: 800, height: 1 }}>
-                <ReactFlow defaultNodes={[node]} defaultEdges={[]} />
+                <ReactFlow defaultNodes={[node, sourceNode]} defaultEdges={[]} />
               </div>
               <GraphBoundary />
               <section aria-label="Current node authorization">
@@ -252,4 +284,78 @@ it('waits for the Console feature response before exposing any authorization con
   await expect.element(panel.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeVisible()
   await expect.element(panel.getByRole('status')).not.toBeInTheDocument()
   expect(readAuthorization()).toEqual(authorizationData(saved))
+})
+
+it('shows the available OAuth client without editing the draft until the author changes a field', async () => {
+  oauthSupported = true
+  const saved = {
+    credential_source: ToolCredentialSource.EndUser,
+    end_user_auth: { allowed_credential_types: ['oauth2' as const], purpose: 'Existing purpose' },
+  }
+  const { screen, readAuthorization } = await setup(true, saved)
+  const panel = screen.getByRole('region', { name: 'Current node authorization' })
+  await expect
+    .element(panel.getByRole('button', { name: 'plugin.auth.appUser.defaultClient' }))
+    .toBeEnabled()
+  expect(readAuthorization()).toEqual(authorizationData(saved))
+
+  await panel
+    .getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' })
+    .fill('Updated purpose')
+  await expect
+    .poll(() => readAuthorization().end_user_auth)
+    .toEqual({
+      allowed_credential_types: ['oauth2'],
+      purpose: 'Updated purpose',
+      oauth_client_type: 'default',
+    })
+})
+
+it('makes App User Auth fields read-only in a read-only workflow', async () => {
+  oauthSupported = true
+  const saved = {
+    credential_source: ToolCredentialSource.EndUser,
+    end_user_auth: {
+      allowed_credential_types: ['api-key' as const, 'oauth2' as const],
+      oauth_client_type: 'default' as const,
+      purpose: 'Existing purpose',
+    },
+    test_credential_id: 'saved-test-key',
+  }
+  const { screen } = await setup(true, saved, undefined, true)
+  const panel = screen.getByRole('region', { name: 'Current node authorization' })
+  const description = panel.getByRole('textbox', {
+    name: 'plugin.auth.appUser.connectionDescription',
+  })
+  await expect.element(description).toHaveAttribute('readonly')
+  await expect.element(description).toHaveValue('Existing purpose')
+  await expect
+    .element(panel.getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }))
+    .toBeDisabled()
+  await expect
+    .element(panel.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }))
+    .toBeDisabled()
+  await expect
+    .element(panel.getByRole('button', { name: 'plugin.auth.appUser.defaultClient' }))
+    .toBeDisabled()
+  await expect.element(panel.getByRole('button', { name: /^Test connection/ })).toBeDisabled()
+})
+
+it('shows the saved reuse source without allowing it to change in a read-only workflow', async () => {
+  const { screen } = await setup(
+    true,
+    {
+      credential_source: ToolCredentialSource.ReuseNode,
+      reuse_node_id: 'available-source',
+    },
+    undefined,
+    true,
+  )
+  const panel = screen.getByRole('region', { name: 'Current node authorization' })
+  const source = panel.getByRole('combobox', { name: 'plugin.auth.reuse.selectNode' })
+  await expect.element(source).toMatchTextContent(/Source tool/)
+  await expect.element(source).toBeDisabled()
+  await expect
+    .element(panel.getByRole('button', { name: 'plugin.auth.reuse.locateSource' }))
+    .toBeEnabled()
 })

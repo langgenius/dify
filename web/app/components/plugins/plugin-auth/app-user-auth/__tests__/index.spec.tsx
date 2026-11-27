@@ -337,7 +337,7 @@ describe('AppUserAuth', () => {
     { mode: 'OAuth only', canOAuth: true, canApiKey: false },
     { mode: 'unsupported methods', canOAuth: false, canApiKey: false },
   ])(
-    'normalizes old method flags for $mode while keeping configuration and description editable',
+    'saves normalized method flags for $mode on the first edit',
     async ({ canOAuth, canApiKey }) => {
       const user = userEvent.setup()
       const initialDraft = {
@@ -356,14 +356,7 @@ describe('AppUserAuth', () => {
       )
 
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-      await waitFor(() =>
-        expect(onChange).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            oauthEnabled: canOAuth,
-            apiKeyEnabled: canApiKey,
-          }),
-        ),
-      )
+      expect(onChange).not.toHaveBeenCalled()
       if (canOAuth) {
         expect(screen.getByRole('heading', { name: 'plugin.auth.oauthClient' })).toBeVisible()
         expect(screen.getByText('plugin.auth.appUser.oauthClientDescription')).toBeVisible()
@@ -371,7 +364,6 @@ describe('AppUserAuth', () => {
         expect(
           screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }),
         ).not.toHaveAccessibleDescription()
-        expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ client: undefined }))
         await saveCustomClient(user)
         expect(
           screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' }),

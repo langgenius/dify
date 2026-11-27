@@ -26,6 +26,7 @@ type AppUserAuthProps = {
   pluginPayload: PluginPayload
   authorization: ReturnType<typeof usePluginAuth>
   active?: boolean
+  readOnly?: boolean
   providerName?: string
   value?: AppUserAuthDraft
   onChange?: (draft: AppUserAuthDraft) => void
@@ -35,6 +36,7 @@ const AppUserAuth = ({
   pluginPayload,
   authorization,
   active = true,
+  readOnly = false,
   providerName,
   value,
   onChange,
@@ -69,49 +71,13 @@ const AppUserAuth = ({
   const showOAuthClientError = !oauthOnly && oauthEnabled && errors.oauthClient
   const { description } = draft
   const oauthDisabled =
+    readOnly ||
     !canManageCredential ||
     authorization.notAllowCustomCredential ||
     oauthClient.query.isPending ||
     oauthClient.query.isError
-  // Only initialize missing client metadata for the active form. Persisted node
-  // choices must survive background workspace client refreshes.
-  useEffect(() => {
-    if (!active || !value) return
-    const syncClient =
-      !clientWasRemoved &&
-      oauthEnabled &&
-      !draft.client &&
-      !!oauthClient.clientType &&
-      oauthClient.query.isSuccess
-    if (
-      draft.oauthEnabled === oauthEnabled &&
-      draft.apiKeyEnabled === apiKeyEnabled &&
-      (!syncClient || draft.client?.type === oauthClient.clientType)
-    )
-      return
-    const nextDraft = {
-      ...draft,
-      oauthEnabled,
-      apiKeyEnabled,
-      ...(syncClient
-        ? { client: oauthClient.clientType ? { type: oauthClient.clientType } : undefined }
-        : {}),
-    }
-    onChange?.(nextDraft)
-  }, [
-    canOAuth,
-    active,
-    clientWasRemoved,
-    oauthEnabled,
-    apiKeyEnabled,
-    oauthClient.query.isSuccess,
-    oauthClient.clientType,
-    draft,
-    value,
-    onChange,
-  ])
   const updateDraft = (updates: Partial<AppUserAuthDraft>) => {
-    if (!active) return
+    if (!active || readOnly) return
     const nextDraft = { ...draft, oauthEnabled, apiKeyEnabled, client, ...updates }
     if (!value) setLocalDraft(nextDraft)
     onChange?.(nextDraft)
@@ -150,7 +116,7 @@ const AppUserAuth = ({
     }),
   )
   const handleClientTypeChange = (type: 'default' | 'custom' | undefined) => {
-    if (!active) return
+    if (!active || readOnly) return
     setClientWasRemoved(type === undefined)
     updateDraft({ client: type ? { type } : undefined })
   }
@@ -247,6 +213,7 @@ const AppUserAuth = ({
         <Fieldset
           aria-label={t(($) => $['auth.authorization'], { ns: 'plugin' })}
           aria-describedby={errors.methods ? methodsErrorId : undefined}
+          disabled={readOnly}
           className="space-y-3"
         >
           {canOAuth && (
@@ -337,7 +304,7 @@ const AppUserAuth = ({
             canApiKey: apiKeyEnabled,
           }}
           active={active}
-          disabled={!oauthEnabled && !apiKeyEnabled}
+          disabled={readOnly || (!oauthEnabled && !apiKeyEnabled)}
           useWorkspaceDefault={false}
           placeholder={t(($) => $['auth.appUser.testConnectionPlaceholder'], { ns: 'plugin' })}
           removedPlaceholder={t(($) => $['auth.appUser.testConnectionRemoved'], { ns: 'plugin' })}
@@ -378,6 +345,7 @@ const AppUserAuth = ({
             value={description}
             onValueChange={(value) => updateDraft({ description: value.slice(0, 50) })}
             required
+            readOnly={readOnly}
             maxLength={50}
             aria-describedby={descriptionCountId}
             placeholder={t(($) => $['auth.appUser.connectionDescriptionPlaceholder'], {
@@ -405,7 +373,7 @@ const AppUserAuth = ({
           redirectUri={oauthClient.redirectUri}
           hasOriginalClientParams={oauthClient.hasOriginalClientParams}
           disabled={oauthDisabled}
-          open={clientDialogOpen}
+          open={clientDialogOpen && !readOnly}
           onOpenChange={setClientDialogOpen}
           onUpdate={() => {
             authorization.invalidPluginCredentialInfo()
@@ -419,13 +387,13 @@ const AppUserAuth = ({
         />
       )}
       <OAuthVisibilityDialog
-        open={visibilityOpen}
+        open={visibilityOpen && !readOnly}
         onOpenChange={setVisibilityOpen}
         permission={visibility}
         onPermissionChange={setVisibility}
         loading={oauthAuthorization.isPending}
         onConfirm={() => {
-          if (!active || !canManageCredential || oauthAuthorization.isPending) return
+          if (!active || readOnly || !canManageCredential || oauthAuthorization.isPending) return
           oauthAuthorization.mutate({
             params: { provider: pluginPayload.provider },
             query: { visibility },

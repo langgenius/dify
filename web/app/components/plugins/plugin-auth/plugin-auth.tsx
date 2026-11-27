@@ -19,6 +19,7 @@ export type PluginAuthProps = {
   className?: string
   showAuthorizationTabs?: boolean
   endUserAuthEnabled?: boolean
+  readOnly?: boolean
   authorizationTab?: AuthorizationTab
   onAuthorizationTabChange?: (tab: AuthorizationTab) => void
   appUserAuth?: {
@@ -36,6 +37,7 @@ const PluginAuth = ({
   className,
   showAuthorizationTabs = false,
   endUserAuthEnabled = true,
+  readOnly = false,
   authorizationTab,
   onAuthorizationTabChange,
   appUserAuth,
@@ -103,6 +105,7 @@ const PluginAuth = ({
       defaultValue="workspace-auth"
       value={authorizationTab}
       onValueChange={(tab) => {
+        if (readOnly) return
         if (tab !== 'workspace-auth' && tab !== 'app-user-auth' && tab !== 'reuse-from-node') return
         if (tab === 'app-user-auth' && appUserAuth && !appUserAuth.draft) {
           appUserAuth.onChange(
@@ -119,17 +122,25 @@ const PluginAuth = ({
       <div className="space-y-2 px-4 py-2">
         {authorizationHeading}
         <TabsList aria-labelledby={labelId} className="gap-2">
-          <TabsTab value="workspace-auth" className={authorizationTabClassName}>
+          <TabsTab
+            value="workspace-auth"
+            disabled={readOnly && authorizationTab !== 'workspace-auth'}
+            className={authorizationTabClassName}
+          >
             {t(($) => $['auth.workspaceAuth'], { ns: 'plugin' })}
           </TabsTab>
           <TabsTab
             value="app-user-auth"
-            disabled={authorization.isLoading}
+            disabled={authorization.isLoading || (readOnly && authorizationTab !== 'app-user-auth')}
             className={authorizationTabClassName}
           >
             {t(($) => $['auth.appUserAuth'], { ns: 'plugin' })}
           </TabsTab>
-          <TabsTab value="reuse-from-node" className={authorizationTabClassName}>
+          <TabsTab
+            value="reuse-from-node"
+            disabled={readOnly && authorizationTab !== 'reuse-from-node'}
+            className={authorizationTabClassName}
+          >
             {t(($) => $['auth.reuseFromNode'], { ns: 'plugin' })}
           </TabsTab>
         </TabsList>
@@ -148,6 +159,7 @@ const PluginAuth = ({
                 pluginPayload={pluginPayload}
                 authorization={authorization}
                 active={!hidden}
+                readOnly={readOnly}
                 key={`${pluginPayload.category}/${pluginPayload.provider}/${authorization.canOAuth}/${authorization.canApiKey}`}
                 providerName={nodeAuth?.providerName}
                 value={appUserAuth?.draft}
@@ -158,7 +170,7 @@ const PluginAuth = ({
         )}
       />
       <TabsPanel value="reuse-from-node" className="px-4 py-2">
-        <ReuseFromNode {...reuseFromNode} />
+        <ReuseFromNode {...reuseFromNode} readOnly={readOnly} />
       </TabsPanel>
     </Tabs>
   )

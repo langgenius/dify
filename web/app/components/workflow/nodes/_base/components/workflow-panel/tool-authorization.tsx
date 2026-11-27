@@ -43,7 +43,7 @@ const ToolAuthorization = ({ nodeId, providerId, toolIcon, ...props }: ToolAutho
   const workflowStore = useWorkflowStore()
   const drafts = useStore((state) => state.nodeAuthDrafts)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
-  const { getNodesReadOnly } = useNodesReadOnly()
+  const { getNodesReadOnly, nodesReadOnly } = useNodesReadOnly()
   const stored = drafts[nodeId]
   const entry =
     stored?.provider === provider && stored.providerId === providerId ? stored : undefined
@@ -93,9 +93,11 @@ const ToolAuthorization = ({ nodeId, providerId, toolIcon, ...props }: ToolAutho
     <PluginAuth
       {...props}
       endUserAuthEnabled={endUserAuthEnabled}
+      readOnly={nodesReadOnly}
       nodeAuth={
         props.nodeAuth && {
           ...props.nodeAuth,
+          disabled: nodesReadOnly || props.nodeAuth.disabled,
           credentialId: currentNode?.data.credential_id,
           onAuthorizationItemClick: (id) => {
             const current = getCurrentNode()
