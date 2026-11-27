@@ -1,23 +1,25 @@
 """Exercise login-mail rendering and delivery with real PostgreSQL and Redis fixtures.
 
-Only the outbound mail transport and deployment branding are replaced. Successful
-tasks emit rendered login messages; unavailable or failing delivery emits none.
+The delivery core receives a real email service with a recording transport and
+fixed deployment branding. An isolated Celery task admits malformed payloads
+without changing the production task's registered arguments or worker registry.
 """
 
 import logging
 
 import pytest
 from bs4 import BeautifulSoup
+from celery import Celery
 from faker import Faker
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from extensions.ext_mail import mail
+from extensions.ext_mail import Mail
+from libs.email_i18n import EmailI18nService, FlaskEmailRenderer, FlaskMailSender, create_default_email_config
 from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.entities.feature_entities import BrandingModel
-from services.system_feature_service import SystemFeatureService
-from tasks.mail_email_code_login import send_email_code_login_mail_task
+from tasks.mail_email_code_login import LoginCodeMailDelivery
 
 
 class RecordingMailClient:
@@ -35,9 +37,12 @@ class RecordingMailClient:
         self.messages.append(message)
 
 
-def _unbranded_email() -> BrandingModel:
-    """Return the ordinary Dify branding without consulting external services."""
-    return BrandingModel()
+class UnbrandedEmail:
+    """Supply the ordinary Dify branding without consulting external services."""
+
+    def get_branding_config(self) -> BrandingModel:
+        """Return the default branding for rendering real email templates."""
+        return BrandingModel()
 
 
 def _assert_login_email(
@@ -76,13 +81,29 @@ class TestSendEmailCodeLoginMailTask:
         redis_client.flushdb()
 
     @pytest.fixture
-    def mail_outbox(self, monkeypatch: pytest.MonkeyPatch) -> RecordingMailClient:
-        """Use real rendering and mail validation with a local recording transport."""
-        client = RecordingMailClient()
-        monkeypatch.setattr(mail, "_client", client)
-        monkeypatch.setattr(mail, "_default_send_from", "noreply@example.com")
-        monkeypatch.setattr(SystemFeatureService, "get_branding", staticmethod(_unbranded_email))
-        return client
+    def mail_outbox(self) -> RecordingMailClient:
+        """Record transport messages without replacing application globals."""
+        return RecordingMailClient()
+
+    @pytest.fixture
+    def mail_service(self, mail_outbox: RecordingMailClient) -> Mail:
+        """Keep the real mail validation in front of the recording transport."""
+        return Mail(client=mail_outbox, default_send_from="noreply@example.com")
+
+    @pytest.fixture
+    def email_service(self, mail_service: Mail) -> EmailI18nService:
+        """Construct the real renderer and service with explicit delivery dependencies."""
+        return EmailI18nService(
+            config=create_default_email_config(),
+            renderer=FlaskEmailRenderer(),
+            branding_service=UnbrandedEmail(),
+            sender=FlaskMailSender(mail_service),
+        )
+
+    @pytest.fixture
+    def login_mail_delivery(self, email_service: EmailI18nService, mail_service: Mail) -> LoginCodeMailDelivery:
+        """Bind the production core to the real, explicitly constructed dependencies."""
+        return LoginCodeMailDelivery(mail_service, lambda: email_service)
 
     def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None) -> Account:
         """
@@ -152,23 +173,29 @@ class TestSendEmailCodeLoginMailTask:
 
         return account, tenant
 
-    def test_send_email_code_login_mail_task_success_english(self, mail_outbox: RecordingMailClient) -> None:
+    def test_send_email_code_login_mail_task_success_english(
+        self, mail_outbox: RecordingMailClient, login_mail_delivery: LoginCodeMailDelivery
+    ) -> None:
         """An English request delivers one rendered message containing its login code."""
-        send_email_code_login_mail_task(language="en-US", to="english@example.com", code="123456")
+        login_mail_delivery.send(language="en-US", to="english@example.com", code="123456")
 
         _assert_login_email(mail_outbox, "english@example.com", "123456")
 
-    def test_send_email_code_login_mail_task_success_chinese(self, mail_outbox: RecordingMailClient) -> None:
+    def test_send_email_code_login_mail_task_success_chinese(
+        self, mail_outbox: RecordingMailClient, login_mail_delivery: LoginCodeMailDelivery
+    ) -> None:
         """A Simplified Chinese request delivers its localized subject and body."""
-        send_email_code_login_mail_task(language="zh-Hans", to="chinese@example.com", code="789012")
+        login_mail_delivery.send(language="zh-Hans", to="chinese@example.com", code="789012")
 
         _assert_login_email(mail_outbox, "chinese@example.com", "789012", "Dify 登录验证码", "Dify 的登录验证码")
 
-    def test_send_email_code_login_mail_task_success_multiple_languages(self, mail_outbox: RecordingMailClient) -> None:
+    def test_send_email_code_login_mail_task_success_multiple_languages(
+        self, mail_outbox: RecordingMailClient, login_mail_delivery: LoginCodeMailDelivery
+    ) -> None:
         """Only zh-Hans selects Chinese; other locale codes fall back to English."""
         languages = ["en-US", "zh-Hans", "zh-CN", "ja-JP", "ko-KR", "unknown-language"]
         for index, language in enumerate(languages):
-            send_email_code_login_mail_task(language=language, to=f"recipient{index}@example.com", code=f"{index:06d}")
+            login_mail_delivery.send(language=language, to=f"recipient{index}@example.com", code=f"{index:06d}")
 
         assert len(mail_outbox.messages) == len(languages)
         for index, message in enumerate(mail_outbox.messages):
@@ -182,26 +209,33 @@ class TestSendEmailCodeLoginMailTask:
                 assert "Your login code for Dify" in message["html"]
 
     def test_send_email_code_login_mail_task_mail_not_initialized(
-        self, mail_outbox: RecordingMailClient, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+        self, mail_outbox: RecordingMailClient, caplog: pytest.LogCaptureFixture
     ) -> None:
         """An uninitialized mail service neither delivers nor reports a successful delivery."""
         caplog.set_level(logging.INFO, logger="tasks.mail_email_code_login")
-        monkeypatch.setattr(mail, "_client", None)
 
-        send_email_code_login_mail_task(language="en-US", to="unavailable@example.com", code="123456")
+        def unexpected_email_service() -> EmailI18nService:
+            raise AssertionError("Unavailable mail must not resolve the email service")
+
+        LoginCodeMailDelivery(Mail(), unexpected_email_service).send(
+            language="en-US", to="unavailable@example.com", code="123456"
+        )
 
         assert mail_outbox.messages == []
-        assert not any("succeeded" in message for message in caplog.messages)
+        assert caplog.messages == []
 
     def test_send_email_code_login_mail_task_email_service_exception(
-        self, mail_outbox: RecordingMailClient, caplog: pytest.LogCaptureFixture
+        self,
+        mail_outbox: RecordingMailClient,
+        login_mail_delivery: LoginCodeMailDelivery,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """A delivery failure produces no message and is logged with its exception."""
         error = RuntimeError("Email service unavailable")
         mail_outbox.error = error
         caplog.set_level(logging.ERROR, logger="tasks.mail_email_code_login")
 
-        send_email_code_login_mail_task(language="en-US", to="failed@example.com", code="123456")
+        login_mail_delivery.send(language="en-US", to="failed@example.com", code="123456")
 
         assert mail_outbox.messages == []
         [record] = [record for record in caplog.records if record.name == "tasks.mail_email_code_login"]
@@ -210,7 +244,10 @@ class TestSendEmailCodeLoginMailTask:
         assert record.exc_info[1] is error
 
     def test_send_email_code_login_mail_task_invalid_parameters(
-        self, mail_outbox: RecordingMailClient, caplog: pytest.LogCaptureFixture
+        self,
+        mail_outbox: RecordingMailClient,
+        login_mail_delivery: LoginCodeMailDelivery,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Malformed Celery payloads retain the mail boundary's actual validation behavior."""
         cases: list[tuple[str | None, str | None]] = [
@@ -220,25 +257,30 @@ class TestSendEmailCodeLoginMailTask:
             ("none-code@example.com", None),
             ("invalid-email", "123456"),
         ]
+
         caplog.set_level(logging.ERROR, logger="tasks.mail_email_code_login")
-        for to, code in cases:
-            mail_outbox.messages.clear()
-            caplog.clear()
+        with Celery("test-login-mail-payloads", set_as_current=False) as app:
+            task = app.task(shared=False, lazy=False)(login_mail_delivery.send)
+            for to, code in cases:
+                mail_outbox.messages.clear()
+                caplog.clear()
 
-            send_email_code_login_mail_task.apply(kwargs={"language": "en-US", "to": to, "code": code}, throw=True)
+                task.apply(kwargs={"language": "en-US", "to": to, "code": code}, throw=True)
 
-            if not to:
-                assert mail_outbox.messages == []
-                [record] = [record for record in caplog.records if record.name == "tasks.mail_email_code_login"]
-                assert record.getMessage() == f"Send email code login mail to {to} failed"
-                assert record.exc_info
-                assert isinstance(record.exc_info[1], ValueError)
-                assert str(record.exc_info[1]) == "mail to is not set"
-            else:
-                _assert_login_email(mail_outbox, to, str(code))
-                assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
+                if not to:
+                    assert mail_outbox.messages == []
+                    [record] = [record for record in caplog.records if record.name == "tasks.mail_email_code_login"]
+                    assert record.getMessage() == f"Send email code login mail to {to} failed"
+                    assert record.exc_info
+                    assert isinstance(record.exc_info[1], ValueError)
+                    assert str(record.exc_info[1]) == "mail to is not set"
+                else:
+                    _assert_login_email(mail_outbox, to, str(code))
+                    assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
 
-    def test_send_email_code_login_mail_task_edge_cases(self, mail_outbox: RecordingMailClient) -> None:
+    def test_send_email_code_login_mail_task_edge_cases(
+        self, mail_outbox: RecordingMailClient, login_mail_delivery: LoginCodeMailDelivery
+    ) -> None:
         """Long addresses and unusual codes survive rendering and reach the recipient."""
         cases = [
             ("a" * 100 + "@example.com", "1" * 20),
@@ -250,25 +292,30 @@ class TestSendEmailCodeLoginMailTask:
         for to, code in cases:
             mail_outbox.messages.clear()
 
-            send_email_code_login_mail_task(language="en-US", to=to, code=code)
+            login_mail_delivery.send(language="en-US", to=to, code=code)
 
             _assert_login_email(mail_outbox, to, code)
 
     def test_send_email_code_login_mail_task_database_integration(
-        self, db_session_with_containers: Session, mail_outbox: RecordingMailClient
+        self,
+        db_session_with_containers: Session,
+        mail_outbox: RecordingMailClient,
+        login_mail_delivery: LoginCodeMailDelivery,
     ) -> None:
         """Mail delivery uses the persisted account email and leaves the account active."""
         account, _tenant = self._create_test_tenant_and_account(db_session_with_containers)
         test_email = account.email
 
-        send_email_code_login_mail_task(language="en-US", to=test_email, code="123456")
+        login_mail_delivery.send(language="en-US", to=test_email, code="123456")
 
         _assert_login_email(mail_outbox, test_email, "123456")
         db_session_with_containers.refresh(account)
         assert account.email == test_email
         assert account.status == "active"
 
-    def test_send_email_code_login_mail_task_redis_integration(self, mail_outbox: RecordingMailClient) -> None:
+    def test_send_email_code_login_mail_task_redis_integration(
+        self, mail_outbox: RecordingMailClient, login_mail_delivery: LoginCodeMailDelivery
+    ) -> None:
         """Delivery leaves an existing Redis entry available and unchanged."""
         from extensions.ext_redis import redis_client
 
@@ -276,7 +323,7 @@ class TestSendEmailCodeLoginMailTask:
         cache_key = f"email_code_login_test_{test_email}"
         redis_client.set(cache_key, "test_value", ex=300)
 
-        send_email_code_login_mail_task(language="en-US", to=test_email, code="123456")
+        login_mail_delivery.send(language="en-US", to=test_email, code="123456")
 
         _assert_login_email(mail_outbox, test_email, "123456")
         assert redis_client.exists(cache_key) == 1
@@ -284,7 +331,10 @@ class TestSendEmailCodeLoginMailTask:
         redis_client.delete(cache_key)
 
     def test_send_email_code_login_mail_task_error_handling_comprehensive(
-        self, mail_outbox: RecordingMailClient, caplog: pytest.LogCaptureFixture
+        self,
+        mail_outbox: RecordingMailClient,
+        login_mail_delivery: LoginCodeMailDelivery,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Each transport failure is swallowed, emits no mail and retains its traceback in the log."""
         caplog.set_level(logging.ERROR, logger="tasks.mail_email_code_login")
@@ -299,7 +349,7 @@ class TestSendEmailCodeLoginMailTask:
             caplog.clear()
             mail_outbox.error = error
 
-            send_email_code_login_mail_task(language="en-US", to="errors@example.com", code="123456")
+            login_mail_delivery.send(language="en-US", to="errors@example.com", code="123456")
 
             assert mail_outbox.messages == []
             [record] = [record for record in caplog.records if record.name == "tasks.mail_email_code_login"]
