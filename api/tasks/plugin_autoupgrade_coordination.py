@@ -144,8 +144,9 @@ redis.call('ZREM', KEYS[2], KEYS[1])
 if redis.call('GET', KEYS[3]) == ARGV[1] .. ':' .. ARGV[2] then
     redis.call('DEL', KEYS[3])
 end
+-- Keep the hash type so workers using the original reservation scripts can read it.
 redis.call('HSET', KEYS[1], 'state', 'done')
-redis.call('HDEL', KEYS[1], 'execution_token')
+redis.call('HDEL', KEYS[1], 'token', 'deadline', 'execution_token')
 redis.call('PEXPIREAT', KEYS[1], tonumber(ARGV[3]))
 return 1
 """
@@ -300,7 +301,7 @@ class RedisPluginAutoUpgradeCoordinator:
         }[int(result)]
 
     def finish(self, reservation: CheckReservation, execution_token: str) -> None:
-        """Release only this execution and retain its completed deduplication marker until the deadline."""
+        """Release the matching execution and keep only its done state until the original deadline."""
         self._finish(
             keys=[_reservation_key(reservation), _SLOTS_KEY, _execution_key(reservation)],
             args=[reservation.token, execution_token, int(reservation.deadline * 1000)],

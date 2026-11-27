@@ -10,6 +10,7 @@ from redis.exceptions import ConnectionError
 from extensions.ext_redis import RedisClientWrapper
 from tasks.plugin_autoupgrade_coordination import (
     _SLOTS_KEY,
+    CHECK_QUEUE_DEADLINE_SECONDS,
     CHECK_SLOT_LEASE_SECONDS,
     CHECK_TASK_TIME_LIMIT,
     MAX_CONCURRENT_CHECK_TASKS,
@@ -142,6 +143,32 @@ def test_same_producer_does_not_republish_running_or_completed_work(application_
     coordinator.mark_queued(reservation)
     coordinator.finish(reservation, "execution")
     assert coordinator.reserve("tenant", "tool", time_of_day, scheduled_at, producer_id="parent-task") is None
+    assert coordinator.acquire(reservation, "redelivery") == AcquireResult.DUPLICATE
+
+
+def test_completion_discards_ownership_fields_and_restores_the_queue_deadline(
+    application_redis: RedisClientWrapper,
+) -> None:
+    """A check finishing near its deadline keeps only the state and drops the extended lease TTL."""
+    coordinator = RedisPluginAutoUpgradeCoordinator(application_redis)
+    seconds, _ = application_redis.time()
+    deadline = seconds + 60
+    reservation = coordinator.reserve("tenant", "tool", 0, deadline - CHECK_QUEUE_DEADLINE_SECONDS)
+    assert reservation is not None
+    key = _reservation_key(reservation)
+    assert coordinator.acquire(reservation, "execution") == AcquireResult.ACQUIRED
+    assert application_redis.pttl(key) > 60_000
+
+    coordinator.finish(reservation, "execution")
+
+    assert application_redis.hgetall(key) == {b"state": b"done"}
+    before_seconds, before_microseconds = application_redis.time()
+    ttl_ms = application_redis.pttl(key)
+    after_seconds, after_microseconds = application_redis.time()
+    before_ms = before_seconds * 1000 + before_microseconds // 1000
+    after_ms = after_seconds * 1000 + after_microseconds // 1000
+    assert ttl_ms > 0
+    assert before_ms + ttl_ms <= deadline * 1000 <= after_ms + ttl_ms
     assert coordinator.acquire(reservation, "redelivery") == AcquireResult.DUPLICATE
 
 
