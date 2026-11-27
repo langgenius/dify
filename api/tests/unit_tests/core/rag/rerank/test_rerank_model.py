@@ -685,6 +685,18 @@ class TestWeightRerankRunner:
         mock_cache_embedding.assert_not_called()
         mock_cache_embedding.get_cached_query_embedding.assert_not_called()
 
+    def test_cosine_names_the_document_when_its_vector_is_missing(self, weights_config):
+        """The fail-fast path should say which document and what is missing.
+
+        It used to surface as "unsupported operand type(s) for *: 'float' and
+        'NoneType'" from inside `np.dot`, which names neither.
+        """
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+        documents = [Document(page_content="full-text hit", metadata={"doc_id": "doc-42"}, vector=None)]
+
+        with pytest.raises(TypeError, match="doc-42"):
+            runner._calculate_cosine("tenant123", "query", documents, weights_config.vector_setting)
+
     @pytest.mark.parametrize("cache_hit", [True, False])
     def test_cosine_resolves_query_vector_once_for_mixed_documents(
         self, cache_hit, weights_config, mock_model_manager, mock_cache_embedding

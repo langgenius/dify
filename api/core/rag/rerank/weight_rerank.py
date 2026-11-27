@@ -172,6 +172,17 @@ class WeightRerankRunner(BaseRerankRunner):
             # calculate cosine similarity
             if document.metadata and "score" in document.metadata:
                 query_vector_scores.append(document.metadata["score"])
+            elif document.vector is None:
+                # Weighted retrieval needs an embedding for every candidate and fails fast
+                # without one - but it used to fail inside `np.dot` with
+                # "unsupported operand type(s) for *: 'float' and 'NoneType'", which names
+                # neither the document nor what is missing.
+                identifier = (document.metadata or {}).get("doc_id") or "without an id"
+                raise TypeError(
+                    f"Cannot run weighted reranking: the document {identifier} has no vector. "
+                    "Every candidate needs an embedding; a keyword-only hit should be "
+                    "embedded before it reaches this step."
+                )
             else:
                 if query_vector is None:
                     query_vector = CacheEmbedding.get_cached_query_embedding(
