@@ -75,6 +75,7 @@
   "entry.checkFailed": "Yayınlanan sürüm kontrol edilemedi. Lütfen tekrar deneyin.",
   "entry.duplicateNodeNames": "Yayınlanan sürümde aynı ada sahip düğümler var ({{names}}). Değerlendirmeye devam edebilirsiniz; ancak düğümleri yeniden adlandırıp yeni bir sürüm yayınlamak sonuçları ayırt etmeyi kolaylaştırır.",
   "entry.duplicateNodeNamesTitle": "Yinelenen düğüm adları",
+  "entry.triggerUnsupported": "Tetikleyiciyle başlayan iş akışları değerlendirilemez. Kullanıcı Girişi başlangıç düğümü olan bir iş akışı yayımlayın.",
   "history.actions.cancel": "Çalıştırmayı iptal et",
   "history.actions.downloadFailed": "Değerlendirme dosyası indirilemedi.",
   "history.actions.downloadResultFile": "Sonucu indir",

@@ -16,7 +16,9 @@ from sqlalchemy import delete, event, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.app.features.rate_limiting.rate_limit import RateLimit
 from core.db.session_factory import session_factory
+from core.errors.error import AppInvokeQuotaWaitTimeoutError
 from core.evaluation.agent.customized_workflow_adapter import (
     AGENT_CUSTOM_EVALUATOR_DATASET_COLUMNS,
     AGENT_CUSTOM_EVALUATOR_NODE_ID,
@@ -47,6 +49,7 @@ from core.evaluation.exceptions import (
     new_public_evaluation_error,
 )
 from domain.workflow.agent_node import is_dify_agent_node_data
+from enums import QuotaType
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from graphon.node_events.base import NodeRunResult
@@ -68,20 +71,29 @@ from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from services.agent.evaluation_target_service import AgentEvaluationTargetService
 from services.app.access import can_run_app
+from services.app_generate_service import AppGenerateService
+from services.errors.app import QuotaExceededError
 from services.errors.base import NoPermissionError
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
     EvaluationMaxConcurrentRunsError,
     EvaluationNotFoundError,
+    EvaluationRunControlError,
 )
 from services.evaluation_template_i18n import EvaluationTemplateCopy, get_evaluation_template_copy
+from services.knowledge_rate_limit_service import enforce_knowledge_rate_limit
+from services.quota_service import QuotaService, unlimited
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
 KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE = "knowledge-retrieval-v2"
+
+
+class _EvaluationTargetBatchAbortedError(Exception):
+    """Stops sibling target workers after one worker aborts the batch."""
 
 
 class EvaluationTemplateColumn(TypedDict):
@@ -220,7 +232,11 @@ class EvaluationService:
         :param session: Database session used to resolve target inputs
         :param language: The current interface language; unsupported values use English
         :return: Tuple of (xlsx_content_bytes, filename)
-        :raises ValueError: If target type is not supported or app mode is excluded
+        :raises ValueError: If the target type, app mode, or workflow entry is unsupported
+
+        Precondition: the target belongs to the caller's permitted evaluation scope.
+        Postcondition: a template is returned for a supported entry, or no file is
+        generated for a trigger workflow.
         """
         columns = cls.get_dataset_column_names(target, target_type, data, session)
         retrieval_output_columns = frozenset(
@@ -244,6 +260,11 @@ class EvaluationService:
 
         :param app: App instance
         :return: List of input field definitions
+        :raises ValueError: If the resolved workflow starts from a trigger.
+
+        Precondition: ``app`` is the target being evaluated.
+        Postcondition: published (or draft fallback) Start inputs are returned;
+        trigger workflows are rejected without changing the target.
         """
         cls._validate_app_mode(app)
         workflow_service = WorkflowService()
@@ -254,6 +275,7 @@ class EvaluationService:
         if not workflow:
             return []
 
+        cls._require_evaluable_target_workflow(workflow)
         # Get user input form from workflow
         user_input_form = workflow.user_input_form()
         return user_input_form
@@ -263,23 +285,27 @@ class EvaluationService:
         """
         Get input fields from Snippet.
 
-        Tries to get from snippet's own input_fields first,
-        then falls back to workflow's user_input_form.
+        Checks the workflow entry before using the snippet's own input_fields,
+        then falls back to the workflow's user_input_form.
 
         :param snippet: CustomizedSnippet instance
         :return: List of input field definitions
-        """
-        # Try snippet's own input_fields first
-        input_fields = snippet.input_fields_list
-        if input_fields:
-            return input_fields
+        :raises ValueError: If the resolved workflow starts from a trigger.
 
-        # Fallback to workflow's user_input_form
+        Precondition: ``snippet`` is the target being evaluated.
+        Postcondition: saved input fields or workflow Start inputs are returned;
+        trigger workflows are rejected even when saved input fields exist.
+        """
         snippet_service = SnippetService(session=session)
         workflow = snippet_service.get_published_workflow(snippet=snippet)
         if not workflow:
             workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        if workflow:
+            cls._require_evaluable_target_workflow(workflow)
 
+        input_fields = snippet.input_fields_list
+        if input_fields:
+            return input_fields
         if workflow:
             return workflow.user_input_form()
 
@@ -568,8 +594,8 @@ class EvaluationService:
         """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator.
 
         Precondition: ``data`` is a parsed configuration for the supplied tenant and target.
-        Postcondition: selected workflow nodes exist in the published target; a missing node
-        raises ``ValueError`` with its submitted title and ID.
+        Postcondition: the published target has no trigger entry and selected workflow
+        nodes exist; an unsupported entry or missing node raises ``ValueError``.
         """
         normalized_target_type = EvaluationTargetType(target_type)
         if not data.default_metrics and data.customized_metrics is None:
@@ -635,6 +661,7 @@ class EvaluationService:
             )
             if published_workflow is None:
                 raise ValueError("The evaluation target must have a published workflow.")
+            cls._require_evaluable_target_workflow(published_workflow)
             target_input_fields = (
                 target.input_fields_list
                 if isinstance(target, CustomizedSnippet) and target.input_fields_list
@@ -759,6 +786,19 @@ class EvaluationService:
         app_mode = AppMode.value_of(app.mode)
         if app_mode not in cls.ALLOWED_APP_MODES:
             raise ValueError("Only workflow apps support evaluation.")
+
+    @staticmethod
+    def _require_evaluable_target_workflow(workflow: Workflow) -> None:
+        """Reject trigger entries in the target's resolved workflow version.
+
+        Precondition: ``workflow`` is the version used by this evaluation operation.
+        Postcondition: a trigger entry raises ``ValueError`` without side effects;
+        other entries, including a Start with zero input variables, remain valid.
+        """
+        if workflow.has_trigger_node():
+            raise ValueError(
+                "Trigger-started workflows cannot be evaluated. Publish a workflow with a User Input start node."
+            )
 
     @staticmethod
     def _validate_evaluation_model(*, tenant_id: str, provider: str, model_name: str) -> None:
@@ -964,7 +1004,13 @@ class EvaluationService:
         target_type: str,
         target_id: str,
     ) -> tuple[str | None, Workflow | None, list[Mapping[str, Any]]]:
-        """Resolve the target's immutable workflow and dataset input schema."""
+        """Resolve the target's immutable workflow and dataset input schema.
+
+        Precondition: the target is tenant-scoped; App and Snippet targets have
+        a published workflow for successful admission.
+        Postcondition: the published version and its input fields (or the knowledge
+        base query field) are returned, or a trigger entry is rejected before a run exists.
+        """
         normalized_target_type = EvaluationTargetType(target_type)
         if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
             return None, None, [{"variable": "query", "type": "string"}]
@@ -993,6 +1039,7 @@ class EvaluationService:
         workflow = cls._resolve_published_workflow(target, normalized_target_type.value, session)
         if workflow is None:
             raise ValueError("The evaluation target must have a published workflow.")
+        cls._require_evaluable_target_workflow(workflow)
         if isinstance(target, CustomizedSnippet) and target.input_fields_list:
             input_fields = target.input_fields_list
         else:
@@ -2491,6 +2538,45 @@ class EvaluationService:
                     continue
         return EvaluationCategory.LLM
 
+    @staticmethod
+    def run_app_for_evaluation(
+        *,
+        app: App,
+        action: Callable[[], Mapping[str, object]],
+        cancellation_check: Callable[[], None] | None,
+    ) -> Mapping[str, object]:
+        """Run one evaluation workflow under normal app billing and concurrency guards.
+
+        Precondition: ``app`` belongs to the admitted evaluation tenant and
+        ``action`` starts exactly one blocking workflow execution.
+        Postcondition: each started execution consumes one workflow quota unit;
+        the app slot is released after success or failure. Cancellation and a
+        bounded slot wait propagate without becoming row-level evaluation errors.
+        """
+        rate_limit = RateLimit(app.id, AppGenerateService.get_max_active_requests(app))
+        request_id = RateLimit.gen_request_key()
+        acquired_request_id: str | None = None
+        quota_charge = unlimited()
+        try:
+            acquired_request_id = rate_limit.enter_with_wait(
+                request_id=request_id,
+                timeout_seconds=dify_config.EVALUATION_APP_CONCURRENCY_WAIT_TIMEOUT,
+                cancellation_check=cancellation_check,
+            )
+            if cancellation_check is not None:
+                cancellation_check()
+            quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app.tenant_id)
+            if cancellation_check is not None:
+                cancellation_check()
+            quota_charge.commit()
+            return action()
+        except Exception:
+            quota_charge.refund()
+            raise
+        finally:
+            if acquired_request_id is not None:
+                rate_limit.exit(acquired_request_id)
+
     @classmethod
     def execute_targets(
         cls,
@@ -2526,14 +2612,25 @@ class EvaluationService:
         provider exception details remain in server logs.
         """
         from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+        from threading import Event
 
         from flask import Flask, current_app
 
         flask_app: Flask = current_app._get_current_object()  # type: ignore
+        abort_event = Event()
+
+        def _check_worker_control() -> None:
+            if abort_event.is_set():
+                raise _EvaluationTargetBatchAbortedError()
 
         resolved_task_positions = list(task_positions) if task_positions is not None else list(range(len(input_list)))
         if len(resolved_task_positions) != len(input_list):
             raise ValueError("task_positions must align with input_list.")
+
+        # The caller's cancellation probe owns its SQLAlchemy session, so keep it
+        # on the coordinator thread. Waiting workers observe the thread-safe event.
+        if cancellation_check is not None:
+            cancellation_check()
 
         def _worker(
             task_position: int,
@@ -2550,6 +2647,7 @@ class EvaluationService:
                             target_workflow_version_id=target_workflow_version_id,
                             item=item,
                             task_id=cls.workflow_task_id(evaluation_run_id, "target", task_position),
+                            cancellation_check=_check_worker_control,
                         )
 
                         workflow_run_id = cls._extract_workflow_run_id(response)
@@ -2570,7 +2668,13 @@ class EvaluationService:
                         if not node_results:
                             return {}, workflow_run_id, "Target execution produced no successful node results."
                         return node_results, workflow_run_id, None
-                    except EvaluationWorkflowVersionNotFoundError:
+                    except (
+                        AppInvokeQuotaWaitTimeoutError,
+                        EvaluationRunControlError,
+                        EvaluationWorkflowVersionNotFoundError,
+                        QuotaExceededError,
+                        _EvaluationTargetBatchAbortedError,
+                    ):
                         raise
                     except Exception:
                         failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
@@ -2602,7 +2706,13 @@ class EvaluationService:
                     position = future_positions[future]
                     try:
                         node_result, workflow_run_id, error = future.result()
-                    except EvaluationWorkflowVersionNotFoundError:
+                    except (
+                        AppInvokeQuotaWaitTimeoutError,
+                        EvaluationRunControlError,
+                        EvaluationWorkflowVersionNotFoundError,
+                        QuotaExceededError,
+                        _EvaluationTargetBatchAbortedError,
+                    ):
                         raise
                     except Exception:
                         failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
@@ -2619,6 +2729,7 @@ class EvaluationService:
                     if progress_callback is not None:
                         progress_callback(completed, len(input_list))
         except Exception:
+            abort_event.set()
             for future in pending:
                 future.cancel()
             cls._stop_workflow_task_positions(evaluation_run_id, resolved_task_positions)
@@ -2639,6 +2750,7 @@ class EvaluationService:
         target_workflow_version_id: str,
         item: EvaluationDatasetInput,
         task_id: str | None = None,
+        cancellation_check: Callable[[], None] | None = None,
     ) -> Mapping[str, object]:
         """Execute a single evaluation target with one test-data item.
 
@@ -2651,6 +2763,11 @@ class EvaluationService:
         :returns: The blocking response mapping from the workflow engine.
         :raises ValueError: If the target itself is invalid or missing.
         :raises EvaluationWorkflowVersionNotFoundError: If the pinned published version was deleted.
+
+        Precondition: the target and pinned workflow version belong to the
+        supplied tenant. App targets receive a cooperative cancellation probe.
+        Postcondition: App target executions obey App concurrency and workflow
+        quota guards; every acquired App slot is released on success or failure.
         """
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         from core.app.entities.app_invoke_entities import InvokeFrom
@@ -2725,17 +2842,22 @@ class EvaluationService:
                     f"Pinned workflow version {target_workflow_version_id} no longer exists for app {target_id}."
                 )
 
-            response: Mapping[str, object] = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
-                execution_identity=build_workflow_execution_identity(service_account),
-                app_model=app,
-                workflow=workflow,
-                user=service_account,
-                args={"inputs": item.inputs},
-                invoke_from=InvokeFrom.SERVICE_API,
-                streaming=False,
-                call_depth=0,
-                task_id=task_id,
-                capture_agent_evaluation_trace=True,
+            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            response = cls.run_app_for_evaluation(
+                app=app,
+                cancellation_check=cancellation_check,
+                action=lambda: generator.generate(
+                    execution_identity=build_workflow_execution_identity(service_account),
+                    app_model=app,
+                    workflow=workflow,
+                    user=service_account,
+                    args={"inputs": item.inputs},
+                    invoke_from=InvokeFrom.SERVICE_API,
+                    streaming=False,
+                    call_depth=0,
+                    task_id=task_id,
+                    capture_agent_evaluation_trace=True,
+                ),
             )
             return response
         raise ValueError(f"Unsupported evaluation target type: {target_type}")
@@ -3175,7 +3297,8 @@ class EvaluationService:
             remain ``None`` and are never scored as a successful empty retrieval.
 
         Precondition: the account may run hit testing for this tenant's dataset.
-        Postcondition: each failed row has a public error and no provider
+        Postcondition: every retrieval is admitted through the tenant knowledge
+        request limiter; each failed row has a public error and no provider
         exception text is returned to the evaluation task.
         """
         from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -3213,6 +3336,7 @@ class EvaluationService:
                     account.set_tenant_id_with_session(tenant_id, session=thread_session)
 
                     query = str(item.inputs.get("query", ""))
+                    enforce_knowledge_rate_limit(tenant_id)
                     response = HitTestingService.retrieve(
                         session=thread_session,
                         dataset=dataset,
