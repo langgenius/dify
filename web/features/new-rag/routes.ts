@@ -109,3 +109,6 @@ export const newKnowledgeAddSourcePath = (
   const query = searchParams.toString()
   return `/datasets/new/${knowledgeSpaceId}/sources/new${query ? `?${query}` : ''}`
 }
+
+export const newKnowledgeTidyPath = (knowledgeSpaceId: string) =>
+  `/datasets/new/${knowledgeSpaceId}/tidy`

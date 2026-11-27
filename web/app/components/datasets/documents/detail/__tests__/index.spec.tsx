@@ -433,7 +433,12 @@ describe('DocumentDetail', () => {
       await user.click(screen.getByRole('switch'))
       await act(async () => vi.advanceTimersByTimeAsync(600))
 
-      expectDocumentListInvalidated(queryClient)
+      // The document list refreshes with the invalidation fallback, not from the page.
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: 'ds-1' } },
+        }),
+      })
       expect(mocks.detailRefetch).toHaveBeenCalledTimes(1)
       expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({
         queryKey: segmentListKey,

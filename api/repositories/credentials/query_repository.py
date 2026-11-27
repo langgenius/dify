@@ -5,10 +5,9 @@ from collections.abc import Sequence
 from copy import deepcopy
 from typing import override
 
-from sqlalchemy import and_, false, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
-from sqlalchemy.sql.elements import ColumnElement
 
 from libs.datetime_utils import naive_utc_now
 from models.credential_permission import CredentialPermission, CredentialType
@@ -41,9 +40,8 @@ def _workflow_tool_binding_graph(
     provider: str,
     action: str,
     credential_id: str,
-    lock: bool = False,
 ) -> str | None:
-    """Read an exact saved node binding; optionally lock it for a local SQL operation.
+    """Read an exact saved node binding.
 
     No credential values or external I/O are involved. Missing or changed node,
     provider, action, credential or workflow ownership returns None.
@@ -54,7 +52,7 @@ def _workflow_tool_binding_graph(
         Workflow.id == workflow_ref.workflow_id,
         Workflow.version == Workflow.VERSION_DRAFT,
     )
-    graph = session.scalar(statement.with_for_update() if lock else statement)
+    graph = session.scalar(statement)
     if graph is None:
         return None
     nodes = [node for node in json.loads(graph).get("nodes", []) if node.get("id") == node_id]
@@ -75,39 +73,6 @@ def _workflow_tool_binding_graph(
         return graph if str(ToolProviderID(stored_provider)) == provider else None
     except ValueError:
         return None
-
-
-def workflow_tool_credential_binding_condition(
-    session: Session, credential: WorkflowToolCredentialMetadata
-) -> ColumnElement[bool]:
-    """Recheck and lock only the saved binding inside the native read/write session.
-
-    Unrelated autosaves during external OAuth I/O are accepted. The caller closes
-    this short SQL transaction before decrypting or contacting a provider.
-    """
-    ref = credential.workflow_ref
-    graph = _workflow_tool_binding_graph(
-        session,
-        workflow_ref=ref,
-        node_id=credential.node_id,
-        provider=str(ToolProviderID(credential.provider)),
-        action=credential.action,
-        credential_id=credential.id,
-        lock=True,
-    )
-    if graph is None:
-        return false()
-    return (
-        select(Workflow.id)
-        .where(
-            Workflow.tenant_id == ref.tenant_id,
-            Workflow.app_id == ref.owner_id,
-            Workflow.id == ref.workflow_id,
-            Workflow.version == Workflow.VERSION_DRAFT,
-            Workflow.graph == graph,
-        )
-        .exists()
-    )
 
 
 def apply_credential_visibility_filter_for_actor(
@@ -339,15 +304,19 @@ class CredentialQueryRepository(CredentialQuery):
     def update_tool_credential_if_unchanged(
         self, *, record: ToolRuntimeCredential, encrypted_credentials: str, expires_at: int
     ) -> bool:
+        """Update the matching snapshot and confirm the new values before committing an unreported write."""
+        owner = (
+            BuiltinToolProvider.id == record.id,
+            BuiltinToolProvider.tenant_id == record.workspace_id,
+            BuiltinToolProvider.provider == record.provider,
+            BuiltinToolProvider.user_id == record.owner_id,
+            BuiltinToolProvider.credential_type == record.credential_type,
+        )
         with self._session_factory.begin() as session:
             result = session.execute(
                 update(BuiltinToolProvider)
                 .where(
-                    BuiltinToolProvider.id == record.id,
-                    BuiltinToolProvider.tenant_id == record.workspace_id,
-                    BuiltinToolProvider.provider == record.provider,
-                    BuiltinToolProvider.user_id == record.owner_id,
-                    BuiltinToolProvider.credential_type == record.credential_type,
+                    *owner,
                     BuiltinToolProvider.encrypted_credentials == record.encrypted_credentials,
                     BuiltinToolProvider.expires_at == record.expires_at,
                 )
@@ -358,9 +327,20 @@ class CredentialQueryRepository(CredentialQuery):
                 )
             )
             assert isinstance(result, CursorResult)
-            if result.rowcount not in (0, 1):
-                raise ValueError("Tool credential refresh affected-row count is uncertain.")
-            return result.rowcount == 1
+            rowcount = result.rowcount
+            if rowcount in (0, 1):
+                return rowcount == 1
+            if rowcount == -1:
+                persisted = session.execute(
+                    select(BuiltinToolProvider.encrypted_credentials, BuiltinToolProvider.expires_at).where(*owner)
+                ).one_or_none()
+                if (
+                    persisted is not None
+                    and persisted.encrypted_credentials == encrypted_credentials
+                    and persisted.expires_at == expires_at
+                ):
+                    return True
+            raise ValueError("Tool credential refresh affected-row count is uncertain.")
 
     def get_tool(self, *, workspace_id: str, provider: str, credential_id: str | None) -> ToolCredentialSnapshot | None:
         """Load one credential, using the configured default when its ID is absent or empty."""

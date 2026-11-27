@@ -3,6 +3,7 @@
 Tests visibility filtering and complete domain reads against real SQLite rows.
 """
 
+import json
 from dataclasses import replace
 from datetime import datetime
 from uuid import uuid4
@@ -20,10 +21,13 @@ from models.oauth import DatasourceProvider
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.workflow import Workflow
 from repositories.credentials.query_repository import (
     CredentialQueryRepository,
     apply_credential_visibility_filter_for_actor,
 )
+from services.credentials.query import ToolCredentialMetadata, WorkflowToolCredentialMetadata
+from services.workflow_ref_service import WorkflowRef
 
 
 @pytest.fixture
@@ -600,6 +604,84 @@ def test_builder_actual_model_credential_id_cannot_borrow_visible_alternate(
     )
 
 
+def test_builder_tool_lookup_does_not_substitute_for_a_private_default(
+    sqlite_session: Session, repository: CredentialQueryRepository, tenant_id: str, user_id: str, other_user_id: str
+) -> None:
+    provider = "langgenius/search/search"
+    private = BuiltinToolProvider(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        provider=provider,
+        name="Private default",
+        visibility=PermissionEnum.ONLY_ME,
+        is_default=True,
+    )
+    shared = BuiltinToolProvider(tenant_id=tenant_id, user_id=user_id, provider="search", name="Shared")
+    sqlite_session.add_all([private, shared])
+    sqlite_session.commit()
+
+    lookup = {"workspace_id": tenant_id, "provider": provider, "legacy_provider": "search"}
+    assert repository.list_visible_tool_provider_ids(workspace_id=tenant_id, actor_id=None) == {"search"}
+    assert repository.list_visible_tool_provider_ids(workspace_id=tenant_id, actor_id=user_id) == {provider, "search"}
+    assert repository.resolve_tool_credential_metadata(**lookup, actor_id=other_user_id, credential_id=None) is None
+    assert repository.resolve_tool_credential_metadata(
+        **lookup, actor_id=user_id, credential_id=None
+    ) == ToolCredentialMetadata(id=private.id, provider=provider)
+    assert repository.resolve_tool_credential_metadata(
+        **lookup, actor_id=other_user_id, credential_id=shared.id
+    ) == ToolCredentialMetadata(id=shared.id, provider="search")
+
+
+def test_builder_tool_delegation_tracks_the_exact_saved_node(
+    sqlite_session: Session, repository: CredentialQueryRepository, tenant_id: str, user_id: str
+) -> None:
+    provider = "langgenius/search/search"
+    credential = BuiltinToolProvider(
+        tenant_id=tenant_id, user_id=user_id, provider="search", name="Private", visibility=PermissionEnum.ONLY_ME
+    )
+    node = {
+        "id": "search-node",
+        "data": {
+            "type": "tool",
+            "provider_type": "plugin",
+            "provider_id": provider,
+            "tool_name": "search",
+            "credential_id": credential.id,
+        },
+    }
+    draft = Workflow.new(
+        tenant_id=tenant_id,
+        app_id=str(uuid4()),
+        type="workflow",
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({"nodes": [node], "edges": []}),
+        features="{}",
+        created_by=user_id,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    sqlite_session.add_all([credential, draft])
+    sqlite_session.commit()
+    ref = WorkflowRef(tenant_id=tenant_id, owner_id=draft.app_id, workflow_id=draft.id)
+    binding = {"provider": provider, "node_id": "search-node", "action": "search", "credential_id": credential.id}
+
+    assert repository.resolve_workflow_tool_credential_metadata(
+        workflow_ref=ref, **binding
+    ) == WorkflowToolCredentialMetadata(credential.id, "search", ref, "search-node", "search")
+    assert (
+        repository.resolve_workflow_tool_credential_metadata(
+            workflow_ref=ref._replace(owner_id=str(uuid4())), **binding
+        )
+        is None
+    )
+
+    draft.graph = json.dumps({"nodes": [{**node, "data": {**node["data"], "tool_name": "lookup"}}], "edges": []})
+    sqlite_session.commit()
+
+    assert repository.resolve_workflow_tool_credential_metadata(workflow_ref=ref, **binding) is None
+
+
 @pytest.fixture
 def runtime_repository(sqlite_session_factory: sessionmaker[Session]) -> CredentialQueryRepository:
     with sqlite_session_factory.begin() as session:
@@ -666,6 +748,45 @@ def test_refresh_commits_for_a_detached_snapshot(
     assert record.encrypted_credentials == '{"token":"old"}'
     assert not runtime_repository.update_tool_credential_if_unchanged(
         record=record, encrypted_credentials="stale", expires_at=600
+    )
+
+
+def test_unknown_refresh_rowcount_commits_when_values_match(
+    runtime_repository: CredentialQueryRepository, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    )
+    assert record is not None
+    monkeypatch.setattr(sqlite_engine.dialect.execution_ctx_cls, "rowcount", -1)
+
+    assert runtime_repository.update_tool_credential_if_unchanged(
+        record=record, encrypted_credentials="new", expires_at=500
+    )
+    assert runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    ) == replace(record, encrypted_credentials="new", expires_at=500)
+
+
+def test_unknown_refresh_rowcount_rejects_stale_snapshot(
+    runtime_repository: CredentialQueryRepository, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    )
+    assert record is not None
+    assert record.encrypted_credentials is not None
+    monkeypatch.setattr(sqlite_engine.dialect.execution_ctx_cls, "rowcount", -1)
+
+    with pytest.raises(ValueError, match="affected-row count is uncertain"):
+        runtime_repository.update_tool_credential_if_unchanged(
+            record=replace(record, expires_at=2),
+            encrypted_credentials=record.encrypted_credentials,
+            expires_at=500,
+        )
+    assert (
+        runtime_repository.get_tool_credential(workspace_id="workspace", providers=("provider",), credential_id=None)
+        == record
     )
 
 

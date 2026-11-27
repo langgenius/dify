@@ -114,6 +114,13 @@ from .human_input_v2 import (
     IMSyncDirectoryEntryPayload,
     IMSyncIdentitySnapshot,
 )
+from .knowledge_agent import (
+    KnowledgeAgentClient,
+    KnowledgeAgentGrant,
+    KnowledgeAgentGrantSpace,
+    KnowledgeAgentRefreshToken,
+    KnowledgeAgentWorkspaceSetting,
+)
 from .knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSApiCredential,
@@ -380,6 +387,11 @@ __all__ = [
     "IconType",
     "InstalledApp",
     "InvitationCode",
+    "KnowledgeAgentClient",
+    "KnowledgeAgentGrant",
+    "KnowledgeAgentGrantSpace",
+    "KnowledgeAgentRefreshToken",
+    "KnowledgeAgentWorkspaceSetting",
     "KnowledgeFSApiCredential",
     "KnowledgeFSApiCredentialStatus",
     "KnowledgeFSAppSpaceJoinStatus",

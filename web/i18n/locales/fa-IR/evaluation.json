@@ -75,6 +75,7 @@
   "entry.checkFailed": "بررسی نسخهٔ منتشرشده ممکن نشد. لطفاً دوباره تلاش کنید.",
   "entry.duplicateNodeNames": "نسخهٔ منتشرشده گره‌هایی با نام یکسان دارد ({{names}}). می‌توانید ارزیابی را ادامه دهید، اما تغییر نام آن‌ها و انتشار نسخهٔ جدید، تشخیص نتایج را آسان‌تر می‌کند.",
   "entry.duplicateNodeNamesTitle": "نام‌های تکراری گره‌ها",
+  "entry.triggerUnsupported": "گردش‌کارهایی که با تریگر آغاز می‌شوند قابل ارزیابی نیستند. گردش‌کاری با گره شروع ورودی کاربر منتشر کنید.",
   "history.actions.cancel": "لغو اجرا",
   "history.actions.downloadFailed": "دانلود فایل ارزیابی ناموفق بود.",
   "history.actions.downloadResultFile": "دانلود نتیجه",

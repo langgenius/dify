@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useEffect, useId } from 'react'
-import { waitForAccessibleElement } from '@/app/components/base/coachmark/wait-for-accessible-element'
+import { waitForAccessibleElement } from './wait-for-accessible-element'
 
 export type FloatingChecklistProps = {
   className?: string

@@ -1,15 +1,13 @@
-"""Pure restricted admission controls: no runtime transport is exercised here."""
+"""Contracts for persisted execution records and fixtures."""
 
 import importlib
-from collections.abc import Mapping
 from types import ModuleType
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
 
-from core.dify_builder.models import Graph
-from services.dify_builder.application.execution_policy import HttpResponseFixtureV1, RestrictedAdmissionSnapshot
+from services.dify_builder.application.execution_policy import HttpResponseFixtureV1
 
 if TYPE_CHECKING:
     from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
@@ -30,32 +28,6 @@ def fixture(**overrides: object) -> HttpResponseFixtureV1:
             **overrides,
         }
     )
-
-
-def graph(http: bool = False) -> Graph:
-    nodes: list[Graph] = [
-        {"id": "start", "data": {"type": "start", "variables": []}},
-        {"id": "end", "data": {"type": "end", "outputs": []}},
-    ]
-    if http:
-        nodes.insert(
-            1,
-            {
-                "id": "http",
-                "data": {
-                    "type": "http-request",
-                    "method": "GET",
-                    "url": "https://example.invalid",
-                    "authorization": {"type": "no-auth"},
-                    "headers": "",
-                    "params": "",
-                },
-            },
-        )
-    return {
-        "nodes": nodes,
-        "edges": [{"source": a["id"], "target": b["id"]} for a, b in zip(nodes, nodes[1:], strict=False)],
-    }
 
 
 def test_fixture_strict_integer_and_immutable() -> None:
@@ -114,187 +86,10 @@ def test_canonical_digests_reject_nonfinite_and_surrogates_preserve_array_order(
             p.canonical_digest(raw)
 
 
-@pytest.mark.parametrize("field", ["has_environment_variables", "has_conversation_variables", "has_external_tracing"])
-def test_raw_metadata_denied(field: str) -> None:
-    p = policy()
-    snapshot = p.RestrictedAdmissionSnapshot(
-        app_mode="workflow",
-        workflow_kind="standard",
-        graph=graph(),
-        input_schema={"variables": []},
-        features={},
-        has_environment_variables=False,
-        has_conversation_variables=False,
-        has_external_tracing=False,
-    ).model_copy(update={field: True})
-    with pytest.raises(p.BuilderExecutionPolicyError):
-        p.admit_raw_execution_metadata(snapshot)
-
-
 @pytest.mark.parametrize("values", [{"extra": []}, {"extra": {}}, {"extra": float("inf")}, {"extra": "\ud800"}])
 def test_all_submitted_values_must_be_scalars(values: dict[str, object]) -> None:
     with pytest.raises(policy().BuilderExecutionPolicyError):
         policy().scalar_inputs_digest(values)
-
-
-def snapshot(
-    graph_value: Mapping[str, object] | None = None, features: dict[str, object] | None = None
-) -> RestrictedAdmissionSnapshot:
-    p = policy()
-    return p.RestrictedAdmissionSnapshot(
-        app_mode="workflow",
-        workflow_kind="standard",
-        graph=dict(graph_value) if graph_value else graph(),
-        input_schema={"variables": []},
-        features=features or {},
-        has_environment_variables=False,
-        has_conversation_variables=False,
-        has_external_tracing=False,
-    )
-
-
-@pytest.mark.parametrize(
-    "mutation",
-    [
-        "unknown",
-        "latest",
-        "cycle",
-        "unreachable",
-        "branch",
-        "container",
-        "file_start",
-        "auth",
-        "header",
-        "body_file",
-        "environment_selector",
-        "file_default",
-    ],
-)
-def test_admission_rejects_unsupported_effect_shapes(mutation: str) -> None:
-    p = policy()
-    value = graph(http=True)
-    data = value["nodes"][1]["data"]
-    if mutation == "unknown":
-        data["type"] = "llm"
-    elif mutation == "latest":
-        data["version"] = "latest"
-    elif mutation == "cycle":
-        value["edges"].append({"source": "end", "target": "start"})
-    elif mutation == "unreachable":
-        value["nodes"].append({"id": "stray", "data": dict(data)})
-    elif mutation == "branch":
-        value["edges"].append({"source": "start", "target": "end"})
-    elif mutation == "container":
-        value["nodes"][1]["parentId"] = "container"
-    elif mutation == "file_start":
-        value["nodes"][0]["data"]["variables"] = [{"type": "file", "variable": "f", "label": "File", "required": False}]
-    elif mutation == "auth":
-        data["authorization"]["config"] = {"type": "bearer", "api_key": "private"}
-    elif mutation == "header":
-        data["headers"] = "Authorization:private"
-    elif mutation == "body_file":
-        data["body"] = {"type": "json", "data": [{"type": "file", "file": ["start", "f"]}]}
-    elif mutation == "environment_selector":
-        data["url"] = "{{#env.secret#}}"
-    else:
-        data["default_value"] = [{"value_type": "file", "value": "private"}]
-    with pytest.raises(p.BuilderExecutionPolicyError) as error:
-        p.admitted_node_bindings(snapshot(value))
-    assert "private" not in str(error.value)
-
-
-def test_native_start_end_identity_and_raw_digest_binding() -> None:
-    p = policy()
-    bindings = p.admitted_node_bindings(snapshot())
-    assert bindings[0].implementation == "graphon.nodes.start.start_node.StartNode"
-    assert bindings[1].implementation == "graphon.nodes.end.end_node.EndNode"
-    assert bindings[0].normalized_config_digest == p.canonical_digest(
-        {"type": "start", "variables": [], "version": "1"}
-    )
-
-
-@pytest.mark.parametrize(
-    "value", [10**400, -(10**400), 10**309, -(10**309)], ids=["huge", "negative-huge", "overflow", "negative-overflow"]
-)
-def test_http_default_large_integer_refused_before_native_validation(
-    monkeypatch: pytest.MonkeyPatch, value: int | float
-) -> None:
-    from graphon.nodes.http_request.node import HttpRequestNode
-
-    p = policy()
-    raw_graph = graph(http=True)
-    data = raw_graph["nodes"][1]["data"]
-    assert isinstance(data, dict)
-    data["default_value"] = [{"type": "number", "key": "status_code", "value": value}]
-    assert p.canonical_digest(raw_graph)
-
-    def forbidden(_data: object) -> NoReturn:
-        pytest.fail("oversized default reached native validation")
-
-    monkeypatch.setattr(HttpRequestNode, "validate_node_data", forbidden)
-    with pytest.raises(p.BuilderExecutionPolicyError) as error:
-        p.admitted_node_bindings(snapshot(raw_graph))
-    assert error.value.reason_code == "unsupported_http_defaults"
-    assert str(error.value) == "Builder execution policy refused: unsupported_http_defaults"
-
-
-@pytest.mark.parametrize(
-    "value", [599, 599.5, 10**308, -(10**308)], ids=["integer", "float", "large-finite", "negative-finite"]
-)
-def test_http_default_finite_number_preserves_raw_binding(value: int | float) -> None:
-    p = policy()
-    raw_graph = graph(http=True)
-    data = raw_graph["nodes"][1]["data"]
-    assert isinstance(data, dict)
-    data["default_value"] = [{"type": "number", "key": "status_code", "value": value}]
-    bindings = p.admitted_node_bindings(snapshot(raw_graph))
-    assert bindings[1].normalized_config_digest == p.canonical_digest({**data, "version": "1"})
-
-
-@pytest.mark.parametrize(
-    "features",
-    [
-        {
-            "file_upload": {
-                "enabled": False,
-                "image": {"enabled": False, "transfer_methods": ["local_file", "remote_url"]},
-            }
-        },
-        {"text_to_speech": {"enabled": False, "voice": "", "language": ""}, "retriever_resource": {"enabled": False}},
-        {"sensitive_word_avoidance": {"enabled": False, "type": "", "configs": []}},
-    ],
-)
-def test_known_native_disabled_defaults_pass(features: dict[str, object] | None) -> None:
-    policy().admit_raw_execution_metadata(snapshot(features=features))
-
-
-@pytest.mark.parametrize(
-    "features",
-    [
-        {"text_to_speech": {"enabled": False, "unreviewed": True}},
-        {"file_upload": {"enabled": False, "image": {"enabled": False, "unreviewed": True}}},
-        {"file_upload": {"enabled": False, "number_limits": True}},
-        {"text_to_speech": {"enabled": False, "voice": []}},
-    ],
-)
-def test_unknown_or_malformed_disabled_feature_forms_refuse(features: dict[str, object] | None) -> None:
-    with pytest.raises(policy().BuilderExecutionPolicyError, match="unsupported_features"):
-        policy().admit_raw_execution_metadata(snapshot(features=features))
-
-
-@pytest.mark.parametrize("field", ["node_type", "edge_source", "selector_source"])
-def test_malformed_graph_identifiers_are_sanitized_refusals(field: str) -> None:
-    value = graph()
-    if field == "node_type":
-        value["nodes"][0]["data"]["type"] = []
-    elif field == "edge_source":
-        value["edges"][0]["source"] = {}
-    else:
-        value["nodes"][1]["data"]["outputs"] = [
-            {"variable": "out", "value_type": "string", "value_selector": [[], "value"]}
-        ]
-    with pytest.raises(policy().BuilderExecutionPolicyError):
-        policy().admitted_node_bindings(snapshot(value))
 
 
 def _confirmed_summary(**changes: object) -> "ExecutionEvidenceSummary":
@@ -515,55 +310,3 @@ def test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_i
         }
         assert p.ExecutionEvidenceSummary.model_validate(restricted).sealed is True
         assert p.ExecutionEvidenceSummary.model_validate(confirmed).sealed is True
-
-
-def normal_workflow_features(*, citation: bool = True) -> dict[str, object]:
-    """Literal metadata produced by ordinary Workflow creation/save."""
-    return {
-        "retriever_resource": {"enabled": citation},
-        "file_upload": {},
-        "text_to_speech": {"enabled": False, "voice": "", "language": ""},
-        "sensitive_word_avoidance": {"enabled": False},
-    }
-
-
-@pytest.mark.parametrize("features", [{}, {"retriever_resource": {}}], ids=["absent", "empty"])
-def test_citation_display_absent_or_empty_metadata_compatibility(features: dict[str, object] | None) -> None:
-    value = snapshot(features=features)
-    policy().admit_raw_execution_metadata(value)
-    assert value.features == features
-
-
-@pytest.mark.parametrize(
-    "citation",
-    [
-        pytest.param(None, id="not-mapping"),
-        pytest.param({"enabled": 1}, id="integer-one"),
-        pytest.param({"enabled": 0}, id="integer-zero"),
-        pytest.param({"enabled": "true"}, id="string"),
-        pytest.param({"enabled": None}, id="null"),
-        pytest.param({"enabled": []}, id="container"),
-        pytest.param({"enabled": True, "unknown": "PRIVATE-METADATA"}, id="enabled-unknown-key"),
-        pytest.param({"enabled": False, "unknown": "PRIVATE-METADATA"}, id="disabled-unknown-key"),
-        pytest.param({"enabled": True, "config": {}}, id="extra-config"),
-    ],
-)
-def test_citation_display_metadata_rejects_non_boolean_or_unknown_shape(citation: object) -> None:
-    features = normal_workflow_features()
-    features["retriever_resource"] = citation
-    with pytest.raises(policy().BuilderExecutionPolicyError) as error:
-        policy().admit_raw_execution_metadata(snapshot(features=features))
-    assert error.value.reason_code == "unsupported_features"
-    assert "PRIVATE-METADATA" not in str(error.value)
-
-
-@pytest.mark.parametrize(
-    "feature", ["file_upload", "text_to_speech", "speech_to_text", "sensitive_word_avoidance", "external_data_tools"]
-)
-def test_citation_display_flag_never_admits_enabled_external_features(feature: str) -> None:
-    features = normal_workflow_features()
-    features[feature] = [{"endpoint": "PRIVATE-METADATA"}] if feature == "external_data_tools" else {"enabled": True}
-    with pytest.raises(policy().BuilderExecutionPolicyError) as error:
-        policy().admit_raw_execution_metadata(snapshot(features=features))
-    assert error.value.reason_code == "unsupported_features"
-    assert "PRIVATE-METADATA" not in str(error.value)

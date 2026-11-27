@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Nenhum documento corresponde a esta pesquisa.",
   "parentChildChunkCount": "{{parentCount}} principais / {{childCount}} secundários",
   "partialDocumentResults": "Pode haver mais documentos correspondentes. Carregue mais para continuar a pesquisa.",
+  "reindexConfirmDescription": "A reindexação recria todos os segmentos e entradas de índice a partir do arquivo de origem. As edições feitas em segmentos na base de conhecimento, como adotar a afirmação de outro documento ao resolver um conflito, serão substituídas pelo conteúdo do arquivo de origem. A busca continua usando o índice atual até a reindexação terminar.",
+  "reindexConfirmTitle": "Reindexar a partir do arquivo de origem?",
   "reindexDocument": "Reindexar",
   "retrievalCountValue": "{{value}} nos últimos 7 dias",
   "retryReindexDocument": "Reindexar novamente",

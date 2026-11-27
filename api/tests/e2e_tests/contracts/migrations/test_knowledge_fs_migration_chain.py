@@ -4,7 +4,12 @@ from pathlib import Path
 
 from alembic.script import ScriptDirectory
 
-from tests.helpers.builder_migration import BUILDER_MAIN_REVISION, BUILDER_REVISION
+from tests.helpers.builder_migration import (
+    BUILDER_MAIN_REVISION,
+    BUILDER_MERGE_REVISION,
+    BUILDER_REVISION,
+    KNOWLEDGE_AGENT_REVISION,
+)
 
 _VERSIONS = Path(__file__).resolve().parents[4] / "migrations/versions"
 _MAIN_HEAD = "d6b9e2f1a407"
@@ -34,7 +39,10 @@ def _scripts() -> ScriptDirectory:
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     scripts = _scripts()
-    assert scripts.get_heads() == [BUILDER_REVISION]
+    assert scripts.get_heads() == [BUILDER_MERGE_REVISION]
+    head = scripts.get_revision(BUILDER_MERGE_REVISION)
+    assert head is not None
+    assert head.down_revision == (BUILDER_REVISION, KNOWLEDGE_AGENT_REVISION)
     builder = scripts.get_revision(BUILDER_REVISION)
     assert builder is not None
     assert builder.down_revision == BUILDER_MAIN_REVISION

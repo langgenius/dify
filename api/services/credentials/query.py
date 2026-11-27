@@ -52,10 +52,9 @@ class ToolCredentialMetadata:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowToolCredentialMetadata(ToolCredentialMetadata):
-    """An explicit stored node binding, rechecked before credential reads and refresh.
+    """Metadata for an explicit credential selection in a saved Workflow draft.
 
-    The repository verifies the exact node, provider, action and credential.
-    Native reads and refreshes recheck this binding; defaults cannot be borrowed.
+    The repository checks the exact node, provider, action and credential.
     """
 
     workflow_ref: WorkflowRef

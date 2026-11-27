@@ -2,19 +2,24 @@
 
 import json
 import time
+from collections.abc import Mapping
 from copy import deepcopy
 from enum import StrEnum
 
 import pytest
+from jinja2 import TemplateError
+from jinja2.sandbox import SandboxedEnvironment
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor
 from core.workflow.generator.types import GraphDict, PlannerResultDict, WorkflowGenerateResultDict
+from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events.base import NodeRunResult
+from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.runtime import RuntimeState, VariablePool
-from services.dify_builder.template_execution import BoundedJinja2TemplateRenderer
 from services.workflow_generation.runner import WorkflowGenerator
 from tests.unit_tests.services.workflow_generation.test_runner import _ParallelBuilderModel
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -133,13 +138,23 @@ def _native_template(config: dict[str, object]) -> NodeRunResult:
         data=TemplateTransformNodeData.model_validate(data),
         init_params=params,
         runtime_state=RuntimeState(workflow_id="orders", variable_pool=pool, start_at=time.perf_counter()),
-        jinja2_template_renderer=BoundedJinja2TemplateRenderer(),
+        jinja2_template_renderer=CodeExecutorJinja2TemplateRenderer(),
     )
     return node._run()
 
 
 @pytest.mark.parametrize("action", list(CorrectionAction))
-def test_generated_template_correction_reaches_native_aliases(action: CorrectionAction) -> None:
+def test_generated_template_correction_reaches_native_aliases(
+    action: CorrectionAction, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def execute_template(language: CodeLanguage, code: str, inputs: Mapping[str, object]) -> dict[str, str]:
+        assert language is CodeLanguage.JINJA2
+        try:
+            return {"result": SandboxedEnvironment().from_string(code).render(inputs)}
+        except TemplateError as error:
+            raise CodeExecutionError(str(error)) from error
+
+    monkeypatch.setattr(CodeExecutor, "execute_workflow_code_template", execute_template)
     assert _native_template(_REJECTED).status == WorkflowNodeExecutionStatus.FAILED
     plan = deepcopy(_PLAN)
     plan["nodes"][2]["action"] = action.value

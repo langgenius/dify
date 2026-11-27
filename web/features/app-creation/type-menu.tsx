@@ -193,11 +193,9 @@ export function CreateAppTypeMenu({
         align="end"
         sideOffset={4}
         {...getStepByStepTourMenuContentProps({
-          disableMotion: menu.controlled,
           highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,
-          interactionMode: menu.controlled ? 'presentation' : 'interactive',
-          className: 'w-64 max-w-[calc(100vw-2rem)] p-0',
         })}
+        className="w-64 max-w-[calc(100vw-2rem)] p-0"
       >
         <AppTypes onSelectType={onSelectType} disabled={disabled || loading} />
         {(onCreateTemplate || onImportDSL) && <MenuSeparator className="m-0" />}

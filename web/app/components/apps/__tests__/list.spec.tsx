@@ -606,18 +606,14 @@ it('opens only the first real app action menu for the manage-app tour', async ()
   expect(
     within(menus[0]!).getByRole('menuitem', { name: 'app.editApp', hidden: true }),
   ).toBeInTheDocument()
-  expect(menus[0]).toHaveAttribute('aria-hidden', 'true')
 })
 
-it('opens the create walkthrough after resolving the guide group without activating its actions', async () => {
+it('opens the create walkthrough after resolving the guide group', async () => {
   await setup('', {}, { activeTaskId: 'studio', activeGuideIndex: 0 })
   const menu = await screen.findByRole('menu', { hidden: true })
-  expect(menu).toHaveAttribute('aria-hidden', 'true')
-  // This is a presentation-only tour surface; a direct event must not create an app either.
-  fireEvent.click(
+  expect(
     within(menu).getByRole('menuitem', { name: /app.newApp.startFromBlank/, hidden: true }),
-  )
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  ).toBeInTheDocument()
 })
 
 async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>, appName = 'Chat app') {
