@@ -104,8 +104,13 @@ class MarkdownExtractor(BaseExtractor):
         return content
 
     def remove_hyperlinks(self, content: str) -> str:
-        """Get a dictionary of a markdown file from its path."""
-        pattern = r"\[(.*?)\]\((.*?)\)"
+        """Replace inline hyperlinks with labels while preserving inline images.
+
+        Accepts Markdown text and returns text with hyperlink targets removed.
+        Image references remain intact for the independent image-removal option.
+        The input is not mutated and no I/O is performed.
+        """
+        pattern = r"(?<!!)\[(.*?)\]\((.*?)\)"
         content = re.sub(pattern, r"\1", content)
         return content
 
