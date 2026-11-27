@@ -382,12 +382,6 @@ const startDifyBuilderPromptAtom = atom(
   },
 )
 
-export const difyBuilderStartPromptAtom = atom(
-  null,
-  (_get, set, input: { text: string; model: SessionModel }) =>
-    set(startDifyBuilderPromptAtom, input),
-)
-
 export const difyBuilderSendDraftAtom = atom(
   null,
   async (
