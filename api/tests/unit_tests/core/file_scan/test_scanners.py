@@ -306,6 +306,7 @@ def test_metadefender_reports_pending_with_the_data_id_and_resumes_without_uploa
         (0, ScanStatus.CLEAN, None),
         (7, ScanStatus.CLEAN, None),
         (2, ScanStatus.INFECTED, None),
+        (4, ScanStatus.INFECTED, None),
         (12, ScanStatus.UNSCANNABLE, ScanProblem.ENCRYPTED),
         (15, ScanStatus.UNSCANNABLE, ScanProblem.ENCRYPTED),
         (23, ScanStatus.UNSCANNABLE, ScanProblem.UNSUPPORTED),
@@ -321,6 +322,26 @@ def test_metadefender_result_codes(
     verdict = scanner.scan(_target(), external_id="d1")
 
     assert (verdict.status, verdict.problem) == (status, problem)
+
+
+def test_metadefender_cleaned_file_is_infected_and_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    scanner, http = _metadefender(
+        monkeypatch,
+        _result(
+            4,
+            scan_all_result_a="Cleaned / Deleted",
+            scan_details={"A": {"threat_found": "EICAR"}, "B": {"threat_found": ""}},
+        ),
+    )
+
+    verdict = scanner.scan(_target(), external_id="d1")
+
+    assert verdict.status is ScanStatus.INFECTED
+    assert verdict.problem is None
+    assert verdict.threats == ("EICAR",)
+    assert verdict.external_id == "d1"
+    assert not verdict.retryable
+    assert [call[0] for call in http.calls] == ["GET"]
 
 
 def test_metadefender_upload_errors(monkeypatch: pytest.MonkeyPatch) -> None:

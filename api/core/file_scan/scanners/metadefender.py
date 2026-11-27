@@ -22,7 +22,9 @@ POLL_REQUEST_TIMEOUT_SECONDS = 30.0
 
 # ``scan_results.scan_all_result_i`` codes, from OPSWAT's "Description on scan result codes".
 _CLEAN = frozenset({0, 7})
-_INFECTED = frozenset({1, 2, 8, 26, 27, 28})
+# 4 ("Cleaned / Deleted") is also a threat: MetaDefender repaired or deleted its copy of the file,
+# but the uploaded bytes that Dify stores and indexes are unchanged.
+_INFECTED = frozenset({1, 2, 4, 8, 26, 27, 28})
 _ENCRYPTED = frozenset({12, 15})
 _UNSUPPORTED = frozenset({9, 13, 14, 16, 23})
 _IN_PROGRESS = frozenset({254, 255})
