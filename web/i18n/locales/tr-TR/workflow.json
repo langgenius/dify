@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Yeniden yapılandır",
   "common.workflowAsToolTip": "İş Akışı güncellemesinden sonra araç yeniden yapılandırması gereklidir.",
   "common.workflowAsToolUpdateNeeded": "Güncelleme gerekli",
+  "common.workflowAsToolVersionOutdated": "Araç güncellemesi bekliyor",
+  "common.workflowAsToolVersionOutdatedTip": "Yayımlanan iş akışı değişti. En son sürümü kullanmak için aracı yeniden yapılandırın.",
   "common.workflowProcess": "İş Akışı Süreci",
   "common.workflowProcessFailed": "İş Akışı Süreci başarısız oldu",
   "common.workflowProcessPaused": "İş Akışı Süreci duraklatıldı",

@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "फिर से कॉन्फ़िगर करें",
   "common.workflowAsToolTip": "कार्यप्रवाह अपडेट के बाद टूल पुनः कॉन्फ़िगरेशन आवश्यक है।",
   "common.workflowAsToolUpdateNeeded": "अपडेट आवश्यक",
+  "common.workflowAsToolVersionOutdated": "टूल अपडेट लंबित",
+  "common.workflowAsToolVersionOutdatedTip": "प्रकाशित वर्कफ़्लो बदल गया है। नवीनतम संस्करण का उपयोग करने के लिए टूल को फिर से कॉन्फ़िगर करें।",
   "common.workflowProcess": "कार्यप्रवाह प्रक्रिया",
   "common.workflowProcessFailed": "कार्यप्रवाह प्रक्रिया विफल रही",
   "common.workflowProcessPaused": "कार्यप्रवाह प्रक्रिया रुकी हुई है",

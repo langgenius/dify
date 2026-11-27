@@ -14,6 +14,7 @@ type WorkflowToolActionProps = {
   isLoading: boolean
   message?: string
   outdated: boolean
+  versionOutdated?: boolean
   published: boolean
   onConfigure: () => void
 }
@@ -23,6 +24,7 @@ const WorkflowToolAction = ({
   isLoading,
   message,
   outdated,
+  versionOutdated = false,
   published,
   onConfigure,
 }: WorkflowToolActionProps) => {
@@ -55,13 +57,16 @@ const WorkflowToolAction = ({
       </div>
     )
 
-  const configureLabel = outdated
+  const needsUpdate = outdated || versionOutdated
+  const configureLabel = needsUpdate
     ? t(($) => $['common.workflowAsToolReconfigure'], { ns: 'workflow' })
     : t(($) => $['common.configure'], { ns: 'workflow' })
   const manageInToolsLabel = t(($) => $['common.manageInTools'], { ns: 'workflow' })
   const stateLabel = outdated
     ? t(($) => $['common.workflowAsToolUpdateNeeded'], { ns: 'workflow' })
-    : t(($) => $['common.workflowAsToolReady'], { ns: 'workflow' })
+    : versionOutdated
+      ? t(($) => $['common.workflowAsToolVersionOutdated'], { ns: 'workflow' })
+      : t(($) => $['common.workflowAsToolReady'], { ns: 'workflow' })
 
   return (
     <div className={cn('flex w-full flex-col rounded-lg', disabled && 'opacity-30')}>
@@ -80,11 +85,13 @@ const WorkflowToolAction = ({
             >
               {workflowToolLabel}
             </span>
-            <WorkflowToolStateLabel label={stateLabel} outdated={outdated} />
+            <WorkflowToolStateLabel label={stateLabel} outdated={needsUpdate} />
           </div>
-          {outdated && (
+          {needsUpdate && (
             <p className="pe-4 pb-1 system-xs-regular text-text-warning">
-              {t(($) => $['common.workflowAsToolTip'], { ns: 'workflow' })}
+              {outdated
+                ? t(($) => $['common.workflowAsToolTip'], { ns: 'workflow' })
+                : t(($) => $['common.workflowAsToolVersionOutdatedTip'], { ns: 'workflow' })}
             </p>
           )}
           <div className="flex items-center gap-1 py-1">

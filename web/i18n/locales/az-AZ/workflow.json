@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Yenidən konfiqurasiya et",
   "common.workflowAsToolTip": "İş axını dəyişib. Yeniləmələri tətbiq etmək üçün yenidən konfiqurasiya edin.",
   "common.workflowAsToolUpdateNeeded": "Yeniləmə tələb olunur",
+  "common.workflowAsToolVersionOutdated": "Alət yeniləməsi gözlənilir",
+  "common.workflowAsToolVersionOutdatedTip": "Dərc edilmiş iş axını dəyişib. Ən son versiyadan istifadə etmək üçün aləti yenidən konfiqurasiya edin.",
   "common.workflowProcess": "İş axını prosesi",
   "common.workflowProcessFailed": "İş axını prosesi uğursuz oldu",
   "common.workflowProcessPaused": "İş axını prosesi dayandırıldı",

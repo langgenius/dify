@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "إعادة التهيئة",
   "common.workflowAsToolTip": "التكوين المطلوب للأداة بعد تحديث سير العمل.",
   "common.workflowAsToolUpdateNeeded": "التحديث مطلوب",
+  "common.workflowAsToolVersionOutdated": "تحديث الأداة قيد الانتظار",
+  "common.workflowAsToolVersionOutdatedTip": "تم تغيير سير العمل المنشور. أعد تهيئة الأداة لاستخدام أحدث إصدار.",
   "common.workflowProcess": "عملية سير العمل",
   "common.workflowProcessFailed": "فشلت عملية سير العمل",
   "common.workflowProcessPaused": "تم إيقاف عملية سير العمل مؤقتًا",

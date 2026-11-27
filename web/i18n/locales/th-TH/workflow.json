@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "กำหนดค่าใหม่",
   "common.workflowAsToolTip": "จําเป็นต้องมีการกําหนดค่าเครื่องมือใหม่หลังจากการอัปเดตเวิร์กโฟลว์",
   "common.workflowAsToolUpdateNeeded": "ต้องอัปเดต",
+  "common.workflowAsToolVersionOutdated": "รอการอัปเดตเครื่องมือ",
+  "common.workflowAsToolVersionOutdatedTip": "เวิร์กโฟลว์ที่เผยแพร่มีการเปลี่ยนแปลง โปรดกำหนดค่าเครื่องมือใหม่เพื่อใช้เวอร์ชันล่าสุด",
   "common.workflowProcess": "กระบวนการเวิร์กโฟลว์",
   "common.workflowProcessFailed": "กระบวนการเวิร์กโฟลว์ล้มเหลว",
   "common.workflowProcessPaused": "กระบวนการเวิร์กโฟลว์หยุดชั่วคราว",

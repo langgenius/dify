@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Перенастроить",
   "common.workflowAsToolTip": "После обновления рабочего процесса требуется перенастройка инструмента.",
   "common.workflowAsToolUpdateNeeded": "Требуется обновление",
+  "common.workflowAsToolVersionOutdated": "Ожидается обновление инструмента",
+  "common.workflowAsToolVersionOutdatedTip": "Опубликованный рабочий процесс изменился. Настройте инструмент заново, чтобы использовать последнюю версию.",
   "common.workflowProcess": "Процесс рабочего процесса",
   "common.workflowProcessFailed": "Процесс рабочего процесса завершился с ошибкой",
   "common.workflowProcessPaused": "Процесс рабочего процесса приостановлен",

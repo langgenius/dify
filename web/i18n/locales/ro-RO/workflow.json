@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Reconfigurează",
   "common.workflowAsToolTip": "Reconfigurarea instrumentului este necesară după actualizarea fluxului de lucru.",
   "common.workflowAsToolUpdateNeeded": "Actualizare necesară",
+  "common.workflowAsToolVersionOutdated": "Actualizare instrument în așteptare",
+  "common.workflowAsToolVersionOutdatedTip": "Fluxul de lucru publicat s-a modificat. Reconfigurează instrumentul pentru a folosi cea mai recentă versiune.",
   "common.workflowProcess": "Proces de flux de lucru",
   "common.workflowProcessFailed": "Procesul de flux de lucru a eșuat",
   "common.workflowProcessPaused": "Procesul de flux de lucru este întrerupt",

@@ -248,6 +248,7 @@ export function PublisherContent({
             workflowToolIsLoading: workflowTool.configuration.isLoading,
             workflowToolMessage: workflowTool.message,
             workflowToolOutdated: workflowTool.configuration.outdated,
+            workflowToolVersionOutdated: workflowTool.configuration.versionOutdated,
             workflowKindChangePending,
             onConfigureWorkflowTool: workflowTool.openDrawer,
             onPublishToMarketplace: marketplace.publish,

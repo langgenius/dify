@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Skonfiguruj ponownie",
   "common.workflowAsToolTip": "Wymagana rekonfiguracja narzędzia po aktualizacji przepływu pracy.",
   "common.workflowAsToolUpdateNeeded": "Wymagana aktualizacja",
+  "common.workflowAsToolVersionOutdated": "Oczekująca aktualizacja narzędzia",
+  "common.workflowAsToolVersionOutdatedTip": "Opublikowany przepływ pracy uległ zmianie. Skonfiguruj narzędzie ponownie, aby używać najnowszej wersji.",
   "common.workflowProcess": "Proces przepływu pracy",
   "common.workflowProcessFailed": "Proces przepływu pracy nie powiódł się",
   "common.workflowProcessPaused": "Proces przepływu pracy wstrzymany",

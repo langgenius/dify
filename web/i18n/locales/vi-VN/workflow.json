@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Cấu hình lại",
   "common.workflowAsToolTip": "Cần cấu hình lại công cụ sau khi cập nhật quy trình làm việc.",
   "common.workflowAsToolUpdateNeeded": "Cần cập nhật",
+  "common.workflowAsToolVersionOutdated": "Đang chờ cập nhật công cụ",
+  "common.workflowAsToolVersionOutdatedTip": "Quy trình đã xuất bản đã thay đổi. Hãy cấu hình lại công cụ để sử dụng phiên bản mới nhất.",
   "common.workflowProcess": "Quy trình làm việc",
   "common.workflowProcessFailed": "Quy trình làm việc thất bại",
   "common.workflowProcessPaused": "Quy trình làm việc đã tạm dừng",

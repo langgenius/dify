@@ -243,6 +243,8 @@
   "common.workflowAsToolReconfigure": "Opnieuw configureren",
   "common.workflowAsToolTip": "Tool reconfiguration is required after the workflow update.",
   "common.workflowAsToolUpdateNeeded": "Update vereist",
+  "common.workflowAsToolVersionOutdated": "Toolupdate in afwachting",
+  "common.workflowAsToolVersionOutdatedTip": "De gepubliceerde workflow is gewijzigd. Configureer de tool opnieuw om de nieuwste versie te gebruiken.",
   "common.workflowProcess": "Workflow Process",
   "common.workflowProcessFailed": "Workflowproces mislukt",
   "common.workflowProcessPaused": "Workflowproces gepauzeerd",

@@ -35,6 +35,7 @@ type PublisherActionsSectionProps = Pick<
   workflowToolIsLoading: boolean
   workflowToolMessage?: string
   workflowToolOutdated?: boolean
+  workflowToolVersionOutdated?: boolean
   onConfigureWorkflowTool: () => void
   onPublishToMarketplace?: () => void
   /** Asks to switch a published workflow's kind; the caller confirms it outside the popover. */
@@ -65,6 +66,7 @@ export function PublisherActionsSection({
   workflowToolIsLoading,
   workflowToolMessage,
   workflowToolOutdated = false,
+  workflowToolVersionOutdated = false,
   workflowKindChangePending = false,
   onConfigureWorkflowTool,
   onPublishToMarketplace,
@@ -227,6 +229,7 @@ export function PublisherActionsSection({
             isLoading={workflowToolIsLoading}
             message={workflowToolMessage}
             outdated={workflowToolOutdated}
+            versionOutdated={workflowToolVersionOutdated}
             published={toolPublished}
             onConfigure={onConfigureWorkflowTool}
           />
