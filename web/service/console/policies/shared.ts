@@ -58,11 +58,13 @@ export function invalidateHumanInputContactQueries(
  * Create dialogs show the key's one-time secret as soon as the create resolves, so
  * they must not wait for the list refetch; writing the key keeps the list current.
  */
-export function addCreatedKeyToLists<TKey extends { id: string }>(
+export async function addCreatedKeyToLists<TKey extends { id: string }>(
   client: QueryClient,
   listKey: QueryKey,
   created: TKey,
 ) {
+  // A list read that started before the create must not land over the new key.
+  if (client.isFetching({ queryKey: listKey })) await client.cancelQueries({ queryKey: listKey })
   client.setQueriesData<{ data: TKey[] }>({ queryKey: listKey }, (list) =>
     list && !list.data.some((key) => key.id === created.id)
       ? { ...list, data: [...list.data, created] }

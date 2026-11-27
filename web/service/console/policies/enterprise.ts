@@ -171,9 +171,7 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                 consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
                   input: { params: variables.params },
                 })
-              if (context.client.isFetching({ queryKey: listKey }))
-                await context.client.cancelQueries({ queryKey: listKey })
-              addCreatedKeyToLists(context.client, listKey, created)
+              return addCreatedKeyToLists(context.client, listKey, created)
             },
           },
         },

@@ -389,9 +389,7 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           // Writes the new key into its list, so the one-time secret shows at once.
           onSuccess: async (created, _variables, _onMutateResult, context) => {
             const listKey = consoleQuery.datasets.apiKeys.get.key()
-            if (context.client.isFetching({ queryKey: listKey }))
-              await context.client.cancelQueries({ queryKey: listKey })
-            addCreatedKeyToLists(context.client, listKey, created)
+            return addCreatedKeyToLists(context.client, listKey, created)
           },
         },
       },

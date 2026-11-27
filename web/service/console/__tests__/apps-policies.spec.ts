@@ -560,6 +560,28 @@ describe('policy writes and reads started before them', () => {
       written: { environment_deployment: { deployment: { current_version: renamed } } },
     },
     {
+      // The autosave opts out of the fallback, so only its own cancel protects its write.
+      name: 'an agent composer autosave writes the composer',
+      options: (query) => query.agent.byAgentId.composer.put.mutationOptions(),
+      key: (query) =>
+        query.agent.byAgentId.composer.get.queryKey({ input: { params: { agent_id: 'a-1' } } }),
+      cached: { draft: 'before' },
+      data: { draft: 'autosaved' },
+      variables: { params: { agent_id: 'a-1' }, body: { save_strategy: 'draft' } },
+      written: { draft: 'autosaved' },
+    },
+    {
+      // The shared helper cancels the list read before adding the created key.
+      name: 'an API key create adds the key to its list',
+      options: (query) => query.apps.byResourceId.apiKeys.post.mutationOptions(),
+      key: (query) =>
+        query.apps.byResourceId.apiKeys.get.queryKey({ input: { params: { resource_id: 'r-1' } } }),
+      cached: { data: [{ id: 'old' }] },
+      data: { id: 'new' },
+      variables: { params: { resource_id: 'r-1' } },
+      written: { data: [{ id: 'old' }, { id: 'new' }] },
+    },
+    {
       name: 'an agent save writes its detail',
       options: (query) => query.agent.byAgentId.put.mutationOptions(),
       key: (query) =>

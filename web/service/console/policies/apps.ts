@@ -798,9 +798,7 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               const listKey = consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                 input: { params: { resource_id: variables.params.resource_id } },
               })
-              if (context.client.isFetching({ queryKey: listKey }))
-                await context.client.cancelQueries({ queryKey: listKey })
-              addCreatedKeyToLists(context.client, listKey, created)
+              return addCreatedKeyToLists(context.client, listKey, created)
             },
           },
         },
