@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from libs.helper import to_timestamp
 from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigDraftType, AgentConfigSnapshot, AgentScope
-from repositories.agent_drafts import find_agent_snapshot
-from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
+from repositories.agent.agent_drafts import find_agent_snapshot
+from repositories.agent.agent_roster_queries import find_agent_draft, project_agent_draft_summary
 from services.agent.app_composer_store import (
     AgentComposerAgentMissingError,
     AgentComposerIdentity,

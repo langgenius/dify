@@ -36,10 +36,10 @@ from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent import knowledge_gateway as gateway
+from services.agent.agent_config_contracts import AgentConfigVersionKind
 from services.agent.config_service import AgentConfigTarget
 from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
-from services.agent_config_contracts import AgentConfigVersionKind
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.errors import KnowledgeFSWorkflowQueryImageReference
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageMetadata

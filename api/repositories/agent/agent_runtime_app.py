@@ -22,7 +22,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import agent_soul_has_model
 from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig, IconType
-from repositories.app.agent_debug_conversations import get_or_create_agent_debug_conversation
+from repositories.agent.agent_debug_conversations import get_or_create_agent_debug_conversation
 
 
 def create_hidden_backing_app(

@@ -10,7 +10,7 @@ from models import Account, Tenant
 from models.agent import Agent, AgentScope, AgentSource
 from models.enums import ConversationFromSource
 from models.model import App, AppMode
-from repositories.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
+from repositories.agent.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
 from services.agent.observability_contracts import AgentStatisticsQuery
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_conversation, make_message

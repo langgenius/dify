@@ -16,7 +16,7 @@ from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentWor
 from models.enums import AppStatus
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowNodeExecutionModel
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
 from services.agent.sandbox_contracts import (
     AgentSandboxBinding,

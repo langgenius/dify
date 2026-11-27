@@ -33,7 +33,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.app.agent_runtime_app import resolve_agent_runtime_app
+from repositories.agent.agent_runtime_app import resolve_agent_runtime_app
 from repositories.message_projection import snapshot_agent_thought
 from services.agent.observability_contracts import AgentLogQuery, AgentObservabilityNotFoundError, AgentStatisticsQuery
 from services.entities.message_entities import MessageAgentThoughtRecord

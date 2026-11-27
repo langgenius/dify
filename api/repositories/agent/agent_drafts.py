@@ -16,7 +16,7 @@ from models.agent import (
     AgentScope,
 )
 from models.agent_config_entities import AgentSoulConfig
-from repositories.agent_roster_queries import find_agent_draft
+from repositories.agent.agent_roster_queries import find_agent_draft
 from services.agent.build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
 
 

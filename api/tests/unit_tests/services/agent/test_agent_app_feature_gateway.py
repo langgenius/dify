@@ -17,8 +17,8 @@ from machinery.context import RequestContext
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig
-from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
+from services.agent.agent_app_contracts import AgentAppNotFoundError
+from services.agent.agent_app_feature_gateway import AgentAppFeatureValidator
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
