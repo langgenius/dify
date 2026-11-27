@@ -32,7 +32,8 @@ export class CompletionClient extends DifyClient {
     let shouldStream = stream
 
     if (user === undefined && 'user' in (inputOrRequest as CompletionRequest)) {
-      payload = inputOrRequest as CompletionRequest
+      const request = inputOrRequest as CompletionRequest
+      payload = { ...request, inputs: request.inputs ?? {} }
       shouldStream = payload.response_mode === 'streaming'
     } else {
       ensureNonEmptyString(user, 'user')
