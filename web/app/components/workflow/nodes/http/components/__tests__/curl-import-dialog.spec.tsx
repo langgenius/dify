@@ -77,6 +77,20 @@ describe('CurlImportDialog', () => {
     })
 
     it.each([
+      `curl https://example.com/items -d '{"name":"openai"}'`,
+      `curl --json '{"name":"openai"}' https://example.com/items`,
+      'curl -F "name=openai" https://example.com/items',
+    ])('should default to POST when %s sends a body without -X', (command) => {
+      expect(curlParser.parseCurl(command).node?.method).toBe('post')
+    })
+
+    it('should keep an explicit method when a body is also sent', () => {
+      expect(
+        curlParser.parseCurl('curl -X PUT -d "a=b" https://example.com/items').node?.method,
+      ).toBe('put')
+    })
+
+    it.each([
       ['curl -X', 'Missing HTTP method after -X or --request.'],
       ['curl --header', 'Missing header value after -H or --header.'],
       ['curl --data-raw', 'Missing data value after -d, --data, --data-raw, or --data-binary.'],

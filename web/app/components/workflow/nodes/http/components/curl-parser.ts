@@ -94,7 +94,7 @@ const applyDataArg = (
     type: BodyType.rawText,
     data: [{ type: BodyPayloadValueType.text, value: nextArg.value }],
   }
-  return { error: null, nextIndex: index + 1 }
+  return { error: null, nextIndex: index + 1, hasData: true }
 }
 
 const applyFormArg = (
@@ -119,7 +119,7 @@ const applyFormArg = (
   }
 
   node.body.data += `${node.body.data ? '\n' : ''}${key}:${value}`
-  return { error: null, nextIndex: index + 1 }
+  return { error: null, nextIndex: index + 1, hasData: true }
 }
 
 const applyJsonArg = (
@@ -131,7 +131,7 @@ const applyJsonArg = (
   if (nextArg.error || nextArg.value === null) return { error: nextArg.error, nextIndex: index }
 
   node.body = { type: BodyType.json, data: nextArg.value }
-  return { error: null, nextIndex: index + 1 }
+  return { error: null, nextIndex: index + 1, hasData: true }
 }
 
 const handleCurlArg = (
