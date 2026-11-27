@@ -9,6 +9,7 @@ from sqlalchemy import delete, select
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
@@ -19,6 +20,7 @@ from services.feature_service import FeatureService
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DatasetRef
+from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +83,7 @@ def _duplicate_document_indexing_task_with_tenant_queue(
 def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[str]):
     documents: list[Document] = []
     start_at = time.perf_counter()
+    has_error = False
 
     with session_factory.create_session() as session:
         try:
@@ -142,14 +145,16 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                 if segments:
                     index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
 
-                    # delete from vector index
-                    index_processor.clean(
-                        dataset,
-                        index_node_ids,
-                        with_keywords=True,
-                        delete_child_chunks=True,
-                        session=session,
-                    )
+                    # delete from vector index, together with the summaries of the replaced segments
+                    if index_node_ids:
+                        index_processor.clean(
+                            dataset,
+                            index_node_ids,
+                            with_keywords=True,
+                            delete_child_chunks=True,
+                            delete_summaries=True,
+                            session=session,
+                        )
 
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
@@ -170,9 +175,53 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
         except DocumentIsPausedError as ex:
             session.rollback()
             logger.info(click.style(str(ex), fg="yellow"))
+            has_error = True
         except Exception:
             session.rollback()
             logger.exception("duplicate_document_indexing_task failed, dataset_id: %s", dataset_id)
+            has_error = True
+
+    if has_error:
+        return
+
+    # Regenerate summaries for the re-indexed documents, matching document_indexing_task.
+    # Only generate for high_quality indexing technique and when summary_index_setting is enabled.
+    with session_factory.create_session() as session:
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        if not dataset:
+            logger.warning("Dataset %s not found after duplicate indexing", dataset_id)
+            return
+
+        if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
+            return
+        summary_index_setting = dataset.summary_index_setting
+        if not summary_index_setting or not summary_index_setting.get("enable"):
+            return
+
+        documents = list(
+            session.scalars(
+                select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+            ).all()
+        )
+        for document in documents:
+            if (
+                document.indexing_status == IndexingStatus.COMPLETED
+                and document.doc_form != IndexStructureType.QA_INDEX
+                and document.need_summary is True
+            ):
+                try:
+                    generate_summary_index_task.delay(dataset.id, document.id, None)
+                    logger.info(
+                        "Queued summary index generation task for document %s in dataset %s "
+                        "after duplicate indexing completed",
+                        document.id,
+                        dataset.id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to queue summary index generation task for document %s after duplicate indexing",
+                        document.id,
+                    )
 
 
 @shared_task(queue="dataset")
