@@ -275,17 +275,33 @@ class CouchbaseVector(BaseVector):
             """
         self._cluster.query(query, named_parameters={"value": value}).execute()
 
+    @staticmethod
+    def _build_document_ids_filter(document_ids: list[str]) -> Any:
+        """Build a pre-filter that keeps only documents whose `document_id` is in the given list.
+
+        The `metadata` sub-fields are indexed dynamically with the default `standard` analyzer,
+        which splits a hyphenated document UUID into several tokens, and a `term` query is not
+        analyzed at all — a `TermQuery` on the whole id would match nothing. A `match` query is
+        analyzed the same way as the indexed value, and `and` makes every token mandatory.
+        """
+        return search.DisjunctionQuery(
+            *[search.MatchQuery(id, field="metadata.document_id", match_operator="and") for id in document_ids]
+        )
+
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
         score_threshold = kwargs.get("score_threshold") or 0.0
+        document_ids_filter = kwargs.get("document_ids_filter")
 
+        prefilter = self._build_document_ids_filter(document_ids_filter) if document_ids_filter else None
         search_req = search.SearchRequest.create(
             VectorSearch.from_vector_query(
                 VectorQuery(
                     "embedding",
                     query_vector,
                     top_k,
+                    prefilter=prefilter,
                 )
             )
         )
@@ -314,8 +330,13 @@ class CouchbaseVector(BaseVector):
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
+        document_ids_filter = kwargs.get("document_ids_filter")
         try:
-            cbrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # pyrefly: ignore[bad-argument-count]
+            search_query: Any = search.QueryStringQuery("text:" + query)
+            if document_ids_filter:
+                ids_filter = self._build_document_ids_filter(document_ids_filter)
+                search_query = search.ConjunctionQuery(search_query, ids_filter)
+            cbrequest = search.SearchRequest.create(search_query)
             search_iter = self._scope.search(
                 self._collection_name + "_search", cbrequest, SearchOptions(limit=top_k, fields=["*"])
             )

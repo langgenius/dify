@@ -1,12 +1,14 @@
 import logging
 import subprocess
 import time
+import uuid
 from typing import override
 
 from dify_vdb_couchbase.couchbase_vector import CouchbaseConfig, CouchbaseVector
 
 from core.rag.datasource.vdb.vector_integration_test_support import (
     AbstractVectorTest,
+    get_example_text,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,6 +49,36 @@ class CouchbaseTest(AbstractVectorTest):
         time.sleep(5)
         hits_by_vector = self.vector.search_by_vector(query_vector=self.example_embedding)
         assert len(hits_by_vector) == 1
+
+        # the document id is a hyphenated UUID, which the default analyzer splits into tokens
+        filtered_hits = self.vector.search_by_vector(
+            query_vector=self.example_embedding, document_ids_filter=[self.example_doc_id]
+        )
+        assert len(filtered_hits) == 1
+        assert filtered_hits[0].metadata["doc_id"] == self.example_doc_id
+
+        filtered_hits = self.vector.search_by_vector(
+            query_vector=self.example_embedding, document_ids_filter=[str(uuid.uuid4())]
+        )
+        assert len(filtered_hits) == 0
+
+    @override
+    def search_by_full_text(self):
+        time.sleep(5)
+        hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
+        assert len(hits_by_full_text) == 1
+        assert hits_by_full_text[0].metadata["doc_id"] == self.example_doc_id
+
+        filtered_hits = self.vector.search_by_full_text(
+            query=get_example_text(), document_ids_filter=[self.example_doc_id]
+        )
+        assert len(filtered_hits) == 1
+        assert filtered_hits[0].metadata["doc_id"] == self.example_doc_id
+
+        filtered_hits = self.vector.search_by_full_text(
+            query=get_example_text(), document_ids_filter=[str(uuid.uuid4())]
+        )
+        assert len(filtered_hits) == 0
 
 
 def test_couchbase(setup_mock_redis):

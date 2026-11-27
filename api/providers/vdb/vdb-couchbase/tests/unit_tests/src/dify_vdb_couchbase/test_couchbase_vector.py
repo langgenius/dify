@@ -42,10 +42,25 @@ def _build_fake_couchbase_modules() -> dict[str, FakeModule]:
             self.kwargs = kwargs
 
     @dataclass(eq=False, repr=False)
+    class MatchQuery:
+        match: str
+        field: str
+        match_operator: str
+
+    class DisjunctionQuery:
+        def __init__(self, *queries: MatchQuery) -> None:
+            self.queries = queries
+
+    class ConjunctionQuery:
+        def __init__(self, *queries: Any) -> None:
+            self.queries = queries
+
+    @dataclass(eq=False, repr=False)
     class VectorQuery:
         field: str
         vector: list[float]
         top_k: int
+        prefilter: DisjunctionQuery | None = None
 
     class VectorSearch:
         @staticmethod
@@ -140,6 +155,9 @@ def _build_fake_couchbase_modules() -> dict[str, FakeModule]:
     couchbase_vector.VectorQuery = VectorQuery
     couchbase_vector.VectorSearch = VectorSearch
     couchbase_search.QueryStringQuery = QueryStringQuery
+    couchbase_search.MatchQuery = MatchQuery
+    couchbase_search.DisjunctionQuery = DisjunctionQuery
+    couchbase_search.ConjunctionQuery = ConjunctionQuery
     couchbase_search.SearchRequest = SearchRequest
 
     couchbase.search = couchbase_search
@@ -328,6 +346,37 @@ def test_search_methods_and_format_metadata(couchbase_module: ModuleType) -> Non
         vector.search_by_full_text("hello", top_k=1)
 
     assert vector._format_metadata({"metadata.a": 1, "plain": 2}) == {"a": 1, "plain": 2}
+
+
+def test_search_applies_document_ids_filter(couchbase_module: ModuleType) -> None:
+    vector = couchbase_module.CouchbaseVector("collection_1", _config(couchbase_module))
+    allowed_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    other_id = "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0"
+
+    vector.search_by_vector([0.1], top_k=3, document_ids_filter=[allowed_id, other_id])
+    vector_query = vector._scope.search.call_args.args[1]["payload"]["vector_query"]
+    prefilter = vector_query.prefilter
+    assert prefilter is not None
+    assert [query.field for query in prefilter.queries] == ["metadata.document_id", "metadata.document_id"]
+    assert [query.match for query in prefilter.queries] == [allowed_id, other_id]
+    # Couchbase indexes the dynamic metadata sub-fields with the standard analyzer, which splits a
+    # hyphenated UUID into tokens, so the filter must be an analyzed query instead of a term query
+    assert [query.match_operator for query in prefilter.queries] == ["and", "and"]
+
+    vector.search_by_vector([0.1], top_k=3)
+    vector_query = vector._scope.search.call_args.args[1]["payload"]["vector_query"]
+    assert vector_query.prefilter is None
+
+    vector.search_by_full_text("hello", top_k=2, document_ids_filter=[allowed_id])
+    conjunction = vector._scope.search.call_args.args[1]["payload"]
+    assert isinstance(conjunction, couchbase_module.search.ConjunctionQuery)
+    text_query, ids_query = conjunction.queries
+    assert text_query.query == "text:hello"
+    assert [query.match for query in ids_query.queries] == [allowed_id]
+    assert [query.match_operator for query in ids_query.queries] == ["and"]
+
+    vector.search_by_full_text("hello", top_k=2)
+    assert vector._scope.search.call_args.args[1]["payload"].query == "text:hello"
 
 
 def test_delete_collection_and_factory(couchbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
