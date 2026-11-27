@@ -10,6 +10,7 @@ from redis import RedisError
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input_v2.shared import AccountId, TenantId
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole as _workspace_member_query_service_TenantAccountRole
 from extensions.ext_redis import RedisClientWrapper
@@ -17,9 +18,11 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.account import TenantAccountRole as _member_service_TenantAccountRole
 from models.dataset import Dataset
-from models.human_input_v2 import HumanInputContactIdentity
+from models.human_input_v2 import HumanInputContactIdentity, HumanInputPlatformContactWorkspaceEntry
 from models.model import App, AppMode
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode, ContactType
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -173,6 +176,182 @@ class TestMemberServiceCases:
         account_domain.access.member_removed.assert_called_once()
 
     @staticmethod
+    @pytest.mark.parametrize("keep", [False, True])
+    def test_member_removal_applies_platform_contact_preference(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        members: tuple[str, str, str],
+        keep: bool,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        other_workspace = Tenant(name="Other workspace")
+        sqlite_session.add(other_workspace)
+        contacts = SQLAlchemyContactRepository(sqlite_session)
+        current = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(member_id))
+        assert current is not None
+        contact_id = current.id
+        sqlite_session.commit()
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        account_domain.access.rbac_enabled = True
+        account_domain.access.permission_keys.return_value = {"workspace.member.manage", "contact.manage"}
+        account_domain.access.owner_id.return_value = owner_id
+
+        account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=keep)
+
+        assert account_domain.members.get_role(workspace_id, member_id) is None
+        assert contacts.get_contacts_by_id(TenantId(other_workspace.id), contact_id) is None
+        contact = contacts.get_contacts_by_id(TenantId(workspace_id), contact_id)
+        if keep:
+            assert contact is not None
+            assert contact.id == contact_id
+            assert contact.type is ContactType.PLATFORM
+        else:
+            assert contact is None
+
+    @staticmethod
+    def test_removing_rejoined_member_clears_only_this_workspaces_platform_entry(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        members: tuple[str, str, str],
+        config_overrides: Callable[..., None],
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=True)
+
+        contacts = SQLAlchemyContactRepository(sqlite_session)
+        retained = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(member_id))
+        assert retained is not None
+        assert retained.type is ContactType.PLATFORM
+        other_workspace = Tenant(name="Other workspace")
+        sqlite_session.add(other_workspace)
+        contacts.create_platform_entry(TenantId(other_workspace.id), retained.id, AccountId(owner_id))
+        sqlite_session.commit()
+
+        account_domain.members.join_member(
+            workspace_id=workspace_id,
+            account_id=member_id,
+            email="member@example.com",
+            role=TenantAccountRole.NORMAL,
+            operator_account_id=owner_id,
+        )
+        account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=False)
+
+        assert account_domain.members.get_role(workspace_id, member_id) is None
+        assert contacts.get_contacts_by_id(TenantId(workspace_id), retained.id) is None
+        other_contact = contacts.get_contacts_by_id(TenantId(other_workspace.id), retained.id)
+        assert other_contact is not None
+        assert other_contact.type is ContactType.PLATFORM
+
+    @staticmethod
+    @pytest.mark.parametrize("keep", [False, True])
+    def test_failed_membership_deletion_rolls_back_platform_entry_change(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        members: tuple[str, str, str],
+        keep: bool,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        contacts = SQLAlchemyContactRepository(sqlite_session)
+        contact = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(member_id))
+        assert contact is not None
+        if not keep:
+            contacts.create_platform_entry(TenantId(workspace_id), contact.id, AccountId(owner_id))
+            sqlite_session.commit()
+
+        def fail_membership_delete(session: Session, *_: object) -> None:
+            if any(isinstance(obj, TenantAccountJoin) for obj in session.deleted):
+                raise RuntimeError("Membership deletion failed")
+
+        event.listen(sqlite_session_factory, "before_flush", fail_membership_delete)
+        try:
+            with pytest.raises(RuntimeError, match="Membership deletion failed"):
+                account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=keep)
+        finally:
+            event.remove(sqlite_session_factory, "before_flush", fail_membership_delete)
+
+        assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+        entry = sqlite_session.scalar(
+            select(HumanInputPlatformContactWorkspaceEntry.id).where(
+                HumanInputPlatformContactWorkspaceEntry.tenant_id == workspace_id,
+                HumanInputPlatformContactWorkspaceEntry.contact_id == contact.id,
+            )
+        )
+        assert (entry is not None) == (not keep)
+        account_domain.access.member_removed.assert_not_called()
+
+    @staticmethod
+    def test_retaining_a_missing_contact_fails_without_removing_member(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        members_without_contact: tuple[str, str, str],
+        config_overrides: Callable[..., None],
+    ) -> None:
+        workspace_id, owner_id, member_id = members_without_contact
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+
+        with pytest.raises(ContactError) as exc:
+            account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=True)
+
+        assert exc.value.code is ContactErrorCode.NOT_FOUND
+        assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+        assert (
+            sqlite_session.scalar(
+                select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
+            )
+            is None
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize(("keep", "existing_entry"), [(True, False), (False, True)])
+    def test_removal_without_central_im_management_skips_platform_contacts(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        members: tuple[str, str, str],
+        keep: bool,
+        existing_entry: bool,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        contacts = SQLAlchemyContactRepository(sqlite_session)
+        contact = contacts.get_contact_by_account_id(TenantId(workspace_id), AccountId(member_id))
+        assert contact is not None
+        if existing_entry:
+            contacts.create_platform_entry(TenantId(workspace_id), contact.id, AccountId(owner_id))
+            sqlite_session.commit()
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        account_domain.access.rbac_enabled = True
+        account_domain.access.owner_id.return_value = owner_id
+        account_domain.access.permission_keys.return_value = {"workspace.member.manage"}
+
+        account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=keep)
+
+        assert account_domain.members.get_role(workspace_id, member_id) is None
+        remaining = contacts.get_contacts_by_id(TenantId(workspace_id), contact.id)
+        assert (remaining is not None) == existing_entry
+
+    @staticmethod
+    def test_contact_retention_requires_contact_permission(
+        account_domain: AccountDomain,
+        members: tuple[str, str, str],
+        config_overrides: Callable[..., None],
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+        account_domain.access.rbac_enabled = True
+        account_domain.access.permission_keys.return_value = {"workspace.member.manage"}
+
+        with pytest.raises(NoPermissionError):
+            account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=True)
+
+        assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+        account_domain.delivery.revoke_pending.assert_not_called()
+
+    @staticmethod
     def test_removing_a_pending_member_retires_only_this_workspaces_links(
         account_domain: AccountDomain,
         sqlite_session: Session,
@@ -197,6 +376,7 @@ class TestMemberServiceCases:
         other_link = tokens.create(InvitationToken(member_id, email, other_id, "editor", True))
         links = _StoreInvitationLinks(tokens)
         service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=account_domain.access,
@@ -973,6 +1153,7 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(sync_joined_workspace_member_rbac_access_task, "delay", sync)
         member_service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=access,
@@ -1069,6 +1250,7 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=gateway,
@@ -1143,6 +1325,7 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=gateway,
@@ -1188,6 +1371,7 @@ class TestMemberServiceCases:
         sqlite_session.commit()
         gateway, replace = rbac_access
         service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=gateway,
@@ -1237,6 +1421,7 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
         service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=gateway,
@@ -1306,6 +1491,7 @@ class TestMemberServiceCases:
         )
         replace.on_apply = replace_roles
         service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=gateway,
@@ -1357,6 +1543,7 @@ class TestMemberServiceCases:
 
         monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
         service = WorkspaceMemberService(
+            begin_member_removal=account_domain.begin_member_removal,
             workspaces=account_domain.workspaces,
             accounts=account_domain.repository,
             access=gateway,
@@ -1543,13 +1730,13 @@ class TestWorkspaceMemberQueryServiceCases:
 
 
 @pytest.mark.parametrize("existing_member", [True, False])
-def test_membership_write_repairs_missing_contact_identity_without_replacing_it(
+def test_membership_write_does_not_provision_missing_contact_identity(
     account_domain: AccountDomain,
-    members: tuple[str, str, str],
+    members_without_contact: tuple[str, str, str],
     sqlite_session: Session,
     existing_member: bool,
 ) -> None:
-    workspace_id, _, member_id = members
+    workspace_id, _, member_id = members_without_contact
     if not existing_member:
         membership = sqlite_session.scalars(
             select(TenantAccountJoin).where(
@@ -1560,33 +1747,25 @@ def test_membership_write_repairs_missing_contact_identity_without_replacing_it(
         sqlite_session.delete(membership)
         sqlite_session.commit()
 
-    assert sqlite_session.scalar(select(HumanInputContactIdentity.id)) is None
-    account_domain.workspaces.upsert_member(
-        workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.NORMAL
-    )
-    contact_id = sqlite_session.scalars(
-        select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
-    ).one()
     account_domain.workspaces.upsert_member(
         workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.EDITOR
     )
+    assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.EDITOR
     assert (
-        sqlite_session.scalars(
+        sqlite_session.scalar(
             select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
-        ).one()
-        == contact_id
+        )
+        is None
     )
 
 
 @pytest.fixture
-def members(sqlite_session: Session) -> tuple[str, str, str]:
-    owner = Account(name="Owner", email="owner@example.com")
-    member = Account(name="Member", email="member@example.com")
+def members(account_domain: AccountDomain, sqlite_session: Session) -> tuple[str, str, str]:
+    owner = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
+    member = account_domain.accounts.create_account("member@example.com", "Member", "en-US")
     tenant = Tenant(name="Workspace")
     sqlite_session.add_all(
         [
-            owner,
-            member,
             tenant,
             TenantAccountJoin(
                 account_id=owner.id, tenant_id=tenant.id, role=_member_service_TenantAccountRole.OWNER, current=True
@@ -1596,3 +1775,14 @@ def members(sqlite_session: Session) -> tuple[str, str, str]:
     )
     sqlite_session.commit()
     return tenant.id, owner.id, member.id
+
+
+@pytest.fixture
+def members_without_contact(sqlite_session: Session, members: tuple[str, str, str]) -> tuple[str, str, str]:
+    _, _, member_id = members
+    identity = sqlite_session.scalars(
+        select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == member_id)
+    ).one()
+    sqlite_session.delete(identity)
+    sqlite_session.commit()
+    return members

@@ -6000,7 +6000,9 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
   path: {
     member_id: string
   }
-  query?: never
+  query?: {
+    keep_as_platform_contact?: boolean
+  }
   url: '/workspaces/current/members/{member_id}'
 }
 

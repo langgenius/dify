@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "실행 중",
   "imPlatform.sync.status.success": "성공",
   "imPlatform.title": "채널",
+  "memberRemoval.keepPlatform": "플랫폼 연락처로 유지",
+  "memberRemoval.keepPlatformDescription": "액세스 권한을 제거한 후에도 이 워크스페이스의 연락처에 남습니다.",
   "platformPicker.addForbidden": "플랫폼 연락처를 추가하려면 IM 중앙 관리가 활성화되어 있어야 하며 연락처 관리 권한이 필요합니다."
 }

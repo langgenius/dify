@@ -261,6 +261,8 @@
   "imPlatform.title": "Kanallar",
   "memberRemoval.accessImpact": "{{memberName}} bu çalışma alanına erişimini hemen kaybedecek.",
   "memberRemoval.contentImpact": "Oluşturduğu uygulamalar ve bilgiler burada kalır. Bu işlem geri alınamaz.",
+  "memberRemoval.keepPlatform": "Platform kişisi olarak koru",
+  "memberRemoval.keepPlatformDescription": "Erişimi kaldırıldıktan sonra bu çalışma alanının Kişiler listesinde kalır.",
   "memberRemoval.remove": "Kaldır",
   "memberRemoval.title": "{{memberName}} çalışma alanından kaldırılsın mı?",
   "memberRemoval.workspaceTitle": "{{memberName}}, {{workspaceName}} çalışma alanından kaldırılsın mı?",

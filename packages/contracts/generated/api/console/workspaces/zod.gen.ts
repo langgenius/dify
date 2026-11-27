@@ -7150,6 +7150,10 @@ export const zDeleteWorkspacesCurrentMembersByMemberIdPath = z.object({
   member_id: z.uuid(),
 })
 
+export const zDeleteWorkspacesCurrentMembersByMemberIdQuery = z.object({
+  keep_as_platform_contact: z.boolean().optional().default(false),
+})
+
 /**
  * Success
  */

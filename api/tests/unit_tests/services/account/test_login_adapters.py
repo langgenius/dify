@@ -327,22 +327,18 @@ def test_workspace_provisioning_persists_owner_workspace(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    _persist_account(sqlite_session)
-    gateway = account_domain.provisioning
+    owner = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
+    identity_query = select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == owner.id)
+    original_contact_id = sqlite_session.scalars(identity_query).one()
 
-    gateway.ensure_owner_workspace("account-1")
+    account_domain.provisioning.ensure_owner_workspace(owner.id)
 
     with sqlite_session_factory() as session:
-        membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == "account-1"))
+        membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == owner.id))
         assert membership is not None
         assert membership.role == TenantAccountRole.OWNER
         assert session.get(Tenant, membership.tenant_id) is not None
-        assert (
-            session.scalar(
-                select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == "account-1")
-            )
-            is not None
-        )
+        assert session.scalars(identity_query).one() == original_contact_id
 
 
 def test_workspace_provisioning_rejects_missing_account(

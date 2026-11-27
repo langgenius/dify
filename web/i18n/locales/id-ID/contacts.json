@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "Berjalan",
   "imPlatform.sync.status.success": "Berhasil",
   "imPlatform.title": "Saluran",
+  "memberRemoval.keepPlatform": "Pertahankan sebagai kontak platform",
+  "memberRemoval.keepPlatformDescription": "Anggota ini akan tetap ada di daftar kontak ruang kerja ini setelah aksesnya dicabut.",
   "platformPicker.addForbidden": "Untuk menambahkan kontak platform, pengelolaan pesan instan harus terpusat dan Anda harus memiliki izin untuk mengelola kontak."
 }

@@ -2415,6 +2415,8 @@ export default interface Resources {
     'imPlatform.title': 'Channels'
     'memberRemoval.accessImpact': '{{memberName}} will immediately lose access to this workspace.'
     'memberRemoval.contentImpact': 'Apps and knowledge they created stay here. This action cannot be undone.'
+    'memberRemoval.keepPlatform': 'Keep as platform contact'
+    'memberRemoval.keepPlatformDescription': "They'll stay in this workspace's Contacts after their access is removed."
     'memberRemoval.remove': 'Remove'
     'memberRemoval.title': 'Remove {{memberName}} from the workspace?'
     'memberRemoval.workspaceTitle': 'Remove {{memberName}} from {{workspaceName}}?'

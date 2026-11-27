@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "În curs",
   "imPlatform.sync.status.success": "Reușit",
   "imPlatform.title": "Canale",
+  "memberRemoval.keepPlatform": "Păstrează ca contact al platformei",
+  "memberRemoval.keepPlatformDescription": "Persoana va rămâne în lista de contacte a acestui spațiu de lucru după revocarea accesului.",
   "platformPicker.addForbidden": "Adăugarea contactelor de pe platformă necesită gestionarea centralizată a mesageriei instantanee și permisiunea de a gestiona contactele."
 }

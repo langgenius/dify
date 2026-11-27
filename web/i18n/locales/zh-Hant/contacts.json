@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "執行中",
   "imPlatform.sync.status.success": "成功",
   "imPlatform.title": "渠道",
+  "memberRemoval.keepPlatform": "保留為平台聯絡人",
+  "memberRemoval.keepPlatformDescription": "移除存取權限後，該成員仍會保留在此工作區的聯絡人目錄中。",
   "platformPicker.addForbidden": "新增平台聯絡人需要工作區已啟用 IM 集中管理，且你擁有聯絡人管理權限。"
 }

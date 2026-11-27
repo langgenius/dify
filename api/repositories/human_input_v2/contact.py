@@ -113,7 +113,9 @@ class ContactRepository(Protocol):
 
     def delete_external_contact(self, tenant_id: TenantId, external_contact: ExternalContact) -> None: ...
 
-    def provision_account_backed_contact(self, account_id: AccountId) -> ContactId: ...
+    def provision_account_backed_contact(self, account_id: AccountId) -> ContactId:
+        """Allocate the stable Contact ID in the Account creation transaction."""
+        ...
 
     def query_contacts_by_email(
         self,
@@ -154,6 +156,16 @@ class EnterpriseContactRepository(Protocol):
     ) -> None: ...
 
     def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId) -> None: ...
+
+    def retain_platform_entry_for_account(
+        self, tenant_id: TenantId, account_id: AccountId, added_by_account_id: AccountId
+    ) -> None:
+        """Retain an existing workspace Contact under its Account-backed identity."""
+        ...
+
+    def delete_platform_entry_for_account(self, tenant_id: TenantId, account_id: AccountId) -> None:
+        """Remove this tenant's Platform entry if present, preserving the Account's Contact identity."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)

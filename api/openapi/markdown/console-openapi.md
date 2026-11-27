@@ -16085,10 +16085,13 @@ performs no writes or provider I/O. Storage failures propagate normally.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/members/{member_id}
+**Remove a managed member and apply the requested Contact retention on success**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| keep_as_platform_contact | query | Keep the member as a Platform Contact after removal. Ignored when im_centrally_managed is false. | No | boolean |
 | member_id | path |  | Yes | string (uuid) |
 
 #### Responses

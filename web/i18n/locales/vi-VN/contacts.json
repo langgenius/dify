@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "Đang chạy",
   "imPlatform.sync.status.success": "Thành công",
   "imPlatform.title": "Kênh",
+  "memberRemoval.keepPlatform": "Giữ làm liên hệ nền tảng",
+  "memberRemoval.keepPlatformDescription": "Thành viên này vẫn sẽ có trong danh bạ của không gian làm việc này sau khi bị thu hồi quyền truy cập.",
   "platformPicker.addForbidden": "Để thêm liên hệ từ nền tảng, cần bật quản lý tin nhắn tức thời tập trung và có quyền quản lý liên hệ."
 }

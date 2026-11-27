@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from typing import override
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -36,8 +37,11 @@ from repositories.human_input_v2.contact import (
     Contact,
     ContactError,
     ContactErrorCode,
+    ContactIMBindingRepository,
     ContactQuery,
+    ContactRepository,
     ContactType,
+    EnterpriseContactRepository,
     ExternalContact,
     IMBinding,
     OrganizationCandidate,
@@ -60,16 +64,18 @@ def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-class SQLAlchemyContactRepository:
+class SQLAlchemyContactRepository(ContactRepository, EnterpriseContactRepository):
     """One concrete implementation of core and enterprise Contact ports."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    @override
     def count_contact(self, tenant_id: TenantId, query: ContactQuery = _DEFAULT_CONTACT_QUERY) -> int:
         current_contacts = self._current_contacts_query(tenant_id, query).subquery()
         return self._session.scalar(sa.select(sa.func.count()).select_from(current_contacts)) or 0
 
+    @override
     def list_contact(
         self,
         tenant_id: TenantId,
@@ -89,10 +95,12 @@ class SQLAlchemyContactRepository:
         ).mappings()
         return Page(tuple(self._contact_from_row(row) for row in rows), page, limit)
 
+    @override
     def get_contacts_by_id(self, tenant_id: TenantId, contact_id: ContactId) -> Contact | None:
         contacts = self._get_contacts_by_distinct_ids(tenant_id, (contact_id,))
         return contacts[0] if contacts else None
 
+    @override
     def get_contact_by_account_id(self, tenant_id: TenantId, account_id: AccountId) -> Contact | None:
         current_contacts = self._current_contacts_subquery(tenant_id)
         row = (
@@ -109,6 +117,7 @@ class SQLAlchemyContactRepository:
         )
         return self._contact_from_row(row) if row is not None else None
 
+    @override
     def get_contacts_by_account_ids(
         self, tenant_id: TenantId, account_ids: Sequence[AccountId]
     ) -> Mapping[AccountId, Contact]:
@@ -130,6 +139,7 @@ class SQLAlchemyContactRepository:
         ).mappings()
         return {AccountId(row["account_id"]): self._contact_from_row(row) for row in rows}
 
+    @override
     def get_contacts_by_ids(
         self,
         tenant_id: TenantId,
@@ -137,6 +147,7 @@ class SQLAlchemyContactRepository:
     ) -> Sequence[Contact]:
         return self._get_contacts_by_distinct_ids(tenant_id, tuple(dict.fromkeys(contact_ids)))
 
+    @override
     def available(
         self,
         tenant_id: TenantId,
@@ -146,6 +157,7 @@ class SQLAlchemyContactRepository:
         available_ids = {contact.id for contact in self._get_contacts_by_distinct_ids(tenant_id, distinct_ids)}
         return {contact_id: contact_id in available_ids for contact_id in distinct_ids}
 
+    @override
     def query_contacts_by_email(
         self,
         tenant_id: TenantId,
@@ -162,6 +174,7 @@ class SQLAlchemyContactRepository:
         ).mappings()
         return tuple(self._contact_from_row(row) for row in rows)
 
+    @override
     def provision_account_backed_contact(self, account_id: AccountId) -> ContactId:
         """Idempotently allocate the globally stable Contact ID for one Account."""
 
@@ -240,6 +253,7 @@ class SQLAlchemyContactRepository:
         )
         self._session.flush()
 
+    @override
     def save_external_contact(self, tenant_id: TenantId, external_contact: ExternalContact) -> Contact:
         """Create identity/profile together or update only the existing profile."""
 
@@ -292,6 +306,7 @@ class SQLAlchemyContactRepository:
             raise RuntimeError("External Contact write did not produce a current Contact")
         return stored
 
+    @override
     def delete_external_contact(self, tenant_id: TenantId, external_contact: ExternalContact) -> None:
         profile = self._session.scalar(
             sa.select(HumanInputExternalContactProfile).where(
@@ -312,6 +327,7 @@ class SQLAlchemyContactRepository:
         self._session.delete(identity)
         self._session.flush()
 
+    @override
     def list_organization_candidates(
         self,
         page: int,
@@ -360,10 +376,12 @@ class SQLAlchemyContactRepository:
         )
         return {ContactId(contact_id): avatar for contact_id, avatar in self._session.execute(statement).tuples()}
 
+    @override
     def count_organization_candidates(self, keyword: str = "") -> int:
         candidates = self._organization_candidates_query(keyword).subquery()
         return self._session.scalar(sa.select(sa.func.count()).select_from(candidates)) or 0
 
+    @override
     def create_platform_entry(
         self,
         tenant_id: TenantId,
@@ -422,6 +440,7 @@ class SQLAlchemyContactRepository:
         except IntegrityError as error:
             raise ContactError(ContactErrorCode.CONFLICT, "Platform Contact entry conflicted") from error
 
+    @override
     def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId) -> None:
         self._session.execute(
             sa.delete(HumanInputPlatformContactWorkspaceEntry).where(
@@ -430,6 +449,30 @@ class SQLAlchemyContactRepository:
             )
         )
         self._session.flush()
+
+    @override
+    def retain_platform_entry_for_account(
+        self, tenant_id: TenantId, account_id: AccountId, added_by_account_id: AccountId
+    ) -> None:
+        """Keep the member's current Contact in this workspace, raising if there is no Contact to retain."""
+        contact = self.get_contact_by_account_id(tenant_id, account_id)
+        if contact is None:
+            raise ContactError(ContactErrorCode.NOT_FOUND, "Workspace member has no Contact to retain")
+        self.create_platform_entry(tenant_id, contact.id, added_by_account_id)
+
+    @override
+    def delete_platform_entry_for_account(self, tenant_id: TenantId, account_id: AccountId) -> None:
+        """Remove the Account's Platform entry in this tenant, if present, regardless of Account status."""
+        contact_id = sa.select(HumanInputContactIdentity.id).where(
+            HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
+            HumanInputContactIdentity.account_id == account_id,
+        )
+        self._session.execute(
+            sa.delete(HumanInputPlatformContactWorkspaceEntry).where(
+                HumanInputPlatformContactWorkspaceEntry.tenant_id == tenant_id,
+                HumanInputPlatformContactWorkspaceEntry.contact_id == contact_id.scalar_subquery(),
+            )
+        )
 
     def _ensure_external_avatar_owned(self, tenant_id: TenantId, avatar_file_id: str | None) -> None:
         if avatar_file_id is None:
@@ -599,7 +642,7 @@ class SQLAlchemyContactRepository:
         )
 
 
-class SQLAlchemyContactIMBindingRepository:
+class SQLAlchemyContactIMBindingRepository(ContactIMBindingRepository):
     """Contact projection over one already-resolved current IM Channel."""
 
     # TODO(QuantumGhost): channel should not be None here.
@@ -607,6 +650,7 @@ class SQLAlchemyContactIMBindingRepository:
         self._session = session
         self._channel = channel
 
+    @override
     def get_im_bindings(
         self,
         tenant_id: TenantId,

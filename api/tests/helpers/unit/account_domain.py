@@ -3,10 +3,12 @@
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from unittest.mock import Mock, create_autospec
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services.workspace import member_removal_transaction
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.login_service import AccountSessionGateway, ConsoleAuthSecurityGateway
@@ -14,6 +16,7 @@ from services.account.service import AccountLifecyclePolicy, AccountService
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.workspace.gateways import WorkspaceProvisioningEffectsGateway
 from services.workspace.member_service import (
+    BeginMemberRemoval,
     WorkspaceInvitationDelivery,
     WorkspaceInvitationService,
     WorkspaceMemberAccessGateway,
@@ -35,9 +38,13 @@ class AccountDomain:
     delivery: Mock
     sessions: Mock
     security: Mock
+    begin_member_removal: BeginMemberRemoval
 
 
 def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomain:
+    # Register the same synchronous receivers as application startup.
+    from events import event_handlers  # noqa: F401
+
     repository = SQLAlchemyAccountRepository(session_factory)
     workspaces = WorkspaceRepository(session_factory)
     policy = create_autospec(AccountLifecyclePolicy, instance=True)
@@ -56,8 +63,13 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
     delivery.create.return_value = "invitation-token"
     delivery.list_pending.return_value = ()
     delivery.acquire.return_value = nullcontext()
+    begin_member_removal = partial(member_removal_transaction, session_factory)
     members = WorkspaceMemberService(
-        workspaces=workspaces, accounts=repository, access=access, invitation_links=delivery
+        begin_member_removal=begin_member_removal,
+        workspaces=workspaces,
+        accounts=repository,
+        access=access,
+        invitation_links=delivery,
     )
     provisioning = WorkspaceProvisioningService(
         owners=repository,
@@ -93,4 +105,5 @@ def build_account_domain(session_factory: sessionmaker[Session]) -> AccountDomai
         delivery,
         sessions,
         security,
+        begin_member_removal,
     )

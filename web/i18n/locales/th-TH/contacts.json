@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "กำลังทำงาน",
   "imPlatform.sync.status.success": "สำเร็จ",
   "imPlatform.title": "ช่องทาง",
+  "memberRemoval.keepPlatform": "เก็บไว้เป็นผู้ติดต่อของแพลตฟอร์ม",
+  "memberRemoval.keepPlatformDescription": "บุคคลนี้จะยังอยู่ในรายชื่อติดต่อของพื้นที่ทำงานนี้หลังจากถูกถอนสิทธิ์การเข้าถึง",
   "platformPicker.addForbidden": "การเพิ่มรายชื่อติดต่อจากแพลตฟอร์มต้องเปิดใช้การจัดการ IM แบบรวมศูนย์และมีสิทธิ์จัดการรายชื่อติดต่อ"
 }

@@ -76,6 +76,13 @@ class MemberRoleUpdatePayload(BaseModel):
     role: str
 
 
+class MemberRemovalQuery(BaseModel):
+    keep_as_platform_contact: bool = Field(
+        default=False,
+        description="Keep the member as a Platform Contact after removal. Ignored when im_centrally_managed is false.",
+    )
+
+
 class OwnerTransferEmailPayload(BaseModel):
     language: str | None = None
 
@@ -300,15 +307,21 @@ class MemberInviteEmailApi(Resource):
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>")
 class MemberCancelInviteApi(Resource):
-    """Cancel an invitation by member id."""
+    """Remove a member from the current workspace."""
 
+    @console_ns.doc(params=query_params_from_model(MemberRemovalQuery))
     @error_responses(ForbiddenError, MemberCannotOperateSelfError, MemberNotFoundError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MemberActionResponse.__name__])
     @console_account_admission()
     def delete(self, request_context: RequestContext, member_id: UUID):
+        """Remove a managed member and apply the requested Contact retention on success."""
+        query = MemberRemovalQuery.model_validate(request.args.to_dict(flat=True))
         try:
             application_services().workspaces.members.remove(
-                request_context.active_workspace_id, str(member_id), request_context.account_id
+                request_context.active_workspace_id,
+                str(member_id),
+                request_context.account_id,
+                keep_as_platform_contact=query.keep_as_platform_contact,
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
             _raise_member_mutation_error(error)

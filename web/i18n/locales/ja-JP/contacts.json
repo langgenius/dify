@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "実行中",
   "imPlatform.sync.status.success": "成功",
   "imPlatform.title": "チャネル",
+  "memberRemoval.keepPlatform": "プラットフォームの連絡先として保持",
+  "memberRemoval.keepPlatformDescription": "アクセス権を削除した後も、このワークスペースの連絡先に残ります。",
   "platformPicker.addForbidden": "プラットフォームの連絡先を追加するには、IM の一元管理と連絡先の管理権限が必要です。"
 }

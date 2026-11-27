@@ -1,22 +1,27 @@
 """Compose workspace use cases with the shared account and workspace repositories."""
 
+from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from events.tenant_event import workspace_member_will_be_removed
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
-from repositories.workspace.workspace_repository import WorkspaceRepository
+from repositories.workspace.workspace_repository import WorkspaceMemberRemovalRepository, WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.file_service import FileService
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService, PluginParameterSubscriptions
 from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
+from services.workspace.contracts import WorkspaceMemberRemovalRequest
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
     DeploymentWorkspaceFeatureGateway,
@@ -33,6 +38,7 @@ from services.workspace.member_service import (
     InvitedAccountRegistration,
     WorkspaceInvitationService,
     WorkspaceMemberQueryService,
+    WorkspaceMemberRemovalStore,
     WorkspaceMemberService,
     WorkspaceOwnerTransferService,
 )
@@ -55,8 +61,20 @@ class WorkspaceServices:
     plugin_parameters: PluginParameterService
 
 
+@contextmanager
+def member_removal_transaction(
+    session_factory: sessionmaker[Session],
+    request: WorkspaceMemberRemovalRequest,
+) -> Generator[WorkspaceMemberRemovalStore]:
+    """Run receivers before invitation revocation and commit their changes with member removal."""
+    with session_factory.begin() as session:
+        workspace_member_will_be_removed.send(request, session=session)
+        yield WorkspaceMemberRemovalRepository(session)
+
+
 def build_workspace_membership_services(
     *,
+    database_client: sessionmaker[Session],
     workspaces: WorkspaceRepository,
     accounts: SQLAlchemyAccountRepository,
     invitation_tokens: RedisInvitationTokenStore,
@@ -65,6 +83,7 @@ def build_workspace_membership_services(
     """Build the workspace prerequisites shared by account registration and invitations."""
     members = WorkspaceMemberService(
         workspaces=workspaces,
+        begin_member_removal=partial(member_removal_transaction, database_client),
         accounts=accounts,
         access=DeploymentWorkspaceMemberAccessGateway(),
         invitation_links=WorkspaceInvitationGateway(tokens=invitation_tokens, redis=redis),

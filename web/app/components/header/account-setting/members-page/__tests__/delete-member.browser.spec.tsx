@@ -34,12 +34,19 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-async function setup(ids: string[]) {
+async function setup(ids: string[], { centrallyManaged = false, canManageContacts = false } = {}) {
   let accounts = ids.map(member)
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
-    systemFeatures: { deployment_edition: 'COMMUNITY' },
-    workspacePermissionKeys: ['workspace.member.manage'],
+    features: { im_centrally_managed: centrallyManaged, members: { size: 0, limit: 0 } },
+    systemFeatures: {
+      deployment_edition: centrallyManaged ? 'ENTERPRISE' : 'COMMUNITY',
+      rbac_enabled: centrallyManaged,
+    },
+    workspacePermissionKeys: [
+      'workspace.member.manage',
+      ...(canManageContacts ? ['contact.manage'] : []),
+    ],
   })
   const features = queryClient.getQueryData(consoleQuery.features.get.queryKey())!
   const fake = installFakeApi({
@@ -80,17 +87,61 @@ async function setup(ids: string[]) {
   return { screen, open, fake }
 }
 
-it('returns focus after deleting a member with Contacts enabled, using the supported member API', async () => {
+it.each([false, true])(
+  'removes members normally when contact retention is unavailable (centrally managed %s)',
+  async (centrallyManaged) => {
+    flags.contactsEnabled.mockReturnValue(true)
+    const { screen, open, fake } = await setup(['Alpha', 'Beta'], { centrallyManaged })
+    await open('Alpha')
+    await expect.element(screen.getByRole('checkbox')).not.toBeInTheDocument()
+    await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
+    await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
+    expect(
+      fake.console.workspaces.current.members.byMemberId.delete,
+    ).toHaveBeenCalledExactlyOnceWith({
+      params: { member_id: memberId('Alpha') },
+      query: { keep_as_platform_contact: false },
+    })
+  },
+)
+
+it('keeps a member as a platform contact only after the option is selected', async () => {
   flags.contactsEnabled.mockReturnValue(true)
-  const { screen, open, fake } = await setup(['Alpha', 'Beta'])
+  const { screen, open, fake } = await setup(['Alpha', 'Beta'], {
+    centrallyManaged: true,
+    canManageContacts: true,
+  })
+  const keep = screen.getByRole('checkbox', { name: 'contacts.memberRemoval.keepPlatform' })
+  const confirm = screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true })
+  const remove = fake.console.workspaces.current.members.byMemberId.delete
+
   await open('Alpha')
-  await expect.element(screen.getByRole('checkbox')).not.toBeInTheDocument()
-  await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
+  await expect.element(keep).not.toBeChecked()
+  await screen.getByRole('button', { name: 'contacts.memberRemoval.keepPlatform' }).click()
+  const hint = screen.getByRole('dialog', { name: 'contacts.memberRemoval.keepPlatform' })
+  await expect.element(hint).toHaveTextContent('contacts.memberRemoval.keepPlatformDescription')
+  await userEvent.keyboard('{Escape}')
+  await expect.element(hint).not.toBeInTheDocument()
+  await keep.click()
+  await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-  await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
-  expect(fake.console.workspaces.current.members.byMemberId.delete).toHaveBeenCalledExactlyOnceWith(
-    { params: { member_id: memberId('Alpha') } },
-  )
+  expect(remove).not.toHaveBeenCalled()
+
+  await open('Alpha')
+  await expect.element(keep).not.toBeChecked()
+  await confirm.click()
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+
+  await open('Beta')
+  await keep.click()
+  await expect.element(keep).toBeChecked()
+  await confirm.click()
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+  expect(remove.mock.calls).toEqual([
+    [{ params: { member_id: memberId('Alpha') }, query: { keep_as_platform_contact: false } }],
+    [{ params: { member_id: memberId('Beta') }, query: { keep_as_platform_contact: true } }],
+  ])
 })
 
 it('removes the member before a slow list refresh completes', async () => {

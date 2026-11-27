@@ -15,8 +15,11 @@ import {
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { isDefinedError } from '@orpc/client'
 import {
@@ -26,7 +29,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { Suspense, useRef, useState } from 'react'
+import { Suspense, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
@@ -41,6 +44,7 @@ import {
 } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
+import { canManageContactsAtom } from '@/features/contacts/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
@@ -53,6 +57,7 @@ import { MemberDetailsContent } from './member-details-content'
 import { MemberRow } from './member-row'
 import { MembersHeaderCard } from './members-header-card'
 import { MembersPageSkeleton } from './members-page-skeleton'
+import { keepPlatformContactField, useMemberRemoval } from './use-member-removal'
 
 const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ block: 'nearest' })
 
@@ -98,6 +103,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const canManageContacts = useAtomValue(canManageContactsAtom)
   const { accounts, features } = useSuspenseQueries({
     queries: [membersQueryOptions(language), consoleQuery.features.get.queryOptions()],
     combine: ([members, featureResult]) => ({
@@ -106,6 +112,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
         plan: featureResult.data.billing.subscription.plan,
         members: getCountQuota(featureResult.data.members),
         is_allow_transfer_workspace: featureResult.data.is_allow_transfer_workspace,
+        imCentrallyManaged: featureResult.data.im_centrally_managed,
       },
     }),
   })
@@ -118,21 +125,11 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
     combine: (results) => results.flatMap(({ data }) => data.invitations),
   })
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const keepPlatformLabelId = useId()
   const [invitedEmails, setInvitedEmails] = useState<ReadonlySet<string>>(() => new Set())
   const workspaceNameInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const [removeDialog] = useState(() =>
-    createAlertDialogHandle<{
-      member: AccountWithRoleResponse
-      adjacentFocusTargets: HTMLElement[]
-      fallbackFocus: { current: HTMLElement | null }
-    }>(),
-  )
-  const removal = useMutation(
-    consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions({
-      meta: { errorToast: false },
-    }),
-  )
+  const removal = useMemberRemoval(listRef)
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
 
   const memberLimit =
@@ -331,7 +328,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                             'button[aria-haspopup="dialog"]',
                           ),
                         )
-                        removeDialog.openWithPayload({
+                        removal.dialog.openWithPayload({
                           member: account,
                           adjacentFocusTargets,
                           fallbackFocus: { current: null },
@@ -433,7 +430,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
             )}
           </AlertDialog>
           <AlertDialog
-            handle={removeDialog}
+            handle={removal.dialog}
             onOpenChange={(open, details) => {
               if (!open && removal.isPending && details.reason !== 'imperative-action')
                 details.cancel()
@@ -448,6 +445,11 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
               const showContactsRemovalDesign = Boolean(
                 payload && isContactsManagementEnabled() && payload.member.status !== 'pending',
               )
+              const showKeepPlatformContact =
+                showContactsRemovalDesign &&
+                payload?.member.status === 'active' &&
+                features.imCentrallyManaged &&
+                (!systemFeatures.rbac_enabled || canManageContacts)
               const memberName = payload?.member.name || payload?.member.email || ''
               return (
                 <AlertDialogContent
@@ -463,7 +465,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                     return false
                   }}
                 >
-                  <>
+                  <form className="contents" onSubmit={removal.getSubmitHandler(payload)}>
                     {showContactsRemovalDesign && payload ? (
                       <>
                         <AlertDialogHeader>
@@ -509,6 +511,32 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                             </p>
                             <p>{t(($) => $['memberRemoval.contentImpact'], { ns: 'contacts' })}</p>
                           </AlertDialogDescription>
+                          {showKeepPlatformContact && (
+                            <div className="flex items-center gap-1.5">
+                              <Field
+                                className="flex items-center gap-2"
+                                name={keepPlatformContactField}
+                                disabled={removal.isPending}
+                              >
+                                <Checkbox />
+                                <FieldLabel id={keepPlatformLabelId} className="system-sm-regular">
+                                  {t(($) => $['memberRemoval.keepPlatform'], { ns: 'contacts' })}
+                                </FieldLabel>
+                              </Field>
+                              <Infotip>
+                                <InfotipTrigger
+                                  aria-labelledby={keepPlatformLabelId}
+                                  size="sm"
+                                  type="button"
+                                />
+                                <InfotipContent aria-labelledby={keepPlatformLabelId}>
+                                  {t(($) => $['memberRemoval.keepPlatformDescription'], {
+                                    ns: 'contacts',
+                                  })}
+                                </InfotipContent>
+                              </Infotip>
+                            </div>
+                          )}
                           {removal.isError && (
                             <p role="alert" className="text-text-destructive">
                               {t(($) => $['api.actionFailed'], { ns: 'common' })}
@@ -544,27 +572,13 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                       <AlertDialogCancelButton disabled={removal.isPending}>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
-                      <AlertDialogConfirmButton
-                        loading={removal.isPending}
-                        onClick={() => {
-                          if (!payload || removal.isPending) return
-                          removal.mutate(
-                            { params: { member_id: payload.member.id } },
-                            {
-                              onSuccess: () => {
-                                payload.fallbackFocus.current = listRef.current
-                                removeDialog.close()
-                              },
-                            },
-                          )
-                        }}
-                      >
+                      <AlertDialogConfirmButton type="submit" loading={removal.isPending}>
                         {showContactsRemovalDesign
                           ? t(($) => $['memberRemoval.remove'], { ns: 'contacts' })
                           : t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
                     </AlertDialogFooter>
-                  </>
+                  </form>
                 </AlertDialogContent>
               )
             }}

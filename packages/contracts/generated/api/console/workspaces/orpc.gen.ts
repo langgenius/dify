@@ -66,6 +66,7 @@ import {
   zDeleteWorkspacesCurrentHumanInputV2ContactsByContactIdImOverridePath,
   zDeleteWorkspacesCurrentHumanInputV2ContactsByContactIdImOverrideResponse,
   zDeleteWorkspacesCurrentMembersByMemberIdPath,
+  zDeleteWorkspacesCurrentMembersByMemberIdQuery,
   zDeleteWorkspacesCurrentMembersByMemberIdResponse,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
@@ -2106,15 +2107,24 @@ export const updateRole = {
   put: put6,
 }
 
+/**
+ * Remove a managed member and apply the requested Contact retention on success
+ */
 export const delete8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteWorkspacesCurrentMembersByMemberId',
     path: '/workspaces/current/members/{member_id}',
+    summary: 'Remove a managed member and apply the requested Contact retention on success',
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteWorkspacesCurrentMembersByMemberIdPath }))
+  .input(
+    z.object({
+      params: zDeleteWorkspacesCurrentMembersByMemberIdPath,
+      query: zDeleteWorkspacesCurrentMembersByMemberIdQuery.optional(),
+    }),
+  )
   .output(zDeleteWorkspacesCurrentMembersByMemberIdResponse)
   .errors({
     cannot_operate_self: { status: 400, data: zCannotOperateSelfError },

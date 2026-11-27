@@ -42,6 +42,18 @@ class WorkspaceMemberWrite:
 
 
 @dataclass(frozen=True, slots=True)
+class WorkspaceMemberRemovalRequest:
+    """Facts passed to member-removal receivers. Permission keys are absent under legacy roles."""
+
+    workspace_id: str
+    account_id: str
+    actor_account_id: str
+    account_status: str
+    permission_keys: frozenset[str] | None
+    keep_as_platform_contact: bool
+
+
+@dataclass(frozen=True, slots=True)
 class WorkspaceMemberRemoval:
     account_id: str
     email: str

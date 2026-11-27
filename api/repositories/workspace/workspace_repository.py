@@ -7,7 +7,6 @@ from typing import override
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.shared import AccountId
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
 from models.account import (
@@ -24,7 +23,6 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App
 from repositories.account.repository import SQLAlchemyAccountRepository
-from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
@@ -49,7 +47,7 @@ from services.workspace.contracts import (
     WorkspaceRecord,
     WorkspaceSnapshot,
 )
-from services.workspace.member_service import WorkspaceMemberQuery
+from services.workspace.member_service import WorkspaceMemberQuery, WorkspaceMemberRemovalStore, WorkspaceMemberStore
 from services.workspace.service import WorkspaceQuery, WorkspaceStore
 
 
@@ -61,6 +59,7 @@ class WorkspaceRepository(
     ConsoleAuthWorkspaceQuery,
     DeviceWorkspaceQuery,
     WorkspaceMemberQuery,
+    WorkspaceMemberStore,
     DiscoveryWorkspaces,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -119,8 +118,6 @@ class WorkspaceRepository(
             session.add(tenant)
             if owner_id is not None:
                 session.add(TenantAccountJoin(tenant_id=tenant.id, account_id=owner_id, role=TenantAccountRole.OWNER))
-                if account is None:
-                    SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(owner_id))
             for category, setting in creation.plugin_upgrade_settings.items():
                 session.add(
                     TenantPluginAutoUpgradeStrategy(
@@ -333,6 +330,7 @@ class WorkspaceRepository(
                 raise WorkspaceNotFoundError()
             return replace(self._account_snapshot(session, tenant, account_id), current=True)
 
+    @override
     def get(self, workspace_id: str) -> WorkspaceSnapshot | None:
         with self._session_factory() as session:
             tenant = session.get(Tenant, workspace_id)
@@ -370,6 +368,7 @@ class WorkspaceRepository(
             ).first()
             return replace(self._snapshot(row[0], row[1].role), current=row[1].current) if row else None
 
+    @override
     def member_role(self, workspace_id: str, account_id: str | None) -> TenantAccountRole | None:
         if not account_id:
             return None
@@ -450,6 +449,7 @@ class WorkspaceRepository(
             rows = session.execute(select(Account.id, Account.email).where(Account.id.in_(account_ids), ~membership))
             return dict(rows.tuples().all())
 
+    @override
     def owner_id(self, workspace_id: str) -> str | None:
         with self._session_factory() as session:
             return session.scalar(
@@ -458,6 +458,7 @@ class WorkspaceRepository(
                 .limit(1)
             )
 
+    @override
     def upsert_member(
         self,
         *,
@@ -481,8 +482,6 @@ class WorkspaceRepository(
                 session.add(TenantAccountJoin(tenant_id=workspace_id, account_id=account_id, role=role))
             else:
                 membership.role = role
-            # Membership writes repair missing Contact identities for existing accounts.
-            SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account_id))
             if previous_role is not role:
                 from services.knowledge_fs.membership_changes import (
                     KnowledgeFSWorkspaceMembershipChange,
@@ -502,51 +501,7 @@ class WorkspaceRepository(
                 )
             return WorkspaceMemberWrite(workspace_id, account_id, role.value, account.status.value, created)
 
-    def remove_member(
-        self,
-        *,
-        workspace_id: str,
-        account_id: str,
-        owner_id: str,
-        actor_account_id: str,
-    ) -> WorkspaceMemberRemoval:
-        """Remove one membership and hand the member's resources to ``owner_id``; the account itself is kept."""
-        with self._session_factory.begin() as session:
-            account = session.get(Account, account_id)
-            membership = session.scalar(
-                select(TenantAccountJoin)
-                .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id)
-                .limit(1)
-            )
-            if account is None or membership is None:
-                raise MemberNotInTenantError("Member not in tenant.")
-            session.execute(
-                update(App)
-                .where(App.tenant_id == workspace_id, App.maintainer == account_id)
-                .values(maintainer=owner_id)
-            )
-            session.execute(
-                update(Dataset)
-                .where(Dataset.tenant_id == workspace_id, Dataset.maintainer == account_id)
-                .values(maintainer=owner_id)
-            )
-            from services.knowledge_fs.membership_changes import (
-                KnowledgeFSWorkspaceMembershipChange,
-                apply_workspace_membership_change,
-            )
-
-            apply_workspace_membership_change(
-                session=session,
-                tenant_id=workspace_id,
-                actor_account_id=actor_account_id,
-                account_ids=(account_id,),
-                change=KnowledgeFSWorkspaceMembershipChange.MEMBER_REMOVED,
-                removed_account_id=account_id,
-                replacement_owner_account_id=owner_id,
-            )
-            session.delete(membership)
-            return WorkspaceMemberRemoval(account_id, account.email)
-
+    @override
     def update_member_role(
         self,
         *,
@@ -635,3 +590,53 @@ class WorkspaceRepository(
                 "replace_webapp_logo": changes.replace_webapp_logo,
             }
             return replace(snapshot, custom_config=changes)
+
+
+class WorkspaceMemberRemovalRepository(WorkspaceMemberRemovalStore):
+    """Membership and resource writes bound to the member-removal transaction."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    @override
+    def remove_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        owner_id: str,
+        actor_account_id: str,
+    ) -> WorkspaceMemberRemoval:
+        """Transfer resources to the owner and delete the membership, or raise if it is missing."""
+        account = self._session.get(Account, account_id)
+        membership = self._session.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id)
+            .limit(1)
+        )
+        if account is None or membership is None:
+            raise MemberNotInTenantError("Member not in tenant.")
+        self._session.execute(
+            update(App).where(App.tenant_id == workspace_id, App.maintainer == account_id).values(maintainer=owner_id)
+        )
+        self._session.execute(
+            update(Dataset)
+            .where(Dataset.tenant_id == workspace_id, Dataset.maintainer == account_id)
+            .values(maintainer=owner_id)
+        )
+        from services.knowledge_fs.membership_changes import (
+            KnowledgeFSWorkspaceMembershipChange,
+            apply_workspace_membership_change,
+        )
+
+        apply_workspace_membership_change(
+            session=self._session,
+            tenant_id=workspace_id,
+            actor_account_id=actor_account_id,
+            account_ids=(account_id,),
+            change=KnowledgeFSWorkspaceMembershipChange.MEMBER_REMOVED,
+            removed_account_id=account_id,
+            replacement_owner_account_id=owner_id,
+        )
+        self._session.delete(membership)
+        return WorkspaceMemberRemoval(account_id, account.email)
