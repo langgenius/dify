@@ -104,7 +104,10 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
             other_target_id = other_target.id
     guest_context = replace(harness.context, account_id=None, end_user_id=guest_id)
     monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", True)
-    selected = harness.service.create_api_key(guest_context, harness.command())
+    # Chat history can be claimed, but only a Chatflow has personal tool credentials.
+    selected = (
+        harness.service.create_api_key(guest_context, harness.command()) if mode == AppMode.ADVANCED_CHAT else None
+    )
     repository = WebMigrationRepository(session_factory=sessions)
     source = repository.get_claim_source(
         app_code="migration-race", app_id=guest_context.app_id, end_user_id=guest_context.end_user_id
@@ -124,20 +127,20 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         futures = [executor.submit(claim, target) for target in targets]
         results = [future.result(timeout=20) for future in futures]
     counts = sorted((result.connections, result.conversations) for result in results if result is not None)
-    assert counts in ([(1, 1)], [(0, 0), (1, 1)])
+    transferred = (int(selected is not None), 1)
+    assert counts in ([transferred], [(0, 0), transferred])
     with sessions() as session:
-        winner = session.get(
-            EndUser,
-            targets[
-                next(index for index, result in enumerate(results) if result is not None and result.connections == 1)
-            ],
+        winner_index = next(
+            index for index, result in enumerate(results) if result is not None and result.conversations == 1
         )
+        winner = session.get(EndUser, targets[winner_index])
         assert winner is not None
-        connection = session.get(EndUserConnection, selected.id)
-        assert connection is not None
-        assert connection.account_id == winner.account_id
-        assert connection.end_user_id is None
-        assert connection.revision == 2
+        if selected is not None:
+            connection = session.get(EndUserConnection, selected.id)
+            assert connection is not None
+            assert connection.account_id == winner.account_id
+            assert connection.end_user_id is None
+            assert connection.revision == 2
         stored = session.get(Conversation, conversation_id)
         assert stored is not None
         assert stored.from_end_user_id == winner.id

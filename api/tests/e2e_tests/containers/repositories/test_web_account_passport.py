@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import CustomizeTokenStrategy
-from models.model import App, AppMode, EndUser, Site
+from models.model import App, AppMode, AppModelConfig, EndUser, Site
 from repositories.web_passport_repository import WebPassportRepository
 
 
@@ -24,7 +24,10 @@ def test_concurrent_first_visits_create_one_account_mapping(db_session_with_cont
         default_language="en-US",
         customize_token_strategy=CustomizeTokenStrategy.UUID,
     )
-    session.add(site)
+    config = AppModelConfig(app_id=app.id)
+    session.add_all([site, config])
+    session.flush()
+    app.app_model_config_id = config.id
     session.commit()
     factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
     barrier = Barrier(2)
