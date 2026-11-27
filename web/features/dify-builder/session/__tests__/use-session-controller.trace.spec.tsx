@@ -168,7 +168,7 @@ describe('useDifyBuilderSessionController trace capture', () => {
     expect(result.current.getTrace().entries.length).toBeGreaterThan(0)
 
     // Second session starts WITHOUT calling reset() in between — this mirrors
-    // the real entry path (difyBuilderStartPromptAtom -> startBuild/startEdit),
+    // the real entry path (difyBuilderSendDraftAtom -> startBuild/startEdit),
     // which does not call reset() when the prior session already ended.
     await act(async () => {
       await result.current.startBuild('app-1', 'second goal')

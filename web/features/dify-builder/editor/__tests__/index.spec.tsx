@@ -21,7 +21,7 @@ import {
   difyBuilderRecheckReadyAtom,
   difyBuilderRegisterChecklistErrorsAtom,
   difyBuilderRetryCanvasRefreshAtom,
-  difyBuilderStartPromptAtom,
+  difyBuilderSendDraftAtom,
   difyBuilderStartRunFixAtom,
 } from '../../state'
 
@@ -128,7 +128,7 @@ const Probe = () => {
     if (view) events.onSessionStateChanged?.(view)
     else events.reset()
   }
-  const startPrompt = useSetAtom(difyBuilderStartPromptAtom)
+  const startPrompt = useSetAtom(difyBuilderSendDraftAtom)
   const startRunFix = useSetAtom(difyBuilderStartRunFixAtom)
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   return (
@@ -156,7 +156,9 @@ const Probe = () => {
       </button>
       <button
         type="button"
-        onClick={() => void startPrompt({ text: 'Build a support bot', model: builderModel })}
+        onClick={() =>
+          void startPrompt(builderModel, { text: 'Build a support bot', attachments: [] })
+        }
       >
         Send prompt
       </button>

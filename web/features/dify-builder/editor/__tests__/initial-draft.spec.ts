@@ -5,7 +5,7 @@ import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createDifyBuilderRuntime } from '@/test/fixtures/dify-builder'
-import { difyBuilderRuntimeAtom, difyBuilderStartPromptAtom } from '../../state'
+import { difyBuilderRuntimeAtom, difyBuilderSendDraftAtom } from '../../state'
 import { isInitialChatflow, shouldStartBuildSession } from '../initial-draft'
 
 const initialCanvas = (): DifyBuilderCanvasSnapshot => ({
@@ -133,7 +133,10 @@ describe('Builder initial Chatflow routing', () => {
       )
       const model = { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} }
       expect(
-        await store.set(difyBuilderStartPromptAtom, { text: 'Build a support assistant', model }),
+        await store.set(difyBuilderSendDraftAtom, model, {
+          text: 'Build a support assistant',
+          attachments: [],
+        }),
       ).toBe(true)
       expect(configured ? startEdit : startBuild).toHaveBeenCalledExactlyOnceWith(
         'chatflow-1',
