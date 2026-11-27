@@ -24,7 +24,8 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
               mutationOptions: {
                 onSuccess: async (_data, { params }, _result, { client }) => {
                   const queryKey = customizedPipelineTemplatesKey(consoleQuery)
-                  await client.cancelQueries({ queryKey, exact: true })
+                  if (client.isFetching({ queryKey, exact: true }))
+                    await client.cancelQueries({ queryKey, exact: true })
                   client.setQueryData(
                     queryKey,
                     (current) =>

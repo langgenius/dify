@@ -18,7 +18,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
               const queryKey = consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryKey({
                 input: { params: { control_space_id: params.control_space_id } },
               })
-              await client.cancelQueries({ queryKey })
+              if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
               client.setQueryData(queryKey, space)
               // Stores the detail from the response and waits for every space list variant.
               return invalidateQueryKeys(client, [consoleQuery.knowledgeFs.spaces.get.key()])
@@ -72,7 +72,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.permissions.get.queryKey({
                     input: { params: { control_space_id: params.control_space_id } },
                   })
-                await client.cancelQueries({ queryKey })
+                if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
                 client.setQueryData(queryKey, permissions)
               },
             },
@@ -86,7 +86,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.queryKey({
                     input: { params: { control_space_id: params.control_space_id } },
                   })
-                await client.cancelQueries({ queryKey })
+                if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
                 client.setQueryData(queryKey, externalAccess)
               },
             },
@@ -130,7 +130,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryKey({
                     input: { params: { control_space_id: params.control_space_id } },
                   })
-                await client.cancelQueries({ queryKey })
+                if (client.isFetching({ queryKey })) await client.cancelQueries({ queryKey })
                 client.setQueryData(queryKey, response.settings)
               },
             },
@@ -164,7 +164,8 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                       params: { control_space_id: params.control_space_id, run_id: run.id },
                     },
                   })
-                  await client.cancelQueries({ queryKey, exact: true })
+                  if (client.isFetching({ queryKey, exact: true }))
+                    await client.cancelQueries({ queryKey, exact: true })
                   client.setQueryData(
                     queryKey,
                     // Polling may already hold a newer revision of the run.
@@ -213,7 +214,7 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   const get = consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get
                   const input = { params: { control_space_id: params.control_space_id } }
                   const scope = { queryKey: get.key({ input }) }
-                  await client.cancelQueries(scope)
+                  if (client.isFetching(scope)) await client.cancelQueries(scope)
                   client.setQueriesData<InfiniteData<KnowledgeFsGoldenQuestionListResponse>>(
                     { queryKey: get.key({ input, type: 'infinite' }) },
                     (list) =>
@@ -276,7 +277,8 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
                     input: { params: variables.params },
                   })
-                await context.client.cancelQueries({ queryKey, exact: true })
+                if (context.client.isFetching({ queryKey, exact: true }))
+                  await context.client.cancelQueries({ queryKey, exact: true })
                 context.client.setQueryData(queryKey, policy)
               },
             },
@@ -289,10 +291,11 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
               const infiniteLists = {
                 queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'infinite' }),
               }
-              await Promise.all([
-                context.client.cancelQueries(lists),
-                context.client.cancelQueries(infiniteLists),
-              ])
+              if (context.client.isFetching(lists) || context.client.isFetching(infiniteLists))
+                await Promise.all([
+                  context.client.cancelQueries(lists),
+                  context.client.cancelQueries(infiniteLists),
+                ])
               context.client.setQueriesData(
                 lists,
                 (list: KnowledgeFsSpaceListResponse | undefined) => {

@@ -21,7 +21,8 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               const queryKey = consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
                 input: { params: variables.params },
               })
-              await context.client.cancelQueries({ queryKey, exact: true })
+              if (context.client.isFetching({ queryKey, exact: true }))
+                await context.client.cancelQueries({ queryKey, exact: true })
               context.client.setQueryData(queryKey, policy)
             },
           },
@@ -32,10 +33,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           onSuccess: async (_data, variables, _result, context) => {
             const lists = { queryKey: consoleQuery.datasets.get.key({ type: 'query' }) }
             const infiniteLists = { queryKey: consoleQuery.datasets.get.key({ type: 'infinite' }) }
-            await Promise.all([
-              context.client.cancelQueries(lists),
-              context.client.cancelQueries(infiniteLists),
-            ])
+            if (context.client.isFetching(lists) || context.client.isFetching(infiniteLists))
+              await Promise.all([
+                context.client.cancelQueries(lists),
+                context.client.cancelQueries(infiniteLists),
+              ])
             context.client.setQueriesData(lists, (list: DatasetListResponse | undefined) => {
               if (!list?.data.some((item) => item.id === variables.params.dataset_id)) return list
               const total = Math.max(0, list.total - 1)
@@ -219,7 +221,7 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
                   input,
                 }),
               }
-              await context.client.cancelQueries(lists)
+              if (context.client.isFetching(lists)) await context.client.cancelQueries(lists)
               context.client.setQueriesData(
                 lists,
                 (list: DocumentWithSegmentsListResponse | undefined) => {
@@ -330,7 +332,8 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
                   const queryKey = consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
                     input: { params: { dataset_id: params.dataset_id } },
                   })
-                  await client.cancelQueries({ queryKey, exact: true })
+                  if (client.isFetching({ queryKey, exact: true }))
+                    await client.cancelQueries({ queryKey, exact: true })
                   client.setQueryData(
                     queryKey,
                     (data) =>
@@ -362,7 +365,8 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               const queryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryKey({
                 input: {},
               })
-              await client.cancelQueries({ queryKey, exact: true })
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
               client.setQueryData(
                 queryKey,
                 (previous) =>
@@ -385,7 +389,8 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           // Writes the new key into its list, so the one-time secret shows at once.
           onSuccess: async (created, _variables, _onMutateResult, context) => {
             const listKey = consoleQuery.datasets.apiKeys.get.key()
-            await context.client.cancelQueries({ queryKey: listKey })
+            if (context.client.isFetching({ queryKey: listKey }))
+              await context.client.cancelQueries({ queryKey: listKey })
             addCreatedKeyToLists(context.client, listKey, created)
           },
         },
