@@ -843,5 +843,22 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class TestCronExpressionWhitespace(unittest.TestCase):
+    """Surrounding whitespace must not change how a cron expression is validated."""
+
+    def setUp(self):
+        self.base_time = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
+
+    def test_predefined_expression_with_surrounding_whitespace(self):
+        for expr in (" @daily", "@daily ", "  @weekly  ", "  @hourly  "):
+            with self.subTest(expr=repr(expr)):
+                result = calculate_next_run_at(expr, "UTC", self.base_time)
+                assert result is not None
+
+    def test_padded_daily_matches_plain_daily(self):
+        expected = calculate_next_run_at("@daily", "UTC", self.base_time)
+        assert calculate_next_run_at(" @daily", "UTC", self.base_time) == expected
+
+
 if __name__ == "__main__":
     unittest.main()
