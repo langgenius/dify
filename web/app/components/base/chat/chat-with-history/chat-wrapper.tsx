@@ -20,6 +20,7 @@ import ConnectionLoadState from '@/app/components/share/connections/connection-l
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionDialog from '@/app/components/share/connections/webapp-connection-dialog'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
+import { useWebAppEntry } from '@/app/components/share/webapp-entry'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
@@ -38,6 +39,7 @@ import { useChatWithHistoryContext } from './context'
 
 const ChatWrapper = () => {
   const { t } = useTranslation(['share'])
+  const entry = useWebAppEntry()
   const webAppConnections = useOptionalWebAppConnections()
   const installedConnections = useOptionalInstalledAppConnections()
   const connections = webAppConnections ?? installedConnections
@@ -331,12 +333,58 @@ const ChatWrapper = () => {
     hasRequiredConnections &&
     (connections?.status === 'ready' || connections?.status === 'error' || signInRequired)
   const showConnectionSignIn = showConnectionSetup && signInRequired
+  const showAppDetails = !currentConversationId && !hasSent
+  const accountLoginEnabled =
+    !isInstalledApp &&
+    entry !== null &&
+    'parameters' in entry &&
+    entry.parameters.account_login_enabled
   const showIntroduction =
-    (!!description || showConnectionSetup) && !currentConversationId && !hasSent
+    showAppDetails && (showConnectionSetup || (accountLoginEnabled && Boolean(description)))
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
+
+  const descriptionContent =
+    showAppDetails && description ? (
+      <div>
+        <div
+          ref={handleDescRef}
+          className={cn(
+            'system-xs-regular whitespace-pre-wrap text-text-tertiary',
+            showIntroduction ? 'wrap-anywhere' : 'relative wrap-break-word',
+            !descExpanded && 'line-clamp-3',
+            descExpanded && 'max-h-32 overflow-y-auto',
+          )}
+        >
+          {description}
+          {!showIntroduction && !descExpanded && showDescToggle && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+          )}
+        </div>
+        {showDescToggle && (
+          <button
+            type="button"
+            aria-expanded={descExpanded}
+            className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+            onClick={() => setDescExpanded((v) => !v)}
+          >
+            {descExpanded ? (
+              <>
+                <RiArrowUpSLine className="size-3" />
+                {t(($) => $['chat.collapse'], { ns: 'share' })}
+              </>
+            ) : (
+              <>
+                <RiArrowDownSLine className="size-3" />
+                {t(($) => $['chat.expand'], { ns: 'share' })}
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    ) : null
 
   const descriptionNode = showIntroduction ? (
     <div className={showConnectionSignIn ? undefined : 'px-4'}>
@@ -346,44 +394,19 @@ const ChatWrapper = () => {
           <h1 className="system-xl-semibold wrap-anywhere text-text-primary">
             {appData?.site.title}
           </h1>
-          {description && (
-            <div>
-              <div
-                ref={handleDescRef}
-                className={cn(
-                  'system-xs-regular wrap-anywhere whitespace-pre-wrap text-text-tertiary',
-                  !descExpanded && 'line-clamp-3',
-                  descExpanded && 'max-h-32 overflow-y-auto',
-                )}
-              >
-                {description}
-              </div>
-              {showDescToggle && (
-                <button
-                  type="button"
-                  aria-expanded={descExpanded}
-                  className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                  onClick={() => setDescExpanded((v) => !v)}
-                >
-                  {descExpanded ? (
-                    <>
-                      <RiArrowUpSLine className="size-3" />
-                      {t(($) => $['chat.collapse'], { ns: 'share' })}
-                    </>
-                  ) : (
-                    <>
-                      <RiArrowDownSLine className="size-3" />
-                      {t(($) => $['chat.expand'], { ns: 'share' })}
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
+          {descriptionContent}
         </div>
       </div>
     </div>
-  ) : null
+  ) : (
+    descriptionContent && (
+      <div className={cn('flex flex-col items-center px-4 pt-6', isBelowSm && 'pt-4')}>
+        <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
+          <div className={isBelowSm ? 'p-4' : 'p-6'}>{descriptionContent}</div>
+        </div>
+      </div>
+    )
+  )
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
@@ -456,6 +479,13 @@ const ChatWrapper = () => {
       : appId
         ? { type: 'app' as const, appId, appSourceType }
         : undefined
+  const welcomeContent = (
+    <>
+      {descriptionNode}
+      {chatNode}
+      {welcome}
+    </>
+  )
 
   if (isStartingConversation && connections?.status === 'loading')
     return <LoadingPlaceholder className="h-full" />
@@ -519,12 +549,10 @@ const ChatWrapper = () => {
                 <WebAppConnectionSetup onStart={() => setConnectionSetupComplete(true)} />
               </div>
             </div>
+          ) : showIntroduction ? (
+            <div className="my-auto w-full shrink-0 py-6">{welcomeContent}</div>
           ) : (
-            <div className={cn(showIntroduction && 'my-auto w-full shrink-0 py-6')}>
-              {descriptionNode}
-              {chatNode}
-              {welcome}
-            </div>
+            welcomeContent
           )
         }
         allToolIcons={appMeta?.tool_icons || {}}

@@ -30,6 +30,7 @@ import { ChatWithHistoryContext } from '../context'
 import {
   chatConnectionEntry,
   checkedRevision,
+  createChatAccountEntry,
   createChatConnections,
   selectedConnectionId,
   withChatConnections,
@@ -333,10 +334,11 @@ it('shows the app introduction before the first message and restores it for a ne
   const user = userEvent.setup()
   const appData = createAppData()
   appData.site.description = 'Find useful sources for your research.'
-  const { updateContext } = renderChat({
-    appData,
-    currentConversationId: '',
-  })
+  const { updateContext } = renderChat(
+    { appData, currentConversationId: '' },
+    undefined,
+    createChatAccountEntry(true),
+  )
 
   expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
   expect(screen.getByText(appData.site.description)).toBeVisible()
@@ -367,10 +369,11 @@ it('shows the app introduction before the first message and restores it for a ne
 it('hides the app introduction while viewing history and restores it when returning to a new chat', () => {
   const appData = createAppData()
   appData.site.description = 'Find useful sources for your research.'
-  const { updateContext } = renderChat({
-    appData,
-    currentConversationId: '',
-  })
+  const { updateContext } = renderChat(
+    { appData, currentConversationId: '' },
+    undefined,
+    createChatAccountEntry(true),
+  )
 
   expect(screen.getByRole('heading', { level: 1, name: appData.site.title })).toBeVisible()
 

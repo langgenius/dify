@@ -13,7 +13,11 @@ import { createTestQueryClient } from '@/test/query-client'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWrapper from '../chat-wrapper'
 import { ChatWithHistoryContext } from '../context'
-import { createChatConnections, withChatConnections } from './connection-fixture'
+import {
+  createChatAccountEntry,
+  createChatConnections,
+  withChatConnections,
+} from './connection-fixture'
 
 const createHistoryContext = (): ChatWithHistoryContextValue => ({
   appData: {
@@ -62,6 +66,52 @@ const createHistoryContext = (): ChatWithHistoryContextValue => ({
   appId: 'test-app',
 })
 
+it('preserves the chat description when the account introduction is disabled', async () => {
+  onTestFinished(guardUnexpectedFetch())
+  const { NavigationProvider } = createTestNavigation({
+    url: '/chat/test-token',
+    params: { token: 'test-token' },
+  })
+  const title = 'Research assistant'
+  const description = 'Find sources for your research.'
+  const context: ChatWithHistoryContextValue = {
+    ...createHistoryContext(),
+    appData: {
+      app_id: 'test-app',
+      mode: 'advanced-chat',
+      custom_config: null,
+      site: { title, description },
+    },
+    currentConversationId: '',
+    currentConversationItem: undefined,
+  }
+  const client = createTestQueryClient()
+  const tree = (accountLoginEnabled: boolean) => (
+    <QueryClientProvider client={client}>
+      <NavigationProvider>
+        {withChatConnections({
+          entry: createChatAccountEntry(accountLoginEnabled),
+          children: (
+            // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector exposes its own Provider contract.
+            <ChatWithHistoryContext.Provider value={context}>
+              <ChatWrapper />
+            </ChatWithHistoryContext.Provider>
+          ),
+        })}
+      </NavigationProvider>
+    </QueryClientProvider>
+  )
+  const screen = await render(tree(false))
+  const appHeading = screen.getByRole('heading', { name: title })
+  const appDescription = screen.getByText(description)
+  await expect.element(appDescription).toBeVisible()
+  await expect.element(appHeading).not.toBeInTheDocument()
+
+  await screen.rerender(tree(true))
+  await expect.element(appHeading).toBeVisible()
+  await expect.element(appDescription).toBeVisible()
+})
+
 it('lets an installed Chatflow retry loading its settings without opening connection setup', async () => {
   const fake = installFakeApi({
     console: {
@@ -101,8 +151,15 @@ it('lets an installed Chatflow retry loading its settings without opening connec
     url: `/explore/installed/${TEST_APP_ID}`,
     params: { appId: TEST_APP_ID },
   })
+  const description = 'Find sources for your research.'
   const context: ChatWithHistoryContextValue = {
     ...createHistoryContext(),
+    appData: {
+      app_id: TEST_APP_ID,
+      mode: 'advanced-chat',
+      custom_config: null,
+      site: { title: 'Installed research assistant', description },
+    },
     currentConversationId: '',
     currentConversationItem: undefined,
     isInstalledApp: true,
@@ -134,6 +191,10 @@ it('lets an installed Chatflow retry loading its settings without opening connec
   await screen.getByRole('button', { name: 'common.operation.retry' }).click()
 
   await expect.element(screen.getByPlaceholder(/common.chat.inputPlaceholder/)).toBeEnabled()
+  await expect.element(screen.getByText(description)).toBeVisible()
+  await expect
+    .element(screen.getByRole('heading', { name: 'Installed research assistant' }))
+    .not.toBeInTheDocument()
   await expect.element(title).not.toBeInTheDocument()
 })
 

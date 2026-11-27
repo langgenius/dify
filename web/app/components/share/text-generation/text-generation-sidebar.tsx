@@ -91,7 +91,8 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
 }) => {
   const { t } = useTranslation(['share'])
   const entry = useWebAppEntry()
-  const showAccountFooter = !isInstalledApp && entry && 'account' in entry
+  const showAccountFooter =
+    !isInstalledApp && entry && 'account' in entry && entry.parameters.account_login_enabled
   const showBuildAppLink = showAccountFooter && entry.account === 'authenticated'
   const showWorkflowLayout = isWorkflow && showAccountFooter
   const [descExpanded, setDescExpanded] = useState(false)
@@ -164,12 +165,13 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
     >
       <div
         className={cn(
-          'shrink-0 border-b border-divider-subtle bg-components-panel-bg',
+          'shrink-0 border-b border-divider-subtle',
           showWorkflowLayout ? 'relative flex flex-col gap-4 overflow-hidden' : 'space-y-4',
+          (showAccountFooter || !isBelowMd) && 'bg-components-panel-bg',
           !isBelowMd ? 'p-8 pb-0' : 'p-4 pb-0',
         )}
       >
-        {!isInstalledApp && <MyAppsLink className="w-full shrink-0 ps-0" />}
+        {showAccountFooter && <MyAppsLink className="w-full shrink-0 ps-0" />}
         {showWorkflowLayout ? (
           <div className="flex flex-col gap-3">
             <AppIcon

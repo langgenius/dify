@@ -2,12 +2,29 @@ import type { PropsWithChildren } from 'react'
 import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
 import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import { ConnectionsContext } from '@/app/components/share/connections/use-connections'
-import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
+import { getWebAppEntryState, WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import { webAppQuery } from '@/service/webapp'
 import { testApiKeySchema } from '@/test/webapp-credential-schema'
 
 export const checkedRevision = '55555555-5555-4555-8555-555555555555'
 export const selectedConnectionId = '11111111-1111-4111-8111-111111111111'
+
+export function createChatAccountEntry(accountLoginEnabled: boolean): WebAppEntryState {
+  return getWebAppEntryState({
+    parameters: {
+      account_login_enabled: accountLoginEnabled,
+      allow_anonymous_end_user_auth: false,
+      connection_requirements: [],
+      connection_revision: null,
+      console_web_url: '',
+      requires_end_user_connections: false,
+    },
+    loginStatus: { logged_in: false, app_logged_in: true },
+    canAccess: true,
+    appDataReady: true,
+    hasError: false,
+  })
+}
 
 export const chatConnectionEntry: WebAppEntryState = {
   status: 'connections-pending',
@@ -107,12 +124,12 @@ export function createChatConnections(overrides: Partial<ConnectionsState> = {})
 export function withChatConnections({
   state,
   children,
-  entry = chatConnectionEntry,
+  entry,
 }: PropsWithChildren<{ state?: ConnectionsState; entry?: WebAppEntryState }>) {
-  if (!state) return <>{children}</>
+  if (!state && !entry) return <>{children}</>
   return (
-    <WebAppEntryContext value={entry}>
-      <ConnectionsContext value={state}>{children}</ConnectionsContext>
+    <WebAppEntryContext value={entry ?? chatConnectionEntry}>
+      <ConnectionsContext value={state ?? null}>{children}</ConnectionsContext>
     </WebAppEntryContext>
   )
 }
