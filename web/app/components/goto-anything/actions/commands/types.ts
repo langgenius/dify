@@ -7,6 +7,7 @@ export type CommandContext = {
   t: TFunction<['app', 'common', 'modelProvider', 'accountSettings']>
   locale: string
   agentsAvailable: boolean
+  canConfigureModels: boolean
   skillsAvailable: boolean
   currentApp: { id: string; mode: 'workflow' | 'advanced-chat' } | null
   setThemePreference: (preference: ThemePreference) => void

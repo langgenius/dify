@@ -4,45 +4,30 @@ import json
 from http import HTTPStatus
 from uuid import uuid4
 
-from flask import Flask
 from sqlalchemy import event, select
-from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session
 
-from controllers.console.agent.roster import _serialize_agent_app_detail
-from models import Account, Tenant
+from events.app_event import app_was_updated
 from models.agent import Agent, AgentDebugConversation, AgentScope, AgentSource, AgentStatus
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Site
+from services.entities.app_entities import AppEvent
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
 pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
 
 
-def _legacy_detail(
-    app: Flask, sessions: sessionmaker[Session], harness: Harness, agent_id: str, app_id: str
-) -> dict[str, object]:
-    with app.test_request_context(f"/console/api/agent/{agent_id}"), sessions() as session:
-        model = session.get(App, app_id)
-        account = session.get(Account, harness.account_id)
-        tenant = session.get(Tenant, harness.tenant_id)
-        assert model is not None
-        assert account is not None
-        assert tenant is not None
-        account.set_current_tenant_with_session(tenant, session=session)
-        result = _serialize_agent_app_detail(session, model, current_user=account, agent_id=agent_id)
-        session.commit()
-        return result
-
-
-def test_get_matches_legacy_response_and_reuses_build_conversation(harness: Harness) -> None:
+def test_get_reuses_build_conversation(harness: Harness) -> None:
+    """Repeat the admitted request and verify only one Build conversation is persisted."""
     agent_id, app_id = harness.create_agent(published=True)
-    expected = _legacy_detail(harness.client.application, harness.sessions, harness, agent_id, app_id)
     response = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
     assert response.status_code == HTTPStatus.OK
-    assert response.get_json() == expected
     assert response.get_json()["id"] == agent_id
     assert response.get_json()["app_id"] == app_id
     assert response.get_json()["access_ready"] is True
+    repeated = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
+    assert repeated.status_code == HTTPStatus.OK
+    assert repeated.get_json() == response.get_json()
     with harness.sessions() as session:
         assert (
             len(
@@ -52,7 +37,7 @@ def test_get_matches_legacy_response_and_reuses_build_conversation(harness: Harn
         )
 
 
-def test_get_with_config_and_site_matches_legacy_response(harness: Harness) -> None:
+def test_get_renders_model_config_and_site(harness: Harness) -> None:
     agent_id, app_id = harness.create_agent()
     with harness.sessions.begin() as session:
         app = session.get(App, app_id)
@@ -67,10 +52,8 @@ def test_get_with_config_and_site_matches_legacy_response(harness: Harness) -> N
         session.add_all([config, site])
         session.flush()
         app.app_model_config_id = config.id
-    expected = _legacy_detail(harness.client.application, harness.sessions, harness, agent_id, app_id)
     response = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
     assert response.status_code == HTTPStatus.OK
-    assert response.get_json() == expected
     assert response.get_json()["model_config"]["opening_statement"] == "Hello"
     assert response.get_json()["site"]["title"] == "Agent Site"
 
@@ -109,29 +92,37 @@ def test_legacy_agent_mode_masks_tool_secrets_and_retains_mode_conversion(harnes
         assert app.mode == AppMode.AGENT_CHAT
 
 
-def test_update_persists_app_and_agent_identity_and_preserves_omitted_role(harness: Harness) -> None:
+def test_update_notifies_after_committing_app_and_agent_and_preserves_omitted_role(harness: Harness) -> None:
     agent_id, app_id = harness.create_agent()
     with harness.sessions.begin() as session:
         agent = session.get(Agent, agent_id)
         assert agent is not None
         agent.role = "Before"
-    response = harness.client.put(
-        f"/console/api/agent/{agent_id}",
-        headers=harness.headers,
-        json={"name": "Renamed", "description": "Example", "icon_type": "emoji", "icon": "R"},
-    )
+    updates: list[AppEvent] = []
+
+    def on_update(sender: object) -> None:
+        assert isinstance(sender, AppEvent)
+        with harness.sessions() as session:
+            app = session.get(App, app_id)
+            agent = session.get(Agent, agent_id)
+            assert app is not None
+            assert agent is not None
+            assert app.name == agent.name == "Renamed"
+            assert app.description == agent.description == "Example"
+            assert agent.role == "Before"
+        updates.append(sender)
+
+    with app_was_updated.connected_to(on_update):
+        response = harness.client.put(
+            f"/console/api/agent/{agent_id}",
+            headers=harness.headers,
+            json={"name": "Renamed", "description": "Example", "icon_type": "emoji", "icon": "R"},
+        )
     assert response.status_code == HTTPStatus.OK
     assert response.get_json()["id"] == agent_id
     assert response.get_json()["name"] == "Renamed"
     assert response.get_json()["role"] == "Before"
-    with harness.sessions() as session:
-        app = session.get(App, app_id)
-        agent = session.get(Agent, agent_id)
-        assert app is not None
-        assert agent is not None
-        assert app.name == agent.name == "Renamed"
-        assert app.description == agent.description == "Example"
-        assert agent.role == "Before"
+    assert updates == [AppEvent(id=app_id, tenant_id=harness.tenant_id, mode=AppMode.AGENT)]
     cleared = harness.client.put(
         f"/console/api/agent/{agent_id}", headers=harness.headers, json={"name": "Renamed", "role": ""}
     )
@@ -139,16 +130,19 @@ def test_update_persists_app_and_agent_identity_and_preserves_omitted_role(harne
     assert cleared.get_json()["role"] == ""
 
 
-def test_update_conflicting_agent_name_returns_conflict_without_changes(harness: Harness) -> None:
+def test_update_conflicting_agent_name_returns_conflict_without_changes_or_event(harness: Harness) -> None:
     agent_id, app_id = harness.create_agent()
     with harness.sessions.begin() as session:
         agent = session.get(Agent, agent_id)
         assert agent is not None
         agent.name = "First"
     other_id, other_app_id = harness.create_agent()
-    response = harness.client.put(f"/console/api/agent/{agent_id}", headers=harness.headers, json={"name": "Agent"})
+    updates: list[object] = []
+    with app_was_updated.connected_to(updates.append):
+        response = harness.client.put(f"/console/api/agent/{agent_id}", headers=harness.headers, json={"name": "Agent"})
     assert response.status_code == HTTPStatus.CONFLICT
     assert response.get_json()["code"] == "agent_name_conflict_error"
+    assert updates == []
     with harness.sessions() as session:
         agent = session.get(Agent, agent_id)
         app = session.get(App, app_id)
@@ -160,6 +154,33 @@ def test_update_conflicting_agent_name_returns_conflict_without_changes(harness:
         assert app.name == "Agent App"
         assert other.app_id == other_app_id
         assert other.name == "Agent"
+
+
+def test_update_rolls_back_app_and_agent_and_skips_event_on_write_failure(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent()
+    updates: list[object] = []
+
+    def reject_write(_mapper: object, _connection: object, _target: App) -> None:
+        raise RuntimeError("App update failed after writing")
+
+    event.listen(App, "after_update", reject_write)
+    try:
+        with app_was_updated.connected_to(updates.append):
+            response = harness.client.put(
+                f"/console/api/agent/{agent_id}", headers=harness.headers, json={"name": "Renamed"}
+            )
+    finally:
+        event.remove(App, "after_update", reject_write)
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert updates == []
+    with harness.sessions() as session:
+        app = session.get(App, app_id)
+        agent = session.get(Agent, agent_id)
+        assert app is not None
+        assert agent is not None
+        assert app.name == "Agent App"
+        assert agent.name == "Agent"
 
 
 def test_detail_and_update_reject_foreign_agents(harness: Harness) -> None:

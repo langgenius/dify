@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import type { CarouselPage } from '../carousel'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import Carousel from '../carousel'
 
@@ -45,6 +46,9 @@ async function expectActivePage(screen: Awaited<ReturnType<typeof setup>>, page:
     })
     .toBe(true)
 }
+// Autoplay is the contract; reduced-motion cases switch back inside the test.
+beforeEach(() => emulateReducedMotion(false))
+
 afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
@@ -196,35 +200,11 @@ it.each([false, true])(
   },
 )
 
-// boundary: Browser Mode cannot toggle the host OS motion preference; only its media-query signal is supplied.
-function motionPreference(initial: boolean) {
-  let reduced = initial
-  const original = window.matchMedia.bind(window)
-  const signal = new EventTarget()
-  vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
-    query === '(prefers-reduced-motion: reduce)'
-      ? (Object.defineProperties(signal, {
-          matches: { configurable: true, get: () => reduced },
-          media: { configurable: true, value: query },
-        }) as MediaQueryList)
-      : original(query),
-  )
-  return (value: boolean) => {
-    reduced = value
-    signal.dispatchEvent(
-      new MediaQueryListEvent('change', {
-        matches: value,
-        media: '(prefers-reduced-motion: reduce)',
-      }),
-    )
-  }
-}
-
 it.each([false, true])(
   'honors reduced motion with real autoplay (managed=%s)',
   async (pauseWhenOffscreen) => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const setReducedMotion = motionPreference(true)
+    await emulateReducedMotion(true)
     const screen = await setup({ autoPlay: true, autoPlayInterval: 1000, pauseWhenOffscreen })
     await expectActivePage(screen, 1)
     await new Promise(requestAnimationFrame)
@@ -232,7 +212,7 @@ it.each([false, true])(
     expect(screen.getByRole('textbox', { name: 'Page 1 draft' }).element().checkVisibility()).toBe(
       true,
     )
-    setReducedMotion(false)
+    await emulateReducedMotion(false)
     await vi.advanceTimersByTimeAsync(1000)
     await expectActivePage(screen, 2)
   },

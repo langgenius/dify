@@ -63,8 +63,8 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
     >(),
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
-  marketplace: vi.fn<typeof import('@/service/base').postMarketplace>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
+  marketplace: vi.fn(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
   modelSummary: vi.fn<typeof consoleClient.workspaces.current.modelProviders.summary.get>(),
@@ -89,15 +89,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.defaultModel.get': async () => ({ data: null }),
       'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (input) =>
         api.rules(input),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'ruleGenerate.post': (input) => api.generate(input),
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.install.marketplace.post': (input) => api.install(input),
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.install.marketplace.post': (input) => api.install(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'ruleGenerate.post': (input) => api.generate(input),
       'apps.byAppId.get': (input) => api.app(input),
       'apps.byAppId.modelConfig.post': (input) => api.publish(input),
       'workspaces.current.toolProviders.get': (input) => api.tools(input),
@@ -107,11 +107,30 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.stream,
-  postMarketplace: api.marketplace,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: api.stream, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
 }))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
+}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: api.marketplace })
+})
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),

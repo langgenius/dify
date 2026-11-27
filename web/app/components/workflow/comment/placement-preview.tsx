@@ -1,4 +1,5 @@
 import { useHotkey } from '@tanstack/react-hotkeys'
+import { useReactFlow } from 'reactflow'
 import { useStore } from '../store/workflow'
 import { CommentInput } from './comment-input'
 
@@ -6,13 +7,14 @@ export function CommentPlacementPreview({
   onSubmit,
   onCancel,
 }: {
-  onSubmit: (content: string, mentionedUserIds: string[]) => void
+  onSubmit: (content: string, mentionedUserIds: string[]) => Promise<void> | void
   onCancel: () => void
 }) {
   const isCommentPlacing = useStore((state) => state.isCommentPlacing)
   const pendingComment = useStore((state) => state.pendingComment)
   const mousePosition = useStore((state) => state.mousePosition)
   const placing = isCommentPlacing && !pendingComment
+  const { screenToFlowPosition } = useReactFlow()
 
   useHotkey(
     'Escape',
@@ -35,10 +37,9 @@ export function CommentPlacementPreview({
 
   return (
     <CommentInput
-      position={{ x: mousePosition.elementX, y: mousePosition.elementY }}
+      position={screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })}
       onSubmit={onSubmit}
       onCancel={onCancel}
-      autoFocus={false}
       disabled
     />
   )

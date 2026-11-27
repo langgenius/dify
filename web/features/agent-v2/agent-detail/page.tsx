@@ -1,9 +1,9 @@
 'use client'
 
 import type { AgentDetailSectionKey } from './section'
+import { AgentConfigurePage } from '../agent-editor/roster-page'
 import { AgentAccessConfigPage } from './access-config/page'
 import { AgentAccessPage } from './access/page'
-import { AgentConfigurePage } from './configure/page'
 import { AgentEvaluationPage } from './evaluation/page'
 import { AgentLogsPage } from './logs/page'
 import { AgentMonitoringPage } from './monitoring/page'

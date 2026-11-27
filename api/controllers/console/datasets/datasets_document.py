@@ -10,7 +10,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.errors import InvalidArgumentError, NotFoundError
-from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
+from controllers.common.fields import BinaryFileResponse, SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.rbac import DatasetByDocument, DatasetId, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -311,6 +311,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    BinaryFileResponse,
     SimpleResultMessageResponse,
     SimpleResultResponse,
     UrlResponse,
@@ -644,8 +645,9 @@ class DocumentBatchDownloadZipApi(Resource):
 
     @console_ns.doc("download_dataset_documents_as_zip")
     @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
-    @console_ns.response(200, "ZIP archive downloaded successfully")
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    @console_ns.produces(["application/zip"])
+    @console_ns.response(200, "ZIP archive downloaded successfully", console_ns.models[BinaryFileResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_DOCUMENT_DOWNLOAD, DatasetId()),),

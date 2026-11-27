@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
@@ -11,7 +11,7 @@ import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 
 type CheckCodeFormValues = {
   code: string
@@ -23,7 +23,11 @@ export default function CheckCode() {
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
-  const [loading, setLoading] = useState(false)
+  const verifyCode = useMutation(consoleQuery.forgotPassword.validity.post.mutationOptions())
+  const { mutateAsync: resendResetCode } = useMutation(
+    consoleQuery.forgotPassword.post.mutationOptions(),
+  )
+  const loading = verifyCode.isPending
   const locale = useLocale()
   const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
   useDocumentTitle(pageTitle)
@@ -31,8 +35,7 @@ export default function CheckCode() {
   const verify = async (code: string) => {
     if (loading) return
     try {
-      setLoading(true)
-      const ret = await consoleClient.forgotPassword.validity.post({ body: { email, code, token } })
+      const ret = await verifyCode.mutateAsync({ body: { email, code, token } })
       if (ret.is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.token))
@@ -40,14 +43,12 @@ export default function CheckCode() {
       } else toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
     } catch (error) {
       console.error(error)
-    } finally {
-      setLoading(false)
     }
   }
 
   const resendCode = async () => {
     try {
-      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
+      const res = await resendResetCode({ body: { email, language: locale } })
       if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data ?? ''))

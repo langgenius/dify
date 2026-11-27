@@ -32,9 +32,15 @@ const { fetchAllInspectVars, fetchLastRun, mockSubmitHumanInputForm } = vi.hoist
 }))
 const mockHandleRun = vi.fn<HandleRun>()
 const mockNotify = vi.fn()
-const mockSseGet = vi.fn()
-vi.mock('@/service/base', () => ({
-  sseGet: (...args: unknown[]) => mockSseGet(...args),
+const mockStreamEvents = vi.fn()
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: (...args: unknown[]) => mockStreamEvents(...args),
+}))
+
+// Tags each resume request with its run id; workflow-events.spec covers the request itself.
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: (workflowRunId: string) => ({ workflowRunId }),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -133,7 +139,7 @@ describe('useChat – handleResume', () => {
 
   beforeEach(() => {
     mockHandleRun.mockReset()
-    mockSseGet.mockReset()
+    mockStreamEvents.mockReset()
     mockNotify.mockReset()
     mockSubmitHumanInputForm.mockReset()
     fetchAllInspectVars
@@ -191,7 +197,7 @@ describe('useChat – handleResume', () => {
     mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
       sendCallbacks = callbacks as SSECallbacks
     })
-    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
+    mockStreamEvents.mockImplementation((_request: unknown, options: RunCallbacks) => {
       capturedResumeOptions = options as SSECallbacks
     })
 
@@ -231,23 +237,19 @@ describe('useChat – handleResume', () => {
     return hook
   }
 
-  it('should call sseGet with the correct URL', () => {
+  it('should resume the events of the given workflow run', () => {
     const { result } = renderChat()
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/wfr-1/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
-      expect.any(Object),
-    )
+    expect(mockStreamEvents).toHaveBeenCalledWith({ workflowRunId: 'wfr-1' }, expect.any(Object))
   })
 
   it('should abort previous SSE connection when handleResume is called again', () => {
     const mockAbortCtrl = new AbortController()
-    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
+    mockStreamEvents.mockImplementation((_request: unknown, options: RunCallbacks) => {
       options.getAbortController!(mockAbortCtrl)
     })
 
@@ -257,7 +259,7 @@ describe('useChat – handleResume', () => {
       result.current.handleResume('msg-1', 'wfr-1', {})
     })
 
-    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
+    mockStreamEvents.mockImplementation((_request: unknown, options: RunCallbacks) => {
       options.getAbortController!(new AbortController())
     })
 
@@ -268,7 +270,7 @@ describe('useChat – handleResume', () => {
     expect(mockAbortCtrl.signal.aborted).toBe(true)
   })
 
-  it('should abort previous workflowEventsAbortController before sseGet', () => {
+  it('should abort previous workflowEventsAbortController before resuming the stream', () => {
     const abortController = new AbortController()
     let sendCallbacks: SSECallbacks
     mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
@@ -285,7 +287,7 @@ describe('useChat – handleResume', () => {
       sendCallbacks.getAbortController(abortController)
     })
 
-    mockSseGet.mockImplementation(() => {})
+    mockStreamEvents.mockImplementation(() => {})
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
@@ -300,7 +302,7 @@ describe('useChat – handleResume', () => {
       mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
         sendCallbacks = callbacks as SSECallbacks
       })
-      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
+      mockStreamEvents.mockImplementation((_request: unknown, options: RunCallbacks) => {
         capturedResumeOptions = options as SSECallbacks
       })
 
@@ -919,7 +921,7 @@ describe('useChat – handleResume', () => {
   describe('onWorkflowPaused', () => {
     it('should keep the resumable stream and set status to Paused', async () => {
       const { result } = await setupResumeWithTree()
-      const sseGetCallsBefore = mockSseGet.mock.calls.length
+      const streamCallsBefore = mockStreamEvents.mock.calls.length
 
       act(() => {
         capturedResumeOptions.onWorkflowPaused({
@@ -927,7 +929,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      expect(mockSseGet.mock.calls.length).toBe(sseGetCallsBefore)
+      expect(mockStreamEvents.mock.calls.length).toBe(streamCallsBefore)
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('paused')
     })

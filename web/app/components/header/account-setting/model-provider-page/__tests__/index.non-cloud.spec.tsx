@@ -70,21 +70,6 @@ vi.mock('@/service/use-plugins', () => ({
   }),
   useInvalidateInstalledPluginList: () => vi.fn(),
   useInvalidateCheckInstalled: () => vi.fn(),
-  usePluginAutoUpgradeSettings: () => ({
-    data: {
-      category: 'model',
-      auto_upgrade: {
-        strategy_setting: 'latest',
-        upgrade_time_of_day: 0,
-        upgrade_mode: 'all',
-        exclude_plugins: [],
-        include_plugins: [],
-      },
-    },
-    error: undefined,
-    isFetching: false,
-    isLoading: false,
-  }),
   useMutationPluginAutoUpgradeSettings: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -103,6 +88,16 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.modelProviders.summary.get': () => new Promise(() => {}),
       'workspaces.current.plugin.list.latestVersions.post': () => ({ versions: {} }),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': () => ({
+        category: 'model',
+        auto_upgrade: {
+          strategy_setting: 'latest',
+          upgrade_time_of_day: 0,
+          upgrade_mode: 'all',
+          exclude_plugins: [],
+          include_plugins: [],
+        },
+      }),
     }),
   }
 })
@@ -114,7 +109,11 @@ const renderPage: typeof renderWithConsoleQuery = (ui, options) => {
     data: [{ ...providerSummaryFixture } satisfies ModelProviderSummaryResponse],
     plugins: {},
   })
-  return renderWithConsoleQuery(ui, { ...options, queryClient })
+  return renderWithConsoleQuery(ui, {
+    workspacePermissionKeys: ['plugin.model_config'],
+    ...options,
+    queryClient,
+  })
 }
 
 describe('ModelProviderPage non-cloud branch', () => {

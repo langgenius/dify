@@ -2,6 +2,7 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
@@ -30,7 +31,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
-import { useInvalidateLastRun } from '@/service/use-workflow'
+import { lastRunQueryKey } from '@/service/workflow-queries'
 import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../../../../../hooks/use-nodes-sync-draft'
@@ -242,7 +243,11 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
 
     setInitShowLastRunTab(false)
   }, [initShowLastRunTab, setInitShowLastRunTab])
-  const invalidLastRun = useInvalidateLastRun(resource, id)
+  const queryClient = useQueryClient()
+  const invalidLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource, id) }),
+    [queryClient, id, resource],
+  )
 
   const handleRunWithParams = async (data: Record<string, any>) => {
     if (blockIfChecklistFailed()) return

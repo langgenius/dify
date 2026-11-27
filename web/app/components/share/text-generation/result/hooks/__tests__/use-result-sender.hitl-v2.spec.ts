@@ -14,8 +14,6 @@ import { createElement, useLayoutEffect } from 'react'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
-// oxlint-disable-next-line no-restricted-imports -- The test drives the production continuation transport callback boundary.
-import { sseGet } from '@/service/base'
 import { AppSourceType, sendWorkflowMessage } from '@/service/share'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
@@ -41,9 +39,16 @@ vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   sendWorkflowMessage: mocks.sendWorkflowMessage,
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  sseGet: mocks.sseGet,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: vi.fn(), get: mocks.sseGet })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
 }))
 vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
   trackWebAppEvent: mocks.trackEvent,
@@ -54,8 +59,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const workflowTransport = vi.mocked(sendWorkflowMessage)
-// oxlint-disable-next-line typescript/no-deprecated -- The production continuation still uses the SSE transport.
-const workflowEvents = vi.mocked(sseGet)
+const workflowEvents = mocks.sseGet
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',

@@ -5,6 +5,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-detail-top'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { runDebouncedUserInteraction } from '@/test/debounce'
 import { createDeferred } from '@/test/deferred'
@@ -27,9 +28,9 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'tagBindings.post': mockBindTags,
-      'workspaces.current.customizedSnippets.get': listSnippets,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.customizedSnippets.get': listSnippets,
       'workspaces.current.members.get': async () => ({
         accounts: [
           { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
@@ -381,7 +382,9 @@ it('announces kept-data refreshes when the result count stays the same', async (
   await salesCard()
   const status = screen.getByRole('status')
   act(() => {
-    void queryClient.invalidateQueries({ queryKey: ['snippets', 'list'] })
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.customizedSnippets.get.key(),
+    })
   })
   await waitFor(() => expect(status).toHaveTextContent('common.loading'))
   expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
@@ -435,12 +438,10 @@ it('opens real tag management from filters and cards and refreshes after a bindi
   await user.click(await screen.findByRole('option', { name: 'Sales' }))
   await user.keyboard('{Escape}')
   expect(await screen.findByRole('combobox', { name: 'Sales: Tagged snippet' })).toBeInTheDocument()
-  expect(mockBindTags).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
-    },
-    { context: { silent: true } },
-  )
+  expect(mockBindTags).toHaveBeenCalledOnce()
+  expect(mockBindTags.mock.calls[0]![0]).toEqual({
+    body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
+  })
   await user.click(screen.getByRole('combobox', { name: 'Sales: Tagged snippet' }))
   expect(await screen.findByRole('option', { name: 'Sales' })).toHaveAttribute(
     'aria-selected',

@@ -7,27 +7,19 @@ import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-
-const requests = vi.hoisted(() => ({
-  currentIp: vi.fn<() => Promise<{ client_ip: string }>>(),
-}))
-
-// boundary: the Browser Console transport is the current-IP server edge.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[]) => {
-      if (path.join('.') === 'workspaces.current.networkAccessGroups.currentIp.get')
-        return requests.currentIp()
-      throw new Error(`Unexpected console request: ${path.join('.')}`)
-    },
-  },
-}))
+import { apiError, setupFakeApi } from '@/test/fake-api'
 
 vi.unmock('react-i18next')
 
-beforeEach(() => {
-  requests.currentIp.mockReset()
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        networkAccessGroups: { currentIp: { get: async () => ({ client_ip: '203.0.113.42' }) } },
+      },
+    },
+  },
+}))
 
 async function renderEditor(props: Partial<ComponentProps<typeof IpPolicyDialog>> = {}) {
   const i18n = createInstance()
@@ -73,7 +65,9 @@ it.each([0, 1])(
       await expect
         .element(screen.getByRole('button', { name: 'Remove entry', exact: true }))
         .toHaveFocus()
-      expect(requests.currentIp).not.toHaveBeenCalled()
+      expect(
+        fake.console.workspaces.current.networkAccessGroups.currentIp.get,
+      ).not.toHaveBeenCalled()
     } finally {
       await screen.unmount()
       queryClient.clear()
@@ -87,8 +81,11 @@ it.each([false, true])(
   'retains current-IP action focus through retry (already allowed: %s)',
   async (alreadyAllowed) => {
     const response = createDeferred<{ client_ip: string }>()
-    requests.currentIp
-      .mockRejectedValueOnce(new Error('IP unavailable'))
+    const currentIp = fake.console.workspaces.current.networkAccessGroups.currentIp.get
+    currentIp
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'IP unavailable' }),
+      )
       .mockReturnValueOnce(response.promise)
     const { screen, queryClient } = await renderEditor()
 
@@ -109,9 +106,9 @@ it.each([false, true])(
 
       await expect.element(retry).toHaveAttribute('aria-disabled', 'true')
       await expect.element(retry).toHaveFocus()
-      await expect.poll(() => requests.currentIp.mock.calls.length).toBe(2)
+      await expect.poll(() => currentIp.mock.calls.length).toBe(2)
       await userEvent.keyboard('{Enter}')
-      expect(requests.currentIp).toHaveBeenCalledTimes(2)
+      expect(currentIp).toHaveBeenCalledTimes(2)
 
       response.resolve({ client_ip: '203.0.113.42' })
       const addCurrentIp = screen.getByRole('button', { name: 'Add it', exact: true })
@@ -131,7 +128,7 @@ it.each([false, true])(
       await expect
         .element(screen.getByRole('button', { name: 'Cancel', exact: true }))
         .toHaveFocus()
-      expect(requests.currentIp).toHaveBeenCalledTimes(2)
+      expect(currentIp).toHaveBeenCalledTimes(2)
     } finally {
       response.resolve({ client_ip: '203.0.113.42' })
       await screen.unmount()

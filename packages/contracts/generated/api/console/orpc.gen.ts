@@ -6,6 +6,7 @@ export const contractLoaders = {
       byEvaluateTargetType,
     })),
   account: () => import('./account/orpc.gen.ts').then(({ account }) => ({ account })),
+  accounts: () => import('./accounts/orpc.gen.ts').then(({ accounts }) => ({ accounts })),
   activate: () => import('./activate/orpc.gen.ts').then(({ activate }) => ({ activate })),
   agent: () => import('./agent/orpc.gen.ts').then(({ agent }) => ({ agent })),
   allWorkspaces: () =>

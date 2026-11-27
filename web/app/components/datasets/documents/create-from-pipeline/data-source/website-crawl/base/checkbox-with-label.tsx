@@ -30,14 +30,14 @@ export default function CheckboxWithLabel({
         <span
           id={labelId}
           className={cn(
-            'ml-2 min-w-0 text-left system-sm-medium text-text-secondary',
+            'ms-2 min-w-0 text-start system-sm-medium text-text-secondary',
             labelClassName,
           )}
         >
           {label}
         </span>
       </label>
-      <div className="ml-1 flex min-w-0 items-center">
+      <div className="ms-1 flex min-w-0 items-center">
         {tooltip && (
           <Infotip>
             <InfotipTrigger aria-labelledby={labelId} />

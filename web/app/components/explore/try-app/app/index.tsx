@@ -19,7 +19,6 @@ function TryApp({ appId, appDetail }: Props) {
   return (
     <FileUploadContext
       value={{
-        localUploadUrl: `/trial-apps/${appId}/files/upload`,
         trialAppId: appId,
       }}
     >

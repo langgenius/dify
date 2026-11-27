@@ -51,9 +51,7 @@ describe('transcribeAudio', () => {
     )
 
     expect(result).toEqual({ text: 'app transcript' })
-    const formData = vi.mocked(audioToText).mock.calls[0]![2]
-    expect(audioToText).toHaveBeenCalledWith(AppSourceType.installedApp, 'app-1', formData, signal)
-    expect(formData.get('file')).toBe(file)
+    expect(audioToText).toHaveBeenCalledWith(AppSourceType.installedApp, 'app-1', file, signal)
   })
 
   it('should send console App audio through its generated multipart contract', async () => {

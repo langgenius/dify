@@ -5,6 +5,7 @@ network policy. Both adapters forbid SDK-side retries by construction: each
 SDK request is exactly one egress request.
 """
 
+from collections.abc import Mapping
 from typing import Any, override
 
 import httpx
@@ -13,6 +14,11 @@ import requests
 from dify_trace_sdk.egress import Egress
 
 SDK_REQUEST_TIMEOUT_SECONDS = 30.0
+
+
+def _string_headers(headers: Mapping[str, str | bytes]) -> dict[str, str]:
+    """requests may hand us byte header values; Egress only accepts text."""
+    return {name: value.decode("latin-1") if isinstance(value, bytes) else value for name, value in headers.items()}
 
 
 class EgressHttpxTransport(httpx.BaseTransport):
@@ -24,7 +30,7 @@ class EgressHttpxTransport(httpx.BaseTransport):
         response = self._egress.request(
             request.method,
             str(request.url),
-            headers=dict(request.headers),
+            headers=_string_headers(request.headers),
             content=request.read(),
             timeout=SDK_REQUEST_TIMEOUT_SECONDS,
             sensitive_url=False,
@@ -53,7 +59,7 @@ class EgressRequestsSession(requests.Session):
         received = self._egress.request(
             request.method,
             request.url,
-            headers=dict(request.headers),
+            headers=_string_headers(request.headers),
             content=body,
             timeout=SDK_REQUEST_TIMEOUT_SECONDS,
             sensitive_url=False,

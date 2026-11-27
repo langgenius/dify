@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Очистить фильтры",
   "roster.createAgent": "Создать агента",
   "roster.createDialog.description": "Создайте переиспользуемый Agent в этом workspace.",
   "roster.createDialog.title": "Создать агента",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Редактировать информацию",
   "roster.empty": "Агентов пока нет",
   "roster.emptySearch": "Подходящих агентов не найдено",
+  "roster.emptySearchDescription": "Попробуйте другой поиск или очистите текущие фильтры.",
   "roster.filters.all": "Все",
   "roster.filters.createdByMe": "Созданные мной",
   "roster.filters.drafts": "Черновики",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Не удалось создать встроенного агента. Обновите и попробуйте снова.",
   "roster.nodeSelector.dialogLabel": "Выберите агента",
   "roster.nodeSelector.manageInAgentConsole": "Управлять в Agents",
-  "roster.nodeSelector.searchPlaceholder": "Поиск…",
+  "roster.nodeSelector.searchPlaceholder": "Поиск агентов…",
   "roster.nodeSelector.startFromScratch": "Начать с нуля",
   "roster.references.label": "Рабочие процессы, использующие {{name}}",
   "roster.references.trigger": "Рабочие процессы, использующие {{name}}",

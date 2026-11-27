@@ -23,7 +23,15 @@ import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import Scope, TokenType
-from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import (
+    AgentBehindApp,
+    DatasetId,
+    PlainApp,
+    RBACCheck,
+    RBACPermission,
+    ResourceLocator,
+    Workspace,
+)
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
@@ -44,11 +52,14 @@ from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckAppMode,
     CheckAppQuota,
+    CheckDocumentsUploadQuota,
+    CheckKnowledgeRateLimit,
     CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
     CheckSkillEnabled,
     CheckSubject,
+    CheckVectorSpaceQuota,
     CheckWebAppAuthEnterprise,
     CheckWorkspaceInvitationQuota,
     CheckWorkspaceMember,
@@ -578,6 +589,30 @@ ROUTES: tuple[Route, ...] = (
         "/apps/{app_id}",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
+    Route(
+        "apps.delete",
+        "DELETE",
+        "/apps/{app_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.list",
+        "GET",
+        "/apps/{app_id}/api-keys",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.create",
+        "POST",
+        "/apps/{app_id}/api-keys",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.delete",
+        "DELETE",
+        "/apps/{app_id}/api-keys/{api_key_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.describe", "GET", "/workspaces/{workspace_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -639,6 +674,12 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
+    Route(
+        "model_providers.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
     Route("tools.list", "GET", "/workspaces/{workspace_id}/tools", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "tool_providers.describe",
@@ -655,6 +696,12 @@ ROUTES: tuple[Route, ...] = (
     Route(
         "tool_providers.credential.set",
         "PATCH",
+        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.credential.delete",
+        "DELETE",
         "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
@@ -685,6 +732,72 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
+        "get.dataset",
+        "GET",
+        "/workspaces/{workspace_id}/datasets",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "create.dataset",
+        "POST",
+        "/workspaces/{workspace_id}/datasets",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "describe.dataset",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "set.dataset",
+        "PATCH",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "delete.dataset",
+        "DELETE",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "create.dataset_document",
+        "POST",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "get.dataset_document",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "describe.dataset_document",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "delete.dataset_document",
+        "DELETE",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "set.dataset_document",
+        "POST",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "get.dataset_document.indexing_status",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
         "models.list",
         "GET",
         "/workspaces/{workspace_id}/models",
@@ -700,6 +813,138 @@ ROUTES: tuple[Route, ...] = (
         "models.credential.set",
         "PATCH",
         "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.credential.activate",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:activate",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.credential.activate",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:activate",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.settings.describe",
+        "GET",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/settings",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.settings.set",
+        "PUT",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/settings",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "default_models.describe",
+        "GET",
+        "/workspaces/{workspace_id}/default-models/{model_type}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "default_models.set",
+        "PUT",
+        "/workspaces/{workspace_id}/default-models/{model_type}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.get",
+        "GET",
+        "/workspaces/{workspace_id}/api-tool-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.create",
+        "POST",
+        "/workspaces/{workspace_id}/api-tool-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.describe",
+        "GET",
+        "/workspaces/{workspace_id}/api-tool-providers/{provider_name}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.set",
+        "PUT",
+        "/workspaces/{workspace_id}/api-tool-providers/{provider_name}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/api-tool-providers/{provider_name}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.create",
+        "POST",
+        "/workspaces/{workspace_id}/mcp-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.describe",
+        "GET",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.set",
+        "PUT",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.refresh",
+        "POST",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}:refresh",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.create",
+        "POST",
+        "/workspaces/{workspace_id}/workflow-tools",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.describe",
+        "GET",
+        "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.set",
+        "PUT",
+        "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -1351,6 +1596,37 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.credential.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.credential.activate": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "model_providers.credential.activate": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.settings.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.settings.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "default_models.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "default_models.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "api_tool_providers.get": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "api_tool_providers.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "api_tool_providers.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "api_tool_providers.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "api_tool_providers.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "mcp_providers.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    # MCP writes carry an RBAC check but no workspace-role gate, matching the
+    # console surface — a NORMAL member with the permission is admitted.
+    "mcp_providers.create": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "mcp_providers.set": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "mcp_providers.delete": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "mcp_providers.refresh": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "create.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "describe.dataset": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "set.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "delete.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "create.dataset_document": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "delete.dataset_document": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "get.dataset_document": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "workflow_tools.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "workflow_tools.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "workflow_tools.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "workflow_tools.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.check": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_create.workflow": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1365,6 +1641,10 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "webapp.reset": dict(_ACCOUNT_EDITOR_SETTINGS),
     "webapp_access.describe": dict(_WEBAPP_ACCESS_EDITOR),
     "apps.describe": dict(_ACCOUNT_READER_APP),
+    "apps.delete": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.list": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.create": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.delete": dict(_ACCOUNT_EDITOR_SETTINGS),
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
@@ -1437,6 +1717,10 @@ _REQ_ACCOUNT_WORKSPACE_READ_MEMBER = (
     CheckScope(Scope.WORKSPACE_READ),
     CheckWorkspaceMember(),
 )
+_REQ_DATASET_READ = (
+    *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    CheckRBACPermission(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId())),
+)
 _REQ_SKILL_READ = (
     CheckSkillEnabled(),
     *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -1449,6 +1733,29 @@ _REQ_MEMBER_MANAGE = (
     CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_MEMBER_MANAGE, Workspace())),
     CheckWorkspaceRole(_OWNER_ADMIN),
 )
+_DATASET_EDIT_ROLES = frozenset(
+    {
+        TenantAccountRole.OWNER,
+        TenantAccountRole.ADMIN,
+        TenantAccountRole.EDITOR,
+        TenantAccountRole.DATASET_OPERATOR,
+    }
+)
+
+
+def _req_dataset_write(
+    permission: RBACPermission, locator: ResourceLocator, *, extra: tuple[Requirement, ...] = ()
+) -> tuple[Requirement, ...]:
+    return (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, locator)),
+        CheckWorkspaceRole(_DATASET_EDIT_ROLES),
+        *extra,
+    )
+
+
 _REQ_ROLE_MANAGE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),
@@ -1583,6 +1890,16 @@ def _req_admin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
     )
 
 
+def _req_member_write(permission: RBACPermission) -> tuple[Requirement, ...]:
+    """A workspace write with an RBAC check but no workspace-role gate."""
+    return (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+    )
+
+
 def _req_skill_write(permission: RBACPermission) -> tuple[Requirement, ...]:
     return (
         CheckSkillEnabled(),
@@ -1640,6 +1957,46 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "get.account.session": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
     "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
+    "apps.delete": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_DELETE, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.list": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.APPS_READ),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.create": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.delete": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_OWNER_ADMIN),
+    ),
     "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
@@ -1659,10 +2016,12 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "model_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "model_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "model_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "model_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "tools.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "tool_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "tool_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "skills.list": _REQ_SKILL_READ,
     "skills.describe": _REQ_SKILL_READ,
     "skills.versions": _REQ_SKILL_READ,
@@ -1673,9 +2032,56 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
     ),
     "knowledge_bases.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "get.dataset": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "create.dataset": _req_dataset_write(
+        RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace(), extra=(CheckKnowledgeRateLimit(),)
+    ),
+    "describe.dataset": _REQ_DATASET_READ,
+    "set.dataset": _req_dataset_write(RBACPermission.DATASET_EDIT, DatasetId(), extra=(CheckKnowledgeRateLimit(),)),
+    "delete.dataset": _req_dataset_write(
+        RBACPermission.DATASET_DELETE, DatasetId(), extra=(CheckKnowledgeRateLimit(),)
+    ),
+    "create.dataset_document": _req_dataset_write(
+        RBACPermission.DATASET_USE,
+        DatasetId(),
+        extra=(CheckKnowledgeRateLimit(), CheckDocumentsUploadQuota(), CheckVectorSpaceQuota()),
+    ),
+    "get.dataset_document": _REQ_DATASET_READ,
+    "describe.dataset_document": _REQ_DATASET_READ,
+    "delete.dataset_document": _req_dataset_write(
+        RBACPermission.DATASET_DELETE_FILE, DatasetId(), extra=(CheckKnowledgeRateLimit(),)
+    ),
+    "set.dataset_document": _req_dataset_write(
+        RBACPermission.DATASET_USE,
+        DatasetId(),
+        extra=(CheckKnowledgeRateLimit(), CheckVectorSpaceQuota()),
+    ),
+    "get.dataset_document.indexing_status": _REQ_DATASET_READ,
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.credential.activate": _req_admin_write(RBACPermission.CREDENTIAL_USE),
+    "model_providers.credential.activate": _req_admin_write(RBACPermission.CREDENTIAL_USE),
+    "models.delete": _req_admin_write(RBACPermission.PLUGIN_MODEL_CONFIG),
+    "models.settings.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "models.settings.set": _req_admin_write(RBACPermission.PLUGIN_MODEL_CONFIG),
+    "default_models.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "default_models.set": _req_admin_write(RBACPermission.PLUGIN_MODEL_CONFIG),
+    "api_tool_providers.get": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "api_tool_providers.create": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "api_tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "api_tool_providers.set": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "api_tool_providers.delete": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "mcp_providers.create": _req_member_write(RBACPermission.MCP_MANAGE),
+    "mcp_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "mcp_providers.set": _req_member_write(RBACPermission.MCP_MANAGE),
+    "mcp_providers.delete": _req_member_write(RBACPermission.MCP_MANAGE),
+    "mcp_providers.refresh": _req_member_write(RBACPermission.MCP_MANAGE),
+    "workflow_tools.create": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "workflow_tools.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "workflow_tools.set": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "workflow_tools.delete": _req_admin_write(RBACPermission.TOOL_MANAGE),
     "app_dsl.import": _REQ_DSL_WORKSPACE,
     "app_dsl.check": _REQ_DSL_WORKSPACE,
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
@@ -2009,7 +2415,14 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "plugin_id": "langgenius/openai",
         "provider": "langgenius/openai/openai",
         "credential_id": str(uuid.uuid4()),
+        "api_key_id": str(uuid.uuid4()),
         "model_type": "llm",
+        "provider_id": str(uuid.uuid4()),
+        "provider_name": "weather",
+        "workflow_tool_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid.uuid4()),
+        "document_id": str(uuid.uuid4()),
+        "batch": str(uuid.uuid4()),
     }
     query = route.query.format(**ids)
     if scenario.foreign_workspace_query:
@@ -2204,12 +2617,35 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("patch", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
+    ("delete", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
+    ),
     ("get", "/workspaces/{workspace_id}/model-providers/{provider}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
     ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
+    ),
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/datasets"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/datasets"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}"): frozenset({"200", "default"}),
+    ("patch", "/workspaces/{workspace_id}/datasets/{dataset_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/datasets/{dataset_id}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}"): frozenset({"200", "default"}),
+    ("delete", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}"): frozenset(
+        {"200", "default"}
+    ),
+    ("post", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
@@ -2223,6 +2659,39 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
+        {"200", "422", "default"}
+    ),
+    (
+        "post",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:activate",
+    ): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:activate"): frozenset(
+        {"200", "default"}
+    ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/model-providers/{provider}/models/settings"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("put", "/workspaces/{workspace_id}/model-providers/{provider}/models/settings"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/default-models/{model_type}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/default-models/{model_type}"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/api-tool-providers"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/api-tool-providers"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/api-tool-providers/{provider_name}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/api-tool-providers/{provider_name}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/api-tool-providers/{provider_name}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/mcp-providers"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/mcp-providers/{provider_id}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/mcp-providers/{provider_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/mcp-providers/{provider_id}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/mcp-providers/{provider_id}:refresh"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/workflow-tools"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
@@ -2231,6 +2700,10 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/account/sessions/{session_id}"): frozenset({"200", "default"}),
     ("get", "/apps"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/apps/{app_id}"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/api-keys"): frozenset({"200", "default"}),
+    ("post", "/apps/{app_id}/api-keys"): frozenset({"201", "default"}),
+    ("delete", "/apps/{app_id}/api-keys/{api_key_id}"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "default"}),
     ("patch", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/service-api"): frozenset({"200", "default"}),
@@ -2535,13 +3008,100 @@ class TestAuthMatrixCases:
             "model_providers.describe",
             "model_providers.credential.create",
             "model_providers.credential.set",
+            "model_providers.credential.delete",
+            "model_providers.credential.activate",
             "models.list",
             "models.credential.create",
             "models.credential.set",
+            "models.credential.delete",
+            "models.credential.activate",
+            "models.delete",
+            "models.settings.describe",
+            "models.settings.set",
+            "default_models.describe",
+            "default_models.set",
             "tools.list",
             "tool_providers.describe",
             "tool_providers.credential.create",
             "tool_providers.credential.set",
+            "tool_providers.credential.delete",
+            "api_tool_providers.get",
+            "api_tool_providers.create",
+            "api_tool_providers.describe",
+            "api_tool_providers.set",
+            "api_tool_providers.delete",
+            "mcp_providers.create",
+            "mcp_providers.describe",
+            "mcp_providers.set",
+            "mcp_providers.delete",
+            "mcp_providers.refresh",
+            "workflow_tools.create",
+            "workflow_tools.describe",
+            "workflow_tools.set",
+            "workflow_tools.delete",
+            "app_dsl.import",
+            "app_dsl.import_confirm",
+            "app_dsl.export",
+            "app_dsl.check",
+            "app_dsl.check_dependencies",
+            "app_create.workflow",
+            "app_create.advanced_chat",
+            "apps.delete",
+            "app_api_keys.list",
+            "app_api_keys.create",
+            "app_api_keys.delete",
+            "get.dataset",
+            "create.dataset",
+            "describe.dataset",
+            "set.dataset",
+            "delete.dataset",
+            "create.dataset_document",
+            "get.dataset_document",
+            "describe.dataset_document",
+            "delete.dataset_document",
+            "set.dataset_document",
+            "get.dataset_document.indexing_status",
+            "app_workflow.publish",
+            "app_workflow.version.list",
+            "app_workflow.version.restore",
+            "app_workflow.release_check",
+            "app_workflow.env.list",
+            "app_workflow.env.set",
+            "app_workflow.env.delete",
+            "app_info.describe.workflow",
+            "app_info.set.workflow",
+            "app_info.describe.advanced_chat",
+            "app_info.set.advanced_chat",
+            "app_info.describe.chat",
+            "app_info.set.chat",
+            "app_info.describe.agent_chat",
+            "app_info.set.agent_chat",
+            "app_info.describe.completion",
+            "app_info.set.completion",
+            "app_info.describe.agent",
+            "app_info.set.agent",
+            "service_api.describe",
+            "service_api.set",
+            "service_api.describe.agent",
+            "service_api.set.agent",
+            "webapp.describe.workflow",
+            "webapp.set.workflow",
+            "webapp.describe.advanced_chat",
+            "webapp.set.advanced_chat",
+            "webapp.describe.chat",
+            "webapp.set.chat",
+            "webapp.describe.agent_chat",
+            "webapp.set.agent_chat",
+            "webapp.describe.completion",
+            "webapp.set.completion",
+            "webapp.describe.agent",
+            "webapp.set.agent",
+            "webapp.reset",
+            "webapp.reset.agent",
+            "webapp_access.describe",
+            "webapp_access.set",
+            "webapp_access.describe.agent",
+            "webapp_access.set.agent",
         }
 
     @staticmethod

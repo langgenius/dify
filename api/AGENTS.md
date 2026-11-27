@@ -37,6 +37,11 @@ guard rejects new `Base` subclasses. Existing `Base` subclasses may be edited
 or migrated without adding more legacy inheritance. `make lint` checks local
 changes, and CI checks the PR against its target revision.
 
+The deployment edition guard rejects new `DeploymentEdition` imports and direct
+edition checks outside feature policy modules. Reuse or add a named capability in
+`services/feature_service.py`, or use `services/system_feature_service.py` for
+deployment-wide system policies.
+
 ## Billing And SaaS Calls
 
 - Call billing and saas only through the generated functions in `services/billing_client`; do not hand-write paths or response types.

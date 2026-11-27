@@ -91,7 +91,7 @@ function AddAccessSubjectMenuContent({
               closeOnClick={false}
               // Only an added member reads as spent; a pending add blocks the others without dimming them.
               className={cn(
-                'h-auto min-h-10 gap-2 py-1 pr-3 pl-2',
+                'h-auto min-h-10 gap-2 py-1 ps-2 pe-3',
                 isAdded ? 'data-disabled:opacity-50' : 'data-disabled:opacity-100',
               )}
               onClick={() => onAddAccessSubject(member.id, [DEFAULT_ACCESS_POLICY_ID])}

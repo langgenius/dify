@@ -11,8 +11,8 @@ from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
 from fields.base import ResponseModel
+from services.agent.config_service import AgentConfigServiceError
 from services.agent.knowledge_gateway import AgentKnowledgeGateway
-from services.agent_config_service import AgentConfigServiceError
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
 from services.knowledge_fs.product_authorization import KnowledgeFSProductNotFoundError
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError

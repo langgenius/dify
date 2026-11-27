@@ -6,6 +6,8 @@ from typing import TypeVar
 import pytest
 from pydantic import BaseModel
 
+from core.credit_usage import CreditUsageAppType
+from core.entities.provider_entities import CustomProviderConfiguration
 from core.evaluation.agent import agent_judge_evaluator
 from core.evaluation.agent.agent_judge_evaluator import (
     AgentLLMJudgeEvaluator,
@@ -19,6 +21,7 @@ from core.evaluation.agent.agent_judge_evaluator import (
     ToolSelectionJudgeOutput,
     TrajectoryQualityCriteria,
     TrajectoryQualityJudgeOutput,
+    _DifyAgentJudgeModel,
     _sanitize_value,
     _strict_judge_json_schema,
     _task_completion_payload,
@@ -36,6 +39,10 @@ from core.evaluation.entities.evaluation_entity import (
     AgentTrajectory,
     AgentTrajectoryStep,
 )
+from core.model_context import use_credit_usage_metadata
+from core.model_manager import ModelManager
+from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingProviderManager
 
 _JudgeOutput = TypeVar("_JudgeOutput", bound=BaseModel)
 
@@ -85,6 +92,22 @@ def _criterion(score: float | None, *, applicable: bool = True) -> CriterionAsse
         reason="Evidence-based reason.",
         evidence_step_ids=["final-output"],
     )
+
+
+def test_agent_judge_binds_evaluation_credit_attribution(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = make_model_config(provider="test-provider", model="test-model", mode="chat")
+    bundle = config.provider_model_bundle
+    bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "test"})
+    manager = ModelManager(RecordingProviderManager(bundle))
+    monkeypatch.setattr(
+        "core.plugin.impl.model_runtime_factory.create_plugin_model_manager",
+        lambda **_kwargs: manager,
+    )
+
+    with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT_V2}):
+        judge = _DifyAgentJudgeModel("test-provider", "test-model", "test-tenant-id")
+
+    assert judge._model._resolve_request_metadata(None) == {"app_type": "agent_v2", "created_by": "evaluation"}
 
 
 @pytest.mark.parametrize(

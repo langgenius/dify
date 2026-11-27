@@ -71,17 +71,16 @@ vi.mock('@/service/base', () => serviceBaseMocks)
 
 vi.mock('@/service/console', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const responses = {
+    'emailCodeLogin.validity.post': vi.fn(),
+    'emailCodeLogin.post': vi.fn(),
+  }
   return {
     ...original,
-    consoleClient: {
-      account: original.consoleClient.account,
-      emailCodeLogin: {
-        validity: {
-          post: vi.fn(),
-        },
-        post: vi.fn(),
-      },
-    },
+    consoleClient: withConsoleClientResponses(original.consoleClient, responses),
+    consoleQuery: withConsoleResponses(original.consoleQuery, responses),
   }
 })
 

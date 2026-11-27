@@ -6,7 +6,7 @@ import { useEffect, useMemo } from 'react'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
-import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import { marketplaceCollectionPluginsQueryOptions } from '@/service/plugin-list-queries'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
 
@@ -100,8 +100,12 @@ export function ToolPanel({
   const enableMarketplace = useMarketplace() !== null
   const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
-  const { plugins: featuredPlugins = [], isLoading: isFeaturedLoading } =
-    useFeaturedToolsRecommendations(enableMarketplace && !inRAGPipeline)
+  const { data: featuredPlugins = [], isLoading: isFeaturedLoading } = useQuery(
+    marketplaceCollectionPluginsQueryOptions({
+      collection: '__recommended-plugins-tools',
+      enabled: enableMarketplace && !inRAGPipeline,
+    }),
+  )
   const normalizedBuiltInTools = useMemo(
     () => normalizeToolList(buildInTools, basePath),
     [buildInTools],

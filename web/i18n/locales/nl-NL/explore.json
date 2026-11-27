@@ -1,7 +1,6 @@
 {
   "appCard.try": "Details",
   "appCustomize.nameRequired": "App name is required",
-  "appCustomize.subTitle": "App icon & name",
   "appCustomize.title": "Create app from {{name}}",
   "apps.allCategories": "All",
   "apps.description": "Gebruiksklare sjablonen van de community en het Dify-team.",

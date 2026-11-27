@@ -145,11 +145,11 @@ const Question: FC<QuestionProps> = ({
     <div className="mb-2 flex justify-end last:mb-0">
       <div
         className={cn(
-          'group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14',
+          'group relative me-4 flex max-w-full items-start overflow-x-hidden ps-14',
           isEditing && 'flex-1',
         )}
       >
-        <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
+        <div className={cn('me-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
@@ -191,7 +191,7 @@ const Question: FC<QuestionProps> = ({
             <Markdown content={content} />
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="max-h-39.5 overflow-x-hidden overflow-y-auto pr-1">
+              <div className="max-h-39.5 overflow-x-hidden overflow-y-auto pe-1">
                 <Textarea
                   className={cn(
                     'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',

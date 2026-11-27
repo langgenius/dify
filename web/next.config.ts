@@ -35,7 +35,6 @@ const nextConfig: NextConfig = {
     })
     return config
   },
-  productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,

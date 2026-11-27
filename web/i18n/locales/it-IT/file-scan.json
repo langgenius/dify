@@ -50,7 +50,7 @@
   "scanner.lastTested": "Ultimo test: {{time}}",
   "scanner.loadFailed": "Impossibile caricare gli scanner.",
   "scanner.neverTested": "Non ancora testato",
-  "scanner.readOnly": "Solo i proprietari e gli amministratori del workspace possono gestire gli scanner.",
+  "scanner.readOnly": "Non hai l’autorizzazione per gestire gli scanner.",
   "scanner.status.active": "Attivo",
   "scanner.status.error": "Errore",
   "scanner.test": "Testa",

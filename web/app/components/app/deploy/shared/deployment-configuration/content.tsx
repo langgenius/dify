@@ -20,7 +20,7 @@ function ConfigurationError({ messages }: { messages: string[] }) {
       <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0" />
       <div className="min-w-0">
         <p className="system-sm-semibold">{t(($) => $.error)}</p>
-        <ul className="mt-1 list-disc space-y-1 pl-4 system-xs-regular">
+        <ul className="mt-1 list-disc space-y-1 ps-4 system-xs-regular">
           {messages.map((message) => (
             <li key={message} className="wrap-break-word">
               {message}

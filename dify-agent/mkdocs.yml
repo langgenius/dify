@@ -25,6 +25,7 @@ nav:
       - Operations Guide:
           - Overview: dify-agent/guide/index.md
           - OpenShell Runtime Backend: dify-agent/guide/openshell.md
+          - E2B Runtime Metering: dify-agent/guide/runtime-metering.md
       - Examples: dify-agent/examples/index.md
 
 theme:

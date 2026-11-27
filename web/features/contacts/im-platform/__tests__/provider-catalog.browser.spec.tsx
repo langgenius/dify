@@ -1,3 +1,4 @@
+import { zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -8,33 +9,39 @@ import common from '@/i18n/locales/en-US/common.json'
 import contacts from '@/i18n/locales/en-US/contacts.json'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { ContactsImPlatformRuntimeProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
 import { channelSummary } from './fixtures/channel-client'
-import { defaultResponse, json } from './fixtures/http'
+import { providers, syncRun } from './fixtures/http'
 
-const network = vi.hoisted(() => ({
-  handle: vi.fn<(request: Request) => Promise<Response> | Response>(),
-}))
 vi.unmock('react-i18next')
-// boundary: catalog and configured channels arrive through the generated client's HTTP adapter.
-vi.mock('@/service/base', async () => {
-  const { httpErrorFromResponse } = await import('@/service/http-error')
-  return {
-    request: async (_url: string, _init: RequestInit, options: { request: Request }) => {
-      const response = await network.handle(options.request)
-      if (!response.ok) throw await httpErrorFromResponse(response)
-      return response
-    },
-  }
-})
 
 async function setup(hasActiveIM: boolean) {
-  network.handle.mockImplementation((request) => {
-    if (new URL(request.url).pathname.endsWith('/channels'))
-      return json({ channels: hasActiveIM ? [channelSummary({ provider: 'slack' })] : [] })
-    return defaultResponse(request)
-  })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            humanInput: {
+              v2: {
+                channelProviders: {
+                  get: () =>
+                    zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse.parse(providers),
+                },
+                channels: {
+                  get: () => ({
+                    channels: hasActiveIM ? [channelSummary({ provider: 'slack' })] : [],
+                  }),
+                },
+                imSyncRuns: { latest: { get: () => ({ run: syncRun() }) } },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })

@@ -1,6 +1,7 @@
 """Console routes for file malware scanning.
 
-Providers are workspace-wide and managed by owners and admins. A policy belongs to one product
+Providers are workspace-wide credentials: owners and admins manage them, or with RBAC whoever holds
+``credential.manage``. A policy belongs to one product
 resource, so each resource type has its own route guarded by that resource's own permissions;
 they all delegate to ``FileScanPolicyService``.
 """
@@ -14,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 from configs import dify_config
-from controllers.common.rbac import DatasetId, RBACCheck
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.flask_admission import console_account_admission
 from core.db.session_factory import session_factory
@@ -43,6 +44,8 @@ from . import console_ns
 from .wraps import RBACPermission, model_validate
 
 _PROVIDER_ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+# A scanner receives every scanned file, so with RBAC it is guarded like the other workspace credentials.
+_PROVIDER_MANAGE_CHECKS = (RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()),)
 _DATASET_EDIT_ROLES = frozenset(
     {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
 )
@@ -192,7 +195,7 @@ class FileScanProvidersApi(Resource):
     @console_ns.doc(description="Add a malware scanner. It is verified with a live check before it is saved.")
     @console_ns.expect(console_ns.models[FileScanProviderCreatePayload.__name__])
     @console_ns.response(201, "Scanner added", console_ns.models[FileScanProviderResponse.__name__])
-    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES)
+    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES, rbac_checks=_PROVIDER_MANAGE_CHECKS)
     @model_validate(FileScanProviderCreatePayload)
     def post(self, payload: FileScanProviderCreatePayload, request_context: RequestContext):
         _require_enabled()
@@ -215,7 +218,7 @@ class FileScanProviderApi(Resource):
     @console_ns.doc(description="Update a malware scanner. It is verified with a live check before it is saved.")
     @console_ns.expect(console_ns.models[FileScanProviderUpdatePayload.__name__])
     @console_ns.response(200, "Scanner updated", console_ns.models[FileScanProviderResponse.__name__])
-    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES)
+    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES, rbac_checks=_PROVIDER_MANAGE_CHECKS)
     @model_validate(FileScanProviderUpdatePayload)
     def patch(self, payload: FileScanProviderUpdatePayload, request_context: RequestContext, provider_id: UUID):
         _require_enabled()
@@ -235,7 +238,7 @@ class FileScanProviderApi(Resource):
 
     @console_ns.doc(description="Delete a malware scanner that no policy selects")
     @console_ns.response(204, "Scanner deleted")
-    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES)
+    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES, rbac_checks=_PROVIDER_MANAGE_CHECKS)
     def delete(self, request_context: RequestContext, provider_id: UUID):
         _require_enabled()
         try:
@@ -253,7 +256,7 @@ class FileScanProviderApi(Resource):
 class FileScanProviderTestApi(Resource):
     @console_ns.doc(description="Run the scanner's connectivity check again and store the result")
     @console_ns.response(200, "Check finished", console_ns.models[FileScanProviderResponse.__name__])
-    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES)
+    @console_account_admission(allowed_roles=_PROVIDER_ADMIN_ROLES, rbac_checks=_PROVIDER_MANAGE_CHECKS)
     def post(self, request_context: RequestContext, provider_id: UUID):
         _require_enabled()
         try:

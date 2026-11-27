@@ -235,6 +235,7 @@ it('keeps the preview canvas fixed while the first zoom step enlarges the drawin
 
 it('copies a complete PNG after zooming and resets the success feedback', async () => {
   let copied: Blob | undefined
+  // boundary: the system clipboard is shared by spec files running in parallel; PNG rendering stays real.
   const write = vi.spyOn(navigator.clipboard, 'write').mockImplementation(async (items) => {
     copied = await items[0]!.getType('image/png')
   })

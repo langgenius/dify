@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
-import { annotationBatchImport } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
@@ -57,12 +56,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get(
-        {
-          params: { app_id: appId, job_id: jobID },
-        },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
+        params: { app_id: appId, job_id: jobID },
+      })
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
@@ -81,11 +77,19 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   }
 
   const runBatch = async (csv: File) => {
-    const formData = new FormData()
-    formData.append('file', csv)
     try {
-      const res = await annotationBatchImport(appId, formData, { silent: true })
-      setImportStatus(res.job_status)
+      const res = await consoleClient.apps.byAppId.annotations.batchImport.post({
+        params: { app_id: appId },
+        body: { file: csv },
+      })
+      setImportStatus(res.job_status ?? undefined)
+      // A rejected CSV or quota check returns `error_msg` without a job to poll.
+      if (!res.job_id) {
+        toast.error(
+          `${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}${res.error_msg ? `: ${res.error_msg}` : ''}`,
+        )
+        return
+      }
       checkProcess(res.job_id)
     } catch (e: any) {
       toast.error(

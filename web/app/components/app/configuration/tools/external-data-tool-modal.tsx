@@ -25,7 +25,7 @@ import {
 } from '@/app/components/base/icon-picker'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink } from '@/context/i18n'
-import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
+import { codeBasedExtensionsQueryOptions } from '@/service/console/code-based-extension-query'
 import {
   buildProviders,
   formatExternalDataTool,

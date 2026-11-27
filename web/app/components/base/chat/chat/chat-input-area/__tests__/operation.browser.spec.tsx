@@ -1,17 +1,17 @@
+import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../../types'
 import type { VoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TransferMethod } from '@/types/app'
 import { renderChatOwner } from '../../__tests__/chat-owner-preset'
 import Chat from '../../index'
 
 vi.unmock('react-i18next')
-// boundary: the component journey runs without Next's route context.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 // boundary: microphone permission and device capture cannot run in headless component tests.
 vi.mock('@/app/components/base/voice-input/recorder', () => ({ startVoiceRecorder: vi.fn() }))
 
@@ -19,6 +19,15 @@ beforeEach(async () => {
   await page.viewport(1000, 800)
   onTestFinished(guardUnexpectedFetch())
 })
+
+// Chat reads route params; the real hooks run inside a test App Router.
+async function renderChat(ui: ReactNode) {
+  const { NavigationProvider } = createTestNavigation({ url: '/chat' })
+  const screen = await renderChatOwner(<NavigationProvider>{ui}</NavigationProvider>)
+  return {
+    rerender: (next: ReactNode) => screen.rerender(<NavigationProvider>{next}</NavigationProvider>),
+  }
+}
 
 const fileUpload: NonNullable<ChatConfig['file_upload']> = {
   enabled: true,
@@ -36,7 +45,7 @@ const fileUpload: NonNullable<ChatConfig['file_upload']> = {
 const uploadConfig = createChatConfigFixture({ file_upload: fileUpload })
 
 it('opens the real upload surface, returns keyboard focus on Escape, and enforces readonly and enablement', async () => {
-  const screen = await renderChatOwner(
+  const screen = await renderChat(
     <div style={{ height: 500 }}>
       <Chat chatList={[]} config={uploadConfig} />
     </div>,
@@ -79,7 +88,7 @@ function SendOwner({
 }
 
 it('sends the actual draft through the operation and prevents readonly or disabled sends', async () => {
-  const screen = await renderChatOwner(<SendOwner />)
+  const screen = await renderChat(<SendOwner />)
   await page.getByRole('textbox').fill('Send this draft')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect
@@ -105,7 +114,7 @@ it('starts real voice UI only while the operation is available and editable', as
   vi.mocked(startVoiceRecorder).mockResolvedValue(recorder)
   onTestFinished(() => context.close())
   const config = createChatConfigFixture({ speech_to_text: { enabled: true } })
-  const screen = await renderChatOwner(
+  const screen = await renderChat(
     <div style={{ height: 500 }}>
       <Chat
         chatList={[]}

@@ -42,7 +42,7 @@ const FileInAttachmentItem = ({
     <>
       <div
         className={cn(
-          'flex h-12 items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pr-3 shadow-xs',
+          'flex h-12 items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pe-3 shadow-xs',
           progress === -1 && 'border-state-destructive-border bg-state-destructive-hover',
           canPreview && previewMode === PreviewMode.NewPage && 'cursor-pointer',
         )}
@@ -55,7 +55,7 @@ const FileInAttachmentItem = ({
           {isImageFile && <FileImageRender className="size-8" imageUrl={base64Url || url || ''} />}
           {!isImageFile && <FileTypeIcon type={getFileAppearanceType(name, type)} size="xl" />}
         </div>
-        <div className="mr-1 w-0 grow">
+        <div className="me-1 w-0 grow">
           <div
             className="mb-0.5 flex items-center truncate system-xs-medium text-text-secondary"
             title={file.name}
@@ -71,7 +71,7 @@ const FileInAttachmentItem = ({
         <div className="flex shrink-0 items-center">
           {progress >= 0 && !fileIsUploaded(file) && (
             <ProgressCircle
-              className="mr-2.5"
+              className="me-2.5"
               value={progress}
               aria-label={t(($) => $.uploading, { ns: 'custom' })}
             />
@@ -79,7 +79,7 @@ const FileInAttachmentItem = ({
           {progress === -1 && (
             <IconButton
               aria-label={`${t(($) => $['operation.retry'], { ns: 'common' })} ${name}`}
-              className="mr-1"
+              className="me-1"
               onClick={(e) => {
                 e.stopPropagation()
                 onReUpload?.(id)
@@ -105,7 +105,7 @@ const FileInAttachmentItem = ({
           {canPreview && isImageFile && (
             <IconButton
               aria-label={`${t(($) => $['operation.view'], { ns: 'common' })} ${name}`}
-              className="mr-1"
+              className="me-1"
               disabled={!fileUrl}
               onClick={(e) => {
                 e.stopPropagation()

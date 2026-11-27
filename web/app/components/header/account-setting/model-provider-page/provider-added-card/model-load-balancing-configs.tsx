@@ -197,8 +197,8 @@ const ModelLoadBalancingConfigs = ({
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={loadBalancingLabelId}
-                  className="relative z-20 size-3"
-                  iconSize="small"
+                  className="relative z-20"
+                  size="sm"
                 />
                 <InfotipContent aria-labelledby={loadBalancingLabelId}>
                   {t(($) => $['modelProvider.loadBalancingInfo'], { ns: 'modelProvider' })}

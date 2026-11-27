@@ -41,15 +41,16 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, DifySetup, Message
 from models.provider import Provider, TenantDefaultModel
-from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from services.agent.agent_app_service import AgentAppAccessService
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
-from services.app.agent_app_service import AgentAppAccessService
 from services.app_tracing_config_service import AppTracingConfigService
 from services.entities.message_entities import MessageAccount
+from services.evaluation_service import EvaluationService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
@@ -204,7 +205,14 @@ def harness(
     )
     services = _Services(
         app_services,
-        _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
+        _Agents(
+            AgentAppAccessService(
+                store=AgentAppRepository(
+                    session_factory=sqlite_session_factory,
+                    stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+                )
+            )
+        ),
         MessageSuggestedQuestionsService(
             queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
         ),

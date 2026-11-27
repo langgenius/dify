@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import type { CodeBasedExtensionForm } from '@/models/common'
 import type { ModerationConfig } from '@/models/debug'
+import type { CodeBasedExtensionForm } from '@/service/console/code-based-extension-query'
 import {
   Select,
   SelectContent,

@@ -31,9 +31,7 @@ export const createHumanInputMigrationApi = (
   async migrate(request) {
     try {
       const body = request as Parameters<typeof client.post>[0]['body']
-      const response = zNodeDataMigrationResponse.parse(
-        await client.post({ body }, { context: { silent: true } }),
-      )
+      const response = zNodeDataMigrationResponse.parse(await client.post({ body }))
       return {
         status: 'success',
         data: response.data.map(({ node_id, node_data }) => {

@@ -2,6 +2,11 @@ import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/s
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
+import {
+  conversationVarValuesQueryOptions,
+  sysVarValuesQueryOptions,
+} from '@/service/workflow-queries'
+import { createTestQueryClient } from '@/test/query-client'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus, VarType } from '../../types'
@@ -12,8 +17,6 @@ const mockDeleteInspectVar = vi.hoisted(() => vi.fn())
 const mockDeleteNodeInspectorVars = vi.hoisted(() => vi.fn())
 const mockFetchNodeInspectVars = vi.hoisted(() => vi.fn())
 const mockDoDeleteAllInspectorVars = vi.hoisted(() => vi.fn())
-const mockInvalidateConversationVarValues = vi.hoisted(() => vi.fn())
-const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
 
 const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   {
@@ -25,21 +28,22 @@ const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   },
 ]
 
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateConversationVarValues: () => mockInvalidateConversationVarValues,
-  useInvalidateSysVarValues: () => mockInvalidateSysVarValues,
-  useResetInspectorVar: () => ({ mutateAsync: mockResetInspectorVar }),
-  useDeleteAllInspectorVars: () => ({ mutateAsync: mockDoDeleteAllInspectorVars }),
-  useDeleteNodeInspectorVars: () => ({ mutateAsync: mockDeleteNodeInspectorVars }),
-  useDeleteInspectVar: () => ({ mutateAsync: mockDeleteInspectVar }),
-  useEditInspectorVar: () => ({ mutateAsync: vi.fn() }),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.variables.byVariableId.reset.put': (input: unknown) =>
+        mockResetInspectorVar(input),
+      'apps.byAppId.workflows.draft.variables.byVariableId.delete': (input: unknown) =>
+        mockDeleteInspectVar(input),
+      'apps.byAppId.workflows.draft.nodes.byNodeId.variables.delete': (input: unknown) =>
+        mockDeleteNodeInspectorVars(input),
+      'apps.byAppId.workflows.draft.variables.delete': (input: unknown) =>
+        mockDoDeleteAllInspectorVars(input),
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
@@ -71,6 +75,20 @@ const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect =
   ...overrides,
 })
 
+const appResource = {
+  kind: 'app',
+  appId: 'app-1',
+  mode: 'workflow',
+  collaborationEnabled: false,
+} as const
+
+// The workflow wrapper seeds both app variable queries; return their invalidation state.
+const variableQueryState = (queryClient: ReturnType<typeof createTestQueryClient>) => ({
+  conversation: queryClient.getQueryState(conversationVarValuesQueryOptions(appResource).queryKey)
+    ?.isInvalidated,
+  system: queryClient.getQueryState(sysVarValuesQueryOptions(appResource).queryKey)?.isInvalidated,
+})
+
 const nodes = [
   createNode({
     id: 'node-1',
@@ -91,8 +109,10 @@ describe('useInspectVarsCrudCommon', () => {
   })
 
   it('invalidates cached system vars without refetching node values for system selectors', async () => {
+    const queryClient = createTestQueryClient()
     const { result } = renderWorkflowCanvasHook(() => useInspectVarsCrudCommon(), {
       nodes,
+      queryClient,
       initialStoreState: {
         dataSourceList: [],
       },
@@ -102,7 +122,7 @@ describe('useInspectVarsCrudCommon', () => {
       await result.current.fetchInspectVarValue(['sys', 'query'], schemaTypeDefinitions)
     })
 
-    expect(mockInvalidateSysVarValues).toHaveBeenCalledTimes(1)
+    expect(variableQueryState(queryClient)).toEqual({ conversation: false, system: true })
     expect(mockFetchNodeInspectVars).not.toHaveBeenCalled()
   })
 
@@ -153,10 +173,12 @@ describe('useInspectVarsCrudCommon', () => {
 
   it('deletes all inspect vars, invalidates cached values, and clears edge running state', async () => {
     mockDoDeleteAllInspectorVars.mockResolvedValue(undefined)
+    const queryClient = createTestQueryClient()
 
     const { result, store } = renderWorkflowCanvasHook(
       () => ({ ...useInspectVarsCrudCommon(), flow: useStoreApi() }),
       {
+        queryClient,
         nodes: [...nodes, createNode({ id: 'target' })],
         edges: [
           createEdge({
@@ -193,8 +215,8 @@ describe('useInspectVarsCrudCommon', () => {
     })
 
     expect(mockDoDeleteAllInspectorVars).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateSysVarValues).toHaveBeenCalledTimes(1)
+    expect(mockDoDeleteAllInspectorVars).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+    expect(variableQueryState(queryClient)).toEqual({ conversation: true, system: true })
     expect(result.current.flow.getState().edges).toMatchObject([
       {
         id: 'edge',

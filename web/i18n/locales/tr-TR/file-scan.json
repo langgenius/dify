@@ -50,7 +50,7 @@
   "scanner.lastTested": "Son test: {{time}}",
   "scanner.loadFailed": "Tarayıcılar yüklenemedi.",
   "scanner.neverTested": "Henüz test edilmedi",
-  "scanner.readOnly": "Tarayıcıları yalnızca çalışma alanı sahipleri ve yöneticileri yönetebilir.",
+  "scanner.readOnly": "Tarayıcıları yönetme izniniz yok.",
   "scanner.status.active": "Etkin",
   "scanner.status.error": "Hata",
   "scanner.test": "Test et",

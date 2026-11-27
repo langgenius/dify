@@ -63,7 +63,7 @@ export default function AccountPage() {
   const renderAppItem = (item: AccountAppItem) => {
     return (
       <div className="flex px-3 py-1">
-        <div className="mr-3">
+        <div className="me-3">
           <AppIcon size="tiny" icon={item} />
         </div>
         <div className="mt-0.75 system-sm-medium text-text-secondary">{item.name}</div>
@@ -80,12 +80,12 @@ export default function AccountPage() {
       </div>
       <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
         <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} size="3xl" />
-        <div className="ml-4">
+        <div className="ms-4">
           <p className="system-xl-semibold text-text-primary">
             {userProfile.name}
             {isEducationAccount && (
-              <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                <span aria-hidden className="mr-1 i-ri-graduation-cap-fill size-3" />
+              <PremiumBadge size="s" color="blue" className="ms-1 px-2!">
+                <span aria-hidden className="me-1 i-ri-graduation-cap-fill size-3" />
                 <span className="system-2xs-medium">EDU</span>
               </PremiumBadge>
             )}
@@ -99,7 +99,7 @@ export default function AccountPage() {
         </div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
           <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
-            <span className="pl-1">{userProfile.name}</span>
+            <span className="ps-1">{userProfile.name}</span>
           </div>
           <EditAccountNameDialog name={userProfile.name} />
         </div>
@@ -110,7 +110,7 @@ export default function AccountPage() {
         </div>
         <div className="mt-2 flex w-full items-center justify-between gap-2">
           <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
-            <span className="pl-1">{userProfile.email}</span>
+            <span className="ps-1">{userProfile.email}</span>
           </div>
           {systemFeatures.enable_change_email && (
             <button

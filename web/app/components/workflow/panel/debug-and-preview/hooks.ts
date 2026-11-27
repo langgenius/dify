@@ -3,8 +3,9 @@ import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/a
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { ReasoningChunkResponse } from '@/types/workflow'
+import { useQueryClient } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -29,9 +30,11 @@ import {
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { sseGet } from '@/service/base'
-import { useInvalidateAllLastRun } from '@/service/use-workflow'
+import { reportRequestError } from '@/app/query-error-toast'
+import { streamEvents } from '@/service/event-stream'
 import { submitHumanInputForm } from '@/service/workflow'
+import { workflowRunEventsRequest } from '@/service/workflow-events'
+import { lastRunQueryKey } from '@/service/workflow-queries'
 import { TransferMethod } from '@/types/app'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import { useHooksStore } from '../../hooks-store'
@@ -68,7 +71,11 @@ export const useChat = (
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
   const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const invalidAllLastRun = useInvalidateAllLastRun(resource)
+  const queryClient = useQueryClient()
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
@@ -725,7 +732,12 @@ export const useChat = (
     const form = threadMessages
       .flatMap((item) => item.humanInputFormDataList ?? [])
       .find((item) => item.form_token === formToken)
-    await submitHumanInputForm(formToken, formData, form?.form_version)
+    try {
+      await submitHumanInputForm(formToken, formData, form?.form_version)
+    } catch (error) {
+      reportRequestError(error)
+      throw error
+    }
   }
 
   const getHumanInputNodeData = (nodeID: string) => {
@@ -738,9 +750,7 @@ export const useChat = (
   const handleResume = useCallback(
     (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback) => {
       // Re-subscribe to workflow events for the specific message
-      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`
-
-      const otherOptions: IOtherOptions = {
+      const otherOptions: StreamCallbacks = {
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -988,7 +998,7 @@ export const useChat = (
 
       if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
 
-      sseGet(url, {}, otherOptions)
+      streamEvents(workflowRunEventsRequest(workflowRunId), otherOptions)
     },
     [
       updateChatTreeNode,

@@ -63,7 +63,7 @@ const FieldItem = ({
   return (
     <div
       className={cn(
-        'group flex min-h-8 items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pr-1 pl-2 shadow-xs hover:shadow-sm',
+        'group flex min-h-8 items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 ps-2 pe-1 shadow-xs hover:shadow-sm',
         readonly && 'cursor-default',
       )}
     >
@@ -83,7 +83,7 @@ const FieldItem = ({
         {!readonly && dragHandleProps && (
           <IconButton
             {...dragHandleProps}
-            className="handle pointer-events-none absolute -top-1 -left-1 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
+            className="handle pointer-events-none absolute -inset-s-1 -top-1 cursor-grab opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 aria-pressed:bg-state-accent-hover"
           >
             <RiDraggable aria-hidden="true" className="size-4 text-text-quaternary" />
           </IconButton>

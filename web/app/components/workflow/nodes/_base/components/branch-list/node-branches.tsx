@@ -48,7 +48,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({
           <PopoverTrigger
             openOnHover
             aria-label={topic.name}
-            className="w-full border-0 bg-transparent p-0 text-left"
+            className="w-full border-0 bg-transparent p-0 text-start"
           >
             {content}
           </PopoverTrigger>

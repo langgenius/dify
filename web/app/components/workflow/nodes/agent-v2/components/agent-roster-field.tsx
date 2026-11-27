@@ -273,7 +273,9 @@ function AgentRosterDrawer({
                 })}
                 className="min-h-0 flex-1 overflow-hidden bg-components-panel-bg"
               >
-                {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+                <Suspense fallback={<InlineAgentLoading />}>
+                  {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+                </Suspense>
               </div>
             </DrawerContent>
           </DrawerPopup>

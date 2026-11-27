@@ -1,43 +1,44 @@
 import type { Role } from '@/models/access-control'
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
-import { createDeferred } from '@/test/deferred'
+import { consoleQuery } from '@/service/console'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { builtinRole, customRole, renderRolePage, rolePage } from './role-page-fixture'
 
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.get>(),
-  create: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.post>(),
-  update: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.put>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.rbac.roles.get': api.list,
-      'workspaces.current.rbac.roles.post': api.create,
-      'workspaces.current.rbac.roles.byRoleId.put': api.update,
-    }),
-  }
-})
 let roles: Role[]
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        rbac: {
+          roles: {
+            get: async () => rolePage(roles),
+            post: async ({ body }) => {
+              const saved = { ...customRole, ...body, id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f70' }
+              roles = [...roles, saved]
+              return saved
+            },
+            byRoleId: {
+              put: async ({ params, body }) => {
+                const saved = { ...customRole, ...body, id: params.role_id }
+                roles = roles.map((role) => (role.id === saved.id ? saved : role))
+                return saved
+              },
+              delete: async ({ params }) => {
+                roles = roles.filter((role) => role.id !== params.role_id)
+                return { result: 'success' }
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}))
 beforeEach(() => {
   roles = [customRole]
-  api.list.mockReset().mockImplementation(async () => rolePage(roles))
-  api.create.mockReset().mockImplementation(async ({ body }) => {
-    const saved = { ...customRole, ...body, id: 'created-role' }
-    roles = [...roles, saved]
-    return saved
-  })
-  api.update.mockReset().mockImplementation(async ({ params, body }) => {
-    const saved = { ...customRole, ...body, id: params.role_id }
-    roles = roles.map((role) => (role.id === saved.id ? saved : role))
-    return saved
-  })
 })
-async function setup(canManage = true) {
-  const view = await renderRolePage(canManage)
+async function setup(options?: Parameters<typeof renderRolePage>[0]) {
+  const view = await renderRolePage(options)
   onTestFinished(() => view.queryClient.clear())
   return view.screen
 }
@@ -57,7 +58,7 @@ async function openCreate(screen: Awaited<ReturnType<typeof setup>>) {
 }
 
 it('keeps management actions disabled for members without role management permission', async () => {
-  const screen = await setup(false)
+  const screen = await setup({ canManage: false })
   await expect.element(screen.getByText('Custom manager')).toBeVisible()
   await expect
     .element(screen.getByRole('button', { name: 'permission.role.addRole' }))
@@ -106,28 +107,72 @@ it('keeps the selected built-in role read-only across grouped rows', async () =>
     .not.toBeInTheDocument()
 })
 
+it('retains a failed role deletion for retry and closes before the list refresh finishes', async () => {
+  const { delete: remove } = fake.console.workspaces.current.rbac.roles.byRoleId
+  const first = hold(remove)
+  const retry = hold(remove)
+  const { screen, queryClient } = await renderRolePage()
+  onTestFinished(() => queryClient.clear())
+
+  const actions = screen.getByRole('button', { name: 'common.operation.moreActions' })
+  await actions.click()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  const confirm = dialog.getByRole('button', { name: 'common.operation.delete' })
+  await confirm.click()
+  await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(confirm).toHaveFocus()
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
+    .toBeDisabled()
+  await userEvent.keyboard('{Enter}{Escape}')
+  await expect.element(dialog).toBeVisible()
+  expect(await first.arrived).toEqual({ params: { role_id: customRole.id } })
+  expect(remove).toHaveBeenCalledOnce()
+
+  first.reject(apiError({ status: 500, message: 'Delete failed' }))
+  await expect.element(confirm).not.toHaveAttribute('aria-disabled', 'true')
+  await expect.element(confirm).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await retry.arrived
+  expect(remove).toHaveBeenCalledTimes(2)
+  const refresh = hold(fake.console.workspaces.current.rbac.roles.get)
+  retry.release()
+
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByText(customRole.name)).not.toBeInTheDocument()
+  const addRole = screen.getByRole('button', { name: 'permission.role.addRole' })
+  await expect.element(addRole).toHaveFocus()
+  refresh.reject(apiError({ status: 500, message: 'List refresh failed' }))
+  const listKey = consoleQuery.workspaces.current.rbac.roles.get.key({ type: 'infinite' })
+  await expect
+    .poll(() => queryClient.getQueryCache().find({ queryKey: listKey, exact: false })?.state.status)
+    .toBe('error')
+  await expect.element(screen.getByText(customRole.name)).not.toBeInTheDocument()
+  await expect.element(addRole).toHaveFocus()
+})
+
 it('preserves trimmed role fields and permission selection across a pending failure, then refreshes the list on retry', async () => {
-  const pending = createDeferred<void>()
-  const create = api.create.getMockImplementation()!
-  api.create.mockImplementationOnce(async (...args) => {
-    await pending.promise
-    return create(...args)
-  })
+  const createRole = fake.console.workspaces.current.rbac.roles.post
+  const pending = hold(createRole)
   const screen = await setup()
   const dialog = await openCreate(screen)
-  await dialog.getByRole('checkbox', { name: /permissionKeys.workspace.member.manage/ }).click()
+  await dialog.getByRole('button', { name: 'permission.permissionList.selectAll' }).click()
   const confirm = dialog.getByRole('button', { name: 'common.operation.confirm' })
   await confirm.click()
   await expect.element(confirm).toBeDisabled()
   await expect.element(dialog).toBeVisible()
-  expect(api.create).toHaveBeenCalledExactlyOnceWith({
-    body: {
-      name: 'New manager',
-      description: 'Support team',
-      permission_keys: ['workspace.member.manage'],
-    },
-  })
-  pending.reject(new Error('Save failed'))
+  await expect.poll(() => createRole).toHaveBeenCalledOnce()
+  expect(createRole).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      body: {
+        name: 'New manager',
+        description: 'Support team',
+        permission_keys: ['workspace.member.manage'],
+      },
+    }),
+  )
+  pending.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Save failed' }))
   await expect.element(confirm).toBeEnabled()
   await expect
     .element(dialog.getByRole('textbox', { name: 'permission.role.modal.nameLabel' }))
@@ -141,7 +186,8 @@ it('preserves trimmed role fields and permission selection across a pending fail
   await expect.element(screen.getByText('Support team', { exact: true })).toBeVisible()
 })
 
-it('updates the selected role and preserves its existing permission selection', async () => {
+it('preserves hidden IP policy grants when clearing the visible permissions of an Enterprise role', async () => {
+  roles = [{ ...customRole, permission_keys: ['workspace.member.manage', 'ip_policy.view'] }]
   const screen = await setup()
   await screen.getByRole('button', { name: 'common.operation.moreActions' }).click()
   await screen.getByRole('menuitem', { name: 'common.operation.edit' }).click()
@@ -150,8 +196,10 @@ it('updates the selected role and preserves its existing permission selection', 
     .element(dialog.getByRole('checkbox', { name: /permissionKeys.workspace.member.manage/ }))
     .toBeChecked()
   await expect
-    .element(dialog.getByRole('button', { name: /permission.group.workspace_management/ }))
+    .element(dialog.getByRole('button', { name: /permission.group.workspace/ }))
     .toHaveAttribute('aria-expanded', 'true')
+  expect(dialog.getByRole('checkbox', { name: /IP Policies/ }).all()).toHaveLength(0)
+  await dialog.getByRole('button', { name: 'permission.permissionList.clearAll' }).click()
   await dialog
     .getByRole('textbox', { name: 'permission.role.modal.nameLabel' })
     .fill('Updated manager')
@@ -163,12 +211,24 @@ it('updates the selected role and preserves its existing permission selection', 
   await expect.element(screen.getByText('Updated manager', { exact: true })).toBeVisible()
   await expect.element(screen.getByText('Updated description', { exact: true })).toBeVisible()
   await expect.element(screen.getByText('Custom manager', { exact: true })).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenCalledWith({
-    params: { role_id: customRole.id },
-    body: {
-      name: 'Updated manager',
-      description: 'Updated description',
-      permission_keys: customRole.permission_keys,
-    },
-  })
+  expect(fake.console.workspaces.current.rbac.roles.byRoleId.put).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: { role_id: customRole.id },
+      body: {
+        name: 'Updated manager',
+        description: 'Updated description',
+        permission_keys: ['ip_policy.view'],
+      },
+    }),
+  )
+})
+
+it('offers both IP policy permissions when creating a Cloud role', async () => {
+  const screen = await setup({ deploymentEdition: 'CLOUD' })
+  await screen.getByRole('button', { name: 'permission.role.addRole' }).click()
+  const dialog = screen.getByRole('dialog')
+  await expect.element(dialog.getByRole('checkbox', { name: /View IP Policies/ })).toBeVisible()
+  await expect
+    .element(dialog.getByRole('checkbox', { name: /Create, Edit and Delete IP Policies/ }))
+    .toBeVisible()
 })

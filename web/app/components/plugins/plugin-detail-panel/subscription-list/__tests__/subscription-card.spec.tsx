@@ -1,20 +1,15 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import SubscriptionCard from '../subscription-card'
 
 const mockRefetch = vi.fn()
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ refetch: mockRefetch }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useUpdateTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
-  useVerifyTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
-  useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/app/notifications', () => ({

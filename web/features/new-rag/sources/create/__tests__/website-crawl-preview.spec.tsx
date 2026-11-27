@@ -104,38 +104,40 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.cancel.post': async (input) =>
+      workflowApiResponse(await clientMock.cancel(input)),
+    'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get': async (input) =>
+      workflowApiResponse(await clientMock.getRun(input)),
+    'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.pages.get': async (input) =>
+      crawlPreviewPageListApiResponse(await clientMock.getPages(input)),
+    'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post': async (input) =>
+      workflowApiResponse(await clientMock.retry(input)),
+    'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post': async (input) =>
+      workflowApiResponse(await clientMock.asyncImport(input)),
+    'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.crawlPreview.post': async (input) =>
+      workflowApiResponse(await clientMock.startPreview(input)),
+    'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete': (input) =>
+      clientMock.deleteSource(input),
+    'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get': async (input) =>
+      sourceApiResponse(await clientMock.getSource(input)),
+    'knowledgeFs.spaces.byControlSpaceId.sources.get': async (input) => {
+      const response = await clientMock.listSources(input)
+      return {
+        data: response.items.map(sourceApiResponse),
+        next_cursor: response.nextCursor ?? null,
+      }
+    },
+    'knowledgeFs.spaces.byControlSpaceId.sources.post': async (input) =>
+      sourceApiResponse(await clientMock.createSource(input)),
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.cancel.post': async (input) =>
-        workflowApiResponse(await clientMock.cancel(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get': async (input) =>
-        workflowApiResponse(await clientMock.getRun(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.pages.get': async (input) =>
-        crawlPreviewPageListApiResponse(await clientMock.getPages(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post': async (input) =>
-        workflowApiResponse(await clientMock.retry(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post': async (input) =>
-        workflowApiResponse(await clientMock.asyncImport(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.crawlPreview.post': async (input) =>
-        workflowApiResponse(await clientMock.startPreview(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete': (input) =>
-        clientMock.deleteSource(input),
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get': async (input) =>
-        sourceApiResponse(await clientMock.getSource(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sources.get': async (input) => {
-        const response = await clientMock.listSources(input)
-        return {
-          data: response.items.map(sourceApiResponse),
-          next_cursor: response.nextCursor ?? null,
-        }
-      },
-      'knowledgeFs.spaces.byControlSpaceId.sources.post': async (input) =>
-        sourceApiResponse(await clientMock.createSource(input)),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'knowledgeFs.spaces.byControlSpaceId.settings.get': clientMock.settings,
     }),
   }
@@ -693,7 +695,10 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
     clientMock.cancel
       .mockRejectedValueOnce(
-        createHttpError(new Response(null, { status: 409 }), { message: 'conflict' }),
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'knowledge_fs_space_not_found',
+          message: 'conflict',
+        }),
       )
       .mockResolvedValueOnce(run('canceled'))
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -702,7 +707,9 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
-    expect(screen.getByText('knowledgeSources.crawlFailedDescription')).toBeInTheDocument()
+    // The cancel failure carries its translated reason in place of the generic copy.
+    expect(screen.getByText('requestErrors.code.knowledge_fs_space_not_found')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSources.crawlFailedDescription')).not.toBeInTheDocument()
     expect(routerMock.push).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))

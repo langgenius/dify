@@ -1,40 +1,67 @@
 import type { KnowledgeFsUpgradePreparationResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { ORPCError } from '@orpc/client'
 import { useRef } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import {
-  upgradeDataset as dataset,
   expectedUpgradeModels as expectedPayload,
-  upgradeJob as job,
   upgradeModelCatalogs as modelCatalogs,
   recommendedUpgradeModels as recommendedModels,
   seedUpgradeModels,
+  upgradeDataset,
+  upgradeJob,
 } from '@/test/new-rag-upgrade'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { KnowledgeUpgradeCard } from '../knowledge-upgrade-card'
 import { KnowledgeUpgradeProvider } from '../knowledge-upgrade-context'
 import { useKnowledgeUpgrade } from '../knowledge-upgrade-context-value'
 
-const startUpgradeMock = vi.hoisted(() => vi.fn())
-const discoverUpgradeMock = vi.hoisted(() => vi.fn())
-const getModelsMock = vi.hoisted(() => vi.fn())
+// The upgrade contracts address datasets by UUID.
+const datasetId = '3f0b6c8e-2a4d-4e8f-9b1a-7c5d2e6f8a90'
+const dataset = { ...upgradeDataset, id: datasetId }
+const job = { ...upgradeJob, old_dataset_id: datasetId }
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.knowledgeFsUpgrades.get': discoverUpgradeMock,
-      'datasets.byDatasetId.knowledgeFsUpgrades.post': startUpgradeMock,
-      'workspaces.current.models.modelTypes.byModelType.get': getModelsMock,
-      'datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get': () => new Promise(() => {}),
-    }),
-  }
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      byDatasetId: {
+        knowledgeFsUpgrades: {
+          get: () => ({
+            can_retry: false,
+            can_upgrade: true,
+            job: null,
+            models: recommendedModels,
+          }),
+          post: () => job,
+          byJobId: { get: () => new Promise(() => {}) },
+        },
+      },
+    },
+    workspaces: {
+      current: {
+        models: {
+          modelTypes: {
+            byModelType: {
+              get: ({ params }) => ({
+                data: modelCatalogs
+                  .map((provider) => ({
+                    ...provider,
+                    models: provider.models.filter(
+                      (model) => model.model_type === params.model_type,
+                    ),
+                  }))
+                  .filter((provider) => provider.models.length),
+              }),
+            },
+          },
+        },
+      },
+    },
+  },
+}))
 
 // Exercise dialog callbacks through their production owner: cancel removes it and start adds a card.
 function UpgradeOwner() {
@@ -54,7 +81,10 @@ function UpgradeOwner() {
   )
 }
 async function renderDialog() {
-  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper()
+  // The app's cache-level error toasts, so a failure's messages can be counted.
+  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
+    queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+  })
   seedUpgradeModels(queryClient)
   await render(
     <QueryProvider>
@@ -63,6 +93,7 @@ async function renderDialog() {
           <UpgradeOwner />
         </KnowledgeUpgradeProvider>
       </QueryTestingAdapter>
+      <AppToaster />
     </QueryProvider>,
   )
   await page.getByRole('button', { name: 'Upgrade support knowledge' }).click()
@@ -89,27 +120,8 @@ async function expectStarted() {
     .toBeVisible()
 }
 describe('KnowledgeUpgradeDialog', () => {
-  beforeEach(async ({ onTestFinished }) => {
-    onTestFinished(guardUnexpectedFetch())
+  beforeEach(async () => {
     await page.viewport(640, 600)
-    startUpgradeMock.mockReset().mockResolvedValue(job)
-    vi.clearAllMocks()
-    discoverUpgradeMock.mockResolvedValue({
-      can_retry: false,
-      can_upgrade: true,
-      job: null,
-      models: recommendedModels,
-    } satisfies KnowledgeFsUpgradePreparationResponse)
-    getModelsMock.mockImplementation(({ params }: { params: { model_type: string } }) =>
-      Promise.resolve({
-        data: modelCatalogs
-          .map((provider) => ({
-            ...provider,
-            models: provider.models.filter((model) => model.model_type === params.model_type),
-          }))
-          .filter((provider) => provider.models.length),
-      }),
-    )
   })
 
   it('offers upgrade details and documentation before requiring an explicit confirmation', async () => {
@@ -143,18 +155,18 @@ describe('KnowledgeUpgradeDialog', () => {
       .element(description)
       .toMatchTextContent('knowledgeUpgrade.upgrade.modelCostDescription')
     await waitForRecommendedModels()
-    expect(startUpgradeMock).not.toHaveBeenCalled()
+    expect(fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post).not.toHaveBeenCalled()
 
     await page.getByRole('button', { name: 'common.operation.cancel' }).click()
     await expect.element(page.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(page.getByRole('button', { name: 'Upgrade support knowledge' }))
       .toHaveFocus()
-    expect(startUpgradeMock).not.toHaveBeenCalled()
+    expect(fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post).not.toHaveBeenCalled()
   })
 
   it('prefills recommended models and sends them with the upgrade request', async () => {
-    startUpgradeMock.mockResolvedValue(job)
+    fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post.mockResolvedValue(job)
     await renderDialog()
 
     await expect
@@ -170,15 +182,15 @@ describe('KnowledgeUpgradeDialog', () => {
     await startButton().click()
 
     await expectStarted()
-    expect(startUpgradeMock).toHaveBeenCalledWith({
+    expect(fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post).toHaveBeenCalledWith({
       body: { models: expectedPayload },
       headers: { 'Idempotency-Key': expect.any(String) },
-      params: { dataset_id: 'dataset-1' },
+      params: { dataset_id: datasetId },
     })
   })
 
   it('requires a choice when a recommended model is unavailable', async () => {
-    discoverUpgradeMock.mockResolvedValue({
+    fake.console.datasets.byDatasetId.knowledgeFsUpgrades.get.mockResolvedValue({
       can_retry: false,
       can_upgrade: true,
       job: null,
@@ -192,7 +204,7 @@ describe('KnowledgeUpgradeDialog', () => {
         },
       },
     } satisfies KnowledgeFsUpgradePreparationResponse)
-    startUpgradeMock.mockResolvedValue(job)
+    fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post.mockResolvedValue(job)
     await renderDialog()
 
     await expect
@@ -207,7 +219,7 @@ describe('KnowledgeUpgradeDialog', () => {
     await startButton().click()
 
     await expect
-      .poll(() => startUpgradeMock.mock.calls.at(-1)?.[0])
+      .poll(() => fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post.mock.calls.at(-1)?.[0])
       .toEqual(
         expect.objectContaining({
           body: {
@@ -221,41 +233,66 @@ describe('KnowledgeUpgradeDialog', () => {
     await expectStarted()
   })
 
+  it('shows a failed upgrade check once, with the translated reason in the dialog', async () => {
+    fake.console.datasets.byDatasetId.knowledgeFsUpgrades.get.mockRejectedValue(
+      apiError({
+        status: 503,
+        code: 'knowledge_fs_space_not_found',
+        message: 'Upgrade check is unavailable',
+      }),
+    )
+    await renderDialog()
+
+    const reason = 'requestErrors.code.knowledge_fs_space_not_found'
+    await expect.element(page.getByRole('alert')).toHaveTextContent(reason)
+    expect(page.getByText(reason).elements()).toHaveLength(1)
+  })
+
   it('reuses the idempotency key for retries and rotates it when the model choice changes', async () => {
-    startUpgradeMock
-      .mockRejectedValueOnce(new Error('response lost'))
-      .mockRejectedValueOnce(new Error('response lost'))
+    fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'response lost' }),
+      )
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'response lost' }),
+      )
       .mockResolvedValueOnce(job)
     await renderDialog()
 
     await waitForRecommendedModels()
     await startButton().click()
+    // The dialog shows its own text once for an uncataloged code; the cache adds no toast for it.
     await expect
       .element(page.getByRole('alert'))
       .toHaveTextContent('knowledgeUpgrade.upgrade.startFailed')
+    expect(page.getByText('knowledgeUpgrade.upgrade.startFailed').elements()).toHaveLength(1)
     await startButton().click()
-    await expect.poll(() => startUpgradeMock.mock.calls.length).toBe(2)
+    await expect
+      .poll(() => fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post.mock.calls.length)
+      .toBe(2)
 
     await reasoningSelector().click()
     await page.getByRole('button', { name: 'gpt-4o-mini' }).click()
     await startButton().click()
 
     await expectStarted()
-    const keys = startUpgradeMock.mock.calls.map(([input]) => input.headers['Idempotency-Key'])
+    const keys = fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post.mock.calls.map(
+      ([input]) => input.headers['Idempotency-Key'],
+    )
     expect(keys[1]).toBe(keys[0])
     expect(keys[2]).not.toBe(keys[0])
-    expect(discoverUpgradeMock).toHaveBeenCalledWith({ params: { dataset_id: 'dataset-1' } })
+    expect(fake.console.datasets.byDatasetId.knowledgeFsUpgrades.get).toHaveBeenCalledWith({
+      params: { dataset_id: datasetId },
+    })
   })
 
   it('keeps the dialog open and marks rejected models when the backend reports them unavailable', async () => {
-    startUpgradeMock.mockRejectedValueOnce(
-      new ORPCError('knowledge_fs_upgrade_models_unavailable', {
-        defined: true,
+    fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post.mockRejectedValueOnce(
+      apiError({
         status: 422,
-        data: {
-          code: 'knowledge_fs_upgrade_models_unavailable',
-          message: 'Models unavailable',
-          status: 422,
+        code: 'knowledge_fs_upgrade_models_unavailable',
+        message: 'Models unavailable',
+        details: {
           details: {
             issues: [
               {
@@ -272,7 +309,7 @@ describe('KnowledgeUpgradeDialog', () => {
     await renderDialog()
 
     await waitForRecommendedModels()
-    getModelsMock.mockClear()
+    fake.console.workspaces.current.models.modelTypes.byModelType.get.mockClear()
     await startButton().click()
 
     await expect
@@ -283,7 +320,11 @@ describe('KnowledgeUpgradeDialog', () => {
       .toHaveAccessibleDescription(expect.stringContaining('knowledgeCreate.modelUnavailable'))
     await expect.element(startButton()).toBeDisabled()
     await expect
-      .poll(() => getModelsMock.mock.calls.map(([input]) => input))
+      .poll(() =>
+        fake.console.workspaces.current.models.modelTypes.byModelType.get.mock.calls.map(
+          ([input]) => input,
+        ),
+      )
       .toContainEqual({ params: { model_type: 'llm' } })
 
     await reasoningSelector().click()

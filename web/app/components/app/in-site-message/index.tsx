@@ -98,7 +98,7 @@ function InSiteMessage({
   return (
     <div
       className={cn(
-        'fixed right-3 bottom-3 z-50 w-90 overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg shadow-2xl backdrop-blur-[5px]',
+        'fixed inset-e-3 bottom-3 z-50 w-90 overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg shadow-2xl backdrop-blur-[5px]',
         className,
       )}
     >

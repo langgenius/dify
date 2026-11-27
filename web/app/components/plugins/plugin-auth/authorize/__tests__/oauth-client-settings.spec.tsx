@@ -9,11 +9,10 @@ import { createDeferred } from '@/test/deferred'
 import { AuthCategory } from '../../types'
 import OAuthClientSettings from '../oauth-client-settings'
 
-const commands = vi.hoisted(() => ({ save: vi.fn(), remove: vi.fn(), invalidate: vi.fn() }))
+const commands = vi.hoisted(() => ({ save: vi.fn(), remove: vi.fn() }))
 vi.mock('../../hooks/use-credential', () => ({
   useSetPluginOAuthCustomClientHook: () => ({ mutateAsync: commands.save }),
   useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: commands.remove }),
-  useInvalidPluginOAuthClientSchemaHook: () => commands.invalidate,
 }))
 vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn() } }))
 const payload = { category: AuthCategory.tool, provider: 'test-provider' }
@@ -58,7 +57,6 @@ it('validates client fields and requests authorization only after a successful s
     client_params: { client_id: 'new-client' },
     enable_oauth_custom_client: true,
   })
-  expect(commands.invalidate).toHaveBeenCalledOnce()
 })
 
 it('prevents duplicate saves and supports removing the existing custom client', async () => {

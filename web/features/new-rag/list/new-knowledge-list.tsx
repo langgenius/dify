@@ -8,13 +8,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryState } from 'nuqs'
@@ -26,8 +20,8 @@ import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
+import { TagFilter } from '@/features/tag-management/tag-filter'
+import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -94,7 +88,6 @@ function isUnavailableError(error: unknown) {
 export function NewKnowledgeList() {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
-  const queryClient = useQueryClient()
   const listRef = useRef<HTMLElement>(null)
   const [deleteDialog] = useState(() =>
     createAlertDialogHandle<{
@@ -106,10 +99,10 @@ export function NewKnowledgeList() {
   )
   const deletion = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
-  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
   const [highlightedControlSpaceId, setHighlightedControlSpaceId] = useState<string>()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
@@ -262,7 +255,7 @@ export function NewKnowledgeList() {
             type="knowledge"
             value={tagIds}
             onChange={(nextTagIds) => void setTagIds(nextTagIds)}
-            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            onOpenTagManagement={() => setShowTagManagementDialog(true)}
             showLeadingIcon={false}
             triggerClassName="min-w-0"
           />
@@ -276,8 +269,8 @@ export function NewKnowledgeList() {
             onValueChange={(value) => void setSearchValue(value || null)}
           />
         </div>
-        {canCreate && (
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          {canCreate && (
             <Link
               href="/datasets/new/create"
               className={cn(
@@ -286,10 +279,10 @@ export function NewKnowledgeList() {
               )}
             >
               <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-              <span className="pl-1">{createLabel}</span>
+              <span className="ps-1">{createLabel}</span>
             </Link>
-          </div>
-        )}
+          )}
+        </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
         {knowledgeSpacesQuery.isPending || (upgradeRecoveryPending && !hasVisibleKnowledge) ? (
@@ -395,7 +388,7 @@ export function NewKnowledgeList() {
                     })
                   }
                   highlighted={highlightedControlSpaceId === knowledgeSpace.control_space_id}
-                  onOpenTagManagement={() => setShowTagManagementModal(true)}
+                  onOpenTagManagement={() => setShowTagManagementDialog(true)}
                 />
               ))}
             </ul>
@@ -468,15 +461,10 @@ export function NewKnowledgeList() {
           </AlertDialogContent>
         )}
       </AlertDialog>
-      <TagManagementModal
+      <TagManagementDialog
         type="knowledge"
-        show={showTagManagementModal}
-        onClose={() => setShowTagManagementModal(false)}
-        onTagsChange={() => {
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-          })
-        }}
+        show={showTagManagementDialog}
+        onClose={() => setShowTagManagementDialog(false)}
       />
     </section>
   )

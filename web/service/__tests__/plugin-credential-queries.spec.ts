@@ -1,12 +1,14 @@
 import type { CredentialTypeEnum as CredentialType } from '@/app/components/plugins/plugin-auth/types'
+import { useQuery } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AuthCategory, CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import {
-  useGetPluginCredentialSchema,
-  useGetPluginOAuthClientSchema,
-  useSetPluginOAuthCustomClient,
-} from '../use-plugins-auth'
+  pluginCredentialInfoQueryOptions,
+  pluginCredentialSchemaQueryOptions,
+  pluginOAuthClientSchemaQueryOptions,
+} from '../plugin-credential-queries'
+import { useSetPluginOAuthCustomClient } from '../use-plugins-auth'
 
 const request = vi.hoisted(() => vi.fn<typeof import('../base').request>())
 vi.mock('@/service/base', () => ({ request }))
@@ -41,9 +43,11 @@ it('adapts nullable form fields without losing false or zero defaults and separa
   }
   const { result, rerender, unmount } = renderHook(
     ({ credentialType }: { credentialType: CredentialType }) =>
-      useGetPluginCredentialSchema(
-        { category: AuthCategory.tool, provider: 'owner' },
-        credentialType,
+      useQuery(
+        pluginCredentialSchemaQueryOptions(
+          { category: AuthCategory.tool, provider: 'owner' },
+          credentialType,
+        ),
       ),
     { wrapper, initialProps },
   )
@@ -96,7 +100,7 @@ it('defers OAuth schema loading until enabled and refreshes it after saving conf
   const payload = { category: AuthCategory.tool, provider: 'owner' }
   const { result, rerender, unmount } = renderHook(
     ({ enabled }) => ({
-      query: useGetPluginOAuthClientSchema(payload, enabled),
+      query: useQuery(pluginOAuthClientSchemaQueryOptions(payload, enabled)),
       save: useSetPluginOAuthCustomClient(payload),
     }),
     { wrapper, initialProps: { enabled: false } },
@@ -128,13 +132,49 @@ it.each([
   const { queryClient, wrapper } = createConsoleQueryWrapper()
   const { unmount } = renderHook(
     () => {
-      useGetPluginCredentialSchema(payload, CredentialTypeEnum.API_KEY)
-      useGetPluginOAuthClientSchema(payload)
+      useQuery(pluginCredentialSchemaQueryOptions(payload, CredentialTypeEnum.API_KEY))
+      useQuery(pluginOAuthClientSchemaQueryOptions(payload))
     },
     { wrapper },
   )
   try {
     expect(request).not.toHaveBeenCalled()
+  } finally {
+    unmount()
+    queryClient.clear()
+  }
+})
+
+it('requests credential info with repeated credential IDs for tools only', async () => {
+  request.mockImplementation(async () =>
+    Response.json({ credentials: [], supported_credential_types: ['api-key'] }),
+  )
+  const { queryClient, wrapper } = createConsoleQueryWrapper()
+  const { result, unmount } = renderHook(
+    () => {
+      useQuery(
+        pluginCredentialInfoQueryOptions(
+          { category: AuthCategory.datasource, provider: 'owner' },
+          { enabled: true, includeCredentialIds: [] },
+        ),
+      )
+      return useQuery(
+        pluginCredentialInfoQueryOptions(
+          { category: AuthCategory.tool, provider: 'owner' },
+          { enabled: true, includeCredentialIds: ['first', 'second'] },
+        ),
+      )
+    },
+    { wrapper },
+  )
+  try {
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(request).toHaveBeenCalledOnce()
+    const url = new URL(request.mock.calls[0]![0])
+    expect(url.pathname).toBe(
+      '/console/api/workspaces/current/tool-provider/builtin/owner/credential/info',
+    )
+    expect(url.searchParams.getAll('include_credential_ids')).toEqual(['first', 'second'])
   } finally {
     unmount()
     queryClient.clear()

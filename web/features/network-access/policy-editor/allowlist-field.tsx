@@ -19,6 +19,7 @@ type AllowlistFieldProps = {
   entries: AllowlistRow[]
   currentIp?: string
   currentIpStatus?: 'loading' | 'error'
+  currentIpErrorMessage?: string
   isRetryingCurrentIp?: boolean
   onRetryCurrentIp?: () => void
   onEntriesChange: (entries: AllowlistRow[]) => void
@@ -28,6 +29,7 @@ export function AllowlistField({
   entries,
   currentIp,
   currentIpStatus,
+  currentIpErrorMessage,
   isRetryingCurrentIp = false,
   onRetryCurrentIp,
   onEntriesChange,
@@ -162,7 +164,8 @@ export function AllowlistField({
             {currentIpStatus === 'loading'
               ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
               : currentIpStatus === 'error'
-                ? t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })
+                ? (currentIpErrorMessage ??
+                  t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' }))
                 : currentIp &&
                   t(($) => $['settings.ipPolicyCurrentIp'], { ns: 'common', ip: currentIp })}
           </span>

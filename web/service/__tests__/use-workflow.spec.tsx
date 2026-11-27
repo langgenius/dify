@@ -22,10 +22,15 @@ import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-q
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
+import { useDeleteWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
+  lastRunQueryKey,
+  lastRunQueryOptions,
+  restoreWorkflowMutationOptions,
+  workflowVersionHistoryInfiniteOptions,
+  workflowVersionHistoryKey,
 } from '../workflow-queries'
 
 const mockWorkflowResponse = vi.hoisted(() => vi.fn())
@@ -122,7 +127,7 @@ describe('generated workflow publication', () => {
     vi.clearAllMocks()
   })
 
-  it('publishes a pipeline without a body and refreshes its published workflow and datasets', async () => {
+  it('publishes a pipeline without a body, refreshes its published workflow, and declares datasets', async () => {
     mockRequest.mockReset().mockResolvedValue(Response.json({ result: 'success', created_at: 123 }))
     const queryClient = createQueryClient()
     const publishedKey = consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
@@ -131,9 +136,8 @@ describe('generated workflow publication', () => {
     const unrelatedKey = consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
       input: { params: { pipeline_id: 'other' } },
     })
-    const datasetKey = consoleQuery.datasets.get.key()
-    for (const key of [publishedKey, unrelatedKey, datasetKey])
-      queryClient.setQueryData(key, { cached: true })
+    for (const key of [publishedKey, unrelatedKey])
+      queryClient.setQueryData(key, { cached: true } as never)
     const { result } = renderHook(
       () =>
         useMutation(
@@ -149,8 +153,12 @@ describe('generated workflow publication', () => {
     expect(options?.request?.method).toBe('POST')
     expect(await options?.request?.text()).toBe('')
     expect(queryClient.getQueryState(publishedKey)?.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState(datasetKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
+    // Datasets refresh through the invalidation fallback.
+    expect(
+      consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions().meta
+        ?.alsoInvalidate,
+    ).toContain('datasets')
   })
 
   it('returns the server warning with the publish result', async () => {
@@ -248,9 +256,12 @@ describe('useUpdateWorkflow', () => {
 
   it('should invalidate workflow version history after updating version information', async () => {
     const queryClient = createQueryClient()
-    const legacyHistoryKey = ['workflow', 'versionHistory', 'app-1']
+    const editorHistoryKey = workflowVersionHistoryInfiniteOptions(
+      { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
+      { limit: 10, namedOnly: true },
+    ).queryKey
     const generatedHistoryKey = appWorkflowVersionsInfiniteQueryOptions('app-1').queryKey
-    queryClient.setQueryData(legacyHistoryKey, { items: [] })
+    queryClient.setQueryData(editorHistoryKey, { pages: [], pageParams: [] })
     queryClient.setQueryData(generatedHistoryKey, { pages: [], pageParams: [] })
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const { result } = renderHook(() => useUpdateWorkflow(), {
@@ -273,16 +284,57 @@ describe('useUpdateWorkflow', () => {
     )
     const sentRequest = mockRequest.mock.calls[0]?.[2]?.request
     expect(await sentRequest?.json()).toEqual({ marked_name: 'Release 1', marked_comment: 'Notes' })
-    expect(queryClient.getQueryState(legacyHistoryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(editorHistoryKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(generatedHistoryKey)?.isInvalidated).toBe(true)
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['workflow', 'versionHistory'],
-    })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byAppId.workflows.get.key({
         input: { params: { app_id: 'app-1' } },
       }),
     })
+  })
+
+  it('should keep gateway-added environments on the cached version after updating it', async () => {
+    const queryClient = createQueryClient()
+    const editorHistoryKey = workflowVersionHistoryInfiniteOptions(
+      { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
+      { limit: 10 },
+    ).queryKey
+    const environments = [{ id: 'env-1', name: 'Production' }]
+    // The gateway adds `environments` on top of the contract shape.
+    const deployedVersion = {
+      ...createWorkflow({ id: 'workflow-1', marked_name: 'Old' }),
+      environments,
+    }
+    queryClient.setQueryData(editorHistoryKey, {
+      pages: [
+        {
+          items: [deployedVersion],
+          has_more: false,
+          limit: 10,
+          page: 1,
+        },
+      ],
+      pageParams: [1],
+    })
+    mockWorkflowResponse.mockResolvedValue(
+      createWorkflow({ id: 'workflow-1', marked_name: 'Release 1' }),
+    )
+    const { result } = renderHook(() => useUpdateWorkflow(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        resource: { kind: 'app', appId: 'app-1' },
+        versionId: 'workflow-1',
+        title: 'Release 1',
+        releaseNotes: '',
+      })
+    })
+
+    expect(queryClient.getQueryData(editorHistoryKey)?.pages[0]?.items[0]).toEqual(
+      expect.objectContaining({ id: 'workflow-1', marked_name: 'Release 1', environments }),
+    )
   })
 
   it('should synchronize every cached app deployment reference to the updated workflow version', async () => {
@@ -542,7 +594,66 @@ describe('useUpdateWorkflow', () => {
   })
 })
 
-describe('useRestoreWorkflow', () => {
+describe('generated workflow version deletion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRequest.mockImplementation(async () => new Response(null, { status: 204 }))
+  })
+
+  it.each([
+    {
+      resource: {
+        kind: 'app',
+        collaborationEnabled: false,
+        appId: 'owner',
+        mode: 'workflow',
+      } satisfies EditorResource,
+    },
+    { resource: { kind: 'knowledge-pipeline', pipelineId: 'owner' } satisfies EditorResource },
+    { resource: { kind: 'snippet', snippetId: 'owner' } satisfies EditorResource },
+  ])(
+    'resets cached $resource.kind version lists so they reload from the first page',
+    async ({ resource }) => {
+      const queryClient = createQueryClient()
+      const historyKey = workflowVersionHistoryInfiniteOptions(resource, { limit: 10 }).queryKey
+      const otherHistoryKey = workflowVersionHistoryInfiniteOptions(
+        { kind: 'app', appId: 'other', mode: 'workflow', collaborationEnabled: false },
+        { limit: 10 },
+      ).queryKey
+      const otherHistory = {
+        pages: [
+          { items: [createWorkflow({ id: 'other-1' })], has_more: false, limit: 10, page: 1 },
+        ],
+        pageParams: [1],
+      }
+      queryClient.setQueryData(otherHistoryKey, otherHistory)
+      queryClient.setQueryData(historyKey, {
+        pages: [
+          {
+            items: [createWorkflow({ id: 'workflow-1' }), createWorkflow({ id: 'workflow-2' })],
+            has_more: false,
+            limit: 10,
+            page: 1,
+          },
+        ],
+        pageParams: [1],
+      })
+      const { result } = renderHook(() => useDeleteWorkflow(resource), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await act(async () => {
+        await result.current('workflow-1')
+      })
+
+      // No stale pages remain, so a failed reload cannot show the deleted version or shift paging.
+      expect(queryClient.getQueryData(historyKey)).toBeUndefined()
+      expect(queryClient.getQueryData(otherHistoryKey)).toEqual(otherHistory)
+    },
+  )
+})
+
+describe('restoreWorkflowMutationOptions', () => {
   const resources = [
     {
       resource: { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'advanced-chat' },
@@ -565,7 +676,7 @@ describe('useRestoreWorkflow', () => {
       mockRequest.mockResolvedValue(
         Response.json({ result: 'success', hash: 'restored-hash', updated_at: 1 }),
       )
-      const { result } = renderHook(() => useRestoreWorkflow(resource), {
+      const { result } = renderHook(() => useMutation(restoreWorkflowMutationOptions(resource)), {
         wrapper: createWrapper(createQueryClient()),
       })
       await act(async () => {
@@ -578,7 +689,66 @@ describe('useRestoreWorkflow', () => {
       const [url, , options] = mockRequest.mock.calls[0]!
       expect(new URL(url).pathname).toBe(`/console/api${path}/workflows/version-1/restore`)
       expect(options?.request?.method).toBe('POST')
-      expect(options?.silent).toBe(true)
+      expect(restoreWorkflowMutationOptions(resource).meta).toEqual({ errorToast: false })
+    },
+  )
+})
+
+describe('workflow editor cache keys', () => {
+  const resources = [
+    {
+      resource: { kind: 'app', collaborationEnabled: false, appId: 'owner', mode: 'workflow' },
+      other: { kind: 'app', collaborationEnabled: false, appId: 'other', mode: 'workflow' },
+    },
+    {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'owner' },
+      other: { kind: 'knowledge-pipeline', pipelineId: 'other' },
+    },
+    {
+      resource: { kind: 'snippet', snippetId: 'owner' },
+      other: { kind: 'snippet', snippetId: 'other' },
+    },
+  ] satisfies { resource: EditorResource; other: EditorResource }[]
+
+  it.each(resources)(
+    'resets every filtered $resource.kind version list without touching other owners',
+    async ({ resource, other }) => {
+      const queryClient = createQueryClient()
+      const allVersions = workflowVersionHistoryInfiniteOptions(resource, { limit: 10 }).queryKey
+      const namedVersions = workflowVersionHistoryInfiniteOptions(resource, {
+        limit: 10,
+        userId: 'user-1',
+        namedOnly: true,
+      }).queryKey
+      const otherVersions = workflowVersionHistoryInfiniteOptions(other, { limit: 10 }).queryKey
+      const page = { pages: [{ items: [], page: 1, limit: 10, has_more: false }], pageParams: [1] }
+      for (const key of [allVersions, namedVersions, otherVersions])
+        queryClient.setQueryData(key, page)
+
+      await queryClient.resetQueries({ queryKey: workflowVersionHistoryKey(resource) })
+
+      expect(queryClient.getQueryData(allVersions)).toBeUndefined()
+      expect(queryClient.getQueryData(namedVersions)).toBeUndefined()
+      expect(queryClient.getQueryData(otherVersions)).toEqual(page)
+    },
+  )
+
+  it.each(resources)(
+    'scopes $resource.kind last-run invalidation to one node or the whole owner',
+    async ({ resource, other }) => {
+      const queryClient = createQueryClient()
+      const nodeA = lastRunQueryOptions(resource, 'node-a').queryKey
+      const nodeB = lastRunQueryOptions(resource, 'node-b').queryKey
+      const otherNode = lastRunQueryOptions(other, 'node-a').queryKey
+      for (const key of [nodeA, nodeB, otherNode]) queryClient.setQueryData(key, { id: 'run' })
+
+      await queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource, 'node-a') })
+      expect(queryClient.getQueryState(nodeA)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(nodeB)?.isInvalidated).toBe(false)
+
+      await queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) })
+      expect(queryClient.getQueryState(nodeB)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(otherNode)?.isInvalidated).toBe(false)
     },
   )
 })

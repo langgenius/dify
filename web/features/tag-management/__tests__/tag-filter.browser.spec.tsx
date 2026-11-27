@@ -2,9 +2,9 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { ComponentProps } from 'react'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { renderWithTags } from '@/test/tag-management'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { TagFilter } from '../components/tag-filter'
-import { renderWithTags } from './render-browser'
+import { TagFilter } from '../tag-filter'
 
 const tags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
@@ -34,7 +34,7 @@ function renderFilter(
   }
   return renderWithTags(<Owner />, data, permissions)
 }
-const search = () => page.getByRole('combobox', { name: 'common.tag.selectorPlaceholder' })
+const search = () => page.getByRole('combobox', { name: 'common.tag.searchTags' })
 const trigger = (name = 'common.tag.placeholder') => page.getByRole('combobox', { name })
 
 it('filters by resource type and reflects pointer selection, deselection and clearing in its trigger', async () => {
@@ -61,6 +61,7 @@ it('filters by resource type and reflects pointer selection, deselection and cle
 it('searches case-insensitively and selects a highlighted result with the native keyboard', async () => {
   await renderFilter()
   await trigger().click()
+  await expect.element(search()).toHaveAttribute('placeholder', 'common.tag.searchTags')
   await search().fill('back')
   await expect.element(page.getByRole('option', { name: 'Backend' })).toBeVisible()
   await expect.element(page.getByRole('option', { name: 'Frontend' })).not.toBeInTheDocument()

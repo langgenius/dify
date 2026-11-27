@@ -70,7 +70,7 @@ export function DeploymentConfiguration({
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
               size="lg"
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
               type="button"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -78,13 +78,13 @@ export function DeploymentConfiguration({
           }
         />
       )}
-      <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pt-5 pr-14 pb-1')}>
+      <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pe-14 pt-5 pb-1')}>
         {onBack && (
           <Button
             type="button"
             size="small"
             variant="ghost-accent"
-            className="-ml-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
+            className="-ms-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
             onClick={onBack}
           >
             <span aria-hidden className="i-ri-arrow-left-line size-4" />

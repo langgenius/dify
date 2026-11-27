@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.shared import AccountId
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
-from models import TenantCreditPool
 from models.account import (
     Account,
     Tenant,
@@ -23,7 +22,6 @@ from models.account import (
     TenantStatus,
 )
 from models.dataset import Dataset
-from models.enums import ProviderQuotaType
 from models.model import App
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
@@ -135,14 +133,6 @@ class WorkspaceRepository(
                         include_plugins=[],
                     )
                 )
-            session.add(
-                TenantCreditPool(
-                    tenant_id=tenant.id,
-                    quota_limit=creation.trial_credits,
-                    quota_used=0,
-                    pool_type=ProviderQuotaType.TRIAL,
-                )
-            )
             session.flush()
             return CreatedWorkspace(
                 tenant.id,

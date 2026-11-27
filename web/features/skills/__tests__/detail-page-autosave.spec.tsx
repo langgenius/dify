@@ -258,6 +258,36 @@ describe('SkillDetailPage autosave', () => {
     expect(screen.getByText(/skill\.skillManagement\.detail\.saveFailed/)).toBeInTheDocument()
   })
 
+  it('shows the save failure when a non-conflict save fails with an unknown code', async () => {
+    const user = userEvent.setup()
+    mocks.saveDraftFileMutationFn.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'unknown_failure',
+        message: 'Server says why',
+      }),
+    )
+
+    renderSkillDetailPage()
+    await user.click(
+      await screen.findByRole('radio', {
+        name: 'skill.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+
+    const sourceEditor = getSourceEditor()
+    vi.useFakeTimers()
+    try {
+      fireEvent.change(sourceEditor, {
+        target: { value: `${sourceEditor.value}\nMy failing save changes` },
+      })
+      await act(() => vi.advanceTimersByTimeAsync(1000))
+
+      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.saveFailed')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('stops autosaving unchanged content after a non-conflict save failure', async () => {
     const user = userEvent.setup()
     mocks.saveDraftFileMutationFn.mockRejectedValue(new Error('save failed'))

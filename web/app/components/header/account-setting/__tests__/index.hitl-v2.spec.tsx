@@ -88,14 +88,6 @@ vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
 }))
 
-vi.mock('@/service/use-common', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-common')>()
-  return {
-    ...actual,
-    useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-  }
-})
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')

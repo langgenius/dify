@@ -1,12 +1,14 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useShallow } from 'zustand/react/shallow'
-import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
+import { selectEvaluationEntryVisible } from '@/app/components/evaluation/entry'
 import { SnippetCollapsedPreview } from '@/app/components/snippets/components/snippet-collapsed-preview'
 import { SnippetSidebarContent } from '@/app/components/snippets/components/snippet-sidebar'
 import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
 import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 
 type SnippetDetailSectionProps = {
   expand: boolean
@@ -14,8 +16,9 @@ type SnippetDetailSectionProps = {
 
 export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
   const pathname = usePathname()
-  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
-    useEvaluationAccess()
+  const { data: isEvaluationVisible = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntryVisible }),
+  )
   const section =
     isEvaluationVisible && pathname.endsWith('/evaluation') ? 'evaluation' : 'orchestrate'
   const snippetNavigation = useSnippetDetailStore(
@@ -35,7 +38,6 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
         section={section}
         isPublished={snippetNavigation.snippet?.is_published}
         evaluationEnabled={isEvaluationVisible}
-        evaluationRequiresUpgrade={evaluationRequiresUpgrade}
       />
     )
 
@@ -53,7 +55,6 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
       readonly={snippetNavigation.readonly}
       onFieldsChange={snippetNavigation.onFieldsChange}
       evaluationEnabled={isEvaluationVisible}
-      evaluationRequiresUpgrade={evaluationRequiresUpgrade}
     />
   )
 }

@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -36,17 +36,9 @@ const Conversion = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const { mutate: convert, isPending } = useMutation(
     consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
-  const queryClient = useQueryClient()
-  const invalidDatasetDetail = React.useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
-        input: { params: { dataset_id: datasetId } },
-      }),
-    })
-  }, [queryClient, datasetId])
   const datasetACLCapabilities = React.useMemo(
     () =>
       getDatasetACLCapabilities(dataset?.permission_keys, {
@@ -67,7 +59,6 @@ const Conversion = () => {
           if (res.status === 'success') {
             toast.success(t(($) => $['conversion.successMessage'], { ns: 'datasetPipeline' }))
             setShowConfirmModal(false)
-            invalidDatasetDetail()
           } else if (res.status === 'failed') {
             toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
           }
@@ -80,7 +71,7 @@ const Conversion = () => {
         },
       },
     )
-  }, [canConvertDataset, convert, datasetId, invalidDatasetDetail, t])
+  }, [canConvertDataset, convert, datasetId, t])
   const handleShowConfirmModal = useCallback(() => {
     if (!canConvertDataset) return
 
@@ -122,9 +113,9 @@ const Conversion = () => {
             </span>
           </div>
         </div>
-        <div className="pt-6 pr-0 pb-8 pl-6.25">
-          <div className="rounded-l-xl border border-effects-highlight bg-background-default p-1 shadow-md shadow-shadow-shadow-5 backdrop-blur-[5px]">
-            <div className="overflow-hidden rounded-l-lg">
+        <div className="ps-6.25 pe-0 pt-6 pb-8">
+          <div className="rounded-s-xl border border-effects-highlight bg-background-default p-1 shadow-md shadow-shadow-shadow-5 backdrop-blur-[5px]">
+            <div className="overflow-hidden rounded-s-lg">
               <PipelineScreenShot />
             </div>
           </div>

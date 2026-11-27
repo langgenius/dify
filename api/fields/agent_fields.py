@@ -3,7 +3,9 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
+from fields.app_fields import Tag
 from fields.base import ResponseModel
+from fields.conversation_fields import AgentThought
 from libs.helper import to_timestamp
 from models.agent import (
     AgentConfigDraftType,
@@ -106,6 +108,7 @@ class AgentRosterResponse(ResponseModel):
 
 
 class AgentInviteOptionResponse(AgentRosterResponse):
+    tags: list[Tag] = Field(default_factory=list, description="Workspace Agent tags, independent of Studio App tags")
     is_in_current_workflow: bool = False
     in_current_workflow_count: int = 0
     existing_node_ids: list[str] = Field(default_factory=list)
@@ -189,6 +192,7 @@ class AgentLogMessageItemResponse(ResponseModel):
     from_account_id: str | None = None
     feedback_enabled: bool = False
     feedbacks: list[AgentLogFeedbackResponse] = Field(default_factory=list)
+    agent_thoughts: list[AgentThought] = Field(default_factory=list)
     message_tokens: int
     answer_tokens: int
     total_tokens: int

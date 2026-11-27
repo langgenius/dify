@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessPoint } from '@/models/app-access-point'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -13,7 +13,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { useAppWorkflow } from '@/service/use-workflow'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
 import { MCPAccessPointCard } from './mcp-card'
@@ -55,7 +55,8 @@ export function BuiltInAccessPoints({
     data: workflow,
     isError: workflowError,
     isPending: workflowLoading,
-  } = useAppWorkflow(shouldFetchWorkflow ? appId : '', {
+  } = useQuery({
+    ...appWorkflowQueryOptions(shouldFetchWorkflow ? appId : ''),
     retry: (failureCount, error) => {
       if (getHttpErrorStatus(error) === 403) return false
 
@@ -67,8 +68,7 @@ export function BuiltInAccessPoints({
     useWorkflowSummary && appInfo?.mode === 'workflow' && Boolean(appInfo.workflow?.id)
   const triggersQuery = useQuery(
     consoleQuery.apps.byAppId.triggers.get.queryOptions({
-      input: appInfo?.mode === 'workflow' ? { params: { app_id: appId } } : skipToken,
-      enabled: needsPublishedTriggers,
+      input: needsPublishedTriggers ? { params: { app_id: appId } } : skipToken,
       retry: false,
     }),
   )
@@ -151,7 +151,6 @@ export function BuiltInAccessPoints({
           canDeploy={canDeploy}
           canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
-          onRefreshApp={actions.refreshAppDetail}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}

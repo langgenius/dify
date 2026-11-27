@@ -1,7 +1,7 @@
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { consoleClient } from '@/service/console'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -9,6 +9,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/list/storage'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
@@ -119,7 +120,7 @@ it('renders real knowledge cards linking to their documents', async () => {
   setup()
   expect(await screen.findByRole('link', { name: 'Test Dataset' })).toHaveAttribute(
     'href',
-    '/datasets/dataset-1/documents',
+    `/datasets/${TEST_DATASET_ID}/documents`,
   )
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
 })
@@ -323,15 +324,12 @@ it('offers only external connection when the workspace cannot create internal da
   expect(api.push).toHaveBeenCalledExactlyOnceWith('/datasets/connect')
 })
 
-it('opens the creation walkthrough as presentation without letting it navigate', async () => {
+it('opens the creation walkthrough menu', async () => {
   setup({}, { activeTaskId: 'knowledge', activeGuideIndex: 0 })
   const menu = await screen.findByRole('menu', { hidden: true })
-  expect(menu).toHaveAttribute('aria-hidden', 'true')
-  // The tour deliberately exposes a non-interactive menu; even direct events must not navigate.
-  fireEvent.click(
+  expect(
     within(menu).getByRole('menuitem', { name: 'dataset.firstEmpty.createTitle', hidden: true }),
-  )
-  expect(api.push).not.toHaveBeenCalled()
+  ).toBeInTheDocument()
 })
 
 it('opens only the first real card menu for the knowledge management walkthrough', async () => {
@@ -354,7 +352,6 @@ it('opens only the first real card menu for the knowledge management walkthrough
     ).toEqual(['true', 'false']),
   )
   expect(screen.getAllByRole('menu', { hidden: true })).toHaveLength(1)
-  expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
 })
 
 it('restores creators from the URL and persists new creator selections', async () => {

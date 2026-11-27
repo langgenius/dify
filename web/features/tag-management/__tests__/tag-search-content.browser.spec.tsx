@@ -5,7 +5,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { TagSearchContent } from '../components/tag-search-content'
+import { TagSearchContent } from '../tag-search-content'
 
 const tags: Tag[] = [
   { id: 'frontend', name: 'Frontend', type: 'app' },
@@ -83,7 +83,7 @@ it('keeps bindings read-only without management or binding permission', async ()
   const screen = await renderContent({ permissions: [] })
   const backend = screen.getByRole('option', { name: 'Backend' })
   await expect.element(backend).toHaveAttribute('aria-disabled', 'true')
-  const input = screen.getByRole('combobox', { name: 'common.tag.selectorPlaceholder' })
+  const input = screen.getByRole('combobox', { name: 'common.tag.searchTags' })
   await input.click()
   await userEvent.keyboard('{ArrowDown}')
   await expect.element(input).toHaveAttribute('aria-activedescendant', backend.element().id)

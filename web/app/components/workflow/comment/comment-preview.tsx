@@ -2,10 +2,17 @@
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import { memo, useEffect, useMemo } from 'react'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useStore } from '../store'
+import { consoleQuery } from '@/service/console'
+import { CollaboratorAvatarStack } from '../collaboration/components/collaborator-avatar'
+import { highlightMentions } from './mention-highlight'
+import { getCommentParticipants } from './participants'
+import { useCommentHover } from './use-comment-hover'
 
 type CommentPreviewProps = {
   comment: WorkflowCommentBasic
@@ -13,44 +20,49 @@ type CommentPreviewProps = {
 }
 
 const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
+  const { t } = useTranslation(['workflowComments'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const setCommentPreviewHovering = useStore((s) => s.setCommentPreviewHovering)
-  const authorName = comment.created_by_account?.name ?? ''
-  const participants = useMemo(() => {
-    const list = comment.participants ?? []
-    const author = comment.created_by_account
-    if (!author) return [...list]
-    const rest = list.filter((user) => user.id !== author.id)
-    return [author, ...rest]
-  }, [comment.created_by_account, comment.participants])
-  useEffect(
-    () => () => {
-      setCommentPreviewHovering(false)
-    },
-    [setCommentPreviewHovering],
+  const appId = useAtomValue(editorAppIdAtom)
+  const { data: mentionUsers } = useQuery(
+    consoleQuery.apps.byAppId.workflow.comments.mentionUsers.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (response) => response.users,
+    }),
   )
+  const mentionNames = useMemo(
+    () => (mentionUsers ?? []).map((user) => user.name ?? ''),
+    [mentionUsers],
+  )
+  const authorName = comment.created_by_account?.name ?? ''
+  const participants = useMemo(() => getCommentParticipants(comment), [comment])
+  const hover = useCommentHover()
 
   return (
     <div
-      className="w-80 cursor-pointer rounded-3xl rounded-bl-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[10px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
+      className="flex w-70 cursor-pointer flex-col gap-2 rounded-3xl rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[5px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
       onClick={onClick}
-      onMouseEnter={() => setCommentPreviewHovering(true)}
-      onMouseLeave={() => setCommentPreviewHovering(false)}
+      {...hover}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <UserAvatarList users={participants} maxVisible={3} size="sm" />
-      </div>
-
-      <div className="mb-2 flex items-start">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="truncate system-sm-medium text-text-primary">{authorName}</div>
-          <div className="shrink-0 system-2xs-regular text-text-tertiary">
+      <CollaboratorAvatarStack collaborators={participants} />
+      <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="truncate system-xs-medium text-text-primary">{authorName}</div>
+          <div className="shrink-0 system-xs-regular text-text-tertiary">
             {formatTimeFromNow((comment.updated_at ?? comment.created_at ?? 0) * 1000)}
           </div>
         </div>
+        <div className="system-xs-regular wrap-break-word text-text-secondary">
+          {highlightMentions(comment.content, mentionNames)}
+        </div>
+        {comment.reply_count > 0 && (
+          <div className="system-2xs-regular text-text-tertiary">
+            {t(($) => $['comments.replyCount'], {
+              ns: 'workflowComments',
+              count: comment.reply_count,
+            })}
+          </div>
+        )}
       </div>
-
-      <div className="system-sm-regular wrap-break-word text-text-secondary">{comment.content}</div>
     </div>
   )
 }

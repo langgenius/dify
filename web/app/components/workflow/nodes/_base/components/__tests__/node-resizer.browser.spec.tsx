@@ -6,13 +6,11 @@ import { renderWorkflowBrowserComponent as render } from '@/app/components/workf
 import NoteNode from '@/app/components/workflow/note-node'
 import { NoteTheme } from '@/app/components/workflow/note-node/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import 'reactflow/dist/style.css'
 
-const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
-beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
 })
 
 const noteNodeTypes = { note: NoteNode }

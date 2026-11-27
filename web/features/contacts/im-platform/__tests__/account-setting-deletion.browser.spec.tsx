@@ -1,3 +1,4 @@
+import { zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -10,37 +11,43 @@ import contacts from '@/i18n/locales/en-US/contacts.json'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { ContactsImPlatformAccountSettingPage } from '../account-setting-page'
 import { channelSummary } from './fixtures/channel-client'
-import { channel, defaultResponse, json } from './fixtures/http'
+import { channel as feishuChannel, providers, syncRun } from './fixtures/http'
 
-const network = vi.hoisted(() => ({
-  handle: vi.fn<(request: Request) => Promise<Response> | Response>(),
-}))
+// Channel ids are UUIDs in the contract.
+const channel = { ...feishuChannel, id: '00000000-0000-4000-8000-000000000001' }
+
 vi.unmock('react-i18next')
-// boundary: isolate the server while retaining the settings entry point and generated client.
-vi.mock('@/service/base', async () => {
-  const { httpErrorFromResponse } = await import('@/service/http-error')
-  return {
-    request: async (_url: string, _init: RequestInit, options: { request: Request }) => {
-      const response = await network.handle(options.request)
-      if (!response.ok) throw await httpErrorFromResponse(response)
-      return response
-    },
-  }
-})
 
 it('deletes an IM channel through the settings API only after confirmation and refreshes the list', async () => {
   const email = channelSummary({ id: 'channel-email', kind: 'email', provider: 'resend' })
-  const deletion = createDeferred<Response>()
+  const deletion = createDeferred<{ channel_id: string }>()
   let removed = false
-  network.handle.mockImplementation((request) => {
-    const url = new URL(request.url)
-    if (url.pathname.endsWith('/channels'))
-      return json({ channels: removed ? [email] : [email, channel] })
-    if (request.method === 'DELETE') return deletion.promise
-    return defaultResponse(request)
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          humanInput: {
+            v2: {
+              channelProviders: {
+                get: () =>
+                  zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse.parse(providers),
+              },
+              channels: {
+                get: () => ({ channels: removed ? [email] : [email, channel] }),
+                im: { byChannelId: { delete: () => deletion.promise } },
+              },
+              imSyncRuns: { latest: { get: () => ({ run: syncRun() }) } },
+            },
+          },
+        },
+      },
+    },
   })
+  onTestFinished(fake)
+  const removeChannel = fake.console.workspaces.current.humanInput.v2.channels.im.byChannelId.delete
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -52,11 +59,6 @@ it('deletes an IM channel through the settings API only after confirmation and r
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
-  const deletions = () =>
-    network.handle.mock.calls
-      .map(([request]) => request)
-      .filter((request) => request.method === 'DELETE')
-
   try {
     await render(
       <QueryClientTestProvider queryClient={client}>
@@ -74,34 +76,35 @@ it('deletes an IM channel through the settings API only after confirmation and r
     await imCard.getByRole('button', { name: 'Delete Feishu' }).click()
     const confirmation = page.getByRole('alertdialog', { name: 'Delete Feishu channel?' })
     await expect.element(confirmation).toBeVisible()
-    expect(deletions()).toHaveLength(0)
+    expect(removeChannel).not.toHaveBeenCalled()
     await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect.element(confirmation).not.toBeInTheDocument()
-    expect(deletions()).toHaveLength(0)
+    expect(removeChannel).not.toHaveBeenCalled()
     await expect.element(imCard).toMatchTextContent(/saved-tenant/)
 
     await imCard.getByRole('button', { name: 'Delete Feishu' }).click()
     await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
-    await expect.poll(() => deletions().length).toBe(1)
-    const request = deletions()[0]!
-    const url = new URL(request.url)
-    expect(url.pathname).toBe(
-      `/console/api/workspaces/current/human-input/v2/channels/im/${channel.id}`,
-    )
-    expect(url.searchParams.get('expected_config_version')).toBe(channel.config_version)
+    await expect
+      .poll(() => removeChannel)
+      .toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          params: { channel_id: channel.id },
+          query: { expected_config_version: channel.config_version },
+        }),
+      )
     await expect
       .element(confirmation.getByRole('button', { name: 'Cancel', exact: true }))
       .toBeDisabled()
 
     removed = true
-    deletion.resolve(json({ channel_id: channel.id }))
+    deletion.resolve({ channel_id: channel.id })
     await expect.element(confirmation).not.toBeInTheDocument()
     await expect.element(imCard.getByRole('button', { name: 'Feishu — Connect' })).toBeVisible()
     await expect.element(imCard).not.toMatchTextContent(/saved-tenant/)
     await expect.element(page.getByRole('button', { name: 'Delete Email' })).toBeVisible()
-    expect(deletions()).toHaveLength(1)
+    expect(removeChannel).toHaveBeenCalledOnce()
   } finally {
-    deletion.resolve(json({ channel_id: channel.id }))
+    deletion.resolve({ channel_id: channel.id })
     client.clear()
   }
 })

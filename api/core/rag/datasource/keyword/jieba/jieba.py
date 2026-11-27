@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Any, override
 
@@ -217,13 +217,13 @@ class Jieba(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int = 4) -> list[str]:
+    def _retrieve_ids_by_query(self, keyword_table: Mapping[str, Iterable[str]], query: str, k: int = 4) -> list[str]:
         keyword_table_handler = JiebaKeywordTableHandler()
         keywords = keyword_table_handler.extract_keywords(query)
 
         # go through text chunks in order of most matching keywords
         chunk_indices_count: dict[str, int] = defaultdict(int)
-        keywords_list = [keyword for keyword in keywords if keyword in set(keyword_table.keys())]
+        keywords_list = [keyword for keyword in keywords if keyword in keyword_table]
         for keyword in keywords_list:
             for node_id in keyword_table[keyword]:
                 chunk_indices_count[node_id] += 1

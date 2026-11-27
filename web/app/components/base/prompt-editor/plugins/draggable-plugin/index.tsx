@@ -59,7 +59,7 @@ export default function DraggableBlockPlugin({
             ref={menuRef}
             className={cn(
               DRAGGABLE_BLOCK_MENU_CLASSNAME,
-              'absolute top-4 right-2.5 cursor-grab opacity-0 will-change-transform active:cursor-move',
+              'absolute inset-e-2.5 top-4 cursor-grab opacity-0 will-change-transform active:cursor-move',
             )}
             data-testid="draggable-menu"
           >
@@ -73,11 +73,11 @@ export default function DraggableBlockPlugin({
       targetLineComponent={
         <div
           ref={targetLineRef}
-          className="pointer-events-none absolute top-0 -left-5.25 opacity-0 will-change-transform"
+          className="pointer-events-none absolute -inset-s-5.25 top-0 opacity-0 will-change-transform"
           data-testid="draggable-target-line"
           // style={{ width: 500 }} // width not worked here
         >
-          <div className="absolute top-0 -right-10 left-0 h-0.5 bg-text-accent-secondary"></div>
+          <div className="absolute inset-s-0 -inset-e-10 top-0 h-0.5 bg-text-accent-secondary"></div>
         </div>
       }
       isOnMenu={isOnMenu}

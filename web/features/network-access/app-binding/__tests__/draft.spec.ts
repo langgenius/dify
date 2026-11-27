@@ -1,5 +1,5 @@
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
 import { splitPolicySummary } from '@/features/network-access/ip-policy'
+import { ACCESS_POINT_ORDER } from '@/models/app-access-point'
 import {
   canSaveAccessControl,
   createDefaultAccessControlDraft,

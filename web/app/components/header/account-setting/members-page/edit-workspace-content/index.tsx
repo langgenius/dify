@@ -11,12 +11,13 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 
 type IEditWorkspaceContentProps = {
@@ -27,7 +28,21 @@ export const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) =
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [name, setName] = useState<string>(currentWorkspace.name)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Outcome handlers live on the hook so they still run if the dialog unmounts mid-request.
+  const { isPending: isSubmitting, mutate: updateWorkspaceInfo } = useMutation(
+    consoleQuery.workspaces.info.post.mutationOptions({
+      meta: { errorToast: false },
+      onSuccess: () => {
+        location.assign(`${location.origin}`)
+      },
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
+      },
+    }),
+  )
   const inputId = useId()
   const saveButtonLabelId = useId()
   const normalizedName = name.trim()
@@ -41,33 +56,16 @@ export const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) =
       field: t(($) => $['account.workspaceName'], { ns: 'accountSettings' }),
     })
   }, [hasError, t])
-  const changeWorkspaceInfo = async () => {
+  const changeWorkspaceInfo = () => {
     if (isSubmitting || isSaveUnavailable) return
-    setIsSubmitting(true)
-    try {
-      await consoleClient.workspaces.info.post(
-        {
-          body: {
-            name: normalizedName,
-          },
-        },
-        { context: { silent: true } },
-      )
-      location.assign(`${location.origin}`)
-    } catch (error) {
-      toast.error(
-        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
+    updateWorkspaceInfo({ body: { name: normalizedName } })
   }
   return (
     <form
       className="contents"
       onSubmit={(e) => {
         e.preventDefault()
-        void changeWorkspaceInfo()
+        changeWorkspaceInfo()
       }}
     >
       <DialogHeader>

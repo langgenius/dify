@@ -8,6 +8,7 @@ from typing import Final
 from flask_restx import Resource
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import _app_settings as settings
 from controllers.openapi import openapi_ns
@@ -45,6 +46,7 @@ _API_ON_EXAMPLE: Final = Example(title="Turn the Service API on", input={"app_id
 class WorkflowAppInfoApi(Resource):
     @endpoint(
         op="describe.app_info.workflow",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Name, description, icon and run cap of a workflow app",
         examples=(_INFO_EXAMPLE,),
@@ -56,6 +58,7 @@ class WorkflowAppInfoApi(Resource):
 
     @endpoint(
         op="set.app_info.workflow",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a workflow app's info; only the fields passed change",
         examples=(_RENAME_EXAMPLE,),
@@ -73,6 +76,7 @@ class WorkflowAppInfoApi(Resource):
 class AdvancedChatAppInfoApi(Resource):
     @endpoint(
         op="describe.app_info.advanced_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Name, description, icon and run cap of an advanced-chat app",
         examples=(_INFO_EXAMPLE,),
@@ -86,6 +90,7 @@ class AdvancedChatAppInfoApi(Resource):
 
     @endpoint(
         op="set.app_info.advanced_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change an advanced-chat app's info; only the fields passed change",
         examples=(_RENAME_EXAMPLE,),
@@ -103,6 +108,7 @@ class AdvancedChatAppInfoApi(Resource):
 class ChatAppInfoApi(Resource):
     @endpoint(
         op="describe.app_info.chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Name, description, icon and run cap of a chat app",
         examples=(_INFO_EXAMPLE,),
@@ -114,6 +120,7 @@ class ChatAppInfoApi(Resource):
 
     @endpoint(
         op="set.app_info.chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a chat app's info; only the fields passed change",
         examples=(_RENAME_EXAMPLE,),
@@ -131,6 +138,7 @@ class ChatAppInfoApi(Resource):
 class AgentChatAppInfoApi(Resource):
     @endpoint(
         op="describe.app_info.agent_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Name, description, icon and run cap of an agent-chat app",
         examples=(_INFO_EXAMPLE,),
@@ -144,6 +152,7 @@ class AgentChatAppInfoApi(Resource):
 
     @endpoint(
         op="set.app_info.agent_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change an agent-chat app's info; only the fields passed change",
         examples=(_RENAME_EXAMPLE,),
@@ -161,6 +170,7 @@ class AgentChatAppInfoApi(Resource):
 class CompletionAppInfoApi(Resource):
     @endpoint(
         op="describe.app_info.completion",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Name, description, icon and run cap of a completion app",
         examples=(_INFO_EXAMPLE,),
@@ -174,6 +184,7 @@ class CompletionAppInfoApi(Resource):
 
     @endpoint(
         op="set.app_info.completion",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a completion app's info; only the fields passed change",
         examples=(_RENAME_EXAMPLE,),
@@ -191,6 +202,7 @@ class CompletionAppInfoApi(Resource):
 class AgentAppInfoApi(Resource):
     @endpoint(
         op="describe.app_info.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Name, description, icon, role and run cap of an agent app",
         examples=(_INFO_EXAMPLE,),
@@ -204,6 +216,7 @@ class AgentAppInfoApi(Resource):
 
     @endpoint(
         op="set.app_info.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change an agent app's info; only the fields passed change",
         examples=(_RENAME_EXAMPLE,),
@@ -221,6 +234,7 @@ class AgentAppInfoApi(Resource):
 class ServiceApiApi(Resource):
     @endpoint(
         op="describe.service_api",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Whether an app's Service API is on, and its base URL (agent apps: describe.service_api.agent)",
         examples=(_API_EXAMPLE,),
@@ -234,6 +248,7 @@ class ServiceApiApi(Resource):
 
     @endpoint(
         op="set.service_api",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Turn an app's Service API on or off (agent apps: set.service_api.agent)",
         examples=(_API_ON_EXAMPLE,),
@@ -251,6 +266,7 @@ class ServiceApiApi(Resource):
 class AgentServiceApiApi(Resource):
     @endpoint(
         op="describe.service_api.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Whether an agent app's Service API is on, and its base URL",
         examples=(_API_EXAMPLE,),
@@ -264,6 +280,7 @@ class AgentServiceApiApi(Resource):
 
     @endpoint(
         op="set.service_api.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Turn an agent app's Service API on or off",
         examples=(_API_ON_EXAMPLE,),

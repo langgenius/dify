@@ -113,6 +113,12 @@ jobs:
           GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
         run: uv run --project api python scripts/check_no_new_cast.py --base-rev "$GUARD_BASE_REV"
 
+      - name: Run No New Deployment Edition Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_deployment_edition.py --base-rev "$GUARD_BASE_REV"
+
       - name: Run No New Constructor Bypass Guard
         if: inputs.run-python-style
         env:
@@ -184,12 +190,33 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
       - name: Check generated i18n types
         run: vp run i18n:check-types
+
+      - name: Check documentation paths for release version bumps
+        env:
+          BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: |
+          if [[ "$BASE_REV" != 'HEAD^1' ]]; then
+            git fetch --no-tags --depth=1 origin "$BASE_REV"
+          fi
+          base_version=$(git show "$BASE_REV:web/package.json" | jq -r .version)
+          head_version=$(jq -r .version package.json)
+          if [[ "$base_version" == "$head_version" ]]; then
+            echo "Web version unchanged ($head_version); skipping the release documentation check."
+            exit 0
+          fi
+
+          vp run gen-doc-paths
+          if ! git diff --exit-code -- types/doc-paths.ts; then
+            echo "::error file=web/types/doc-paths.ts::Releasing $head_version requires documentation paths that match the published dify-docs navigation. Run 'pnpm -C web gen-doc-paths', fix the type errors it exposes (links to unpublished or removed pages), and commit the result."
+            exit 1
+          fi
 
       - name: Check Browser spec policy
         run: vp run lint:browser-spec-policy

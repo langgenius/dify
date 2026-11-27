@@ -127,7 +127,7 @@ const Item = ({
             </div>
           )}
           <StatusDot
-            className="mr-1.5 ml-2 shrink-0"
+            className="ms-2 me-1.5 shrink-0"
             status={credential.not_allowed_to_use ? 'disabled' : 'success'}
           />
           <div className="truncate system-md-regular text-text-secondary" title={credential.name}>
@@ -142,7 +142,7 @@ const Item = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <div className="ml-2 flex shrink-0 cursor-help items-center text-text-tertiary">
+              <div className="ms-2 flex shrink-0 cursor-help items-center text-text-tertiary">
                 <RiInformationLine className="size-4" />
               </div>
             }
@@ -156,7 +156,7 @@ const Item = ({
         <Badge className="shrink-0">{t(($) => $['auth.enterprise'], { ns: 'plugin' })}</Badge>
       )}
       {showAction && !renaming && (
-        <div className="ml-2 flex shrink-0 items-center">
+        <div className="ms-2 flex shrink-0 items-center">
           {!credential.is_default &&
             !disableSetDefault &&
             !credential.not_allowed_to_use &&

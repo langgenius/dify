@@ -1,6 +1,6 @@
 import type { AppNetworkAccessGroupStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessControlDraft } from './draft'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessPoint } from '@/models/app-access-point'
 
 export type AccessControlAssignment = {
   policyId: string

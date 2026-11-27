@@ -1,11 +1,11 @@
 import logging
 import time
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from datetime import timedelta
 from typing import Any
 
-from core.errors.error import AppInvokeQuotaExceededError
+from core.errors.error import AppInvokeQuotaExceededError, AppInvokeQuotaWaitTimeoutError
 from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,40 @@ class RateLimit:
             )
         redis_client.hset(self.active_requests_key, request_id, str(time.time()))
         return request_id
+
+    def enter_with_wait(
+        self,
+        *,
+        request_id: str | None = None,
+        timeout_seconds: float,
+        cancellation_check: Callable[[], None] | None = None,
+        poll_interval_seconds: float = 0.5,
+    ) -> str:
+        """Wait for and acquire one app concurrency slot.
+
+        Precondition: ``timeout_seconds`` is positive and ``poll_interval_seconds``
+        is positive. ``cancellation_check`` may raise to interrupt the wait.
+        Postcondition: success returns an entered request ID that the caller must
+        release with :meth:`exit`; cancellation and timeout acquire no slot.
+        """
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be greater than 0")
+        if poll_interval_seconds <= 0:
+            raise ValueError("poll_interval_seconds must be greater than 0")
+
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            if cancellation_check is not None:
+                cancellation_check()
+            try:
+                return self.enter(request_id)
+            except AppInvokeQuotaExceededError as error:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise AppInvokeQuotaWaitTimeoutError(
+                        f"Timed out waiting for an app concurrency slot for {self.client_id}."
+                    ) from error
+                time.sleep(min(poll_interval_seconds, remaining))
 
     def exit(self, request_id: str):
         if request_id == RateLimit._UNLIMITED_REQUEST_ID:

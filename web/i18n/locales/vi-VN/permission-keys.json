@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Phát hành và quản lý phiên bản tác nhân",
   "agent.acl.test_and_run": "Kiểm thử và chạy tác nhân",
   "agent.create": "Tạo tác nhân",
+  "agent.tag.manage": "Quản lý thẻ tác nhân",
   "api_extension.manage": "Quản lý cấu hình phần mở rộng API",
   "app.access_config": "Cấu hình quyền truy cập ứng dụng",
   "app.acl.access_config": "Xem và quản lý quyền truy cập",

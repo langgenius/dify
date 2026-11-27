@@ -14,6 +14,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ReindexConfirmDialog } from '../reindex-confirm-dialog'
 import { documentBulkPendingActionAtom } from '../state/bulk'
 import { reindexUnavailabilityAtom } from '../state/results'
 import { documentCanDownloadAtom, documentCanWriteAtom } from '../state/runtime'
@@ -29,6 +30,7 @@ import {
   selectionReindexDisabledAtom,
   validSelectedDocumentIdsAtom,
 } from '../state/selection'
+import { useReindexConfirmation } from '../use-reindex-confirmation'
 import {
   useBulkAvailabilityAction,
   useBulkDownloadAction,
@@ -45,7 +47,11 @@ function BulkReindexAction() {
   const reindexDisabled = useAtomValueRawSync(selectionReindexDisabledAtom)
   const unavailableReason = useAtomValueRawSync(reindexUnavailabilityAtom)
   const selectionLimitExceeded = useAtomValueRawSync(documentSelectionLimitExceededAtom)
+  const selectedCount = useAtomValueRawSync(validSelectedDocumentIdsAtom).size
   const { busy, pending, run } = useBulkReindexAction()
+  const unavailable = disabled || reindexDisabled || busy
+  // The selection can change behind the dialog; what is confirmed is the selection as it is then.
+  const confirmation = useReindexConfirmation(!unavailable)
   const disabledReason =
     unavailableReason === 'sources'
       ? t(($) => $.sourcesErrorDescription)
@@ -71,10 +77,17 @@ function BulkReindexAction() {
         disabled={disabled || reindexDisabled || (busy && !pending)}
         loading={pending}
         size="small"
-        onClick={() => void run()}
+        onClick={() => confirmation.setOpen(true)}
       >
         {t(($) => $.reindexDocuments)}
       </Button>
+      <ReindexConfirmDialog
+        open={confirmation.open}
+        onOpenChange={confirmation.setOpen}
+        onConfirm={() => void run()}
+        confirmLabel={t(($) => $.reindexDocuments)}
+        scope={t(($) => $.documentsSelected, { count: selectedCount })}
+      />
       {disabled && disabledReason && (
         <span
           id="document-reindex-unavailable"
@@ -203,10 +216,10 @@ export function DocumentBulkActionsToolbar() {
   if ((!canWrite && !canDownload) || !selectedDocumentIds.size) return null
 
   return (
-    <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
+    <div className="pointer-events-none fixed inset-s-0 inset-e-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] z-20 flex justify-center ps-[calc(1rem+env(safe-area-inset-left,0px))] pe-[calc(1rem+env(safe-area-inset-right,0px))] sm:inset-s-(--new-rag-sidebar-width,0px)">
       <div
         aria-label={t(($) => $.bulkDocumentActions, { ns: 'knowledgeDocuments' })}
-        className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
+        className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 ps-4 pe-2.5 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
         role="group"
       >
         <span className="shrink-0 text-[13px] leading-4.5 font-medium text-text-primary">

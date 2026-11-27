@@ -4,18 +4,21 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SnippetEvaluationPage from '../snippet-evaluation-page'
 
 const mockReplace = vi.fn()
-const mockUseSnippetApiDetail = vi.fn()
+const mockGetSnippet = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 
-vi.mock('@/service/use-snippets', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-snippets')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
 
   return {
     ...actual,
-    useSnippetApiDetail: (snippetId: string) => mockUseSnippetApiDetail(snippetId),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.customizedSnippets.bySnippetId.get': (input) => mockGetSnippet(input),
+    }),
   }
 })
 
@@ -52,19 +55,16 @@ const createSnippet = (overrides: Partial<Snippet> = {}): Snippet => ({
 describe('SnippetEvaluationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSnippetApiDetail.mockReturnValue({
-      data: createSnippet(),
-      isLoading: false,
-    })
+    mockGetSnippet.mockResolvedValue(createSnippet())
   })
 
-  it('renders evaluation for a published snippet', () => {
+  it('renders evaluation for a published snippet', async () => {
     renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />, {
       features: { evaluation_enabled: true },
     })
 
-    expect(mockUseSnippetApiDetail).toHaveBeenCalledWith('snippet-1')
-    expect(screen.getByTestId('evaluation')).toHaveTextContent('snippet-1')
+    expect(await screen.findByTestId('evaluation')).toHaveTextContent('snippet-1')
+    expect(mockGetSnippet).toHaveBeenCalledWith({ params: { snippet_id: 'snippet-1' } })
     expect(screen.getByTestId('evaluation').parentElement).toHaveAttribute(
       'data-section',
       'evaluation',
@@ -72,10 +72,7 @@ describe('SnippetEvaluationPage', () => {
   })
 
   it('redirects an unpublished snippet to orchestrate', async () => {
-    mockUseSnippetApiDetail.mockReturnValue({
-      data: createSnippet({ is_published: false }),
-      isLoading: false,
-    })
+    mockGetSnippet.mockResolvedValue(createSnippet({ is_published: false }))
 
     renderWithConsoleQuery(<SnippetEvaluationPage snippetId="snippet-1" />, {
       features: { evaluation_enabled: true },

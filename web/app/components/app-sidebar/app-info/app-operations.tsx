@@ -26,7 +26,7 @@ type AppOperationsProps = {
   operationGroups: Operation[][]
 }
 
-const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
+export function AppOperations({ appName, operationGroups }: AppOperationsProps) {
   const { t } = useTranslation(['common'])
   const visibleGroups = operationGroups.filter((group) => group.length > 0)
 
@@ -94,5 +94,3 @@ const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
     </Menu>
   )
 }
-
-export default AppOperations

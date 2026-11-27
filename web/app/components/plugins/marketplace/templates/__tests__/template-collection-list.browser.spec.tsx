@@ -5,11 +5,10 @@ import type {
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import TemplateCollectionList from '../template-collection-list'
 
-// boundary: template import navigation has no Next App Router in this browser page.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 // boundary: remote template documents stay local; the cards and their dialog stay real.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
   const { localMarketplaceFrameLinks } = await import('@/test/marketplace-frame-links')
@@ -60,17 +59,20 @@ it.each([
     const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
       systemFeatures: { deployment_edition: 'CLOUD' },
     })
+    const { NavigationProvider } = createTestNavigation({ url: '/templates' })
     const screen = await render(
-      <ConsoleProvider>
-        <TemplateCollectionList
-          becomePartnerText="Become a Partner"
-          collections={[collection]}
-          locale="en-US"
-          partnerText="Verified"
-          templatesByCollection={{ [collection.name]: buildTemplates(prefix, 9) }}
-          viewMoreText="View more"
-        />
-      </ConsoleProvider>,
+      <NavigationProvider>
+        <ConsoleProvider>
+          <TemplateCollectionList
+            becomePartnerText="Become a Partner"
+            collections={[collection]}
+            locale="en-US"
+            partnerText="Verified"
+            templatesByCollection={{ [collection.name]: buildTemplates(prefix, 9) }}
+            viewMoreText="View more"
+          />
+        </ConsoleProvider>
+      </NavigationProvider>,
     )
     const carousel = screen.getByRole('region', { name: collection.label.en_US! })
     const next = carousel.getByRole('button', { name: 'plugin.marketplace.carousel.scrollNext' })

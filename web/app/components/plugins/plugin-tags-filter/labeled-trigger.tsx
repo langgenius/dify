@@ -41,7 +41,7 @@ function LabeledTrigger({ tags, tagsMap, onTagsChange }: LabeledTriggerProps) {
             className={cn(
               'h-8 justify-start px-2 py-1 text-text-tertiary focus-visible:ring-inset',
               !!selectedTagsLength &&
-                'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg pr-8 shadow-xs shadow-shadow-shadow-3',
+                'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg pe-8 shadow-xs shadow-shadow-shadow-3',
               !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
@@ -90,7 +90,7 @@ function LabeledTrigger({ tags, tagsMap, onTagsChange }: LabeledTriggerProps) {
             ns: 'pluginTags',
             tags: triggerLabel,
           })}
-          className="absolute right-1 focus-visible:ring-inset"
+          className="absolute inset-e-1 focus-visible:ring-inset"
           onClick={() => {
             shouldRestoreFocusRef.current = true
             onTagsChange([])

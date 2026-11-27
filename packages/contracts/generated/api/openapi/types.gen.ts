@@ -139,6 +139,73 @@ export type AlreadySubmittedError = ErrorBody & {
   status: 409
 }
 
+export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
+
+export type ApiToolProviderListQuery = {
+  limit?: number
+  page?: number
+}
+
+export type ApiToolProviderListResponse = {
+  data: Array<ApiToolProviderRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type ApiToolProviderPayload = {
+  credentials: {
+    [key: string]: unknown
+  }
+  custom_disclaimer?: string | null
+  icon: ToolEmojiIcon
+  labels?: Array<string> | null
+  name: string
+  privacy_policy?: string | null
+  schema: string
+  schema_type: ApiProviderSchemaType
+}
+
+export type ApiToolProviderResponse = {
+  credentials: {
+    [key: string]: unknown
+  }
+  custom_disclaimer: string | null
+  description?: string | null
+  icon: ToolEmojiIcon
+  labels: Array<string>
+  name: string
+  privacy_policy: string | null
+  schema: string
+  schema_type: ApiProviderSchemaType
+  tools: Array<string>
+}
+
+export type ApiToolProviderRow = {
+  description: string | null
+  icon:
+    | {
+        [key: string]: string
+      }
+    | string
+  labels: Array<string>
+  name: string
+  tools: Array<string>
+}
+
+export type AppApiKeyListResponse = {
+  data: Array<AppApiKeyRow>
+}
+
+export type AppApiKeyRow = {
+  created_at?: number | null
+  id: string
+  last_used_at?: number | null
+  token: string
+}
+
 export type AppDescribeInfo = {
   description?: string | null
   id: string
@@ -402,6 +469,115 @@ export type CustomModelRow = {
   model_type: string
 }
 
+export type DatasetCreatePayload = {
+  description?: string
+  embedding_model?: string | null
+  embedding_model_provider?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_id?: string | null
+  indexing_technique?: DatasetIndexingTechnique | null
+  name: string
+  permission?: DatasetPermission | null
+  provider?: DatasetProvider
+  retrieval_model?: {
+    [key: string]: unknown
+  } | null
+}
+
+export type DatasetDetailResponse = {
+  created_at: number
+  description: string | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  external_knowledge_api_id: string | null
+  external_knowledge_id: string | null
+  id: string
+  indexing_technique: string | null
+  name: string
+  partial_member_list?: Array<string> | null
+  permission: string
+  provider: string
+  retrieval_model: {
+    [key: string]: unknown
+  } | null
+  updated_at: number
+}
+
+export type DatasetIndexingTechnique = 'economy' | 'high_quality'
+
+export type DatasetListQuery = {
+  limit?: number
+  page?: number
+  query?: string
+}
+
+export type DatasetListResponse = {
+  data: Array<DatasetResponse>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type DatasetPartialMemberPayload = {
+  user_id: string
+}
+
+export type DatasetPermission = 'all_team_members' | 'only_me' | 'partial_members'
+
+export type DatasetProvider = 'external' | 'vendor'
+
+export type DatasetResponse = {
+  created_at: number
+  description: string | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  external_knowledge_api_id: string | null
+  external_knowledge_id: string | null
+  id: string
+  indexing_technique: string | null
+  name: string
+  permission: string
+  provider: string
+  retrieval_model: {
+    [key: string]: unknown
+  } | null
+  updated_at: number
+}
+
+export type DatasetUpdatePayload = {
+  description?: string | null
+  external_knowledge_api_id?: string
+  external_knowledge_id?: string
+  external_retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  icon_info?: {
+    [key: string]: unknown
+  } | null
+  name?: string
+  partial_member_list?: Array<DatasetPartialMemberPayload> | null
+  permission?: DatasetPermission | null
+  retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  summary_index_setting?: {
+    [key: string]: unknown
+  } | null
+}
+
+export type DefaultModelPayload = {
+  model: string
+  provider: string
+}
+
+export type DefaultModelResponse = {
+  model: string | null
+  model_type: string
+  provider: string | null
+}
+
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type DeviceCodeRequest = {
@@ -464,6 +640,100 @@ export type DeviceTokenResponse = {
   token: string
   token_id: string
   workspaces?: Array<WorkspacePayload>
+}
+
+export type DocumentAndBatchResponse = {
+  batch: string
+  document: DocumentResponse
+}
+
+export type DocumentBatchItem = {
+  completed_segments: number | null
+  display_status: DocumentDisplayStatus | null
+  error: string | null
+  id: string
+  total_segments: number | null
+}
+
+export type DocumentCreateByTextPayload = {
+  doc_form?: DocumentForm | null
+  doc_language?: string | null
+  embedding_model?: string | null
+  embedding_model_provider?: string | null
+  indexing_technique?: DatasetIndexingTechnique | null
+  name: string
+  process_rule?: {
+    [key: string]: unknown
+  } | null
+  retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  text: string
+}
+
+export type DocumentDisplayStatus =
+  | 'archived'
+  | 'available'
+  | 'disabled'
+  | 'error'
+  | 'indexing'
+  | 'paused'
+  | 'queuing'
+
+export type DocumentForm = 'hierarchical_model' | 'qa_model' | 'text_model'
+
+export type DocumentIndexingStatusResponse = {
+  batch: string
+  display_status: DocumentDisplayStatus
+  documents: Array<DocumentBatchItem>
+  error: string | null
+}
+
+export type DocumentListQuery = {
+  limit?: number
+  page?: number
+  query?: string
+}
+
+export type DocumentListResponse = {
+  data: Array<DocumentResponse>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type DocumentResponse = {
+  archived: boolean
+  completed_at: number | null
+  created_at: number | null
+  data_source_type: string | null
+  dataset_id: string
+  display_status: DocumentDisplayStatus | null
+  doc_form: string | null
+  doc_language: string | null
+  document_process_rule: {
+    [key: string]: unknown
+  } | null
+  enabled: boolean
+  error: string | null
+  id: string
+  name: string
+  updated_at: number | null
+}
+
+export type DocumentUpdateByTextPayload = {
+  doc_form?: DocumentForm | null
+  name?: string | null
+  process_rule?: {
+    [key: string]: unknown
+  } | null
+  text?: string | null
+}
+
+export type DocumentUpdateResponse = {
+  document: DocumentResponse
 }
 
 export type DraftWorkflowRunPayload = {
@@ -632,6 +902,13 @@ export type HumanInputFormDefinitionResponse = {
     [key: string]: string
   }
   user_actions?: Array<UserActionConfig>
+}
+
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
 }
 
 export type Import = {
@@ -895,6 +1172,39 @@ export type LlmModelBlock = {
   provider: string
 }
 
+export type LoadBalancingEntry = {
+  credential_id: string | null
+  enabled: boolean
+  id: string
+  inherit: boolean
+  name: string
+}
+
+export type LoadBalancingEntryPayload = {
+  credential_id?: string | null
+  enabled: boolean
+}
+
+export type LoadBalancingPayload = {
+  enabled: boolean
+  entries: Array<LoadBalancingEntryPayload>
+}
+
+export type LoadBalancingSettings = {
+  enabled: boolean
+  entries: Array<LoadBalancingEntry>
+}
+
+export type McpAuthentication = {
+  client_id: string
+  client_secret?: string | null
+}
+
+export type McpConfiguration = {
+  sse_read_timeout?: number
+  timeout?: number
+}
+
 export type MarketplacePluginListResponse = {
   data: Array<MarketplacePluginRow>
   has_more: boolean
@@ -922,6 +1232,42 @@ export type MarketplacePluginRow = {
   label: string | null
   plugin_id: string
   version: string
+}
+
+export type McpProviderPayload = {
+  authentication?: McpAuthentication | null
+  configuration?: McpConfiguration | null
+  headers?: {
+    [key: string]: string
+  } | null
+  icon: string
+  icon_background?: string
+  icon_type: string
+  name: string
+  server_identifier: string
+  server_url: string
+}
+
+export type McpProviderResponse = {
+  authentication: McpAuthentication | null
+  configuration: McpConfiguration | null
+  icon:
+    | string
+    | {
+        [key: string]: string
+      }
+  id: string
+  identity_mode: string
+  is_dynamic_registration: boolean
+  is_team_authorization: boolean
+  masked_headers: {
+    [key: string]: string
+  } | null
+  name: string
+  server_identifier: string | null
+  server_url: string | null
+  tools: Array<string>
+  updated_at: number
 }
 
 export type MemberActionResponse = {
@@ -975,6 +1321,8 @@ export type MessageMetadata = {
   }>
   usage?: UsageInfo | null
 }
+
+export type ModelConfigFrom = 'custom-model' | 'predefined-model'
 
 export type ModelCredentialCreatePayload = {
   credentials: {
@@ -1037,6 +1385,11 @@ export type ModelRef = {
   model_type: ModelType
 }
 
+export type ModelRefQuery = {
+  model: string
+  model_type: ModelType
+}
+
 export type ModelRow = {
   features: Array<string>
   label: string | null
@@ -1046,6 +1399,28 @@ export type ModelRow = {
   provider: string
   provider_label: string | null
   status: string
+}
+
+export type ModelSettingsPutPayload = {
+  config_from: ModelConfigFrom
+  enabled: boolean
+  load_balancing: LoadBalancingPayload
+  model: string
+  model_type: ModelType
+}
+
+export type ModelSettingsQuery = {
+  config_from: ModelConfigFrom
+  model: string
+  model_type: ModelType
+}
+
+export type ModelSettingsResponse = {
+  config_from: ModelConfigFrom
+  enabled: boolean
+  load_balancing: LoadBalancingSettings
+  model: string
+  model_type: ModelType
 }
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
@@ -1124,10 +1499,12 @@ export type OpenApiErrorCode =
   | 'knowledge_fs_unavailable'
   | 'marketplace_disabled'
   | 'marketplace_unavailable'
+  | 'max_keys_exceeded'
   | 'member_license_exceeded'
   | 'member_limit_exceeded'
   | 'method_not_allowed'
   | 'model_currently_not_support'
+  | 'model_not_found'
   | 'no_file_uploaded'
   | 'node_not_found'
   | 'node_type_not_found'
@@ -1256,6 +1633,22 @@ export type PluginListQuery = {
 export type PluginListResponse = {
   data: Array<PluginRow>
   hints?: Array<Hint>
+}
+
+export type PluginParameterAutoGenerate = {
+  type: PluginParameterAutoGenerateType
+}
+
+export type PluginParameterAutoGenerateType = 'prompt_instruction'
+
+export type PluginParameterOption = {
+  icon?: string | null
+  label: I18nObject
+  value: string
+}
+
+export type PluginParameterTemplate = {
+  enabled?: boolean
 }
 
 export type PluginProvides = {
@@ -1541,12 +1934,24 @@ export type StringSource = {
   value?: string
 }
 
-export type SubjectType = 'account' | 'external_sso' | 'resource_access'
+export type SubjectType = 'account' | 'external_sso' | 'knowledge_agent' | 'resource_access'
 
 export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
 
 export type TaskStopResponse = {
   result: 'success'
+}
+
+export type ToolApiEntity = {
+  author: string
+  description: I18nObject
+  label: I18nObject
+  labels?: Array<string>
+  name: string
+  output_schema?: {
+    [key: string]: unknown
+  }
+  parameters?: Array<ToolParameter> | null
 }
 
 export type ToolCredentialCreatePayload = {
@@ -1561,6 +1966,11 @@ export type ToolCredentialUpdatePayload = {
     [key: string]: unknown
   }
   name?: string | null
+}
+
+export type ToolEmojiIcon = {
+  background: string
+  content: string
 }
 
 export type ToolInputType = 'constant' | 'mixed' | 'variable'
@@ -1606,6 +2016,40 @@ export type ToolNodeTemplate = {
   type?: string
 }
 
+export type ToolParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  form: ToolParameterForm
+  human_description?: I18nObject | null
+  input_schema?: {
+    [key: string]: unknown
+  } | null
+  label: I18nObject
+  llm_description?: string | null
+  max?: number | number | null
+  min?: number | number | null
+  multiple?: boolean
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: ToolParameterType
+}
+
+export type ToolParameterForm = 'form' | 'llm' | 'schema'
+
 export type ToolParameterRow = {
   default: unknown
   form: string
@@ -1618,6 +2062,25 @@ export type ToolParameterRow = {
   required: boolean
   type: string
 }
+
+export type ToolParameterType =
+  | 'any'
+  | 'app-selector'
+  | 'array'
+  | 'boolean'
+  | 'checkbox'
+  | 'date'
+  | 'date-range'
+  | 'dynamic-select'
+  | 'file'
+  | 'files'
+  | 'model-selector'
+  | 'number'
+  | 'object'
+  | 'secret-input'
+  | 'select'
+  | 'string'
+  | 'system-files'
 
 export type ToolProviderDetailResponse = {
   configured: boolean
@@ -1838,6 +2301,49 @@ export type WorkflowRunPayload = {
   }
   workflow_id?: string | null
   workspace_id?: string | null
+}
+
+export type WorkflowToolCreatePayload = {
+  description: string
+  icon: ToolEmojiIcon
+  label: string
+  labels?: Array<string> | null
+  name: string
+  parameters?: Array<WorkflowToolParameterConfiguration>
+  privacy_policy?: string | null
+  workflow_app_id: string
+}
+
+export type WorkflowToolParameterConfiguration = {
+  description: string
+  form: ToolParameterForm
+  name: string
+}
+
+export type WorkflowToolResponse = {
+  description: string
+  icon: ToolEmojiIcon
+  label: string
+  name: string
+  output_schema: {
+    [key: string]: unknown
+  }
+  parameters: Array<WorkflowToolParameterConfiguration>
+  privacy_policy: string | null
+  synced: boolean
+  tool: ToolApiEntity
+  workflow_app_id: string
+  workflow_tool_id: string
+}
+
+export type WorkflowToolSetPayload = {
+  description: string
+  icon: ToolEmojiIcon
+  label: string
+  labels?: Array<string> | null
+  name: string
+  parameters?: Array<WorkflowToolParameterConfiguration>
+  privacy_policy?: string | null
 }
 
 export type WorkflowWebApp = {
@@ -2078,6 +2584,27 @@ export type GetAppsResponses = {
 
 export type GetAppsResponse = GetAppsResponses[keyof GetAppsResponses]
 
+export type DeleteAppsByAppIdData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}'
+}
+
+export type DeleteAppsByAppIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByAppIdErrors]
+
+export type DeleteAppsByAppIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteAppsByAppIdResponse = DeleteAppsByAppIdResponses[keyof DeleteAppsByAppIdResponses]
+
 export type GetAppsByAppIdData = {
   body?: never
   path: {
@@ -2125,6 +2652,76 @@ export type PostAppsByAppIdAdvancedChatRunResponses = {
 
 export type PostAppsByAppIdAdvancedChatRunResponse =
   PostAppsByAppIdAdvancedChatRunResponses[keyof PostAppsByAppIdAdvancedChatRunResponses]
+
+export type GetAppsByAppIdApiKeysData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/api-keys'
+}
+
+export type GetAppsByAppIdApiKeysErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdApiKeysError =
+  GetAppsByAppIdApiKeysErrors[keyof GetAppsByAppIdApiKeysErrors]
+
+export type GetAppsByAppIdApiKeysResponses = {
+  200: AppApiKeyListResponse
+}
+
+export type GetAppsByAppIdApiKeysResponse =
+  GetAppsByAppIdApiKeysResponses[keyof GetAppsByAppIdApiKeysResponses]
+
+export type PostAppsByAppIdApiKeysData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/api-keys'
+}
+
+export type PostAppsByAppIdApiKeysErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdApiKeysError =
+  PostAppsByAppIdApiKeysErrors[keyof PostAppsByAppIdApiKeysErrors]
+
+export type PostAppsByAppIdApiKeysResponses = {
+  201: AppApiKeyRow
+}
+
+export type PostAppsByAppIdApiKeysResponse =
+  PostAppsByAppIdApiKeysResponses[keyof PostAppsByAppIdApiKeysResponses]
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdData = {
+  body?: never
+  path: {
+    api_key_id: string
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/api-keys/{api_key_id}'
+}
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdError =
+  DeleteAppsByAppIdApiKeysByApiKeyIdErrors[keyof DeleteAppsByAppIdApiKeysByApiKeyIdErrors]
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdResponse =
+  DeleteAppsByAppIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByAppIdApiKeysByApiKeyIdResponses]
 
 export type GetAppsByAppIdAppInfoAdvancedChatData = {
   body?: never
@@ -3797,6 +4394,130 @@ export type GetWorkspacesByWorkspaceIdResponses = {
 export type GetWorkspacesByWorkspaceIdResponse =
   GetWorkspacesByWorkspaceIdResponses[keyof GetWorkspacesByWorkspaceIdResponses]
 
+export type GetWorkspacesByWorkspaceIdApiToolProvidersData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    page?: number
+  }
+  url: '/workspaces/{workspace_id}/api-tool-providers'
+}
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersError =
+  GetWorkspacesByWorkspaceIdApiToolProvidersErrors[keyof GetWorkspacesByWorkspaceIdApiToolProvidersErrors]
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersResponses = {
+  200: ApiToolProviderListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersResponse =
+  GetWorkspacesByWorkspaceIdApiToolProvidersResponses[keyof GetWorkspacesByWorkspaceIdApiToolProvidersResponses]
+
+export type PostWorkspacesByWorkspaceIdApiToolProvidersData = {
+  body: ApiToolProviderPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/api-tool-providers'
+}
+
+export type PostWorkspacesByWorkspaceIdApiToolProvidersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdApiToolProvidersError =
+  PostWorkspacesByWorkspaceIdApiToolProvidersErrors[keyof PostWorkspacesByWorkspaceIdApiToolProvidersErrors]
+
+export type PostWorkspacesByWorkspaceIdApiToolProvidersResponses = {
+  201: ApiToolProviderResponse
+}
+
+export type PostWorkspacesByWorkspaceIdApiToolProvidersResponse =
+  PostWorkspacesByWorkspaceIdApiToolProvidersResponses[keyof PostWorkspacesByWorkspaceIdApiToolProvidersResponses]
+
+export type DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameData = {
+  body?: never
+  path: {
+    provider_name: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/api-tool-providers/{provider_name}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameError =
+  DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors[keyof DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors]
+
+export type DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponse =
+  DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses[keyof DeleteWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses]
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameData = {
+  body?: never
+  path: {
+    provider_name: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/api-tool-providers/{provider_name}'
+}
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameError =
+  GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors[keyof GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors]
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses = {
+  200: ApiToolProviderResponse
+}
+
+export type GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponse =
+  GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses[keyof GetWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses]
+
+export type PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameData = {
+  body: ApiToolProviderPayload
+  path: {
+    provider_name: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/api-tool-providers/{provider_name}'
+}
+
+export type PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameError =
+  PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors[keyof PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameErrors]
+
+export type PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses = {
+  200: ApiToolProviderResponse
+}
+
+export type PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponse =
+  PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses[keyof PutWorkspacesByWorkspaceIdApiToolProvidersByProviderNameResponses]
+
 export type PostWorkspacesByWorkspaceIdAppsAdvancedChatData = {
   body: CreateAppPayload
   path: {
@@ -3919,6 +4640,337 @@ export type PostWorkspacesByWorkspaceIdAppsWorkflowResponses = {
 
 export type PostWorkspacesByWorkspaceIdAppsWorkflowResponse =
   PostWorkspacesByWorkspaceIdAppsWorkflowResponses[keyof PostWorkspacesByWorkspaceIdAppsWorkflowResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    page?: number
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/datasets'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsError =
+  GetWorkspacesByWorkspaceIdDatasetsErrors[keyof GetWorkspacesByWorkspaceIdDatasetsErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsResponses = {
+  200: DatasetListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsResponse =
+  GetWorkspacesByWorkspaceIdDatasetsResponses[keyof GetWorkspacesByWorkspaceIdDatasetsResponses]
+
+export type PostWorkspacesByWorkspaceIdDatasetsData = {
+  body: DatasetCreatePayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets'
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsError =
+  PostWorkspacesByWorkspaceIdDatasetsErrors[keyof PostWorkspacesByWorkspaceIdDatasetsErrors]
+
+export type PostWorkspacesByWorkspaceIdDatasetsResponses = {
+  201: DatasetResponse
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsResponse =
+  PostWorkspacesByWorkspaceIdDatasetsResponses[keyof PostWorkspacesByWorkspaceIdDatasetsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
+  200: DatasetDetailResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses]
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdData = {
+  body: DatasetUpdatePayload
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}'
+}
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
+  PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
+  200: DatasetDetailResponse
+}
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
+  PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses[keyof PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchData = {
+  body?: never
+  path: {
+    batch: string
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponses = {
+  200: DocumentIndexingStatusResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsData = {
+  body?: never
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    page?: number
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponses = {
+  200: DocumentListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    document_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdError =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    document_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
+  200: DocumentResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
+  body: DocumentUpdateByTextPayload
+  path: {
+    dataset_id: string
+    document_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText'
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors =
+  {
+    422: ErrorBody
+    default: ErrorBody
+  }
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses =
+  {
+    200: DocumentUpdateResponse
+  }
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextData = {
+  body: DocumentCreateByTextPayload
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText'
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextError =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextErrors[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextErrors]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponses = {
+  200: DocumentAndBatchResponse
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponse =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponses[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponses]
+
+export type GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeData = {
+  body?: never
+  path: {
+    model_type: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/default-models/{model_type}'
+}
+
+export type GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeError =
+  GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors[keyof GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors]
+
+export type GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses = {
+  200: DefaultModelResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse =
+  GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses[keyof GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses]
+
+export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeData = {
+  body: DefaultModelPayload
+  path: {
+    model_type: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/default-models/{model_type}'
+}
+
+export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeError =
+  PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors[keyof PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeErrors]
+
+export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses = {
+  200: DefaultModelResponse
+}
+
+export type PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponse =
+  PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses[keyof PutWorkspacesByWorkspaceIdDefaultModelsByModelTypeResponses]
 
 export type GetWorkspacesByWorkspaceIdKnowledgeBasesData = {
   body?: never
@@ -4265,6 +5317,127 @@ export type GetWorkspacesByWorkspaceIdMarketplacePluginsResponses = {
 export type GetWorkspacesByWorkspaceIdMarketplacePluginsResponse =
   GetWorkspacesByWorkspaceIdMarketplacePluginsResponses[keyof GetWorkspacesByWorkspaceIdMarketplacePluginsResponses]
 
+export type PostWorkspacesByWorkspaceIdMcpProvidersData = {
+  body: McpProviderPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/mcp-providers'
+}
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersError =
+  PostWorkspacesByWorkspaceIdMcpProvidersErrors[keyof PostWorkspacesByWorkspaceIdMcpProvidersErrors]
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersResponses = {
+  201: McpProviderResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersResponse =
+  PostWorkspacesByWorkspaceIdMcpProvidersResponses[keyof PostWorkspacesByWorkspaceIdMcpProvidersResponses]
+
+export type DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdData = {
+  body?: never
+  path: {
+    provider_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/mcp-providers/{provider_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdError =
+  DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors[keyof DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponse =
+  DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses[keyof DeleteWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses]
+
+export type GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdData = {
+  body?: never
+  path: {
+    provider_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/mcp-providers/{provider_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdError =
+  GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors[keyof GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors]
+
+export type GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses = {
+  200: McpProviderResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponse =
+  GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses[keyof GetWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses]
+
+export type PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdData = {
+  body: McpProviderPayload
+  path: {
+    provider_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/mcp-providers/{provider_id}'
+}
+
+export type PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdError =
+  PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors[keyof PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdErrors]
+
+export type PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses = {
+  200: McpProviderResponse
+}
+
+export type PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponse =
+  PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses[keyof PutWorkspacesByWorkspaceIdMcpProvidersByProviderIdResponses]
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshData = {
+  body?: never
+  path: {
+    provider_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/mcp-providers/{provider_id}:refresh'
+}
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshErrors = {
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshError =
+  PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshErrors[keyof PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshErrors]
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshResponses = {
+  200: McpProviderResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshResponse =
+  PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshResponses[keyof PostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshResponses]
+
 export type GetWorkspacesByWorkspaceIdMembersData = {
   body?: never
   path: {
@@ -4414,6 +5587,32 @@ export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsRespon
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse =
   PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses]
 
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdData = {
+  body?: never
+  path: {
+    credential_id: string
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdError =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses =
+  {
+    200: SimpleResultResponse
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses]
+
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdData = {
   body: ProviderCredentialUpdatePayload
   path: {
@@ -4441,6 +5640,62 @@ export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCre
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
   PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses]
 
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateData =
+  {
+    body?: never
+    path: {
+      credential_id: string
+      provider: string
+      workspace_id: string
+    }
+    query?: never
+    url: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:activate'
+  }
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateErrors =
+  {
+    default: ErrorBody
+  }
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateError =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateErrors[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateErrors]
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateResponses =
+  {
+    200: CredentialWriteResponse
+  }
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateResponse =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdActivateResponses]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsData = {
+  body?: never
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query: {
+    model: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+  }
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/models'
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsError =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses]
+
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsData = {
   body: ModelCredentialCreatePayload
   path: {
@@ -4465,6 +5720,38 @@ export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentials
 
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse =
   PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdData =
+  {
+    body?: never
+    path: {
+      credential_id: string
+      provider: string
+      workspace_id: string
+    }
+    query: {
+      model: string
+      model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+    }
+    url: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}'
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors =
+  {
+    422: ErrorBody
+    default: ErrorBody
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdError =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses =
+  {
+    200: SimpleResultResponse
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses]
 
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdData =
   {
@@ -4494,6 +5781,89 @@ export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredential
 
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
   PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses]
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateData =
+  {
+    body: ModelRef
+    path: {
+      credential_id: string
+      provider: string
+      workspace_id: string
+    }
+    query?: never
+    url: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:activate'
+  }
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateErrors =
+  {
+    422: ErrorBody
+    default: ErrorBody
+  }
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateError =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateErrors[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateErrors]
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateResponses =
+  {
+    200: CredentialWriteResponse
+  }
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateResponse =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdActivateResponses]
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsData = {
+  body?: never
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query: {
+    config_from: 'custom-model' | 'predefined-model'
+    model: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+  }
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/models/settings'
+}
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsError =
+  GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsErrors[keyof GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsErrors]
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponses = {
+  200: ModelSettingsResponse
+}
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponse =
+  GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponses[keyof GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponses]
+
+export type PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsData = {
+  body: ModelSettingsPutPayload
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/models/settings'
+}
+
+export type PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsError =
+  PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsErrors[keyof PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsErrors]
+
+export type PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponses = {
+  200: ModelSettingsResponse
+}
+
+export type PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponse =
+  PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponses[keyof PutWorkspacesByWorkspaceIdModelProvidersByProviderModelsSettingsResponses]
 
 export type GetWorkspacesByWorkspaceIdModelsData = {
   body?: never
@@ -4830,6 +6200,32 @@ export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsRespons
 export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse =
   PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses]
 
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdData = {
+  body?: never
+  path: {
+    credential_id: string
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdError =
+  DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses =
+  {
+    200: SimpleResultResponse
+  }
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
+  DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses]
+
 export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdData = {
   body: ToolCredentialUpdatePayload
   path: {
@@ -4886,6 +6282,103 @@ export type GetWorkspacesByWorkspaceIdToolsResponses = {
 
 export type GetWorkspacesByWorkspaceIdToolsResponse =
   GetWorkspacesByWorkspaceIdToolsResponses[keyof GetWorkspacesByWorkspaceIdToolsResponses]
+
+export type PostWorkspacesByWorkspaceIdWorkflowToolsData = {
+  body: WorkflowToolCreatePayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/workflow-tools'
+}
+
+export type PostWorkspacesByWorkspaceIdWorkflowToolsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdWorkflowToolsError =
+  PostWorkspacesByWorkspaceIdWorkflowToolsErrors[keyof PostWorkspacesByWorkspaceIdWorkflowToolsErrors]
+
+export type PostWorkspacesByWorkspaceIdWorkflowToolsResponses = {
+  201: WorkflowToolResponse
+}
+
+export type PostWorkspacesByWorkspaceIdWorkflowToolsResponse =
+  PostWorkspacesByWorkspaceIdWorkflowToolsResponses[keyof PostWorkspacesByWorkspaceIdWorkflowToolsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdData = {
+  body?: never
+  path: {
+    workflow_tool_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdError =
+  DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors[keyof DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponse =
+  DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses[keyof DeleteWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses]
+
+export type GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdData = {
+  body?: never
+  path: {
+    workflow_tool_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdError =
+  GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors[keyof GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors]
+
+export type GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses = {
+  200: WorkflowToolResponse
+}
+
+export type GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponse =
+  GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses[keyof GetWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses]
+
+export type PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdData = {
+  body: WorkflowToolSetPayload
+  path: {
+    workflow_tool_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}'
+}
+
+export type PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdError =
+  PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors[keyof PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdErrors]
+
+export type PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses = {
+  200: WorkflowToolResponse
+}
+
+export type PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponse =
+  PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses[keyof PutWorkspacesByWorkspaceIdWorkflowToolsByWorkflowToolIdResponses]
 
 export type PostWorkspacesByWorkspaceIdSwitchData = {
   body?: never

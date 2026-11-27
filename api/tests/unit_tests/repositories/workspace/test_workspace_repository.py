@@ -440,7 +440,7 @@ class TestWorkspaceRepositoryCases:
         repository = WorkspaceRepository(sqlite_session_factory)
         contact_ids: list[str] = []
         for workspace_id in ("first", "second"):
-            prepare = partial(WorkspaceCreation, workspace_id, "Workspace", "public-key", 10, 0, {})
+            prepare = partial(WorkspaceCreation, workspace_id, "Workspace", "public-key", 0, {})
 
             created = repository.provision(prepare, owner_id="owner")
 

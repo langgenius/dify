@@ -55,7 +55,7 @@ export const PickerPanelMain: FC<Props> = ({
           <div className="system-sm-medium text-text-secondary">{root.attrName}</div>
         </div>
         <div
-          className="ml-2 truncate system-xs-regular text-text-tertiary"
+          className="ms-2 truncate system-xs-regular text-text-tertiary"
           title={root.attrAlias || 'object'}
         >
           {root.attrAlias || 'object'}

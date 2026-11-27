@@ -174,7 +174,6 @@ export const useNodesInteractions = () => {
   const isChatflow = useAtomValue(isChatflowAtom)
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
-      staleTime: Infinity,
       select: (data) => data.app_dsl_version,
     }),
   )

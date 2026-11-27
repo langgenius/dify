@@ -276,6 +276,34 @@ class KnowledgeFSAppBindingManagementService:
             caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
         )
 
+    def authorize_agent_bindings(
+        self, *, tenant_id: str, actor_account_id: str, control_space_ids: builtins.list[str]
+    ) -> None:
+        """Require the product policy for all requested Agent binding targets before writing."""
+        for control_space_id in _normalize_binding_ids(control_space_ids):
+            self._authorize_app_binding(
+                tenant_id=tenant_id, actor_account_id=actor_account_id, control_space_id=control_space_id
+            )
+
+    def stage_authorized_agent_bindings(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        actor_account_id: str,
+        app_id: str,
+        control_space_ids: builtins.list[str],
+    ) -> None:
+        """Stage the Agent channel after the caller has authorized all targets outside its transaction."""
+        self._sync_bindings_in_session(
+            session=session,
+            tenant_id=tenant_id,
+            actor_account_id=actor_account_id,
+            app_id=app_id,
+            normalized_space_ids=_normalize_binding_ids(control_space_ids),
+            caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+        )
+
     def _sync_bindings(
         self,
         *,
@@ -287,11 +315,7 @@ class KnowledgeFSAppBindingManagementService:
         caller_kind: KnowledgeFSAppSpaceJoinType,
     ) -> builtins.list[KnowledgeFSAppBindingResponse]:
 
-        normalized_space_ids = list(dict.fromkeys(space_id.strip() for space_id in control_space_ids))
-        if any(not space_id for space_id in normalized_space_ids):
-            raise KnowledgeFSAppBindingManagementError("KnowledgeFS control-space ids must be non-empty")
-        if len(normalized_space_ids) > 10:
-            raise KnowledgeFSAppBindingManagementError("An application can bind at most 10 KnowledgeFS Spaces")
+        normalized_space_ids = _normalize_binding_ids(control_space_ids)
 
         # Authorize every desired target before opening the mutation transaction. A failure therefore
         # cannot leave a partially updated set of published app bindings. App authors need
@@ -488,6 +512,16 @@ class KnowledgeFSAppBindingManagementService:
             control_space_id=control_space_id,
             permission=permission,
         )
+
+
+def _normalize_binding_ids(control_space_ids: builtins.list[str] | tuple[str, ...]) -> builtins.list[str]:
+    """Validate the number and shape of distinct requested control spaces."""
+    normalized_space_ids = list(dict.fromkeys(space_id.strip() for space_id in control_space_ids))
+    if any(not space_id for space_id in normalized_space_ids):
+        raise KnowledgeFSAppBindingManagementError("KnowledgeFS control-space ids must be non-empty")
+    if len(normalized_space_ids) > 10:
+        raise KnowledgeFSAppBindingManagementError("An application can bind at most 10 KnowledgeFS Spaces")
+    return normalized_space_ids
 
 
 def _authorization_revision(

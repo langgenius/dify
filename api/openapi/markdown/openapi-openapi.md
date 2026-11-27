@@ -110,6 +110,25 @@ workspace filter. This handler is read-only and does not change membership.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /apps/{app_id}
+**Delete the app**
+
+Answers 404 when the app does not exist in the workspace and 403 when the
+caller is not allowed to delete it.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}
 #### Parameters
 
@@ -145,6 +164,64 @@ workspace filter. This handler is read-only and does not change membership.
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/api-keys
+**List the app's API keys**
+
+Every key is returned with its full token. Answers 404 when the app does
+not exist in the workspace or the token cannot reach it.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API keys | **application/json**: [AppApiKeyListResponse](#appapikeylistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/api-keys
+**Create an API key for the app**
+
+The full token is returned only in this response; store it securely.
+Answers 400 when the app has reached its API key limit and 409 when the
+app is an agent app that has not been published.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | API key created | **application/json**: [AppApiKeyRow](#appapikeyrow)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /apps/{app_id}/api-keys/{api_key_id}
+**Delete an API key of the app**
+
+Answers 404 when `api_key_id` is not a valid id or names no key of this app.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| api_key_id | path |  | Yes | string |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API key deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/app-info/advanced-chat
@@ -1365,6 +1442,125 @@ Upload a file to use as an input variable when running the app
 | 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/api-tool-providers
+**List the workspace's API tool providers, one page at a time**
+
+Every entry carries the provider name, icon, description, labels, and
+the names of the tools its schema defines — never credential values.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API tool providers | **application/json**: [ApiToolProviderListResponse](#apitoolproviderlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/api-tool-providers
+**Add an API tool provider**
+
+`schema` is an OpenAPI schema of `schema_type` that defines the
+provider's tools; `credentials` configures how calls authenticate.
+Answers 400 for a duplicate name, an invalid schema, or invalid
+credentials. The response masks credential values.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiToolProviderPayload](#apitoolproviderpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Provider created | **application/json**: [ApiToolProviderResponse](#apitoolproviderresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/api-tool-providers/{provider_name}
+**Delete an API tool provider**
+
+Apps that used the provider's tools lose them; the credential is gone
+for good. Answers 404 when `provider_name` names no provider.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_name | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Provider deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/api-tool-providers/{provider_name}
+**Read one API tool provider**
+
+`credentials` echoes back with secret values masked. Answers 404 when
+`provider_name` names no provider.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_name | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API tool provider | **application/json**: [ApiToolProviderResponse](#apitoolproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /workspaces/{workspace_id}/api-tool-providers/{provider_name}
+**Replace an API tool provider**
+
+Full replace: the stored icon, schema, credentials, disclaimer, and
+labels become the request's. A body `name` different from
+`provider_name` renames the provider. Answers 404 when `provider_name`
+names no provider and 400 for invalid input.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_name | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiToolProviderPayload](#apitoolproviderpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Provider replaced | **application/json**: [ApiToolProviderResponse](#apitoolproviderresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /workspaces/{workspace_id}/apps/advanced-chat
 #### Parameters
 
@@ -1464,6 +1660,293 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Created | **application/json**: [CreatedAppResponse](#createdappresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets
+**List the workspace's knowledge bases, optionally filtered by name**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| query | query | Words to match in the knowledge base name | No | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge bases | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/datasets
+**Create an empty knowledge base**
+
+`provider=external` binds an external
+knowledge API instead of indexing documents locally.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetCreatePayload](#datasetcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Knowledge base created | **application/json**: [DatasetResponse](#datasetresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/datasets/{dataset_id}
+**Delete a knowledge base and its documents**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}
+**Read one knowledge base by id**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/datasets/{dataset_id}
+**Update a knowledge base**
+
+Only the fields present in the body change.
+
+Indexing settings are fixed after creation; changing them rebuilds the
+whole index and is not exposed here.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetUpdatePayload](#datasetupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base updated | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}
+**Aggregate indexing status for a batch: `error` if any document failed,**
+
+`available` once all complete, even if some are disabled or archived.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| batch | path |  | Yes | string |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing statuses | **application/json**: [DocumentIndexingStatusResponse](#documentindexingstatusresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}/documents
+**List the documents of a knowledge base**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| query | query | Words to match in the document name | No | string |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents | **application/json**: [DocumentListResponse](#documentlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}
+**Delete a document from the knowledge base**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}
+**Read one document, including its indexing status**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document | **application/json**: [DocumentResponse](#documentresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText
+**Replace a document's content and re-index it**
+
+Poll the document by ID
+to track indexing; its original import batch does not track this update.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentUpdateByTextPayload](#documentupdatebytextpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated | **application/json**: [DocumentUpdateResponse](#documentupdateresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText
+**Create a document from raw text**
+
+Indexing runs asynchronously; track
+it with the document's `display_status` or the batch indexing-status op.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentCreateByTextPayload](#documentcreatebytextpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/default-models/{model_type}
+**Read the workspace's default model of one model type**
+
+`provider` and `model` are null while no default is set. An unknown
+`model_type` answers 422.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model_type | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default model | **application/json**: [DefaultModelResponse](#defaultmodelresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /workspaces/{workspace_id}/default-models/{model_type}
+**Set the workspace's default model of one model type**
+
+An unknown `model_type` answers 422.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model_type | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DefaultModelPayload](#defaultmodelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default model set | **application/json**: [DefaultModelResponse](#defaultmodelresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1728,6 +2211,127 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /workspaces/{workspace_id}/mcp-providers
+**Add an MCP provider**
+
+The provider is saved with user-identity forwarding off, then the API
+makes a best-effort connection to fetch the server's tools; a server
+that cannot be reached yet still answers 201, just without tools.
+Answers 400 for an invalid URL or a duplicate name, identifier, or
+server URL.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [McpProviderPayload](#mcpproviderpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Provider created | **application/json**: [McpProviderResponse](#mcpproviderresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/mcp-providers/{provider_id}
+**Delete an MCP provider**
+
+Apps that used the provider's tools lose them. Answers 404 when
+`provider_id` names no provider.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Provider deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/mcp-providers/{provider_id}
+**Read one MCP provider**
+
+`server_url`, headers, and `authentication` echo back masked.
+`is_team_authorization` is true once the workspace authorized the
+provider through OAuth, which this API does not drive. Answers 404
+when `provider_id` names no provider.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | MCP provider | **application/json**: [McpProviderResponse](#mcpproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /workspaces/{workspace_id}/mcp-providers/{provider_id}
+**Replace an MCP provider**
+
+The request's URL is validated against the server before anything is
+stored; the provider keeps its existing identity-forwarding mode.
+Answers 404 when `provider_id` names no provider and 400 for an
+invalid URL or conflicting name, identifier, or server URL.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [McpProviderPayload](#mcpproviderpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Provider updated | **application/json**: [McpProviderResponse](#mcpproviderresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/mcp-providers/{provider_id}:refresh
+**Fetch the provider's tools again from its server**
+
+Reconnects to the stored server URL and replaces the cached tool
+list; the response reports the result. Answers 404 when `provider_id`
+names no provider.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Provider refreshed | **application/json**: [McpProviderResponse](#mcpproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/members
 #### Parameters
 
@@ -1840,6 +2444,27 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
+**Delete a saved model provider credential**
+
+Answers 404 when `credential_id` is not among the credentials that
+`describe.model_provider` lists for this provider.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
 #### Parameters
 
@@ -1860,6 +2485,51 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:activate
+**Make a saved model provider credential the active one**
+
+Answers 404 when `credential_id` is not among the credentials that
+`describe.model_provider` lists for this provider.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential activated | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/models
+**Delete a custom model and its credentials**
+
+`model` and `model_type` are required query parameters. Answers 404
+when the provider's `custom_models` list has no entry with that model
+and type.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query | Model name, as in get.model | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1885,6 +2555,30 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
+**Delete a saved credential of one model**
+
+`model` and `model_type` are required query parameters. Answers 404
+when `credential_id` is not among the credentials this model lists.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query | Model name, as in get.model | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
 #### Parameters
 
@@ -1905,6 +2599,90 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:activate
+**Make a saved credential the active one for one model**
+
+Answers 404 when `credential_id` is not among the credentials this
+model lists.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelRef](#modelref)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential activated | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/model-providers/{provider}/models/settings
+**Read a model's enabled flag and load-balancing entries**
+
+`enabled` is false while the model is disabled for this workspace.
+Load-balancing entries carry credential ids, never credential values;
+the entry with `inherit` true reuses the active credential.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| config_from | query | predefined-model: entries point at provider credentials; custom-model: at the model's own | Yes | string, <br>**Available values:** "custom-model", "predefined-model" |
+| model | query | Model name, as in get.model | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model settings | **application/json**: [ModelSettingsResponse](#modelsettingsresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /workspaces/{workspace_id}/model-providers/{provider}/models/settings
+**Replace a model's enabled flag and load-balancing entries**
+
+The list is declarative: load-balancing entries the workspace has but
+the request omits are deleted. An entry with a null `credential_id`
+reuses the active credential; at most one such entry is allowed, and
+duplicate credential ids answer 422. Load-balancing entries always
+reference saved credentials — inline credential values are not
+accepted.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelSettingsPutPayload](#modelsettingsputpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model settings | **application/json**: [ModelSettingsResponse](#modelsettingsresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2151,6 +2929,27 @@ so an edit made in the same second as the export is not detected.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
+**Delete a saved tool provider credential**
+
+Answers 404 when `credential_id` is not among the provider's saved
+credentials in this workspace.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [PATCH] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
 #### Parameters
 
@@ -2191,6 +2990,104 @@ so an edit made in the same second as the export is not detected.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tools | **application/json**: [ToolListResponse](#toollistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/workflow-tools
+**Publish a workflow app as a tool**
+
+`workflow_app_id` names a workflow app whose published workflow backs
+the tool. Answers 400 for a duplicate name or app id, an unknown app,
+or an app without a published workflow.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowToolCreatePayload](#workflowtoolcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Workflow tool created | **application/json**: [WorkflowToolResponse](#workflowtoolresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}
+**Unpublish a workflow tool**
+
+Apps that used the tool lose it; the workflow app itself is
+untouched. Answers 404 when `workflow_tool_id` names no tool.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workflow_tool_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow tool deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}
+**Read one workflow tool**
+
+`synced` is false once the app's published workflow moved past the
+version this tool captured. Answers 404 when `workflow_tool_id` names
+no tool.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workflow_tool_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow tool | **application/json**: [WorkflowToolResponse](#workflowtoolresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}
+**Replace a workflow tool**
+
+Full replace: name, label, icon, description, parameters, privacy
+policy, and labels become the request's. The tool keeps backing the
+same workflow app. Answers 404 when `workflow_tool_id` names no tool
+and 400 for a duplicate name or an app whose published workflow is
+gone.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workflow_tool_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowToolSetPayload](#workflowtoolsetpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow tool replaced | **application/json**: [WorkflowToolResponse](#workflowtoolresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2360,6 +3257,91 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AlreadySubmittedError |  |  |  |
+
+#### ApiProviderSchemaType
+
+Enum class for api provider schema type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ApiProviderSchemaType | string | Enum class for api provider schema type. |  |
+
+#### ApiToolProviderListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### ApiToolProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ApiToolProviderRow](#apitoolproviderrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### ApiToolProviderPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Auth configuration the provider's calls send | Yes |
+| custom_disclaimer | string |  | No |
+| icon | [ToolEmojiIcon](#toolemojiicon) | Emoji tile the workspace shows for the provider | Yes |
+| labels | [ string ] |  | No |
+| name | string | Provider name; on update it may differ from the path to rename | Yes |
+| privacy_policy | string |  | No |
+| schema | string | The schema text that defines the provider's tools | Yes |
+| schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
+
+#### ApiToolProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Masked secret values; never the stored secrets | Yes |
+| custom_disclaimer | string |  | Yes |
+| description | string |  | No |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
+| labels | [ string ] |  | Yes |
+| name | string |  | Yes |
+| privacy_policy | string |  | Yes |
+| schema | string |  | Yes |
+| schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
+| tools | [ string ] | Names of the tools the schema defines | Yes |
+
+#### ApiToolProviderRow
+
+One API tool provider summary, as a workspace list shows it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| icon | object<br>string |  | Yes |
+| labels | [ string ] |  | Yes |
+| name | string |  | Yes |
+| tools | [ string ] | Names of the tools the provider's schema defines | Yes |
+
+#### AppApiKeyListResponse
+
+Every API key of one app; unpaginated, as the console lists them.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AppApiKeyRow](#appapikeyrow) ] |  | Yes |
+
+#### AppApiKeyRow
+
+One app API key; `token` is the full secret, as the console returns it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| last_used_at | integer |  | No |
+| token | string |  | Yes |
 
 #### AppDescribeInfo
 
@@ -2684,6 +3666,143 @@ Button styles for user actions.
 | model | string |  | Yes |
 | model_type | string |  | Yes |
 
+#### DatasetCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Knowledge base description | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| external_knowledge_api_id | string | External knowledge API id (required when `provider` is `external`). | No |
+| external_knowledge_id | string | External knowledge base id (required when `provider` is `external`). | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | `high_quality` uses embedding models; `economy` uses keyword indexing. | No |
+| name | string | Knowledge base name | Yes |
+| permission | [DatasetPermission](#datasetpermission) | Legacy dataset permission. Only `only_me` and `all_team_members` are supported when RBAC is disabled. Ignored when RBAC is enabled. | No |
+| provider | [DatasetProvider](#datasetprovider) | `vendor` for internal knowledge bases, `external` for external ones. | No |
+| retrieval_model | object | Retrieval model configuration as a JSON object. | No |
+
+#### DatasetDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| description | string |  | Yes |
+| embedding_model | string |  | Yes |
+| embedding_model_provider | string |  | Yes |
+| external_knowledge_api_id | string |  | Yes |
+| external_knowledge_id | string |  | Yes |
+| id | string |  | Yes |
+| indexing_technique | string |  | Yes |
+| name | string |  | Yes |
+| partial_member_list | [ string ] | Member IDs for a legacy partial-members knowledge base; null when not applicable. | No |
+| permission | string |  | Yes |
+| provider | string |  | Yes |
+| retrieval_model | object |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### DatasetIndexingTechnique
+
+How a knowledge base indexes its documents.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetIndexingTechnique | string | How a knowledge base indexes its documents. |  |
+
+#### DatasetListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| query | string | Words to match in the knowledge base name | No |
+
+#### DatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DatasetResponse](#datasetresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### DatasetPartialMemberPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user_id | string (uuid) |  | Yes |
+
+#### DatasetPermission
+
+Who can reach a knowledge base.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetPermission | string | Who can reach a knowledge base. |  |
+
+#### DatasetProvider
+
+Whether the knowledge base indexes locally or proxies an external knowledge API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetProvider | string | Whether the knowledge base indexes locally or proxies an external knowledge API. |  |
+
+#### DatasetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| description | string |  | Yes |
+| embedding_model | string |  | Yes |
+| embedding_model_provider | string |  | Yes |
+| external_knowledge_api_id | string |  | Yes |
+| external_knowledge_id | string |  | Yes |
+| id | string |  | Yes |
+| indexing_technique | string |  | Yes |
+| name | string |  | Yes |
+| permission | string |  | Yes |
+| provider | string |  | Yes |
+| retrieval_model | object |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### DatasetUpdatePayload
+
+Patchable knowledge-base settings.
+
+Indexing settings are fixed after creation: `indexing_technique`,
+`embedding_model`, and `embedding_model_provider` rebuild the whole index, so
+they are absent here and rejected as unknown fields.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| external_knowledge_api_id | string | External knowledge API id. Omit to keep the current binding. | No |
+| external_knowledge_id | string | External knowledge base id. Omit to keep the current binding. | No |
+| external_retrieval_model | object | Retrieval model configuration for external knowledge bases as a JSON object. | No |
+| icon_info | object | Icon metadata as a JSON object. | No |
+| name | string | Knowledge base name. Omit to keep the current name. | No |
+| partial_member_list | [ [DatasetPartialMemberPayload](#datasetpartialmemberpayload) ] | Member ids granted access when `permission` is `partial_members`. | No |
+| permission | [DatasetPermission](#datasetpermission) |  | No |
+| retrieval_model | object | Retrieval model configuration as a JSON object. | No |
+| summary_index_setting | object | Summary index settings as a JSON object. | No |
+
+#### DefaultModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| provider | string | Provider id such as langgenius/openai/openai | Yes |
+
+#### DefaultModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string | Null when no default is set for the type | Yes |
+| model_type | string |  | Yes |
+| provider | string | Null when no default is set for the type | Yes |
+
 #### DeploymentEdition
 
 Enum representing the deployment edition of the platform.
@@ -2764,6 +3883,115 @@ instead of ``ErrorBody`` because device clients parse it.
 | token | string |  | Yes |
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
+
+#### DocumentAndBatchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| document | [DocumentResponse](#documentresponse) |  | Yes |
+
+#### DocumentBatchItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_segments | integer |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| total_segments | integer |  | Yes |
+
+#### DocumentCreateByTextPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| doc_form | [DocumentForm](#documentform) | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
+| doc_language | string | Language of the document. | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
+| name | string | Document name. | Yes |
+| process_rule | object | Processing rules for chunking as a JSON object. | No |
+| retrieval_model | object | Retrieval model configuration. | No |
+| text | string | Document text content. | Yes |
+
+#### DocumentDisplayStatus
+
+Public document status shared with the legacy service API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DocumentDisplayStatus | string | Public document status shared with the legacy service API. |  |
+
+#### DocumentForm
+
+Chunking shape of a document.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DocumentForm | string | Chunking shape of a document. |  |
+
+#### DocumentIndexingStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| documents | [ [DocumentBatchItem](#documentbatchitem) ] |  | Yes |
+| error | string |  | Yes |
+
+#### DocumentListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| query | string | Words to match in the document name | No |
+
+#### DocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentResponse](#documentresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### DocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archived | boolean |  | Yes |
+| completed_at | integer |  | Yes |
+| created_at | integer |  | Yes |
+| data_source_type | string |  | Yes |
+| dataset_id | string |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| doc_form | string |  | Yes |
+| doc_language | string |  | Yes |
+| document_process_rule | object |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### DocumentUpdateByTextPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| doc_form | [DocumentForm](#documentform) | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
+| name | string | Document name. | No |
+| process_rule | object | Processing rules for chunking as a JSON object. | No |
+| text | string | Document text content. | No |
+
+#### DocumentUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document | [DocumentResponse](#documentresponse) |  | Yes |
 
 #### DraftWorkflowRunPayload
 
@@ -2985,6 +4213,17 @@ A next step: the op id to call and its ready input.
 | inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | resolved_default_values | object |  | Yes |
 | user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
+
+#### I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
+| zh_Hans | string |  | No |
 
 #### Import
 
@@ -3296,6 +4535,51 @@ List direct children in stable Agent Knowledge Base traversal order.
 | name | string |  | Yes |
 | provider | string |  | Yes |
 
+#### LoadBalancingEntry
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| id | string |  | Yes |
+| inherit | boolean | True for the entry that reuses the active credential | Yes |
+| name | string |  | Yes |
+
+#### LoadBalancingEntryPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string | A saved credential's id; null names the entry that reuses the active credential | No |
+| enabled | boolean |  | Yes |
+
+#### LoadBalancingPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| entries | [ [LoadBalancingEntryPayload](#loadbalancingentrypayload) ] | Desired entries; unlisted ones are deleted | Yes |
+
+#### LoadBalancingSettings
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| entries | [ [LoadBalancingEntry](#loadbalancingentry) ] |  | Yes |
+
+#### MCPAuthentication
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_secret | string |  | No |
+
+#### MCPConfiguration
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sse_read_timeout | number, <br>**Default:** 300 |  | No |
+| timeout | number, <br>**Default:** 30 |  | No |
+
 #### MarketplacePluginListResponse
 
 | Name | Type | Description | Required |
@@ -3330,6 +4614,40 @@ List direct children in stable Agent Knowledge Base traversal order.
 | label | string |  | Yes |
 | plugin_id | string |  | Yes |
 | version | string |  | Yes |
+
+#### McpProviderPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authentication | [MCPAuthentication](#mcpauthentication) | OAuth client configuration for servers that require it | No |
+| configuration | [MCPConfiguration](#mcpconfiguration) | Connection settings such as timeouts; defaults apply when omitted | No |
+| headers | object | Extra HTTP headers sent to the server | No |
+| icon | string |  | Yes |
+| icon_background | string |  | No |
+| icon_type | string |  | Yes |
+| name | string |  | Yes |
+| server_identifier | string |  | Yes |
+| server_url | string |  | Yes |
+
+#### McpProviderResponse
+
+An MCP provider with every secret field already masked by the service.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authentication | [MCPAuthentication](#mcpauthentication) | Masked OAuth client config | Yes |
+| configuration | [MCPConfiguration](#mcpconfiguration) |  | Yes |
+| icon | string<br>object |  | Yes |
+| id | string |  | Yes |
+| identity_mode | string |  | Yes |
+| is_dynamic_registration | boolean |  | Yes |
+| is_team_authorization | boolean | True once the workspace authorized the provider | Yes |
+| masked_headers | object |  | Yes |
+| name | string |  | Yes |
+| server_identifier | string |  | Yes |
+| server_url | string | Masked server URL | Yes |
+| tools | [ string ] | Names of the tools the server advertised | Yes |
+| updated_at | integer |  | Yes |
 
 #### MemberActionResponse
 
@@ -3398,6 +4716,14 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | retriever_resources | [ object ], <br>**Default:**  |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
+
+#### ModelConfigFrom
+
+Which credential table a model's load-balancing entries point at, as the console's config_from.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelConfigFrom | string | Which credential table a model's load-balancing entries point at, as the console's config_from. |  |
 
 #### ModelCredentialCreatePayload
 
@@ -3470,6 +4796,15 @@ Strict (extra='forbid').
 | model | string | Model name, as in get.model | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
 
+#### ModelRefQuery
+
+The model a credential or settings op addresses, as query parameters.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+
 #### ModelRow
 
 | Name | Type | Description | Required |
@@ -3482,6 +4817,34 @@ Strict (extra='forbid').
 | provider | string |  | Yes |
 | provider_label | string |  | Yes |
 | status | string | active means usable now; anything else needs the provider set up | Yes |
+
+#### ModelSettingsPutPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_from | [ModelConfigFrom](#modelconfigfrom) | predefined-model: entries point at provider credentials; custom-model: at the model's own | Yes |
+| enabled | boolean |  | Yes |
+| load_balancing | [LoadBalancingPayload](#loadbalancingpayload) | Load-balancing settings to replace the stored ones | Yes |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+
+#### ModelSettingsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_from | [ModelConfigFrom](#modelconfigfrom) | predefined-model: entries point at provider credentials; custom-model: at the model's own | Yes |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+
+#### ModelSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_from | [ModelConfigFrom](#modelconfigfrom) | predefined-model: entries point at provider credentials; custom-model: at the model's own | Yes |
+| enabled | boolean | False while the model is disabled for this workspace | Yes |
+| load_balancing | [LoadBalancingSettings](#loadbalancingsettings) |  | Yes |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
 
 #### ModelType
 
@@ -3666,6 +5029,32 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | data | [ [PluginRow](#pluginrow) ] |  | Yes |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### PluginParameterAutoGenerate
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | [PluginParameterAutoGenerateType](#pluginparameterautogeneratetype) |  | Yes |
+
+#### PluginParameterAutoGenerateType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginParameterAutoGenerateType | string |  |  |
+
+#### PluginParameterOption
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string | The icon of the option, can be a url or a base64 encoded image | No |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
+
+#### PluginParameterTemplate
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean | Whether the parameter is jinja enabled | No |
 
 #### PluginProvides
 
@@ -4073,6 +5462,18 @@ types it as a required `'success'` rather than an optional field.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
+#### ToolApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| labels | [ string ] |  | No |
+| name | string |  | Yes |
+| output_schema | object |  | No |
+| parameters | [ [ToolParameter](#toolparameter) ] |  | No |
+
 #### ToolCredentialCreatePayload
 
 | Name | Type | Description | Required |
@@ -4086,6 +5487,13 @@ types it as a required `'success'` rather than an optional field.
 | ---- | ---- | ----------- | -------- |
 | credentials | object | Secret values, keyed by the field names in credential_form of the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
 | name | string |  | No |
+
+#### ToolEmojiIcon
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | Yes |
+| content | string |  | Yes |
 
 #### ToolInputType
 
@@ -4142,6 +5550,37 @@ A tool node's data with every value as {type, value}.
 | tool_parameters | object |  | Yes |
 | type | string, <br>**Default:** tool |  | No |
 
+#### ToolParameter
+
+Tool-specific parameter declaration and invocation-value normalization.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
+| default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| form | [ToolParameterForm](#toolparameterform) | The form of the parameter, schema/form/llm | Yes |
+| human_description | [I18nObject](#i18nobject) | The description presented to the user | No |
+| input_schema | object |  | No |
+| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+| llm_description | string |  | No |
+| max | number<br>integer |  | No |
+| min | number<br>integer |  | No |
+| multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
+| name | string | The name of the parameter | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| scope | string |  | No |
+| template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
+| type | [ToolParameterType](#toolparametertype) | The type of the parameter | Yes |
+
+#### ToolParameterForm
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolParameterForm | string |  |  |
+
 #### ToolParameterRow
 
 | Name | Type | Description | Required |
@@ -4156,6 +5595,14 @@ A tool node's data with every value as {type, value}.
 | options | [ string ] |  | Yes |
 | required | boolean |  | Yes |
 | type | string |  | Yes |
+
+#### ToolParameterType
+
+removes TOOLS_SELECTOR from PluginParameterType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolParameterType | string | removes TOOLS_SELECTOR from PluginParameterType |  |
 
 #### ToolProviderDetailResponse
 
@@ -4433,6 +5880,57 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### WorkflowToolCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) | Emoji tile the workspace shows for the tool | Yes |
+| label | string |  | Yes |
+| labels | [ string ] |  | No |
+| name | string |  | Yes |
+| parameters | [ [WorkflowToolParameterConfiguration](#workflowtoolparameterconfiguration) ] |  | No |
+| privacy_policy | string |  | No |
+| workflow_app_id | string | The workflow app to publish as a tool | Yes |
+
+#### WorkflowToolParameterConfiguration
+
+Workflow tool configuration
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | The description of the parameter | Yes |
+| form | [ToolParameterForm](#toolparameterform) | The form of the parameter | Yes |
+| name | string | The name of the parameter | Yes |
+
+#### WorkflowToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
+| label | string |  | Yes |
+| name | string |  | Yes |
+| output_schema | object |  | Yes |
+| parameters | [ [WorkflowToolParameterConfiguration](#workflowtoolparameterconfiguration) ] |  | Yes |
+| privacy_policy | string |  | Yes |
+| synced | boolean | False once the app's published workflow moved past this tool's version | Yes |
+| tool | [ToolApiEntity](#toolapientity) |  | Yes |
+| workflow_app_id | string |  | Yes |
+| workflow_tool_id | string |  | Yes |
+
+#### WorkflowToolSetPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) | Emoji tile the workspace shows for the tool | Yes |
+| label | string |  | Yes |
+| labels | [ string ] |  | No |
+| name | string |  | Yes |
+| parameters | [ [WorkflowToolParameterConfiguration](#workflowtoolparameterconfiguration) ] |  | No |
+| privacy_policy | string |  | No |
 
 #### WorkflowWebApp
 

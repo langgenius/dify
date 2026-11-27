@@ -13,12 +13,15 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import appOverviewTranslations from '@/i18n/locales/en-US/app-overview.json'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
 import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
 import navigationTranslations from '@/i18n/locales/en-US/navigation.json'
 import toolsTranslations from '@/i18n/locales/en-US/tools.json'
 import { consoleQuery } from '@/service/console'
+import { TEST_NETWORK_ACCESS_GROUP_ID, TEST_WORKSPACE_ID } from '@/test/console/ids'
 import {
   createNetworkAccessGroupFixture,
   seedAppNetworkAccessGroup,
@@ -135,10 +138,10 @@ const createBinding = (
   overrides: Partial<AppNetworkAccessGroupBindingResponse> = {},
 ): AppNetworkAccessGroupBindingResponse => ({
   id: 'binding-1',
-  tenant_id: 'workspace-1',
+  tenant_id: TEST_WORKSPACE_ID,
   app_id: 'app-1',
   enabled: true,
-  group_id: 'group-1',
+  group_id: TEST_NETWORK_ACCESS_GROUP_ID,
   access_points: ['webapp', 'service_api', 'mcp'],
   version: 2,
   created_at: '2026-01-01T00:00:00Z',
@@ -267,7 +270,7 @@ describe('AccessControlEntry', () => {
       app_mode: 'chat',
       access_point_total: 3,
       action: 'policy_selected',
-      policy_id: 'group-1',
+      policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
     })
     await user.keyboard('{Escape}')
     await waitFor(() =>
@@ -291,6 +294,42 @@ describe('AccessControlEntry', () => {
     expect(
       vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'access_control_entry_click'),
     ).toHaveLength(2)
+  })
+
+  it('reports a binding that fails to load instead of hiding the entry silently', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
+    seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
+    const fallback = vi.mocked(globalThis.fetch).getMockImplementation()!
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/apps/app-1/network-access-group'))
+        return Response.json({ message: 'Access control unavailable' }, { status: 503 })
+      return fallback(input, init)
+    })
+    const { wrapper: UrlState } = createNuqsTestWrapper({ searchParams: initialSearchParams })
+    renderWithConsoleQuery(
+      <UrlState>
+        <AccessControlEntry
+          appMode="chat"
+          appId="app-1"
+          appIcon={null}
+          isPublished={false}
+          canEditBinding
+        />
+      </UrlState>,
+      {
+        queryClient,
+        currentWorkspace: { role: 'owner' },
+        systemFeatures: { deployment_edition: 'CLOUD' },
+        features: { billing: { subscription: { interval: 'month', plan: 'professional' } } },
+      },
+    )
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Access control unavailable'),
+    )
+    expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
   })
 
   it('does not render on community edition', () => {
@@ -319,10 +358,10 @@ describe('AccessControlEntry', () => {
         groups: [createNetworkAccessGroupFixture()],
         binding: {
           id: 'binding-1',
-          tenant_id: 'workspace-1',
+          tenant_id: TEST_WORKSPACE_ID,
           app_id: 'app-1',
           enabled,
-          group_id: 'group-1',
+          group_id: TEST_NETWORK_ACCESS_GROUP_ID,
           access_points: [...accessPoints],
           version: 2,
           created_at: '2026-01-01T00:00:00Z',
@@ -519,9 +558,9 @@ describe('AccessControlEntry', () => {
       })
       if (request.method === 'GET') {
         return request.url.endsWith('/network-access-groups')
-          ? Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [created] })
+          ? Response.json({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [created] })
           : Response.json({
-              tenant_id: 'workspace-1',
+              tenant_id: TEST_WORKSPACE_ID,
               app_id: 'app-1',
               entitled: true,
               binding: null,
@@ -602,10 +641,10 @@ describe('AccessControlEntry', () => {
       ],
       binding: {
         id: 'binding-1',
-        tenant_id: 'workspace-1',
+        tenant_id: TEST_WORKSPACE_ID,
         app_id: 'app-1',
         enabled: true,
-        group_id: 'group-1',
+        group_id: TEST_NETWORK_ACCESS_GROUP_ID,
         access_points: ['webapp', 'service_api', 'mcp'],
         version: 2,
         created_at: '2026-01-01T00:00:00Z',
@@ -672,10 +711,10 @@ describe('AccessControlEntry', () => {
       groups: [createNetworkAccessGroupFixture()],
       binding: {
         id: 'binding-1',
-        tenant_id: 'workspace-1',
+        tenant_id: TEST_WORKSPACE_ID,
         app_id: 'app-1',
         enabled: true,
-        group_id: 'group-1',
+        group_id: TEST_NETWORK_ACCESS_GROUP_ID,
         access_points: ['webapp', 'service_api', 'mcp'],
         version: 2,
         created_at: '2026-01-01T00:00:00Z',
@@ -710,10 +749,10 @@ describe('AccessControlEntry', () => {
       groups: [createNetworkAccessGroupFixture()],
       binding: {
         id: 'binding-1',
-        tenant_id: 'workspace-1',
+        tenant_id: TEST_WORKSPACE_ID,
         app_id: 'app-1',
         enabled: true,
-        group_id: 'group-1',
+        group_id: TEST_NETWORK_ACCESS_GROUP_ID,
         access_points: ['webapp', 'service_api', 'mcp'],
         version: 2,
         created_at: '2026-01-01T00:00:00Z',
@@ -793,10 +832,10 @@ describe('AccessControlEntry', () => {
       groups: [createNetworkAccessGroupFixture()],
       binding: {
         id: 'binding-1',
-        tenant_id: 'workspace-1',
+        tenant_id: TEST_WORKSPACE_ID,
         app_id: 'app-1',
         enabled: true,
-        group_id: 'group-1',
+        group_id: TEST_NETWORK_ACCESS_GROUP_ID,
         access_points: ['webapp', 'service_api', 'mcp'],
         version: 2,
         created_at: '2026-01-01T00:00:00Z',
@@ -829,10 +868,10 @@ describe('AccessControlEntry', () => {
       groups: [createNetworkAccessGroupFixture()],
       binding: {
         id: 'binding-1',
-        tenant_id: 'workspace-1',
+        tenant_id: TEST_WORKSPACE_ID,
         app_id: 'app-1',
         enabled: true,
-        group_id: 'group-1',
+        group_id: TEST_NETWORK_ACCESS_GROUP_ID,
         access_points: ['webapp', 'service_api', 'mcp'],
         version: 2,
         created_at: '2026-01-01T00:00:00Z',
@@ -895,7 +934,7 @@ describe('supported access points and binding permission', () => {
           })
         }
         return Response.json({
-          tenant_id: 'workspace-1',
+          tenant_id: TEST_WORKSPACE_ID,
           app_id: 'app-1',
           entitled: true,
           binding: createBinding({ access_points: points }),
@@ -916,7 +955,12 @@ describe('supported access points and binding permission', () => {
         await user.click(screen.getByRole('button', { name: 'Save' }))
         await waitFor(() =>
           expect(requests).toEqual([
-            { enabled: true, group_id: 'group-1', access_points: points, expected_version: 0 },
+            {
+              enabled: true,
+              group_id: TEST_NETWORK_ACCESS_GROUP_ID,
+              access_points: points,
+              expected_version: 0,
+            },
           ]),
         )
       } finally {
@@ -1028,7 +1072,7 @@ describe('supported access points and binding permission', () => {
         if (metadata) return metadata
         if (request.url.endsWith('/workspaces/current/network-access-groups'))
           return Response.json({
-            tenant_id: 'workspace-1',
+            tenant_id: TEST_WORKSPACE_ID,
             entitled: true,
             groups: [createNetworkAccessGroupFixture()],
           })
@@ -1043,7 +1087,7 @@ describe('supported access points and binding permission', () => {
           })
         }
         return Response.json({
-          tenant_id: 'workspace-1',
+          tenant_id: TEST_WORKSPACE_ID,
           app_id: 'app-1',
           entitled: true,
           binding,
@@ -1071,7 +1115,7 @@ describe('supported access points and binding permission', () => {
           expect(payloads).toEqual([
             {
               enabled: false,
-              group_id: 'group-1',
+              group_id: TEST_NETWORK_ACCESS_GROUP_ID,
               access_points: ['webapp', 'mcp'],
               expected_version: 2,
             },
@@ -1094,7 +1138,7 @@ describe('supported access points and binding permission', () => {
         await waitFor(() => expect(payloads).toHaveLength(2))
         expect(payloads[1]).toEqual({
           enabled: true,
-          group_id: 'group-1',
+          group_id: TEST_NETWORK_ACCESS_GROUP_ID,
           access_points: ['webapp', 'mcp'],
           expected_version: 3,
         })
@@ -1299,7 +1343,7 @@ describe('supported access points and binding permission', () => {
       name: 'missing capability field',
       response: () =>
         Response.json({
-          tenant_id: 'workspace-1',
+          tenant_id: TEST_WORKSPACE_ID,
           app_id: 'app-1',
           entitled: true,
           binding: null,
@@ -1387,10 +1431,10 @@ const setupBindingServer = (initialBinding: AppNetworkAccessGroupBindingResponse
         state.groups.push(group)
         return Response.json({ group }, { status: 201 })
       }
-      return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: state.groups })
+      return Response.json({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: state.groups })
     }
     return Response.json({
-      tenant_id: 'workspace-1',
+      tenant_id: TEST_WORKSPACE_ID,
       app_id: 'app-1',
       entitled: true,
       binding: state.binding,
@@ -1438,7 +1482,7 @@ describe('trusted IP checks before saving', () => {
               result: 'failed',
               fail_reason: failReason,
               is_first_config: true,
-              policy_id: 'group-1',
+              policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
               protected_access_points: ['web_app', 'service_api', 'mcp_server'],
               protected_count: 3,
               is_current_ip_included: true,
@@ -1479,7 +1523,7 @@ describe('trusted IP checks before saving', () => {
             access_point_total: 3,
             result: 'success',
             is_first_config: true,
-            policy_id: 'group-1',
+            policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
             protected_access_points: ['web_app', 'service_api', 'mcp_server'],
             protected_count: 3,
             is_current_ip_included: true,
@@ -1511,7 +1555,7 @@ describe('trusted IP checks before saving', () => {
     expect(server.writes).toHaveLength(0)
     expect(server.binding).toMatchObject({
       enabled: true,
-      group_id: 'group-1',
+      group_id: TEST_NETWORK_ACCESS_GROUP_ID,
       access_points: ['webapp', 'service_api', 'mcp'],
     })
     expect(within(getChip()).getByText('ON')).toBeInTheDocument()
@@ -1571,7 +1615,7 @@ describe('trusted IP checks before saving', () => {
         expect(server.writes).toEqual([
           {
             enabled: true,
-            group_id: 'group-1',
+            group_id: TEST_NETWORK_ACCESS_GROUP_ID,
             access_points: ['webapp', 'service_api'],
             expected_version: 2,
           },
@@ -1615,7 +1659,7 @@ describe('trusted IP checks before saving', () => {
           access_point_total: 3,
           result: 'success',
           is_first_config: true,
-          policy_id: 'group-1',
+          policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
           protected_access_points: ['web_app', 'service_api', 'mcp_server'],
           protected_count: 3,
           is_current_ip_included: allowed,
@@ -1645,6 +1689,22 @@ describe('trusted IP checks before saving', () => {
     await waitFor(() => expect(server.writes).toHaveLength(1))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(server.checks).toBeGreaterThanOrEqual(2)
+  })
+
+  it('explains a failed recheck inside the lockout confirmation', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
+    await openSelectedConfig(user)
+    await screen.findByText(lockoutWarning)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    const dialog = await screen.findByRole('alertdialog')
+    server.checkStatus = 503
+    await user.click(within(dialog).getByRole('button', { name: 'Save anyway' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Unable to check your IP address. Please try again.',
+    )
+    expect(server.writes).toHaveLength(0)
   })
 
   it('requires renewed confirmation when the policy changes before Save anyway', async () => {
@@ -1735,7 +1795,7 @@ describe('immediate pause and resume', () => {
       expect(server.writes).toEqual([
         {
           enabled: false,
-          group_id: 'group-1',
+          group_id: TEST_NETWORK_ACCESS_GROUP_ID,
           access_points: ['webapp', 'mcp'],
           expected_version: 2,
         },

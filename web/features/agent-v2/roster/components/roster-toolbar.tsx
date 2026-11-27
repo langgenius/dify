@@ -1,12 +1,14 @@
 'use client'
 
 import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { Ref } from 'react'
 import type { RosterFilterValue } from './roster-filter'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 import {
   rosterCreatedByMeQueryParser,
   rosterFilterQueryParser,
@@ -17,7 +19,11 @@ import { RosterCreateMenu } from './roster-create-menu'
 import { RosterSortSelect } from './roster-sort-select'
 
 type RosterToolbarProps = {
+  searchRef?: Ref<HTMLInputElement>
   publicationCounts: AgentPublicationCountsResponse
+  tagIds: string[]
+  onTagIdsChange: (tagIds: string[]) => void
+  onOpenTagManagement: () => void
 }
 
 type RosterFilterItemProps = {
@@ -39,7 +45,7 @@ function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
   )
 }
 
-function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
+function RosterStatusFilter({ publicationCounts }: Pick<RosterToolbarProps, 'publicationCounts'>) {
   const { t } = useTranslation(['agentRoster'])
   const [filter, setFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
 
@@ -68,7 +74,7 @@ function RosterStatusFilter({ publicationCounts }: RosterToolbarProps) {
   )
 }
 
-function RosterSearchFilter() {
+function RosterSearchFilter({ searchRef }: Pick<RosterToolbarProps, 'searchRef'>) {
   const { t } = useTranslation(['agentRoster'])
   const [keyword, setKeyword] = useQueryState(
     rosterQueryParamNames.keyword,
@@ -77,6 +83,7 @@ function RosterSearchFilter() {
 
   return (
     <SearchInput
+      ref={searchRef}
       aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
       className="h-8 w-full min-w-0 sm:w-50"
       placeholder={t(($) => $['roster.searchPlaceholder'], { ns: 'agentRoster' })}
@@ -110,15 +117,29 @@ function RosterCreatedByMeFilter() {
   )
 }
 
-export function RosterToolbar({ publicationCounts }: RosterToolbarProps) {
+export function RosterToolbar({
+  publicationCounts,
+  searchRef,
+  tagIds,
+  onTagIdsChange,
+  onOpenTagManagement,
+}: RosterToolbarProps) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <RosterStatusFilter publicationCounts={publicationCounts} />
-      <RosterSearchFilter />
+      <RosterSearchFilter searchRef={searchRef} />
       <div className="hidden h-4 shrink-0 px-1 sm:flex" aria-hidden="true">
         <div className="h-full w-px bg-divider-regular" />
       </div>
-      <RosterCreatedByMeFilter />
+      <div className="grid max-w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
+        <RosterCreatedByMeFilter />
+        <TagFilter
+          type="agent"
+          value={tagIds}
+          onChange={onTagIdsChange}
+          onOpenTagManagement={onOpenTagManagement}
+        />
+      </div>
       <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
         <RosterSortSelect />
         <RosterCreateMenu />

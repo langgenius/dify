@@ -2,12 +2,11 @@ import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TemplateDetailRouteProvider } from '../template-detail-route'
 import { useOptionalTemplateDetailRoute } from '../use-optional-template-detail-route'
 
-// boundary: the standalone browser page has no Next App Router.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 // boundary: the remote iframe is a local document; host message handling and focus stay real.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
   const { localMarketplaceFrameLinks } = await import('@/test/marketplace-frame-links')
@@ -49,12 +48,15 @@ async function renderRoute(initialSelection?: { publisher: string; id: string })
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
+  const { NavigationProvider } = createTestNavigation({ url: window.location.pathname })
   return render(
-    <ConsoleProvider>
-      <TemplateDetailRouteProvider initialSelection={initialSelection}>
-        <OpenButton />
-      </TemplateDetailRouteProvider>
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <TemplateDetailRouteProvider initialSelection={initialSelection}>
+          <OpenButton />
+        </TemplateDetailRouteProvider>
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 

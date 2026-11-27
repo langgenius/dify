@@ -8,31 +8,10 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { useExpandModelProviderList } from '../../atoms'
 import ProviderAddedCard from '../index'
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.modelProviders.byProvider.models.get': async () => ({
-        data: [
-          zModelWithProviderEntityResponse.parse({
-            ...createCatalogModelFixture(),
-            provider: {
-              provider: 'langgenius/openai/openai',
-              label: { en_US: 'OpenAI' },
-              supported_model_types: ['llm'],
-              tenant_id: 'tenant-1',
-            },
-          }),
-        ],
-      }),
-    }),
-  }
-})
 const provider = createProviderSummaryFixture({
   provider: 'langgenius/openai/openai',
   icon_small: { en_US: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>' },
@@ -48,8 +27,37 @@ function ExpandModels() {
 
 it('restores visible keyboard focus to the grid action after its model list disappears without hovering the card', async () => {
   // The grid action is CSS-hidden outside hover/focus-within; happy-dom cannot prove that native focus reveals it.
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            modelProviders: {
+              byProvider: {
+                models: {
+                  get: () => ({
+                    data: [
+                      zModelWithProviderEntityResponse.parse({
+                        ...createCatalogModelFixture(),
+                        provider: {
+                          provider: 'langgenius/openai/openai',
+                          label: { en_US: 'OpenAI' },
+                          supported_model_types: ['llm'],
+                          tenant_id: 'tenant-1',
+                        },
+                      }),
+                    ],
+                  }),
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
-    workspacePermissionKeys: ['plugin.plugin_preferences'],
+    workspacePermissionKeys: ['plugin.model_config'],
     systemFeatures: { deployment_edition: 'COMMUNITY' },
     features: {},
   })

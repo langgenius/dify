@@ -76,7 +76,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
           <div className="p-1">
             <div
               className={cn(
-                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
+                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 ps-3 hover:bg-state-base-hover',
                 webAppDeliveryInfo.disabled &&
                   'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
@@ -113,12 +113,12 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 </div>
               </div>
               {webAppDeliveryInfo.added && (
-                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
+                <div className="absolute inset-e-3 top-3.25 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflowHumanInput' })}
                 </div>
               )}
               {webAppDeliveryInfo.isTriggerMode && !webAppDeliveryInfo.added && (
-                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
+                <div className="absolute inset-e-3 top-3.25 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`], {
                     ns: 'workflowHumanInput',
                   })}
@@ -127,7 +127,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
             </div>
             <div
               className={cn(
-                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
+                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 ps-3 hover:bg-state-base-hover',
                 (emailDeliveryInfo.added || humanInputEmailDeliveryEnabled === undefined) &&
                   'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
@@ -169,7 +169,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 </div>
               </div>
               {emailDeliveryInfo.added && (
-                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
+                <div className="absolute inset-e-3 top-3.25 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflowHumanInput' })}
                 </div>
               )}
@@ -177,7 +177,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
             {/* Slack */}
             <div
               className={cn(
-                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
+                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 ps-3 hover:bg-state-base-hover',
                 'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
             >
@@ -204,14 +204,14 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-2 right-2">
+              <div className="absolute inset-e-2 top-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
             {/* Teams */}
             <div
               className={cn(
-                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
+                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 ps-3 hover:bg-state-base-hover',
                 'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
             >
@@ -238,14 +238,14 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-2 right-2">
+              <div className="absolute inset-e-2 top-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
             {/* Discord */}
             <div
               className={cn(
-                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
+                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 ps-3 hover:bg-state-base-hover',
                 'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
             >
@@ -272,7 +272,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-2 right-2">
+              <div className="absolute inset-e-2 top-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>

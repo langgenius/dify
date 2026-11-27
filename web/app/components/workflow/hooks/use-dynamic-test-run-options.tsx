@@ -1,9 +1,10 @@
 import type { TestRunOptions, TriggerOption } from '../header/test-run-menu'
 import type { CommonNodeType } from '../types'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import BlockIcon from '../block-icon'
 import { TriggerType } from '../header/test-run-menu'
 import { useStore } from '../store'
@@ -17,7 +18,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
   const customTools = useStore((s) => s.customTools)
   const workflowTools = useStore((s) => s.workflowTools)
   const mcpTools = useStore((s) => s.mcpTools)
-  const { data: triggerPlugins } = useAllTriggerPlugins()
+  const { data: triggerPlugins } = useQuery(allTriggerPluginsQueryOptions())
 
   return useMemo(() => {
     const allTriggers: TriggerOption[] = []

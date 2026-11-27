@@ -2,10 +2,11 @@
 
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { MarketplaceViewProps } from './view'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useLocale } from '#i18n'
+import { marketplaceQuery } from '@/service/marketplace'
 import { useResetMarketplaceSearchModeOnMount } from './atoms'
-import { fetchPluginBanners } from './home/banners'
+import { normalizePluginBanners } from './home/banners'
 import { MarketplaceView } from './view'
 
 const BANNER_STALE_TIME = 1000 * 60 * 5
@@ -30,15 +31,17 @@ export function EmbeddedMarketplace({
   useResetMarketplaceSearchModeOnMount()
   const locale = useLocale()
   const { data: banners = [] } = useQuery(
-    queryOptions({
-      // fetchPluginBanners returns normalized PluginBanner[] rather than the
-      // raw contract response, so it uses its own cache key instead of
-      // impersonating the generated banners.list contract query.
-      queryKey: ['marketplace-banners', locale],
-      queryFn: () => fetchPluginBanners(locale),
+    marketplaceQuery.banners.list.queryOptions({
+      input: { query: { page: 'plugins', language: locale } },
       enabled: variant === 'home',
-      initialData: locale === initialLocale ? initialBanners : undefined,
+      // The cache holds the raw banners response. Server-rendered banners are already
+      // normalized, and normalizing them again keeps them unchanged.
+      initialData:
+        locale === initialLocale && initialBanners
+          ? { data: { banners: initialBanners } }
+          : undefined,
       staleTime: BANNER_STALE_TIME,
+      select: normalizePluginBanners,
     }),
   )
 

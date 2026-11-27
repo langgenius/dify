@@ -1,12 +1,21 @@
 import { act } from '@testing-library/react'
+import {
+  createTriggerProviderResponseFixture,
+  seedTriggerPlugins,
+} from '@/test/console/trigger-plugins'
+import { createTestQueryClient } from '@/test/query-client'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useDynamicTestRunOptions } from '../use-dynamic-test-run-options'
 
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [{ name: 'plugin-provider', icon: '/plugin-icon.png' }] }),
-}))
+const createQueryClient = () => {
+  const queryClient = createTestQueryClient()
+  seedTriggerPlugins(queryClient, [
+    createTriggerProviderResponseFixture({ name: 'plugin-provider', icon: '/plugin-icon.png' }),
+  ])
+  return queryClient
+}
 
 it('builds input, trigger and run-all options from the real workflow store and responds to changes', () => {
   const nodes = [
@@ -30,6 +39,7 @@ it('builds input, trigger and run-all options from the real workflow store and r
     }),
   ]
   const { result, store } = renderWorkflowHook(() => useDynamicTestRunOptions(), {
+    queryClient: createQueryClient(),
     initialStoreState: { nodes },
   })
   expect(result.current.userInput).toMatchObject({
@@ -55,6 +65,7 @@ it('builds input, trigger and run-all options from the real workflow store and r
 
 it('uses the localized start label and has no options for an empty graph', () => {
   const { result, store } = renderWorkflowHook(() => useDynamicTestRunOptions(), {
+    queryClient: createQueryClient(),
     initialStoreState: {
       nodes: [createNode({ id: 'start', data: { type: BlockEnum.Start, title: '' } })],
     },

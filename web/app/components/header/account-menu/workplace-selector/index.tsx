@@ -25,7 +25,7 @@ const WorkplaceSelectorItem = memo(({ workspace }: WorkplaceSelectorItemProps) =
   const workspacePlan = workspace.plan ?? 'sandbox'
 
   return (
-    <SelectItem value={workspace.id} className="gap-2 py-1 pr-2 pl-3">
+    <SelectItem value={workspace.id} className="gap-2 py-1 ps-3 pe-2">
       <WorkspaceAvatar name={workspaceName} size="sm" />
       <SelectItemText className="system-md-regular">{workspaceName}</SelectItemText>
       <PlanBadge plan={workspacePlan} />

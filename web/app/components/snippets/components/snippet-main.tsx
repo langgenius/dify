@@ -21,7 +21,6 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
 import { useFileSettings } from '../hooks/use-file-settings'
-import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetRun } from '../hooks/use-snippet-run'
@@ -32,6 +31,7 @@ import { useSnippetDSL } from './hooks/use-snippet-dsl'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SnippetChildren from './snippet-children'
+import SnippetWorkflowPanel from './workflow-panel'
 
 type SnippetMainProps = {
   payload: SnippetDetailPayload
@@ -45,7 +45,6 @@ type SnippetMainProps = {
 
 type SnippetMainContentProps = {
   snippetId: string
-  fields: InputVar[]
   canSave: boolean
   canEdit: boolean
   onBeforePublish: () => Promise<Omit<SnippetDraftSyncPayload, 'hash'> | void>
@@ -78,7 +77,6 @@ const hasSnippetDraftNodes = (payload?: Omit<SnippetDraftSyncPayload, 'hash'> | 
 
 const SnippetMainContent = ({
   snippetId,
-  fields,
   canSave,
   canEdit,
   onBeforePublish,
@@ -106,8 +104,6 @@ const SnippetMainContent = ({
 
   return (
     <SnippetChildren
-      snippetId={snippetId}
-      fields={fields}
       canSave={canSave}
       canEdit={canEdit}
       isPublishing={isPublishing}
@@ -201,7 +197,6 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
   const { handleStartWorkflowRun, handleWorkflowStartRunInWorkflow } = useSnippetStartRun({
     handleRun,
   })
-  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl(snippetId)
   useEffect(() => {
     reset()
 
@@ -316,7 +311,6 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
       handleStartWorkflowRun,
       handleWorkflowStartRunInWorkflow,
       handleExportDSL,
-      getWorkflowRunAndTraceUrl,
       availableNodesMetaData,
       fetchInspectVars,
       hasNodeInspectVars,
@@ -363,7 +357,6 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
     handleStopRun,
     handleWorkflowStartRunInWorkflow,
     handleExportDSL,
-    getWorkflowRunAndTraceUrl,
     hasNodeInspectVars,
     hasSetInspectVar,
     invalidateConversationVarValues,
@@ -383,10 +376,10 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
           edges={effectiveDraftEdges}
           viewport={effectiveDraftViewport ?? graph.viewport}
           hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
+          sidePanel={<SnippetWorkflowPanel fields={fields} />}
         >
           <SnippetMainContent
             snippetId={snippetId}
-            fields={fields}
             canSave={canSave}
             canEdit={canEditSnippet}
             onBeforePublish={() => doSyncWorkflowDraft(true)}

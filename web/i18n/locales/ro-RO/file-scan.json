@@ -50,7 +50,7 @@
   "scanner.lastTested": "Ultima testare: {{time}}",
   "scanner.loadFailed": "Scanerele nu au putut fi încărcate.",
   "scanner.neverTested": "Netestat încă",
-  "scanner.readOnly": "Doar proprietarii și administratorii spațiului de lucru pot gestiona scanerele.",
+  "scanner.readOnly": "Nu aveți permisiunea de a gestiona scanerele.",
   "scanner.status.active": "Activ",
   "scanner.status.error": "Eroare",
   "scanner.test": "Testați",

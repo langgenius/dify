@@ -65,17 +65,17 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.toolProviders.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': api.permission,
-      'workspaces.current.plugin.permission.change.post': api.savePermission,
-      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
-      'workspaces.current.plugin.autoUpgrade.change.post': api.saveAutoUpgrade,
       'workspaces.current.plugin.debuggingKey.get': api.debug,
       'workspaces.current.plugin.marketplace.pkg.get': async () => ({
         manifest: { ...createPluginEntity().declaration, category: PluginCategoryEnum.trigger },
       }),
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': api.permission,
+      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.permission.change.post': api.savePermission,
+      'workspaces.current.plugin.autoUpgrade.change.post': api.saveAutoUpgrade,
     }),
   }
 })
@@ -85,23 +85,16 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
   uploadFile: api.upload,
 }))
 vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collectionPlugins: async () => ({ data: { plugins: [] } }),
-      collections: async () => ({ data: { collections: [] } }),
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    collectionPlugins: async () => ({ data: { plugins: [] } }),
+    collections: async () => ({ data: { collections: [] } }),
+    searchAdvanced: async ({ params }) => {
+      if (params.kind === 'plugins') return { data: { plugins: [], total: 0 } }
+      throw new Error(`Unexpected marketplace search: ${params.kind}`)
     },
-  }
+  })
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: async (url: string) => {
-    if (url === '/plugins/search/advanced') return { data: { plugins: [], total: 0 } }
-    throw new Error(`Unexpected marketplace request: ${url}`)
-  },
-}))
 
 const permissions = [
   'plugin.install',
@@ -503,6 +496,35 @@ it('persists legacy permission changes and immediately hides installations when 
   ).toBeChecked()
 })
 
+it('waits for a pending permission save, so the next change keeps the one before it', async () => {
+  const user = userEvent.setup()
+  const firstSave = createDeferred<Awaited<ReturnType<typeof api.savePermission>>>()
+  api.savePermission.mockReturnValueOnce(firstSave.promise)
+  renderPage({ props: { section: 'trigger' }, rbacEnabled: false })
+  await user.click(await screen.findByRole('button', { name: 'plugin.privilege.permissions' }))
+  const dialog = screen.getByRole('dialog', { name: 'plugin.privilege.permissions' })
+  const radio = (name: string) => within(dialog).getByRole('radio', { name })
+
+  await user.click(radio('plugin.privilege.quickWhoCanInstall: plugin.privilege.noone'))
+  await waitFor(() =>
+    expect(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins')).toBeDisabled(),
+  )
+  // A second change while the first is pending would build on the value before it.
+  await user.click(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins'))
+  expect(api.savePermission).toHaveBeenCalledTimes(1)
+
+  await act(async () => firstSave.resolve({ result: 'success' } as never))
+  await waitFor(() =>
+    expect(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins')).toBeEnabled(),
+  )
+  await user.click(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins'))
+  await waitFor(() =>
+    expect(api.savePermission).toHaveBeenLastCalledWith({
+      body: { install_permission: 'noone', debug_permission: 'admins' },
+    }),
+  )
+})
+
 it('restores the selected legacy permission when saving fails', async () => {
   const user = userEvent.setup()
   api.savePermission.mockRejectedValueOnce(new Error('Unavailable'))
@@ -550,7 +572,7 @@ it.each([true, false])(
         name: 'plugin.installModal.installPlugin',
       })
       expect(within(dialog).getByText('Trigger Package')).toBeInTheDocument()
-      expect(api.manifest).toHaveBeenCalledWith(encodeURIComponent(packageId))
+      expect(api.manifest).toHaveBeenCalledWith(packageId)
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     } else {

@@ -108,7 +108,7 @@ const PrePopulate: FC<Props> = ({
       <div className="relative h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
         <VarReferencePicker {...varPickerProps} isJustShowValue />
         <TypeSwitch
-          className="absolute bottom-1 left-1.5"
+          className="absolute inset-s-1.5 bottom-1"
           isVariable={isVariable}
           onIsVariableChange={handleTypeChange}
         />
@@ -136,7 +136,7 @@ const PrePopulate: FC<Props> = ({
         autoFocus
       />
       <TypeSwitch
-        className="absolute bottom-1 left-1.5"
+        className="absolute inset-s-1.5 bottom-1"
         isVariable={isVariable}
         onIsVariableChange={handleTypeChange}
       />

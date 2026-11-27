@@ -276,7 +276,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={copyImageLabel}
-                className="absolute top-6 right-48 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-48 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={imageCopy}
               >
                 {isCopied ? (
@@ -295,7 +295,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={zoomOutLabel}
-                className="absolute top-6 right-40 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-40 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
                 <span className="i-ri-zoom-out-line size-4 text-gray-500" aria-hidden="true" />
@@ -310,7 +310,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={zoomInLabel}
-                className="absolute top-6 right-32 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-32 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
                 <span className="i-ri-zoom-in-line size-4 text-gray-500" aria-hidden="true" />
@@ -325,7 +325,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={downloadLabel}
-                className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-24 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={downloadImage}
               >
                 <span
@@ -343,7 +343,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={openInNewTabLabel}
-                className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-16 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={openInNewTab}
               >
                 <span className="i-ri-add-box-line size-4 text-gray-500" aria-hidden="true" />
@@ -358,7 +358,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={cancelLabel}
-                className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
+                className="absolute inset-e-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
                 <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />

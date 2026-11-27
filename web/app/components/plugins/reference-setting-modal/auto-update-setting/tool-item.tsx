@@ -20,8 +20,8 @@ const ToolItem: FC<Props> = ({ payload, isChecked, onCheckChange }) => {
   const { plugin_id, declaration } = payload
   const { label, author: org } = declaration
   return (
-    <div className="flex w-full items-center gap-1 rounded-lg py-1 pr-2 pl-3 select-none hover:bg-state-base-hover">
-      <div className="flex min-w-0 grow items-center gap-2 pr-2">
+    <div className="flex w-full items-center gap-1 rounded-lg py-1 ps-3 pe-2 select-none hover:bg-state-base-hover">
+      <div className="flex min-w-0 grow items-center gap-2 pe-2">
         <Icon size="tiny" src={getMarketplacePluginIconUrl(plugin_id)} />
         <div className="min-w-0 truncate system-sm-medium text-text-secondary">
           {renderI18nObject(label, language)}

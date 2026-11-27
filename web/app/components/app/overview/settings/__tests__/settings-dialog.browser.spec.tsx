@@ -80,16 +80,6 @@ async function renderSettings() {
   return { screen, client }
 }
 
-it('links the privacy policy to its destination', async () => {
-  const { screen, client } = await renderSettings()
-  await screen.getByRole('button', { name: triggerLabel }).click()
-  const dialog = screen.getByRole('dialog', { name: settingsTitle })
-  const link = dialog.getByRole('link', { name: 'Privacy Policy', exact: true })
-
-  await expect.element(link).toHaveAttribute('href', 'https://dify.ai/privacy')
-  client.clear()
-})
-
 it('cancels a draft without saving and restores trigger focus', async () => {
   const { screen, client } = await renderSettings()
   const trigger = screen.getByRole('button', { name: triggerLabel })

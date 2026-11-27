@@ -1,12 +1,13 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { zDatasetListItemResponse } from '@dify/contracts/api/console/datasets/zod.gen'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 
 /** A general-purpose, high-quality knowledge base as the console dataset list returns it. */
 export const createDatasetFixture = (
   overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
 ) =>
   zDatasetListItemResponse.parse({
-    id: 'dataset-1',
+    id: TEST_DATASET_ID,
     knowledge_fs_upgrade: { can_retry: false, can_upgrade: false },
     name: 'Test Dataset',
     description: 'Test description',

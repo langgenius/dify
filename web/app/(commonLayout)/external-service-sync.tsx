@@ -150,14 +150,14 @@ function ZendeskConversationSync() {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: versionData } = useQuery(
     consoleQuery.version.get.queryOptions({
-      input: accountProfile.meta.currentVersion
-        ? {
-            query: {
-              current_version: accountProfile.meta.currentVersion,
-            },
-          }
-        : skipToken,
-      enabled: !systemFeatures.brandingEnabled,
+      input:
+        !systemFeatures.brandingEnabled && accountProfile.meta.currentVersion
+          ? {
+              query: {
+                current_version: accountProfile.meta.currentVersion,
+              },
+            }
+          : skipToken,
     }),
   )
   const langGeniusVersionInfo = getLangGeniusVersionInfo({

@@ -342,7 +342,7 @@ const Answer: FC<AnswerProps> = ({
               ref={contentRef}
               className={cn(
                 'relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary',
-                workflowProcess && 'w-full',
+                (workflowProcess || hasWorkflowActivities || hasAgentContent) && 'w-full',
               )}
             >
               {!responding && (

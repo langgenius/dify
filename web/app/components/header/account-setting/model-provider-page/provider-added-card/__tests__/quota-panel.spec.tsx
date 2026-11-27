@@ -3,7 +3,9 @@ import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import QuotaPanel from '../quota-panel'
@@ -263,7 +265,13 @@ describe('QuotaPanel', () => {
 
   it('should allow retrying marketplace installation after a request failure', async () => {
     const user = userEvent.setup()
-    mockFetchPluginInfoFromMarketPlace.mockRejectedValueOnce(new Error('Marketplace unavailable'))
+    const errorToast = vi.spyOn(toast, 'error')
+    mockFetchPluginInfoFromMarketPlace.mockRejectedValueOnce(
+      createHttpError(
+        { status: 503, statusText: '', headers: new Headers() },
+        { message: 'Marketplace unavailable' },
+      ),
+    )
     renderQuotaPanel(<QuotaPanel providers={[]} />)
     const providerButton = screen.getByLabelText(/modelNotSupported/)
 
@@ -271,6 +279,7 @@ describe('QuotaPanel', () => {
 
     await waitFor(() => expect(providerButton).toHaveAttribute('aria-busy', 'false'))
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Marketplace unavailable')
 
     await user.click(providerButton)
 

@@ -115,7 +115,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
                 {item.value === updatePayload?.originalPackageInfo.version && (
-                  <Badge uppercase={true} className="ml-1 shrink-0">
+                  <Badge uppercase={true} className="ms-1 shrink-0">
                     INSTALLED
                   </Badge>
                 )}

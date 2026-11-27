@@ -448,11 +448,18 @@ export default function IpPoliciesPage() {
       {canMutate && (
         <Dialog
           handle={createDialog}
+          disablePointerDismissal
           onOpenChange={(open, details) =>
             handleDialogOpenChange(open, details, createGroup.isPending)
           }
         >
-          <IpPolicyDialogContent finalFocus={() => createButtonRef.current ?? titleRef.current}>
+          <IpPolicyDialogContent
+            finalFocus={() =>
+              isEmpty && queryClient.getQueryData(groupsQuery.queryKey)?.groups.length
+                ? titleRef.current
+                : (createButtonRef.current ?? titleRef.current)
+            }
+          >
             <IpPolicyForm
               mode="create"
               isPending={createGroup.isPending}
@@ -465,6 +472,7 @@ export default function IpPoliciesPage() {
       )}
       <Dialog
         handle={policyDialog}
+        disablePointerDismissal={canMutate}
         onOpenChange={(open, details) =>
           handleDialogOpenChange(open, details, updateGroup.isPending)
         }

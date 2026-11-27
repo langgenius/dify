@@ -26,6 +26,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
+import { leaveCompletedSetup } from '../leave-completed-setup'
 
 const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
   email: zPostSetupBody.shape.email.pipe(z.email()),
@@ -47,12 +48,17 @@ const InstallForm = () => {
   const isInitPending = initStatus.data?.status === 'not_started'
   const setupAccount = useMutation({
     mutationFn: async (value: AccountFormValues) => {
-      await consoleClient.setup.post({
-        body: {
-          ...value,
-          language: i18n.language,
-        },
-      })
+      await consoleClient.setup
+        .post({
+          body: {
+            ...value,
+            language: i18n.language,
+          },
+        })
+        .catch((error: unknown) => {
+          leaveCompletedSetup(error, replace)
+          throw error
+        })
 
       return consoleClient.login.post({
         body: {

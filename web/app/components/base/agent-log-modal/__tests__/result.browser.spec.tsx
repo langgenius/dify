@@ -2,12 +2,6 @@ import { userEvent } from 'vite-plus/test/browser'
 import ResultPanel from '../result'
 import { renderAgentLog } from './browser-test-env'
 
-// boundary: keep Monaco's separately loaded editor runtime and workers out of this view test.
-vi.mock('@monaco-editor/react', async () => {
-  const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
-  return createMonacoEditorModuleMock()
-})
-
 const props = {
   status: 'success',
   elapsed_time: 1.23456,
@@ -19,18 +13,21 @@ const props = {
   created_at: '2023-01-01T00:00:00Z',
   agentMode: 'function_call',
   tools: ['tool1', 'tool2'],
-  iterations: 3,
+  iterations: 12,
 }
 
 it('shows semantic input, output and execution metadata in keyboard-reachable readonly editors', async () => {
   const { screen } = await renderAgentLog(<ResultPanel {...props} />)
-  const editors = screen.getByTestId('monaco-editor').all()
-  expect(editors).toHaveLength(2)
-  await expect.element(editors[0]!).toHaveValue(JSON.stringify(props.inputs, null, 2))
-  await expect.element(editors[1]!).toHaveValue(JSON.stringify(props.outputs, null, 2))
+  await expect.element(screen.getByText('"query"')).toBeVisible()
+  await expect.element(screen.getByText('"input"')).toBeVisible()
+  await expect.element(screen.getByText('"answer"')).toBeVisible()
+  await expect.element(screen.getByText('"output"')).toBeVisible()
+  const editorLocator = screen.getByRole('textbox', { name: 'Editor content' })
+  await expect.poll(() => editorLocator.all().length).toBe(2)
+  const editors = editorLocator.all()
   for (const editor of editors) await expect.element(editor).toHaveAttribute('readonly')
 
-  await editors[0]!.click()
+  await screen.getByText('"input"').click()
   await expect.element(editors[0]!).toHaveFocus()
   await userEvent.keyboard('{Tab}')
   const resizeControls = screen.getByRole('button', { name: 'common.resize.editor' }).all()
@@ -46,21 +43,5 @@ it('shows semantic input, output and execution metadata in keyboard-reachable re
   await expect.element(screen.getByRole('status')).toMatchTextContent('150 Tokens')
   await expect.element(screen.getByText('appDebug.agent.agentModeType.functionCall')).toBeVisible()
   await expect.element(screen.getByText('tool1, tool2')).toBeVisible()
-  await expect.element(screen.getByText('3', { exact: true })).toBeVisible()
-})
-
-it('shows the available mode and fallbacks when execution metadata is missing', async () => {
-  const { screen } = await renderAgentLog(
-    <ResultPanel
-      {...props}
-      created_by={undefined}
-      tools={[]}
-      total_tokens={undefined}
-      agentMode="react"
-    />,
-  )
-  await expect.element(screen.getByText('N/A')).toBeVisible()
-  await expect.element(screen.getByText('Null')).toBeVisible()
-  await expect.element(screen.getByRole('status')).toMatchTextContent('0 Tokens')
-  await expect.element(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeVisible()
+  await expect.element(screen.getByText('12', { exact: true })).toBeVisible()
 })

@@ -675,18 +675,14 @@ class TestCloudEditionBillingResourceCheck:
         mock_get_features.assert_not_called()
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_features")
+    @patch("controllers.service_api.wraps.FeatureService.get_workspace_plan")
     @patch("controllers.service_api.wraps.FeatureService.get_vector_space")
     def test_rejects_sandbox_when_vector_space_usage_is_unknown(
-        self, mock_get_vector_space, mock_get_features, mock_validate_token, app: Flask
+        self, mock_get_vector_space, mock_get_workspace_plan, mock_validate_token, app: Flask
     ):
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
         mock_get_vector_space.return_value = Mock(size=0, limit=50, usage_unknown=True)
-        mock_get_features.return_value = SimpleNamespace(
-            billing=SimpleNamespace(
-                subscription=SimpleNamespace(plan=CloudPlan.SANDBOX),
-            )
-        )
+        mock_get_workspace_plan.return_value = CloudPlan.SANDBOX
 
         @cloud_edition_billing_resource_check("vector_space", "dataset")
         def upload_document():
@@ -700,22 +696,18 @@ class TestCloudEditionBillingResourceCheck:
             upload_document()
 
         assert "Please try again later" in str(exc_info.value)
-        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
+        mock_get_workspace_plan.assert_called_once_with("tenant123")
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_features")
+    @patch("controllers.service_api.wraps.FeatureService.get_workspace_plan")
     @patch("controllers.service_api.wraps.FeatureService.get_vector_space")
     @pytest.mark.parametrize("plan", [CloudPlan.PROFESSIONAL, CloudPlan.TEAM])
     def test_allows_paid_plan_when_vector_space_usage_is_unknown(
-        self, mock_get_vector_space, mock_get_features, mock_validate_token, app: Flask, plan: CloudPlan
+        self, mock_get_vector_space, mock_get_workspace_plan, mock_validate_token, app: Flask, plan: CloudPlan
     ):
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
         mock_get_vector_space.return_value = Mock(size=0, limit=50, usage_unknown=True)
-        mock_get_features.return_value = SimpleNamespace(
-            billing=SimpleNamespace(
-                subscription=SimpleNamespace(plan=plan),
-            )
-        )
+        mock_get_workspace_plan.return_value = plan
 
         @cloud_edition_billing_resource_check("vector_space", "dataset")
         def upload_document():
@@ -728,7 +720,7 @@ class TestCloudEditionBillingResourceCheck:
             result = upload_document()
 
         assert result == "document_uploaded"
-        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
+        mock_get_workspace_plan.assert_called_once_with("tenant123")
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -815,15 +807,13 @@ class TestCloudEditionBillingKnowledgeLimitCheck:
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_features")
-    def test_rejects_add_segment_in_sandbox(self, mock_get_features, mock_validate_token, app: Flask):
+    @patch("controllers.service_api.wraps.FeatureService.get_workspace_plan")
+    def test_rejects_add_segment_in_sandbox(self, mock_get_workspace_plan, mock_validate_token, app: Flask):
         """Test that add_segment is rejected in SANDBOX plan."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
 
-        mock_features = Mock()
-        mock_features.billing.subscription.plan = CloudPlan.SANDBOX
-        mock_get_features.return_value = mock_features
+        mock_get_workspace_plan.return_value = CloudPlan.SANDBOX
 
         @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
         def add_segment():

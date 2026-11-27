@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Agent のその他の操作",
   "nodes.agent.roster.openPanel": "{{name}} の詳細を開く",
   "nodes.agent.roster.panelLabel": "{{name}} の詳細",
+  "nodes.agent.sessionContinuity.description": "オンの場合、Agent はこのチャット内の履歴を保持します。オフの場合、ユーザーのメッセージごとに新しいセッションを開始します。",
+  "nodes.agent.sessionContinuity.title": "Agent のセッションを継続",
   "nodes.agent.strategy.configureTip": "エージェンティック戦略を設定してください。",
   "nodes.agent.strategy.configureTipDesc": "エージェント戦略を設定した後、このノードは残りの設定を自動的に読み込みます。この戦略は、マルチステップツール推論のメカニズムに影響を与えます。",
   "nodes.agent.strategy.label": "エージェンティック戦略",

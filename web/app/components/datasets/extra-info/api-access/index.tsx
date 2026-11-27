@@ -25,7 +25,7 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
               type="button"
               aria-label={!expand ? t(($) => $['appMenus.apiAccess'], { ns: 'common' }) : undefined}
               className={cn(
-                'nokey w-full rounded-lg border-none bg-transparent p-0 text-left',
+                'nokey w-full rounded-lg border-none bg-transparent p-0 text-start',
                 props.className,
               )}
             >
@@ -46,7 +46,7 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
                   </div>
                 )}
                 <StatusDot
-                  className={cn('shrink-0', !expand && 'absolute -top-px -right-px')}
+                  className={cn('shrink-0', !expand && 'absolute -inset-e-px -top-px')}
                   status={apiEnabled ? 'success' : 'warning'}
                 />
               </div>

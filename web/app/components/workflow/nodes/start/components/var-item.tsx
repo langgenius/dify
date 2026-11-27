@@ -93,13 +93,13 @@ const VarItem: FC<Props> = ({
           />
         )}
       </div>
-      <div className="ml-2 flex shrink-0 items-center">
+      <div className="ms-2 flex shrink-0 items-center">
         {rightContent || (
           <>
             {!isHovering || readonly ? (
               <>
                 {payload.required && (
-                  <div className="mr-2 text-xs font-normal text-text-tertiary">
+                  <div className="me-2 text-xs font-normal text-text-tertiary">
                     {t(($) => $['nodes.start.required'], { ns: 'workflow' })}
                   </div>
                 )}
@@ -111,7 +111,7 @@ const VarItem: FC<Props> = ({
                   <button
                     type="button"
                     aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-                    className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    className="me-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsShowEditVarModal(true)}
                   >
                     <span

@@ -202,7 +202,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
   const { t } = useTranslation(['common'])
 
   return (
-    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
+    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pe-1.5 shadow-xs">
       <div className="size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
         <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
           {icon}

@@ -8,10 +8,11 @@ import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchPipelineWorkflowDraft } from '@/service/workflow'
 import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfo = {
@@ -30,10 +31,14 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { mutateAsync: importDSL } = useMutation(
-    consoleQuery.rag.pipelines.imports.post.mutationOptions(),
+    consoleQuery.rag.pipelines.imports.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: importDSLConfirm } = useMutation(
-    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions(),
+    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   // File state
   const [currentFile, setDSLFile] = useState<File>()
@@ -67,9 +72,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   )
   const updateWorkflow = useCallback(
     async (pipelineId: string) => {
-      const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(
-        `/rag/pipelines/${pipelineId}/workflows/draft`,
-      )
+      const { graph, hash, rag_pipeline_variables } = await fetchPipelineWorkflowDraft(pipelineId)
       const { nodes, edges, viewport } = graph
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
@@ -93,7 +96,8 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         notifyError()
         return
       }
-      updateWorkflow(pipelineId)
+      // The import is saved; a failed canvas reload leaves the old graph on screen.
+      void updateWorkflow(pipelineId).catch(reportRequestError)
       onImport?.()
       const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
       toast(

@@ -1,13 +1,14 @@
 'use client'
 
 import type { DocumentBulkAction } from '../state/bulk'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import {
@@ -38,7 +39,6 @@ import {
   selectionReindexDisabledAtom,
   validSelectedDocumentIdsAtom,
 } from '../state/selection'
-import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
 
 function useBulkActionLock(action: DocumentBulkAction) {
   const pendingAction = useAtomValue(documentBulkPendingActionAtom)
@@ -53,44 +53,10 @@ function useBulkActionLock(action: DocumentBulkAction) {
   }
 }
 
-function useDocumentInvalidation() {
-  const queryClient = useQueryClient()
-  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
-  const invalidateDocuments = useCallback(() => {
-    void Promise.allSettled([
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
-    ])
-  }, [knowledgeSpaceId, queryClient])
-  const invalidateDocumentsAndTasks = useCallback(() => {
-    void Promise.allSettled([
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
-    ])
-  }, [knowledgeSpaceId, queryClient])
-
-  return { invalidateDocuments, invalidateDocumentsAndTasks, knowledgeSpaceId }
-}
-
 export function useBulkReindexAction() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
+  const describeRequestError = useRequestErrorDescriber()
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -99,10 +65,10 @@ export function useBulkReindexAction() {
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('reindex')
-  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -149,7 +115,6 @@ export function useBulkReindexAction() {
           }),
         )
       else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
-      invalidateDocumentsAndTasks()
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else {
@@ -157,7 +122,10 @@ export function useBulkReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : describeRequestError(
+                error,
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+              ),
         )
       }
     } finally {
@@ -166,9 +134,9 @@ export function useBulkReindexAction() {
   }, [
     begin,
     canWrite,
+    describeRequestError,
     ensureModelReady,
     finish,
-    invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
     reindexDisabled,
@@ -194,13 +162,10 @@ export function useBulkDownloadAction() {
     if (!canDownload || !downloadableDocumentIds.length || !begin()) return
     try {
       const file =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post(
-          {
-            body: { document_ids: downloadableDocumentIds },
-            params: { control_space_id: knowledgeSpaceId },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
+          body: { document_ids: downloadableDocumentIds },
+          params: { control_space_id: knowledgeSpaceId },
+        })
       downloadBlob({
         data: file,
         fileName:
@@ -231,7 +196,12 @@ export function useBulkAvailabilityAction() {
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('availability')
-  const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const { mutateAsync: updateDocuments } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
 
   const run = useCallback(async () => {
     if (
@@ -244,25 +214,21 @@ export function useBulkAvailabilityAction() {
     )
       return
     try {
-      const result = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch(
-        {
-          body: {
-            documents: selectedDocuments.map((document) => ({
-              documentId: document.id,
-              expectedRowVersion: document.rowVersion,
-            })),
-            enabled: availabilityTargetEnabled,
-          },
-          params: { control_space_id: knowledgeSpaceId },
+      const result = await updateDocuments({
+        body: {
+          documents: selectedDocuments.map((document) => ({
+            documentId: document.id,
+            expectedRowVersion: document.rowVersion,
+          })),
+          enabled: availabilityTargetEnabled,
         },
-        { context: { silent: true } },
-      )
+        params: { control_space_id: knowledgeSpaceId },
+      })
       const failedIds = result.items.flatMap((item) =>
         item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
       )
       replaceSelection(failedIds)
       if (failedIds.length) toast.warning(t(($) => $.documentsErrorDescription))
-      invalidateDocuments()
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
@@ -275,7 +241,6 @@ export function useBulkAvailabilityAction() {
     begin,
     canWrite,
     finish,
-    invalidateDocuments,
     knowledgeSpaceId,
     onWriteDenied,
     replaceSelection,
@@ -283,6 +248,7 @@ export function useBulkAvailabilityAction() {
     selectedDocuments,
     selectionDisabled,
     t,
+    updateDocuments,
   ])
 
   return { busy, pending, run }
@@ -298,7 +264,12 @@ export function useBulkRemoveAction() {
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('remove')
-  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const { mutateAsync: removeDocuments } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
 
   const run = useCallback(async () => {
     if (
@@ -311,20 +282,16 @@ export function useBulkRemoveAction() {
     )
       return false
     try {
-      const result =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete(
-          {
-            body: {
-              documents: selectedDocuments.map((document) => ({
-                documentId: document.id,
-                expectedRevision: document.rowVersion,
-              })),
-            },
-            headers: { 'Idempotency-Key': createRequestId() },
-            params: { control_space_id: knowledgeSpaceId },
-          },
-          { context: { silent: true } },
-        )
+      const result = await removeDocuments({
+        body: {
+          documents: selectedDocuments.map((document) => ({
+            documentId: document.id,
+            expectedRevision: document.rowVersion,
+          })),
+        },
+        headers: { 'Idempotency-Key': createRequestId() },
+        params: { control_space_id: knowledgeSpaceId },
+      })
       const rejectedIds = (result.results ?? []).flatMap((item) =>
         item.status === 'rejected' ? [item.document_id] : [],
       )
@@ -338,7 +305,6 @@ export function useBulkRemoveAction() {
         if (rejectedIds.length === selectedDocuments.length) toast.error(message)
         else toast.warning(message)
       }
-      invalidateDocumentsAndTasks()
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
@@ -351,9 +317,9 @@ export function useBulkRemoveAction() {
     begin,
     canWrite,
     finish,
-    invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
+    removeDocuments,
     replaceSelection,
     selectedDocumentIds,
     selectedDocuments,

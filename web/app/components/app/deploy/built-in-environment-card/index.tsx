@@ -6,15 +6,16 @@ import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getAccessPointHref } from '@/app/components/app/access-point/routes'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
+import { ACCESS_POINT_ORDER } from '@/models/app-access-point'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AccessPointIcon } from '../shared/access-point-icon'
 import { RuntimeStateIndicator } from '../shared/runtime-state'
 import { VersionLabel } from '../shared/version-label'
-import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 
 function Divider() {
   return (

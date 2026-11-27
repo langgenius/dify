@@ -19,6 +19,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useMutation } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -33,7 +34,7 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
-import { useFetchDynamicOptions } from '@/service/use-plugins'
+import { pluginDynamicOptionsMutationOptions } from '@/service/plugin-list-queries'
 import { useWorkflowVariables } from '../../../../hooks/use-workflow-variables'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import { removeFileVars, varTypeToStructType } from './utils'
@@ -328,12 +329,14 @@ const VarReferencePicker: FC<Props> = ({
 
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
-    currentProvider?.plugin_id || '',
-    currentProvider?.name || '',
-    currentTool?.name || '',
-    (schema as CredentialFormSchemaSelect)?.variable || '',
-    'tool',
+  const { mutateAsync: fetchDynamicOptions } = useMutation(
+    pluginDynamicOptionsMutationOptions(
+      currentProvider?.plugin_id || '',
+      currentProvider?.name || '',
+      currentTool?.name || '',
+      (schema as CredentialFormSchemaSelect)?.variable || '',
+      'tool',
+    ),
   )
   const handleFetchDynamicOptions = useCallback(async () => {
     if (schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider) return

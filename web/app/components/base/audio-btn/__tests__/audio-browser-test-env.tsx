@@ -4,16 +4,28 @@ import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
 import appApi from '@/i18n/locales/en-US/app-api.json'
 import { createWavFixture } from '@/test/browser-media'
+import { createTestNavigation } from '@/test/next-navigation'
 import { AudioPlayerManager } from '../audio.player.manager'
 
-export async function renderAudio(ui: ReactElement) {
+export async function renderAudio(
+  ui: ReactElement,
+  {
+    params = { appId: 'app-1' },
+    pathname = '/apps/app-1/chat',
+  }: { params?: Record<string, string>; pathname?: string } = {},
+) {
   // The legacy button uses i18next.t directly; both controls share the real English resource.
   await i18next.init({
     lng: 'en-US',
     resources: { 'en-US': { appApi } },
     keySeparator: false,
   })
-  return render(<I18nextProvider i18n={i18next}>{ui}</I18nextProvider>)
+  const { NavigationProvider } = createTestNavigation({ url: pathname, params })
+  return render(
+    <NavigationProvider>
+      <I18nextProvider i18n={i18next}>{ui}</I18nextProvider>
+    </NavigationProvider>,
+  )
 }
 
 export function audioResponse() {

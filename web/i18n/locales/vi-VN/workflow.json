@@ -114,6 +114,8 @@
   "collaboration.joinDenied": "Không thể tham gia chỉnh sửa cộng tác. Hãy kiểm tra quyền truy cập và gói của không gian làm việc, sau đó mở lại trình chỉnh sửa.",
   "collaboration.joinUnavailable": "Không thể kết nối cộng tác. Các thay đổi trên bảng này có thể chưa được lưu.",
   "collaboration.reloadPage": "Tải lại trang",
+  "collaboration.userEditing": "{{name}} đang chỉnh sửa",
+  "collaboration.viewCollaborators": "Xem {{count}} cộng tác viên",
   "common.accessAPIReference": "Truy cập tài liệu API",
   "common.accessPointDescription": "Cấu hình ứng dụng web, API, MCP và trình kích hoạt",
   "common.addBlock": "Thêm Node",

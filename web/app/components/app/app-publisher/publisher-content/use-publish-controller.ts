@@ -6,14 +6,13 @@ import type {
   AppPublisherPublishParams,
 } from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { use, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { consoleQuery } from '@/service/console'
-import { useAppWorkflow, useInvalidateAppWorkflow } from '@/service/use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
@@ -30,6 +29,7 @@ type UsePublishControllerParams = Pick<
   onClose: () => void
 }
 
+// A collaborator's publish lands here as an event, not as this tab's mutation.
 function refreshAppDeploymentData(queryClient: QueryClient, appId: string) {
   const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions(appId)
   const environmentDeploymentsQuery =
@@ -65,7 +65,6 @@ export function usePublishController({
   const publishingRef = useRef(false)
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
   const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
   const {
@@ -73,7 +72,7 @@ export function usePublishController({
     isError: isPublishedWorkflowError,
     isLoading: isPublishedWorkflowLoading,
     isSuccess: isPublishedWorkflowSuccess,
-  } = useAppWorkflow(isWorkflowApp ? (appId ?? '') : '')
+  } = useQuery(appWorkflowQueryOptions(isWorkflowApp ? (appId ?? '') : ''))
   const currentPublishedAt =
     isWorkflowApp && isPublishedWorkflowSuccess
       ? publishedWorkflow?.created_at
@@ -91,12 +90,7 @@ export function usePublishController({
     setPublished(true)
 
     const socket = appId ? webSocketClient.getSocket(appId) : null
-    if (appId) {
-      invalidateAppWorkflow(appId)
-      if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
-    } else {
-      console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
-    }
+    if (!appId) console.warn('[app-publisher] missing appId, skip socket emit')
     if (socket) {
       const timestamp = Date.now()
       socket.emit('collaboration_event', {

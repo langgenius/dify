@@ -38,6 +38,14 @@ class DocumentZip:
     filename: str
 
 
+@dataclass(frozen=True)
+class DocumentTextUpload:
+    """Caller-supplied text and filename; the adapter owns the upload lifecycle."""
+
+    text: str
+    name: str
+
+
 class DocumentApplicationError(Exception):
     """Base class for document use-case failures mapped by the transport."""
 
@@ -82,7 +90,13 @@ class DocumentOperations(Protocol):
         self, ref: DatasetRef, document_ids: Sequence[str]
     ) -> AbstractContextManager[DocumentZip]: ...
     def create_documents(
-        self, context: RequestContext, ref: DatasetRef, settings: Mapping[str, Any]
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        settings: Mapping[str, Any],
+        *,
+        created_from: str = "web",
+        text_upload: DocumentTextUpload | None = None,
     ) -> dict[str, Any]: ...
     def initialize_dataset(self, context: RequestContext, settings: Mapping[str, Any]) -> dict[str, Any]: ...
     def delete_document(self, ref: DocumentRef) -> None: ...
@@ -182,9 +196,20 @@ class DatasetDocumentApplicationService:
         return self._operations.build_download_zip(self._dataset(context, dataset_id), document_ids)
 
     def create_documents(
-        self, context: RequestContext, *, dataset_id: str, settings: Mapping[str, Any]
+        self,
+        context: RequestContext,
+        *,
+        dataset_id: str,
+        settings: Mapping[str, Any],
+        created_from: str = "web",
+        text_upload: DocumentTextUpload | None = None,
     ) -> dict[str, Any]:
-        return self._operations.create_documents(context, self._dataset(context, dataset_id), settings)
+        """Create documents from `settings`. When `text_upload` is absent the
+        settings' existing source is used; when present the adapter creates a
+        new text upload for it."""
+        return self._operations.create_documents(
+            context, self._dataset(context, dataset_id), settings, created_from=created_from, text_upload=text_upload
+        )
 
     def initialize_dataset(self, context: RequestContext, *, settings: Mapping[str, Any]) -> dict[str, Any]:
         return self._operations.initialize_dataset(context, settings)

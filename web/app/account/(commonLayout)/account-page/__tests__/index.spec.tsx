@@ -5,6 +5,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountPage from '../index'
@@ -23,7 +24,6 @@ vi.mock('@/service/base', () => ({
     url.endsWith('/account/profile') && options.request.method === 'GET'
       ? mocks.get(url, init, options)
       : mocks.request(url, init, options),
-  sseGeneratorPost: vi.fn(),
 }))
 
 const createAccountResponse = (name = 'Alice'): GetAccountProfileResponse => ({
@@ -37,8 +37,15 @@ const createAccountResponse = (name = 'Alice'): GetAccountProfileResponse => ({
   timezone: 'UTC',
 })
 
-const renderPage = ({ isPasswordSet = false, passwordLoginEnabled = true } = {}) => {
-  const queryClient = createConsoleQueryClient()
+const renderPage = ({
+  isPasswordSet = false,
+  passwordLoginEnabled = true,
+  withFallback = false,
+} = {}) => {
+  // `withFallback`: like the app's client, a write refreshes its domain in the background.
+  const queryClient = createConsoleQueryClient(
+    withFallback ? { invalidation: createMutationInvalidation() } : undefined,
+  )
   queryClient.setQueryData(
     consoleQuery.account.personalAccessTokens.get.queryOptions({
       input: { query: { page: 1, limit: 20 } },
@@ -314,9 +321,12 @@ describe('AccountPage', () => {
     const user = userEvent.setup()
     const saving = pendingResponse()
     const refreshing = pendingResponse()
-    mocks.request.mockReturnValueOnce(saving.promise)
+    // The fallback refreshes the account domain, including the token list on this page.
+    mocks.request
+      .mockReturnValueOnce(saving.promise)
+      .mockResolvedValue(Response.json({ data: [], has_more: false, limit: 20, page: 1, total: 0 }))
     mocks.get.mockReturnValueOnce(refreshing.promise)
-    renderPage()
+    renderPage({ withFallback: true })
     await user.click(screen.getByRole('button', { name: 'accountSettings.account.setPassword' }))
     await user.type(screen.getByLabelText('accountSettings.account.password'), 'NewPassword123')
     await user.type(

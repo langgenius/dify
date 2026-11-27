@@ -29,6 +29,7 @@ import { CodeLanguage } from '../nodes/code/types'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import Empty from './empty'
+import styles from './panel.module.css'
 import ValueContent from './value-content'
 
 type Props = Readonly<{
@@ -40,7 +41,6 @@ type Props = Readonly<{
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
   const { t } = useTranslation(['common', 'workflowDebug', 'appGeneration'])
-  const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
@@ -139,15 +139,13 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
-        {bottomPanelWidth < 488 && (
-          <IconButton
-            aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
-            className="shrink-0"
-            onClick={handleOpenMenu}
-          >
-            <span aria-hidden className="i-ri-menu-line size-4" />
-          </IconButton>
-        )}
+        <IconButton
+          aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
+          className={styles.menuTrigger}
+          onClick={handleOpenMenu}
+        >
+          <span aria-hidden className="i-ri-menu-line size-4" />
+        </IconButton>
         <div className="flex w-0 grow items-center gap-1">
           {currentNodeVar?.var && (
             <>
@@ -185,7 +183,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               >
                 {currentNodeVar.var.name}
               </div>
-              <div className="ml-1 shrink-0 space-x-2 system-xs-medium text-text-tertiary">
+              <div className="ms-1 shrink-0 space-x-2 system-xs-medium text-text-tertiary">
                 <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
@@ -247,7 +245,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
-                  <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
+                  <span className="ms-[2.5px] me-[4.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
                   <span>
                     {t(($) => $['debug.variableInspect.edited'], { ns: 'workflowDebug' })}
                   </span>

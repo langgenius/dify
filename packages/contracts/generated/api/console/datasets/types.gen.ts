@@ -372,6 +372,8 @@ export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
 
+export type BinaryFileResponse = Blob | File
+
 export type GenerateSummaryPayload = {
   document_list: Array<string>
 }
@@ -625,6 +627,11 @@ export type EvaluationConfigPayload = {
   judgment_config?: JudgmentConfig | null
 }
 
+export type EvaluationConfigInvalidError = ErrorResponse & {
+  code: 'evaluation_config_invalid'
+  status: 400
+}
+
 export type EvaluationFileResponse = {
   created_at?: number | null
   download_url: string
@@ -685,6 +692,22 @@ export type EvaluationRunResponse = {
   target_workflow_version_id?: string | null
   tenant_id: string
   total_items: number
+}
+
+export type EvaluationDatasetInvalidError = ErrorResponse & {
+  code: 'evaluation_dataset_invalid'
+  status: 400
+}
+
+export type EvaluationFrameworkNotConfiguredError = ErrorResponse & {
+  code: 'evaluation_framework_not_configured'
+  status: 400
+}
+
+export type EvaluationMaxConcurrentRunsError = ErrorResponse & {
+  code: 'evaluation_max_concurrent_runs'
+  details?: EvaluationMaxConcurrentRunsDetails
+  status: 429
 }
 
 export type EvaluationRunDetailResponse = {
@@ -1146,6 +1169,10 @@ export type DefaultMetric = {
 export type JudgmentConfig = {
   conditions?: Array<JudgmentCondition>
   logical_operator?: 'and' | 'or'
+}
+
+export type EvaluationMaxConcurrentRunsDetails = {
+  limit: number
 }
 
 export type EvaluationRunItemPaginationResponse = {
@@ -2393,9 +2420,7 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipError =
   PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse =
@@ -3221,6 +3246,7 @@ export type PutDatasetsByDatasetIdEvaluationData = {
 }
 
 export type PutDatasetsByDatasetIdEvaluationErrors = {
+  400: EvaluationConfigInvalidError | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
   default: ErrorResponse
 }
@@ -3323,7 +3349,13 @@ export type PostDatasetsByDatasetIdEvaluationRunData = {
 }
 
 export type PostDatasetsByDatasetIdEvaluationRunErrors = {
+  400:
+    | EvaluationConfigInvalidError
+    | EvaluationDatasetInvalidError
+    | EvaluationFrameworkNotConfiguredError
+    | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
+  429: EvaluationMaxConcurrentRunsError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3401,7 +3433,13 @@ export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryData = {
 }
 
 export type PostDatasetsByDatasetIdEvaluationRunsByRunIdRetryErrors = {
+  400:
+    | EvaluationConfigInvalidError
+    | EvaluationDatasetInvalidError
+    | EvaluationFrameworkNotConfiguredError
+    | ErrorResponse
   403: PaidPlanRequiredError | ErrorResponse
+  429: EvaluationMaxConcurrentRunsError | ErrorResponse
   default: ErrorResponse
 }
 

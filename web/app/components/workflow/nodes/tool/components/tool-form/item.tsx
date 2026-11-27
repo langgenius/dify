@@ -97,11 +97,11 @@ export function ToolFormItem({
             {label[language] || label.en_US}
           </div>
           {required && (
-            <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
+            <div className="ms-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={labelId} className="ml-1" />
+              <InfotipTrigger aria-labelledby={labelId} className="ms-1" />
               <InfotipContent aria-labelledby={labelId} className="w-50">
                 {tooltip[language] || tooltip.en_US}
               </InfotipContent>
@@ -109,7 +109,7 @@ export function ToolFormItem({
           )}
           {showSchemaButton && (
             <>
-              <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
+              <div className="ms-1 me-0.5 system-xs-regular text-text-quaternary">·</div>
               <SchemaDialog schema={input_schema} rootName={name} />
             </>
           )}

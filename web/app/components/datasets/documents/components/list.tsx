@@ -43,7 +43,7 @@ type DocumentListProps = {
   datasetId: string
   pagination: PaginationProps
   onDelete: (id: string, row: HTMLTableRowElement | null) => void
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
   onManageMetadata: () => void
   remoteSortValue: string
   onSortChange: (value: SortType) => void
@@ -306,7 +306,6 @@ const DocumentList = ({
           <DialogContent>
             {payload && (
               <RenameDocumentForm
-                key={payload.id}
                 activeDocumentIdRef={activeDocumentIdRef}
                 datasetId={datasetId}
                 document={payload}

@@ -6,6 +6,7 @@ import { AppDetailTop } from '@/app/components/app-sidebar/app-detail-top'
 import MainNavLink from '@/app/components/main-nav/components/nav-link'
 import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-detail-top'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { StudioListLink, StudioListNavigation } from '../list-navigation'
@@ -68,7 +69,7 @@ it('keeps list destinations isolated by workspace', async () => {
   expect(snippetsLink()).toHaveAttribute('href', '/snippets')
   rerender(remember('/apps', '/apps?creatorIDs=bob'))
   rerender(<Destinations />)
-  await act(async () => seedCurrentWorkspaceQuery(queryClient, { id: 'workspace-1' }))
+  await act(async () => seedCurrentWorkspaceQuery(queryClient, { id: TEST_WORKSPACE_ID }))
   await waitFor(() => expect(appsLink()).toHaveAttribute('href', '/apps?creatorIDs=alice'))
 })
 

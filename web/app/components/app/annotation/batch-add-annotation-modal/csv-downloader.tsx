@@ -36,28 +36,28 @@ const CSVDownload: FC = () => {
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs">
           <thead className="text-text-tertiary">
             <tr>
-              <th className="h-9 border-b border-divider-regular pr-2 pl-3 text-left font-[weight:inherit]">
+              <th className="h-9 border-b border-divider-regular ps-3 pe-2 text-start font-[weight:inherit]">
                 {t(($) => $['batchModal.question'], { ns: 'appAnnotation' })}
               </th>
-              <th className="h-9 border-b border-divider-regular pr-2 pl-3 text-left font-[weight:inherit]">
+              <th className="h-9 border-b border-divider-regular ps-3 pe-2 text-start font-[weight:inherit]">
                 {t(($) => $['batchModal.answer'], { ns: 'appAnnotation' })}
               </th>
             </tr>
           </thead>
           <tbody className="text-text-secondary">
             <tr>
-              <td className="h-9 border-b border-divider-subtle pr-2 pl-3 text-[13px]">
+              <td className="h-9 border-b border-divider-subtle ps-3 pe-2 text-[13px]">
                 {t(($) => $['batchModal.question'], { ns: 'appAnnotation' })} 1
               </td>
-              <td className="h-9 border-b border-divider-subtle pr-2 pl-3 text-[13px]">
+              <td className="h-9 border-b border-divider-subtle ps-3 pe-2 text-[13px]">
                 {t(($) => $['batchModal.answer'], { ns: 'appAnnotation' })} 1
               </td>
             </tr>
             <tr>
-              <td className="h-9 pr-2 pl-3 text-[13px]">
+              <td className="h-9 ps-3 pe-2 text-[13px]">
                 {t(($) => $['batchModal.question'], { ns: 'appAnnotation' })} 2
               </td>
-              <td className="h-9 pr-2 pl-3 text-[13px]">
+              <td className="h-9 ps-3 pe-2 text-[13px]">
                 {t(($) => $['batchModal.answer'], { ns: 'appAnnotation' })} 2
               </td>
             </tr>
@@ -72,7 +72,7 @@ const CSVDownload: FC = () => {
         data={getTemplate()}
       >
         <div className="flex h-4.5 items-center space-x-1 system-xs-medium text-text-accent">
-          <span aria-hidden className="mr-1 i-custom-vender-solid-general-download-02 size-3" />
+          <span aria-hidden className="me-1 i-custom-vender-solid-general-download-02 size-3" />
           {t(($) => $['batchModal.template'], { ns: 'appAnnotation' })}
         </div>
       </CSVDownloader>

@@ -7,8 +7,8 @@ from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPayload
 from pydantic import ValidationError
 
+from services.agent.config_service import AgentConfigServiceError
 from services.agent.knowledge_gateway import AgentKnowledgeGateway
-from services.agent_config_service import AgentConfigServiceError
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from services.knowledge_fs_capability import KnowledgeFSCapabilityPolicyError

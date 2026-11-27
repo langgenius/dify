@@ -3,8 +3,8 @@ import type {
   AppNetworkAccessGroupResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessControlDraft } from './draft'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessPoint } from '@/models/app-access-point'
+import { ACCESS_POINT_ORDER } from '@/models/app-access-point'
 import { createDefaultAccessControlDraft } from './draft'
 
 export type NetworkAccessPoint = AppNetworkAccessGroupResponse['available_access_points'][number]

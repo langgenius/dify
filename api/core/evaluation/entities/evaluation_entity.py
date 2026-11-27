@@ -463,7 +463,11 @@ class EvaluationRunSnapshot(EvaluationRunRequest):
 
 
 class EvaluationRunData(BaseModel):
-    """Serializable data for Celery task."""
+    """Serializable data for Celery tasks.
+
+    Full LLM context selectors identify the exact source output; the node-only
+    mapping remains for tasks serialized before selector support was added.
+    """
 
     evaluation_run_id: str
     tenant_id: str
@@ -478,4 +482,5 @@ class EvaluationRunData(BaseModel):
     customized_metrics: CustomizedMetrics | None = None
     judgment_config: JudgmentConfig | None = None
     llm_context_node_mapping: dict[str, list[str]] = Field(default_factory=dict)
+    llm_context_selector_mapping: dict[str, list[str]] = Field(default_factory=dict)
     input_list: list[EvaluationDatasetInput]

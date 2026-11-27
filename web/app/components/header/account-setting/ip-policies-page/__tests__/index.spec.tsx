@@ -7,6 +7,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
 import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { TEST_NETWORK_ACCESS_GROUP_ID, TEST_WORKSPACE_ID } from '@/test/console/ids'
 import {
   createNetworkAccessGroupFixture,
   seedNetworkAccessGroups,
@@ -128,7 +129,7 @@ describe('IpPoliciesPage', () => {
         action: 'form_opened',
         mode: 'view',
         source: 'list_row',
-        policy_id: 'group-1',
+        policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
       })
       expect(within(dialog).getByText('203.0.113.42/32')).toBeInTheDocument()
       expect(within(dialog).getByText('198.51.100.0/24')).toBeInTheDocument()
@@ -196,7 +197,7 @@ describe('IpPoliciesPage', () => {
           action === 'edit'
             ? {
                 method: 'PUT',
-                url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups/group-1',
+                url: `http://localhost:5001/console/api/workspaces/current/network-access-groups/${TEST_NETWORK_ACCESS_GROUP_ID}`,
                 body: {
                   name: 'Office Network',
                   description: '',
@@ -206,7 +207,7 @@ describe('IpPoliciesPage', () => {
               }
             : {
                 method: 'DELETE',
-                url: 'http://localhost:5001/console/api/workspaces/current/network-access-groups/group-1?expected_version=7',
+                url: `http://localhost:5001/console/api/workspaces/current/network-access-groups/${TEST_NETWORK_ACCESS_GROUP_ID}?expected_version=7`,
                 body: null,
               },
         ),
@@ -227,7 +228,7 @@ describe('IpPoliciesPage', () => {
       requests.push(request)
       if (request.url.endsWith('/current-ip')) return Response.json({ client_ip: '203.0.113.42' })
       if (request.method === 'GET')
-        return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
+        return Response.json({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [remote] })
       putBodies.push(JSON.parse(await request.clone().text()))
       if (requests.filter((item) => item.method === 'PUT').length === 1)
         return Response.json(
@@ -290,7 +291,7 @@ describe('IpPoliciesPage', () => {
           : Response.json({ group, entitled: true })
       }
       return Response.json({
-        tenant_id: 'workspace-1',
+        tenant_id: TEST_WORKSPACE_ID,
         entitled: true,
         groups: [{ ...group, version: 2 }],
       })
@@ -336,7 +337,7 @@ describe('IpPoliciesPage', () => {
       expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
         mode: 'edit',
         source: 'list_row',
-        policy_id: 'group-1',
+        policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
         entry_count: 1,
         validation_error_types: validationErrors,
         result: 'failed',
@@ -354,7 +355,7 @@ describe('IpPoliciesPage', () => {
       expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
         mode: 'edit',
         source: 'list_row',
-        policy_id: 'group-1',
+        policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
         entry_count: 1,
         validation_error_types: validationErrors,
         result: 'success',
@@ -367,7 +368,7 @@ describe('IpPoliciesPage', () => {
       expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
         mode: 'edit',
         source: 'list_row',
-        policy_id: 'group-1',
+        policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
         entry_count: 1,
         validation_error_types: [],
         result: 'success',
@@ -395,7 +396,7 @@ describe('IpPoliciesPage', () => {
         getCount += 1
         return getCount === 1
           ? Response.json({ message: 'Unavailable' }, { status: 500 })
-          : Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
+          : Response.json({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [remote] })
       }
       return Response.json(
         { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
@@ -458,7 +459,7 @@ describe('IpPoliciesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Other Policy' }))
     await act(async () => {
       resolveReload(
-        Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote, other] }),
+        Response.json({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [remote, other] }),
       )
     })
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Other Policy')
@@ -622,7 +623,7 @@ describe('IpPoliciesPage', () => {
           return Response.json({ group: created, entitled: true }, { status: 201 })
         if (new URL(request.url).pathname.endsWith('/network-access-groups'))
           return Response.json({
-            tenant_id: 'workspace-1',
+            tenant_id: TEST_WORKSPACE_ID,
             entitled: true,
             groups: [...initialGroups, created],
           })
@@ -696,7 +697,7 @@ describe('IpPoliciesPage', () => {
           : Response.json({ group: created, entitled: true }, { status: 201 })
       }
       if (new URL(request.url).pathname.endsWith('/network-access-groups'))
-        return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [created] })
+        return Response.json({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [created] })
       return Response.json({ client_ip: '203.0.113.42' })
     })
     const queryClient = createConsoleQueryClient()
@@ -981,9 +982,17 @@ describe('IpPoliciesPage', () => {
           .mocked(trackEvent)
           .mock.calls.filter(([, props]) => String(props?.action).startsWith('delete_')),
       ).toEqual([
-        ['ip_policy_interaction', { action: 'delete_attempted', policy_id: 'group-1' }],
+        [
+          'ip_policy_interaction',
+          { action: 'delete_attempted', policy_id: TEST_NETWORK_ACCESS_GROUP_ID },
+        ],
         ...(button === 'Cancel'
-          ? [['ip_policy_interaction', { action: 'delete_cancelled', policy_id: 'group-1' }]]
+          ? [
+              [
+                'ip_policy_interaction',
+                { action: 'delete_cancelled', policy_id: TEST_NETWORK_ACCESS_GROUP_ID },
+              ],
+            ]
           : []),
       ])
 
@@ -1035,16 +1044,23 @@ describe('IpPoliciesPage', () => {
       await user.keyboard('{Escape}')
       expect(dialog).toBeInTheDocument()
       expect(deleteRequests).toHaveLength(1)
-      expect(deleteRequests[0]?.url).toContain('group-1?expected_version=7')
+      expect(deleteRequests[0]?.url).toContain(`${TEST_NETWORK_ACCESS_GROUP_ID}?expected_version=7`)
       expect(
         vi
           .mocked(trackEvent)
           .mock.calls.filter(([, props]) => String(props?.action).startsWith('delete_')),
       ).toEqual([
-        ['ip_policy_interaction', { action: 'delete_attempted', policy_id: 'group-1' }],
         [
           'ip_policy_interaction',
-          { action: 'delete_confirmed', policy_id: 'group-1', referenced_app_count: 2 },
+          { action: 'delete_attempted', policy_id: TEST_NETWORK_ACCESS_GROUP_ID },
+        ],
+        [
+          'ip_policy_interaction',
+          {
+            action: 'delete_confirmed',
+            policy_id: TEST_NETWORK_ACCESS_GROUP_ID,
+            referenced_app_count: 2,
+          },
         ],
       ])
 

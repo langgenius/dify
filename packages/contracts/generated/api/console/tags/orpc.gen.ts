@@ -14,6 +14,9 @@ import {
   zPostTagsResponse,
 } from './zod.gen.ts'
 
+/**
+ * Delete an authorized tenant-owned tag and its bindings; other tag pools remain independent
+ */
 export const delete_ = oc
   .route({
     inputStructure: 'detailed',
@@ -21,17 +24,24 @@ export const delete_ = oc
     operationId: 'deleteTagsByTagId',
     path: '/tags/{tag_id}',
     successStatus: 204,
+    summary:
+      'Delete an authorized tenant-owned tag and its bindings; other tag pools remain independent',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteTagsByTagIdPath }))
   .output(zDeleteTagsByTagIdResponse)
 
+/**
+ * Rename a tenant-owned tag after pool authorization; a missing tag is a 404 without writes
+ */
 export const patch = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchTagsByTagId',
     path: '/tags/{tag_id}',
+    summary:
+      'Rename a tenant-owned tag after pool authorization; a missing tag is a 404 without writes',
     tags: ['console'],
   })
   .input(z.object({ body: zPatchTagsByTagIdBody, params: zPatchTagsByTagIdPath }))
@@ -53,12 +63,17 @@ export const get = oc
   .input(z.object({ query: zGetTagsQuery }))
   .output(zGetTagsResponse)
 
+/**
+ * Create a validated tag only after authorization for its pool; conflicts preserve existing tags
+ */
 export const post = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTags',
     path: '/tags',
+    summary:
+      'Create a validated tag only after authorization for its pool; conflicts preserve existing tags',
     tags: ['console'],
   })
   .input(z.object({ body: zPostTagsBody }))

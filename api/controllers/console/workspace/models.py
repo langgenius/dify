@@ -228,7 +228,7 @@ class DefaultModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPostDefault)
@@ -268,7 +268,7 @@ class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPostModels)
@@ -317,7 +317,7 @@ class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserDeleteModels)
@@ -514,7 +514,7 @@ class ModelProviderModelEnableApi(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @model_validate(ParserDeleteModels)
     def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
@@ -536,7 +536,7 @@ class ModelProviderModelDisableApi(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_MODEL_CONFIG, Workspace()))
     @model_validate(ParserDeleteModels)
     def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()

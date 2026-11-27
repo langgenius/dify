@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 import core.rag.extractor.extract_processor as processor_module
+from core.db.session_factory import get_session_maker
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.extractor.extract_processor import ExtractProcessor
@@ -313,15 +314,17 @@ class TestExtractProcessorFileRouting:
         assert args[1:] == ("tenant-1", "user-1", "upload-file-1")
         assert kwargs == {}
 
+    @pytest.mark.parametrize("etl_type", ["SelfHosted", "Unstructured"])
     @pytest.mark.parametrize("extension", [".pdf", ".docx"])
-    def test_extract_passes_session_to_database_backed_file_extractors(
-        self, monkeypatch: pytest.MonkeyPatch, extension: str, unbound_session: Session
-    ):
+    def test_extract_passes_session_and_session_maker_to_database_backed_file_extractors(
+        self, monkeypatch: pytest.MonkeyPatch, extension: str, etl_type: str, unbound_session: Session
+    ) -> None:
         _, _, kwargs = self._run_extract_for_extension(
-            monkeypatch, extension, etl_type="SelfHosted", session=unbound_session
+            monkeypatch, extension, etl_type=etl_type, session=unbound_session
         )
 
         assert kwargs["session"] is unbound_session
+        assert kwargs["session_maker"] is get_session_maker()
 
     def test_extract_requires_upload_file_when_file_path_not_provided(self):
         setting = ExtractSetting(datasource_type=DatasourceType.FILE, upload_file=None)

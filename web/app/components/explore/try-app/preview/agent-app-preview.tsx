@@ -29,7 +29,7 @@ export default function AgentAppPreview({ appDetail, composer }: Props) {
         versionId={composer.active_config_snapshot?.id}
         config={composer.agent_soul}
       />
-      <div className="relative min-w-0 flex-1 overflow-hidden rounded-md bg-background-body pt-1 pr-1 pb-1 @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none">
+      <div className="relative min-w-0 flex-1 overflow-hidden rounded-md bg-background-body pe-1 pt-1 pb-1 @max-[599px]/agent-preview:h-[65dvh] @max-[599px]/agent-preview:flex-none">
         <AgentTemplateGridBackground />
         <section
           aria-labelledby={previewHeadingId}

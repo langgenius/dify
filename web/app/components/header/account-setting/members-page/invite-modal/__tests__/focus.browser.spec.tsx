@@ -1,61 +1,85 @@
-import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { hold, setupFakeApi } from '@/test/fake-api'
 import { MembersPage } from '../../index'
 
-const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
-
 let queryClient: QueryClient
+let features: GetFeaturesResponse
+
+const fake = setupFakeApi({
+  console: {
+    features: { get: () => features },
+    workspaces: {
+      current: {
+        members: {
+          // A successful invitation refreshes seats and members in the background.
+          get: () => ({ accounts: [] }),
+          inviteEmail: {
+            post: ({ body: { emails } }) => ({
+              result: 'success',
+              tenant_id: TEST_WORKSPACE_ID,
+              invitation_results: emails.map((email) => ({
+                status: 'success',
+                email,
+                url: 'https://example.com/invite',
+              })),
+            }),
+          },
+        },
+        rbac: {
+          roles: {
+            get: () => ({
+              data: [
+                {
+                  id: 'admin',
+                  tenant_id: TEST_WORKSPACE_ID,
+                  type: 'workspace',
+                  category: 'global_system_default',
+                  name: 'Admin',
+                  description: 'Manage members',
+                  is_builtin: true,
+                  permission_keys: [],
+                  role_tag: '',
+                },
+              ],
+              pagination: { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 },
+            }),
+          },
+        },
+      },
+      byWorkspaceId: {
+        members: { pendingInvitations: { get: () => ({ invitations: [] }) } },
+      },
+    },
+  },
+})
 
 beforeEach(() => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
-  inviteMember.mockReset()
   queryClient = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true },
     workspacePermissionKeys: ['workspace.member.manage'],
     features: { workspace_members: { enabled: true, size: 1, limit: 10 } },
   }).queryClient
+  features = queryClient.getQueryData(consoleQuery.features.get.queryKey())!
   queryClient.setQueryData(
     consoleQuery.workspaces.current.members.get.queryOptions({
       input: { query: { language: 'en' } },
     }).queryKey,
     { accounts: [] },
   )
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
-      const { pathname } = new URL(input instanceof Request ? input.url : String(input))
-      if (pathname.endsWith('/workspaces/current/members/invite-email'))
-        return Response.json(await inviteMember())
-      // A successful invitation refreshes seats and members in the background.
-      if (pathname.endsWith('/workspaces/current/rbac/roles'))
-        return Response.json({
-          data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }],
-          pagination: { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 },
-        })
-      if (pathname.endsWith('/features'))
-        return Response.json(queryClient.getQueryData(consoleQuery.features.get.queryKey()))
-      if (pathname.endsWith('/workspaces/current/members')) return Response.json({ accounts: [] })
-      if (pathname.endsWith('/members/pending-invitations'))
-        return Response.json({ invitations: [] })
-      throw new Error(`Unexpected request: ${pathname}`)
-    }),
-  )
 })
 
 afterEach(() => vi.unstubAllGlobals())
 
 it('holds focus through Enter submission and returns it to Invite after a successful invitation', async () => {
-  let resolveInvite!: (value: MemberInviteResponse) => void
-  inviteMember.mockReturnValue(
-    new Promise<MemberInviteResponse>((resolve) => {
-      resolveInvite = resolve
-    }),
-  )
+  const invite = hold(fake.console.workspaces.current.members.inviteEmail.post)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <MembersPage />
@@ -82,13 +106,8 @@ it('holds focus through Enter submission and returns it to Invite after a succes
   await expect.element(submit).toHaveFocus()
   await expect.element(inviteDialog).toBeVisible()
 
-  resolveInvite({
-    result: 'success',
-    tenant_id: 'tenant-id',
-    invitation_results: [
-      { status: 'success', email: 'person@example.com', url: 'https://example.com/invite' },
-    ],
-  })
+  expect((await invite.arrived).body.emails).toEqual(['person@example.com'])
+  invite.release()
   // A fully successful Cloud invitation needs no result step; the new row is the feedback.
   await expect.element(inviteDialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()

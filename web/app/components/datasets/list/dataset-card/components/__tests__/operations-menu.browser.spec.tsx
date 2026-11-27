@@ -1,17 +1,16 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { ReactNode } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedTags } from '@/test/console/tags'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCard from '../../index'
 import CornerLabels from '../corner-labels'
 import OperationsMenu from '../operations-menu'
-
-// boundary: Browser Mode has no Next App Router.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 // Seed the real profile, permission, feature and tag queries instead of replacing their owners.
 function createCardQueryWrapper() {
@@ -22,7 +21,15 @@ function createCardQueryWrapper() {
     workspacePermissionKeys: [],
   })
   seedTags(queryClient, [])
-  return wrapper
+  const QueryProvider = wrapper
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets' })
+  return function Provider({ children }: { children: ReactNode }) {
+    return (
+      <NavigationProvider>
+        <QueryProvider>{children}</QueryProvider>
+      </NavigationProvider>
+    )
+  }
 }
 
 it('keeps operations visible on keyboard focus without covering the unavailable label', async () => {

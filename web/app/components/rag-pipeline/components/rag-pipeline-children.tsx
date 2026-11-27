@@ -9,7 +9,6 @@ import { useStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useRagPipelineSearch } from '../hooks/use-rag-pipeline-search'
 import PipelineExportConfirmModal from './export-confirm-modal'
-import RagPipelinePanel from './panel'
 import PublishToast from './publish-toast'
 import RagPipelineHeader from './rag-pipeline-header'
 import UpdateDSLModal from './update-dsl-modal'
@@ -49,7 +48,6 @@ const RagPipelineChildren = () => {
         />
       )}
       <RagPipelineHeader />
-      <RagPipelinePanel />
       <PublishToast />
     </>
   )

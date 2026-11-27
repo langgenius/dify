@@ -4,7 +4,9 @@ from contextlib import nullcontext
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from dify_agent.protocol import CreateExecutionBindingRequest, CreateExecutionBindingResponse
@@ -30,18 +32,19 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.agent.agent_sandbox_repository import AgentSandboxRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.agent.sandbox_contracts import AgentSandboxBindingNotFoundError
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.app_service import AppService
-from tests.helpers.unit.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account, make_conversation, make_message
 
 
 def _scope() -> WorkflowAgentSessionScope:
@@ -152,6 +155,28 @@ def _install_backend_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     )
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
     return client
+
+
+class _WorkspaceAllocationRecorder:
+    """Record allocation requests and return a unique backend resource for each identity."""
+
+    def __init__(self) -> None:
+        self.requests: list[CreateExecutionBindingRequest] = []
+
+    def create_execution_binding_sync(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
+        """Accept a validated request and record one allocation without performing external I/O."""
+        self.requests.append(request)
+        return CreateExecutionBindingResponse(
+            binding_ref=f"binding-{request.binding_id}",
+            workspace_ref=request.existing_workspace_ref or f"workspace-{request.workspace_id}",
+        )
+
+
+def _record_workspace_allocations(monkeypatch: pytest.MonkeyPatch) -> _WorkspaceAllocationRecorder:
+    """Replace only the backend allocation boundary; preserve the real database lifecycle."""
+    recorder = _WorkspaceAllocationRecorder()
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(recorder))
+    return recorder
 
 
 @pytest.fixture
@@ -271,6 +296,411 @@ def test_conversation_scope_reuses_existing_binding_on_later_turn(
     assert stored.session_snapshot == prior_snapshot
     client.create_execution_binding_sync.assert_not_called()
     assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspaceBinding)) == 1
+
+
+def test_disabled_chatflow_session_is_owned_by_the_current_run() -> None:
+    """Given a Chatflow with continuity disabled, only its current run owns the Workspace."""
+    scope = replace(_scope(), conversation_id="conversation-1", continue_agent_session=False)
+
+    assert scope.workspace_owner.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
+    assert scope.workspace_owner.owner_id == "run-1"
+    assert replace(scope, workflow_run_id="run-2").workspace_owner != scope.workspace_owner
+
+
+@pytest.mark.parametrize("continue_agent_session", [True, False])
+def test_chatflow_generation_partitions_workspace_scope_and_bounds_key_length(continue_agent_session: bool) -> None:
+    """Given a new generation, reject the legacy namespace without exceeding the database key limit."""
+    scope = replace(
+        _scope(),
+        node_id="n" * 255,
+        conversation_id="conversation-1",
+        continue_agent_session=continue_agent_session,
+    )
+    first_generation = replace(scope, session_generation=str(uuid4()))
+    next_generation = replace(scope, session_generation=str(uuid4()))
+
+    assert first_generation.workspace_owner.owner_scope_key != scope.workspace_owner.owner_scope_key
+    assert first_generation.workspace_owner != next_generation.workspace_owner
+    assert len(first_generation.workspace_owner.owner_scope_key) <= 255
+    assert replace(first_generation).workspace_owner == first_generation.workspace_owner
+
+
+def test_chatflow_session_setting_does_not_change_workflow_tool_workspace_scope() -> None:
+    """Given a Workflow Tool invocation, Chatflow settings cannot change its existing scope."""
+    scope = replace(_scope(), conversation_id="conversation-1", workflow_tool_invocation_id="tool-call-1")
+    disabled = replace(scope, continue_agent_session=False, session_generation=str(uuid4()), session_branch="a" * 64)
+
+    assert disabled.workspace_owner == scope.workspace_owner
+
+
+@pytest.mark.parametrize("continue_agent_session", [True, False])
+@pytest.mark.parametrize("session_generation", ["", "00000000-0000-4000-8000-000000000001"])
+def test_chatflow_parallel_branches_have_independent_workspace_scopes(
+    continue_agent_session: bool, session_generation: str
+) -> None:
+    """Given sibling parallel branches, neither can address the other's or the unbranched Workspace."""
+    scope = replace(
+        _scope(),
+        conversation_id="conversation-1",
+        continue_agent_session=continue_agent_session,
+        session_generation=session_generation,
+    )
+    first_branch = replace(scope, session_branch="a" * 64)
+    second_branch = replace(scope, session_branch="b" * 64)
+
+    assert first_branch.workspace_owner != second_branch.workspace_owner
+    assert first_branch.workspace_owner != scope.workspace_owner
+    assert second_branch.workspace_owner != scope.workspace_owner
+    assert len(first_branch.workspace_owner.owner_scope_key) <= 255
+
+
+@pytest.mark.parametrize("continue_agent_session", [True, False])
+def test_chatflow_parallel_branches_never_merge_history_or_workspace_and_keep_sequential_reuse(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, continue_agent_session: bool
+) -> None:
+    """Given interleaved branches, isolate resources while repeat visits reuse only their own branch."""
+    sqlite_session.add_all(
+        [
+            _execution_row(),
+            _execution_row(execution_id="parallel-execution"),
+            _execution_row(execution_id="repeat-execution"),
+            _execution_row(execution_id="next-message-execution", workflow_run_id="run-2"),
+        ]
+    )
+    sqlite_session.commit()
+    allocations = _record_workspace_allocations(monkeypatch)
+    store = WorkflowAgentWorkspaceStore()
+    scope = replace(
+        _scope(),
+        conversation_id="conversation-1",
+        continue_agent_session=continue_agent_session,
+        session_generation=str(uuid4()),
+        session_branch="a" * 64,
+    )
+    first = store.load_or_create_node_execution_session(scope, home_snapshot_id=None)
+    first_snapshot = SessionSnapshot(layers={"history": {"branch_a_only": "private working state"}})
+    store.save_active_snapshot(scope=scope, binding_id=first.binding_id, snapshot=first_snapshot)
+
+    other_branch = store.load_or_create_node_execution_session(
+        replace(scope, node_execution_id="parallel-execution", session_branch="b" * 64), home_snapshot_id=None
+    )
+    repeated = store.load_or_create_node_execution_session(
+        replace(scope, node_execution_id="repeat-execution"), home_snapshot_id=None
+    )
+    next_message = store.load_or_create_node_execution_session(
+        replace(scope, workflow_run_id="run-2", node_execution_id="next-message-execution"), home_snapshot_id=None
+    )
+
+    assert other_branch.binding_id != first.binding_id
+    assert other_branch.workspace_id != first.workspace_id
+    assert other_branch.session_snapshot is None
+    assert repeated.binding_id == first.binding_id
+    assert repeated.workspace_id == first.workspace_id
+    assert repeated.session_snapshot == first_snapshot
+    if continue_agent_session:
+        assert next_message.binding_id == first.binding_id
+        assert next_message.session_snapshot == first_snapshot
+        assert len(allocations.requests) == 2
+    else:
+        assert next_message.binding_id not in {first.binding_id, other_branch.binding_id}
+        assert next_message.workspace_id not in {first.workspace_id, other_branch.workspace_id}
+        assert next_message.session_snapshot is None
+        assert len(allocations.requests) == 3
+    assert all(request.existing_workspace_ref is None for request in allocations.requests)
+
+
+@pytest.mark.parametrize("continue_agent_session", [True, False])
+def test_parallel_branch_first_allocations_can_overlap_without_sharing_resources(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, continue_agent_session: bool
+) -> None:
+    """Given overlapping first allocations, each branch commits its own resources without owner-key conflicts."""
+    sqlite_session.add_all([_execution_row(), _execution_row(execution_id="parallel-execution")])
+    sqlite_session.commit()
+    store = WorkflowAgentWorkspaceStore()
+    first_scope = replace(
+        _scope(),
+        conversation_id="conversation-1",
+        continue_agent_session=continue_agent_session,
+        session_branch="a" * 64,
+    )
+    second_scope = replace(first_scope, node_execution_id="parallel-execution", session_branch="b" * 64)
+    overlapping: list[str] = []
+
+    class InterleavingAllocations(_WorkspaceAllocationRecorder):
+        @override
+        def create_execution_binding_sync(
+            self, request: CreateExecutionBindingRequest
+        ) -> CreateExecutionBindingResponse:
+            """Commit the other branch while the initial backend allocation is still in progress."""
+            result = super().create_execution_binding_sync(request)
+            if len(self.requests) == 1:
+                overlapping.append(
+                    store.load_or_create_node_execution_session(second_scope, home_snapshot_id=None).workspace_id
+                )
+            return result
+
+    allocations = InterleavingAllocations()
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(allocations))
+
+    first = store.load_or_create_node_execution_session(first_scope, home_snapshot_id=None)
+
+    assert len(overlapping) == 1
+    assert first.workspace_id != overlapping[0]
+    assert len(allocations.requests) == 2
+    assert all(request.existing_workspace_ref is None for request in allocations.requests)
+    assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspace)) == 2
+    assert sqlite_session.scalar(select(func.count()).select_from(AgentWorkspaceBinding)) == 2
+
+
+def test_disabled_chatflow_messages_allocate_independent_history_and_workspaces(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    """Given two messages in one chat, neither history nor a mutable Workspace crosses runs."""
+    first_execution = _execution_row()
+    second_execution = _execution_row(execution_id="execution-2", workflow_run_id="run-2")
+    sqlite_session.add_all([first_execution, second_execution])
+    sqlite_session.commit()
+    allocations = _record_workspace_allocations(monkeypatch)
+    store = WorkflowAgentWorkspaceStore()
+    first_scope = replace(
+        _scope(), conversation_id="conversation-1", continue_agent_session=False, session_generation=str(uuid4())
+    )
+
+    first = store.load_or_create_node_execution_session(first_scope, home_snapshot_id=None)
+    store.save_active_snapshot(
+        scope=first_scope,
+        binding_id=first.binding_id,
+        snapshot=SessionSnapshot(layers={"history": {"secret_from_first_message": True}}),
+    )
+    second = store.load_or_create_node_execution_session(
+        replace(first_scope, workflow_run_id="run-2", node_execution_id=second_execution.id), home_snapshot_id=None
+    )
+
+    assert second.workspace_id != first.workspace_id
+    assert second.binding_id != first.binding_id
+    assert second.backend_binding_ref != first.backend_binding_ref
+    assert second.session_snapshot is None
+    assert len(allocations.requests) == 2
+    assert all(request.existing_workspace_ref is None for request in allocations.requests)
+
+
+def test_disabled_chatflow_sequential_executions_share_this_round_history_and_workspace(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    """Given sequential visits in one message's run, reuse its participant and accumulated history."""
+    first_execution = _execution_row()
+    second_execution = _execution_row(execution_id="iteration-2-execution")
+    sqlite_session.add_all([first_execution, second_execution])
+    sqlite_session.commit()
+    allocations = _record_workspace_allocations(monkeypatch)
+    store = WorkflowAgentWorkspaceStore()
+    scope = replace(
+        _scope(), conversation_id="conversation-1", continue_agent_session=False, session_generation=str(uuid4())
+    )
+    first = store.load_or_create_node_execution_session(scope, home_snapshot_id=None)
+    snapshot = SessionSnapshot(layers={"history": {"current_round_step": 1}})
+    store.save_active_snapshot(scope=scope, binding_id=first.binding_id, snapshot=snapshot)
+
+    second = store.load_or_create_node_execution_session(
+        replace(scope, node_execution_id=second_execution.id), home_snapshot_id=None
+    )
+
+    assert (second.workspace_id, second.binding_id, second.backend_binding_ref) == (
+        first.workspace_id,
+        first.binding_id,
+        first.backend_binding_ref,
+    )
+    assert second.session_snapshot == snapshot
+    assert len(allocations.requests) == 1
+
+
+def test_reenabled_chatflow_generation_does_not_restore_legacy_history_or_workspace(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    """Given an enabled node in a new generation, the prior generation stays isolated and intact."""
+    first_execution = _execution_row()
+    second_execution = _execution_row(execution_id="execution-2", workflow_run_id="run-2")
+    sqlite_session.add_all([first_execution, second_execution])
+    sqlite_session.commit()
+    _record_workspace_allocations(monkeypatch)
+    store = WorkflowAgentWorkspaceStore()
+    original_scope = replace(_scope(), conversation_id="conversation-1")
+    first = store.load_or_create_node_execution_session(original_scope, home_snapshot_id=None)
+    original_snapshot = SessionSnapshot(layers={"history": {"old_session": "task A"}})
+    store.save_active_snapshot(scope=original_scope, binding_id=first.binding_id, snapshot=original_snapshot)
+
+    second = store.load_or_create_node_execution_session(
+        replace(
+            original_scope,
+            workflow_run_id="run-2",
+            node_execution_id=second_execution.id,
+            session_generation=str(uuid4()),
+        ),
+        home_snapshot_id=None,
+    )
+
+    assert second.workspace_id != first.workspace_id
+    assert second.binding_id != first.binding_id
+    assert second.session_snapshot is None
+    old_binding = sqlite_session.get(AgentWorkspaceBinding, first.binding_id)
+    assert old_binding is not None
+    assert old_binding.status is AgentWorkingResourceStatus.ACTIVE
+    assert old_binding.session_snapshot is not None
+    assert SessionSnapshot.model_validate_json(old_binding.session_snapshot) == original_snapshot
+
+
+@pytest.mark.parametrize("continue_agent_session", [True, False])
+@pytest.mark.parametrize("session_branch", ["", "a" * 64])
+def test_chatflow_resume_and_sandbox_access_use_the_persisted_session_policy(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, continue_agent_session: bool, session_branch: str
+) -> None:
+    """Given a persisted participant, restore its policy and sandbox without allocating a replacement."""
+    execution = _execution_row()
+    sqlite_session.add_all(
+        [
+            execution,
+            make_conversation(mode=AppMode.ADVANCED_CHAT, from_source=ConversationFromSource.CONSOLE),
+            make_message(
+                query="continue this task",
+                message=[],
+                answer="",
+                from_source=ConversationFromSource.CONSOLE,
+                workflow_run_id="run-1",
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    allocations = _record_workspace_allocations(monkeypatch)
+    scope = replace(
+        _scope(),
+        conversation_id="conversation-1",
+        continue_agent_session=continue_agent_session,
+        session_generation=str(uuid4()),
+        session_branch=session_branch,
+    )
+    store = WorkflowAgentWorkspaceStore()
+    original = store.load_or_create_node_execution_session(scope, home_snapshot_id=None)
+    snapshot = SessionSnapshot(layers={"history": {"paused": True}})
+    store.save_active_snapshot(scope=scope, binding_id=original.binding_id, snapshot=snapshot)
+
+    restored_scope = store.load_existing_node_execution_scope(
+        tenant_id=scope.tenant_id,
+        app_id=scope.app_id,
+        workflow_id=scope.workflow_id,
+        workflow_run_id=scope.workflow_run_id,
+        node_id=scope.node_id,
+        node_execution_id=scope.node_execution_id,
+        conversation_id=scope.conversation_id,
+    )
+
+    assert restored_scope is not None
+    assert restored_scope == scope
+    restored = store.load_or_create_node_execution_session(restored_scope, home_snapshot_id=None)
+    assert restored.binding_id == original.binding_id
+    assert restored.session_snapshot == snapshot
+    sqlite_session.expire_all()
+    inspected = AgentSandboxRepository._resolve_workflow_binding(
+        tenant_id=scope.tenant_id,
+        app_id=scope.app_id,
+        workflow_run_id="run-1",
+        node_id=scope.node_id,
+        node_execution_id=scope.node_execution_id,
+        session=sqlite_session,
+    )
+    assert inspected.backend_binding_ref == original.backend_binding_ref
+    assert len(allocations.requests) == 1
+    with pytest.raises(AgentSandboxBindingNotFoundError):
+        AgentSandboxRepository._resolve_workflow_binding(
+            tenant_id=scope.tenant_id,
+            app_id="different-app",
+            workflow_run_id="run-1",
+            node_id=scope.node_id,
+            node_execution_id=scope.node_execution_id,
+            session=sqlite_session,
+        )
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        {"continue_agent_session": "false"},
+        {"continue_agent_session": 0},
+        {"continue_agent_session": None},
+        {"agent_session_generation": 1},
+        {"agent_session_generation": None},
+        {"agent_session_generation": "invalid-uuid"},
+        {"agent_session_generation": "ABCDEF01-2345-6789-ABCD-EF0123456789"},
+        {"agent_session_branch": None},
+        {"agent_session_branch": 1},
+        {"agent_session_branch": "a" * 63},
+        {"agent_session_branch": "a" * 65},
+        {"agent_session_branch": "A" * 64},
+        {"agent_session_branch": "z" * 64},
+    ],
+)
+def test_resuming_chatflow_rejects_malformed_persisted_session_policy(
+    sqlite_session: Session, policy: dict[str, object]
+) -> None:
+    """Given invalid persisted settings, fail before a participant can be read from an unintended scope."""
+    execution = _execution_row(
+        binding_id="binding-1", process_data={"workflow_agent_binding_id": "workflow-binding-1", **policy}
+    )
+    sqlite_session.add_all([execution, _workspace_row(), _binding_row()])
+    sqlite_session.commit()
+
+    with pytest.raises(AgentWorkspaceNotFoundError):
+        WorkflowAgentWorkspaceStore().load_existing_node_execution_scope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            node_execution_id="execution-1",
+            conversation_id="conversation-1",
+        )
+    with pytest.raises(AgentSandboxBindingNotFoundError):
+        AgentSandboxRepository._resolve_workflow_binding(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            node_execution_id="execution-1",
+            session=sqlite_session,
+        )
+
+
+@pytest.mark.parametrize("changed_setting", ["enabled", "generation", "branch"])
+def test_existing_chatflow_participant_rejects_changed_frozen_session_policy(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, changed_setting: str
+) -> None:
+    """Given an execution with a participant, conflicting policy cannot rebind or mutate it."""
+    sqlite_session.add(_execution_row())
+    sqlite_session.commit()
+    allocations = _record_workspace_allocations(monkeypatch)
+    store = WorkflowAgentWorkspaceStore()
+    scope = replace(
+        _scope(), conversation_id="conversation-1", continue_agent_session=False, session_generation=str(uuid4())
+    )
+    original = store.load_or_create_node_execution_session(scope, home_snapshot_id=None)
+    if changed_setting == "enabled":
+        changed_scope = replace(scope, continue_agent_session=True)
+    elif changed_setting == "generation":
+        changed_scope = replace(scope, session_generation=str(uuid4()))
+    else:
+        changed_scope = replace(scope, session_branch="b" * 64)
+
+    with pytest.raises(AgentWorkspaceNotFoundError, match="session (policy|branch) does not match"):
+        store.load_or_create_node_execution_session(changed_scope, home_snapshot_id=None)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(WorkflowNodeExecutionModel, scope.node_execution_id)
+    assert persisted is not None
+    assert persisted.agent_workspace_binding_id == original.binding_id
+    assert persisted.process_data_dict is not None
+    assert persisted.process_data_dict["continue_agent_session"] is False
+    assert persisted.process_data_dict["agent_session_generation"] == scope.session_generation
+    assert persisted.process_data_dict["agent_session_branch"] == scope.session_branch
+    assert len(allocations.requests) == 1
 
 
 @pytest.mark.parametrize("overlap", [False, True], ids=["sequential", "overlapping-allocation"])
@@ -478,6 +908,9 @@ def test_load_or_create_persists_binding_on_node_execution(
     assert persisted_execution.process_data_dict == {
         "existing": "value",
         "workflow_agent_binding_id": "workflow-binding-1",
+        "continue_agent_session": True,
+        "agent_session_generation": "",
+        "agent_session_branch": "",
     }
     assert "agent_workspace_binding_id" not in persisted_execution.process_data_dict
     persisted_binding = sqlite_session.get(AgentWorkspaceBinding, stored.binding_id)
@@ -530,6 +963,9 @@ def test_node_completion_preserves_workspace_binding_and_sandbox_access(
         assert persisted.process_data_dict == {
             "result": "completed",
             "workflow_agent_binding_id": scope.workflow_agent_binding_id,
+            "continue_agent_session": True,
+            "agent_session_generation": "",
+            "agent_session_branch": "",
         }
         assert persisted.elapsed_time == 1.0
         assert persisted.finished_at == execution.finished_at
@@ -595,7 +1031,7 @@ def test_load_or_create_fails_before_binding_create_when_caller_row_is_missing(
     executed_statements: list[str],
 ) -> None:
     sleep = MagicMock()
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", sleep)
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.sleep", sleep)
 
     with pytest.raises(AgentWorkspaceNotFoundError, match="Workflow node execution caller is unavailable"):
         WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
@@ -620,7 +1056,7 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(
                 observer.add(_execution_row())
                 observer.commit()
 
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", make_caller_visible)
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.sleep", make_caller_visible)
 
     scope = WorkflowAgentWorkspaceStore().load_existing_node_execution_scope(
         tenant_id="tenant-1",

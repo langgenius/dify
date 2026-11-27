@@ -8,12 +8,11 @@ import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { toast } from '@/app/notifications'
 import { useResolvedTheme } from '@/features/theme/hooks'
-import { upload } from '@/service/base'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 
 type Props = Readonly<{
   file: FileItem | undefined
@@ -21,6 +20,7 @@ type Props = Readonly<{
 }>
 const CSVUploader: FC<Props> = ({ file, updateFile }) => {
   const { t } = useTranslation(['common', 'datasetCreation', 'datasetDocuments'])
+  const describeRequestError = useRequestErrorDescriber()
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -36,32 +36,25 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
     }),
     [fileUploadConfigResponse],
   )
-  type UploadResult = Awaited<ReturnType<typeof upload>>
   const fileUpload = useCallback(
     async (fileItem: FileItem): Promise<FileItem> => {
       fileItem.progress = 0
-      const formData = new FormData()
-      formData.append('file', fileItem.file)
-      const onProgress = (e: ProgressEvent) => {
-        if (e.lengthComputable) {
-          const progress = Math.floor((e.loaded / e.total) * 100)
-          updateFile({
-            ...fileItem,
-            progress,
-          })
-        }
-      }
-      return upload(
-        {
-          xhr: new XMLHttpRequest(),
-          data: formData,
-          onprogress: onProgress,
-        },
-        false,
-        undefined,
-        '?source=datasets',
-      )
-        .then((res: UploadResult) => {
+      return consoleClient.files.upload
+        .post(
+          { body: { file: fileItem.file, source: 'datasets' } },
+          {
+            context: {
+              onUploadProgress: ({ loaded, total }) => {
+                const progress = Math.floor((loaded / total) * 100)
+                updateFile({
+                  ...fileItem,
+                  progress,
+                })
+              },
+            },
+          },
+        )
+        .then((res) => {
           const updatedFile = Object.assign({}, fileItem.file, {
             id: res.id,
             ...(res as Partial<File>),
@@ -75,10 +68,9 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
           return Promise.resolve({ ...completeFile })
         })
         .catch((e) => {
-          const errorMessage = getFileUploadErrorMessage(
+          const errorMessage = describeRequestError(
             e,
             t(($) => $['stepOne.uploader.failed'], { ns: 'datasetCreation' }),
-            t,
           )
           toast.error(errorMessage)
           const errorFile = {
@@ -90,7 +82,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
         })
         .finally()
     },
-    [t, updateFile],
+    [t, updateFile, describeRequestError],
   )
   const uploadFile = useCallback(
     async (fileItem: FileItem) => {

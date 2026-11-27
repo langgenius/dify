@@ -44,8 +44,8 @@ const SavedItems: FC<ISavedItemsProps> = ({
                   {answer.length} {t(($) => $['unit.char'], { ns: 'common' })}
                 </span>
               </div>
-              <div className="absolute right-2 bottom-1">
-                <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+              <div className="absolute inset-e-2 bottom-1">
+                <div className="ms-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                   {isShowTextToSpeech && <NewAudioButton value={answer} />}
                   <CopyFeedback content={answer} />
                   <IconButton

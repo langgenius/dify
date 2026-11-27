@@ -5,39 +5,11 @@ import type {
   BuiltinToolUpdatePayload,
   ToolOAuthCustomClientPayload,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  Credential,
-  CredentialTypeEnum,
-  PluginPayload,
-} from '@/app/components/plugins/plugin-auth/types'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
-import { get } from './base'
 import { consoleQuery } from './console'
-import { selectCredentialFormSchema } from './console/plugin-auth-select'
-import { useInvalid } from './use-base'
-
-const NAME_SPACE = 'plugins-auth'
-
-export const useGetPluginCredentialInfo = (url: string) => {
-  return useQuery({
-    enabled: !!url,
-    queryKey: [NAME_SPACE, 'credential-info', url],
-    queryFn: () =>
-      get<{
-        allow_custom_token?: boolean
-        supported_credential_types: string[]
-        credentials: Credential[]
-        is_oauth_custom_client_enabled: boolean
-      }>(url),
-    staleTime: 0,
-  })
-}
-
-export const useInvalidPluginCredentialInfo = (url: string) => {
-  return useInvalid([NAME_SPACE, 'credential-info', url])
-}
 
 export const useSetPluginDefaultCredential = ({ category, provider }: PluginPayload) => {
   const { mutateAsync: setToolDefault } = useMutation(
@@ -138,23 +110,6 @@ export const useDeletePluginCredential = ({ category, provider }: PluginPayload)
   return { mutateAsync }
 }
 
-export const useGetPluginCredentialSchema = (
-  { category, provider }: PluginPayload,
-  credentialType: CredentialTypeEnum,
-) => {
-  return useQuery(
-    consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryOptions(
-      {
-        input:
-          category === AuthCategory.tool && provider
-            ? { params: { provider, credential_type: credentialType } }
-            : skipToken,
-        select: (schema) => schema.map(selectCredentialFormSchema),
-      },
-    ),
-  )
-}
-
 export const useGetPluginOAuthUrl = ({ category, provider }: PluginPayload) => {
   const { mutateAsync: getToolUrl, isPending: isToolPending } = useMutation(
     consoleQuery.oauth.plugin.byProvider.tool.authorizationUrl.get.mutationOptions(),
@@ -177,41 +132,6 @@ export const useGetPluginOAuthUrl = ({ category, provider }: PluginPayload) => {
     [category, provider, getToolUrl, getDatasourceUrl],
   )
   return { mutateAsync, isPending: isToolPending || isDatasourcePending }
-}
-
-export const useGetPluginOAuthClientSchema = (
-  { category, provider }: PluginPayload,
-  enabled = true,
-) => {
-  return useQuery(
-    consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.queryOptions(
-      {
-        input:
-          enabled && category === AuthCategory.tool && provider
-            ? { params: { provider } }
-            : skipToken,
-        select: (data) => ({
-          ...data,
-          client_params: data.client_params ?? undefined,
-          schema: data.schema.map(selectCredentialFormSchema),
-        }),
-        staleTime: 0,
-      },
-    ),
-  )
-}
-
-export const useInvalidPluginOAuthClientSchema = ({ category, provider }: PluginPayload) => {
-  const queryClient = useQueryClient()
-  return useCallback(() => {
-    if (category !== AuthCategory.tool || !provider) return Promise.resolve()
-    return queryClient.invalidateQueries({
-      queryKey:
-        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.key({
-          input: { params: { provider } },
-        }),
-    })
-  }, [queryClient, category, provider])
 }
 
 export const useSetPluginOAuthCustomClient = ({ category, provider }: PluginPayload) => {

@@ -13,7 +13,6 @@ import Billing from '../billing-page'
 
 vi.mock('@/service/base', () => ({
   request: vi.fn(() => new Promise(() => {})),
-  sseGeneratorPost: vi.fn(),
 }))
 vi.mock('../upgrade-btn', () => ({ default: () => null }))
 vi.mock('../hooks/use-education-discount', () => ({

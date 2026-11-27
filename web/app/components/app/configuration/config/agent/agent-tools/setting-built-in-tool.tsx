@@ -13,14 +13,19 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -28,9 +33,13 @@ import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin-auth'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
-import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { selectBuiltinProviderTools } from '@/app/components/tools/utils/query-select'
+import {
+  addDefaultValue,
+  toolParametersToFormSchemas,
+} from '@/app/components/tools/utils/to-form-schema'
 import { getPluginLanguage } from '@/i18n/metadata'
-import { fetchBuiltInToolList, fetchCustomToolList, fetchWorkflowToolList } from '@/service/tools'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   showBackButton?: boolean
@@ -64,49 +73,84 @@ const SettingBuiltInTool: FC<Props> = ({
   const { t } = useTranslation(['common', 'plugin', 'tools'])
   const passedTools = (collection as ToolWithProvider).tools
   const hasPassedTools = passedTools?.length > 0
-  const [isLoading, setIsLoading] = useState(!hasPassedTools)
-  const [tools, setTools] = useState<Tool[]>(hasPassedTools ? passedTools : [])
+  const toolSource =
+    !collection || hasPassedTools
+      ? undefined
+      : isBuiltIn
+        ? 'builtin'
+        : collection.type === CollectionType.workflow
+          ? 'workflow'
+          : 'api'
+  const toolProvider = consoleQuery.workspaces.current.toolProvider
+  // Failures leave the list empty, as before, so they are not retried.
+  const builtInTools = useQuery(
+    toolProvider.builtin.byProvider.tools.get.queryOptions({
+      input: { params: { provider: collection?.name } },
+      enabled: toolSource === 'builtin',
+      select: selectBuiltinProviderTools,
+      retry: false,
+    }),
+  )
+  const workflowTools = useQuery(
+    toolProvider.workflow.tools.get.queryOptions({
+      input: { query: { workflow_tool_id: collection?.id } },
+      enabled: toolSource === 'workflow',
+      select: selectBuiltinProviderTools,
+      retry: false,
+    }),
+  )
+  const customTools = useQuery(
+    toolProvider.api.tools.get.queryOptions({
+      input: { query: { provider: collection?.name } },
+      enabled: toolSource === 'api',
+      select: selectBuiltinProviderTools,
+      retry: false,
+    }),
+  )
+  const fetchedTools =
+    toolSource === 'builtin'
+      ? builtInTools
+      : toolSource === 'workflow'
+        ? workflowTools
+        : customTools
+  const isLoading = !!toolSource && fetchedTools.isPending
+  const tools: Tool[] = hasPassedTools ? passedTools : toolSource ? (fetchedTools.data ?? []) : []
   const currTool = tools.find((tool) => tool.name === toolName)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const infoSchemas = formSchemas.filter((item) => item.form === 'llm')
-  const settingSchemas = formSchemas.filter((item) => item.form !== 'llm')
+  const settingSchemas = formSchemas
+    .filter((item) => item.form !== 'llm')
+    .map((item) =>
+      item.type === FormTypeEnum.select
+        ? {
+            ...item,
+            placeholder: item.placeholder ?? {
+              en_US: t(($) => $['placeholder.select'], { ns: 'common' }),
+              zh_Hans: t(($) => $['placeholder.select'], { ns: 'common' }),
+              [language]: t(($) => $['placeholder.select'], { ns: 'common' }),
+            },
+          }
+        : item,
+    )
   const hasSetting = settingSchemas.length > 0
   const showSettingTab = hasSetting && (!readonly || showReadOnlySettingDetails)
   const showSettingAsDetails = readonly && showReadOnlySettingDetails
   const [tempSetting, setTempSetting] = useState(setting)
   const [currType, setCurrType] = useState('info')
   useEffect(() => {
-    if (!collection || hasPassedTools) return
-
-    ;(async () => {
-      setIsLoading(true)
-      try {
-        const list = await new Promise<Tool[]>((resolve) => {
-          ;(async function () {
-            if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
-            else if (collection.type === CollectionType.workflow)
-              resolve(await fetchWorkflowToolList(collection.id))
-            else resolve(await fetchCustomToolList(collection.name))
-          })()
-        })
-        setTools(list)
-      } catch {}
-      setIsLoading(false)
-    })()
-    // oxlint-disable-next-line react/exhaustive-deps
-  }, [collection?.name, collection?.id, collection?.type])
-
-  useEffect(() => {
     setCurrType(!readonly && hasSetting ? 'setting' : 'info')
   }, [hasSetting])
 
-  const isValid = (() => {
-    let valid = true
-    settingSchemas.forEach((item) => {
-      if (item.required && !tempSetting[item.name]) valid = false
-    })
-    return valid
-  })()
+  const effectiveSetting = addDefaultValue(
+    tempSetting,
+    settingSchemas.map((item) =>
+      tempSetting[item.variable] == null ? item : { ...item, default: undefined },
+    ),
+  )
+  const isValid = settingSchemas.every((item) => {
+    const value = effectiveSetting[item.name]
+    return !item.required || (value !== undefined && value !== null && value !== '')
+  })
 
   const getType = (type: string) => {
     if (type === 'number-input') return t(($) => $['setBuiltInTools.number'], { ns: 'tools' })
@@ -147,13 +191,49 @@ const SettingBuiltInTool: FC<Props> = ({
 
   const settingUI = (
     <Form
-      value={tempSetting}
+      value={effectiveSetting}
       onChange={setTempSetting}
       formSchemas={settingSchemas}
       isEditMode={false}
       showOnVariableMap={{}}
       validating={false}
       readonly={readonly}
+      className="space-y-3"
+      itemClassName="py-0!"
+      fieldLabelClassName="mb-1 py-1!"
+      override={[
+        [FormTypeEnum.checkbox],
+        (schema, { value, onChange, readonly: fieldReadonly }) => {
+          if (schema.show_on.some((condition) => value[condition.variable] !== condition.value))
+            return <React.Fragment key={schema.variable} />
+          const label = schema.label[language] || schema.label.en_US
+          const tooltip = schema.tooltip?.[language] || schema.tooltip?.en_US
+          return (
+            <Field
+              key={schema.variable}
+              name={schema.variable}
+              className="flex min-h-6 items-center justify-between gap-3"
+            >
+              <div className="flex min-w-0 items-center">
+                <FieldLabel className="py-0 system-sm-semibold">{label}</FieldLabel>
+                {tooltip && (
+                  <Infotip>
+                    <InfotipTrigger aria-label={label} className="ms-1" />
+                    <InfotipContent aria-label={label} className="w-50">
+                      {tooltip}
+                    </InfotipContent>
+                  </Infotip>
+                )}
+              </div>
+              <Switch
+                checked={value[schema.variable] === true}
+                disabled={fieldReadonly}
+                onCheckedChange={(checked) => onChange({ ...value, [schema.variable]: checked })}
+              />
+            </Field>
+          )
+        },
+      ]}
     />
   )
 
@@ -174,12 +254,12 @@ const SettingBuiltInTool: FC<Props> = ({
               'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:rounded-2xl',
             )}
           >
-            <DrawerContent>
+            <DrawerContent className="overflow-hidden">
               {isLoading && <LoadingPlaceholder className="h-full" />}
               {!isLoading && (
                 <>
                   {/* header */}
-                  <div className="relative border-b border-divider-subtle p-4 pb-3">
+                  <div className="relative shrink-0 border-b border-divider-subtle p-4 pb-3">
                     <div className="absolute inset-e-3 top-3">
                       <IconButton
                         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -224,58 +304,71 @@ const SettingBuiltInTool: FC<Props> = ({
                           providerType: collection.type,
                           detail: collection as any,
                         }}
+                        authorizationLabel={t(($) => $['auth.authorize'], { ns: 'plugin' })}
                         credentialId={credentialId}
                         onAuthorizationItemClick={onAuthorizationItemClick}
                       />
                     )}
                   </div>
-                  <Tabs
-                    value={currType}
-                    onValueChange={setCurrType}
+                  <form
+                    noValidate
                     className="flex min-h-0 flex-1 flex-col"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      if (isValid && !readonly) onSave?.(effectiveSetting)
+                    }}
                   >
-                    {showSettingTab ? (
-                      <TabsList className="mt-1 shrink-0 px-4">
-                        <TabsTab value="info">
-                          {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
-                        </TabsTab>
-                        <TabsTab value="setting">
-                          {t(($) => $['setBuiltInTools.setting'], { ns: 'tools' })}
-                        </TabsTab>
-                      </TabsList>
-                    ) : (
-                      <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
-                        {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
-                      </div>
-                    )}
-                    <div className="min-h-0 flex-1 overflow-y-auto px-4">
+                    <Tabs
+                      value={currType}
+                      onValueChange={setCurrType}
+                      className="flex min-h-0 flex-1 flex-col"
+                    >
                       {showSettingTab ? (
-                        <>
-                          <TabsPanel value="info">{infoUI}</TabsPanel>
-                          <TabsPanel value="setting">
-                            {showSettingAsDetails ? settingDetailsUI : settingUI}
-                            {!readonly && (
-                              <div className="flex justify-end gap-2 py-2">
-                                <Button onClick={onHide}>
-                                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                                </Button>
-                                <Button
-                                  variant="primary"
-                                  disabled={!isValid}
-                                  onClick={() => onSave?.(tempSetting)}
-                                >
-                                  {t(($) => $['operation.save'], { ns: 'common' })}
-                                </Button>
-                              </div>
-                            )}
-                          </TabsPanel>
-                        </>
+                        <TabsList className="h-9.5 shrink-0 px-4 pt-1">
+                          <TabsTab value="info" className="pt-2 pb-2 system-sm-semibold">
+                            {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
+                          </TabsTab>
+                          <TabsTab value="setting" className="pt-2 pb-2 system-sm-semibold">
+                            {t(($) => $['setBuiltInTools.setting'], { ns: 'tools' })}
+                          </TabsTab>
+                          <TabsIndicator />
+                        </TabsList>
                       ) : (
-                        infoUI
+                        <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">
+                          {t(($) => $['setBuiltInTools.parameters'], { ns: 'tools' })}
+                        </div>
+                      )}
+                      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-4">
+                        {showSettingTab ? (
+                          <>
+                            <TabsPanel value="info">{infoUI}</TabsPanel>
+                            <TabsPanel value="setting">
+                              {showSettingAsDetails ? settingDetailsUI : settingUI}
+                            </TabsPanel>
+                          </>
+                        ) : (
+                          infoUI
+                        )}
+                      </div>
+                    </Tabs>
+                    <div className="flex shrink-0 items-center justify-end gap-3 border-t border-divider-subtle px-4 py-3">
+                      <ReadmeEntrance
+                        pluginDetail={collection as any}
+                        showDivider={false}
+                        className="min-w-0 flex-1 p-0"
+                      />
+                      {showSettingTab && !readonly && (
+                        <div className="flex shrink-0 gap-2">
+                          <Button onClick={onHide}>
+                            {t(($) => $['operation.cancel'], { ns: 'common' })}
+                          </Button>
+                          <Button type="submit" variant="primary" disabled={!isValid}>
+                            {t(($) => $['operation.save'], { ns: 'common' })}
+                          </Button>
+                        </div>
                       )}
                     </div>
-                    <ReadmeEntrance pluginDetail={collection as any} className="mt-auto" />
-                  </Tabs>
+                  </form>
                 </>
               )}
             </DrawerContent>

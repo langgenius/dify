@@ -23,7 +23,7 @@ type BlockSelectorRowProps = ButtonRowProps | DivRowProps
 
 const rowClassName = (className?: string, disabled = false, hoverable = true) =>
   cn(
-    'flex h-8 w-full items-center rounded-lg pr-2 pl-3',
+    'flex h-8 w-full items-center rounded-lg ps-3 pe-2',
     !disabled && hoverable && 'hover:bg-state-base-hover',
     disabled && 'cursor-not-allowed',
     className,
@@ -33,7 +33,7 @@ const buttonClassName = (className?: string, disabled = false, hoverable = true)
   cn(
     rowClassName(className, disabled, hoverable),
     !disabled && 'cursor-pointer',
-    'border-0 bg-transparent text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+    'border-0 bg-transparent text-start focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
   )
 
 export function BlockSelectorRow(props: BlockSelectorRowProps) {

@@ -38,7 +38,7 @@ function PluginItem({
             className="i-custom-vender-solid-mediaAndDevices-magic-box size-8 text-text-tertiary"
           />
         )}
-        <div className="absolute -right-0.5 -bottom-0.5 z-10">{statusIcon}</div>
+        <div className="absolute -inset-e-0.5 -bottom-0.5 z-10">{statusIcon}</div>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1 wrap-anywhere">
         <div className="truncate system-sm-medium text-text-secondary">

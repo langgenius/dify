@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { zAppPagination } from '@dify/contracts/api/console/apps/zod.gen'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { createInstance } from 'i18next'
@@ -12,34 +11,11 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import time from '@/i18n/locales/en-US/time.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { List } from '../list'
 
-const api = vi.hoisted(() => ({
-  apps: vi.fn<typeof consoleClient.apps.get>(),
-}))
 vi.unmock('react-i18next')
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/apps',
-  useSearchParams: () => new URLSearchParams(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.get': api.apps,
-      'apps.starred.get': api.apps,
-      'explore.apps.get': async () => ({ recommended_apps: [], categories: [] }),
-      'features.get': async () => zGetFeaturesResponse.parse({}),
-      'tags.get': async () => [],
-      'workspaces.current.members.get': async () => ({ accounts: [] }),
-    }),
-  }
-})
-
 const testPageUrl = window.location.href
 const currentUrl = () => `${window.location.pathname}${window.location.search}`
 afterEach(() => window.history.replaceState(null, '', testPageUrl))
@@ -49,11 +25,18 @@ async function setup(listUrl: string) {
   await page.viewport(1280, 800)
   window.history.replaceState(null, '', '/previous-page')
   window.history.pushState(null, '', listUrl)
-  api.apps
-    .mockReset()
-    .mockResolvedValue(
-      zAppPagination.parse({ data: [], page: 1, limit: 30, has_more: false, total: 0 }),
-    )
+  const noApps = zAppPagination.parse({ data: [], page: 1, limit: 30, has_more: false, total: 0 })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        apps: { get: () => noApps, starred: { get: () => noApps } },
+        explore: { apps: { get: () => ({ recommended_apps: [], categories: [] }) } },
+        features: { get: () => zGetFeaturesResponse.parse({}) },
+        tags: { get: () => [] },
+        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+      },
+    }),
+  )
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -67,16 +50,19 @@ async function setup(listUrl: string) {
     features: {},
     systemFeatures: { rbac_enabled: true, enable_learn_app: false },
   })
+  const { NavigationProvider } = createTestNavigation({ url: listUrl })
   const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsAdapter>
-        <I18nextProvider i18n={i18n}>
-          <div className="flex h-screen flex-col">
-            <List />
-          </div>
-        </I18nextProvider>
-      </NuqsAdapter>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsAdapter>
+          <I18nextProvider i18n={i18n}>
+            <div className="flex h-screen flex-col">
+              <List />
+            </div>
+          </I18nextProvider>
+        </NuqsAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
   const goBack = async (url: string) => {
     window.history.back()

@@ -48,7 +48,7 @@
   "generate.template.writingsPolisher.instruction": "Yazılarınızı geliştirmek için ileri düzeyde kopya düzenleme teknikleri kullanır",
   "generate.template.writingsPolisher.name": "Yazma cilalayıcı",
   "generate.title": "Prompt Oluşturucu",
-  "generate.to": "için",
+  "generate.to": "için ",
   "generate.tryIt": "Deneyin",
   "generate.version": "Sürüm",
   "generate.versions": "Sürümler"

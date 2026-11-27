@@ -1,9 +1,4 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
-import type { I18nText } from '@/i18n/language'
-
-export type CommonResponse = {
-  result: 'success' | 'fail'
-}
 
 export type DataSourceNotionPage = {
   page_icon: null | {
@@ -41,27 +36,6 @@ export const DataSourceProvider = {
   waterCrawl: 'watercrawl',
 } as const
 export type DataSourceProvider = (typeof DataSourceProvider)[keyof typeof DataSourceProvider]
-
-export type CodeBasedExtensionForm = {
-  type: string
-  label: I18nText
-  variable: string
-  required: boolean
-  options: { label: I18nText; value: string }[]
-  default?: string
-  placeholder: string
-  max_length?: number
-}
-
-export type CodeBasedExtensionItem = {
-  name: string
-  label: I18nText
-  form_schema: CodeBasedExtensionForm[]
-}
-export type CodeBasedExtension = {
-  module: string
-  data: CodeBasedExtensionItem[]
-}
 
 export type ExternalDataTool = {
   type?: string

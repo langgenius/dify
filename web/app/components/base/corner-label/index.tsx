@@ -26,7 +26,7 @@ const CornerLabel: React.FC<CornerLabelProps> = ({
       />
       <div
         className={cn(
-          'flex items-center gap-0.5 bg-background-section-burn py-1 pr-2',
+          'flex items-center gap-0.5 bg-background-section-burn py-1 pe-2',
           labelClassName,
         )}
       >

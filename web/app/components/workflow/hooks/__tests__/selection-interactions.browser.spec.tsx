@@ -12,6 +12,7 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { WorkflowContext } from '../../context'
 import { EditorResourceScope } from '../../editor-resource/provider'
@@ -25,23 +26,6 @@ import { parseWorkflowClipboardText } from '../../utils/clipboard'
 import { useNodesInteractions } from '../use-nodes-interactions'
 import { useSelectionInteractions } from '../use-selection-interactions'
 import 'reactflow/dist/style.css'
-
-vi.mock('@/next/navigation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/next/navigation')>()
-  return {
-    ...actual,
-    useRouter: () =>
-      ({
-        bfcacheId: 'test-router',
-        push: vi.fn(),
-        replace: vi.fn(),
-        back: vi.fn(),
-        forward: vi.fn(),
-        refresh: vi.fn(),
-        prefetch: vi.fn(),
-      }) satisfies ReturnType<typeof actual.useRouter>,
-  }
-})
 
 const nodes = [
   createNode({
@@ -127,23 +111,32 @@ async function setup() {
     createAppDetailFixture({ mode: 'workflow' }),
   )
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  // boundary: the system clipboard is shared by spec files running in parallel, so the written payload is captured at the API.
   const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+  const { NavigationProvider } = createTestNavigation({ url: '/app/app-1/workflow' })
   const screen = await render(
-    <NuqsTestingAdapter>
-      <Wrapper>
-        <EditorResourceScope
-          resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
-        >
-          <WorkflowContext value={createWorkflowStore({})}>
-            <ReactFlowProvider>
-              <CatalogHooksStore>
-                <SelectionCanvas />
-              </CatalogHooksStore>
-            </ReactFlowProvider>
-          </WorkflowContext>
-        </EditorResourceScope>
-      </Wrapper>
-    </NuqsTestingAdapter>,
+    <NavigationProvider>
+      <NuqsTestingAdapter>
+        <Wrapper>
+          <EditorResourceScope
+            resource={{
+              kind: 'app',
+              collaborationEnabled: false,
+              appId: 'app-1',
+              mode: 'workflow',
+            }}
+          >
+            <WorkflowContext value={createWorkflowStore({})}>
+              <ReactFlowProvider>
+                <CatalogHooksStore>
+                  <SelectionCanvas />
+                </CatalogHooksStore>
+              </ReactFlowProvider>
+            </WorkflowContext>
+          </EditorResourceScope>
+        </Wrapper>
+      </NuqsTestingAdapter>
+    </NavigationProvider>,
   )
   return { screen, write }
 }

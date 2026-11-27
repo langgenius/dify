@@ -7,13 +7,13 @@ import type {
   Plugin,
   VersionInfo,
 } from '@/app/components/plugins/types'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
-import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { toPluginCard } from '@/app/components/plugins/marketplace/plugin-card-adapter'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
+import { marketplacePluginsByInfoQueryOptions } from '@/service/plugin-list-queries'
 
 type UseInstallMultiStateParams = {
   allPlugins: Dependency[]
@@ -130,7 +130,9 @@ export function useInstallMultiState({
     isLoading: isFetchingById,
     data: infoGetById,
     error: infoByIdError,
-  } = useFetchPluginsInMarketPlaceByInfo(marketplaceRequests.map((request) => request.info))
+  } = useQuery(
+    marketplacePluginsByInfoQueryOptions(marketplaceRequests.map((request) => request.info)),
+  )
 
   // Derive marketplace plugin data and errors from API responses
   const { marketplacePluginMap, marketplaceErrorIndexes } = useMemo(() => {
@@ -153,7 +155,7 @@ export function useInstallMultiState({
         if (pluginInfo) {
           pluginMap.set(
             request.dslIndex,
-            getFormattedPlugin({
+            toPluginCard({
               ...pluginInfo,
               from: request.dependency.type,
               version: pluginInfo.version || pluginInfo.latest_version,

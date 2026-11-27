@@ -1,13 +1,13 @@
-from typing import Literal
+from typing import Self
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, field_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.rbac import RBACCheck, Workspace, enforce_rbac_checks
+from controllers.common.rbac import AgentId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
@@ -25,6 +25,7 @@ from services.tag_application_service import (
     CreateTagInput,
     TagBindingInput,
     TagBindingTargetNotFoundError,
+    TagKind,
     TagNameConflictError,
     TagNotFoundError,
     UpdateTagInput,
@@ -45,15 +46,31 @@ class TagBindingPayload(BaseModel):
     target_id: str = Field(description="Target ID to bind tags to")
     type: TagType = Field(description="Tag type")
 
+    @model_validator(mode="after")
+    def validate_agent_ids(self) -> Self:
+        """Normalize validated Agent UUIDs before authorization or SQL; keep other pools' wire behavior."""
+        if self.type == TagType.AGENT:
+            self.target_id = str(UUID(self.target_id))
+            self.tag_ids = [str(UUID(tag_id)) for tag_id in self.tag_ids]
+        return self
+
 
 class TagBindingRemovePayload(BaseModel):
     tag_ids: list[str] = Field(description="Tag IDs to remove", min_length=1)
     target_id: str = Field(description="Target ID to unbind tag from")
     type: TagType = Field(description="Tag type")
 
+    @model_validator(mode="after")
+    def validate_agent_ids(self) -> Self:
+        """Reject malformed Agent UUIDs before unbinding; other tag pools retain their existing contract."""
+        if self.type == TagType.AGENT:
+            self.target_id = str(UUID(self.target_id))
+            self.tag_ids = [str(UUID(tag_id)) for tag_id in self.tag_ids]
+        return self
+
 
 class TagListQueryParam(BaseModel):
-    type: Literal["knowledge", "app", "snippet", "skill"] = Field(description="Tag type filter")
+    type: TagType = Field(description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
 
 
@@ -108,14 +125,6 @@ def _enforce_snippet_tag_rbac_if_needed(tag_type: TagType | str | None, context:
     )
 
 
-def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str, context: RequestContext) -> None:
-    if not dify_config.RBAC_ENABLED:
-        return
-
-    tag_type = application_services().tags.get_tag_type(context, tag_id)
-    _enforce_snippet_tag_rbac_if_needed(tag_type, context)
-
-
 def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
     current_user, _ = current_account_with_tenant()
     if current_user.has_edit_permission:
@@ -123,6 +132,63 @@ def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
     if allow_dataset_editor and current_user.is_dataset_editor:
         return
     raise Forbidden()
+
+
+def _require_tag_management_permission(
+    context: RequestContext, tag_type: TagType | str | None, *, allow_dataset_editor: bool
+) -> None:
+    """Authorize a tag pool without coupling custom Agent roles to legacy roles.
+
+    Preconditions: context is an admitted account and tag_type is tenant-resolved
+    or request-validated. Postconditions: Agent mutations require workspace tag
+    management under RBAC, or a legacy edit role otherwise; other pools retain
+    their existing gates. Denial raises Forbidden before a mutation is called.
+    """
+    if tag_type == TagType.AGENT and dify_config.RBAC_ENABLED:
+        enforce_rbac_checks(
+            tenant_id=context.active_workspace_id,
+            account_id=context.account_id,
+            checks=[RBACCheck(RBACPermission.AGENT_TAG_MANAGE, Workspace())],
+        )
+    else:
+        _require_tag_edit_permission(allow_dataset_editor=allow_dataset_editor and tag_type != TagType.AGENT)
+        _enforce_snippet_tag_rbac_if_needed(tag_type, context)
+
+
+def _require_tag_management_by_id(context: RequestContext, tag_id: str, *, allow_dataset_editor: bool) -> None:
+    """Resolve a tag's tenant-owned pool and authorize its mutation.
+
+    Preconditions: tag_id is path-validated. Postconditions: callers cannot choose
+    another pool's permission by changing a payload; legacy role denials happen
+    before any lookup when RBAC is disabled. No persistent state is changed.
+    """
+    if not dify_config.RBAC_ENABLED:
+        _require_tag_edit_permission(allow_dataset_editor=allow_dataset_editor)
+    tag_type = application_services().tags.get_tag_type(context, tag_id)
+    _require_tag_management_permission(context, tag_type, allow_dataset_editor=allow_dataset_editor)
+
+
+def _require_binding_permission(context: RequestContext, payload: TagBindingPayload | TagBindingRemovePayload) -> None:
+    """Authorize editing the target without granting it through tag management.
+
+    Preconditions: payload and account context are validated. Postconditions:
+    Agent bindings require that Agent's edit permission, or a legacy edit role
+    when RBAC is disabled; other pools preserve their previous policy. No write
+    is attempted after a permission denial.
+    """
+    if payload.type == TagType.AGENT:
+        if dify_config.RBAC_ENABLED:
+            enforce_rbac_checks(
+                tenant_id=context.active_workspace_id,
+                account_id=context.account_id,
+                checks=[RBACCheck(RBACPermission.AGENT_EDIT, AgentId())],
+                path_args={"agent_id": payload.target_id},
+            )
+        else:
+            _require_tag_edit_permission(allow_dataset_editor=False)
+    else:
+        _require_tag_binding_edit_permission()
+        _enforce_snippet_tag_rbac_if_needed(payload.type, context)
 
 
 @console_ns.route("/tags")
@@ -141,14 +207,12 @@ class TagListApi(Resource):
     @console_account_admission()
     @model_validate(TagBasePayload)
     def post(self, req_data: TagBasePayload, request_context: RequestContext):
-        # Allow users with edit permission, or dataset editors (including dataset operators).
-        _require_tag_edit_permission(allow_dataset_editor=True)
-
-        _enforce_snippet_tag_rbac_if_needed(req_data.type, request_context)
+        """Create a validated tag only after authorization for its pool; conflicts preserve existing tags."""
+        _require_tag_management_permission(request_context, req_data.type, allow_dataset_editor=True)
         try:
             tag = application_services().tags.create_tag(
                 request_context,
-                CreateTagInput(name=req_data.name, type=req_data.type.value),
+                CreateTagInput(name=req_data.name, type=TagKind(req_data.type.value)),
             )
         except TagNameConflictError as error:
             raise ValueError(str(error)) from None
@@ -163,11 +227,9 @@ class TagUpdateDeleteApi(Resource):
     @console_account_admission()
     @model_validate(TagUpdateRequestPayload)
     def patch(self, req_data: TagUpdateRequestPayload, request_context: RequestContext, tag_id: UUID):
+        """Rename a tenant-owned tag after pool authorization; a missing tag is a 404 without writes."""
         tag_id_str = str(tag_id)
-        # The role of the current user in the ta table must be admin, owner, or editor
-        _require_tag_edit_permission(allow_dataset_editor=True)
-
-        _enforce_snippet_tag_rbac_by_tag_id(tag_id_str, request_context)
+        _require_tag_management_by_id(request_context, tag_id_str, allow_dataset_editor=True)
         try:
             tag = application_services().tags.update_tag(
                 request_context,
@@ -184,10 +246,9 @@ class TagUpdateDeleteApi(Resource):
     @console_ns.response(204, "Tag deleted successfully")
     @console_account_admission()
     def delete(self, request_context: RequestContext, tag_id: UUID):
+        """Delete an authorized tenant-owned tag and its bindings; other tag pools remain independent."""
         tag_id_str = str(tag_id)
-
-        _require_tag_edit_permission(allow_dataset_editor=False)
-        _enforce_snippet_tag_rbac_by_tag_id(tag_id_str, request_context)
+        _require_tag_management_by_id(request_context, tag_id_str, allow_dataset_editor=False)
         try:
             application_services().tags.delete_tag(request_context, tag_id_str)
         except TagNotFoundError as error:
@@ -207,16 +268,15 @@ def _require_tag_binding_edit_permission() -> None:
 
 
 def _create_tag_bindings(context: RequestContext, payload: TagBindingPayload) -> tuple[dict[str, str], int]:
-    _require_tag_binding_edit_permission()
-
-    _enforce_snippet_tag_rbac_if_needed(payload.type, context)
+    """Bind validated tenant tags after target authorization; an unavailable target is a 404 without writes."""
+    _require_binding_permission(context, payload)
     try:
         application_services().tags.create_bindings(
             context,
             TagBindingInput(
                 tag_ids=tuple(payload.tag_ids),
                 target_id=payload.target_id,
-                type=payload.type.value,
+                type=TagKind(payload.type.value),
             ),
         )
     except TagBindingTargetNotFoundError as error:
@@ -225,16 +285,15 @@ def _create_tag_bindings(context: RequestContext, payload: TagBindingPayload) ->
 
 
 def _remove_tag_bindings(context: RequestContext, payload: TagBindingRemovePayload) -> tuple[dict[str, str], int]:
-    _require_tag_binding_edit_permission()
-
-    _enforce_snippet_tag_rbac_if_needed(payload.type, context)
+    """Remove authorized target bindings without deleting shared tags or changing other targets."""
+    _require_binding_permission(context, payload)
     try:
         application_services().tags.delete_bindings(
             context,
             TagBindingInput(
                 tag_ids=tuple(payload.tag_ids),
                 target_id=payload.target_id,
-                type=payload.type.value,
+                type=TagKind(payload.type.value),
             ),
         )
     except TagBindingTargetNotFoundError as error:

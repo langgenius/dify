@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import Link from '@/next/link'
 import {
   getDatasetACLCapabilities,
@@ -130,10 +130,11 @@ const DatasetCard = ({
           {content}
         </Link>
       )}
-      <DatasetCardTags
-        datasetId={dataset.id}
-        embeddingAvailable={!!dataset.embedding_available}
-        tags={dataset.tags}
+      <TagSelector
+        type="knowledge"
+        targetId={dataset.id}
+        value={dataset.tags}
+        className={cn('relative mx-3 w-auto', !dataset.embedding_available && 'opacity-30')}
         onOpenTagManagement={onOpenTagManagement}
         onTagsChange={onSuccess}
         canBindOrUnbindTags={canBindOrUnbindTags}

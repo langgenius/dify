@@ -260,8 +260,7 @@ def cloud_edition_billing_resource_check[**P, R](
             if resource == "vector_space":
                 vector_space = application_services().feature_queries.get_workspace_vector_space(tenant_id)
                 if vector_space.usage_unknown:
-                    features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
-                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
+                    if FeatureService.get_workspace_plan(tenant_id) == CloudPlan.SANDBOX:
                         raise ServiceUnavailable(
                             "Unable to verify vector space usage right now. Please try again later."
                         )
@@ -308,8 +307,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
             if tenant_id is None:
                 raise Unauthorized("Tenant id is required for this token.")
 
-            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
-            if features.billing.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(tenant_id) == CloudPlan.SANDBOX:
                 raise Forbidden(
                     "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
                 )

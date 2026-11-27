@@ -7,17 +7,10 @@ import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
-
-// boundary: Next.js pathname/router context is not mounted in a focused Browser Mode render.
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/app/app-1/logs',
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
-  useSelectedLayoutSegment: () => 'logs',
-}))
 
 async function renderSection({
   mode = 'chat',
@@ -53,10 +46,16 @@ async function renderSection({
       workflow: publishedWorkflow ? { id: 'workflow-1', type: 'workflow' } : null,
     }),
   )
+  const { NavigationProvider } = createTestNavigation({
+    url: '/app/app-1/logs',
+    segments: ['logs'],
+  })
   return render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <AppDetailSection />
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <AppDetailSection />
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -176,7 +175,7 @@ describe('AppDetailSection', () => {
     await expect.element(screen.getByText('evaluation.unavailableUntilPublished')).toBeVisible()
   })
 
-  it('explains why evaluation is disabled when the workspace can upgrade into it', async () => {
+  it('links evaluation when the workspace can upgrade into it so it can preview the page', async () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
@@ -184,10 +183,9 @@ describe('AppDetailSection', () => {
       publishedWorkflow: true,
     })
 
-    const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
-    await expect.element(evaluation).toHaveAttribute('aria-disabled', 'true')
-    await userEvent.hover(evaluation)
-    await expect.element(screen.getByText('common.compliance.sandboxUpgradeTooltip')).toBeVisible()
+    await expect
+      .element(screen.getByRole('link', { name: 'evaluation.title' }))
+      .toHaveAttribute('href', '/app/app-1/evaluation')
   })
 
   it('omits evaluation for non-workflow apps', async () => {

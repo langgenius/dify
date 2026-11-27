@@ -53,7 +53,7 @@ const SnippetCreateButton = () => {
           >
             <span
               aria-hidden
-              className="mr-2 i-custom-vender-line-files-file-plus-01 size-4 shrink-0"
+              className="me-2 i-custom-vender-line-files-file-plus-01 size-4 shrink-0"
             />
             <span>{t(($) => $.createFromBlank)}</span>
           </button>
@@ -67,7 +67,7 @@ const SnippetCreateButton = () => {
           >
             <span
               aria-hidden
-              className="mr-2 i-custom-vender-line-files-file-arrow-01 size-4 shrink-0"
+              className="me-2 i-custom-vender-line-files-file-arrow-01 size-4 shrink-0"
             />
             <span>{t(($) => $.importDSLFile)}</span>
           </button>

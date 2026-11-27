@@ -2,7 +2,7 @@ import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.ge
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockEmojiData, renderWithEmoji } from '@/test/emoji-picker'
-import { EditAgentDialog } from '../edit-agent-dialog'
+import { EditAgentDialog } from './agent-dialog-harness'
 
 const updateAgent = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 

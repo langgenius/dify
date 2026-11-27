@@ -50,7 +50,7 @@
   "scanner.lastTested": "Terakhir diuji {{time}}",
   "scanner.loadFailed": "Pemindai tidak dapat dimuat.",
   "scanner.neverTested": "Belum diuji",
-  "scanner.readOnly": "Hanya pemilik dan admin ruang kerja yang dapat mengelola pemindai.",
+  "scanner.readOnly": "Anda tidak memiliki izin untuk mengelola pemindai.",
   "scanner.status.active": "Aktif",
   "scanner.status.error": "Galat",
   "scanner.test": "Uji",

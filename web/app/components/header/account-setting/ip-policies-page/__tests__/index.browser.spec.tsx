@@ -13,19 +13,11 @@ import {
 } from '@/test/console/network-access'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
-
-const request = vi.hoisted(() => vi.fn<(path: string, input?: unknown) => unknown>())
-
-// boundary: IP-policy reads and writes stop at the generated console transport.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[], input?: unknown) => request(path.join('.'), input),
-  },
-}))
 
 async function renderPoliciesSettings(width = 320) {
   await page.viewport(width, 800)
@@ -43,25 +35,32 @@ async function renderPoliciesSettings(width = 320) {
   })
   const groups = [
     createNetworkAccessGroupFixture({
+      id: '1f9a3c2e-5b7d-4e8f-9a0b-1c2d3e4f5a6b',
       name: 'Internal Network',
       used_by_count: 2,
       updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     }),
     createNetworkAccessGroupFixture({
-      id: 'group-2',
+      id: '2a8b4d3f-6c8e-4f9a-8b1c-2d3e4f5a6b7c',
       name: 'Engineering Office',
       allowed_cidrs: ['192.0.2.0/24'],
       updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     }),
   ]
-  seedNetworkAccessGroups(queryClient, { groups })
-  request.mockImplementation((path) => {
-    if (path === 'workspaces.current.networkAccessGroups.get')
-      return { tenant_id: 'workspace-1', entitled: true, groups }
-    if (path === 'workspaces.current.networkAccessGroups.currentIp.get')
-      return { client_ip: '203.0.113.42' }
-    throw new Error(`Unexpected console request: ${path}`)
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          networkAccessGroups: {
+            get: () => ({ tenant_id: 'workspace-1', entitled: true, groups }),
+            currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
+            byGroupId: { delete: () => ({ deleted: true }) },
+          },
+        },
+      },
+    },
   })
+  onTestFinished(fake)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -76,7 +75,7 @@ async function renderPoliciesSettings(width = 320) {
     </QueryClientTestProvider>,
   )
   await expect.element(screen.getByRole('table', { name: 'IP Policies' })).toBeVisible()
-  return { screen, queryClient, groups }
+  return { screen, queryClient, groups, fake }
 }
 
 async function expectReadableText(content: Element, viewport: HTMLElement) {
@@ -196,17 +195,17 @@ it('restores edit focus to the opener or the heading if its row disappears', asy
 it('confirms using the latest policy details and focuses the list after deleting the row', async () => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   try {
-    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
-    const originalRequest = request.getMockImplementation()
+    const { screen, queryClient, groups, fake } = await renderPoliciesSettings(1000)
+    const policies = fake.console.workspaces.current.networkAccessGroups
     let remainingGroups = groups
-    request.mockImplementation((path) => {
-      if (path === 'workspaces.current.networkAccessGroups.byGroupId.delete') {
-        remainingGroups = groups.slice(1)
-        return
-      }
-      if (path === 'workspaces.current.networkAccessGroups.get')
-        return { tenant_id: 'workspace-1', entitled: true, groups: remainingGroups }
-      return originalRequest?.(path)
+    policies.get.mockImplementation(() => ({
+      tenant_id: 'workspace-1',
+      entitled: true,
+      groups: remainingGroups,
+    }))
+    policies.byGroupId.delete.mockImplementation(() => {
+      remainingGroups = groups.slice(1)
+      return { deleted: true }
     })
 
     await screen.getByRole('button', { name: 'More actions for Internal Network' }).click()
@@ -222,13 +221,14 @@ it('confirms using the latest policy details and focuses the list after deleting
       .element(confirmation.getByText(common['settings.ipPolicyDeleteDescription']))
       .toBeVisible()
     await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
-    expect(request).toHaveBeenCalledWith(
-      'workspaces.current.networkAccessGroups.byGroupId.delete',
-      {
-        params: { group_id: refreshedPolicy.id },
-        query: { expected_version: 7 },
-      },
-    )
+    await expect
+      .poll(() => policies.byGroupId.delete)
+      .toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          params: { group_id: refreshedPolicy.id },
+          query: { expected_version: 7 },
+        }),
+      )
     await expect
       .element(screen.getByRole('button', { name: 'Internal Network', exact: true }))
       .not.toBeInTheDocument()

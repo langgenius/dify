@@ -26,6 +26,7 @@ type AccessControlPolicyFieldProps = {
   selectedPolicyId: string | null
   ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
   ipCheckStatus?: 'loading' | 'error'
+  ipCheckErrorMessage?: string
   onRetryIpCheck?: () => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -41,6 +42,7 @@ export function AccessControlPolicyField({
   selectedPolicyId,
   ipCheck,
   ipCheckStatus,
+  ipCheckErrorMessage,
   onRetryIpCheck,
   open,
   onOpenChange,
@@ -152,7 +154,7 @@ export function AccessControlPolicyField({
                 key={policy.id}
                 type="button"
                 disabled={readOnly}
-                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-left system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-start system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => {
                   if (!readOnly) {
                     onSelectPolicy(policy.id)
@@ -243,7 +245,8 @@ export function AccessControlPolicyField({
         <p role="status" className="system-xs-regular text-text-warning">
           {ipCheckStatus === 'loading'
             ? t(($) => $['settings.ipPolicyCurrentIpLoading'], { ns: 'common' })
-            : t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
+            : (ipCheckErrorMessage ??
+              t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' }))}
           {ipCheckStatus === 'error' && onRetryIpCheck && (
             <Button type="button" variant="ghost" size="small" onClick={onRetryIpCheck}>
               {t(($) => $['operation.retry'], { ns: 'common' })}

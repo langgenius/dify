@@ -64,7 +64,7 @@ const VariableTypeSelector = <T extends string>({
             {value}
           </div>
           <span
-            className="ml-0.5 i-ri-arrow-down-s-line size-4 text-text-quaternary"
+            className="ms-0.5 i-ri-arrow-down-s-line size-4 text-text-quaternary"
             aria-hidden="true"
           />
         </div>

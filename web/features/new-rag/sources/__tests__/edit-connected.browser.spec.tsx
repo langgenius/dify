@@ -1,4 +1,7 @@
+import type { KnowledgeFsInitialSourcePreviewResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { SourceApi } from './source-server'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import {
@@ -8,39 +11,73 @@ import {
   sourceWorkflow,
 } from './source-fixtures'
 import {
-  clientMock,
+  connectionResponses,
   pluginResponses,
   resetSourceServer,
   serveDriveConnection,
   serveNotionConnection,
+  sourceResponse,
   sourceResponses,
 } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
-
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: edit-connected', () => {
+  it('retries a connection lookup that failed on its first page', async () => {
+    pluginResponses.data = [notionDatasourcePlugin]
+    connectionResponses.error = apiError({ status: 503, message: 'Connections unavailable' })
+    connectionResponses.refresh.mockImplementation(() => {
+      connectionResponses.error = null
+      serveNotionConnection()
+    })
+    sourceResponses.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-notion',
+              metadata: {
+                parameters: { workspace: 'product' },
+                providerId: 'plugin-daemon-online-document',
+                providerKind: 'online-document',
+                providerName: 'Notion',
+              },
+              type: 'connector',
+              uri: 'notion://connection-notion',
+            }),
+          ],
+        },
+      ],
+    }
+
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await page
+      .getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      })
+      .click()
+    await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
+
+    // A message without a cataloged code gives way to the editor's own text.
+    const failure = page.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' })
+    await expect.element(failure).toBeVisible()
+    await page.getByRole('button', { name: 'common.operation.retry' }).click()
+    await expect.element(failure).not.toBeInTheDocument()
+    expect(connectionResponses.refresh).toHaveBeenCalledOnce()
+  })
+
   it('submits an online document selection in the source PATCH', async () => {
     pluginResponses.data = [notionDatasourcePlugin]
     serveNotionConnection()
-    clientMock.previewConnectedSource.mockResolvedValue({
+    fake.console.knowledgeFs.sourceProviderPreview.post.mockResolvedValue({
+      kind: 'online_document',
       documents: [
         {
           last_edited_time: '2026-08-30T10:00:00Z',
@@ -66,13 +103,15 @@ describe('Sources: edit-connected', () => {
       uri: 'notion://connection-notion',
     })
     sourceResponses.data = { pages: [{ items: [connectorSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({
-        ...connectorSource,
-        status: 'syncing',
-        syncWorkflow: sourceWorkflow(),
-        version: 4,
-      }),
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({
+          ...connectorSource,
+          status: 'syncing',
+          syncWorkflow: sourceWorkflow(),
+          version: 4,
+        }),
+      ),
     )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -87,7 +126,9 @@ describe('Sources: edit-connected', () => {
     await page.getByRole('button', { name: 'common.operation.save' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Product documentation',
@@ -110,7 +151,7 @@ describe('Sources: edit-connected', () => {
         params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
     )
-    expect(clientMock.previewConnectedSource).toHaveBeenCalledWith({
+    expect(fake.console.knowledgeFs.sourceProviderPreview.post).toHaveBeenCalledWith({
       body: {
         credentialId: 'credential-notion',
         datasource: 'notion',
@@ -125,7 +166,8 @@ describe('Sources: edit-connected', () => {
   it('submits an online drive selection with the provider resource identity', async () => {
     pluginResponses.data = [googleDriveDatasourcePlugin]
     serveDriveConnection()
-    clientMock.previewConnectedSource.mockResolvedValue({
+    fake.console.knowledgeFs.sourceProviderPreview.post.mockResolvedValue({
+      kind: 'online_drive',
       files: [
         {
           bucket: 'project-files',
@@ -151,8 +193,15 @@ describe('Sources: edit-connected', () => {
       uri: 'gdrive://connection-drive',
     })
     sourceResponses.data = { pages: [{ items: [connectorSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({ ...connectorSource, status: 'syncing', syncWorkflow: sourceWorkflow(), version: 4 }),
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({
+          ...connectorSource,
+          status: 'syncing',
+          syncWorkflow: sourceWorkflow(),
+          version: 4,
+        }),
+      ),
     )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -167,7 +216,9 @@ describe('Sources: edit-connected', () => {
     await page.getByRole('button', { name: 'common.operation.save' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Product documentation',
@@ -203,9 +254,10 @@ describe('Sources: edit-connected', () => {
       workspace_id: workspaceId,
       workspace_name: workspaceId,
     })
-    let resolveStalePage: (value: unknown) => void = () => {}
-    clientMock.previewConnectedSource
+    let resolveStalePage: (value: KnowledgeFsInitialSourcePreviewResponse) => void = () => {}
+    fake.console.knowledgeFs.sourceProviderPreview.post
       .mockResolvedValueOnce({
+        kind: 'online_document',
         documents: [notionDocument('old-1', 'Old plan', 'workspace-old')],
         next_page_parameters: { cursor: 'page-2' },
       })
@@ -216,6 +268,7 @@ describe('Sources: edit-connected', () => {
           }),
       )
       .mockResolvedValueOnce({
+        kind: 'online_document',
         documents: [notionDocument('new-1', 'New plan', 'workspace-new')],
         next_page_parameters: null,
       })
@@ -251,6 +304,7 @@ describe('Sources: edit-connected', () => {
     const workspace = page.getByRole('textbox', { name: /Workspace/ })
     await workspace.fill('new')
     resolveStalePage({
+      kind: 'online_document',
       documents: [notionDocument('old-2', 'Stale plan', 'workspace-old')],
       next_page_parameters: null,
     })
@@ -265,7 +319,8 @@ describe('Sources: edit-connected', () => {
   it('submits the connected-source editor from its form boundary', async () => {
     pluginResponses.data = [notionDatasourcePlugin]
     serveNotionConnection()
-    clientMock.previewConnectedSource.mockResolvedValue({
+    fake.console.knowledgeFs.sourceProviderPreview.post.mockResolvedValue({
+      kind: 'online_document',
       documents: [
         {
           last_edited_time: '2026-08-30T10:00:00Z',
@@ -291,7 +346,9 @@ describe('Sources: edit-connected', () => {
       uri: 'notion://connection-notion',
     })
     sourceResponses.data = { pages: [{ items: [connectorSource] }] }
-    clientMock.patchSource.mockResolvedValue(source({ ...connectorSource, version: 4 }))
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(source({ ...connectorSource, version: 4 })),
+    )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await page
@@ -308,7 +365,9 @@ describe('Sources: edit-connected', () => {
 
     await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
     await vi.waitFor(() =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith(
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           body: expect.objectContaining({
             selection: expect.objectContaining({ kind: 'online_document' }),

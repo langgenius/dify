@@ -84,7 +84,7 @@ function List({
           rel="noopener noreferrer"
         >
           <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
-          <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+          <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
         </Link>
       </footer>
     )
@@ -105,7 +105,7 @@ function List({
           {scrollPosition === ScrollPosition.belowTheWrap ? (
             <button
               type="button"
-              className="flex min-w-0 flex-1 cursor-pointer items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+              className="flex min-w-0 flex-1 cursor-pointer items-center rounded-md border-0 bg-transparent p-0 text-start focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
               onClick={handleScrollToResults}
             >
               {t(($) => $.fromMarketplace, { ns: 'plugin' })}
@@ -124,10 +124,10 @@ function List({
             href={urlWithSearchText}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-2 flex shrink-0 items-center rounded-md text-text-accent-light-mode-only focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+            className="ms-2 flex shrink-0 items-center rounded-md text-text-accent-light-mode-only focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span>{t(($) => $.searchInMarketplace, { ns: 'plugin' })}</span>
-            <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+            <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
           </Link>
         </div>
       )}

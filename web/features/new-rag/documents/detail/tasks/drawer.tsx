@@ -13,7 +13,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,7 +28,7 @@ import {
 } from '../../tasks/drawer-model'
 import { createTaskProgressStore } from '../../tasks/progress-store'
 import { documentDetailKnowledgeSpaceIdAtom } from '../state/inputs'
-import { documentDetailDocumentAtom, refreshDocumentDetailAtom } from '../state/queries'
+import { documentDetailDocumentAtom } from '../state/queries'
 import {
   documentBackgroundTasksAtom,
   documentCanEditAtom,
@@ -56,6 +56,7 @@ export function DocumentDetailTasksDrawer({
   const { t: tCommon } = useTranslation(['common'])
   const currentDocument = useAtomValueRawSync(documentDetailDocumentAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
+  const queryClient = useQueryClient()
   const canEdit = useAtomValueRawSync(documentCanEditAtom)
   const tasks = useAtomValueRawSync(documentBackgroundTasksAtom)
   const taskQueryError = Boolean(useAtomValueRawSync(documentTasksQueryErrorAtom))
@@ -64,7 +65,6 @@ export function DocumentDetailTasksDrawer({
   const isFetchingNextTaskPage = useAtomValueRawSync(documentTasksQueryIsFetchingNextPageAtom)
   const taskQueryPending = useAtomValueRawSync(documentTasksQueryIsPendingAtom)
   const loadMoreTasks = useSetAtom(loadNextDocumentTaskPageAtom)
-  const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
   const refreshTasks = useSetAtom(refreshDocumentTasksAtom)
   const retryTasks = useSetAtom(retryDocumentTasksAtom)
   const documentsQuery = useInfiniteQuery(
@@ -99,8 +99,28 @@ export function DocumentDetailTasksDrawer({
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
   const taskProgressStore = taskProgressStoreRef.current
+  // A failed task control can still change the document and its siblings, so mark both stale
+  // with the tasks.
   const refreshDocumentsAndTasks = () =>
-    Promise.all([refreshDocument(), documentsQuery.refetch(), refreshTasks()])
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey:
+          consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.get.queryKey(
+            {
+              input: {
+                params: { control_space_id: knowledgeSpaceId, document_id: currentDocument.id },
+              },
+            },
+          ),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key({
+          input: { params: { control_space_id: knowledgeSpaceId } },
+          type: 'infinite',
+        }),
+      }),
+      refreshTasks(),
+    ])
   const retryDocuments = () => {
     if (documentsQuery.isFetchNextPageError) return documentsQuery.fetchNextPage()
     return documentsQuery.refetch()
@@ -263,7 +283,7 @@ export function DocumentDetailTasksDrawer({
                           task.documentId ? documentTitles.get(task.documentId) : undefined
                         }
                         documentsPending={documentsPending}
-                        onSettled={refreshDocumentsAndTasks}
+                        onFailed={refreshDocumentsAndTasks}
                         retryActionCount={retryActionCount}
                         task={task}
                       />

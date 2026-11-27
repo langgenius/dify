@@ -51,10 +51,15 @@ export const serializeAppListQuery = createSerializer(appListQueryParsers)
 // The Studio list opens its creation dialogs from the URL: `create` picks the
 // dialog and `mode` the default app type for blank creation.
 export const appCreationQueryParsers = {
-  create: parseAsStringLiteral(['blank', 'template'] as const),
+  create: parseAsStringLiteral(['blank', 'template']),
   mode: parseAsStringLiteral(APP_TYPES),
 }
 
-export const createWorkflowAppHref = '/apps?create=blank&mode=workflow'
+const serializeAppCreationQuery = createSerializer(appCreationQueryParsers)
+
+export const createWorkflowAppHref = serializeAppCreationQuery('/apps', {
+  create: 'blank',
+  mode: 'workflow',
+})
 
 export type AppListUrlQuery = inferParserType<typeof appListQueryParsers>

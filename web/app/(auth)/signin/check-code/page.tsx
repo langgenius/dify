@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -16,7 +16,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
@@ -39,7 +39,12 @@ export default function CheckCode() {
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const language = i18n.language
   const [loading, setLoading] = useState(false)
-  const [isResending, setIsResending] = useState(false)
+  const { mutateAsync: verifyLoginCode } = useMutation(
+    consoleQuery.emailCodeLogin.validity.post.mutationOptions(),
+  )
+  const { isPending: isResending, mutateAsync: resendLoginCode } = useMutation(
+    consoleQuery.emailCodeLogin.post.mutationOptions(),
+  )
   const [verifyTurnstileToken, setVerifyTurnstileToken] = useState('')
   const [verifyTurnstileGeneration, setVerifyTurnstileGeneration] = useState(0)
   const [showResendTurnstile, setShowResendTurnstile] = useState(false)
@@ -61,7 +66,7 @@ export default function CheckCode() {
 
       setLoading(true)
       shouldResetTurnstile = isTurnstileRequired
-      const ret = await consoleClient.emailCodeLogin.validity.post({
+      const ret = await verifyLoginCode({
         body: {
           email,
           code: encryptVerificationCode(code),
@@ -82,9 +87,7 @@ export default function CheckCode() {
         if (invite_token) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          const profileQueryOptions = userProfileQueryOptions()
-          await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
-          await queryClient.query(profileQueryOptions)
+          await queryClient.query(userProfileQueryOptions())
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       }
@@ -100,9 +103,8 @@ export default function CheckCode() {
   }
 
   const resendCode = async (turnstileToken?: string) => {
-    setIsResending(true)
     try {
-      const ret = await consoleClient.emailCodeLogin.post({
+      const ret = await resendLoginCode({
         body: {
           email,
           language: locale,
@@ -119,7 +121,6 @@ export default function CheckCode() {
     } catch (error) {
       console.error(error)
     } finally {
-      setIsResending(false)
       setShowResendTurnstile(false)
     }
   }

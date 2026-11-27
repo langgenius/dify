@@ -44,6 +44,7 @@ class RBACPermission(StrEnum):
     APP_ACCESS_CONFIG = "app_access_config"
 
     AGENT_CREATE = "agent_create"
+    AGENT_TAG_MANAGE = "agent_tag_manage"
     AGENT_PREVIEW = "agent_preview"
     AGENT_EDIT = "agent_edit"
     AGENT_TEST_AND_RUN = "agent_test_and_run"
@@ -128,5 +129,6 @@ _FUNCTION_SCOPED_RESOURCE_SCENES: frozenset[RBACPermission] = frozenset(
         RBACPermission.APP_CREATE_AND_MANAGEMENT,
         RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
         RBACPermission.AGENT_CREATE,
+        RBACPermission.AGENT_TAG_MANAGE,
     }
 )

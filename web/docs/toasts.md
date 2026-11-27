@@ -38,16 +38,23 @@ A success toast is appropriate when the result is not on screen: a background jo
 
 ## Errors
 
-- When a request fails and the server returns an error message, the request layer shows that message unless the request is `silent`; see `afterResponseErrorCode` in [request layer]. Do not add a second toast for the same failure in `catch` or `onError`.
-- When a business flow owns the error feedback, make its requests `silent` (`{ context: { silent: true } }` for generated clients) and present the failure once at that business boundary. Prefer inline errors; use a business-specific toast only when the feedback cannot live where the user acted. For multi-request actions, let the business flow choose one message for the overall result. A `silent` request with no other error presentation fails without any feedback.
-- Failures that never reach the request layer, such as a rejected clipboard write or a client-side exception, still need their own feedback.
-- When choosing the business error, preserve the actionable reason. Prefer a localized message for a known domain error, then the server's error message; use a generic failure message only as a fallback. Making a request silent must not hide details such as name conflicts, quota limits, unsupported file types, or permission requirements.
+- The query client reports failed requests once, at the cache; see [query error toasts]. The request layer shows no error toasts.
+  - The message comes from [`describeRequestError`]: a translated `requestErrors` entry for the error's `code`, the server's message for a code whose text is upstream detail, then the server's message for a code the catalog does not know, then generic text for the kind of failure (network, timeout, rate limit, server error).
+  - A failed mutation shows that message. Set `meta: { errorMessage }` to give it the mutation's own text for codes the catalog does not know; a cataloged code keeps its translated text. Do not add a second toast for the same failure in `catch` or `onError`.
+  - A failed query shows that message, on its first load and on a background refetch alike, but only when the code or the server explains the failure. A polling query shows a given message once per 10 seconds. When the owner renders its own error state, set `meta: { errorToast: false }` on the query.
+  - Sign-in failures (401), app-access errors and other failures the request layer already presents are never reported again.
+- When a business flow owns the error feedback, set `meta: { errorToast: false }` on its mutation or query and present the failure once at that business boundary. Prefer inline errors; use a business-specific toast only when the feedback cannot live where the user acted. For multi-request actions, let the business flow choose one message for the overall result. An opted-out request with no other error presentation fails without any feedback.
+- A request called outside TanStack Query, such as a direct `consoleClient` call, has no automatic toast. Run a user action through a mutation, or present its failure where it is caught; `reportRequestError(error, fallback)` reports it like the mutation cache, and also reports a network failure, timeout or other exception with generic text. Event streams and uploads report through their own error callbacks.
+- Failures that are not failed requests, such as a rejected clipboard write or a client-side exception, still need their own feedback.
+- When choosing the business error, preserve the actionable reason. Use [`useRequestErrorMessage`]`(error, fallback)`, `useRequestErrorDescriber()` or `describeRequestError(error, { t, fallback })`: a known code gets its translated text, upstream detail stays, and the caller's translated `fallback` replaces the server's text only for codes the catalog does not know. Add a `requestErrors` entry when the backend documents a new code. Opting a request out of the toast must not hide details such as name conflicts, quota limits, unsupported file types, or permission requirements.
 - Client-side validation belongs at the field through the [form contract], never in a toast.
 
 ## Existing Code
 
-Many existing calls predate these rules and are migrated in batches. Do not copy them into new code, and do not remove an error toast without confirming the request layer covers that failure.
+Many existing calls predate these rules and are migrated in batches. Do not copy them into new code, and do not remove an error toast without confirming the query cache covers that failure.
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
+[`describeRequestError`]: ../service/request-error-message.ts
+[`useRequestErrorMessage`]: ../service/use-request-error-message.ts
 [form contract]: ../../packages/dify-ui/docs/forms.md
-[request layer]: ../service/fetch.ts
+[query error toasts]: ../app/query-error-toast.ts

@@ -11,10 +11,13 @@ import pytest
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from events.app_event import app_was_created
+from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
+    AgentConfigRevision,
     AgentConfigSnapshot,
     AgentDebugConversation,
     AgentScope,
@@ -25,11 +28,13 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import TagType
 from models.model import App, AppMode, AppModelConfig, Conversation, Tag, TagBinding
-from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
-from repositories.app.agent_app_repository import AgentAppRepository
+from models.provider import TenantDefaultModel
+from repositories.agent.agent_app_repository import AgentAppRepository
+from repositories.agent.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from services.agent.invite_options_store import AgentInviteOptionsPage
 from services.enterprise.base import EnterpriseRequest
-from services.entities.app_entities import AppListParams
+from services.entities.app_entities import AppEvent, AppListParams
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
@@ -91,7 +96,9 @@ def test_list_applies_visible_agent_ids_before_pagination_and_counts(harness: Ha
             app = session.get(App, app_id)
             assert app is not None
             app.maintainer = str(uuid4())
-    repository = AgentAppRepository(session_factory=harness.sessions)
+    repository = AgentAppRepository(
+        session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     context = RequestContext("test", None, harness.account_id, harness.tenant_id)
     result = repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids={first_id})
     assert result.total == 1
@@ -109,7 +116,9 @@ def test_list_rolls_back_build_conversation_if_app_projection_fails(harness: Har
         session.flush()
         app.app_model_config_id = config.id
 
-    repository = AgentAppRepository(session_factory=harness.sessions)
+    repository = AgentAppRepository(
+        session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     context = RequestContext("test", None, harness.account_id, harness.tenant_id)
     with pytest.raises(json.JSONDecodeError):
         repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids=None)
@@ -430,12 +439,12 @@ def test_list_preserves_tag_filter_and_model_projection(harness: Harness) -> Non
             pre_prompt="Example prompt",
             model=json.dumps({"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}),
         )
-        tag = Tag(tenant_id=harness.tenant_id, type=TagType.APP, name="Team", created_by=harness.account_id)
+        tag = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Team", created_by=harness.account_id)
         session.add_all([config, tag])
         session.flush()
         app.app_model_config_id = config.id
         session.add(
-            TagBinding(tenant_id=harness.tenant_id, tag_id=tag.id, target_id=app_id, created_by=harness.account_id)
+            TagBinding(tenant_id=harness.tenant_id, tag_id=tag.id, target_id=agent_id, created_by=harness.account_id)
         )
         tag_id = tag.id
     response = harness.client.get(f"/console/api/agent?tag_ids={tag_id}", headers=harness.headers)
@@ -444,7 +453,120 @@ def test_list_preserves_tag_filter_and_model_projection(harness: Harness) -> Non
     assert item["id"] == agent_id
     assert item["model_config"]["model"]["name"] == "gpt-4o"
     assert item["model_config"]["pre_prompt"] == "Example prompt"
-    assert item["tags"] == [{"id": tag_id, "name": "Team", "type": "app"}]
+    assert item["tags"] == [{"id": tag_id, "name": "Team", "type": "agent"}]
+
+
+@pytest.mark.parametrize(("endpoint", "search_key"), [("agent", "name"), ("agent/invite-options", "keyword")])
+def test_agent_tag_filters_combine_and_paginate_before_counting(
+    harness: Harness, endpoint: str, search_key: str
+) -> None:
+    first_id, first_app = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        session.get_one(Agent, first_id).name = "Company Research"
+    second_id, second_app = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        session.get_one(Agent, second_id).name = "Market Monitor"
+    harness.create_agent()
+    with harness.sessions.begin() as session:
+        for agent_id, app_id, name in (
+            (first_id, first_app, "Company Research"),
+            (second_id, second_app, "Market Monitor"),
+        ):
+            agent = session.get_one(Agent, agent_id)
+            snapshot_id = agent.active_config_snapshot_id
+            assert snapshot_id is not None
+            agent.name = name
+            agent.active_config_has_model = True
+            session.get_one(App, app_id).name = name
+            session.add(
+                AgentConfigSnapshot(
+                    id=snapshot_id,
+                    tenant_id=harness.tenant_id,
+                    agent_id=agent_id,
+                    version=1,
+                    config_snapshot=AgentSoulConfig(),
+                )
+            )
+        research = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Research", created_by=harness.account_id)
+        finance = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Finance", created_by=harness.account_id)
+        studio = Tag(tenant_id=harness.tenant_id, type=TagType.APP, name="Research", created_by=harness.account_id)
+        foreign = Tag(tenant_id=str(uuid4()), type=TagType.AGENT, name="Research", created_by=harness.account_id)
+        session.add_all([research, finance, studio, foreign])
+        session.flush()
+        research_id, finance_id, studio_id, foreign_id = research.id, finance.id, studio.id, foreign.id
+        session.add_all(
+            TagBinding(tenant_id=harness.tenant_id, tag_id=tag_id, target_id=target_id, created_by=harness.account_id)
+            for tag_id, target_id in (
+                (research_id, first_id),
+                (research_id, second_id),
+                (finance_id, first_id),
+                (studio_id, first_app),
+            )
+        )
+
+    path = f"/console/api/{endpoint}"
+    first_page = harness.client.get(f"{path}?tag_ids={research_id}&limit=1", headers=harness.headers)
+    assert first_page.status_code == HTTPStatus.OK
+    body = first_page.get_json()
+    assert body["total"] == 2
+    assert body["has_more"] is True
+    second_page = harness.client.get(f"{path}?tag_ids={research_id}&limit=1&page=2", headers=harness.headers)
+    assert second_page.status_code == HTTPStatus.OK
+    assert second_page.get_json()["total"] == 2
+    assert second_page.get_json()["has_more"] is False
+    assert {body["data"][0]["id"], second_page.get_json()["data"][0]["id"]} == {first_id, second_id}
+
+    both = harness.client.get(
+        f"{path}?tag_ids={research_id}&tag_ids={finance_id}&tag_ids={research_id}", headers=harness.headers
+    )
+    assert both.status_code == HTTPStatus.OK
+    assert both.get_json()["total"] == 1
+    [item] = both.get_json()["data"]
+    assert item["id"] == first_id
+    assert {tag["id"] for tag in item["tags"]} == {research_id, finance_id}
+    assert all(tag["type"] == "agent" for tag in item["tags"])
+    assert studio_id not in {tag["id"] for tag in item["tags"]}
+
+    searched = harness.client.get(f"{path}?tag_ids={research_id}&{search_key}=Market", headers=harness.headers)
+    assert searched.status_code == HTTPStatus.OK
+    assert [item["id"] for item in searched.get_json()["data"]] == [second_id]
+    empty = harness.client.get(f"{path}?tag_ids={finance_id}&{search_key}=Market", headers=harness.headers)
+    assert empty.get_json()["total"] == 0
+    cleared = harness.client.get(f"{path}?{search_key}=Market", headers=harness.headers)
+    assert [item["id"] for item in cleared.get_json()["data"]] == [second_id]
+
+    for invalid_tag in (studio_id, foreign_id, str(uuid4())):
+        no_match = harness.client.get(f"{path}?tag_ids={research_id}&tag_ids={invalid_tag}", headers=harness.headers)
+        assert no_match.status_code == HTTPStatus.OK
+        assert no_match.get_json()["total"] == 0
+        assert no_match.get_json()["has_more"] is False
+        assert no_match.get_json()["data"] == []
+    invalid = harness.client.get(f"{path}?tag_ids=invalid-uuid", headers=harness.headers)
+    expected_status = HTTPStatus.BAD_REQUEST if endpoint == "agent" else HTTPStatus.UNPROCESSABLE_ENTITY
+    assert invalid.status_code == expected_status
+
+
+def test_agent_detail_returns_agent_tags_without_studio_bindings(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent()
+    with harness.sessions.begin() as session:
+        agent_tag = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Research", created_by=harness.account_id)
+        studio_tag = Tag(tenant_id=harness.tenant_id, type=TagType.APP, name="Studio", created_by=harness.account_id)
+        session.add_all([agent_tag, studio_tag])
+        session.flush()
+        agent_tag_id = agent_tag.id
+        session.add_all(
+            [
+                TagBinding(
+                    tenant_id=harness.tenant_id, tag_id=agent_tag.id, target_id=agent_id, created_by=harness.account_id
+                ),
+                TagBinding(
+                    tenant_id=harness.tenant_id, tag_id=studio_tag.id, target_id=app_id, created_by=harness.account_id
+                ),
+            ]
+        )
+    response = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json()["tags"] == [{"id": agent_tag_id, "name": "Research", "type": "agent"}]
 
 
 def test_list_includes_distinct_published_workflow_references(harness: Harness) -> None:
@@ -495,13 +617,49 @@ def test_list_includes_distinct_published_workflow_references(harness: Harness) 
 
 
 def test_create_returns_agent_detail_and_commits_app_and_agent(harness: Harness) -> None:
-    response = harness.client.post(
-        "/console/api/agent",
-        headers=harness.headers,
-        json={"name": "New Agent", "description": "Example", "role": "Helper"},
-    )
+    with harness.sessions.begin() as session:
+        session.add(
+            TenantDefaultModel(
+                tenant_id=harness.tenant_id,
+                model_type=ModelType.LLM,
+                provider_name="langgenius/openai/openai",
+                model_name="gpt-4o",
+            )
+        )
+    published: list[AppEvent] = []
+
+    def on_created(sender: object, *, created_records_initialized: bool) -> None:
+        assert isinstance(sender, AppEvent)
+        assert created_records_initialized is True
+        with harness.sessions() as session:
+            assert session.get(App, sender.id) is not None
+            agent = session.scalar(select(Agent).where(Agent.app_id == sender.id))
+            assert agent is not None
+            assert agent.active_config_has_model is True
+            snapshot = session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+            assert snapshot is not None
+            model = snapshot.config_snapshot.model
+            assert model is not None
+            assert (model.plugin_id, model.model_provider, model.model) == (
+                "langgenius/openai",
+                "langgenius/openai/openai",
+                "gpt-4o",
+            )
+            assert session.scalar(
+                select(AgentConfigRevision.id).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
+            )
+            assert session.scalar(select(AgentDebugConversation.id).where(AgentDebugConversation.agent_id == agent.id))
+        published.append(sender)
+
+    with app_was_created.connected_to(on_created):
+        response = harness.client.post(
+            "/console/api/agent",
+            headers=harness.headers,
+            json={"name": "New Agent", "description": "Example", "role": "Helper"},
+        )
     assert response.status_code == HTTPStatus.CREATED
     body = response.get_json()
+    assert published == [AppEvent(id=body["app_id"], tenant_id=harness.tenant_id, mode=AppMode.AGENT)]
     assert body["name"] == "New Agent"
     assert body["role"] == "Helper"
     assert body["debug_conversation_id"]
@@ -523,7 +681,14 @@ def test_create_omitted_role_and_duplicate_name(harness: Harness) -> None:
     first = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
     assert first.status_code == HTTPStatus.CREATED
     assert first.get_json()["role"] == ""
-    duplicate = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
+    published: list[object] = []
+
+    def record_created(sender: object, **_kwargs: object) -> None:
+        published.append(sender)
+
+    with app_was_created.connected_to(record_created):
+        duplicate = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
+    assert published == []
     assert duplicate.status_code == HTTPStatus.CONFLICT
     assert duplicate.get_json()["code"] == "agent_name_conflict_error"
     with harness.sessions() as session:
@@ -531,6 +696,9 @@ def test_create_omitted_role_and_duplicate_name(harness: Harness) -> None:
             select(Agent).where(Agent.tenant_id == harness.tenant_id, Agent.name == "Unique")
         ).all()
         assert len(agents) == 1
+        assert session.scalars(select(App.id).where(App.tenant_id == harness.tenant_id)).all() == [
+            first.get_json()["app_id"]
+        ]
 
 
 def test_member_can_list_but_cannot_create(harness: Harness) -> None:

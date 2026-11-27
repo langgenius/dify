@@ -93,7 +93,7 @@ function TaskStatusIndicator({
             <span aria-hidden className="contents">
               <DownloadingIcon active={hasActiveInstall} />
               {showBadge && (
-                <span className="absolute -top-1.5 -right-1.5 box-content flex size-3.5 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
+                <span className="absolute -inset-e-1.5 -top-1.5 box-content flex size-3.5 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
                   {isInstallingWithError && <ErrorBadgeIcon />}
                   {showSuccessBadge && <SuccessBadgeIcon />}
                   {isFailed && <ErrorBadgeIcon />}

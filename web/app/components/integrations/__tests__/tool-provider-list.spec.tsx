@@ -68,6 +68,19 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': async ({
+        params,
+      }: {
+        params: { provider: string }
+      }) => {
+        if (params.provider === 'langgenius/plugin-entity/plugin-entity')
+          return {
+            supported_credential_types: [],
+            credentials: [],
+            is_oauth_custom_client_enabled: false,
+          }
+        throw new Error(`Unexpected credential provider: ${params.provider}`)
+      },
       'remoteFiles.upload.post': async () => ({
         id: 'favicon',
         name: 'favicon.png',
@@ -90,12 +103,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.toolProvider.mcp.update.byProviderId.get': api.updateMCPTools,
       'workspaces.current.toolProvider.mcp.tools.byProviderId.get': api.mcpTools,
       'workspaces.current.plugin.installedIds.get': async () => ({ plugin_ids: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
-      'workspaces.current.toolProvider.api.add.post': api.createCustom,
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
@@ -111,6 +118,12 @@ vi.mock('@/service/console', async (importOriginal) => {
         },
       }),
     }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
+      'workspaces.current.toolProvider.api.add.post': api.createCustom,
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
+    }),
   }
 })
 vi.mock('@/service/marketplace', async (importOriginal) => {
@@ -123,22 +136,6 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ push: vi.fn() }),
-}))
-
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: async (url: string) => {
-    if (
-      url ===
-      '/workspaces/current/tool-provider/builtin/langgenius/plugin-entity/plugin-entity/credential/info'
-    )
-      return {
-        supported_credential_types: [],
-        credentials: [],
-        is_oauth_custom_client_enabled: false,
-      }
-    throw new Error(`Unexpected service request: ${url}`)
-  },
 }))
 
 const pluginEntity = createPluginEntity()

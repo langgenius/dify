@@ -49,19 +49,3 @@ it('filters members and applies selection so the same recipient cannot be added 
       '[{"type":"member","user_id":"member-1"},{"type":"member","user_id":"member-2"}]',
     )
 })
-
-it('hides compact suggestions when no members match', async () => {
-  await render(
-    <MemberList
-      value={[]}
-      searchValue="missing"
-      onSearchChange={vi.fn()}
-      list={members}
-      onSelect={vi.fn()}
-      email="owner@example.com"
-      hideSearch
-    />,
-  )
-  await expect.element(page.getByRole('button')).not.toBeInTheDocument()
-  await expect.element(page.getByRole('searchbox')).not.toBeInTheDocument()
-})

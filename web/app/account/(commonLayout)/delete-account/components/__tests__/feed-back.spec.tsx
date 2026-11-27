@@ -10,12 +10,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
+  const sendFeedback = vi.fn()
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'account.delete.feedback.post': vi.fn(),
+      'account.delete.feedback.post': sendFeedback,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'account.delete.feedback.post': sendFeedback,
       'logout.post': logout,
     }),
   }

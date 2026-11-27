@@ -52,7 +52,7 @@ export function EnvironmentDeployMenu({
             className="gap-0 px-2"
           >
             <span aria-hidden className="i-ri-add-line size-4" />
-            <span className="pl-1.5">{label}</span>
+            <span className="ps-1.5">{label}</span>
             <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
           </Button>
         }

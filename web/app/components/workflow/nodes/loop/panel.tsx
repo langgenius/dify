@@ -41,13 +41,13 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
       <div>
         <Field
           title={
-            <div className="pl-3">
+            <div className="ps-3">
               {t(($) => $['nodes.loop.loopVariables'], { ns: 'workflowLogic' })}
             </div>
           }
           operations={
             <div
-              className="mr-4 flex size-5 cursor-pointer items-center justify-center"
+              className="me-4 flex size-5 cursor-pointer items-center justify-center"
               onClick={handleAddLoopVariable}
             >
               <RiAddLine className="size-4 text-text-tertiary" />
@@ -66,7 +66,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
         <Split className="my-2" />
         <Field
           title={
-            <div className="pl-3">
+            <div className="ps-3">
               {t(($) => $[`${i18nPrefix}.breakCondition`], { ns: 'workflowLogic' })}
             </div>
           }
@@ -95,7 +95,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
         <div className="mt-2">
           <Field
             title={
-              <div className="pl-3">
+              <div className="ps-3">
                 {t(($) => $[`${i18nPrefix}.loopMaxCount`], { ns: 'workflowLogic' })}
               </div>
             }

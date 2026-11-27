@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -13,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
@@ -32,19 +33,13 @@ type ModalProps = {
 
 const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
   const { t } = useTranslation(['common', 'tools'])
-  const queryClient = useQueryClient()
-  const { mutateAsync: createMCPServer, isPending: creating } = useMutation(
-    consoleQuery.apps.byAppId.server.post.mutationOptions(),
+  const { mutate: createMCPServer, isPending: creating } = useMutation(
+    consoleQuery.apps.byAppId.server.post.mutationOptions({ onSuccess: () => onHide() }),
   )
-  const { mutateAsync: updateMCPServer, isPending: updating } = useMutation(
-    consoleQuery.apps.byAppId.server.put.mutationOptions(),
+  const { mutate: updateMCPServer, isPending: updating } = useMutation(
+    consoleQuery.apps.byAppId.server.put.mutationOptions({ onSuccess: () => onHide() }),
   )
-  const invalidateMCPServerDetail = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
-        input: { params: { app_id: appID } },
-      }),
-    })
+  const isSaving = creating || updating
 
   const defaultDescription = data?.description || appInfo?.description || ''
   const [description, setDescription] = React.useState(defaultDescription)
@@ -69,7 +64,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
     return res
   }
 
-  const submit = async () => {
+  const submit = () => {
     if (!data) {
       const body: {
         description?: string
@@ -80,11 +75,9 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
 
       if (description.trim()) body.description = description
 
-      await createMCPServer({ params: { app_id: appID }, body })
-      invalidateMCPServerDetail()
-      onHide()
+      createMCPServer({ params: { app_id: appID }, body })
     } else {
-      await updateMCPServer({
+      updateMCPServer({
         params: { app_id: appID },
         body: {
           id: data.id,
@@ -92,15 +85,18 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
           description,
         },
       })
-      invalidateMCPServerDetail()
-      onHide()
     }
   }
 
   return (
     <Dialog
       open={show}
-      onOpenChange={(open) => {
+      disablePointerDismissal
+      onOpenChange={(open, eventDetails) => {
+        if (!open && isSaving) {
+          eventDetails.cancel()
+          return
+        }
         if (!open) onHide()
       }}
     >
@@ -109,8 +105,8 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
           className="contents"
           onSubmit={(event) => {
             event.preventDefault()
-            if (!description || creating || updating) return
-            void submit()
+            if (!description || isSaving) return
+            submit()
           }}
         >
           <DialogHeader>
@@ -120,6 +116,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
                 : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
             </DialogTitle>
             <DialogHeaderCloseButton
+              disabled={isSaving}
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             />
           </DialogHeader>
@@ -180,13 +177,10 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
             )}
           </DialogBody>
           <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
-            <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
-            <Button
-              type="submit"
-              disabled={!description}
-              loading={creating || updating}
-              variant="primary"
-            >
+            <DialogClose render={<Button disabled={isSaving} />}>
+              {t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}
+            </DialogClose>
+            <Button type="submit" disabled={!description} loading={isSaving} variant="primary">
               {data
                 ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
                 : t(($) => $['mcp.server.modal.confirm'], { ns: 'tools' })}

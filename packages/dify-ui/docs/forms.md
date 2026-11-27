@@ -13,8 +13,7 @@ Use `Form` when the Dify UI boundary should own Base UI's structured `onFormSubm
 consolidated errors, `actionsRef`, or `validationMode`. It renders a native `<form>`. A native form
 remains correct when another form library owns submission and validation; do not nest form owners.
 
-Set [`Button`] submit buttons to `type="submit"` explicitly. Keep every other button inside a form
-at `type="button"`.
+Set [`Button`] submit buttons to `type="submit"` explicitly.
 
 Keep submit available while the form is incomplete; submitting is what runs validation and marks
 the fields. Once a submission starts, the submit button shows `loading` until it settles.

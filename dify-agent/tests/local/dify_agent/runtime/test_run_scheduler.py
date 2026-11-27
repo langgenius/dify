@@ -11,6 +11,7 @@ import pytest
 from fakeredis.aioredis import FakeRedis as AsyncFakeRedis
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -184,6 +185,7 @@ class FakeStore:
         *,
         session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
+        tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
     ) -> RunFinalizationResult:
         current_status = self.statuses[run_id]
         if current_status != "running":
@@ -192,6 +194,7 @@ class FakeStore:
             return RunFinalizationResult(applied=False, status="running")
         event = RunCancelledEvent(
             run_id=run_id,
+            tool_call_limits=tool_call_limits or {},
             data=RunCancelledEventData(
                 reason=intent.reason,
                 message=intent.message,
@@ -274,6 +277,13 @@ class CancellationDuringShutdownFailureStore(FakeStore):
 
 
 class SnapshotlessRunner:
+    def close_tool_admission(self) -> None:
+        pass
+
+    @property
+    def terminal_tool_call_limits(self) -> dict[str, ToolCallLimitSnapshot]:
+        return {}
+
     @property
     def terminal_session_snapshot(self) -> SessionSnapshot | None:
         return None
@@ -283,7 +293,7 @@ class SnapshotlessRunner:
         return None
 
 
-class ControlledRunner:
+class ControlledRunner(SnapshotlessRunner):
     started: asyncio.Event
     release: asyncio.Event
     finished: asyncio.Event | None

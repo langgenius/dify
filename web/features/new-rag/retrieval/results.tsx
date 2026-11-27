@@ -15,8 +15,8 @@ import DocumentFileIcon from '@/app/components/datasets/common/document-file-ico
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
+import { resolveLogicalDocumentCitation } from '@/service/knowledge-fs/document-citation'
 import { getErrorMessage } from '@/utils/error-message'
-import { resolveLogicalDocumentCitation } from '../documents/resolve-logical-document-id'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
@@ -37,7 +37,7 @@ function ScorePill({ score }: { score: number }) {
     <span className="relative inline-flex h-5 min-w-5 shrink-0 items-center justify-center gap-0.75 overflow-hidden rounded-md border border-components-progress-bar-border bg-util-colors-blue-brand-blue-brand-50 px-1.25 text-util-colors-blue-brand-blue-brand-700">
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 border-r-[1.5px] border-components-progress-bar-progress-highlight bg-util-colors-blue-brand-blue-brand-100"
+        className="absolute inset-y-0 inset-s-0 border-e-[1.5px] border-components-progress-bar-progress-highlight bg-util-colors-blue-brand-blue-brand-100"
         style={{ width: `${normalized * 100}%` }}
       />
       <span className="relative system-2xs-medium">
@@ -194,7 +194,7 @@ export function EvidenceCard({
         )}
       </div>
       {!unavailable && (
-        <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
+        <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 ps-3 pe-2">
           <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
             <DocumentFileIcon name={evidence.documentName ?? evidence.title} size="sm" />
           </span>

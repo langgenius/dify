@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable, Generator, Iterator
 from typing import cast
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zipfile import ZipFile
 
 import pytest
@@ -31,7 +31,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
@@ -59,12 +59,13 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
+from services.evaluation_service import EvaluationService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.audio_runtime_fixtures import record_calls
-from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file, make_workflow
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
@@ -226,7 +227,11 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             assert bindings[node_id].agent_id == roster_id
             assert bindings[node_id].current_snapshot_id == roster_snapshot_id
         for node_id in node_ids:
-            assert bindings[node_id].node_job_config_dict == source_jobs[node_id]
+            copied_job = WorkflowNodeJobConfig.model_validate(bindings[node_id].node_job_config_dict)
+            source_job = WorkflowNodeJobConfig.model_validate(source_jobs[node_id])
+            assert str(UUID(copied_job.session_generation)) == copied_job.session_generation
+            assert copied_job.session_generation != source_job.session_generation
+            assert copied_job == source_job.model_copy(update={"session_generation": copied_job.session_generation})
         if include_inline:
             binding = bindings["inline"]
             assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
@@ -817,9 +822,13 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     # The app event handlers reach the Flask-bound database; this test only checks the saved draft.
     monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Namespace().signal("synced"))
 
-    AppLifecycleGateway(session_factory=sqlite_session_factory).create_draft(context, app_id)
+    AppLifecycleGateway(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    ).create_draft(context, app_id)
 
     assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
+    assert syncs[0]["serialize_creation"] is True
     assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
     with sqlite_session_factory() as session:
         draft = session.scalar(
@@ -827,6 +836,32 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
         )
         assert draft is not None
         assert draft.graph_dict == console_gateway._STARTER_DRAFT_GRAPHS[mode]
+
+
+def test_create_draft_keeps_an_existing_first_save(
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+) -> None:
+    context, app_id = copy_source
+    graph: dict[str, object] = {"nodes": [{"id": "existing-start", "data": {"type": "start"}}], "edges": []}
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, app_id)
+        assert app is not None
+        app.mode = AppMode.WORKFLOW
+        draft = make_workflow(workflow_id=str(uuid4()), app_id=app.id, tenant_id=app.tenant_id, graph=graph)
+        session.add(draft)
+
+    AppLifecycleGateway(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    ).create_draft(context, app_id)
+
+    with sqlite_session_factory() as session:
+        stored = session.scalars(
+            select(Workflow).where(Workflow.app_id == app_id, Workflow.version == Workflow.VERSION_DRAFT)
+        ).one()
+        assert stored.id == draft.id
+        assert stored.graph_dict == graph
 
 
 def test_chatflow_starter_draft_is_start_llm_answer_as_the_editor_saves_it() -> None:

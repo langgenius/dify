@@ -9,6 +9,7 @@ spec export fail or succeed in the same way.
 import hashlib
 import json
 from collections.abc import Mapping
+from http import HTTPStatus
 from typing import Protocol, TypeGuard, cast, runtime_checkable
 
 from flask import current_app
@@ -375,17 +376,19 @@ def install_swagger_compatibility() -> None:
             return responses
 
         for status, response in responses.items():
-            if not isinstance(response, dict) or str(status).startswith("2"):
+            status_code = str(status)
+            if not isinstance(response, dict) or status_code.startswith("2"):
                 continue
-            content = response.get("content")
-            if not isinstance(content, dict) or not content:
-                response["content"] = {"application/json": {}}
-                continue
-            schemas = [media for media in content.values() if isinstance(media, dict) and "schema" in media]
-            if schemas:
-                response["content"] = {"application/json": schemas[0]}
+            if status_code == str(HTTPStatus.NOT_MODIFIED):
+                response.pop("content", None)
             else:
-                response["content"] = {"application/json": {}}
+                content = response.get("content")
+                schemas = (
+                    [media for media in content.values() if isinstance(media, dict) and "schema" in media]
+                    if isinstance(content, dict)
+                    else []
+                )
+                response["content"] = {"application/json": schemas[0] if schemas else {}}
         return responses
 
     def serialize_resource_with_explicit_operation_tags(self: Swagger, ns, resource, url, route_doc=None, **kwargs):

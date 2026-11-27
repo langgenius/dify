@@ -37,10 +37,15 @@ import {
   checkGitHubPluginUpdate,
 } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
-import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
+import { reportRequestError } from '@/app/query-error-toast'
+import {
+  invalidateMarketplacePluginLists,
+  useMarketplace,
+  useMarketplacePluginVersions,
+} from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { normalizeInstalledPluginDetail, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
+import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
 
 type Props =
@@ -92,7 +97,11 @@ function ProviderCardActions(props: Props) {
   const isFromGitHub = source === PluginSource.github
   const hasNewVersion = isFromMarketplace && !!latestVersion && latestVersion !== version
   const category = props.detail?.declaration.category ?? PluginCategoryEnum.model
-  const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
+  const autoUpgradeSettings = useQuery(
+    consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryOptions({
+      input: { query: { category } },
+    }),
+  )
   const marketplace = useMarketplace()
   const canChangeVersion = canUpdatePlugin && isFromMarketplace && marketplace !== null
   const policy = autoUpgradeSettings.data?.auto_upgrade
@@ -149,8 +158,7 @@ function ProviderCardActions(props: Props) {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
-      queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
+      invalidateMarketplacePluginLists(queryClient),
     ])
     await onUpdate?.()
   }
@@ -160,6 +168,7 @@ function ProviderCardActions(props: Props) {
     const response = await queryClient.query(
       consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
         input: { body: { plugin_ids: [pluginID] } },
+        meta: { errorToast: false },
       }),
     )
     return response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined
@@ -172,7 +181,9 @@ function ProviderCardActions(props: Props) {
         setInfo(loaded)
         setInfoOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      reportRequestError(error)
+    }
   }
   const handleUpdate = async () => {
     if (!canUpdatePlugin) return
@@ -194,7 +205,9 @@ function ProviderCardActions(props: Props) {
         })
         setUpdateOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      reportRequestError(error)
+    }
   }
   const remove = useMutation(
     consoleQuery.workspaces.current.plugin.uninstall.post.mutationOptions({

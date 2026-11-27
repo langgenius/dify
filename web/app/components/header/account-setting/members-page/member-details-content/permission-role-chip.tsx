@@ -4,9 +4,12 @@ import type { SelectorKey } from 'i18next'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useAtomValue } from 'jotai'
 import { memo, Suspense } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { isWorkspacePermissionVisible } from '../../workspace-permission-visibility'
 
 type PermissionRoleChipProps = {
   roleId: string
@@ -79,13 +82,17 @@ function PermissionSummary({
   permissionKeys,
 }: Pick<PermissionRoleChipProps, 'label' | 'permissionKeys'>) {
   const { t } = useTranslation(['permissionKeys', 'workspaceMembers'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
   const translatePermissionName = (key: string) =>
     t(key as SelectorKey, {
       ns: 'permissionKeys',
       defaultValue: key,
     })
-  const permissionLabels = permissionKeys.map(translatePermissionName).join(', ')
+  const permissionLabels = permissionKeys
+    .filter((key) => isWorkspacePermissionVisible(key, deploymentEdition))
+    .map(translatePermissionName)
+    .join(', ')
   const hasPermissionLabels = permissionLabels.length > 0
 
   return (

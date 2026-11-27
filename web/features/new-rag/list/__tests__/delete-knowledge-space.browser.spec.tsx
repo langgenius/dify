@@ -4,32 +4,13 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { NewKnowledgeList } from '../new-knowledge-list'
 
 type KnowledgeFsSpaceListItemResponse = Awaited<
   ReturnType<typeof consoleClient.knowledgeFs.spaces.get>
 >['data'][number]
 
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
-  remove: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.get': api.list,
-      'knowledgeFs.spaces.byControlSpaceId.delete': api.remove,
-      'datasets.knowledgeFsUpgradeJobs.get': async () => ({ data: [] }),
-      'datasets.apiBaseInfo.get': async () => ({ api_base_url: '' }),
-      'workspaces.current.members.get': async () => ({ accounts: [] }),
-      'tags.get': async () => [],
-    }),
-  }
-})
 const space = (
   id: string,
   name: string,
@@ -64,17 +45,35 @@ async function setup(ids: string[]) {
   let datasets = ids.map((id) =>
     space(id, id, { permission_keys: ['knowledge_space_read', 'knowledge_space_delete'] }),
   )
-  api.list.mockReset().mockImplementation(async () => ({
-    data: datasets,
-    page: 1,
-    total: datasets.length,
-    limit: 30,
-    has_more: false,
-  }))
-  api.remove.mockReset().mockImplementation(async ({ params }) => {
-    datasets = datasets.filter((item) => item.control_space_id !== params.control_space_id)
-    return { result: 'success' }
+  const fake = installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          get: async () => ({
+            data: datasets,
+            page: 1,
+            total: datasets.length,
+            limit: 30,
+            has_more: false,
+          }),
+          byControlSpaceId: {
+            delete: async ({ params }) => {
+              datasets = datasets.filter(
+                (item) => item.control_space_id !== params.control_space_id,
+              )
+            },
+          },
+        },
+      },
+      datasets: {
+        knowledgeFsUpgradeJobs: { get: () => ({ data: [] }) },
+        apiBaseInfo: { get: () => ({ api_base_url: '' }) },
+      },
+      workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+      tags: { get: () => [] },
+    },
   })
+  onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -93,22 +92,21 @@ async function setup(ids: string[]) {
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
     await screen.getByRole('textbox').fill(id)
   }
-  return { screen, open }
+  const { spaces } = fake.console.knowledgeFs
+  return { screen, open, list: spaces.get, remove: spaces.byControlSpaceId.delete }
 }
 describe('Knowledge space deletion', () => {
   it('removes the confirmed item and restores focus before the list refresh completes', async () => {
-    const { screen, open } = await setup(['Alpha', 'Beta'])
+    const { screen, open, list } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const list = api.list.getMockImplementation()!
-    const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-    api.list.mockReturnValueOnce(refresh.promise)
+    const refresh = hold(list)
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await list({ query: { page: 1, limit: 30 } }))
+    refresh.release()
   })
 
   it.each([
@@ -130,9 +128,8 @@ describe('Knowledge space deletion', () => {
       .toHaveFocus()
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
-    const { screen, open } = await setup(['Alpha'])
-    const request = createDeferred<{ result: 'success' }>()
-    api.remove.mockReturnValueOnce(request.promise)
+    const { screen, open, remove } = await setup(['Alpha'])
+    const request = hold(remove)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
     await confirm.click()
@@ -142,20 +139,20 @@ describe('Knowledge space deletion', () => {
       .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Failed'))
+    request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
     await expect.element(screen.getByRole('alert')).toBeVisible()
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect.element(screen.getByRole('region')).toHaveFocus()
   })
   it('returns focus to the menu button on cancellation', async () => {
-    const { screen, open } = await setup(['Alpha'])
+    const { screen, open, remove } = await setup(['Alpha'])
     await open('Alpha')
     await screen.getByRole('button', { name: 'common.operation.cancel' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('button', { name: 'common.operation.more' }))
       .toHaveFocus()
-    expect(api.remove).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
   })
 })

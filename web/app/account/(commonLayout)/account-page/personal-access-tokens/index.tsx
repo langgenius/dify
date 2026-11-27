@@ -23,6 +23,7 @@ import { parseAsInteger, useQueryState } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import DeleteToken from './delete-token'
 import SavedTokenForm from './saved-token-form'
 import ScopeDetails from './scope-details'
@@ -56,10 +57,14 @@ export default function PersonalAccessTokens() {
   const page = Math.max(1, requestedPage)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       input: { query: { page, limit: 20 } },
       placeholderData: keepPreviousData,
     }),
+  )
+  const loadErrorMessage = useRequestErrorMessage(
+    query.error,
+    t(($) => $['resourceAccessToken.loadError']),
   )
   const totalPages = query.data ? Math.ceil(query.data.total / query.data.limit) : 0
   const correctedPage =
@@ -89,6 +94,7 @@ export default function PersonalAccessTokens() {
             </p>
           </div>
           <Dialog
+            disablePointerDismissal
             onOpenChange={(open, details) => {
               if (!open && creating) details.cancel()
             }}
@@ -96,7 +102,7 @@ export default function PersonalAccessTokens() {
             <DialogTrigger render={<Button ref={createButtonRef} variant="primary" />}>
               {t(($) => $['personalAccessToken.createButton'])}
             </DialogTrigger>
-            <DialogContent className="w-150 has-[[data-pat-created]]:w-130">
+            <DialogContent className="w-150 has-data-pat-created:w-130">
               <TokenForm />
             </DialogContent>
           </Dialog>
@@ -110,7 +116,7 @@ export default function PersonalAccessTokens() {
           )}
           {query.isError && (
             <div role="alert" className="my-auto flex flex-wrap items-center justify-center gap-2">
-              {t(($) => $['resourceAccessToken.loadError'])}
+              {loadErrorMessage}
               <Button onClick={() => query.refetch()}>
                 {t(($) => $['operation.retry'], { ns: 'common' })}
               </Button>
@@ -169,7 +175,7 @@ export default function PersonalAccessTokens() {
                                 </TooltipTrigger>
                                 <TooltipContent>{token.name}</TooltipContent>
                               </Tooltip>
-                              <DialogContent className="w-150 has-[[data-pat-created]]:w-130">
+                              <DialogContent className="w-150 has-data-pat-created:w-130">
                                 <ScopeDetails tokenId={token.id} />
                               </DialogContent>
                             </Dialog>
@@ -285,6 +291,7 @@ export default function PersonalAccessTokens() {
       </section>
       <Dialog
         handle={formDialogHandle}
+        disablePointerDismissal
         onOpenChange={(open, details) => {
           if (!open && (creating || updating) && details.reason !== 'imperative-action')
             details.cancel()

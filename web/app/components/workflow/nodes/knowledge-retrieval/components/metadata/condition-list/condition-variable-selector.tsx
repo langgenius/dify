@@ -52,7 +52,7 @@ const ConditionVariableSelector = ({
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
                   <span
                     aria-hidden
-                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4"
+                    className="me-1 i-custom-vender-solid-development-variable-02 size-4"
                   />
                   {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.select'], {
                     ns: 'workflowModels',

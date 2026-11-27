@@ -9,6 +9,7 @@ from configs import dify_config
 from constants.languages import languages
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import RateLimiter
 from libs.oauth import GitHubOAuth, GoogleOAuth
@@ -87,7 +88,6 @@ from services.account_activation_service import (
     AccountActivationService,
     InvitationTokenStore,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
 from services.account_change_email_service import AccountChangeEmailService
 from services.account_deletion_feedback_service import AccountDeletionFeedbackService
@@ -250,7 +250,9 @@ def build_account_services(
             ),
         ),
         avatar=AccountAvatarService(
-            files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
+            avatars=accounts,
+            sign_file_url=file_helpers.get_signed_file_url,
+            console_api_url=dify_config.CONSOLE_API_URL,
         ),
         change_email=AccountChangeEmailService(
             accounts=accounts,

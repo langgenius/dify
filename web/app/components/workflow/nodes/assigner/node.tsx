@@ -53,7 +53,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
               rightSlot={
                 !!value.operation && (
                   <Badge
-                    className="ml-auto! shrink-0"
+                    className="ms-auto! shrink-0"
                     text={t(($) => $[`${i18nPrefix}.operations.${value.operation}`], {
                       ns: 'workflowLogic',
                     })}
@@ -86,7 +86,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({ data }) => {
         rightSlot={
           writeMode && (
             <Badge
-              className="ml-auto! shrink-0"
+              className="ms-auto! shrink-0"
               text={t(($) => $[`nodes.assigner.operations.${writeMode}`], { ns: 'workflowLogic' })}
             />
           )

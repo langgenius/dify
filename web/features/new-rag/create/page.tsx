@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeFsSpaceCreateResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { KnowledgeFsTaskFailureMessageKey } from '../knowledge-fs-task-error'
 import type { NewKnowledgeStartMode } from '../routes'
 import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
 import type {
@@ -44,6 +45,7 @@ import { deploymentEditionAtom, rbacEnabledAtom } from '@/features/system-featur
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
 import { ModelCostNotice } from '../components/model-cost-notice'
@@ -88,6 +90,18 @@ function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
 
 const sourceSessionAtoms = [createSourceSelectionAtom]
 
+type UploadFailureReason =
+  | { kind: 'messageKey'; messageKey: KnowledgeFsTaskFailureMessageKey }
+  | { kind: 'request'; error: unknown }
+  | { kind: 'uploadFailed' }
+
+// Kept untranslated so the message follows the current language.
+type UploadError =
+  | UploadFailureReason
+  | { kind: 'filesNumber' }
+  | { kind: 'someFilesNotAdded' }
+  | { kind: 'incomplete'; completed: number; remaining: number; reason: UploadFailureReason }
+
 export function CreateKnowledgePage() {
   return (
     <ScopeProvider atoms={sourceSessionAtoms}>
@@ -104,6 +118,7 @@ function CreateKnowledgeSession() {
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tDocuments } = useTranslation(['knowledgeDocuments'])
   const { t: tFileScan } = useTranslation(['fileScan'])
+  const describeRequestError = useRequestErrorDescriber()
   const supportBatchUpload = useKnowledgeBatchUpload()
   useDocumentTitle(t(($) => $.createTitle, { ns: 'knowledgeCreate' }))
   const router = useRouter()
@@ -149,7 +164,7 @@ function CreateKnowledgeSession() {
   const [uploadFailures, setUploadFailures] = useState<ReadonlyMap<File, FileScanFailure>>(
     () => new Map(),
   )
-  const [uploadError, setUploadError] = useState<string>()
+  const [uploadError, setUploadError] = useState<UploadError>()
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const uploadsRef = useRef<QueuedUpload[]>([])
   const uploadSelectionPendingRef = useRef(false)
@@ -170,6 +185,34 @@ function CreateKnowledgeSession() {
   const membersInvalid = visibility === 'partial_members' && selectedMemberIds.length === 0
   const shouldPreservePreviewOnUnmount = useCallback(() => preservePreviewOnUnmountRef.current, [])
 
+  const describeUploadFailureReason = (reason: UploadFailureReason) => {
+    if (reason.kind === 'messageKey') return tError(($) => $[reason.messageKey])
+    if (reason.kind === 'request')
+      return describeRequestError(
+        reason.error,
+        t(($) => $.documentUploadFailed),
+      )
+    return t(($) => $.documentUploadFailed)
+  }
+  const describeUploadError = (error: UploadError) => {
+    switch (error.kind) {
+      case 'filesNumber':
+        return tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], {
+          filesNumber: 1,
+        })
+      case 'someFilesNotAdded':
+        return tFileScan(($) => $['upload.someFilesNotAdded'])
+      case 'incomplete':
+        return tDocuments(($) => $.documentUploadIncomplete, {
+          completed: error.completed,
+          remaining: error.remaining,
+          reason: describeUploadFailureReason(error.reason),
+        })
+      default:
+        return describeUploadFailureReason(error)
+    }
+  }
+
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
     setUploadError(undefined)
@@ -184,7 +227,7 @@ function CreateKnowledgeSession() {
   const checkUploadQuota = async () => {
     const failure = await getKnowledgeFsUploadQuotaFailure(queryClient)
     if (!failure) return true
-    setUploadError(tError(($) => $[failure]))
+    setUploadError({ kind: 'messageKey', messageKey: failure })
     return false
   }
 
@@ -200,9 +243,7 @@ function CreateKnowledgeSession() {
       nextUploads.length > 1 &&
       (addedUploads.length > 0 || nextUploads.length > previousUploads.length)
     ) {
-      setUploadError(
-        tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
-      )
+      setUploadError({ kind: 'filesNumber' })
       return
     }
     resetUnsubmittedError()
@@ -259,7 +300,7 @@ function CreateKnowledgeSession() {
           })
           const messageKey = await knowledgeFsRequestFailureMessageKey(error)
           setUploadError(
-            messageKey ? tError(($) => $[messageKey]) : t(($) => $.documentUploadFailed),
+            messageKey ? { kind: 'messageKey', messageKey } : { kind: 'request', error },
           )
         })
         .finally(() => setStagingCount((count) => Math.max(0, count - 1)))
@@ -344,8 +385,10 @@ function CreateKnowledgeSession() {
         const hadUnsettledUploads = validUploads.some(
           ({ id }) => !isKnowledgeFsUploadSettled(uploadProgressRef.current, id),
         )
+        let claimingUploads = false
         try {
           await waitForKnowledgeSpaceReady(created.control_space_id)
+          claimingUploads = true
           const result = await uploadKnowledgeFsDocuments(
             created.control_space_id,
             validUploads.map(({ file, id, stagedUploadId }) => ({
@@ -368,24 +411,29 @@ function CreateKnowledgeSession() {
           // Stay so each rejected file can be read, retried or removed. Once only final
           // rejections are left, submitting again opens the new knowledge base.
           if (result.failures.length && hadUnsettledUploads) {
-            setUploadError(tFileScan(($) => $['upload.someFilesNotAdded']))
+            setUploadError({ kind: 'someFilesNotAdded' })
             return
           }
         } catch (error) {
           const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-          const reason = messageKey
-            ? tError(($) => $[messageKey])
-            : t(($) => $.documentUploadFailed)
+          // A failed upload claim keeps this page's copy; the readiness wait reports the
+          // server's message.
+          const reason: UploadFailureReason = messageKey
+            ? { kind: 'messageKey', messageKey }
+            : claimingUploads
+              ? { kind: 'uploadFailed' }
+              : { kind: 'request', error }
           const completed = validUploads.filter(
             ({ id }) => uploadProgressRef.current.get(id)?.phase === 'completed',
           ).length
           setUploadError(
             completed
-              ? tDocuments(($) => $.documentUploadIncomplete, {
+              ? {
+                  kind: 'incomplete',
                   completed,
                   remaining: validUploads.length - completed,
                   reason,
-                })
+                }
               : reason,
           )
           return
@@ -439,6 +487,7 @@ function CreateKnowledgeSession() {
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) requestClose()
       }}
@@ -650,7 +699,7 @@ function CreateKnowledgeSession() {
                           className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
                           role="alert"
                         >
-                          {uploadError}
+                          {describeUploadError(uploadError)}
                         </div>
                       )}
                     </div>

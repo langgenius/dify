@@ -27,7 +27,7 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({ nodeKey, genera
   return (
     <div
       className={cn(
-        'group/wrap relative mx-0.5 flex h-4.5 items-center rounded-[5px] border pr-0.75 pl-0.5 text-util-colors-violet-violet-600 select-none hover:border-state-accent-solid hover:bg-state-accent-hover',
+        'group/wrap relative mx-0.5 flex h-4.5 items-center rounded-[5px] border ps-0.5 pe-0.75 text-util-colors-violet-violet-600 select-none hover:border-state-accent-solid hover:bg-state-accent-hover',
         isSelected
           ? 'border-state-accent-solid bg-state-accent-hover'
           : 'border-components-panel-border-subtle bg-components-badge-white-to-dark',
@@ -37,7 +37,7 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({ nodeKey, genera
       }}
       ref={ref}
     >
-      <span aria-hidden className={cn(iconClassName, 'mr-0.5 size-3.5')} />
+      <span aria-hidden className={cn(iconClassName, 'me-0.5 size-3.5')} />
       <div className="text-xs font-medium">
         {generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}
       </div>

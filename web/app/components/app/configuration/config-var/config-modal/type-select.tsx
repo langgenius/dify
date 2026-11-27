@@ -73,14 +73,14 @@ const TypeSelector: FC<Props> = ({
             />
             <span
               className={cn(
-                'ml-1.5 truncate text-components-input-text-filled',
+                'ms-1.5 truncate text-components-input-text-filled',
                 !selectedItem?.name && 'text-components-input-text-placeholder',
               )}
             >
               {selectedItem?.name}
             </span>
           </div>
-          <div className="ml-2 flex shrink-0 items-center space-x-1">
+          <div className="ms-2 flex shrink-0 items-center space-x-1">
             <Badge uppercase={false}>
               {inputVarTypeToVarType(selectedItem?.value as InputVarType)}
             </Badge>

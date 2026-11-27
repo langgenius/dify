@@ -154,7 +154,7 @@ function UserAccessPolicyRow({
         <button
           type="button"
           disabled={isRemoveDisabled}
-          className="w-fit rounded-md border-none bg-transparent p-0 text-left system-md-medium text-text-destructive outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:no-underline"
+          className="w-fit rounded-md border-none bg-transparent p-0 text-start system-md-medium text-text-destructive outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:no-underline"
           onClick={handleRemove}
         >
           {t(($) => $['operation.remove'], { ns: 'common' })}

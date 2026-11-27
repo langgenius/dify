@@ -27,7 +27,7 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
             <Badge className="border-text-accent-secondary text-text-accent-secondary">
               <span
                 aria-hidden
-                className="mr-0.5 i-custom-vender-knowledge-search-lines-sparkle size-3"
+                className="me-0.5 i-custom-vender-knowledge-search-lines-sparkle size-3"
               />
               <span>{t(($) => $['list.summary.generating'], { ns: 'datasetDocuments' })}</span>
             </Badge>

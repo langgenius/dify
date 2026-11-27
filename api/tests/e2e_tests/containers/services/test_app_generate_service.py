@@ -124,7 +124,6 @@ class TestAppGenerateService:
             mock_global_dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
-            mock_global_dify_config.HOSTED_POOL_CREDITS = 1000
 
             yield {
                 "billing_service": mock_billing_service,

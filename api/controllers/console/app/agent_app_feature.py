@@ -30,8 +30,8 @@ from models.agent_config_entities import (
     AgentSuggestedQuestionsAfterAnswerFeatureConfig,
     AgentTextToSpeechFeatureConfig,
 )
+from services.agent.agent_app_contracts import AgentAppNotFoundError
 from services.agent.errors import AgentNotFoundError
-from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
 class AgentAppFeaturesPayload(BaseModel):

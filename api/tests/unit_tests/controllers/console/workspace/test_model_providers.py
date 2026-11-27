@@ -10,7 +10,7 @@ from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
 from controllers.common.rbac import AgentId, RBACPermission, Workspace
-from controllers.console.agent.composer import AgentComposerApi
+from controllers.console.agent.composer import AgentComposerApi, AgentComposerCandidatesApi, AgentComposerValidateApi
 from controllers.console.agent.roster import AgentAppApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import (
@@ -128,17 +128,19 @@ def test_datasource_auth_get_requires_edit_and_rbac() -> None:
 
 
 @pytest.mark.parametrize(
-    "method",
+    ("method", "permission"),
     [
-        AgentAppApi.get,
-        AgentComposerApi.get,
+        (AgentAppApi.get, RBACPermission.AGENT_PREVIEW),
+        (AgentComposerApi.get, RBACPermission.AGENT_PREVIEW),
+        (AgentComposerApi.put, RBACPermission.AGENT_EDIT),
+        (AgentComposerValidateApi.post, RBACPermission.AGENT_PREVIEW),
+        (AgentComposerCandidatesApi.get, RBACPermission.AGENT_PREVIEW),
     ],
 )
-def test_agent_app_get_requires_rbac(method: FunctionType) -> None:
-    """GET endpoints that return agent app details or composer state must require
-    the agent preview scene on the agent resource, same as their sibling routes."""
+def test_agent_app_details_and_composer_require_agent_rbac(method: FunctionType, permission: RBACPermission) -> None:
+    """Require the route's preview or edit permission on the Agent resource."""
     [check] = rbac_checks(method)
-    assert check.scene == RBACPermission.AGENT_PREVIEW
+    assert check.scene == permission
     assert isinstance(check.locator, AgentId)
 
 

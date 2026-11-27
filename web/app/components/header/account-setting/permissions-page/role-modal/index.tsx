@@ -71,75 +71,84 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
   return (
     <Dialog
       open={open}
+      disablePointerDismissal={!readonly}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) onClose()
       }}
     >
       <DialogContent className="h-[85dvh] w-140" backdropProps={{ forceRender: true }}>
-        <DialogHeader>
-          <DialogTitle>{t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}</DialogTitle>
-          <DialogDescription>
-            {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
-          </DialogDescription>
-          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
-        </DialogHeader>
-        <DialogBody className="flex flex-col gap-5">
-          <div className="flex shrink-0 flex-col gap-1">
-            <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
-              {t(($) => $['role.modal.nameLabel'], { ns: 'permission' })}
-            </label>
-            <Input
-              id="role-name"
-              value={name}
-              onChange={onRoleNameChange}
-              placeholder={t(($) => $['role.modal.namePlaceholder'], { ns: 'permission' })}
-              disabled={readonly}
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleSubmit()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}
+            </DialogTitle>
+            <DialogDescription>
+              {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
+            </DialogDescription>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             />
-          </div>
-          <div className="flex shrink-0 flex-col gap-1">
-            <label htmlFor="role-description" className="system-sm-medium text-text-secondary">
-              {t(($) => $['role.modal.descriptionLabel'], { ns: 'permission' })}
-            </label>
-            <Textarea
-              id="role-description"
-              value={desc}
-              onValueChange={onRoleDescChange}
-              placeholder={t(($) => $['role.modal.descriptionPlaceholder'], { ns: 'permission' })}
-              disabled={readonly}
-              className="min-h-24 resize-none"
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-5">
+            <div className="flex shrink-0 flex-col gap-1">
+              <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
+                {t(($) => $['role.modal.nameLabel'], { ns: 'permission' })}
+              </label>
+              <Input
+                id="role-name"
+                value={name}
+                onChange={onRoleNameChange}
+                placeholder={t(($) => $['role.modal.namePlaceholder'], { ns: 'permission' })}
+                disabled={readonly}
+              />
+            </div>
+            <div className="flex shrink-0 flex-col gap-1">
+              <label htmlFor="role-description" className="system-sm-medium text-text-secondary">
+                {t(($) => $['role.modal.descriptionLabel'], { ns: 'permission' })}
+              </label>
+              <Textarea
+                id="role-description"
+                value={desc}
+                onValueChange={onRoleDescChange}
+                placeholder={t(($) => $['role.modal.descriptionPlaceholder'], { ns: 'permission' })}
+                disabled={readonly}
+                className="min-h-24 resize-none"
+              />
+            </div>
+            <PermissionField
+              value={permissionKeys}
+              onChange={setPermissionKeys}
+              readonly={readonly}
             />
-          </div>
-          <PermissionField
-            value={permissionKeys}
-            onChange={setPermissionKeys}
-            readonly={readonly}
-          />
-        </DialogBody>
-        <DialogFooter>
-          <a
-            href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
-            target="_blank"
-            rel="noreferrer"
-            className="me-auto inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
-          >
-            <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
-            <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
-          </a>
-          <Button variant="secondary" onClick={onClose}>
-            {readonly
-              ? t(($) => $['operation.close'], { ns: 'common' })
-              : t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          {!readonly && (
-            <Button
-              variant="primary"
-              disabled={!name.trim() || isSubmitting}
-              onClick={handleSubmit}
+          </DialogBody>
+          <DialogFooter>
+            <a
+              href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
+              target="_blank"
+              rel="noreferrer"
+              className="me-auto inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
             >
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
+              <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
+              <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
+            </a>
+            <Button variant="secondary" onClick={onClose}>
+              {readonly
+                ? t(($) => $['operation.close'], { ns: 'common' })
+                : t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
-          )}
-        </DialogFooter>
+            {!readonly && (
+              <Button variant="primary" type="submit" disabled={!name.trim() || isSubmitting}>
+                {t(($) => $['operation.confirm'], { ns: 'common' })}
+              </Button>
+            )}
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

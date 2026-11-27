@@ -101,14 +101,14 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
                 {t(($) => $['dslUploader.button'], { ns: 'app' })}
                 <button
                   type="button"
-                  className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="inline cursor-pointer border-none bg-transparent p-0 ps-1 text-start text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
                   {t(($) => $['dslUploader.browse'], { ns: 'app' })}
                 </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
+            {dragging && <div ref={dragRef} className="absolute inset-s-0 top-0 size-full" />}
           </div>
         )}
         {file && (
@@ -116,7 +116,7 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
             <div className="flex items-center justify-center p-3">
               <RiNodeTree className="size-6 shrink-0 text-text-secondary" />
             </div>
-            <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
+            <div className="flex grow flex-col items-start gap-0.5 py-1 pe-2">
               <span className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">
                 {file.name}
               </span>
@@ -126,7 +126,7 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
-            <div className="hidden items-center pr-3 group-hover:flex">
+            <div className="hidden items-center pe-3 group-hover:flex">
               <IconButton
                 aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
                 onClick={removeFile}

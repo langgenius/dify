@@ -1,7 +1,7 @@
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
@@ -16,16 +16,16 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import {
-  useDeleteAllInspectorVars,
-  useDeleteInspectVar,
-  useDeleteNodeInspectorVars,
-  useEditInspectorVar,
-  useInvalidateConversationVarValues,
-  useInvalidateSysVarValues,
-  useResetInspectorVar,
-} from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
+import {
+  conversationVarValuesQueryOptions,
+  deleteAllInspectorVarsMutationOptions,
+  deleteInspectVarMutationOptions,
+  deleteNodeInspectorVarsMutationOptions,
+  editInspectorVarMutationOptions,
+  resetInspectorVarMutationOptions,
+  sysVarValuesQueryOptions,
+} from '@/service/workflow-queries'
 import { VarInInspectType } from '@/types/workflow'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
@@ -34,15 +34,31 @@ export const useInspectVarsCrudCommon = () => {
   const resource = useAtomValue(editorResourceAtom)
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(resource)
-  const { mutateAsync: doResetInspectorVar } = useResetInspectorVar(resource)
-  const invalidateSysVarValues = useInvalidateSysVarValues(resource)
+  const queryClient = useQueryClient()
+  const invalidateConversationVarValues = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: conversationVarValuesQueryOptions(resource).queryKey,
+      }),
+    [queryClient, resource],
+  )
+  const { mutateAsync: doResetInspectorVar } = useMutation(
+    resetInspectorVarMutationOptions(resource),
+  )
+  const invalidateSysVarValues = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: sysVarValuesQueryOptions(resource).queryKey }),
+    [queryClient, resource],
+  )
 
-  const { mutateAsync: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(resource)
-  const { mutateAsync: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(resource)
-  const { mutateAsync: doDeleteInspectVar } = useDeleteInspectVar(resource)
+  const { mutateAsync: doDeleteAllInspectorVars } = useMutation(
+    deleteAllInspectorVarsMutationOptions(resource),
+  )
+  const { mutateAsync: doDeleteNodeInspectorVars } = useMutation(
+    deleteNodeInspectorVarsMutationOptions(resource),
+  )
+  const { mutateAsync: doDeleteInspectVar } = useMutation(deleteInspectVarMutationOptions(resource))
 
-  const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(resource)
+  const { mutateAsync: doEditInspectorVar } = useMutation(editInspectorVarMutationOptions(resource))
   const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
   const { data: buildInTools } = useQuery(

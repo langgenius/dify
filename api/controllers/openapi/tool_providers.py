@@ -11,9 +11,10 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
 from constants.personal_access_token import PersonalAccessTokenPolicy
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import CredentialNotFound, CredentialOAuthOnly, ProviderNotFound
 from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
@@ -341,3 +342,28 @@ class ToolProviderCredentialApi(Resource):
                 name=body.name,
             )
         return _write_response(ctx, provider, credential_id)
+
+    @endpoint(
+        op="delete.tool_provider.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
+        kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
+        summary="Delete a saved tool provider credential",
+        examples=(
+            Example(
+                title="Remove a key",
+                input={"provider": _PROVIDER_EXAMPLE, "credential_id": "<credential_id>"},
+            ),
+        ),
+        requirements=workspace_write_guards(RBACPermission.CREDENTIAL_MANAGE, roles=ADMIN_ROLES),
+        returns=(HTTPStatus.OK, SimpleResultResponse, "Credential deleted"),
+    )
+    def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
+        """Delete a saved tool provider credential.
+
+        Answers 404 when `credential_id` is not among the provider's saved
+        credentials in this workspace.
+        """
+        _visible_credential(ctx, provider, credential_id)
+        BuiltinToolManageService.delete_builtin_tool_provider(ctx.workspace.id, provider, credential_id)
+        return SimpleResultResponse(result="success")

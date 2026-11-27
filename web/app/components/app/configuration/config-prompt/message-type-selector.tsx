@@ -18,12 +18,12 @@ const MessageTypeSelector: FC<Props> = ({ value, onChange }) => {
     setHide()
   }, ref)
   return (
-    <div className="relative -left-2" ref={ref}>
+    <div className="relative -inset-s-2" ref={ref}>
       <div
         onClick={toggleShow}
         className={cn(
           showOption && 'bg-indigo-100',
-          'flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg pr-1 pl-1.5 text-indigo-800',
+          'flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg ps-1.5 pe-1 text-indigo-800',
         )}
       >
         <div className="text-sm font-semibold uppercase">{value}</div>

@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "無法移除此聯絡人，請重試。",
   "directory.removalSingleTitle": "移除 {{name}}？",
   "directory.resultCount": "結果：{{count}}",
-  "imPlatform.action.configure": "配置",
   "imPlatform.action.configureChannel": "配置{{provider}}",
   "imPlatform.action.connect": "繫結",
   "imPlatform.action.copied": "複製",

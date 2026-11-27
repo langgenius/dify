@@ -20,11 +20,11 @@ const LoadingError: FC = () => {
                 className="i-custom-vender-other-group h-4 w-3.5 text-text-quaternary"
               />
             </div>
-            <div className="absolute -right-1 -bottom-1 rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
+            <div className="absolute -inset-e-1 -bottom-1 rounded-full border-2 border-components-panel-bg bg-state-destructive-solid">
               <RiCloseLine className="size-3 text-text-primary-on-surface" />
             </div>
           </div>
-          <div className="ml-3 grow">
+          <div className="ms-3 grow">
             <div className="flex h-5 items-center system-md-semibold text-text-destructive">
               {t(($) => $['installModal.pluginLoadError'], { ns: 'plugin' })}
             </div>

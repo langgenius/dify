@@ -14,7 +14,7 @@ import {
   PasswordFieldInput,
   PasswordFieldToggle,
 } from '@langgenius/dify-ui/password-field'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -50,7 +50,6 @@ const parseUtmInfo = () => {
 const ChangePasswordForm = () => {
   const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
-  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
   const locale = useLocale()
@@ -94,14 +93,13 @@ const ChangePasswordForm = () => {
           )
           Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
-          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } catch (error) {
         console.error(error)
       }
     },
-    [token, register, locale, queryClient, router, searchParams, isPending],
+    [token, register, locale, router, searchParams, isPending],
   )
 
   return (

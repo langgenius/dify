@@ -18,7 +18,6 @@ import { toast } from '@/app/notifications'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useDeletePluginOAuthCustomClientHook,
-  useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
 
@@ -69,7 +68,6 @@ const OAuthClientSettings = ({
   )
   const { mutateAsync: setPluginOAuthCustomClient } =
     useSetPluginOAuthCustomClientHook(pluginPayload)
-  const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current) return false
@@ -92,27 +90,18 @@ const OAuthClientSettings = ({
       onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
-      invalidPluginOAuthClientSchema()
       return true
     } finally {
       handleSetDoingAction(false)
     }
-  }, [
-    onClose,
-    onOpenChange,
-    onUpdate,
-    invalidPluginOAuthClientSchema,
-    setPluginOAuthCustomClient,
-    t,
-    handleSetDoingAction,
-  ])
+  }, [onClose, onOpenChange, onUpdate, setPluginOAuthCustomClient, t, handleSetDoingAction])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     try {
       const isSaved = await handleConfirm()
       if (isSaved) await onRequestAuthorization?.()
     } catch {
-      // The request layer reports the save error. Keep settings open and stop
+      // The mutation cache reports the save error. Keep settings open and stop
       // before opening the permission dialog.
     }
   }, [handleConfirm, onRequestAuthorization])
@@ -128,19 +117,10 @@ const OAuthClientSettings = ({
       onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
-      invalidPluginOAuthClientSchema()
     } finally {
       handleSetDoingAction(false)
     }
-  }, [
-    onUpdate,
-    invalidPluginOAuthClientSchema,
-    deletePluginOAuthCustomClient,
-    t,
-    handleSetDoingAction,
-    onClose,
-    onOpenChange,
-  ])
+  }, [onUpdate, deletePluginOAuthCustomClient, t, handleSetDoingAction, onClose, onOpenChange])
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })

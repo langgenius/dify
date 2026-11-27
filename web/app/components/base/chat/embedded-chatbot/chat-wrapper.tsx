@@ -14,11 +14,12 @@ import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
+  chatMessagesSender,
   fetchSuggestedQuestions,
-  getUrl,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
@@ -226,7 +227,7 @@ const ChatWrapper = () => {
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
-      handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+      handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
@@ -370,8 +371,13 @@ const ChatWrapper = () => {
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       const { form_version: formVersion, ...submission } = formData
       await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
-      else await submitHumanInputForm(formToken, submission, formVersion)
+      try {
+        if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+        else await submitHumanInputForm(formToken, submission, formVersion)
+      } catch (error) {
+        reportRequestError(error)
+        throw error
+      }
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )

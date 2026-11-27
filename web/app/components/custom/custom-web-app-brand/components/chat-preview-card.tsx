@@ -17,8 +17,8 @@ const ChatPreviewCard = ({
 }: ChatPreviewCardProps) => {
   return (
     <div className="flex h-80 grow basis-1/2 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn">
-      <div className="flex h-full w-58 shrink-0 flex-col p-1 pr-0">
-        <div className="flex items-center gap-3 p-3 pr-2">
+      <div className="flex h-full w-58 shrink-0 flex-col p-1 pe-0">
+        <div className="flex items-center gap-3 p-3 pe-2">
           <div
             className={cn(
               'inline-flex size-8 items-center justify-center rounded-lg border border-divider-regular',
@@ -68,8 +68,8 @@ const ChatPreviewCard = ({
           </div>
         </div>
       </div>
-      <div className="flex w-34.5 grow flex-col justify-between p-2 pr-0">
-        <div className="flex grow flex-col justify-between rounded-l-2xl border-[0.5px] border-r-0 border-components-panel-border-subtle bg-chatbot-bg pt-16 pb-4 pl-5.5">
+      <div className="flex w-34.5 grow flex-col justify-between p-2 pe-0">
+        <div className="flex grow flex-col justify-between rounded-s-2xl border-[0.5px] border-e-0 border-components-panel-border-subtle bg-chatbot-bg ps-5.5 pt-16 pb-4">
           <div className="w-180 rounded-2xl border border-divider-subtle bg-chat-bubble-bg px-4 py-3">
             <div className="mb-1 body-md-regular text-text-primary">
               Hello! How can I assist you today?
@@ -78,7 +78,7 @@ const ChatPreviewCard = ({
               <div className="h-2 w-36 rounded-xs bg-text-quaternary opacity-20"></div>
             </div>
           </div>
-          <div className="flex h-13 w-144.5 items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pl-3.5 body-lg-regular text-text-placeholder shadow-md backdrop-blur-xs">
+          <div className="flex h-13 w-144.5 items-center rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur ps-3.5 body-lg-regular text-text-placeholder shadow-md backdrop-blur-xs">
             Talk to Dify
           </div>
         </div>

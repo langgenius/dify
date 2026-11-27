@@ -71,7 +71,7 @@ const OptionCard = memo(
           <span
             aria-hidden="true"
             className={cn(
-              'absolute -top-0.5 -left-0.5 hidden h-14 w-14 rounded-full',
+              'absolute -inset-s-0.5 -top-0.5 hidden h-14 w-14 rounded-full',
               'group-hover:block',
               isActive && 'block',
             )}
@@ -113,7 +113,7 @@ const OptionCard = memo(
               }
             : {})}
           className={cn(
-            'relative flex w-full rounded-t-xl p-2 text-left',
+            'relative flex w-full rounded-t-xl p-2 text-start',
             // React Flow otherwise consumes Space before the native button can activate.
             enableSelect &&
               'nokey cursor-pointer focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset disabled:cursor-not-allowed',
@@ -124,7 +124,7 @@ const OptionCard = memo(
           {!!icon && (
             <span
               aria-hidden="true"
-              className="mr-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center"
+              className="me-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center"
             >
               {typeof icon === 'function' ? icon(isActive) : icon}
             </span>
@@ -136,7 +136,7 @@ const OptionCard = memo(
                 {isRecommended && (
                   <Badge
                     as="span"
-                    className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary"
+                    className="ms-1 h-4 border-text-accent-secondary text-text-accent-secondary"
                   >
                     {t(($) => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
                   </Badge>
@@ -145,7 +145,7 @@ const OptionCard = memo(
               {enableRadio && (
                 <span
                   className={cn(
-                    'ml-2 size-4 shrink-0 rounded-full border border-components-radio-border bg-components-radio-bg',
+                    'ms-2 size-4 shrink-0 rounded-full border border-components-radio-border bg-components-radio-bg',
                     isActive && 'border-[5px] border-components-radio-border-checked',
                   )}
                 ></span>
@@ -160,7 +160,7 @@ const OptionCard = memo(
           <div className="relative rounded-b-xl bg-components-panel-bg p-3">
             <span
               aria-hidden
-              className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg"
+              className="absolute inset-s-3.5 -top-2.75 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg"
             />
             {children}
           </div>

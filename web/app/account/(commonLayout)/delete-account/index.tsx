@@ -33,6 +33,7 @@ export default function DeleteAccount(props: DeleteAccountProps) {
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) props.onCancel()
       }}

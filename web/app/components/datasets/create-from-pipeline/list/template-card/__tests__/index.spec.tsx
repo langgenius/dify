@@ -1,5 +1,5 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChunkingMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
@@ -49,7 +49,6 @@ vi.mock('@/app/components/workflow/workflow-preview', () => ({
 
 const mockCreateDataset = vi.fn()
 const mockGetPipelineTemplateInfo = vi.fn()
-const mockDeletePipeline = vi.fn()
 const mockExportPipelineDSL = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 
@@ -85,13 +84,13 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'rag.pipeline.dataset.post': (input) => mockCreateDataset(input),
       'rag.pipeline.templates.byTemplateId.get': (input) => mockGetPipelineTemplateInfo(input),
-      'rag.pipeline.customized.templates.byTemplateId.delete': (input) => mockDeletePipeline(input),
       'rag.pipeline.customized.templates.byTemplateId.post': (input) =>
         mockExportPipelineDSL(input),
     }),
   }
 })
 const template = createPipelineTemplate()
+const detailIcon = { ...template.icon, icon: '📈' }
 const datasetListKey = consoleQuery.datasets.get.queryKey({ input: { query: { page: 1 } } })
 const templateListKey = consoleQuery.rag.pipeline.templates.get.queryKey({
   input: { query: { type: 'customized' } },
@@ -106,7 +105,7 @@ function setup() {
     has_more: false,
   })
   queryClient.setQueryData(templateListKey, { pipeline_templates: [] })
-  render(<TemplateCard pipeline={template} type="customized" />, { queryClient })
+  render(<TemplateCard pipeline={template} type="customized" onDelete={vi.fn()} />, { queryClient })
   return queryClient
 }
 async function action(user: ReturnType<typeof userEvent.setup>, name: string) {
@@ -117,7 +116,6 @@ beforeEach(() => {
   mockCreateDataset
     .mockReset()
     .mockResolvedValue({ dataset_id: 'created-dataset', pipeline_id: 'created-pipeline' })
-  mockDeletePipeline.mockReset().mockResolvedValue({ result: 'success' })
   mockExportPipelineDSL.mockReset().mockResolvedValue({ data: 'yaml_export' })
   mockHandleCheckPluginDependencies.mockReset().mockResolvedValue(undefined)
   mockGetPipelineTemplateInfo.mockReset().mockResolvedValue({
@@ -125,7 +123,7 @@ beforeEach(() => {
     name: 'Test Pipeline',
     description: 'Description',
     export_data: 'yaml_template',
-    icon_info: {},
+    icon_info: detailIcon,
     chunk_structure: 'text_model',
     graph: { nodes: [], edges: [] },
   })
@@ -153,7 +151,7 @@ it.each(['card', 'details'])(
       query: { type: 'customized' },
     })
     expect(mockCreateDataset).toHaveBeenCalledExactlyOnceWith({
-      body: { yaml_content: 'yaml_template' },
+      body: { yaml_content: 'yaml_template', icon_info: detailIcon },
     })
     expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
     expect(mockPush).not.toHaveBeenCalled()
@@ -212,30 +210,6 @@ it('reports an export failure without downloading a file', async () => {
   await action(user, 'datasetPipeline.operations.exportPipeline')
   await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('offline'))
   expect(downloadBlob).not.toHaveBeenCalled()
-})
-
-it('deletes only after confirmation and invalidates customized templates', async () => {
-  const user = userEvent.setup()
-  const queryClient = setup()
-  await action(user, 'common.operation.delete')
-  await user.click(
-    within(await screen.findByRole('alertdialog')).getByRole('button', {
-      name: 'common.operation.cancel',
-    }),
-  )
-  expect(mockDeletePipeline).not.toHaveBeenCalled()
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  await action(user, 'common.operation.delete')
-  await user.click(
-    within(await screen.findByRole('alertdialog')).getByRole('button', {
-      name: 'common.operation.confirm',
-    }),
-  )
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  expect(mockDeletePipeline).toHaveBeenCalledExactlyOnceWith({
-    params: { template_id: 'pipeline-1' },
-  })
-  expect(queryClient.getQueryState(templateListKey)?.isInvalidated).toBe(true)
 })
 
 it('opens editing for the chosen template and discards canceled changes', async () => {

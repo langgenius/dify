@@ -48,7 +48,7 @@ const LoopLogTrigger = ({ nodeInfo, onShowLoopResultList }: LoopLogTriggerProps)
         aria-hidden
         className="i-custom-vender-workflow-loop size-4 shrink-0 text-components-button-tertiary-text"
       />
-      <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
+      <div className="flex-1 text-start system-sm-medium text-components-button-tertiary-text">
         {t(($) => $['nodes.loop.loop'], { ns: 'workflowLogic', count: displayLoopCount })}
         {errorCount > 0 && (
           <>

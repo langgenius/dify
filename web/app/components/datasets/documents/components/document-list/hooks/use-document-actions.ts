@@ -14,7 +14,7 @@ type UseDocumentActionsOptions = {
   datasetId: string
   selectedIds: string[]
   downloadableSelectedIds: string[]
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
   onClearSelection: () => void
 }
 
@@ -35,19 +35,25 @@ export const useDocumentActions = ({
 
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
+    documents.status.byAction.batch.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: generateSummary } = useMutation(
-    documents.generateSummary.post.mutationOptions({ context: { silent: true } }),
+    documents.generateSummary.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: deleteDocuments } = useMutation(
-    documents.delete.mutationOptions({ context: { silent: true } }),
+    documents.delete.mutationOptions({ meta: { errorToast: false } }),
   )
   const { mutateAsync: retryIndexDocuments } = useMutation(
-    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip({
-    silent: true,
+    meta: { errorToast: false },
   })
 
   type SupportedActionType =

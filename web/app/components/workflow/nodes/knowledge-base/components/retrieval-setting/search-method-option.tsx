@@ -114,7 +114,7 @@ function getSearchMethodEffect(effectColor: string | undefined, isActive: boolea
   return (
     <div
       className={cn(
-        'absolute -top-0.5 -left-0.5 hidden h-14 w-14 rounded-full',
+        'absolute -inset-s-0.5 -top-0.5 hidden h-14 w-14 rounded-full',
         'group-hover/search-method-radio:block',
         isActive && 'block',
       )}
@@ -162,12 +162,12 @@ function SearchMethodRadioCard({
         render={<button type="button" />}
         disabled={readonly}
         className={cn(
-          'relative flex w-full rounded-t-xl p-2 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active',
+          'relative flex w-full rounded-t-xl p-2 text-start outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           'cursor-pointer data-disabled:cursor-not-allowed',
         )}
       >
         {getSearchMethodEffect(option.effectColor, isActive)}
-        <div className="mr-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center">
+        <div className="me-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center">
           {renderSearchMethodIcon(option.iconClassName, isActive)}
         </div>
         <div className="grow py-1 pt-px">
@@ -175,7 +175,7 @@ function SearchMethodRadioCard({
             <div className="flex grow items-center system-sm-medium text-text-secondary">
               {option.title}
               {isRecommended ? (
-                <Badge className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary">
+                <Badge className="ms-1 h-4 border-text-accent-secondary text-text-accent-secondary">
                   {t(($) => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
                 </Badge>
               ) : null}
@@ -188,7 +188,7 @@ function SearchMethodRadioCard({
       </RadioItem>
       {!!(children && isActive) && (
         <div className="relative rounded-b-xl bg-components-panel-bg p-3">
-          <div className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg" />
+          <div className="absolute inset-s-3.5 -top-2.75 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg" />
           {children}
         </div>
       )}
@@ -211,7 +211,7 @@ function HybridSearchModeRadioCard({
         render={<button type="button" />}
         disabled={readonly}
         className={cn(
-          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden',
+          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-start outline-hidden',
           'data-checked:border-[1.5px] data-checked:bg-components-option-card-option-selected-bg',
           'focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           'cursor-pointer hover:shadow-xs data-disabled:cursor-not-allowed data-disabled:hover:shadow-none',
@@ -286,7 +286,7 @@ export function SearchMethodOption({
               <div className="flex items-center">
                 <FieldLabel className="flex min-w-0 cursor-pointer items-center py-0 system-sm-semibold text-text-secondary has-data-disabled:cursor-not-allowed">
                   <Switch
-                    className="mr-1"
+                    className="me-1"
                     checked={reranking.enabled ?? false}
                     onCheckedChange={reranking.onEnabledChange}
                     disabled={readonly}
@@ -296,10 +296,7 @@ export function SearchMethodOption({
                   </span>
                 </FieldLabel>
                 <Infotip>
-                  <InfotipTrigger
-                    aria-labelledby={rerankLabelId}
-                    className="ml-0.5 size-3.5 shrink-0"
-                  />
+                  <InfotipTrigger aria-labelledby={rerankLabelId} className="ms-0.5" />
                   <InfotipContent aria-labelledby={rerankLabelId}>{rerankModelTip}</InfotipContent>
                 </Infotip>
               </div>

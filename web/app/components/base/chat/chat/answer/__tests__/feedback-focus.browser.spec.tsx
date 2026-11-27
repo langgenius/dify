@@ -2,6 +2,7 @@ import type { ChatItem } from '../../../types'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { PromptMode } from '@/models/debug'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
@@ -61,6 +62,7 @@ it.each(['cancel', 'submit'])(
     const settings = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
     const animationsDisabled = settings.BASE_UI_ANIMATIONS_DISABLED
     settings.BASE_UI_ANIMATIONS_DISABLED = false
+    await emulateReducedMotion(false)
     feedback.onFeedback.mockReset().mockResolvedValue(undefined)
     try {
       const screen = await render(<FeedbackAnswer />)

@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react'
-import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
+import type { CodeBasedExtensionItem } from '@/service/console/code-based-extension-query'
 import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -28,8 +28,8 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
-import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 import { LanguagesSupported } from '@/i18n/language'
+import { codeBasedExtensionsQueryOptions } from '@/service/console/code-based-extension-query'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
 

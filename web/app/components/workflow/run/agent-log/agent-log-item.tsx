@@ -39,7 +39,7 @@ const AgentLogItem = ({ item, onShowAgentOrToolLog }: AgentLogItemProps) => {
   return (
     <div className="rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default">
       <div
-        className={cn('flex cursor-pointer items-center py-2 pr-3 pl-1.5', expanded && 'pb-1')}
+        className={cn('flex cursor-pointer items-center py-2 ps-1.5 pe-3', expanded && 'pb-1')}
         onClick={() => setExpanded(!expanded)}
       >
         {expanded ? (
@@ -48,7 +48,7 @@ const AgentLogItem = ({ item, onShowAgentOrToolLog }: AgentLogItemProps) => {
           <RiArrowRightSLine className="size-4 shrink-0 text-text-quaternary" />
         )}
         <BlockIcon
-          className="mr-1.5 shrink-0"
+          className="me-1.5 shrink-0"
           type={toolIcon ? BlockEnum.Tool : BlockEnum.Agent}
           toolIcon={toolIcon}
         />
@@ -59,7 +59,7 @@ const AgentLogItem = ({ item, onShowAgentOrToolLog }: AgentLogItemProps) => {
           {label}
         </div>
         {!!metadata?.elapsed_time && (
-          <div className="mr-2 shrink-0 system-xs-regular text-text-tertiary">
+          <div className="me-2 shrink-0 system-xs-regular text-text-tertiary">
             {metadata?.elapsed_time?.toFixed(3)}s
           </div>
         )}
@@ -74,7 +74,7 @@ const AgentLogItem = ({ item, onShowAgentOrToolLog }: AgentLogItemProps) => {
               onClick={() => onShowAgentOrToolLog(item)}
             >
               <div className="flex items-center">
-                <RiListView className="mr-1 size-4 shrink-0 text-components-button-tertiary-text" />
+                <RiListView className="me-1 size-4 shrink-0 text-components-button-tertiary-text" />
                 {`${children.length} Action Logs`}
               </div>
               <div className="flex">

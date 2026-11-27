@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "More agent actions",
   "nodes.agent.roster.openPanel": "Open {{name}} details",
   "nodes.agent.roster.panelLabel": "{{name}} details",
+  "nodes.agent.sessionContinuity.description": "When on, the agent retains its history within this chat. When off, it starts a new session for each user message.",
+  "nodes.agent.sessionContinuity.title": "Continue agent session",
   "nodes.agent.strategy.configureTip": "Please configure agentic strategy.",
   "nodes.agent.strategy.configureTipDesc": "After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. ",
   "nodes.agent.strategy.label": "Agentic Strategy",

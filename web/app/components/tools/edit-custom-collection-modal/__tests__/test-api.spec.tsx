@@ -1,16 +1,28 @@
 import type { CustomCollectionBackend, CustomParamSchema } from '@/app/components/tools/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
-import { testAPIAvailable } from '@/service/tools'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import TestApi from '../test-api'
 
-vi.mock('@/service/tools', () => ({
-  testAPIAvailable: vi.fn(),
-}))
+const previewMock = vi.hoisted(() =>
+  vi.fn<
+    typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.test.pre.post
+  >(),
+)
 
-const testAPIAvailableMock = vi.mocked(testAPIAvailable)
+// boundary: generated preview transport responses; form and mutation behavior remain real.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.api.test.pre.post': previewMock,
+    }),
+  }
+})
 
 describe('TestApi', () => {
   const customCollection: CustomCollectionBackend = {
@@ -49,7 +61,7 @@ describe('TestApi', () => {
     tool?: CustomParamSchema
     positionCenter?: boolean
   }) => {
-    return render(
+    return renderWithConsoleQuery(
       <TestApi
         customCollection={props?.customCollection ?? customCollection}
         tool={props?.tool ?? tool}
@@ -61,7 +73,7 @@ describe('TestApi', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    testAPIAvailableMock.mockReset()
+    previewMock.mockReset()
   })
 
   // Tests for basic rendering
@@ -70,7 +82,7 @@ describe('TestApi', () => {
   describe('API Test Execution', () => {
     it('should run API test with parameters and show result', async () => {
       const user = userEvent.setup()
-      testAPIAvailableMock.mockResolvedValueOnce({ result: 'ok' })
+      previewMock.mockResolvedValueOnce({ result: 'ok' })
       renderTestApi()
 
       const parameterInput = screen.getAllByRole('textbox')[0]
@@ -78,16 +90,18 @@ describe('TestApi', () => {
       await user.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(testAPIAvailableMock).toHaveBeenCalledWith({
-          provider_name: customCollection.provider,
-          tool_name: tool.operation_id,
-          credentials: {
-            auth_type: AuthType.none,
-          },
-          schema_type: customCollection.schema_type,
-          schema: customCollection.schema,
-          parameters: {
-            limit: '5',
+        expect(previewMock).toHaveBeenCalledWith({
+          body: {
+            provider_name: customCollection.provider,
+            tool_name: tool.operation_id,
+            credentials: {
+              auth_type: AuthType.none,
+            },
+            schema_type: customCollection.schema_type,
+            schema: customCollection.schema,
+            parameters: {
+              limit: '5',
+            },
           },
         })
         expect(screen.getByRole('status')).toHaveTextContent('ok')
@@ -96,7 +110,7 @@ describe('TestApi', () => {
 
     it('should display error result when API returns error', async () => {
       const user = userEvent.setup()
-      testAPIAvailableMock.mockResolvedValueOnce({ error: 'API Error occurred' })
+      previewMock.mockResolvedValueOnce({ error: 'API Error occurred' })
       renderTestApi()
 
       await user.click(screen.getByRole('button', { name: 'tools.test.title' }))
@@ -118,19 +132,19 @@ describe('TestApi', () => {
         },
       }
 
-      testAPIAvailableMock.mockResolvedValueOnce({ result: 'success' })
+      previewMock.mockResolvedValueOnce({ result: 'success' })
       renderTestApi({ customCollection: collectionWithExtraFields })
 
       await user.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(testAPIAvailableMock).toHaveBeenCalledWith(
-          expect.objectContaining({
+        expect(previewMock).toHaveBeenCalledWith({
+          body: expect.objectContaining({
             credentials: {
               auth_type: AuthType.none,
             },
           }),
-        )
+        })
       })
     })
   })
@@ -155,7 +169,7 @@ describe('TestApi', () => {
         ],
       }
 
-      testAPIAvailableMock.mockResolvedValueOnce({ result: 'multi-param success' })
+      previewMock.mockResolvedValueOnce({ result: 'multi-param success' })
       renderTestApi({ tool: toolWithMultipleParams })
 
       const inputs = screen.getAllByRole('textbox')
@@ -165,31 +179,31 @@ describe('TestApi', () => {
       await user.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(testAPIAvailableMock).toHaveBeenCalledWith(
-          expect.objectContaining({
+        expect(previewMock).toHaveBeenCalledWith({
+          body: expect.objectContaining({
             parameters: {
               limit: '10',
               offset: '20',
             },
           }),
-        )
+        })
       })
     })
 
     it('should handle empty parameters', async () => {
       const user = userEvent.setup()
-      testAPIAvailableMock.mockResolvedValueOnce({ result: 'empty params success' })
+      previewMock.mockResolvedValueOnce({ result: 'empty params success' })
       renderTestApi()
 
       // Don't fill in any parameters
       await user.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(testAPIAvailableMock).toHaveBeenCalledWith(
-          expect.objectContaining({
+        expect(previewMock).toHaveBeenCalledWith({
+          body: expect.objectContaining({
             parameters: {},
           }),
-        )
+        })
       })
     })
   })
@@ -208,14 +222,14 @@ describe('TestApi', () => {
         },
       }
 
-      testAPIAvailableMock.mockResolvedValueOnce({ result: 'header auth success' })
+      previewMock.mockResolvedValueOnce({ result: 'header auth success' })
       renderTestApi({ customCollection: collectionWithHeader })
 
       await user.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(testAPIAvailableMock).toHaveBeenCalledWith(
-          expect.objectContaining({
+        expect(previewMock).toHaveBeenCalledWith({
+          body: expect.objectContaining({
             credentials: {
               auth_type: AuthType.apiKeyHeader,
               api_key_header: 'Authorization',
@@ -223,7 +237,7 @@ describe('TestApi', () => {
               api_key_value: 'test-token',
             },
           }),
-        )
+        })
       })
     })
 
@@ -238,21 +252,21 @@ describe('TestApi', () => {
         },
       }
 
-      testAPIAvailableMock.mockResolvedValueOnce({ result: 'query auth success' })
+      previewMock.mockResolvedValueOnce({ result: 'query auth success' })
       renderTestApi({ customCollection: collectionWithQuery })
 
       await user.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(testAPIAvailableMock).toHaveBeenCalledWith(
-          expect.objectContaining({
+        expect(previewMock).toHaveBeenCalledWith({
+          body: expect.objectContaining({
             credentials: {
               auth_type: AuthType.apiKeyQuery,
               api_key_query_param: 'api_key',
               api_key_value: 'query-token',
             },
           }),
-        )
+        })
       })
     })
   })

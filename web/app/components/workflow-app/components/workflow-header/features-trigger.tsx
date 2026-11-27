@@ -1,3 +1,5 @@
+import type { contract } from '@dify/contracts/api/console/apps/orpc.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
 import type {
   AppPublisherPublishOptions,
   AppPublisherPublishParams,
@@ -8,15 +10,16 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import type { WorkflowKind } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { isDefinedError } from '@orpc/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import {
+  editorResourceAtom,
   isChatflowAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
@@ -28,14 +31,19 @@ import {
 } from '@/app/components/workflow/hooks/use-checklist'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { workflowVersionHistoryKey } from '@/service/workflow-queries'
+
+type PublishWorkflowError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.apps.byAppId.workflows.publish.post>
+>
+
+const isTriggerNodeLimitError = (error: PublishWorkflowError | null) =>
+  isDefinedError(error) && error.code === 'trigger_node_limit_exceeded'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
@@ -48,42 +56,21 @@ const FeaturesTrigger = () => {
   )
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
-  const { data: deploymentEdition } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
-  })
-  const { data: plan } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (features) => features.billing.subscription.plan,
-    }),
+  const { data: evaluationEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: (features) => features.evaluation_enabled }),
   )
-  const { isVisible: evaluationEnabled } = useEvaluationAccess()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
   const toolPublished = useStore((s) => s.toolPublished)
   const lastPublishedHasUserInput = useStore((s) => s.lastPublishedHasUserInput)
 
   const nodes = useNodes()
-  const rosterAgentIds = useMemo(() => {
-    return Array.from(
-      new Set(
-        nodes.flatMap((node) => {
-          const binding = isAgentV2NodeData(node.data) ? node.data.agent_binding : undefined
-          if (
-            binding?.binding_type !== 'roster_agent' ||
-            typeof binding.agent_id !== 'string' ||
-            binding.agent_id.length === 0
-          ) {
-            return []
-          }
-
-          return [binding.agent_id]
-        }),
-      ),
-    )
-  }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
+  // An ordinary publish keeps the active workflow's kind.
+  const canPublishWorkflow =
+    hasWorkflowNodes &&
+    canReleaseAndVersion &&
+    (appDetail?.workflow_kind !== 'evaluation' || evaluationEnabled)
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
@@ -134,16 +121,12 @@ const FeaturesTrigger = () => {
   }, [edges, startNodeIds])
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
   const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
-  const startNodeLimitExceeded = useMemo(() => {
-    const entryCount = nodes.reduce((count, node) => {
-      const nodeType = node.data.type as BlockEnum
-      if (nodeType === BlockEnum.Start || isTriggerNode(nodeType)) return count + 1
-      return count
-    }, 0)
-    return deploymentEdition === 'CLOUD' && plan === 'sandbox' && entryCount > 2
-  }, [nodes, plan, deploymentEdition])
 
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const resource = useAtomValue(editorResourceAtom)
+  const resetWorkflowVersionHistory = useCallback(
+    () => queryClient.resetQueries({ queryKey: workflowVersionHistoryKey(resource) }),
+    [queryClient, resource],
+  )
 
   const handleShowFeatures = useCallback(() => {
     const { showFeaturesPanel, isRestoring, setShowFeaturesPanel } = workflowStore.getState()
@@ -151,16 +134,22 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const { mutateAsync: publishWorkflow } = useMutation(
-    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
+  const {
+    error: publishError,
+    mutateAsync: publishWorkflow,
+    reset: resetPublishError,
+  } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
+  const triggerNodeLimitExceeded = isTriggerNodeLimitError(publishError)
   const { mutateAsync: publishEvaluationWorkflow } = useMutation(
     consoleQuery.apps.byAppId.workflows.publish.evaluation.post.mutationOptions(),
   )
   const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } = useMutation(
     consoleQuery.apps.byAppId.workflows.convertType.post.mutationOptions(),
   )
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
@@ -195,68 +184,15 @@ const FeaturesTrigger = () => {
         const res =
           publishKind === 'evaluation'
             ? await publishEvaluationWorkflow(input)
-            : await publishWorkflow(input)
+            : await publishWorkflow(input).catch((error: PublishWorkflowError) => {
+                if (!isTriggerNodeLimitError(error)) toast.error(error.message)
+                throw error
+              })
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
           else if (options?.showSuccessToast !== false)
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          if (publishKind === 'evaluation') {
-            void Promise.all([
-              invalidateAppWorkflow(appID),
-              queryClient.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({
-                  input: { params: { app_id: appID } },
-                }),
-              }),
-              queryClient.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.triggers.get.key({
-                  input: { params: { app_id: appID } },
-                }),
-              }),
-            ]).catch((error) => console.warn('[evaluation] refresh after publish failed', error))
-          }
-          void queryClient
-            .invalidateQueries({
-              queryKey:
-                consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
-                  {
-                    type: 'query',
-                    input: {
-                      params: {
-                        evaluate_target_id: appID,
-                        evaluate_target_type: 'apps',
-                      },
-                    },
-                  },
-                ),
-            })
-            .catch((error) => console.warn('[evaluation] refresh default metrics failed', error))
-          if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
-            void queryClient
-              .invalidateQueries({
-                queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
-              })
-              .catch((error) => console.warn('[evaluation] refresh workflow list failed', error))
-          }
-          if (rosterAgentIds.length > 0) {
-            void queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.get.key(),
-            })
-            void Promise.all(
-              rosterAgentIds.map((agentId) =>
-                queryClient.invalidateQueries({
-                  queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
-                    input: {
-                      params: {
-                        agent_id: agentId,
-                      },
-                    },
-                  }).queryKey,
-                }),
-              ),
-            )
-          }
           workflowStore.getState().setPublishedAt(res.created_at)
           workflowStore.getState().setLastPublishedHasUserInput(hasUserInputNode)
           resetWorkflowVersionHistory()
@@ -271,12 +207,8 @@ const FeaturesTrigger = () => {
       handleSyncWorkflowDraft,
       publishWorkflow,
       publishEvaluationWorkflow,
-      invalidateAppWorkflow,
       appID,
-      appDetail?.workflow_kind,
       t,
-      rosterAgentIds,
-      queryClient,
       workflowStore,
       hasUserInputNode,
       resetWorkflowVersionHistory,
@@ -301,31 +233,22 @@ const FeaturesTrigger = () => {
         params: { app_id: appID },
         query: { target_type: targetKind === 'standard' ? 'workflow' : 'evaluation' },
       })
-      await Promise.all([
-        invalidateAppWorkflow(appID),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.get.queryKey({
-            input: { params: { app_id: appID } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
-        }),
-      ])
       toast.success(
         targetKind === 'standard'
           ? t(($) => $['common.switchedToStandardWorkflow'], { ns: 'workflow' })
           : t(($) => $['common.switchedToEvaluationWorkflow'], { ns: 'workflow' }),
       )
     },
-    [appID, convertWorkflowKind, invalidateAppWorkflow, queryClient, t],
+    [appID, convertWorkflowKind, t],
   )
 
   const onPublisherToggle = useCallback(
     (state: boolean) => {
-      if (state) void handleSyncWorkflowDraft(true)
+      if (!state) return
+      resetPublishError()
+      void handleSyncWorkflowDraft(true)
     },
-    [handleSyncWorkflowDraft],
+    [handleSyncWorkflowDraft, resetPublishError],
   )
 
   const handleToolConfigureUpdate = useCallback(() => {
@@ -363,8 +286,8 @@ const FeaturesTrigger = () => {
           alignOffset: 4,
           missingStartNode: !startNode,
           hasTriggerNode,
-          startNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
+          startNodeLimitExceeded: triggerNodeLimitExceeded,
+          publishDisabled: !canPublishWorkflow,
         }}
       />
     </>

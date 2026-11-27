@@ -15,7 +15,7 @@ import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-confi
 import RagPipelineWrapper from '../index'
 
 const requests = vi.hoisted(() => ({
-  draft: vi.fn<typeof import('@/service/workflow').fetchWorkflowDraft>(),
+  draft: vi.fn<typeof import('@/service/workflow').fetchPipelineWorkflowDraft>(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -23,7 +23,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: requests.draft,
+  fetchPipelineWorkflowDraft: requests.draft,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -155,8 +155,6 @@ describe('RagPipeline', () => {
   it('loads the dataset pipeline into the real workflow provider', async () => {
     renderPipeline()
     await expectGraph()
-    expect(requests.draft).toHaveBeenCalledExactlyOnceWith(
-      '/rag/pipelines/pipeline-1/workflows/draft',
-    )
+    expect(requests.draft).toHaveBeenCalledExactlyOnceWith('pipeline-1')
   })
 })

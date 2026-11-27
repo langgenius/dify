@@ -8,7 +8,7 @@ const HelpLineHorizontal = memo(({ top, left, width }: HelpLineHorizontalPositio
 
   return (
     <div
-      className="absolute z-9 h-px bg-primary-300"
+      className="pointer-events-none absolute h-px bg-primary-300"
       style={{
         top: top * zoom + y,
         left: left * zoom + x,
@@ -24,7 +24,7 @@ const HelpLineVertical = memo(({ top, left, height }: HelpLineVerticalPosition) 
 
   return (
     <div
-      className="absolute z-9 w-px bg-primary-300"
+      className="pointer-events-none absolute w-px bg-primary-300"
       style={{
         top: top * zoom + y,
         left: left * zoom + x,

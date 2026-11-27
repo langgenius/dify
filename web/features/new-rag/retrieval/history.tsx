@@ -400,7 +400,7 @@ export function ResearchProcess({
         <button
           type="button"
           aria-expanded={expanded}
-          className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch px-3 py-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch px-3 py-2 text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
           onClick={onToggle}
         >
           {task.stage === 'completed' ? (
@@ -429,7 +429,7 @@ export function ResearchProcess({
           />
         </button>
         {active && onCancel && (
-          <Button size="small" variant="secondary" className="mr-3 shrink-0" onClick={onCancel}>
+          <Button size="small" variant="secondary" className="me-3 shrink-0" onClick={onCancel}>
             {t(($) => $['retrievalTest.cancel'], { ns: 'knowledgeRetrieval' })}
           </Button>
         )}
@@ -556,7 +556,7 @@ export function RecordButton({
       type="button"
       aria-pressed={active}
       className={cn(
-        'flex h-16 w-full items-center px-3 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:rounded-[10px] focus-visible:ring-1 focus-visible:ring-state-accent-solid/30 focus-visible:ring-inset',
+        'flex h-16 w-full items-center px-3 text-start outline-hidden transition-colors hover:bg-state-base-hover focus-visible:rounded-[10px] focus-visible:ring-1 focus-visible:ring-state-accent-solid/30 focus-visible:ring-inset',
         index > 1 && 'border-t border-divider-subtle',
         active &&
           'rounded-[10px] bg-state-accent-solid/5 ring-1 ring-state-accent-solid/30 ring-inset hover:bg-state-accent-solid/5',

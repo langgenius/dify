@@ -188,9 +188,11 @@ def test_get_paginated_projects_plugin_workflow_run_summary(
     assert summary.total_tokens == run.total_tokens
 
 
-def test_get_paginated_attaches_completed_evaluation_metrics(
+@pytest.mark.parametrize("include_evaluation", [True, False])
+def test_get_paginated_attaches_completed_evaluation_metrics_when_enabled(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
+    include_evaluation: bool,
 ) -> None:
     log = _log(
         "evaluated-log",
@@ -211,37 +213,28 @@ def test_get_paginated_attaches_completed_evaluation_metrics(
         failed_items=0,
         created_by="actor-1",
     )
+    metric_details: dict[str, object] = {}
+    metrics = {
+        "name": "faithfulness",
+        "value": 0.9,
+        "details": metric_details,
+        "node_info": {"node_id": "llm-1", "type": "llm", "title": "Answer"},
+    }
     evaluation_item = EvaluationRunItem(
         evaluation_run_id=evaluation_run.id,
         workflow_run_id=log.workflow_run_id,
         item_index=1,
-        metrics=json.dumps(
-            [
-                {
-                    "name": "faithfulness",
-                    "value": 0.9,
-                    "details": {},
-                    "node_info": {"node_id": "llm-1", "type": "llm", "title": "Answer"},
-                }
-            ]
-        ),
+        metrics=json.dumps([metrics]),
     )
     sqlite_session.add_all([_run(log.workflow_run_id), log, evaluation_run, evaluation_item])
     sqlite_session.commit()
 
-    result = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory).get_paginated(
-        tenant_id="tenant-1",
-        app_id="app-1",
+    repository = WorkflowAppLogQueryRepository(
+        session_factory=sqlite_session_factory, include_evaluation=include_evaluation
     )
+    result = repository.get_paginated(tenant_id="tenant-1", app_id="app-1")
 
-    assert result.data[0].evaluation == (
-        {
-            "name": "faithfulness",
-            "value": 0.9,
-            "details": {},
-            "node_info": {"node_id": "llm-1", "type": "llm", "title": "Answer"},
-        },
-    )
+    assert result.data[0].evaluation == ((metrics,) if include_evaluation else ())
 
 
 def test_get_paginated_keeps_log_when_workflow_run_is_missing(

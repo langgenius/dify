@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetricName,
 )
 from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
+from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
     InvokeRateLimitError,
@@ -41,7 +43,7 @@ _RAGAS_METRIC_MAP: dict[EvaluationMetricName, str] = {
     EvaluationMetricName.ANSWER_RELEVANCY: "AnswerRelevancy",
     EvaluationMetricName.ANSWER_CORRECTNESS: "AnswerCorrectness",
     EvaluationMetricName.SEMANTIC_SIMILARITY: "SemanticSimilarity",
-    EvaluationMetricName.CONTEXT_PRECISION: "ContextPrecision",
+    EvaluationMetricName.CONTEXT_PRECISION: "ContextPrecisionWithReference",
     EvaluationMetricName.CONTEXT_RECALL: "ContextRecall",
     EvaluationMetricName.CONTEXT_RELEVANCE: "ContextRelevance",
     EvaluationMetricName.TOOL_CALL_ACCURACY: "ToolCallAccuracy",
@@ -62,13 +64,24 @@ _RAGAS_REFERENCE_METRICS = {
 
 _NATIVE_AGENT_METRICS = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
 _RAGAS_METRIC_TIMEOUT_SECONDS = 180
+_RAGAS_METRIC_RETRIES = 10
+_RAGAS_MAX_WORKERS = 16
+
+_RAGAS_METRIC_FIELDS: dict[str, tuple[str, ...]] = {
+    EvaluationMetricName.FAITHFULNESS: ("user_input", "response", "retrieved_contexts"),
+    EvaluationMetricName.ANSWER_RELEVANCY: ("user_input", "response"),
+    EvaluationMetricName.ANSWER_CORRECTNESS: ("user_input", "response", "reference"),
+    EvaluationMetricName.SEMANTIC_SIMILARITY: ("reference", "response"),
+    EvaluationMetricName.CONTEXT_PRECISION: ("user_input", "reference", "retrieved_contexts"),
+    EvaluationMetricName.CONTEXT_RECALL: ("user_input", "reference", "retrieved_contexts"),
+    EvaluationMetricName.CONTEXT_RELEVANCE: ("user_input", "retrieved_contexts"),
+}
 
 
 @dataclass(frozen=True)
 class RagasAgentComponents:
     AIMessage: type[Any]
     HumanMessage: type[Any]
-    MultiTurnSample: type[Any]
     ToolCall: type[Any]
     ToolCallAccuracy: type[Any]
 
@@ -205,7 +218,7 @@ class RagasEvaluator(BaseEvaluationInstance):
                 errors.append("Metric 'tool_call_accuracy' requires non-empty expected_tool_calls.")
             else:
                 try:
-                    score = float(metric.multi_turn_score(self._build_agent_sample(item, components)))
+                    score = float(metric.score(**self._build_agent_sample(item, components)).value)
                     if not math.isfinite(score):
                         raise ValueError(f"RAGAS returned a non-finite score: {score}")
                     evaluated_metrics.append(
@@ -239,21 +252,23 @@ class RagasEvaluator(BaseEvaluationInstance):
         return self._evaluate(items, metric_names, model_provider, model_name, tenant_id, EvaluationCategory.WORKFLOW)
 
     @staticmethod
-    def _build_agent_sample(item: AgentEvaluationItem, components: RagasAgentComponents | None = None) -> Any:
-        """Build the MultiTurnSample required by RAGAS ToolCallAccuracy."""
+    def _build_agent_sample(
+        item: AgentEvaluationItem, components: RagasAgentComponents | None = None
+    ) -> dict[str, Any]:
+        """Build keyword inputs for the modern Ragas ToolCallAccuracy metric."""
         components = components or _load_ragas_agent_components()
 
         actual_tool_calls = [components.ToolCall(name=call.name, args=call.arguments) for call in item.tool_calls]
         expected_tool_calls = [
             components.ToolCall(name=call.name, args=call.arguments) for call in (item.expected_tool_calls or [])
         ]
-        return components.MultiTurnSample(
-            user_input=[
+        return {
+            "user_input": [
                 components.HumanMessage(content=_format_input(item.inputs, EvaluationCategory.AGENT)),
                 components.AIMessage(content=item.output, tool_calls=actual_tool_calls),
             ],
-            reference_tool_calls=expected_tool_calls,
-        )
+            "reference_tool_calls": expected_tool_calls,
+        }
 
     def _evaluate(
         self,
@@ -282,114 +297,47 @@ class RagasEvaluator(BaseEvaluationInstance):
         embeddings_wrapper: Any,
         category: EvaluationCategory,
     ) -> list[EvaluationItemResult]:
-        """Evaluate using RAGAS library.
-
-        Builds SingleTurnSample differently per category to match ragas requirements:
-        - LLM/Workflow: user_input=prompt, response=output, reference=expected_output
-        - Retrieval: user_input=query, reference=expected_output, retrieved_contexts=context
-        """
-        from ragas import evaluate as ragas_evaluate
-        from ragas.dataset_schema import EvaluationDataset
-        from ragas.run_config import RunConfig
-
-        samples: list[Any] = []
-        for item in items:
-            sample = self._build_sample(item, category)
-            samples.append(sample)
-
-        dataset = EvaluationDataset(samples=samples)
-
-        ragas_metrics = self._build_ragas_metrics(requested_metrics, embeddings_wrapper)
+        """Score rows with Ragas collections metrics through Dify-owned orchestration."""
+        ragas_metrics = self._build_ragas_metrics(requested_metrics, model_wrapper, embeddings_wrapper)
         if not ragas_metrics:
             logger.warning("No valid RAGAS metrics found for: %s", requested_metrics)
             return [EvaluationItemResult(index=item.index, actual_output=item.output) for item in items]
 
-        result = ragas_evaluate(
-            dataset=dataset,
-            metrics=ragas_metrics,
-            llm=model_wrapper,
-            run_config=RunConfig(
-                timeout=_RAGAS_METRIC_TIMEOUT_SECONDS,
-                exception_types=_RAGAS_RETRYABLE_EXCEPTIONS,
-            ),
-            raise_exceptions=True,
-            show_progress=False,
-        )
-
+        supported_names = {metric.name for metric in ragas_metrics}
+        unsupported_names = [name for name in requested_metrics if name not in supported_names]
+        score_results = asyncio.run(_score_ragas_items(items, ragas_metrics, category))
         results: list[EvaluationItemResult] = []
-        result_df = result.to_pandas()
-        for i, item in enumerate(items):
-            metrics: list[EvaluationMetric] = []
-            for m_name in requested_metrics:
-                if m_name in result_df.columns:
-                    score = result_df.iloc[i][m_name]
-                    if score is not None:
-                        numeric_score = float(score)
-                        if not math.isnan(numeric_score):
-                            metrics.append(EvaluationMetric(name=m_name, value=numeric_score))
-            missing_metrics = [name for name in requested_metrics if name not in {metric.name for metric in metrics}]
+        for item, (metrics, metric_errors) in zip(items, score_results, strict=True):
+            errors: list[str] = []
+            for name in unsupported_names:
+                failure = new_public_evaluation_error(EvaluationErrorCode.UNSUPPORTED_METRIC)
+                logger.info(
+                    "RAGAS metric %s is unsupported for item %d (error_id=%s)", name, item.index, failure.error_id
+                )
+                errors.append(failure.text)
+            errors.extend(metric_errors)
             results.append(
                 EvaluationItemResult(
                     index=item.index,
                     metrics=metrics,
                     actual_output=item.output,
-                    error=(f"RAGAS returned no score for: {', '.join(missing_metrics)}" if missing_metrics else None),
+                    error="; ".join(errors) if errors else None,
                 )
             )
         return results
 
     @staticmethod
-    def _build_sample(item: EvaluationItemInput, category: EvaluationCategory) -> Any:
-        """Build a ragas SingleTurnSample with the correct fields per category.
-
-        ragas metric field requirements:
-        - faithfulness:       user_input, response, retrieved_contexts
-        - answer_relevancy:   user_input, response
-        - answer_correctness: user_input, response, reference
-        - semantic_similarity: user_input, response, reference
-        - context_precision:  user_input, reference, retrieved_contexts
-        - context_recall:     user_input, reference, retrieved_contexts
-        - context_relevance:  user_input, retrieved_contexts
-        """
-        from ragas.dataset_schema import SingleTurnSample
-
-        user_input = _format_input(item.inputs, category)
-
-        match category:
-            case EvaluationCategory.LLM:
-                # response = actual LLM output, reference = expected output
-                return SingleTurnSample(
-                    user_input=user_input,
-                    response=item.output,
-                    reference=item.expected_output or "",
-                    retrieved_contexts=item.context or [],
-                )
-            case EvaluationCategory.RETRIEVAL:
-                # context_precision/recall only need reference + retrieved_contexts
-                return SingleTurnSample(
-                    user_input=user_input,
-                    reference=item.expected_output or "",
-                    retrieved_contexts=item.context or [],
-                )
-            case _:
-                return SingleTurnSample(
-                    user_input=user_input,
-                    response=item.output,
-                )
-
-    @staticmethod
-    def _build_ragas_metrics(requested_metrics: list[str], embeddings_wrapper: Any) -> list[Any]:
-        """Build RAGAS metric instances from canonical metric names."""
+    def _build_ragas_metrics(requested_metrics: list[str], model_wrapper: Any, embeddings_wrapper: Any) -> list[Any]:
+        """Build modern Ragas metrics from canonical Evaluation names."""
         try:
             metrics_module = _import_ragas_metrics_module()
 
-            # Maps canonical name → ragas metric class
             ragas_class_map: dict[str, Any] = {
                 EvaluationMetricName.FAITHFULNESS: metrics_module.Faithfulness,
                 EvaluationMetricName.ANSWER_RELEVANCY: metrics_module.AnswerRelevancy,
                 EvaluationMetricName.ANSWER_CORRECTNESS: metrics_module.AnswerCorrectness,
                 EvaluationMetricName.SEMANTIC_SIMILARITY: metrics_module.SemanticSimilarity,
-                EvaluationMetricName.CONTEXT_PRECISION: metrics_module.ContextPrecision,
+                EvaluationMetricName.CONTEXT_PRECISION: metrics_module.ContextPrecisionWithReference,
                 EvaluationMetricName.CONTEXT_RECALL: metrics_module.ContextRecall,
                 EvaluationMetricName.CONTEXT_RELEVANCE: metrics_module.ContextRelevance,
             }
@@ -398,14 +346,16 @@ class RagasEvaluator(BaseEvaluationInstance):
             for name in requested_metrics:
                 metric_class = ragas_class_map.get(name)
                 if metric_class:
-                    if name in {
-                        EvaluationMetricName.ANSWER_RELEVANCY,
-                        EvaluationMetricName.ANSWER_CORRECTNESS,
-                        EvaluationMetricName.SEMANTIC_SIMILARITY,
-                    }:
-                        metrics.append(metric_class(name=name, embeddings=embeddings_wrapper))
-                    else:
-                        metrics.append(metric_class(name=name))
+                    kwargs: dict[str, Any] = {"name": name}
+                    if name != EvaluationMetricName.SEMANTIC_SIMILARITY:
+                        kwargs["llm"] = model_wrapper
+                    if name in _RAGAS_EMBEDDING_METRICS:
+                        kwargs["embeddings"] = (
+                            embeddings_wrapper.for_answer_relevancy()
+                            if name == EvaluationMetricName.ANSWER_RELEVANCY
+                            else embeddings_wrapper
+                        )
+                    metrics.append(metric_class(**kwargs))
                 else:
                     logger.warning("Metric '%s' is not supported by RAGAS, skipping", name)
             return metrics
@@ -414,31 +364,87 @@ class RagasEvaluator(BaseEvaluationInstance):
 
 
 def _import_ragas_metrics_module() -> Any:
-    """Load ragas metric classes across supported ragas versions.
-
-    ragas 0.3.x exposes metric classes from ``ragas.metrics`` while some older
-    versions used ``ragas.metrics.collections``. Support both so worker
-    environments do not silently drop all metrics because of a module path
-    mismatch.
-    """
-    try:
-        return import_module("ragas.metrics")
-    except ImportError:
-        return import_module("ragas.metrics.collections")
+    """Load the metrics API used by the pinned Ragas release."""
+    return import_module("ragas.metrics.collections")
 
 
 def _load_ragas_agent_components() -> RagasAgentComponents:
-    from ragas.dataset_schema import MultiTurnSample
     from ragas.messages import AIMessage, HumanMessage, ToolCall
-    from ragas.metrics import ToolCallAccuracy
+    from ragas.metrics.collections import ToolCallAccuracy
 
     return RagasAgentComponents(
         AIMessage=AIMessage,
         HumanMessage=HumanMessage,
-        MultiTurnSample=MultiTurnSample,
         ToolCall=ToolCall,
         ToolCallAccuracy=ToolCallAccuracy,
     )
+
+
+async def _score_ragas_metric(metric: Any, kwargs: dict[str, Any]) -> Any:
+    """Bound each score attempt and retry only transient provider failures."""
+    for attempt in range(_RAGAS_METRIC_RETRIES):
+        try:
+            return await asyncio.wait_for(metric.ascore(**kwargs), timeout=_RAGAS_METRIC_TIMEOUT_SECONDS)
+        except _RAGAS_RETRYABLE_EXCEPTIONS:
+            if attempt == _RAGAS_METRIC_RETRIES - 1:
+                raise
+            await asyncio.sleep(min(2**attempt, 60))
+    raise AssertionError("RAGAS metric retry loop ended without a result")
+
+
+async def _score_ragas_items(
+    items: list[EvaluationItemInput], metrics: list[Any], category: EvaluationCategory
+) -> list[tuple[list[EvaluationMetric], list[str]]]:
+    """Score rows with bounded concurrency while preserving input and metric order.
+
+    Precondition: each requested metric has a declared Ragas field mapping.
+    Postcondition: a missing text context fails only metrics requiring it;
+    other row metrics still score, and no provider request uses empty evidence.
+    """
+    semaphore = asyncio.Semaphore(_RAGAS_MAX_WORKERS)
+
+    async def score_one(item_index: int, metric: Any) -> tuple[int, EvaluationMetric | None, str | None]:
+        item = items[item_index]
+        fields = _RAGAS_METRIC_FIELDS[metric.name]
+        if "retrieved_contexts" in fields and not any(context.strip() for context in item.context or []):
+            failure = new_public_evaluation_error(EvaluationErrorCode.CONTEXT_MISSING)
+            logger.info(
+                "RAGAS metric %s has no usable text context for item %d (error_id=%s)",
+                metric.name,
+                item.index,
+                failure.error_id,
+            )
+            return item_index, None, failure.text
+        inputs = {
+            "user_input": _format_input(item.inputs, category),
+            "response": item.output,
+            "reference": item.expected_output or "",
+            "retrieved_contexts": item.context or [],
+        }
+        kwargs = {field: inputs[field] for field in fields}
+        async with semaphore:
+            try:
+                with use_plugin_daemon_request_timeout(_RAGAS_METRIC_TIMEOUT_SECONDS):
+                    result = await _score_ragas_metric(metric, kwargs)
+                score = float(result.value)
+                if not math.isfinite(score):
+                    raise ValueError(f"RAGAS returned a non-finite score: {score}")
+                return item_index, EvaluationMetric(name=metric.name, value=score), None
+            except Exception:
+                failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
+                logger.exception(
+                    "RAGAS metric %s failed for item %d (error_id=%s)", metric.name, item.index, failure.error_id
+                )
+                return item_index, None, failure.text
+
+    outcomes = await asyncio.gather(*(score_one(index, metric) for index in range(len(items)) for metric in metrics))
+    scored: list[tuple[list[EvaluationMetric], list[str]]] = [([], []) for _ in items]
+    for index, metric, error in outcomes:
+        if metric is not None:
+            scored[index][0].append(metric)
+        if error is not None:
+            scored[index][1].append(error)
+    return scored
 
 
 def _format_input(inputs: dict[str, Any], category: EvaluationCategory) -> str:

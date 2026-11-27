@@ -41,7 +41,7 @@ function PluginSection({
 
   return (
     <>
-      <div className="sticky top-0 flex items-start justify-between pt-1 pr-1 pl-2 system-sm-semibold-uppercase text-text-secondary">
+      <div className="sticky top-0 flex items-start justify-between ps-2 pe-1 pt-1 system-sm-semibold-uppercase text-text-secondary">
         <h3 className="flex h-6 items-center">
           {title} ({count})
         </h3>

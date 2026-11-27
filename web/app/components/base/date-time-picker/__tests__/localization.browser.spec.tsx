@@ -45,6 +45,7 @@ vi.mock('@daypicker/react/locale/de', async (importOriginal) => {
   await localeRequests.german.promise
   return importOriginal()
 })
+// boundary: Delay the Italian locale module so a later language change can overtake it.
 vi.mock('@daypicker/react/locale/it', async (importOriginal) => {
   await localeRequests.italian.promise
   return importOriginal()

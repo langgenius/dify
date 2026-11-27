@@ -20,9 +20,9 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
-import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
@@ -86,15 +86,17 @@ export default function OAuthAuthorize() {
       input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(
-    consoleQuery.oauth.provider.authorize.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.oauth.provider.authorize.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
   const signInUrl = `/signin?redirect_url=${encodeURIComponent(returnUrl)}`
-  const { mutateAsync: logout } = useLogout({ redirectTo: signInUrl })
+  const { mutateAsync: logout } = useMutation(logoutMutationOptions({ redirectTo: signInUrl }))
   const { isAutoAuthorizing } = useSilentAuthorize({
     authAppInfo,
     authorize,
@@ -124,7 +126,7 @@ export default function OAuthAuthorize() {
       if (isLoggedIn) await logout()
       else router.push(signInUrl)
     } catch {
-      // The request layer reports logout failures; keep the current session on this page.
+      // The mutation cache reports logout failures; keep the current session on this page.
     }
   }
 

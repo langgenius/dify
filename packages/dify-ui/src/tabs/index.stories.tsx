@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect } from 'storybook/test'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '.'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '.'
 
 const meta = {
   title: 'Base/UI/Tabs',
@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Composable tabs built on Base UI. Use this when a tab controls a corresponding tab panel.',
+          'Composable tabs built on Base UI. Use this when a tab controls a corresponding tab panel. Place `TabsIndicator` inside `TabsList` to draw the active underline; it slides between tabs.',
       },
     },
   },
@@ -26,6 +26,7 @@ export const Basic: Story = {
       <TabsList>
         <TabsTab value="overview">Overview</TabsTab>
         <TabsTab value="activity">Activity</TabsTab>
+        <TabsIndicator />
       </TabsList>
       <TabsPanel value="overview" className="py-3 system-sm-regular text-text-secondary">
         Overview panel

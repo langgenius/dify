@@ -1,6 +1,8 @@
 import type { ReactElement, ReactNode } from 'react'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { ConversationVariable, Node } from '@/app/components/workflow/types'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -8,10 +10,7 @@ import { useStoreApi } from 'reactflow'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
-import {
-  useConversationVarValues,
-  useInvalidateConversationVarValues,
-} from '@/service/use-workflow'
+import { conversationVarValuesQueryOptions } from '@/service/workflow-queries'
 import ChatVariablePanel from '../index'
 import { ChatVarType } from '../type'
 
@@ -20,21 +19,24 @@ const mockUpdateConversationVariables = vi.fn().mockResolvedValue(undefined)
 let mockConversationVariables: ConversationVariable[] = []
 let mockFlowNodes: Node<CodeNodeType>[] = []
 let flowStore: ReturnType<typeof useStoreApi>
+const appResource: EditorResource = {
+  kind: 'app',
+  collaborationEnabled: false,
+  appId: 'app-1',
+  mode: 'advanced-chat',
+}
 function InspectVariables({ children }: { children: ReactNode }) {
   flowStore = useStoreApi()
-  const invalidateConversationVarValues = useInvalidateConversationVarValues({
-    kind: 'app',
-    collaborationEnabled: false,
-    appId: 'app-1',
-    mode: 'advanced-chat',
-  })
-  const [hooks] = useState(() => createHooksStore({ invalidateConversationVarValues }))
-  const { data } = useConversationVarValues({
-    kind: 'app',
-    collaborationEnabled: false,
-    appId: 'app-1',
-    mode: 'advanced-chat',
-  })
+  const queryClient = useQueryClient()
+  const [hooks] = useState(() =>
+    createHooksStore({
+      invalidateConversationVarValues: () =>
+        queryClient.invalidateQueries({
+          queryKey: conversationVarValuesQueryOptions(appResource).queryKey,
+        }),
+    }),
+  )
+  const { data } = useQuery(conversationVarValuesQueryOptions(appResource))
   return (
     <HooksStoreContext value={hooks}>
       {children}

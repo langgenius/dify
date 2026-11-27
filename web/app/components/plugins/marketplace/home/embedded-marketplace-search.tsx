@@ -9,10 +9,10 @@ import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use
 import { useRouter } from '@/next/navigation'
 import { useSearchPluginText } from '../atoms'
 import MarketplaceDetailDialog from '../detail-dialog'
+import { toPluginCard } from '../plugin-card-adapter'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
 import { useOptionalTemplateDetailRoute } from '../templates/use-optional-template-detail-route'
 import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
-import { getFormattedPlugin } from '../utils'
 import { MarketplaceSearchAutocomplete } from './marketplace-search-autocomplete'
 
 const normalizePlugin = (plugin: Plugin): Plugin => ({
@@ -50,7 +50,7 @@ export default function EmbeddedMarketplaceSearch() {
       if (selection.kind === 'plugin') {
         if (navigation.openPlugin(selection.plugin)) return { preserveQuery: true }
         setSelectedTemplate(null)
-        setSelectedPlugin(normalizePlugin(getFormattedPlugin(selection.plugin)))
+        setSelectedPlugin(normalizePlugin(toPluginCard(selection.plugin)))
         return
       }
 

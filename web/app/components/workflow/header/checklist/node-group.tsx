@@ -53,7 +53,7 @@ export const ChecklistNodeGroup = memo(
                   {sub.message}
                 </span>
                 {goToEnabled && (
-                  <div className="flex shrink-0 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
+                  <div className="flex shrink-0 items-center gap-0.5 pe-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
                     <span className="text-xs/4 font-medium whitespace-nowrap text-text-accent">
                       {t(($) => $['panel.goToFix'], { ns: 'workflow' })}
                     </span>
@@ -66,7 +66,7 @@ export const ChecklistNodeGroup = memo(
               </>
             )
             const className = cn(
-              'group/item flex w-full items-center gap-2 rounded-lg px-1 text-left',
+              'group/item flex w-full items-center gap-2 rounded-lg px-1 text-start',
               goToEnabled && 'cursor-pointer hover:bg-state-base-hover',
             )
 

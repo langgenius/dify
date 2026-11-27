@@ -1,11 +1,15 @@
 import type { SelectorKey } from 'i18next'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { isWorkspacePermissionVisible } from '../../workspace-permission-visibility'
 
 export const useWorkspacePermissionGroups = () => {
   const { t } = useTranslation(['permission', 'permissionKeys'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: workspacePermissionCatalog } = useQuery(
     consoleQuery.workspaces.current.rbac.rolePermissions.catalog.get.queryOptions({
       input: {},
@@ -25,15 +29,19 @@ export const useWorkspacePermissionGroups = () => {
         defaultValue,
       })
 
-    return (workspacePermissionCatalog?.groups ?? []).map((group) => ({
-      ...group,
-      group_name: translatePermissionGroupName(group.group_key, group.group_name),
-      permissions: (group.permissions ?? []).map((permission) => ({
-        ...permission,
-        name: translatePermissionName(permission.key, permission.name),
-      })),
-    }))
-  }, [t, workspacePermissionCatalog?.groups])
+    return (workspacePermissionCatalog?.groups ?? [])
+      .map((group) => ({
+        ...group,
+        group_name: translatePermissionGroupName(group.group_key, group.group_name),
+        permissions: (group.permissions ?? [])
+          .filter(({ key }) => isWorkspacePermissionVisible(key, deploymentEdition))
+          .map((permission) => ({
+            ...permission,
+            name: translatePermissionName(permission.key, permission.name),
+          })),
+      }))
+      .filter((group) => group.permissions.length > 0)
+  }, [deploymentEdition, t, workspacePermissionCatalog?.groups])
 
   const allPermissions = groups.flatMap((g) => g.permissions)
 

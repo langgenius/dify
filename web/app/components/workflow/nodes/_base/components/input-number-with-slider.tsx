@@ -58,7 +58,7 @@ function InputNumberWithSlider({
         <input
           aria-label={label}
           value={Number.isFinite(value) ? value : ''}
-          className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-hidden"
+          className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal ps-3 text-[13px] text-components-input-text-filled outline-hidden"
           type="number"
           min={min}
           max={max}

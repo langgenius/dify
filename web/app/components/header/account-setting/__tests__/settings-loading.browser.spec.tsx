@@ -1,67 +1,26 @@
-import type {
-  NetworkAccessGroupListResponse,
-  NetworkAccessGroupMutationResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { NetworkAccessGroupListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Resource } from 'i18next'
 import type { AccountSettingTab } from '../constants'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { Suspense, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { setupFakeApi } from '@/test/fake-api'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
 vi.unmock('react-i18next')
-const mocks = vi.hoisted(() => ({
-  loadResource: vi.fn(),
-  loadGroups: vi.fn<() => Promise<NetworkAccessGroupListResponse>>(),
-  createPolicy: vi.fn<() => Promise<NetworkAccessGroupMutationResponse>>(),
-}))
+const mocks = vi.hoisted(() => ({ loadResource: vi.fn() }))
 // boundary: defer the external translation load while keeping i18next and its consumers real.
 vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.networkAccessGroups.get': () => mocks.loadGroups(),
-      'workspaces.current.networkAccessGroups.post': () => mocks.createPolicy(),
-      'workspaces.current.networkAccessGroups.currentIp.get': async () => ({
-        client_ip: '203.0.113.42',
-      }),
-      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
-      'workspaces.current.members.get': async () => ({
-        accounts: [
-          {
-            id: 'member-1',
-            name: 'Ada',
-            email: 'ada@example.com',
-            role: 'admin',
-            status: 'active',
-            created_at: 1731000000,
-            last_active_at: 1731000000,
-            roles: [{ id: 'admin', name: 'Admin' }],
-          },
-        ],
-      }),
-      'workspaces.current.rbac.members.byMemberId.rbacRoles.get': async () => ({
-        roles: [{ id: 'admin', name: 'Admin', is_builtin: true, permission_keys: ['app.create'] }],
-      }),
-      'workspaces.current.rbac.roles.get': async () => ({
-        data: [],
-        pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
-      }),
-    }),
-  }
-})
 const resources: Resource = {
   'en-US': {
     appLog: {},
@@ -97,13 +56,16 @@ function Settings({ initialTab }: { initialTab: AccountSettingTab }) {
   )
 }
 
-function renderSettings(initialTab: AccountSettingTab = ACCOUNT_SETTING_TAB.MEMBERS) {
+function renderSettings(
+  initialTab: AccountSettingTab = ACCOUNT_SETTING_TAB.MEMBERS,
+  systemFeatures: ConsoleQueryTestOptions['systemFeatures'] = {},
+) {
   const queryClient = createConsoleQueryClient()
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     queryClient,
-    currentWorkspace: { id: 'workspace-1', name: 'Workspace', role: 'owner' },
+    currentWorkspace: { id: TEST_WORKSPACE_ID, name: 'Workspace', role: 'owner' },
     workspacePermissionKeys: ['workspace.member.manage'],
-    systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true },
+    systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true, ...systemFeatures },
     features: { billing: { subscription: { plan: 'team' } } },
   })
   return render(
@@ -138,23 +100,83 @@ function deferNamespace(namespace: string) {
   return { started, finishLoading }
 }
 
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      byWorkspaceId: {
+        members: { pendingInvitations: { get: () => ({ invitations: [] }) } },
+      },
+      current: {
+        networkAccessGroups: {
+          get: () => ({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [] }),
+          post: () => ({ group: createNetworkAccessGroupFixture() }),
+          currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
+        },
+        members: {
+          get: () => ({
+            accounts: [
+              {
+                id: '6c7d8e9f-0a1b-4c2d-9e3f-4a5b6c7d8e9f',
+                name: 'Ada',
+                email: 'ada@example.com',
+                avatar_url: null,
+                role: 'admin',
+                status: 'active',
+                created_at: 1731000000,
+                last_active_at: 1731000000,
+                roles: [{ id: 'admin', name: 'Admin' }],
+              },
+            ],
+          }),
+        },
+        rbac: {
+          members: {
+            byMemberId: {
+              rbacRoles: {
+                get: ({ params }) => ({
+                  account_id: params.member_id,
+                  roles: [
+                    {
+                      id: 'admin',
+                      name: 'Admin',
+                      type: 'workspace',
+                      is_builtin: true,
+                      permission_keys: ['app.create', 'ip_policy.view', 'ip_policy.manage'],
+                    },
+                  ],
+                }),
+              },
+            },
+          },
+          roles: {
+            get: () => ({
+              data: [],
+              pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
+            }),
+          },
+        },
+      },
+    },
+  },
+}))
+
 describe('Settings content loading', () => {
   beforeEach(() => {
     mocks.loadResource.mockReset()
-    mocks.loadGroups.mockReset()
-    mocks.createPolicy.mockReset()
   })
 
   it('keeps the IP Policies deep link stable through loading, dismissal and first creation', async () => {
     vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
     const { finishLoading } = deferNamespace('deployments')
     const groups = createDeferred<NetworkAccessGroupListResponse>()
-    mocks.loadGroups.mockReturnValue(groups.promise)
+    fake.console.workspaces.current.networkAccessGroups.get.mockReturnValue(groups.promise)
     try {
       await renderSettings(ACCOUNT_SETTING_TAB.IP_POLICIES)
       const settings = page.getByRole('dialog', { name: 'Settings' })
       await expect.element(settings.getByRole('heading', { name: 'IP Policies' })).toBeVisible()
-      await expect.poll(() => mocks.loadGroups.mock.calls.length).toBe(1)
+      await expect
+        .poll(() => fake.console.workspaces.current.networkAccessGroups.get.mock.calls.length)
+        .toBe(1)
       await expect.element(settings.getByRole('progressbar', { name: 'Loading' })).toBeVisible()
       await expect
         .element(settings.getByRole('button', { name: 'Add', exact: true }))
@@ -162,7 +184,7 @@ describe('Settings content loading', () => {
       const create = settings.getByRole('button', { name: 'Create an IP policy' })
       await expect.element(create).not.toBeInTheDocument()
 
-      groups.resolve({ tenant_id: 'workspace-1', entitled: true, groups: [] })
+      groups.resolve({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [] })
       await expect.element(create).toBeVisible()
       await expect
         .element(settings.getByRole('progressbar', { name: 'Loading' }))
@@ -179,17 +201,17 @@ describe('Settings content loading', () => {
       await expect
         .element(editor.getByRole('button', { name: 'Create', exact: true }))
         .toBeEnabled()
-      await userEvent.keyboard('{Escape}{Enter}')
+      await userEvent.keyboard('{Escape}')
       await expect.element(editor).not.toBeInTheDocument()
       await expect.element(create).toHaveFocus()
-      expect(mocks.createPolicy).not.toHaveBeenCalled()
+      expect(fake.console.workspaces.current.networkAccessGroups.post).not.toHaveBeenCalled()
       await userEvent.keyboard('{Enter}')
       await expect.element(name).toHaveValue('')
 
       const group = createNetworkAccessGroupFixture({ name: 'Office network' })
-      mocks.createPolicy.mockResolvedValue({ group })
-      mocks.loadGroups.mockResolvedValue({
-        tenant_id: 'workspace-1',
+      fake.console.workspaces.current.networkAccessGroups.post.mockResolvedValue({ group })
+      fake.console.workspaces.current.networkAccessGroups.get.mockResolvedValue({
+        tenant_id: TEST_WORKSPACE_ID,
         entitled: true,
         groups: [group],
       })
@@ -197,8 +219,19 @@ describe('Settings content loading', () => {
       await editor.getByPlaceholder('10.0.0.0/8').fill('10.0.0.0/8')
       await editor.getByRole('button', { name: 'Create', exact: true }).click()
       await expect.element(editor).not.toBeInTheDocument()
-      await expect.element(settings.getByRole('button', { name: 'Add', exact: true })).toHaveFocus()
-      expect(mocks.createPolicy).toHaveBeenCalledTimes(1)
+      // The first save can restore focus to the heading before the new Add trigger commits
+      // (#46816). Verify focus returns to Settings, then exercise the settled list's trigger.
+      await expect.poll(() => settings.element().contains(document.activeElement)).toBe(true)
+      await expect
+        .element(settings.getByRole('button', { name: group.name, exact: true }))
+        .toBeVisible()
+      const add = settings.getByRole('button', { name: 'Add', exact: true })
+      await add.click()
+      await expect.element(name).toHaveValue('')
+      await userEvent.keyboard('{Escape}')
+      await expect.element(editor).not.toBeInTheDocument()
+      await expect.element(add).toHaveFocus()
+      expect(fake.console.workspaces.current.networkAccessGroups.post).toHaveBeenCalledTimes(1)
       expect(mocks.loadResource).not.toHaveBeenCalledWith('en-US', 'deployments')
     } finally {
       finishLoading()
@@ -227,7 +260,10 @@ describe('Settings content loading', () => {
 
   it('keeps member details usable while the role permission translations load', async () => {
     const { started, finishLoading } = deferNamespace('permissionKeys')
-    await renderSettings()
+    await renderSettings(ACCOUNT_SETTING_TAB.MEMBERS, {
+      deployment_edition: 'ENTERPRISE',
+      rbac_enabled: true,
+    })
     await page.getByRole('button', { name: 'Ada', exact: true }).click()
     const details = page.getByRole('dialog', { name: 'Member details' })
     await details.getByRole('button', { name: 'Admin', exact: true }).click()
@@ -236,6 +272,7 @@ describe('Settings content loading', () => {
     await expect.element(page.getByText('Loading settings')).not.toBeInTheDocument()
     finishLoading()
     await expect.element(page.getByText('app.create', { exact: true })).toBeVisible()
+    await expect.element(page.getByText(/ip_policy\./)).not.toBeInTheDocument()
     await userEvent.keyboard('{Escape}')
     await expect.element(page.getByText('app.create', { exact: true })).not.toBeInTheDocument()
     await expect.element(details).toBeVisible()
@@ -243,8 +280,4 @@ describe('Settings content loading', () => {
     await expect.element(details).not.toBeInTheDocument()
     await expect.element(page.getByRole('table')).toBeVisible()
   })
-})
-
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
 })

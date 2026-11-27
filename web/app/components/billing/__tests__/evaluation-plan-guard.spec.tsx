@@ -8,6 +8,12 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 
+vi.mock('@/app/components/evaluation/upgrade-preview', () => ({
+  default: ({ resourceType }: { resourceType: string }) => (
+    <div>Evaluation upgrade preview: {resourceType}</div>
+  ),
+}))
+
 describe('EvaluationPlanGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -15,7 +21,7 @@ describe('EvaluationPlanGuard', () => {
 
   it('renders children when the workspace can use evaluation', () => {
     renderWithConsoleQuery(
-      <EvaluationPlanGuard fallbackHref="/apps">
+      <EvaluationPlanGuard fallbackHref="/apps" resourceType="apps">
         <div>Evaluation content</div>
       </EvaluationPlanGuard>,
       {
@@ -27,18 +33,25 @@ describe('EvaluationPlanGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it.each([
-    ['requires an upgrade', { evaluation_enabled: false, evaluation_upgrade_available: true }],
-    [
-      'does not offer evaluation',
-      { evaluation_enabled: false, evaluation_upgrade_available: false },
-    ],
-  ])('redirects when the workspace %s', async (_, features) => {
+  it('previews evaluation instead of the content when an upgrade unlocks it', () => {
     renderWithConsoleQuery(
-      <EvaluationPlanGuard fallbackHref="/apps">
+      <EvaluationPlanGuard fallbackHref="/apps" resourceType="datasets">
         <div>Evaluation content</div>
       </EvaluationPlanGuard>,
-      { features },
+      { features: { evaluation_enabled: false, evaluation_upgrade_available: true } },
+    )
+
+    expect(screen.getByText('Evaluation upgrade preview: datasets')).toBeInTheDocument()
+    expect(screen.queryByText('Evaluation content')).not.toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('redirects when the workspace does not offer evaluation', async () => {
+    renderWithConsoleQuery(
+      <EvaluationPlanGuard fallbackHref="/apps" resourceType="apps">
+        <div>Evaluation content</div>
+      </EvaluationPlanGuard>,
+      { features: { evaluation_enabled: false, evaluation_upgrade_available: false } },
     )
 
     await waitFor(() => {

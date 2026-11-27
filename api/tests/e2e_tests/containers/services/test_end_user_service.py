@@ -10,10 +10,11 @@ from extensions.ext_application_services import application_services
 from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import DEFAULT_END_USER_SESSION_ID, EndUserType
-from models.model import App, EndUser
+from models.model import App, AppMode, EndUser, IconType
+from services.app_scoped_end_user_service import AppScopedEndUserService
 
 
-def _service():
+def _service() -> AppScopedEndUserService[EndUser]:
     return application_services().app_scoped_end_users.commands
 
 
@@ -21,7 +22,7 @@ class TestEndUserServiceFactory:
     """Factory class for creating test data and mock objects for end user service tests."""
 
     @staticmethod
-    def create_app_and_account(db_session_with_containers: Session):
+    def create_app_and_account(db_session_with_containers: Session) -> App:
         tenant = Tenant(name=f"Tenant {uuid4()}")
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
@@ -50,8 +51,8 @@ class TestEndUserServiceFactory:
             tenant_id=tenant.id,
             name=f"App {uuid4()}",
             description="",
-            mode="chat",
-            icon_type="emoji",
+            mode=AppMode.CHAT,
+            icon_type=IconType.EMOJI,
             icon="bot",
             icon_background="#FFFFFF",
             enable_site=False,
@@ -70,14 +71,14 @@ class TestEndUserServiceFactory:
 
     @staticmethod
     def create_end_user(
-        db_session_with_containers,
+        db_session_with_containers: Session,
         *,
         tenant_id: str,
         app_id: str,
         session_id: str,
         invoke_type: EndUserType,
         is_anonymous: bool = False,
-    ):
+    ) -> EndUser:
         end_user = EndUser(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -104,13 +105,13 @@ class TestEndUserServiceGetOrCreateEndUser:
     """
 
     @pytest.fixture
-    def factory(self):
+    def factory(self) -> TestEndUserServiceFactory:
         """Provide test data factory."""
         return TestEndUserServiceFactory()
 
     def test_get_or_create_end_user_with_custom_user_id(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test getting or creating end user with custom user_id."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -124,11 +125,12 @@ class TestEndUserServiceGetOrCreateEndUser:
         assert result.app_id == app.id
         assert result.session_id == user_id
         assert result.type == EndUserType.SERVICE_API
-        assert result.is_anonymous is False
+        assert type(result.is_anonymous) is bool
+        assert not result.is_anonymous
 
     def test_get_or_create_end_user_without_user_id(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test getting or creating end user without user_id uses default session."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -141,7 +143,9 @@ class TestEndUserServiceGetOrCreateEndUser:
         # Verify _is_anonymous is set correctly (property always returns False)
         assert result._is_anonymous is True
 
-    def test_get_existing_end_user(self, db_session_with_containers: Session, factory: TestEndUserServiceFactory):
+    def test_get_existing_end_user(
+        self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
+    ) -> None:
         """Test retrieving an existing end user."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -173,13 +177,13 @@ class TestEndUserServiceGetOrCreateEndUserByType:
     """
 
     @pytest.fixture
-    def factory(self):
+    def factory(self) -> TestEndUserServiceFactory:
         """Provide test data factory."""
         return TestEndUserServiceFactory()
 
     def test_create_end_user_service_api_type(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test creating new end user with SERVICE_API type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -203,7 +207,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
     def test_create_end_user_browser_type(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test creating new end user with BROWSER type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -224,7 +228,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
     def test_upgrade_legacy_end_user_type(
         self, caplog: pytest.LogCaptureFixture, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test upgrading legacy end user with different type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -263,8 +267,11 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert len(matching_logs) == 1
 
     def test_get_existing_end_user_matching_type(
-        self, db_session_with_containers: Session, factory: TestEndUserServiceFactory, caplog
-    ):
+        self,
+        db_session_with_containers: Session,
+        factory: TestEndUserServiceFactory,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test retrieving existing end user with matching type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -297,7 +304,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
     def test_create_anonymous_user_with_default_session(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test creating anonymous user when user_id is None."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -320,7 +327,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
     def test_query_ordering_prioritizes_matching_type(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test that query ordering prioritizes records with matching type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -357,7 +364,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
     def test_external_user_id_matches_session_id(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test that external_user_id is set to match session_id."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -388,7 +395,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
     )
     def test_create_end_user_with_different_invoke_types(
         self, db_session_with_containers: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         """Test creating end users with different EndUserType values."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -412,12 +419,12 @@ class TestEndUserServiceCreateBatch:
     """Integration tests for _service().create_end_user_batch."""
 
     @pytest.fixture
-    def factory(self):
+    def factory(self) -> TestEndUserServiceFactory:
         return TestEndUserServiceFactory()
 
     def _create_multiple_apps(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory, count: int = 3
-    ):
+    ) -> tuple[str, list[App]]:
         """Create multiple apps under the same tenant."""
         first_app = factory.create_app_and_account(db_session_with_containers)
         tenant_id = first_app.tenant_id
@@ -426,8 +433,8 @@ class TestEndUserServiceCreateBatch:
                 tenant_id=tenant_id,
                 name=f"App {uuid4()}",
                 description="",
-                mode="chat",
-                icon_type="emoji",
+                mode=AppMode.CHAT,
+                icon_type=IconType.EMOJI,
                 icon="bot",
                 icon_background="#FFFFFF",
                 enable_site=False,
@@ -445,7 +452,8 @@ class TestEndUserServiceCreateBatch:
         all_apps = db_session_with_containers.query(App).filter(App.tenant_id == tenant_id).all()
         return tenant_id, all_apps
 
-    def test_create_batch_empty_app_ids(self, db_session_with_containers: Session):
+    @pytest.mark.usefixtures("db_session_with_containers")
+    def test_create_batch_empty_app_ids(self) -> None:
         result = _service().create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=str(uuid4()), app_ids=[], user_id="user-1"
         )
@@ -453,7 +461,7 @@ class TestEndUserServiceCreateBatch:
 
     def test_create_batch_creates_users_for_all_apps(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=3)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
@@ -470,7 +478,7 @@ class TestEndUserServiceCreateBatch:
 
     def test_create_batch_default_session_id(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [a.id for a in apps]
 
@@ -485,7 +493,7 @@ class TestEndUserServiceCreateBatch:
 
     def test_create_batch_deduplicate_app_ids(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [apps[0].id, apps[1].id, apps[0].id, apps[1].id]
         user_id = f"user-{uuid4()}"
@@ -498,7 +506,7 @@ class TestEndUserServiceCreateBatch:
 
     def test_create_batch_returns_existing_users(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
@@ -519,7 +527,7 @@ class TestEndUserServiceCreateBatch:
 
     def test_create_batch_partial_existing_users(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=3)
         user_id = f"user-{uuid4()}"
 
@@ -550,7 +558,7 @@ class TestEndUserServiceCreateBatch:
     )
     def test_create_batch_all_invoke_types(
         self, db_session_with_containers: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
-    ):
+    ) -> None:
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=1)
         user_id = f"user-{uuid4()}"
 

@@ -5,41 +5,60 @@ import { queryOptions, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ImageList from '@/app/components/datasets/common/image-list'
-// oxlint-disable-next-line no-restricted-imports -- Server-provided asset URLs need an authenticated raw Response to read the image blob.
-import { get } from '@/service/base'
+import { consoleClient } from '@/service/console'
 
 const CONSOLE_API_PATH = '/console/api'
+const MULTIMODAL_ASSET_PATH =
+  /^\/knowledge-fs\/spaces\/([^/]+)\/documents\/([^/]+)\/multimodal\/(.+)\/asset$/
 
-function consoleApiAssetPath(source: string) {
+function consoleApiAssetURL(source: string) {
   const url = new URL(source, 'http://dify.invalid')
   if (!url.pathname.startsWith(`${CONSOLE_API_PATH}/`)) return undefined
-  return `${url.pathname.slice(CONSOLE_API_PATH.length)}${url.search}`
+  return url
+}
+
+/** Reads the multimodal asset route out of a server-provided console API URL. */
+function multimodalAssetInput(url: URL) {
+  const match = MULTIMODAL_ASSET_PATH.exec(url.pathname.slice(CONSOLE_API_PATH.length))
+  if (!match) return undefined
+  const [, controlSpaceId, documentId, itemId] = match
+  const variant = url.searchParams.get('variant')
+  return {
+    params: {
+      control_space_id: decodeURIComponent(controlSpaceId!),
+      document_id: decodeURIComponent(documentId!),
+      item_id: decodeURIComponent(itemId!),
+    },
+    ...(variant !== null && { query: { variant } }),
+  }
 }
 
 function protectedDocumentAssetQueryOptions(sources: string[]) {
   const firstSource = sources[0]
-  const enabled = Boolean(firstSource && consoleApiAssetPath(firstSource))
+  const enabled = Boolean(firstSource && consoleApiAssetURL(firstSource))
 
   return queryOptions({
     enabled,
     queryFn: async ({ signal }) => {
       for (const rawSource of sources) {
-        const apiAssetPath = consoleApiAssetPath(rawSource)
-        if (!apiAssetPath) return { rawSource }
+        const apiAssetURL = consoleApiAssetURL(rawSource)
+        if (!apiAssetURL) return { rawSource }
+        const input = multimodalAssetInput(apiAssetURL)
+        if (!input) continue
         try {
-          // oxlint-disable-next-line typescript/no-deprecated -- Server-provided asset URLs need an authenticated raw Response to read the image blob.
-          const response = await get<Response>(
-            apiAssetPath,
-            { signal },
-            { needAllResponseContent: true, silent: true },
-          )
-          return { blob: await response.blob(), rawSource }
+          const blob: Blob =
+            await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.multimodal.byItemId.asset.get(
+              input,
+              { signal },
+            )
+          return { blob, rawSource }
         } catch (error) {
           if (signal.aborted) throw error
         }
       }
       throw new Error('Document multimodal asset is unavailable')
     },
+    meta: { errorToast: false },
     queryKey: ['knowledge-fs', 'document-multimodal-asset', sources],
     retry: false,
   })
@@ -56,7 +75,7 @@ export function DocumentMultimodalAsset({
     Boolean(candidate && !failedSources.has(candidate)),
   )
   const firstSource = sources[0]
-  const protectedSource = Boolean(firstSource && consoleApiAssetPath(firstSource))
+  const protectedSource = Boolean(firstSource && consoleApiAssetURL(firstSource))
   const assetQuery = useQuery(protectedDocumentAssetQueryOptions(sources))
   const resolvedRawSource = protectedSource ? assetQuery.data?.rawSource : firstSource
   const resolvedBlob = protectedSource ? assetQuery.data?.blob : undefined
