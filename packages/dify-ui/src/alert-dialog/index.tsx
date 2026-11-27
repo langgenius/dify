@@ -119,20 +119,11 @@ function AlertDialogBody({ className, ...props }: AlertDialogBodyProps) {
   return <div className={cn('px-6', className)} {...props} />
 }
 
-type AlertDialogFooterProps = React.ComponentProps<'div'> & {
-  spacing?: 'default' | 'compact'
-}
+type AlertDialogFooterProps = React.ComponentProps<'div'>
 
-function AlertDialogFooter({ className, spacing = 'default', ...props }: AlertDialogFooterProps) {
+function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-end gap-2 px-6',
-        spacing === 'compact' ? 'py-4' : 'py-6',
-        className,
-      )}
-      {...props}
-    />
+    <div className={cn('flex shrink-0 items-center justify-end gap-2 p-6', className)} {...props} />
   )
 }
 

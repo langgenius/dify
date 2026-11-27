@@ -428,7 +428,7 @@ function ExternalAgentConfirmationSession({
           </Alert>
         )}
       </AlertDialogBody>
-      <AlertDialogFooter spacing={deleting ? 'compact' : 'default'}>
+      <AlertDialogFooter className={deleting ? 'py-4' : undefined}>
         <AlertDialogCancelButton disabled={pending} variant="secondary" size="large">
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
