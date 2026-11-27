@@ -8,8 +8,9 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { httpErrorFromResponse } from '@/service/http-error'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentTracingConfiguration } from '../tracing-configuration'
@@ -55,6 +56,8 @@ function setup({
   configured = true,
 } = {}) {
   const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
+    // Like the app's client: a saved config refreshes the agent's tracing reads.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     systemFeatures: { rbac_enabled: true, agent_tracing_api_collection_enabled: true },
   })
   const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
@@ -356,7 +359,13 @@ describe('Agent tracing configuration', () => {
     )
     expect(screen.getByRole('switch', { name: 'app.tracing.captureContent' })).toBeChecked()
     expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).not.toBeChecked()
-    expect(sent.every((req) => new URL(req.url).pathname.includes('/agent/agent-1/'))).toBe(true)
+    // Tracing reads and writes target the agent, not its backing app.
+    expect(
+      sent
+        .map((req) => new URL(req.url).pathname)
+        .filter((pathname) => pathname.includes('/trace'))
+        .every((pathname) => pathname.includes('/agent/agent-1/')),
+    ).toBe(true)
   })
 
   it('keeps a failed save-and-enable draft and retries the single atomic request', async () => {

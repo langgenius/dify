@@ -10,13 +10,13 @@ export function humanInputPolicies(
   return {
     humanInput: {
       v2: {
-        // Contact writes wait for the contacts they change; option lists refresh in the background.
+        // Contact writes wait for the contacts they change.
         contacts: {
           platform: {
             post: {
               mutationOptions: {
-                onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                  invalidateContactQueries(consoleQuery, context.client),
+                onSettled: (_data, error, _variables, _onMutateResult, context) =>
+                  invalidateContactQueries(consoleQuery, context.client, error),
               },
             },
           },
@@ -80,11 +80,12 @@ export function humanInputPolicies(
         imSyncRuns: {
           post: {
             mutationOptions: {
-              onSuccess: (data, _variables, _onMutateResult, context) => {
-                context.client.setQueryData(
-                  consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey(),
-                  data,
-                )
+              onSuccess: async (data, _variables, _onMutateResult, context) => {
+                const queryKey =
+                  consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey()
+                if (context.client.isFetching({ queryKey, exact: true }))
+                  await context.client.cancelQueries({ queryKey, exact: true })
+                context.client.setQueryData(queryKey, data)
                 void context.client.resetQueries({
                   queryKey:
                     consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.results.key(),
@@ -93,8 +94,7 @@ export function humanInputPolicies(
             },
           },
         },
-        // Channel writes wait for the channel list; contacts, identities and sync runs refresh
-        // in the background.
+        // Channel writes wait for the channel list.
         channels: {
           email: {
             post: {
@@ -106,14 +106,14 @@ export function humanInputPolicies(
             byChannelId: {
               put: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, error, _variables, _onMutateResult, context) =>
+                    invalidateHumanInputChannelQueries(consoleQuery, context.client, error),
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, error, _variables, _onMutateResult, context) =>
+                    invalidateHumanInputChannelQueries(consoleQuery, context.client, error),
                 },
               },
             },
@@ -128,21 +128,21 @@ export function humanInputPolicies(
             byChannelId: {
               put: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, error, _variables, _onMutateResult, context) =>
+                    invalidateHumanInputChannelQueries(consoleQuery, context.client, error),
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, error, _variables, _onMutateResult, context) =>
+                    invalidateHumanInputChannelQueries(consoleQuery, context.client, error),
                 },
               },
               replacement: {
                 post: {
                   mutationOptions: {
-                    onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                      invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                    onSettled: (_data, error, _variables, _onMutateResult, context) =>
+                      invalidateHumanInputChannelQueries(consoleQuery, context.client, error),
                   },
                 },
               },
@@ -154,23 +154,33 @@ export function humanInputPolicies(
   }
 }
 
-function invalidateContactQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+// The fallback refreshes the rest of human input after a success; after a failure
+// (`onSettled`) the option lists refresh here.
+function invalidateContactQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  error?: unknown,
+) {
   const v2 = query.workspaces.current.humanInput.v2
-  void invalidateQueryKeys(client, [
-    v2.contactOptions.key(),
-    v2.imIdentities.key(),
-    v2.organizationCandidates.key(),
-  ])
+  if (error)
+    void invalidateQueryKeys(client, [
+      v2.contactOptions.key(),
+      v2.imIdentities.key(),
+      v2.organizationCandidates.key(),
+    ])
   return invalidateQueryKeys(client, [v2.contacts.key()])
 }
 
 function invalidateHumanInputChannelQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
+  error?: unknown,
 ) {
   const v2 = query.workspaces.current.humanInput.v2
-  // The contact helper also refreshes IM identities.
-  void invalidateHumanInputContactQueries(query, client)
-  void invalidateQueryKeys(client, [v2.testChannels.key(), v2.imSyncRuns.key()])
+  if (error) {
+    // The contact helper also refreshes IM identities.
+    void invalidateHumanInputContactQueries(query, client)
+    void invalidateQueryKeys(client, [v2.testChannels.key(), v2.imSyncRuns.key()])
+  }
   return invalidateQueryKeys(client, [v2.channels.key()])
 }

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -130,7 +131,10 @@ function CatalogConsumer() {
   )
 }
 const renderWithQueryClient = (provider: ModelProvider, observeCatalog = false) => {
-  const queryClient = createConsoleQueryClient()
+  // The catalogs refresh after a write through the invalidation fallback, as in the app.
+  const queryClient = createConsoleQueryClient(
+    observeCatalog ? { invalidation: createMutationInvalidation() } : undefined,
+  )
   if (observeCatalog) {
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),

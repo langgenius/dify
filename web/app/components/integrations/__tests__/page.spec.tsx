@@ -496,6 +496,35 @@ it('persists legacy permission changes and immediately hides installations when 
   ).toBeChecked()
 })
 
+it('waits for a pending permission save, so the next change keeps the one before it', async () => {
+  const user = userEvent.setup()
+  const firstSave = createDeferred<Awaited<ReturnType<typeof api.savePermission>>>()
+  api.savePermission.mockReturnValueOnce(firstSave.promise)
+  renderPage({ props: { section: 'trigger' }, rbacEnabled: false })
+  await user.click(await screen.findByRole('button', { name: 'plugin.privilege.permissions' }))
+  const dialog = screen.getByRole('dialog', { name: 'plugin.privilege.permissions' })
+  const radio = (name: string) => within(dialog).getByRole('radio', { name })
+
+  await user.click(radio('plugin.privilege.quickWhoCanInstall: plugin.privilege.noone'))
+  await waitFor(() =>
+    expect(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins')).toBeDisabled(),
+  )
+  // A second change while the first is pending would build on the value before it.
+  await user.click(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins'))
+  expect(api.savePermission).toHaveBeenCalledTimes(1)
+
+  await act(async () => firstSave.resolve({ result: 'success' } as never))
+  await waitFor(() =>
+    expect(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins')).toBeEnabled(),
+  )
+  await user.click(radio('plugin.privilege.quickWhoCanDebug: plugin.privilege.admins'))
+  await waitFor(() =>
+    expect(api.savePermission).toHaveBeenLastCalledWith({
+      body: { install_permission: 'noone', debug_permission: 'admins' },
+    }),
+  )
+})
+
 it('restores the selected legacy permission when saving fails', async () => {
   const user = userEvent.setup()
   api.savePermission.mockRejectedValueOnce(new Error('Unavailable'))

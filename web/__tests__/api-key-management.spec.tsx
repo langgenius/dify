@@ -6,7 +6,8 @@ import userEvent from '@testing-library/user-event'
 import { ApiSecretKeyButton } from '@/app/components/app/access-point/built-in-access-points/api-secret-key-button'
 import { EnvironmentApiKeyButton } from '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 
@@ -81,6 +82,8 @@ async function renderDialog(
   scope: typeof appScope | typeof datasetScope | typeof environmentScope,
 ) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
+    // Like the app's client: a key write refreshes the key's access settings in the background.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     workspacePermissionKeys: ['dataset.api_key.manage'],
     currentWorkspace: { id: 'workspace-1', name: 'Test Workspace' },
     features: {},
@@ -414,7 +417,8 @@ describe('API key management', () => {
       })
       await user.click(confirm)
       await waitFor(() => expect(dialog).not.toBeInTheDocument())
-      await waitFor(() => expect(apiMocks[list]).toHaveBeenCalledTimes(2))
+      // The policy waits for the list; the invalidation fallback may read it once more.
+      await waitFor(() => expect(apiMocks[list].mock.calls.length).toBeGreaterThanOrEqual(2))
       expect(
         screen.queryByRole('button', { name: 'common.operation.delete key-s...cret' }),
       ).not.toBeInTheDocument()

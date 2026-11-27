@@ -1389,7 +1389,8 @@ def test_summary_commit_retries_use_fresh_sessions_and_persist_outcome(
         assert not probe.active_transactions
         delays.append(seconds)
 
-    monkeypatch.setattr(summary_module.time, "sleep", wait)
+    # Replace only the adapter's backoff so other threads keep their own sleep.
+    monkeypatch.setattr(summary_module, "sleep", wait)
     event.listen(sqlite_session_factory.class_, "before_commit", fail_summary_commit)
     try:
         updated = app.update_segment(

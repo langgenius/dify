@@ -5,17 +5,15 @@ import type {
 import type { InfiniteData } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
-import { addCreatedKeyToLists, invalidateQueryKeys, refreshAgentTagCatalogs } from './shared'
+import { addCreatedKeyToLists, invalidateQueryKeys } from './shared'
 
 export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agent'] {
   return {
     post: {
       mutationOptions: {
-        // Waits for the agent list the new agent appears in; invite options refresh in the background.
-        onSuccess: (_createdAgent, _variables, _onMutateResult, context) => {
-          void invalidateQueryKeys(context.client, [consoleQuery.agent.inviteOptions.get.key()])
-          return invalidateQueryKeys(context.client, [consoleQuery.agent.get.key()])
-        },
+        // Waits for the agent list the new agent appears in.
+        onSuccess: (_createdAgent, _variables, _onMutateResult, context) =>
+          invalidateQueryKeys(context.client, [consoleQuery.agent.get.key()]),
       },
     },
     byAgentId: {
@@ -24,19 +22,20 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       trace: {
         post: {
           mutationOptions: {
-            onSuccess: (data, variables, _result, context) => {
-              context.client.setQueryData(
-                consoleQuery.agent.byAgentId.trace.get.queryKey({
-                  input: { params: variables.params },
-                }),
-                data,
-              )
+            onSuccess: async (data, variables, _result, context) => {
+              const queryKey = consoleQuery.agent.byAgentId.trace.get.queryKey({
+                input: { params: variables.params },
+              })
+              if (context.client.isFetching({ queryKey, exact: true }))
+                await context.client.cancelQueries({ queryKey, exact: true })
+              context.client.setQueryData(queryKey, data)
             },
+            // A conflict means another save landed first: reloads what it changed.
             onSettled: (_data, error, variables, _result, context) => {
-              if (error && getHttpErrorStatus(error) !== 409) return
+              if (!error || getHttpErrorStatus(error) !== 409) return
               const input = { params: variables.params }
               void invalidateQueryKeys(context.client, [
-                ...(error ? [consoleQuery.agent.byAgentId.traceConfig.get.key({ input })] : []),
+                consoleQuery.agent.byAgentId.traceConfig.get.key({ input }),
                 consoleQuery.agent.byAgentId.trace.get.queryKey({ input }),
                 consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input }),
               ])
@@ -50,9 +49,11 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
             onSettled: (_data, error, variables, _result, context) => {
               if (error && getHttpErrorStatus(error) !== 409) return
               const { params } = variables
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
-              ])
+              // After a conflict the fallback does not run; capabilities reload here.
+              if (error)
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
+                ])
               // The provider dialog reopens from this config (and status toggles send the
               // cached status), so the save waits for both reloads.
               return invalidateQueryKeys(context.client, [
@@ -69,9 +70,11 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
             onSettled: (_data, error, variables, _result, context) => {
               if (error && getHttpErrorStatus(error) !== 409) return
               const { params } = variables
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
-              ])
+              // After a conflict the fallback does not run; capabilities reload here.
+              if (error)
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
+                ])
               // The provider dialog reopens from this config (and status toggles send the
               // cached status), so the save waits for both reloads.
               return invalidateQueryKeys(context.client, [
@@ -88,9 +91,11 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
             onSettled: (_data, error, variables, _result, context) => {
               if (error && getHttpErrorStatus(error) !== 409) return
               const { params } = variables
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
-              ])
+              // After a conflict the fallback does not run; capabilities reload here.
+              if (error)
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
+                ])
               // The provider dialog reopens from this config (and status toggles send the
               // cached status), so the save waits for both reloads.
               return invalidateQueryKeys(context.client, [
@@ -106,34 +111,25 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       apiKeys: {
         post: {
           mutationOptions: {
-            // Writes the new key into its list, so the one-time secret shows at once; API
-            // access refreshes in the background.
-            onSuccess: (created, variables, _result, context) => {
-              const input = { params: { agent_id: variables.params.agent_id } }
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
-              ])
-              addCreatedKeyToLists(
-                context.client,
-                consoleQuery.agent.byAgentId.apiKeys.get.queryKey({ input }),
-                created,
-              )
+            // Writes the new key into its list, so the one-time secret shows at once.
+            onSuccess: async (created, variables, _result, context) => {
+              const listKey = consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+                input: { params: { agent_id: variables.params.agent_id } },
+              })
+              return addCreatedKeyToLists(context.client, listKey, created)
             },
           },
         },
         byApiKeyId: {
           delete: {
             mutationOptions: {
-              // Waits for the key list it deletes from; API access refreshes in the background.
-              onSuccess: (_data, variables, _result, context) => {
-                const input = { params: { agent_id: variables.params.agent_id } }
-                void invalidateQueryKeys(context.client, [
-                  consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
-                ])
-                return invalidateQueryKeys(context.client, [
-                  consoleQuery.agent.byAgentId.apiKeys.get.queryKey({ input }),
-                ])
-              },
+              // Waits for the key list it deletes from.
+              onSuccess: (_data, variables, _result, context) =>
+                invalidateQueryKeys(context.client, [
+                  consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+                    input: { params: { agent_id: variables.params.agent_id } },
+                  }),
+                ]),
             },
           },
         },
@@ -151,19 +147,14 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
         post: {
           mutationOptions: {
             // The copy's detail is written from the response; waits for the agent list it appears
-            // in, invite options refresh in the background.
-            onSuccess: (copiedAgent, _variables, _onMutateResult, context) => {
-              context.client.setQueryData(
-                consoleQuery.agent.byAgentId.get.queryKey({
-                  input: {
-                    params: {
-                      agent_id: copiedAgent.id,
-                    },
-                  },
-                }),
-                copiedAgent,
-              )
-              void invalidateQueryKeys(context.client, [consoleQuery.agent.inviteOptions.get.key()])
+            // in.
+            onSuccess: async (copiedAgent, _variables, _onMutateResult, context) => {
+              const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
+                input: { params: { agent_id: copiedAgent.id } },
+              })
+              if (context.client.isFetching({ queryKey: detailKey, exact: true }))
+                await context.client.cancelQueries({ queryKey: detailKey, exact: true })
+              context.client.setQueryData(detailKey, copiedAgent)
               return invalidateQueryKeys(context.client, [consoleQuery.agent.get.key()])
             },
           },
@@ -171,7 +162,29 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       },
       put: {
         mutationOptions: {
-          onSuccess: (updatedAgent, variables, _onMutateResult, context) => {
+          onSuccess: async (updatedAgent, variables, _onMutateResult, context) => {
+            const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
+              input: { params: { agent_id: variables.params.agent_id } },
+            })
+            // Reads started before the save must not overwrite what it writes.
+            if (
+              context.client.isFetching({
+                queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+              }) ||
+              context.client.isFetching({
+                queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+              }) ||
+              context.client.isFetching({ queryKey: detailKey, exact: true })
+            )
+              await Promise.all([
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                }),
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                }),
+                context.client.cancelQueries({ queryKey: detailKey, exact: true }),
+              ])
             context.client.setQueriesData(
               {
                 queryKey: consoleQuery.agent.get.key({ type: 'query' }),
@@ -210,19 +223,7 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 }
               },
             )
-            context.client.setQueryData(
-              consoleQuery.agent.byAgentId.get.queryKey({
-                input: {
-                  params: {
-                    agent_id: variables.params.agent_id,
-                  },
-                },
-              }),
-              updatedAgent,
-            )
-            context.client.invalidateQueries({
-              queryKey: consoleQuery.agent.inviteOptions.get.key(),
-            })
+            context.client.setQueryData(detailKey, updatedAgent)
           },
         },
       },
@@ -235,9 +236,6 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               mutationOptions: {
                 onSuccess: (_data, { params }, _result, { client }) => {
                   const input = { params: { agent_id: params.agent_id } }
-                  void invalidateQueryKeys(client, [
-                    consoleQuery.agent.byAgentId.versions.get.key({ input }),
-                  ])
                   return invalidateQueryKeys(client, [
                     consoleQuery.agent.byAgentId.get.queryKey({ input }),
                     consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
@@ -251,26 +249,26 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       buildDraft: {
         put: {
           mutationOptions: {
-            onSuccess: (buildDraft, { params }, _result, { client }) => {
-              client.setQueryData(
-                consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
-                  input: { params: { agent_id: params.agent_id } },
-                }),
-                buildDraft,
-              )
+            onSuccess: async (buildDraft, { params }, _result, { client }) => {
+              const queryKey = consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
+                input: { params: { agent_id: params.agent_id } },
+              })
+              if (client.isFetching({ queryKey, exact: true }))
+                await client.cancelQueries({ queryKey, exact: true })
+              client.setQueryData(queryKey, buildDraft)
             },
           },
         },
         checkout: {
           post: {
             mutationOptions: {
-              onSuccess: (buildDraft, { params }, _result, { client }) => {
-                client.setQueryData(
-                  consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
-                    input: { params: { agent_id: params.agent_id } },
-                  }),
-                  buildDraft,
-                )
+              onSuccess: async (buildDraft, { params }, _result, { client }) => {
+                const queryKey = consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
+                  input: { params: { agent_id: params.agent_id } },
+                })
+                if (client.isFetching({ queryKey, exact: true }))
+                  await client.cancelQueries({ queryKey, exact: true })
+                client.setQueryData(queryKey, buildDraft)
               },
             },
           },
@@ -290,15 +288,32 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
           },
         },
       },
+      // The log rating control waits for the logs and messages that show the saved rating.
+      feedbacks: {
+        post: {
+          mutationOptions: {
+            onSuccess: (_data, { params }, _result, { client }) => {
+              const input = { params: { agent_id: params.agent_id } }
+              return invalidateQueryKeys(client, [
+                consoleQuery.agent.byAgentId.logs.get.key({ input }),
+                consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key({ input }),
+              ])
+            },
+          },
+        },
+      },
       debugConversation: {
         refresh: {
           post: {
             mutationOptions: {
-              onSuccess: (conversation, { params }, _result, { client }) => {
+              onSuccess: async (conversation, { params }, _result, { client }) => {
+                const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
+                  input: { params: { agent_id: params.agent_id } },
+                })
+                if (client.isFetching({ queryKey: detailKey, exact: true }))
+                  await client.cancelQueries({ queryKey: detailKey, exact: true })
                 client.setQueryData(
-                  consoleQuery.agent.byAgentId.get.queryKey({
-                    input: { params: { agent_id: params.agent_id } },
-                  }),
+                  detailKey,
                   (agentDetail) =>
                     agentDetail && {
                       ...agentDetail,
@@ -317,14 +332,21 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       apiEnable: {
         post: {
           mutationOptions: {
-            onSuccess: (apiAccess, { params, body }, _result, { client }) => {
+            onSuccess: async (apiAccess, { params, body }, _result, { client }) => {
               const input = { params: { agent_id: params.agent_id } }
-              client.setQueryData(
-                consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
-                apiAccess,
+              const apiAccessKey = consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input })
+              const detailKey = consoleQuery.agent.byAgentId.get.queryKey({ input })
+              if (
+                client.isFetching({ queryKey: apiAccessKey, exact: true }) ||
+                client.isFetching({ queryKey: detailKey, exact: true })
               )
+                await Promise.all([
+                  client.cancelQueries({ queryKey: apiAccessKey, exact: true }),
+                  client.cancelQueries({ queryKey: detailKey, exact: true }),
+                ])
+              client.setQueryData(apiAccessKey, apiAccess)
               client.setQueryData(
-                consoleQuery.agent.byAgentId.get.queryKey({ input }),
+                detailKey,
                 (agentDetail) => agentDetail && { ...agentDetail, enable_api: body.enable_api },
               )
             },
@@ -334,17 +356,13 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       composer: {
         put: {
           mutationOptions: {
-            onSuccess: (composerState, variables, _onMutateResult, context) => {
-              context.client.setQueryData(
-                consoleQuery.agent.byAgentId.composer.get.queryKey({
-                  input: {
-                    params: {
-                      agent_id: variables.params.agent_id,
-                    },
-                  },
-                }),
-                composerState,
-              )
+            onSuccess: async (composerState, variables, _onMutateResult, context) => {
+              const composerKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+                input: { params: { agent_id: variables.params.agent_id } },
+              })
+              if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                await context.client.cancelQueries({ queryKey: composerKey, exact: true })
+              context.client.setQueryData(composerKey, composerState)
               context.client.invalidateQueries({
                 queryKey: consoleQuery.agent.get.key(),
               })
@@ -363,15 +381,14 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       publish: {
         post: {
           mutationOptions: {
-            onSuccess: (publishResult, variables, _onMutateResult, context) => {
+            onSuccess: async (publishResult, variables, _onMutateResult, context) => {
+              const composerKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+                input: { params: { agent_id: variables.params.agent_id } },
+              })
+              if (context.client.isFetching({ queryKey: composerKey, exact: true }))
+                await context.client.cancelQueries({ queryKey: composerKey, exact: true })
               context.client.setQueryData<AgentAppComposerResponse>(
-                consoleQuery.agent.byAgentId.composer.get.queryKey({
-                  input: {
-                    params: {
-                      agent_id: variables.params.agent_id,
-                    },
-                  },
-                }),
+                composerKey,
                 (composerState) => {
                   if (!composerState) return composerState
 
@@ -389,19 +406,12 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 },
               )
               context.client.invalidateQueries({
-                queryKey: consoleQuery.agent.get.key(),
-              })
-              context.client.invalidateQueries({
                 queryKey: consoleQuery.agent.inviteOptions.get.key(),
               })
               context.client.removeQueries({
                 queryKey: consoleQuery.agent.inviteOptions.get.key(),
               })
               const input = { params: { agent_id: variables.params.agent_id } }
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.agent.byAgentId.versions.get.key({ input }),
-                consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
-              ])
               // The publish bar's success panel links the web app from the reloaded detail.
               return invalidateQueryKeys(context.client, [
                 consoleQuery.agent.byAgentId.get.queryKey({ input }),
@@ -412,7 +422,9 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       },
       delete: {
         mutationOptions: {
-          onSuccess: (_data, variables, _onMutateResult, context) => {
+          // The agent's tags lose their usage.
+          meta: { alsoInvalidate: ['tags'] },
+          onSuccess: async (_data, variables, _onMutateResult, context) => {
             context.client.removeQueries({
               queryKey: consoleQuery.agent.byAgentId.key({
                 input: {
@@ -422,6 +434,23 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 },
               }),
             })
+            // A list read started before the delete must not bring the agent back.
+            if (
+              context.client.isFetching({
+                queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+              }) ||
+              context.client.isFetching({
+                queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+              })
+            )
+              await Promise.all([
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                }),
+                context.client.cancelQueries({
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                }),
+              ])
             context.client.setQueriesData(
               {
                 queryKey: consoleQuery.agent.get.key({ type: 'query' }),
@@ -464,13 +493,10 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 }
               },
             )
+            // The lists are written above; a background read confirms them.
             context.client.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
             })
-            context.client.invalidateQueries({
-              queryKey: consoleQuery.agent.inviteOptions.get.key(),
-            })
-            void refreshAgentTagCatalogs(consoleQuery, context.client)
           },
         },
       },

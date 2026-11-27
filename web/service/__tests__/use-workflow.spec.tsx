@@ -127,7 +127,7 @@ describe('generated workflow publication', () => {
     vi.clearAllMocks()
   })
 
-  it('publishes a pipeline without a body and refreshes its published workflow and datasets', async () => {
+  it('publishes a pipeline without a body, refreshes its published workflow, and declares datasets', async () => {
     mockRequest.mockReset().mockResolvedValue(Response.json({ result: 'success', created_at: 123 }))
     const queryClient = createQueryClient()
     const publishedKey = consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
@@ -136,9 +136,8 @@ describe('generated workflow publication', () => {
     const unrelatedKey = consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
       input: { params: { pipeline_id: 'other' } },
     })
-    const datasetKey = consoleQuery.datasets.get.key()
-    for (const key of [publishedKey, unrelatedKey, datasetKey])
-      queryClient.setQueryData(key, { cached: true })
+    for (const key of [publishedKey, unrelatedKey])
+      queryClient.setQueryData(key, { cached: true } as never)
     const { result } = renderHook(
       () =>
         useMutation(
@@ -154,8 +153,12 @@ describe('generated workflow publication', () => {
     expect(options?.request?.method).toBe('POST')
     expect(await options?.request?.text()).toBe('')
     expect(queryClient.getQueryState(publishedKey)?.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState(datasetKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
+    // Datasets refresh through the invalidation fallback.
+    expect(
+      consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions().meta
+        ?.alsoInvalidate,
+    ).toContain('datasets')
   })
 
   it('returns the server warning with the publish result', async () => {

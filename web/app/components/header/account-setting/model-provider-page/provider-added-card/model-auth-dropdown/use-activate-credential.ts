@@ -5,11 +5,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import { useUpdateModelList } from '../../hooks'
 
 export function useActivateCredential(provider: ModelProvider) {
   const { t } = useTranslation(['common'])
-  const updateModelList = useUpdateModelList()
   const { mutate, isPending } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.credentials.switch.post.mutationOptions(
       { meta: { errorToast: false } },
@@ -19,12 +17,10 @@ export function useActivateCredential(provider: ModelProvider) {
   const currentId = provider.custom_configuration.current_credential_id
   const selectedCredentialId = optimisticId ?? currentId
   const selectedIdRef = useRef(selectedCredentialId)
-  const supportedModelTypesRef = useRef(provider.supported_model_types)
 
   useEffect(() => {
     selectedIdRef.current = selectedCredentialId
-    supportedModelTypesRef.current = provider.supported_model_types
-  }, [selectedCredentialId, provider.supported_model_types])
+  }, [selectedCredentialId])
   const activate = useCallback(
     (credential: Credential) => {
       if (credential.credential_id === selectedIdRef.current) return
@@ -35,9 +31,6 @@ export function useActivateCredential(provider: ModelProvider) {
           body: { credential_id: credential.credential_id },
         },
         {
-          onSuccess: () => {
-            supportedModelTypesRef.current.forEach((type) => updateModelList(type))
-          },
           onError: (error) => {
             setOptimisticId(undefined)
             toast.error(
@@ -48,7 +41,7 @@ export function useActivateCredential(provider: ModelProvider) {
         },
       )
     },
-    [mutate, provider.provider, t, updateModelList],
+    [mutate, provider.provider, t],
   )
   return {
     selectedCredentialId,

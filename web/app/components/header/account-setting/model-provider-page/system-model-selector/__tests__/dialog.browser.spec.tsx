@@ -8,13 +8,14 @@ import common from '@/i18n/locales/en-US/common.json'
 import modelProvider from '@/i18n/locales/en-US/model-provider.json'
 import plugin from '@/i18n/locales/en-US/plugin.json'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import {
   createCatalogModelFixture,
   createDefaultModelFixture,
   createModelCatalogFixture,
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SystemModelDialog } from '../dialog'
@@ -110,6 +111,8 @@ async function renderSettings({
   children?: ReactNode
 } = {}) {
   const { queryClient, wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    // Like the app's client: a write refreshes its domain in the background.
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
     workspacePermissionKeys,
   })
   onTestFinished(() => queryClient.clear())
@@ -289,11 +292,13 @@ it('saves the selected models for every model type, closes and refreshes them', 
   expect(fake.console.workspaces.current.defaultModel.post).toHaveBeenCalledExactlyOnceWith(
     savedSettings({ llm: 'gpt-4o', 'text-embedding': 'embedding-1' }),
   )
-  // Five defaults loaded on open, then all five are refreshed after saving.
-  await expect.poll(() => getDefault.mock.calls.length).toBe(10)
+  // Five defaults loaded on open, then all five are read again after saving (the policy and
+  // the invalidation fallback may each read them).
+  await expect.poll(() => getDefault.mock.calls.length).toBeGreaterThanOrEqual(10)
+  // The fallback refreshes every mounted model list, including the two that changed.
   await expect
-    .poll(() => getModelList.mock.calls.map(([{ params }]) => params.model_type).sort())
-    .toEqual(['llm', 'text-embedding'])
+    .poll(() => getModelList.mock.calls.map(([{ params }]) => params.model_type))
+    .toEqual(expect.arrayContaining(['llm', 'text-embedding']))
 })
 
 it('keeps the edited draft when the defaults refresh in the background', async () => {
