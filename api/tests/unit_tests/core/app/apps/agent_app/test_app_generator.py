@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session
 import core.app.apps.agent_app.app_generator as module
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
+from clients.agent_backend import AgentBackendRunFailedInternalEvent
+from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.agent_app import app_generator
 from core.app.apps.agent_app.app_config_manager import AgentAppConfig
@@ -27,6 +29,7 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
 )
+from core.app.apps.agent_app.app_runner import _agent_backend_failure_to_exception
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -35,6 +38,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
 )
 from core.moderation.base import ModerationError
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models import Account as _app_generator_Account
 from models import AppModelConfig
 from models.account import Account as _resolve_agent_Account
@@ -368,7 +372,7 @@ class TestAppGeneratorCases:
             assert generator._resolve_agent.call_args.kwargs["conversation"].id == "conv"
             assert generator._init_generate_records.call_args.kwargs["session"] is session
 
-        def test_generate_does_not_include_trace_session_id_in_extras(
+        def test_generate_propagates_trace_correlation_in_extras(
             self, generator: AgentAppGenerator, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
         ) -> None:
             scope_requests = _record_trace_scope_requests(monkeypatch, _trace_scope())
@@ -395,14 +399,24 @@ class TestAppGeneratorCases:
             generator.generate(
                 app_model=app_model,
                 user=user,
-                args={"query": "hello", "inputs": {}, "trace_session_id": "session-1"},
+                args={
+                    "query": "hello",
+                    "inputs": {},
+                    "external_trace_id": "trace-1",
+                    "trace_session_id": "session-1",
+                },
                 invoke_from=InvokeFrom.WEB_APP,
                 session=_session(),
                 streaming=True,
             )
 
-            assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
-            assert [request["extras"] for request in scope_requests] == [{"auto_generate_conversation_name": True}]
+            extras = {
+                "auto_generate_conversation_name": True,
+                "external_trace_id": "trace-1",
+                "trace_session_id": "session-1",
+            }
+            assert generate_entity.call_args.kwargs["extras"] == extras
+            assert [request["extras"] for request in scope_requests] == [extras]
 
     class TestGenerateWorker:
         @pytest.fixture(autouse=True)
@@ -462,19 +476,21 @@ class TestAppGeneratorCases:
             files=(),
             file_upload_config=None,
         ):
+            application_generate_entity = mocker.MagicMock(
+                app_config=SimpleNamespace(app_id="app1", tenant_id="tenant"),
+                agent_id="a",
+                agent_config_snapshot_id="s",
+                agent_session_scope_config_version_id=session_scope_config_version_id,
+                model_conf=mocker.MagicMock(model="m"),
+                query=query,
+                files=files,
+                file_upload_config=file_upload_config,
+            )
+            application_generate_entity.task_id = "task-1"
             generator._generate_worker(
                 flask_app=mocker.MagicMock(),
                 context=mocker.MagicMock(),
-                application_generate_entity=mocker.MagicMock(
-                    app_config=SimpleNamespace(app_id="app1", tenant_id="tenant"),
-                    agent_id="a",
-                    agent_config_snapshot_id="s",
-                    agent_session_scope_config_version_id=session_scope_config_version_id,
-                    model_conf=mocker.MagicMock(model="m"),
-                    query=query,
-                    files=files,
-                    file_upload_config=file_upload_config,
-                ),
+                application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
                 conversation_id="conv",
                 message_id="msg",
@@ -593,11 +609,43 @@ class TestAppGeneratorCases:
             self._call(generator, mocker, queue_manager)
             queue_manager.publish_error.assert_not_called()
 
-        def test_unexpected_error_is_published(self, generator: AgentAppGenerator, mocker: MockerFixture):
-            self._wire(generator, mocker, run_side_effect=ValueError("boom"))
+        @pytest.mark.parametrize("failure", ["unexpected", "backend", "invoke", "binding_lost"])
+        def test_unexpected_error_is_published(
+            self, generator: AgentAppGenerator, mocker: MockerFixture, caplog: pytest.LogCaptureFixture, failure: str
+        ) -> None:
+            backend_error = AgentBackendRunFailedError("run-1", {}, reason="CredentialsValidateFailedError")
+            error: Exception = ValueError("boom")
+            expected_reason = "None"
+            if failure == "backend":
+                error = backend_error
+                expected_reason = "CredentialsValidateFailedError"
+            elif failure == "invoke":
+                error = InvokeBadRequestError()
+                error.__cause__ = backend_error
+                expected_reason = "CredentialsValidateFailedError"
+            elif failure == "binding_lost":
+                error = _agent_backend_failure_to_exception(
+                    AgentBackendRunFailedInternalEvent(
+                        run_id="run-1",
+                        error="retained workspace binding missing",
+                        error_type=None,
+                        reason="binding_lost",
+                        source_event_id="evt-1",
+                    )
+                )
+                assert type(error) is AgentBackendError
+                expected_reason = "binding_lost"
+            self._wire(generator, mocker, run_side_effect=error)
             queue_manager = mocker.MagicMock()
             self._call(generator, mocker, queue_manager)
-            assert queue_manager.publish_error.called
+            assert queue_manager.publish_error.call_args.args[0] is error
+            record = next(record for record in caplog.records if "Unknown Error in Agent App" in record.message)
+            for field in ("agent_id=a", "app_id=app1", "conversation_id=conv", "message_id=msg", "task_id=task-1"):
+                assert field in record.message
+            assert f"agent_run_id={'run-1' if failure != 'unexpected' else 'None'}" in record.message
+            assert f"agent_run_reason={expected_reason}" in record.message
+            assert record.exc_info
+            assert record.exc_info[1] is error
 
 
 """Unit tests for AgentAppGenerator._run_input_guards.

@@ -109,6 +109,14 @@ class TestBasedGenerateTaskPipeline:
         err = pipeline.handle_error(event=event)
         assert isinstance(err, InvokeAuthorizationError)
         assert str(err) == "Incorrect API key provided"
+        assert err.__cause__ is event.error
+
+    def test_handle_unexpected_error_keeps_cause(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
+        error = RuntimeError("unexpected provider failure")
+        err = pipeline.handle_error(event=QueueErrorEvent(error=error))
+
+        assert str(err) == str(error)
+        assert err.__cause__ is error
 
     def test_handle_error_preserves_invoke_error(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
         event = QueueErrorEvent(error=InvokeError("bad"))

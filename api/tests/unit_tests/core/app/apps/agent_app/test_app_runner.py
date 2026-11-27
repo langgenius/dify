@@ -228,6 +228,17 @@ class _UsageFailedClient(FakeAgentBackendRunClient):
 
 
 class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(
+        self,
+        *,
+        error_type: RunFailureType | None = RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+        error: str = "run limit reached",
+        run_id: str = "fake-run-1",
+    ) -> None:
+        super().__init__(run_id=run_id)
+        self.error_type = error_type
+        self.error = error
+
     @override
     def stream_events(
         self,
@@ -244,8 +255,8 @@ class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             run_id=run_id,
             created_at=created_at,
             data=RunFailedEventData(
-                error="run limit reached",
-                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                error=self.error,
+                error_type=self.error_type,
                 reason="binding_lost",
             ),
         )
@@ -1533,17 +1544,44 @@ def test_failed_run_prefers_run_failure_type_over_binding_lost_reason() -> None:
     assert raised.value.reason == "binding_lost"
 
 
-def test_agent_backend_failure_to_exception_maps_rate_limit_reason() -> None:
+def test_binding_lost_failure_preserves_backend_error_cause() -> None:
+    client = _RunLimitBindingLostFakeAgentBackendRunClient(
+        error_type=None,
+        error="sandbox container missing",
+        run_id="run-binding-lost-1",
+    )
+    store = _FakeSessionStore()
+
+    with pytest.raises(AgentBackendError) as raised:
+        _run(_runner(client, store), _FakeQueueManager())
+
+    assert type(raised.value) is AgentBackendError
+    assert str(raised.value) == "The retained agent working environment is no longer available."
+    assert isinstance(raised.value.__cause__, AgentBackendRunFailedError)
+    assert raised.value.__cause__.run_id == "run-binding-lost-1"
+    assert raised.value.__cause__.reason == "binding_lost"
+    assert raised.value.__cause__.detail == {
+        "error": "sandbox container missing",
+        "reason": "binding_lost",
+        "source_event_id": "2-0",
+    }
+
+
+@pytest.mark.parametrize("message", ["quota exceeded", ""])
+def test_agent_backend_failure_to_exception_maps_rate_limit_reason(message: str) -> None:
     err = app_runner_module._agent_backend_failure_to_exception(
         AgentBackendRunFailedInternalEvent(
             run_id="run-1",
-            error="quota exceeded",
+            error=message,
             reason="InvokeRateLimitError",
         )
     )
 
     assert isinstance(err, InvokeRateLimitError)
-    assert str(err) == "quota exceeded"
+    assert str(err) == (message or InvokeRateLimitError.description)
+    assert isinstance(err.__cause__, AgentBackendRunFailedError)
+    assert err.__cause__.run_id == "run-1"
+    assert err.__cause__.reason == "InvokeRateLimitError"
 
 
 def test_agent_backend_failure_to_exception_preserves_unknown_reason_context() -> None:

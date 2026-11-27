@@ -1459,6 +1459,7 @@ class _AgentGenerator:
     calls: list[_AgentGenerationCall] = field(default_factory=list)
     events: list[str] = field(default_factory=list)
     closed_streams: int = 0
+    custom_chunks: list[str] | None = None
 
     def __call__(
         self,
@@ -1480,6 +1481,9 @@ class _AgentGenerator:
     def _stream(self, conversation_id: str) -> Iterator[str]:
         """Emit a complete SSE reply and distinguish draining through the terminal event from exhaustion."""
         try:
+            if self.custom_chunks is not None:
+                yield from self.custom_chunks
+                return
             self.events.append("ping")
             yield "event: ping\n\n"
             for event_name in ("message", "message_end"):
@@ -1604,6 +1608,98 @@ def test_agent_build_finalize_reuses_build_conversation_and_drains_message(
     assert agent_generator.closed_streams == closed_streams + 1
     with harness.sessions() as session:
         assert session.get_one(Conversation, conversation_id).name == "Generation 2"
+
+
+def test_agent_build_finalize_returns_502_with_resolved_conversation_id_on_premature_eof(
+    harness: Harness, agent_generator: _AgentGenerator
+) -> None:
+    """Return 502 agent_stream_incomplete with the resolved build conversation ID when EOF precedes any JSON frame."""
+    agent_id, _ = harness.create_agent()
+    agent_generator.custom_chunks = ["event: ping\n\n"]
+
+    response = harness.client.post(
+        f"/console/api/agent/{agent_id}/build-chat/finalize",
+        headers={**harness.headers, "X-Trace-Id": "finalize-eof-trace"},
+    )
+
+    with harness.sessions() as session:
+        build = session.scalars(select(AgentDebugConversation).where(AgentDebugConversation.agent_id == agent_id)).one()
+        conversation_id = build.conversation_id
+
+    assert response.status_code == HTTPStatus.BAD_GATEWAY
+    body = response.get_json()
+    assert body["code"] == "agent_stream_incomplete"
+    assert body["status"] == HTTPStatus.BAD_GATEWAY
+    assert body["message"] == "Build chat finalization did not complete."
+    assert body["details"]["conversation_id"] == conversation_id
+    assert body["details"]["trace_id"] == "finalize-eof-trace"
+    assert agent_generator.closed_streams == 1
+
+
+def test_agent_build_finalize_relays_sse_error_status_code_and_details(
+    harness: Harness, agent_generator: _AgentGenerator
+) -> None:
+    """Relay downstream SSE error status, code, message, and correlation IDs from build-chat finalize."""
+    agent_id, _ = harness.create_agent()
+    agent_generator.custom_chunks = [
+        "event: ping\n\n",
+        (
+            'data: {"event":"error","status":503,"code":"backend_unavailable",'
+            '"message":"Upstream overloaded","message_id":"msg-1","task_id":"task-1"}\n\n'
+        ),
+    ]
+
+    response = harness.client.post(
+        f"/console/api/agent/{agent_id}/build-chat/finalize",
+        headers={**harness.headers, "X-Trace-Id": "finalize-error-trace"},
+    )
+
+    with harness.sessions() as session:
+        build = session.scalars(select(AgentDebugConversation).where(AgentDebugConversation.agent_id == agent_id)).one()
+        conversation_id = build.conversation_id
+
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    body = response.get_json()
+    assert body["code"] == "backend_unavailable"
+    assert body["status"] == HTTPStatus.SERVICE_UNAVAILABLE
+    assert body["message"] == "Upstream overloaded"
+    assert body["details"]["conversation_id"] == conversation_id
+    assert body["details"]["message_id"] == "msg-1"
+    assert body["details"]["task_id"] == "task-1"
+    assert body["details"]["trace_id"] == "finalize-error-trace"
+    assert agent_generator.closed_streams == 1
+
+
+def test_agent_chat_messages_preflight_relays_sse_error_before_streaming(
+    harness: Harness, agent_generator: _AgentGenerator
+) -> None:
+    """Relay an immediate post-ping SSE error as a JSON HTTP error before committing text/event-stream."""
+    agent_id, _ = harness.create_agent()
+    agent_generator.custom_chunks = [
+        "event: ping\n\n",
+        (
+            'data: {"event":"error","status":503,"code":"backend_unavailable",'
+            '"message":"Upstream overloaded","conversation_id":"conv-1","message_id":"msg-1","task_id":"task-1"}\n\n'
+        ),
+    ]
+
+    response = harness.client.post(
+        f"/console/api/agent/{agent_id}/chat-messages",
+        headers={**harness.headers, "X-Trace-Id": "chat-error-trace"},
+        json={"inputs": {}, "query": "Build", "draft_type": "debug_build"},
+    )
+
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    assert response.mimetype == "application/json"
+    body = response.get_json()
+    assert body["code"] == "backend_unavailable"
+    assert body["status"] == HTTPStatus.SERVICE_UNAVAILABLE
+    assert body["message"] == "Upstream overloaded"
+    assert body["details"]["conversation_id"] == "conv-1"
+    assert body["details"]["message_id"] == "msg-1"
+    assert body["details"]["task_id"] == "task-1"
+    assert body["details"]["trace_id"] == "chat-error-trace"
+    assert agent_generator.closed_streams == 1
 
 
 def test_agent_chat_checks_conversation_ownership_before_invoking_generation(harness: Harness) -> None:

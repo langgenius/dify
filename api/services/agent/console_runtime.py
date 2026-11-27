@@ -62,8 +62,11 @@ class AgentConsoleRuntime:
         args: Mapping[str, object],
         draft_type: AgentConfigDraftType,
         conversation_id: str | None,
-    ) -> Mapping[str, object] | Iterable[str]:
-        """Check preview eligibility, select the account's conversation, and commit generation preparation."""
+    ) -> tuple[str, Mapping[str, object] | Iterable[str]]:
+        """Check preview eligibility, select the account's conversation, and commit generation preparation.
+
+        Returns the resolved debug conversation ID alongside the generation output.
+        """
         tenant_id = context.active_workspace_id
         account_id = context.account_id
         with self._sessions(expire_on_commit=False) as session:
@@ -97,4 +100,4 @@ class AgentConsoleRuntime:
                 streaming=True,
             )
             session.commit()
-        return response
+        return resolved, response

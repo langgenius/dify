@@ -3,10 +3,10 @@ import logging
 from collections.abc import Generator, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from http import HTTPStatus
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Any, Literal, NoReturn, Protocol, runtime_checkable
 from uuid import UUID
 
-from flask import Response, request
+from flask import Response, has_request_context, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
@@ -47,10 +47,11 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.exception import BaseHTTPException
+from libs.exception import BaseHTTPException, RelayedHTTPError
 from libs.external_api import error_responses
 from libs.helper import uuid_value
 from libs.login import login_required
@@ -263,6 +264,7 @@ class ChatMessageApi(Resource):
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        RelayedHTTPError,
     )
     @console_ns.doc("create_chat_message")
     @console_ns.doc(description="Generate chat message for debugging")
@@ -297,6 +299,7 @@ class AgentChatMessageApi(Resource):
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        RelayedHTTPError,
     )
     @console_ns.doc("create_agent_chat_message")
     @console_ns.doc(description="Generate an Agent App chat message for debugging")
@@ -320,7 +323,7 @@ class AgentChatMessageApi(Resource):
         if trace_id:
             args["external_trace_id"] = trace_id
         with _chat_generation_errors():
-            stream = application_services().agent_apps.runtime.generate_chat(
+            _, stream = application_services().agent_apps.runtime.generate_chat(
                 context,
                 str(agent_id),
                 args=args,
@@ -341,6 +344,7 @@ class AgentBuildChatFinalizeApi(Resource):
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        RelayedHTTPError,
     )
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
@@ -364,12 +368,12 @@ class AgentBuildChatFinalizeApi(Resource):
         if trace_id:
             args["external_trace_id"] = trace_id
         with _chat_generation_errors():
-            stream = application_services().agent_apps.runtime.generate_chat(
+            conversation_id, stream = application_services().agent_apps.runtime.generate_chat(
                 context, str(agent_id), args=args, draft_type=AgentConfigDraftType.DEBUG_BUILD, conversation_id=None
             )
         if isinstance(stream, Mapping):
             raise CompletionRequestError("Build chat finalization did not complete.")
-        _drain_streaming_generate_response(stream)
+        _drain_streaming_generate_response(stream, conversation_id=conversation_id)
         return {"result": "success"}, HTTPStatus.OK
 
 
@@ -501,14 +505,48 @@ def _create_chat_message(
     )
 
 
-def _drain_streaming_generate_response(response: Iterable[str]) -> None:
+def _raise_http_error_from_sse_error(
+    payload: Mapping[str, Any], *, fallback_message: str, conversation_id: str | None = None
+) -> NoReturn:
+    """Relay a parsed SSE error with valid status/code/message and existing correlation IDs only.
+
+    Invalid fields use boundary defaults; conversation_id fills a missing frame ID.
+    """
+    status = payload.get("status")
+    code = payload.get("code")
+    message = payload.get("message")
+    details = {
+        key: value
+        for key in ("conversation_id", "message_id", "task_id")
+        if isinstance(value := payload.get(key), str) and value
+    }
+    if "conversation_id" not in details and conversation_id:
+        details["conversation_id"] = conversation_id
+    trace_id = (get_external_trace_id(request) if has_request_context() else None) or get_trace_id()
+    if trace_id:
+        details["trace_id"] = trace_id
+    request_id = get_request_id()
+    if request_id:
+        details["request_id"] = request_id
+    raise RelayedHTTPError(
+        status=status if isinstance(status, int) and not isinstance(status, bool) else 400,
+        error_code=code if isinstance(code, str) and code else "completion_request_error",
+        message=message if isinstance(message, str) and message else fallback_message,
+        details=details or None,
+    )
+
+
+def _drain_streaming_generate_response(response: Iterable[str], conversation_id: str | None = None) -> None:
     """Consume a streamed app-generate response until a terminal message event arrives.
 
     Finalize keeps the normal Agent App streaming path so the existing queue,
     persistence, and runtime-session behavior stay intact. The console API only
     changes the HTTP boundary: it drains the SSE stream server-side and returns
     success after the generated build-chat message reaches ``message_end``.
+    Errors retain downstream status and observed IDs; premature EOF is a 502.
+    The supplied stream is closed on success and failure.
     """
+    correlation_ids: dict[str, str] = {}
     try:
         for chunk in response:
             for raw_event in chunk.split("\n\n"):
@@ -532,16 +570,28 @@ def _drain_streaming_generate_response(response: Iterable[str]) -> None:
                 if not isinstance(payload, dict):
                     continue
 
+                for key in ("conversation_id", "message_id", "task_id"):
+                    value = payload.get(key)
+                    if isinstance(value, str) and value:
+                        correlation_ids[key] = value
                 payload_event = payload.get("event")
                 if payload_event == "message_end":
                     return
                 if payload_event == "error":
-                    raise CompletionRequestError(str(payload.get("message") or "Build chat finalization failed."))
+                    _raise_http_error_from_sse_error(
+                        {**payload, **correlation_ids},
+                        fallback_message="Build chat finalization failed.",
+                        conversation_id=conversation_id,
+                    )
     finally:
         if isinstance(response, _ClosableStream):
             response.close()
 
-    raise CompletionRequestError("Build chat finalization did not complete.")
+    _raise_http_error_from_sse_error(
+        {**correlation_ids, "status": 502, "code": "agent_stream_incomplete"},
+        fallback_message="Build chat finalization did not complete.",
+        conversation_id=conversation_id,
+    )
 
 
 def _generate_chat_message(
@@ -641,8 +691,8 @@ def _raise_agent_stream_error_before_response(response):
     The shared streaming helper always returns HTTP 200 once the SSE response is
     created. Agent v2 configuration errors, such as an invalid model API key,
     can be the first real stream event after the initial ping; pre-reading that
-    first non-ping event lets the console API return the existing 400 error
-    contract instead of a successful HTTP response carrying only an SSE error.
+    first non-ping event lets the console API relay the downstream error status,
+    code and existing correlation IDs before committing the SSE response.
     """
     if isinstance(response, Mapping):
         return response
@@ -666,8 +716,7 @@ def _raise_agent_stream_error_before_response(response):
         if error_payload is not None:
             if isinstance(response, _ClosableStream):
                 response.close()
-            message = error_payload.get("message")
-            raise CompletionRequestError(str(message or "Agent App chat failed."))
+            _raise_http_error_from_sse_error(error_payload, fallback_message="Agent App chat failed.")
 
         return _prepend_stream_chunks(buffered, chunk, iterator)
 

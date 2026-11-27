@@ -21,7 +21,7 @@ from flask import Flask, current_app
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from clients.agent_backend import AgentBackendRunEventAdapter
+from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunFailedError
 from clients.agent_backend.factory import create_agent_backend_run_client
 from configs import dify_config
 from constants import UUID_NIL
@@ -49,6 +49,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
+from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks, create_trace_scope
 from factories import file_factory
@@ -84,6 +85,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         session: Session,
         streaming: bool = True,
     ) -> Mapping[str, Any] | Generator[Mapping | str]:
+        """Generate a streaming Agent turn with request trace IDs preserved in its entity and trace scope."""
         if not streaming:
             raise AgentAppGeneratorError("Agent App only supports streaming mode")
 
@@ -142,7 +144,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 else []
             )
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            **extract_external_trace_id_from_args(args),
+            **extract_trace_session_id_from_args(args),
+        }
         trace_scope = create_trace_scope(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -229,6 +235,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         message_id: str,
         user_from: UserFrom,
     ) -> None:
+        """Run one prepared turn; log correlated failures and publish them to the queue, then close the session."""
         from libs.flask_utils import preserve_flask_contexts
 
         with preserve_flask_contexts(flask_app, context_vars=context):
@@ -329,7 +336,18 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         outcome="failed",
                         output=None,
                     )
-                logger.exception("Unknown Error in Agent App generate worker")
+                backend_error = e if isinstance(e, AgentBackendRunFailedError) else e.__cause__
+                logger.exception(
+                    "Unknown Error in Agent App generate worker: agent_id=%s app_id=%s "
+                    "conversation_id=%s message_id=%s task_id=%s agent_run_id=%s agent_run_reason=%s",
+                    application_generate_entity.agent_id,
+                    application_generate_entity.app_config.app_id,
+                    conversation_id,
+                    message_id,
+                    application_generate_entity.task_id,
+                    backend_error.run_id if isinstance(backend_error, AgentBackendRunFailedError) else None,
+                    backend_error.reason if isinstance(backend_error, AgentBackendRunFailedError) else None,
+                )
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()

@@ -40,6 +40,7 @@ def _payload() -> dict[str, object]:
             "invoke_from": "debugger",
             "agent_mode": "workflow_run",
             "agent_config_version_kind": "draft",
+            "trace_id": "trace-1",
         },
         "target": {
             "provider": "openai",
@@ -103,7 +104,7 @@ def test_post_streams_plugin_compatible_envelope() -> None:
 
 @pytest.mark.parametrize("stream_error", [False, True], ids=["completed", "provider-error"])
 def test_post_preserves_raw_prompts_without_serializing_them(
-    monkeypatch: pytest.MonkeyPatch, stream_error: bool
+    monkeypatch: pytest.MonkeyPatch, stream_error: bool, caplog: pytest.LogCaptureFixture
 ) -> None:
     payload = _payload()
     prompt_messages: list[dict[str, JsonValue]] = [
@@ -233,9 +234,57 @@ def test_post_preserves_raw_prompts_without_serializing_them(
             "error_type": "ValueError",
             "message": "provider stream failed",
         }
+        caller = captured_requests[0].caller
+        record = next(
+            record for record in caplog.records if "Unexpected Agent LLM invocation failure" in record.message
+        )
+        for field in (
+            f"agent_run_id={caller.agent_run_id}",
+            f"invocation_id={caller.invocation_id}",
+            f"app_id={caller.app_id}",
+            "provider=openai",
+            "model=gpt-test",
+            f"trace_id={caller.trace_id}",
+        ):
+            assert field in record.message
+        assert record.exc_info
+        assert isinstance(record.exc_info[1], ValueError)
     else:
         assert envelopes[-1]["data"]["delta"]["usage"] == usage.model_dump(mode="json")
         assert envelopes[-1]["data"]["delta"]["finish_reason"] == "tool_calls"
+
+
+def test_post_logs_unexpected_preparation_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    payload = _payload()
+    caller = AgentLLMInvokeRequest.model_validate(payload).caller
+    error = RuntimeError("model resolution failed")
+
+    def prepare(_service: AgentLLMInnerService, _request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
+        raise error
+
+    monkeypatch.setattr(AgentLLMInnerService, "prepare", prepare)
+    with _agent_inner_auth():
+        response = (
+            _flask_app()
+            .test_client()
+            .post("/inner/api/agent/llm/invoke", json=payload, headers={"X-Inner-Api-Key": "inner-key"})
+        )
+
+    assert response.status_code == 500
+    record = next(record for record in caplog.records if "Unexpected Agent LLM preparation failure" in record.message)
+    for field in (
+        f"agent_run_id={caller.agent_run_id}",
+        f"invocation_id={caller.invocation_id}",
+        f"app_id={caller.app_id}",
+        "provider=openai",
+        "model=gpt-test",
+        f"trace_id={caller.trace_id}",
+    ):
+        assert field in record.message
+    assert record.exc_info
+    assert record.exc_info[1] is error
 
 
 def test_post_rejects_invalid_body_before_model_resolution() -> None:

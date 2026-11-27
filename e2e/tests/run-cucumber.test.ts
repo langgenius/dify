@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { runCommand } from '../scripts/common.ts'
 import { runCucumber } from '../scripts/run-cucumber.ts'
 import {
+  captureMiddlewareLogs,
   getManagedSandboxEnvironment,
   resetState,
   startMiddleware,
@@ -23,6 +24,7 @@ vi.mock('../scripts/common.ts', () => ({
   runCommand: vi.fn(),
 }))
 vi.mock('../scripts/setup.ts', () => ({
+  captureMiddlewareLogs: vi.fn(),
   getManagedSandboxEnvironment: vi.fn(),
   resetState: vi.fn(),
   startMiddleware: vi.fn(),
@@ -72,6 +74,18 @@ describe('core E2E preparation', () => {
     const completed = new Promise<Error | undefined>((resolve) => {
       finishBuild = () => resolve(undefined)
     })
+    let markCaptureStarted!: () => void
+    const captureStarted = new Promise<void>((resolve) => {
+      markCaptureStarted = resolve
+    })
+    let finishCapture!: () => void
+    const captureDone = new Promise<void>((resolve) => {
+      finishCapture = resolve
+    })
+    vi.mocked(captureMiddlewareLogs).mockImplementationOnce(() => {
+      markCaptureStarted()
+      return captureDone
+    })
     const downloadProcess = managedProcess()
     vi.mocked(startWebBuildDownload).mockResolvedValue({
       process: downloadProcess,
@@ -87,6 +101,14 @@ describe('core E2E preparation', () => {
     expect(runCommand).not.toHaveBeenCalled()
 
     finishBuild()
+    await captureStarted
+    // Flush microtasks to verify stopMiddleware awaits captureMiddlewareLogs completion.
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(captureMiddlewareLogs).toHaveBeenCalledWith('/e2e/.logs/cucumber-middleware.log')
+    expect(stopMiddleware).not.toHaveBeenCalled()
+
+    finishCapture()
     await run
     expect(startWebServer).toHaveBeenCalledBefore(vi.mocked(runCommand))
     expect(runCommand).toHaveBeenCalledWith(
@@ -97,6 +119,7 @@ describe('core E2E preparation', () => {
     expect(stopManagedProcess).toHaveBeenCalledWith(downloadProcess)
     expect(stopWebServer).toHaveBeenCalledOnce()
     expect(stopMiddleware).toHaveBeenCalledOnce()
+    expect(captureMiddlewareLogs).toHaveBeenCalledBefore(vi.mocked(stopMiddleware))
   })
 
   it('fails closed and tears down the backend when artifact preparation fails', async () => {
@@ -111,6 +134,7 @@ describe('core E2E preparation', () => {
     expect(runCommand).not.toHaveBeenCalled()
     expect(stopManagedProcess).toHaveBeenCalledTimes(5)
     expect(stopMiddleware).toHaveBeenCalledOnce()
+    expect(captureMiddlewareLogs).toHaveBeenCalledBefore(vi.mocked(stopMiddleware))
   })
 
   it('stops an unfinished artifact download when backend startup fails', async () => {
@@ -134,6 +158,7 @@ describe('core E2E preparation', () => {
     expect(startWebBuildDownload).not.toHaveBeenCalled()
     expect(startWebServer).toHaveBeenCalledOnce()
     expect(runCommand).toHaveBeenCalledOnce()
+    expect(captureMiddlewareLogs).toHaveBeenCalledOnce()
   })
 
   it('preserves Cucumber failure and empty-selection gates after preparation', async () => {
@@ -172,6 +197,7 @@ describe('core E2E preparation', () => {
     expect(runCommand).toHaveBeenCalledWith(
       expect.objectContaining({ env: expect.objectContaining(environment) }),
     )
+    expect(captureMiddlewareLogs).not.toHaveBeenCalled()
   })
 
   it('does not start or stop an independently managed sandbox', async () => {
