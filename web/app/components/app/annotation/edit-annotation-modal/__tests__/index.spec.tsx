@@ -191,23 +191,23 @@ describe.each(['chat', 'list'] as const)('%s annotation editor', (source) => {
     })
   })
 
-  it('shows the server message when saving fails', async () => {
+  it('shows the translated reason when saving fails', async () => {
     api.edit.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'app_unavailable',
         message: 'Server says why',
       }),
     )
     const { user } = await setup(source)
     const { save } = await editField(user, 'answerName', 'Corrected answer')
     await user.click(save)
-    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.app_unavailable')
   })
 
-  it('shows the server message when deletion fails', async () => {
+  it('shows the translated reason when deletion fails', async () => {
     api.remove.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'app_unavailable',
         message: 'Server says why',
       }),
     )
@@ -217,7 +217,9 @@ describe.each(['chat', 'list'] as const)('%s annotation editor', (source) => {
     )
     const confirmation = screen.getByRole('alertdialog')
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
-    expect(await within(confirmation).findByRole('alert')).toHaveTextContent('Server says why')
+    expect(await within(confirmation).findByRole('alert')).toHaveTextContent(
+      'requestErrors.code.app_unavailable',
+    )
   })
 })
 

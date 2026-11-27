@@ -10,7 +10,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleClient } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
@@ -18,6 +18,7 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 
 const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
+  const describeRequestError = useRequestErrorDescriber()
   const { eventEmitter } = useEventEmitterContextContext()
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
@@ -36,7 +37,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         },
       })
       if (syncFailed) {
-        toast.error(getRequestErrorMessage(syncError) ?? t(($) => $.exportFailed, { ns: 'app' }))
+        toast.error(
+          describeRequestError(
+            syncError,
+            t(($) => $.exportFailed, { ns: 'app' }),
+          ),
+        )
         return false
       }
 
@@ -56,11 +62,16 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       try {
         return await exportPipeline(include)
       } catch (error) {
-        toast.error(getRequestErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
+        toast.error(
+          describeRequestError(
+            error,
+            t(($) => $.exportFailed, { ns: 'app' }),
+          ),
+        )
         return false
       }
     },
-    [t, isExporting, exportPipeline],
+    [t, describeRequestError, isExporting, exportPipeline],
   )
   const exportCheck = useCallback(async () => {
     if (!pipelineId) return
@@ -80,9 +91,14 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         },
       } satisfies ExportSecretEnvironmentEvent)
     } catch (error) {
-      toast.error(getRequestErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $.exportFailed, { ns: 'app' }),
+        ),
+      )
     }
-  }, [eventEmitter, handleExportDSL, t, pipelineId])
+  }, [eventEmitter, handleExportDSL, t, describeRequestError, pipelineId])
   return {
     exportCheck,
     handleExportDSL,

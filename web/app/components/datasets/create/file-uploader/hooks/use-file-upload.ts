@@ -5,11 +5,11 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LanguagesSupported } from '@/i18n/language'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getFileExtension } from '@/utils/format'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../constants'
 
@@ -68,6 +68,7 @@ export const useFileUpload = ({
   allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
   const { t } = useTranslation(['common', 'datasetCreation'])
+  const describeRequestError = useRequestErrorDescriber()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -175,10 +176,9 @@ export const useFileUpload = ({
           return Promise.resolve({ ...completeFile })
         })
         .catch((e) => {
-          const errorMessage = getFileUploadErrorMessage(
+          const errorMessage = describeRequestError(
             e,
             t(($) => $['stepOne.uploader.failed'], { ns: 'datasetCreation' }),
-            t,
           )
           toast.error(errorMessage)
           onFileUpdate(fileItem, PROGRESS_ERROR, fileListRef.current)
@@ -186,7 +186,7 @@ export const useFileUpload = ({
         })
         .finally()
     },
-    [onFileUpdate, t],
+    [onFileUpdate, t, describeRequestError],
   )
 
   const uploadBatchFiles = useCallback(

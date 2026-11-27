@@ -1,9 +1,6 @@
 import type { ConsoleClient } from '@/service/console'
-import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
-import { createInstance } from 'i18next'
-import { createHttpError } from '@/service/http-error'
-import { getImageUploadErrorMessage, imageUpload } from '../utils'
+import { imageUpload } from '../utils'
 
 const upload = vi.hoisted(() =>
   vi.fn<typeof import('@/service/webapp-client').webAppClient.files.upload.post>(),
@@ -22,48 +19,9 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-const i18n = createInstance()
-beforeAll(async () => {
-  await i18n.init({
-    lng: 'en',
-    resources: {
-      en: { common: { fileUploader: { fileExtensionBlocked: 'This file type is blocked.' } } },
-    },
-  })
-})
 beforeEach(() => {
   upload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'image.png', size: 5 })
   consoleUpload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'image.png', size: 5 })
-})
-
-it.each([
-  {
-    error: createHttpError(new Response(null, { status: 403 }), {
-      code: 'forbidden',
-      message: 'Forbidden by policy',
-    }),
-    expected: 'Forbidden by policy',
-  },
-  {
-    error: createHttpError(new Response(null, { status: 413 }), {
-      code: 'file_too_large',
-      message: 'File size exceeded. 15 MB maximum.',
-    }),
-    expected: 'File size exceeded. 15 MB maximum.',
-  },
-  {
-    error: createHttpError(new Response(null, { status: 400 }), {
-      code: 'file_extension_blocked',
-      message: 'Blocked',
-    }),
-    expected: 'This file type is blocked.',
-  },
-  { error: new ORPCError('unexpected_error'), expected: 'Upload failed' },
-  { error: new Error('Network unavailable'), expected: 'Upload failed' },
-])('returns the user-facing error for $error.code / $error.message', ({ error, expected }) => {
-  expect(getImageUploadErrorMessage(error, 'Upload failed', i18n.getFixedT('en', ['common']))).toBe(
-    expected,
-  )
 })
 
 const file = () => new File(['image'], 'image.png', { type: 'image/png' })

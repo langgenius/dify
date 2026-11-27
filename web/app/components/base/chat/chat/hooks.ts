@@ -35,7 +35,7 @@ import {
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { streamEvents } from '@/service/event-stream'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
@@ -225,6 +225,7 @@ export const useChat = (
   options: UseChatOptions = {},
 ) => {
   const { t } = useTranslation(['appDebug', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
@@ -577,7 +578,10 @@ export const useChat = (
         await stopChat(taskId)
       } catch (error) {
         toast.error(
-          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${describeRequestError(
+            error,
+            t(($) => $['api.actionFailed'], { ns: 'common' }),
+          )}`,
         )
         return
       } finally {
@@ -597,7 +601,7 @@ export const useChat = (
     }
     stopLocalResponse()
     return true
-  }, [stopChat, stopLocalResponse, options.isNewAgent, t])
+  }, [stopChat, stopLocalResponse, options.isNewAgent, t, describeRequestError])
 
   const handleRestart = useCallback(
     (cb?: () => void) => {
