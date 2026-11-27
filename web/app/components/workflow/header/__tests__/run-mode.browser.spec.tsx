@@ -21,9 +21,15 @@ const { discovery, start, schedule, runAll, stop } = vi.hoisted(() => ({
   stop: vi.fn(),
 }))
 
+const downstreamWarning = {
+  id: 'downstream-node',
+  title: 'Send report',
+  errorMessages: ['Select an email connection'],
+}
+
 const ValidationContext = createContext({
   hasValidationErrors: true,
-  warningNodes: [{ id: 'downstream-node' }],
+  warningNodes: [downstreamWarning],
 })
 
 // Graph validation and trigger discovery own separate suites; the menu and keyboard integration stay real.
@@ -63,7 +69,7 @@ async function setup(initialStoreState: WorkflowProviderOptions['initialStoreSta
     <ValidationContext
       value={{
         hasValidationErrors,
-        warningNodes: hasValidationErrors ? [{ id: 'downstream-node' }] : [],
+        warningNodes: hasValidationErrors ? [downstreamWarning] : [],
       }}
     >
       <Wrapper>
@@ -80,11 +86,15 @@ beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
 })
 
-it('blocks downstream validation errors by button and shortcut, then runs once they are resolved', async () => {
+it('explains why keyboard activation and the shortcut are blocked until checklist errors are resolved', async () => {
   const screen = await setup()
   const run = screen.getByRole('button', { name: /workflow.common.run/ })
-  await expect.element(run).toBeDisabled()
-  // Native disabled controls cannot be clicked by browser locators; keyboard activation must also stay blocked.
+  await expect.element(run).toHaveAttribute('aria-disabled', 'true')
+  await userEvent.keyboard('{Tab}')
+  await expect.element(run).toHaveFocus()
+  await expect.element(page.getByRole('tooltip')).toMatchTextContent(/Select an email connection/)
+  await expect.element(run).toHaveAccessibleDescription('Send report Select an email connection')
+  await userEvent.keyboard('{Enter}')
   await userEvent.keyboard('{Alt>}r{/Alt}')
   expect(start).not.toHaveBeenCalled()
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
@@ -118,7 +128,9 @@ it('keeps trigger and run-all actions inaccessible until downstream validation p
     },
   } satisfies TestRunOptions)
   const screen = await setup()
-  await expect.element(screen.getByRole('button', { name: /workflow.common.run/ })).toBeDisabled()
+  await expect
+    .element(screen.getByRole('button', { name: /workflow.common.run/ }))
+    .toHaveAttribute('aria-disabled', 'true')
   await userEvent.keyboard('{Alt>}r{/Alt}')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
   expect(schedule).not.toHaveBeenCalled()
