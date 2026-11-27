@@ -26,7 +26,7 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -35,7 +35,7 @@ import {
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { streamEvents } from '@/service/event-stream'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
@@ -225,6 +225,7 @@ export const useChat = (
   options: UseChatOptions = {},
 ) => {
   const { t } = useTranslation(['appDebug', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
@@ -577,7 +578,10 @@ export const useChat = (
         await stopChat(taskId)
       } catch (error) {
         toast.error(
-          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${describeRequestError(
+            error,
+            t(($) => $['api.actionFailed'], { ns: 'common' }),
+          )}`,
         )
         return
       } finally {
@@ -591,13 +595,13 @@ export const useChat = (
           await stopChat(taskIdRef.current)
         } catch (error) {
           // Stopping locally must still finish; only the server stop failure is reported.
-          toastRequestError(error)
+          reportRequestError(error)
         }
       })()
     }
     stopLocalResponse()
     return true
-  }, [stopChat, stopLocalResponse, options.isNewAgent, t])
+  }, [stopChat, stopLocalResponse, options.isNewAgent, t, describeRequestError])
 
   const handleRestart = useCallback(
     (cb?: () => void) => {
@@ -734,7 +738,7 @@ export const useChat = (
                 )
                 setSuggestedQuestions(data)
               } catch (error) {
-                toastRequestError(error)
+                reportRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -1308,7 +1312,7 @@ export const useChat = (
                 )
               } catch (error) {
                 // Keep the streamed answer and its settlement when history cannot be refreshed.
-                if (isCurrentRequest()) toastRequestError(error)
+                if (isCurrentRequest()) reportRequestError(error)
                 return
               }
               if (!isCurrentRequest()) return
@@ -1396,7 +1400,7 @@ export const useChat = (
                 if (isCurrentRequest()) setSuggestedQuestions(data)
               } catch (error) {
                 if (isCurrentRequest()) {
-                  toastRequestError(error)
+                  reportRequestError(error)
                   setSuggestedQuestions([])
                 }
               }

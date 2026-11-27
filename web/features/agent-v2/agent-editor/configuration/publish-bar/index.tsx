@@ -26,7 +26,7 @@ import {
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { AgentVersionRestore } from '../../version-restore'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 import { AgentPublishSuccess } from './publish-success'
@@ -97,6 +97,7 @@ export function AgentConfigurePublishBar({
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const draft = useAtomValue(agentComposerDraftAtom)
@@ -174,7 +175,12 @@ export function AgentConfigurePublishBar({
         staleTime: 0,
       })
     } catch (error) {
-      toast.error(getRequestErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
+      toast.error(
+        describeRequestError(
+          error,
+          tCommon(($) => $['api.actionFailed']),
+        ),
+      )
       return
     }
     const references = referencesResponse?.data ?? []

@@ -352,11 +352,11 @@ describe('SkillDetailPage metadata', () => {
     })
   })
 
-  it('shows the server message when a rename fails', async () => {
+  it('shows the save failure when a rename fails with an unknown code', async () => {
     const user = userEvent.setup()
     mocks.skillMetadataMutationFn.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'unknown_failure',
         message: 'Server says why',
       }),
     )
@@ -367,7 +367,9 @@ describe('SkillDetailPage metadata', () => {
     await user.clear(renameInput)
     await user.type(renameInput, 'Renamed skill{Enter}')
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Server says why'))
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.saveFailed'),
+    )
   })
 
   it('starts inline rename from the sidebar More menu', async () => {

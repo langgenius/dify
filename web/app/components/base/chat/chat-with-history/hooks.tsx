@@ -14,7 +14,7 @@ import {
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { changeLanguage } from '@/i18n/client'
@@ -519,7 +519,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       try {
         await pinConversation(appSourceType, appId, conversationId)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         return
       }
       if (conversationId === pendingNameConversationIdRef.current)
@@ -534,7 +534,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       try {
         await unpinConversation(appSourceType, appId, conversationId)
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         return
       }
       toast.success(t(($) => $['api.success'], { ns: 'common' }))
@@ -552,7 +552,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         toast.success(t(($) => $['api.success'], { ns: 'common' }))
         onSuccess()
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         return
       } finally {
         setConversationDeleting(false)
@@ -594,7 +594,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         )
         onSuccess()
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
       } finally {
         setConversationRenaming(false)
       }
@@ -658,7 +658,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           appId,
         )
       } catch (error) {
-        toastRequestError(error)
+        reportRequestError(error)
         throw error
       }
     },

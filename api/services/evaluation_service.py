@@ -1158,7 +1158,9 @@ class EvaluationService:
         )
         max_concurrent = dify_config.EVALUATION_MAX_CONCURRENT_RUNS
         if active_runs >= max_concurrent:
-            raise EvaluationMaxConcurrentRunsError(f"Maximum concurrent runs ({max_concurrent}) reached.")
+            raise EvaluationMaxConcurrentRunsError(
+                f"Maximum concurrent runs ({max_concurrent}) reached.", limit=max_concurrent
+            )
 
         celery_task_id = str(uuid.uuid4())
         run_snapshot = EvaluationRunSnapshot.model_validate(
@@ -1340,7 +1342,9 @@ class EvaluationService:
         )
         max_concurrent = dify_config.EVALUATION_MAX_CONCURRENT_RUNS
         if active_runs >= max_concurrent:
-            raise EvaluationMaxConcurrentRunsError(f"Maximum concurrent runs ({max_concurrent}) reached.")
+            raise EvaluationMaxConcurrentRunsError(
+                f"Maximum concurrent runs ({max_concurrent}) reached.", limit=max_concurrent
+            )
 
         locked_run = session.scalar(
             select(EvaluationRun)

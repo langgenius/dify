@@ -77,7 +77,7 @@ it('offers retry after HTTP 500 and opens the recovered contact details', async 
     .mockReturnValueOnce(json({ code: 'internal_server_error', message: 'Unavailable' }, 500))
     .mockImplementation(() => json({ contact: alice, im_binding_details: [] }))
   const { user, panel } = await openDetails()
-  expect(await within(panel).findByRole('alert')).toHaveTextContent('Unavailable')
+  expect(await within(panel).findByRole('alert')).toHaveTextContent('contacts.details.error')
   await user.click(within(panel).getByRole('button', { name: 'contacts.action.retry' }))
   expect(await screen.findByRole('region', { name: 'Alice' })).toBeVisible()
   await waitFor(() => expect(network.details).toHaveBeenCalledTimes(2))

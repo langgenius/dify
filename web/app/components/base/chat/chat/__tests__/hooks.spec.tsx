@@ -1046,7 +1046,7 @@ describe('useChat', () => {
       ])
     })
 
-    it('should retain the streamed answer and original settlement when history fails', async () => {
+    it('should retain the streamed answer and original settlement and report a failed history refresh', async () => {
       const historyError = new Response(null, { status: 503 })
       const onGetConversationMessages = vi.fn().mockRejectedValue(historyError)
       const onGetSuggestedQuestions = vi.fn()
@@ -1084,7 +1084,8 @@ describe('useChat', () => {
       expect(onGetSuggestedQuestions).not.toHaveBeenCalled()
       expect(onConversationComplete).not.toHaveBeenCalled()
       expect(onSendSettled).toHaveBeenCalledExactlyOnceWith(undefined)
-      expect(toast.error).not.toHaveBeenCalled()
+      // A history refresh that fails outside the request layer still tells the user.
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.unknown')
     })
 
     it('reports a failed history refresh request with its server message', async () => {
@@ -2591,7 +2592,7 @@ describe('useChat', () => {
 
   describe('handleStop and handleRestart', () => {
     it.each(['rejection', 'throw'] as const)(
-      'should finish stopping locally after a service %s',
+      'should finish stopping locally and report the failed stop after a service %s',
       async (failure) => {
         const error = new Error('Stop request failed')
         const stopChat = vi.fn(() => {
@@ -2614,7 +2615,8 @@ describe('useChat', () => {
 
         expect(result.current.isResponding).toBe(false)
         expect(controller.abort).toHaveBeenCalledOnce()
-        expect(toast.error).not.toHaveBeenCalled()
+        // The response stops locally, and the failed stop request is still reported.
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith('requestErrors.generic.unknown')
         unmount()
       },
     )
@@ -2661,12 +2663,12 @@ describe('useChat', () => {
 
     it.each([
       [
-        'the server message',
-        createHttpError(new Response(null, { status: 400 }), {
-          code: 'invalid_param',
+        'the translated reason',
+        createHttpError(new Response(null, { status: 404 }), {
+          code: 'conversation_not_found',
           message: 'Server says why',
         }),
-        'appDebug.operation.stopResponding: Server says why',
+        'appDebug.operation.stopResponding: requestErrors.code.conversation_not_found',
       ],
       [
         'the localized fallback',

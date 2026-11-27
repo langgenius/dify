@@ -302,11 +302,11 @@ describe('Header layout components', () => {
       })
     })
 
-    it('reports the server message when restoration is rejected', async () => {
+    it('reports the translated reason when restoration is rejected', async () => {
       const user = userEvent.setup()
       mockRestoreWorkflow.mockRejectedValueOnce(
         createHttpError(new Response(null, { status: 400 }), {
-          code: 'invalid_param',
+          code: 'draft_workflow_not_sync',
           message: 'Server says why',
         }),
       )
@@ -323,7 +323,10 @@ describe('Header layout components', () => {
       await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => expect(onRestoreSettled).toHaveBeenCalledTimes(1))
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'Server says why' })
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'requestErrors.code.draft_workflow_not_sync',
+      })
     })
 
     it('should restore rag pipeline versions without emitting collaboration events', async () => {
