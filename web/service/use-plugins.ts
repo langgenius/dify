@@ -883,9 +883,9 @@ const areAutoUpgradeSettingsEqual = (
 //   return isAdmin
 // }
 
-// Overlapping saves of one setting: the value before the first of them, and whether any
-// succeeded. A new batch starts when a save begins with no other save of it pending.
-type SaveBatch = { previous: unknown; succeeded: boolean }
+// Overlapping saves of one setting: the value before the first of them, and how they ended.
+// A batch starts with the first save that finds none, and ends once no save of it is pending.
+type SaveBatch = { previous: unknown; succeeded: boolean; failed: boolean }
 const saveBatches = new WeakMap<QueryClient, Map<string, SaveBatch>>()
 
 function saveBatchOf(queryClient: QueryClient, mutationKey: QueryKey) {
@@ -903,41 +903,46 @@ async function writeOptimistically(
   value: unknown,
 ): Promise<SaveTarget> {
   const { mutationKey, queryKey } = target
-  await queryClient.cancelQueries({ queryKey })
+  // Before any await: two saves starting in one tick are both pending by the time either
+  // resumes, so a pending count cannot tell which one came first.
   const { batches, id } = saveBatchOf(queryClient, mutationKey)
-  if (queryClient.isMutating({ mutationKey }) === 1)
-    batches.set(id, { previous: queryClient.getQueryData(queryKey), succeeded: false })
+  if (!batches.has(id))
+    batches.set(id, {
+      previous: queryClient.getQueryData(queryKey),
+      succeeded: false,
+      failed: false,
+    })
+  if (queryClient.isFetching({ queryKey })) await queryClient.cancelQueries({ queryKey })
   queryClient.setQueryData(queryKey, value)
   return target
 }
 
-function markSaved(queryClient: QueryClient, target?: SaveTarget) {
-  if (!target) return
-  const { batches, id } = saveBatchOf(queryClient, target.mutationKey)
-  const batch = batches.get(id)
-  if (batch) batch.succeeded = true
-}
-
 /**
- * Settles a failed save once no save of the setting is pending (see README "Optimistic
- * updates"); after a success the invalidation fallback refreshes the plugin settings.
+ * Settles a save once no save of the setting is pending (see README "Optimistic updates").
  *
- * A save stays pending until its callbacks finish, so two saves failing together would each
- * see the other: the check runs after the callbacks, and whichever finishes last reconciles.
- * When none of the overlapping saves succeeded, the value before them comes back; the setting
- * is then read again either way.
+ * A save stays pending until its callbacks finish, so saves ending together would each see
+ * the others: the check runs after the callbacks, and whichever finishes last settles the
+ * batch. When a save failed and none succeeded, the value before the batch comes back; after a
+ * failure the setting is read again. After successes alone the invalidation fallback refreshes
+ * the plugin settings.
  */
-function rollBackWhenSettled(queryClient: QueryClient, target?: SaveTarget) {
+function settleSave(queryClient: QueryClient, target: SaveTarget | undefined, failed: boolean) {
   if (!target) return
   const { mutationKey, queryKey } = target
+  const { batches, id } = saveBatchOf(queryClient, mutationKey)
+  const batch = batches.get(id)
+  if (batch) {
+    if (failed) batch.failed = true
+    else batch.succeeded = true
+  }
   setTimeout(() => {
     if (queryClient.isMutating({ mutationKey }) > 0) return
-    const { batches, id } = saveBatchOf(queryClient, mutationKey)
-    const batch = batches.get(id)
+    const settled = batches.get(id)
     batches.delete(id)
-    if (batch && !batch.succeeded) {
-      if (batch.previous === undefined) queryClient.removeQueries({ queryKey })
-      else queryClient.setQueryData(queryKey, batch.previous)
+    if (!settled?.failed) return
+    if (!settled.succeeded) {
+      if (settled.previous === undefined) queryClient.removeQueries({ queryKey })
+      else queryClient.setQueryData(queryKey, settled.previous)
     }
     void invalidateQueryKeys(queryClient, [queryKey])
   })
@@ -969,9 +974,9 @@ export const useMutationPluginPermissionSettings = ({
         { mutationKey: permissionChangeKey(), queryKey: pluginPermissionSettingsQueryKey() },
         payload,
       ),
-    onError: (_error, _payload, target) => rollBackWhenSettled(queryClient, target),
+    onError: (_error, _payload, target) => settleSave(queryClient, target, true),
     onSuccess: (_data, _payload, target) => {
-      markSaved(queryClient, target)
+      settleSave(queryClient, target, false)
       onSuccess?.()
     },
   })
@@ -1005,9 +1010,9 @@ export const useMutationPluginAutoUpgradeSettings = ({
         },
         { category, auto_upgrade: payload },
       ),
-    onError: (_error, _payload, target) => rollBackWhenSettled(queryClient, target),
+    onError: (_error, _payload, target) => settleSave(queryClient, target, true),
     onSuccess: (_data, _payload, target) => {
-      markSaved(queryClient, target)
+      settleSave(queryClient, target, false)
       onSuccess?.()
     },
   })
