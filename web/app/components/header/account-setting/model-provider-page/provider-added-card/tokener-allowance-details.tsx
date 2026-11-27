@@ -13,11 +13,13 @@ type TokenerMetering = NonNullable<ModelProviderCreditsResponse['tokener_meterin
 type TokenerAllowanceDetailsProps = {
   planAllowance: TokenerMetering['plan_allowance']
   purchasedAvailableUsdMicro: TokenerMetering['purchased_available_usd_micro']
+  className?: string
 }
 
 export function TokenerAllowanceDetails({
   planAllowance,
   purchasedAvailableUsdMicro,
+  className,
 }: TokenerAllowanceDetailsProps) {
   const { t } = useTranslation(['modelProvider'])
   const { data: billingPlan } = useQuery(
@@ -40,11 +42,10 @@ export function TokenerAllowanceDetails({
   const lessThanOne = t(($) => $['modelProvider.tokenerLessThanOneCredit'])
 
   return (
-    <details className="group mt-2 border-t border-divider-subtle pt-2">
-      <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-xs system-sm-medium text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid [&::-webkit-details-marker]:hidden">
+    <div className={className}>
+      <p className="system-sm-semibold text-text-secondary">
         {t(($) => $['modelProvider.tokenerBalanceDetails'])}
-        <span aria-hidden className="i-ri-arrow-down-s-line size-4 group-open:rotate-180" />
-      </summary>
+      </p>
       <dl className="mt-2 grid gap-2">
         {planAllowance && (
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -79,6 +80,6 @@ export function TokenerAllowanceDetails({
           </div>
         )}
       </dl>
-    </details>
+    </div>
   )
 }

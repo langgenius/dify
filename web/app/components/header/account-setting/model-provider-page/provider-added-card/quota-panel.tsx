@@ -133,6 +133,9 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
   // metering responses did not include entitlement_status, so keep displaying
   // their optional allowance without inventing a processing state.
   const allowance = entitlementMessageKey || metering.plan_allowance ? null : metering.allowance
+  // Older responses can lack the managed plan breakdown; their summary is
+  // still needed to show the available balance without inventing plan fields.
+  const showLegacySummary = metering.plan_allowance == null
   return (
     <div
       role="group"
@@ -141,58 +144,69 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
     >
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
-        <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'modelProvider' })}
-          <QuotaInfotip tipText={tipText} />
-        </div>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <div className="flex items-baseline gap-1">
-            <span className="system-xl-semibold text-text-secondary">
-              {formatUsdMicro(metering.available_usd_micro)}
-            </span>
-            <span className="system-sm-regular text-text-tertiary">
-              {t(($) => $['modelProvider.tokenerAvailableUsd'], { ns: 'modelProvider' })}
-            </span>
-          </div>
-          <span aria-hidden className="text-text-quaternary">
-            ·
-          </span>
-          {currentMonth.status === 'available' ? (
-            <>
+        {showLegacySummary && (
+          <>
+            <div className="flex items-center system-xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['modelProvider.tokenerUsageLabel'], { ns: 'modelProvider' })}
+              <QuotaInfotip tipText={tipText} />
+            </div>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <div className="flex items-baseline gap-1">
-                <span className="system-md-semibold text-text-secondary">
-                  {formatUsdMicro(currentMonth.billed_usd_micro)}
+                <span className="system-xl-semibold text-text-secondary">
+                  {formatUsdMicro(metering.available_usd_micro)}
                 </span>
                 <span className="system-sm-regular text-text-tertiary">
-                  {t(($) => $['modelProvider.tokenerBilledThisMonth'], {
-                    ns: 'modelProvider',
-                    date: currentMonth.end_date,
-                  })}
+                  {t(($) => $['modelProvider.tokenerAvailableUsd'], { ns: 'modelProvider' })}
                 </span>
               </div>
               <span aria-hidden className="text-text-quaternary">
                 ·
               </span>
-              <div className="flex items-baseline gap-1">
-                <span className="system-md-semibold text-text-secondary">
-                  {formatDecimalInteger(currentMonth.request_count)}
-                </span>
-                <span className="system-sm-regular text-text-tertiary">
-                  {t(($) => $['modelProvider.tokenerRequestsThisMonth'], { ns: 'modelProvider' })}
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-baseline gap-1">
-              <span className="system-md-semibold text-text-secondary">—</span>
-              <span className="system-sm-regular text-text-tertiary">
-                {t(($) => $['modelProvider.tokenerMonthlyUsageUnavailable'], {
-                  ns: 'modelProvider',
-                })}
-              </span>
+              {currentMonth.status === 'available' ? (
+                <>
+                  <div className="flex items-baseline gap-1">
+                    <span className="system-md-semibold text-text-secondary">
+                      {formatUsdMicro(currentMonth.billed_usd_micro)}
+                    </span>
+                    <span className="system-sm-regular text-text-tertiary">
+                      {t(($) => $['modelProvider.tokenerBilledThisMonth'], {
+                        ns: 'modelProvider',
+                        date: currentMonth.end_date,
+                      })}
+                    </span>
+                  </div>
+                  <span aria-hidden className="text-text-quaternary">
+                    ·
+                  </span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="system-md-semibold text-text-secondary">
+                      {formatDecimalInteger(currentMonth.request_count)}
+                    </span>
+                    <span className="system-sm-regular text-text-tertiary">
+                      {t(($) => $['modelProvider.tokenerRequestsThisMonth'], {
+                        ns: 'modelProvider',
+                      })}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-baseline gap-1">
+                  <span className="system-md-semibold text-text-secondary">—</span>
+                  <span className="system-sm-regular text-text-tertiary">
+                    {t(($) => $['modelProvider.tokenerMonthlyUsageUnavailable'], {
+                      ns: 'modelProvider',
+                    })}
+                  </span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+        <TokenerAllowanceDetails
+          className={showLegacySummary ? 'mt-2 border-t border-divider-subtle pt-2' : undefined}
+          planAllowance={metering.plan_allowance}
+          purchasedAvailableUsdMicro={metering.purchased_available_usd_micro}
+        />
         {entitlementMessageKey && (
           <div
             role="status"
@@ -201,10 +215,6 @@ const TokenerQuotaPanel: FC<TokenerQuotaPanelProps> = ({ bootstrapStatus, meteri
             {t(($) => $[entitlementMessageKey], { ns: 'modelProvider' })}
           </div>
         )}
-        <TokenerAllowanceDetails
-          planAllowance={metering.plan_allowance}
-          purchasedAvailableUsdMicro={metering.purchased_available_usd_micro}
-        />
         {allowance && (
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-divider-subtle pt-2">
             <div className="flex items-baseline gap-1">

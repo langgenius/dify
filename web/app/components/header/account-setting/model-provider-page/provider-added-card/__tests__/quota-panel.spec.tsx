@@ -2,7 +2,7 @@ import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/w
 import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
 import { zModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import {
@@ -208,6 +208,39 @@ describe('QuotaPanel', () => {
     expect(screen.getByRole('button', { name: /tokenerUsageTip/ })).toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.quotaLabel/)).not.toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
+  })
+
+  it('shows managed plan and purchased balances instead of the old Tokener summary', () => {
+    credits = createTokenerCreditsFixture({
+      tokener_metering: createTokenerMeteringFixture({
+        available_usd_micro: '1446028',
+        plan_allowance: {
+          plan: 'sandbox',
+          amount_usd_micro: '446036',
+          available_usd_micro: '446028',
+          starts_at: '2026-09-01T00:00:00Z',
+          ends_at: null,
+        },
+        purchased_available_usd_micro: '1000000',
+        current_month: {
+          status: 'available',
+          start_date: '2026-09-01',
+          end_date: '2026-09-03',
+          billed_usd_micro: '8',
+          request_count: '1',
+        },
+      }),
+    })
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    const panel = within(screen.getByRole('group', { name: /tokenerUsageLabel/ }))
+    expect(panel.getByText(/tokenerBalanceDetails/)).toBeVisible()
+    expect(panel.getByText(/tokenerPlanCredits/)).toBeVisible()
+    expect(panel.getByText(/tokenerPurchasedBalance/)).toBeVisible()
+    expect(panel.getByText('USD 1.00')).toBeVisible()
+    expect(panel.queryByText(/tokenerAvailableUsd/)).not.toBeInTheDocument()
+    expect(panel.queryByText(/tokenerBilledThisMonth/)).not.toBeInTheDocument()
+    expect(panel.queryByText(/tokenerRequestsThisMonth/)).not.toBeInTheDocument()
+    expect(panel.queryByText('$1.446028')).not.toBeInTheDocument()
   })
 
   const allowance = {

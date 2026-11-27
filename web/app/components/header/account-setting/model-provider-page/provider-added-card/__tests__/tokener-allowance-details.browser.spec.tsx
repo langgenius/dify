@@ -63,26 +63,33 @@ it.each([
     amountMicro: '22301800',
     credits: '10,000 / 10,000 Credits',
   },
-] as const)('shows $label separately from purchased balance', async (testCase) => {
-  fake.console.features.get.mockResolvedValue(
-    createFeaturesFixture({ billing: { subscription: { plan: testCase.billingPlan } } }),
-  )
-  const screen = await setup({
-    planAllowance: makePlanAllowance({
-      amount_usd_micro: testCase.amountMicro,
-      available_usd_micro: testCase.amountMicro,
-    }),
-    purchasedAvailableUsdMicro: '1000000',
-  })
+] as const)(
+  'shows $label and purchased balance by default without a disclosure',
+  async (testCase) => {
+    fake.console.features.get.mockResolvedValue(
+      createFeaturesFixture({ billing: { subscription: { plan: testCase.billingPlan } } }),
+    )
+    const screen = await setup({
+      planAllowance: makePlanAllowance({
+        amount_usd_micro: testCase.amountMicro,
+        available_usd_micro: testCase.amountMicro,
+      }),
+      purchasedAvailableUsdMicro: '1000000',
+    })
 
-  await expect.element(screen.getByText(testCase.credits)).not.toBeVisible()
-  await screen.getByText('Balance details').click()
-  await expect.element(screen.getByText(testCase.label)).toBeVisible()
-  await expect.element(screen.getByText(testCase.credits)).toBeVisible()
-  await expect.element(screen.getByText('Purchased balance')).toBeVisible()
-  await expect.element(screen.getByText('USD 1.00')).toBeVisible()
-  expect(fake.console.features.get).toHaveBeenCalledTimes(1)
-})
+    const title = screen.getByText('Balance details')
+    await expect.element(title).toBeVisible()
+    expect(title.all()).toHaveLength(1)
+    await expect
+      .element(screen.getByRole('button', { name: 'Balance details' }))
+      .not.toBeInTheDocument()
+    await expect.element(screen.getByText(testCase.label)).toBeVisible()
+    await expect.element(screen.getByText(testCase.credits)).toBeVisible()
+    await expect.element(screen.getByText('Purchased balance')).toBeVisible()
+    await expect.element(screen.getByText('USD 1.00')).toBeVisible()
+    expect(fake.console.features.get).toHaveBeenCalledTimes(1)
+  },
+)
 
 it('shows a genuinely exhausted paid plan without inventing a missing purchased balance', async () => {
   const screen = await setup({
@@ -90,7 +97,6 @@ it('shows a genuinely exhausted paid plan without inventing a missing purchased 
     purchasedAvailableUsdMicro: null,
   })
 
-  await screen.getByText('Balance details').click()
   await expect.element(screen.getByText('Pro plan credits')).toBeVisible()
   await expect.element(screen.getByText('0 / 5,000 Credits')).toBeVisible()
   await expect.element(screen.getByText('Purchased balance')).not.toBeInTheDocument()
@@ -113,7 +119,6 @@ it.each([
       purchasedAvailableUsdMicro: '0',
     })
 
-    await screen.getByText('Balance details').click()
     await expect.element(screen.getByText('Sandbox plan credits')).toBeVisible()
     await expect.element(screen.getByText(testCase.displayed)).toBeVisible()
     await expect.element(screen.getByText('Purchased balance')).toBeVisible()
