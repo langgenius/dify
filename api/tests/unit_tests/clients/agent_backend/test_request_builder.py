@@ -38,7 +38,7 @@ from clients.agent_backend import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
-from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID, _agent_model_settings
 from models.agent_config_entities import AgentSoulModelSettings
 
 
@@ -457,6 +457,62 @@ def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunI
     )
 
 
+@pytest.mark.parametrize("mode", ["agent_app", "workflow_node"])
+@pytest.mark.parametrize("limit", [None, 3])
+def test_per_tool_call_limits_survive_both_run_request_contracts(mode: str, limit: int | None) -> None:
+    run_input = _agent_app_input() if mode == "agent_app" else _run_input()
+    run_input.tools = DifyPluginToolsLayerConfig(
+        tools=[
+            DifyPluginToolConfig(
+                plugin_id="langgenius/search",
+                provider="search",
+                tool_name="web_search",
+                credential_type="unauthorized",
+                parameters_json_schema={"type": "object", "properties": {}},
+                max_calls_per_run=limit,
+            )
+        ]
+    )
+    run_input.core_tools = DifyCoreToolsLayerConfig(
+        tools=[
+            DifyCoreToolConfig(
+                provider_type="api",
+                provider_id="api-provider-1",
+                tool_name="company_lookup",
+                parameters_json_schema={"type": "object", "properties": {}},
+                max_calls_per_run=1 if limit is not None else None,
+            )
+        ]
+    )
+    builder = AgentBackendRunRequestBuilder()
+    request = (
+        builder.build_for_agent_app(run_input)
+        if isinstance(run_input, AgentBackendAgentAppRunInput)
+        else builder.build_for_workflow_node(run_input)
+    )
+
+    restored = CreateRunRequest.model_validate_json(request.model_dump_json())
+    layers = {layer.name: layer for layer in restored.composition.layers}
+
+    plugin_layer = layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config
+    core_layer = layers[DIFY_CORE_TOOLS_LAYER_ID].config
+    assert DifyPluginToolsLayerConfig.model_validate(plugin_layer).tools[0].max_calls_per_run == limit
+    assert DifyCoreToolsLayerConfig.model_validate(core_layer).tools[0].max_calls_per_run == (
+        1 if limit is not None else None
+    )
+    if limit is None:
+        plugin_tools = plugin_layer["tools"]
+        core_tools = core_layer["tools"]
+        assert isinstance(plugin_tools, list)
+        assert isinstance(core_tools, list)
+        plugin_tool = plugin_tools[0]
+        core_tool = core_tools[0]
+        assert isinstance(plugin_tool, dict)
+        assert isinstance(core_tool, dict)
+        assert "max_calls_per_run" not in plugin_tool
+        assert "max_calls_per_run" not in core_tool
+
+
 def test_workflow_request_builder_omits_shell_layer_by_default() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
@@ -652,3 +708,46 @@ def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode
         assert "knowledge_fs" in modules
     finally:
         asyncio.run(client.aclose())
+
+
+def test_agent_model_settings_returns_none_for_empty_input() -> None:
+    assert _agent_model_settings({}) is None
+
+
+def test_agent_model_settings_maps_known_keys_and_extra_body() -> None:
+    result = _agent_model_settings(
+        {
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "presence_penalty": 0.1,
+            "frequency_penalty": 0.2,
+            "max_tokens": 128,
+            "stop": ["END"],
+            "enable_thinking": True,
+            "unused": None,
+        }
+    )
+
+    assert result is not None
+    assert result["temperature"] == 0.7
+    assert result["top_p"] == 0.9
+    assert result["presence_penalty"] == 0.1
+    assert result["frequency_penalty"] == 0.2
+    assert result["max_tokens"] == 128
+    assert result["stop_sequences"] == ["END"]
+    assert result["extra_body"] == {"enable_thinking": True}
+
+
+def test_agent_model_settings_rejects_invalid_value_types() -> None:
+    assert (
+        _agent_model_settings(
+            {
+                "temperature": "hot",
+                "max_tokens": True,
+            }
+        )
+        is None
+    )
+    assert _agent_model_settings({"stop": []}) is None
+    assert _agent_model_settings({"stop": "END"}) is None
+    assert _agent_model_settings({"stop": [1]}) is None

@@ -17,6 +17,7 @@ import { useFile } from '@/app/components/base/file-uploader/hooks'
 import { FileContextProvider, useFileStore } from '@/app/components/base/file-uploader/store'
 import VoiceInput from '@/app/components/base/voice-input'
 import { toast } from '@/app/notifications'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
@@ -92,6 +93,7 @@ const ChatInputArea = ({
   const textareaId = useId()
 
   const { t } = useTranslation(['appDebug', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const {
     wrapperRef,
     textareaRef,
@@ -241,9 +243,17 @@ const ChatInputArea = ({
     },
     [t],
   )
-  const handleVoiceInputError = useCallback(() => {
-    toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
-  }, [t])
+  const handleVoiceInputError = useCallback(
+    (error?: unknown) => {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['api.actionFailed'], { ns: 'common' }),
+        ),
+      )
+    },
+    [t, describeRequestError],
+  )
   const handleHideVoiceInput = useCallback(() => {
     setShowVoiceInput(false)
   }, [])

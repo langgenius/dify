@@ -55,12 +55,11 @@ class FakeRBAC:
     def permission_keys_by_control_space(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
     ) -> dict[str, frozenset[KnowledgeFSProductPermission]]:
-        _ = (session, tenant_id, account_id)
+        _ = (tenant_id, account_id)
         self.batch_calls.append(tuple(control_space_ids))
         return {
             control_space_id: frozenset(KnowledgeFSProductPermission)
@@ -71,14 +70,12 @@ class FakeRBAC:
     def filter_authorized_control_space_ids(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
         permission: KnowledgeFSProductPermission,
     ) -> frozenset[str]:
         permissions = self.permission_keys_by_control_space(
-            session=session,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_ids=control_space_ids,
@@ -502,6 +499,40 @@ def test_list_excludes_deleting_and_deleted_spaces_before_authorization(sqlite_s
     assert rbac.batch_calls == [(active.id,)]
     assert batch_capabilities.calls == [(KnowledgeFSBatchSpaceBinding(active.id, "space-active"),)]
     assert remote.batch_calls == [("space-active",)]
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
+def test_list_restricted_to_ids_returns_only_those_the_member_can_see(sqlite_session: Session) -> None:
+    shared = _space(visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS, key="shared", remote_id="space-a")
+    other = _space(visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS, key="other", remote_id="space-b")
+    hidden = _space(visibility=KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS, key="hidden", remote_id="space-c")
+    sqlite_session.add_all([shared, other, hidden])
+    sqlite_session.commit()
+    rbac = FakeRBAC()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=FakeBatchCapabilities(),
+        cutover_gate=FakeCutoverGate(),
+        remote=FakeRemote({}),
+        rbac=rbac,
+    )
+
+    def listed(ids: list[str] | None) -> list[str]:
+        response = service.list_spaces(
+            tenant_id="tenant-1", account_id="account-1", page=1, limit=20, control_space_ids=ids
+        )
+        assert response.has_more is False
+        return sorted(item.control_space_id for item in response.data)
+
+    # Only the ids asked for, and of those only what the member may see.
+    assert listed([shared.id, hidden.id, "00000000-0000-7000-8000-00000000ffff"]) == [shared.id]
+    assert rbac.batch_calls[-1] == (shared.id,)
+    assert listed([]) == []
+    assert listed(None) == sorted([shared.id, other.id])
 
 
 @pytest.mark.parametrize(

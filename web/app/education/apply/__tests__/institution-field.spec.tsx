@@ -4,6 +4,7 @@ import { ORPCError } from '@orpc/client'
 import { act, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import InstitutionField from '../institution-field'
@@ -241,6 +242,27 @@ describe('InstitutionField', () => {
         .getAllByText('common.dynamicSelect.error')
         .some((element) => element.closest('[role="status"]') !== null),
     ).toBe(true)
+  })
+
+  it('shows the translated reason when the search fails', async () => {
+    const user = userEvent.setup()
+    mockAutocomplete.mockRejectedValue(
+      createHttpError(new Response(null, { status: 502 }), {
+        code: 'billing_operation_failed',
+        message: 'Server says why',
+      }),
+    )
+
+    render(<ControlledInstitutionField />)
+
+    await user.type(
+      screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/),
+      'A',
+    )
+
+    expect(
+      (await screen.findAllByText('requestErrors.code.billing_operation_failed')).length,
+    ).toBeGreaterThan(0)
   })
 
   it('asks to try again later while the search service is unavailable', async () => {

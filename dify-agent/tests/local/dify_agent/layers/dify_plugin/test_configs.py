@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
@@ -204,3 +205,51 @@ def test_dify_plugin_tool_config_requires_explicit_credential_type() -> None:
                 "plugin_unique_identifier": "langgenius/tools:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             }
         )
+
+
+@pytest.mark.parametrize("limit", [None, 1, 3, 10**40 + 123])
+def test_tool_call_limit_accepts_null_or_strict_positive_integer_at_native_and_json_boundaries(
+    limit: int | None,
+) -> None:
+    payload = {
+        "plugin_id": "langgenius/github",
+        "provider": "github",
+        "tool_name": "search",
+        "credential_type": "api-key",
+    } | {"max_calls_per_run": limit}
+    config = DifyPluginToolConfig.model_validate(payload)
+    layer = DifyPluginToolsLayerConfig.model_validate_json(json.dumps({"tools": [payload]}))
+    assert config.max_calls_per_run == limit
+    assert layer.tools[0].max_calls_per_run == limit
+    serialized_tool = json.loads(layer.model_dump_json())["tools"][0]
+    if limit is None:
+        assert "max_calls_per_run" not in serialized_tool
+    else:
+        assert serialized_tool["max_calls_per_run"] == limit
+
+
+def test_legacy_tool_configuration_without_call_limit_remains_unlimited() -> None:
+    payload = {
+        "plugin_id": "langgenius/github",
+        "provider": "github",
+        "tool_name": "search",
+        "credential_type": "api-key",
+    }
+    assert DifyPluginToolConfig.model_validate(payload).max_calls_per_run is None
+    layer = DifyPluginToolsLayerConfig.model_validate_json(json.dumps({"tools": [payload]}))
+    assert layer.tools[0].max_calls_per_run is None
+    assert "max_calls_per_run" not in layer.model_dump(mode="json")["tools"][0]
+
+
+@pytest.mark.parametrize("limit", [0, -1, 1.0, 1.5, True, False, "3", "", [], {}])
+def test_tool_call_limit_rejects_non_positive_or_coerced_values_at_native_and_json_boundaries(limit: object) -> None:
+    payload = {
+        "plugin_id": "langgenius/github",
+        "provider": "github",
+        "tool_name": "search",
+        "credential_type": "api-key",
+    } | {"max_calls_per_run": limit}
+    with pytest.raises(ValidationError, match="max_calls_per_run"):
+        DifyPluginToolConfig.model_validate(payload)
+    with pytest.raises(ValidationError, match="max_calls_per_run"):
+        DifyPluginToolsLayerConfig.model_validate_json(json.dumps({"tools": [payload]}))

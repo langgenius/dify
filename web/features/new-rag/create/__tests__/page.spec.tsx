@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import {
@@ -1828,6 +1829,27 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('shows the translated error code when staging a file fails', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    serviceMock.stageUpload.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'invalid_input',
+        message: 'Server says why',
+      }),
+    )
+    await renderPage()
+
+    await user.upload(
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.invalid_input')
+  })
+
   it('does not check document or vector quota when creating an empty space', async () => {
     const user = userEvent.setup()
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'
@@ -2188,15 +2210,18 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('keeps the preview job available when stopping fails so cancellation can be retried', async () => {
+  it('reports a failed stop and keeps the preview job available so cancellation can be retried', async () => {
     const user = userEvent.setup()
+    const toastError = vi.spyOn(toast, 'error')
     navigationMock.startMode = 'source'
     serviceMock.getWebsitePreview.mockResolvedValue({
       job_id: 'website-preview-1',
       status: 'running',
     })
     serviceMock.cancelWebsitePreview
-      .mockRejectedValueOnce(new Error('cancel response lost'))
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 502 }), { message: 'Cancel failed' }),
+      )
       .mockResolvedValueOnce({
         job_id: 'website-preview-1',
         status: 'canceled',
@@ -2218,6 +2243,7 @@ describe('CreateKnowledgePage', () => {
     })
     await user.click(stopButton)
     await waitFor(() => expect(stopButton).toBeEnabled())
+    expect(toastError).toHaveBeenCalledWith('Cancel failed')
 
     await user.click(stopButton)
 
@@ -2226,6 +2252,7 @@ describe('CreateKnowledgePage', () => {
       params: { job_id: 'website-preview-1' },
     })
     expect(screen.getByRole('status')).toHaveTextContent('knowledgeSpace.crawlStopped')
+    toastError.mockRestore()
   })
 
   it('submits selected preview URLs for the server-side crawl import', async () => {

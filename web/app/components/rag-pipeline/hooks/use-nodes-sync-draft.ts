@@ -10,6 +10,7 @@ import {
   useNodesReadOnlyByCanEdit,
 } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { reportRequestError } from '@/app/query-error-toast'
 import { API_PREFIX } from '@/config'
 import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { consoleClient } from '@/service/console'
@@ -84,19 +85,18 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt, syncWorkflowDraftHash } =
         workflowStore.getState()
       const [error, res, isDefined] = await safe(
-        consoleClient.rag.pipelines.byPipelineId.workflows.draft.post(
-          {
-            params: { pipeline_id: baseParams.pipelineId },
-            body: { ...baseParams.params, hash: syncWorkflowDraftHash },
-          },
-          { context: { silent: true } },
-        ),
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.post({
+          params: { pipeline_id: baseParams.pipelineId },
+          body: { ...baseParams.params, hash: syncWorkflowDraftHash },
+        }),
       )
       try {
         if (error) {
-          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-            handleRefreshWorkflowDraft()
-          callback?.onError?.()
+          const isDraftNotSync = isDefined && error.code === 'draft_workflow_not_sync'
+          if (isDraftNotSync && !notRefreshWhenSyncError) handleRefreshWorkflowDraft()
+          // A conflict reloads the draft; a caller that passes `onError` presents other failures.
+          if (!isDraftNotSync && !callback?.onError) reportRequestError(error)
+          callback?.onError?.(error)
           return
         }
         setSyncWorkflowDraftHash(res.hash)

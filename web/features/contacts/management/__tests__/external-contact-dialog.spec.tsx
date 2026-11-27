@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { ExternalContactDialog } from '../external-contact-dialog'
 import { alice } from './fixtures/data'
@@ -150,6 +151,21 @@ it('retains the draft through a failed save and starts a new form only after clo
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
+it('shows the add failure when saving fails with an unknown code', async () => {
+  const user = userEvent.setup()
+  api.create.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 400 }), {
+      code: 'bad_request',
+      message: 'Server says why',
+    }),
+  )
+  setup()
+  await open(user)
+  await fill(user)
+  await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('contacts.external.result.failed')
+})
+
 it('edits through the generated PATCH and preserves an intentional empty name as a validation failure', async () => {
   const user = userEvent.setup()
   setup(alice)
@@ -221,6 +237,30 @@ it('uploads a valid avatar and submits its file ID without exposing the blob URL
       body: { name: 'Alice', email: 'alice@example.com', avatar: 'avatar-file' },
     }),
   )
+})
+
+it.each([
+  {
+    name: 'a blocked extension',
+    error: createHttpError(new Response(null, { status: 400 }), {
+      code: 'unsupported_file_type',
+      message: 'Blocked',
+    }),
+    expected: 'requestErrors.code.unsupported_file_type',
+  },
+  {
+    name: 'another failure',
+    error: new TypeError('Failed to fetch'),
+    expected: 'common.imageUploader.uploadFromComputerUploadError',
+  },
+])('explains an avatar upload rejected for $name', async ({ error, expected }) => {
+  const user = userEvent.setup()
+  api.upload.mockRejectedValueOnce(error)
+  setup()
+  const dialog = await open(user)
+  const upload = within(dialog).getByLabelText('common.imageUploader.imageUpload')
+  await user.upload(upload, new File(['image'], 'avatar.png', { type: 'image/png' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(expected)
 })
 
 it('keeps invalid avatar files local and blocks submit until reset', async () => {

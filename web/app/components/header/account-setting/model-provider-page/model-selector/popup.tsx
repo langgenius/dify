@@ -12,19 +12,19 @@ import {
   PreviewCard,
   PreviewCardContent,
 } from '@langgenius/dify-ui/preview-card'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
@@ -62,10 +62,9 @@ export type PopupProps = {
   onOpenProviderSettings?: () => void
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
-  onConfigureEmptyState?: () => void
+  onConfigureEmptyState: () => void
   onInputValueChange: (value: string) => void
   onSelect: (provider: string, model: ModelSelectorModel) => void
-  onOpenMarketplace?: () => void
   onHide: () => void
 }
 function Popup({
@@ -79,7 +78,6 @@ function Popup({
   onConfigureEmptyState,
   onInputValueChange,
   onSelect,
-  onOpenMarketplace,
   onHide,
 }: PopupProps) {
   const { t } = useTranslation(['common', 'modelProvider'])
@@ -97,7 +95,9 @@ function Popup({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+  const { mutateAsync: installPackageFromMarketPlace } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
+  )
   const { refreshPluginList } = useRefreshPluginList()
   const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(
@@ -150,17 +150,28 @@ function Popup({
         const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
         const uniqueIdentifier = pluginInfo.data.plugin.latest_package_identifier
         if (!uniqueIdentifier) return
-        const { all_installed, task_id } = await installPackageFromMarketPlace(uniqueIdentifier)
+        const { all_installed, task_id } = await installPackageFromMarketPlace({
+          body: { plugin_unique_identifiers: [uniqueIdentifier] },
+        })
         if (!all_installed) {
           const { check } = checkTaskStatus()
-          const { status } = await check({
-            taskId: task_id,
-            pluginUniqueIdentifier: uniqueIdentifier,
-          })
+          let status: TaskStatus
+          try {
+            ;({ status } = await check({
+              taskId: task_id,
+              pluginUniqueIdentifier: uniqueIdentifier,
+            }))
+          } catch (error) {
+            // The install request is a mutation and reports its own failure; the status poll is not.
+            reportRequestError(error)
+            return
+          }
           if (status !== TaskStatus.success) return
         }
         refreshPluginList({ category: PluginCategoryEnum.model })
-      } catch {
+      } catch (error) {
+        // The marketplace lookup is a plain request; the install mutation already reported itself.
+        reportRequestError(error)
       } finally {
         setInstallingProvider(null)
       }
@@ -283,7 +294,7 @@ function Popup({
           </div>
           <div className="pb-1">
             {!filteredModelList.length && !installedModelList.length && (
-              <ModelSelectorEmptyState onConfigure={onConfigureEmptyState ?? onHide} />
+              <ModelSelectorEmptyState onConfigure={onConfigureEmptyState} />
             )}
             <div
               role="status"
@@ -313,7 +324,6 @@ function Popup({
                 canInstallPlugin={canInstallPlugin}
                 onMarketplaceCollapsedChange={setMarketplaceCollapsed}
                 onInstallPlugin={handleInstallPlugin}
-                onOpenMarketplace={onOpenMarketplace}
               />
             )}
           </div>

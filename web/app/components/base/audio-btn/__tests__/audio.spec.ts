@@ -1,7 +1,11 @@
 import { Buffer } from 'node:buffer'
 import { waitFor } from '@testing-library/react'
+import { createHttpError } from '@/service/http-error'
 import { AppSourceType } from '@/service/share'
 import { AudioPlayer } from '../audio'
+
+const mockToastRequestError = vi.hoisted(() => vi.fn())
+vi.mock('@/app/query-error-toast', () => ({ reportRequestError: mockToastRequestError }))
 
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())
 
@@ -456,6 +460,23 @@ describe('AudioPlayer', () => {
 
       expect(callback.mock.calls.map(([event]) => event)).toEqual(['play', 'ended'])
       expect(mockTextToAudioStream).toHaveBeenCalledTimes(1)
+    })
+
+    it('reports a rejected speech request before emitting the error callback', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
+      const callback = vi.fn()
+      const error = createHttpError(
+        { status: 400, statusText: '', headers: new Headers() },
+        { message: 'TTS provider quota exhausted' },
+      )
+      mockTextToAudioStream.mockRejectedValue(error)
+
+      const player = new AudioPlayer('/text-to-audio', false, 'msg-3', 'hi', undefined, callback)
+      player.playAudio()
+
+      await waitFor(() => expect(callback).toHaveBeenCalledWith('error'))
+      expect(mockToastRequestError).toHaveBeenCalledExactlyOnceWith(error)
+      expect(player.isLoadData).toBe(false)
     })
 
     it('should emit error callback and reset load flag when stream response status is not 200', async () => {

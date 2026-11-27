@@ -10,15 +10,16 @@ import type { SkillDraftMutationCoordinator } from '../mutations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob } from '../../client'
@@ -153,6 +154,7 @@ export function SkillFileEditor({
   skillId: string
 }) {
   const { t } = useTranslation(['skill'])
+  const describeRequestError = useRequestErrorDescriber()
   const queryClient = useQueryClient()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const initialContent =
@@ -199,7 +201,7 @@ export function SkillFileEditor({
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
   const { mutateAsync: saveDraftFile } = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const filePath = file?.path
@@ -292,6 +294,7 @@ export function SkillFileEditor({
   const shouldFetchTextFileContent = !!file && isTextFile(file) && file.content == null
   const textContentQuery = useQuery({
     queryKey: ['skill-file-text-content', skillId, selectedVersionId, filePath, fileHash],
+    meta: { errorToast: false },
     queryFn: async () => {
       if (!filePath) throw new Error('file path is required')
       const blob = await fetchSkillFileBlob({
@@ -311,6 +314,7 @@ export function SkillFileEditor({
     !!file && !isTextFile(file) && (isSkillImageFile(file) || isSkillPdfFile(file))
   const binaryPreviewQuery = useQuery({
     queryKey: ['skill-file-blob-preview', skillId, selectedVersionId, filePath, fileHash],
+    meta: { errorToast: false },
     queryFn: () => {
       if (!filePath) throw new Error('file path is required')
       return fetchSkillFileBlob({
@@ -322,6 +326,7 @@ export function SkillFileEditor({
     enabled: canPreviewBinaryFile,
   })
   const downloadMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: () => {
       if (!filePath) throw new Error('file path is required')
       return fetchSkillFileBlob({
@@ -455,7 +460,12 @@ export function SkillFileEditor({
         }
 
         setSaveStatus('error')
-        toast.error(t(($) => $['skillManagement.detail.saveFailed']))
+        toast.error(
+          describeRequestError(
+            error,
+            t(($) => $['skillManagement.detail.saveFailed']),
+          ),
+        )
         return false
       } finally {
         savingDraftRef.current = false
@@ -463,6 +473,7 @@ export function SkillFileEditor({
     },
     [
       canEdit,
+      describeRequestError,
       draftMutationCoordinator,
       onDraftDetailChange,
       onSaveConflictConfirm,
@@ -1011,6 +1022,7 @@ export function SkillFileEditor({
 
     const references = await queryClient.query({
       ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
+        meta: { errorToast: false },
         input: {
           params: {
             skill_id: skillId,
@@ -1045,7 +1057,7 @@ export function SkillFileEditor({
   ])
 
   const handlePublishAction = useCallback(() => {
-    void handlePublish().catch(noop)
+    void handlePublish().catch((error: unknown) => reportRequestError(error))
   }, [handlePublish])
 
   useEffect(() => {

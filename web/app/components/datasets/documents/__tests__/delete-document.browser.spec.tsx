@@ -1,46 +1,18 @@
-import type { consoleClient } from '@/service/console'
 import { zDocumentWithSegmentsListResponse } from '@dify/contracts/api/console/datasets/zod.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DatasetACLPermission } from '@/utils/permission'
 import Documents from '../index'
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => '/datasets/dataset-1/documents',
-  useParams: () => ({ datasetId: 'dataset-1' }),
-  useSearchParams: () => new URLSearchParams(),
-}))
-
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.get>(),
-  remove: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.delete>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.get': api.list,
-      'datasets.byDatasetId.documents.delete': api.remove,
-      'datasets.byDatasetId.metadata.get': async () => ({
-        doc_metadata: [],
-        built_in_field_enabled: false,
-      }),
-      'datasets.metadata.builtIn.get': async () => ({ fields: [] }),
-      'datasets.byDatasetId.autoDisableLogs.get': async () => ({ document_ids: [] }),
-      'datasets.byDatasetId.errorDocs.get': async () => ({ data: [], total: 0 }),
-      'tags.get': async () => [],
-    }),
-  }
-})
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -63,40 +35,61 @@ async function setup(ids: string[]) {
     limit: 10,
     has_more: false,
   }).data
-  api.list.mockReset().mockImplementation(async () => ({
-    data: datasets,
-    page: 1,
-    total: datasets.length,
-    limit: 30,
-    has_more: false,
-  }))
-  api.remove.mockReset().mockImplementation(async ({ query }) => {
-    datasets = datasets.filter((item) => !query?.document_id?.includes(item.id))
-    return { result: 'success' }
-  })
-  const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
-  const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter hasMemory>
-        {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
-        <DatasetDetailContext.Provider
-          value={{
-            dataset: createDatasetFixture({
-              embedding_available: true,
-              permission_keys: [
-                DatasetACLPermission.Use,
-                DatasetACLPermission.Edit,
-                DatasetACLPermission.DeleteFile,
-              ],
+  const fake = installFakeApi({
+    console: {
+      datasets: {
+        byDatasetId: {
+          documents: {
+            get: async () => ({
+              data: datasets,
+              page: 1,
+              total: datasets.length,
+              limit: 30,
+              has_more: false,
             }),
-          }}
-        >
-          <div className="isolate h-screen">
-            <Documents datasetId="dataset-1" />
-          </div>
-        </DatasetDetailContext.Provider>
-      </NuqsTestingAdapter>
-    </QueryClientTestProvider>,
+            delete: async ({ query }) => {
+              datasets = datasets.filter((item) => !query?.document_id?.includes(item.id))
+            },
+          },
+          metadata: { get: () => ({ doc_metadata: [], built_in_field_enabled: false }) },
+          autoDisableLogs: { get: () => ({ document_ids: [], count: 0 }) },
+          errorDocs: { get: () => ({ data: [], total: 0 }) },
+        },
+        metadata: { builtIn: { get: () => ({ fields: [] }) } },
+      },
+      tags: { get: () => [] },
+    },
+  })
+  onTestFinished(fake)
+  const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
+  const { NavigationProvider } = createTestNavigation({
+    url: `/datasets/${TEST_DATASET_ID}/documents`,
+    params: { datasetId: TEST_DATASET_ID },
+  })
+  const screen = await render(
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsTestingAdapter hasMemory>
+          {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
+          <DatasetDetailContext.Provider
+            value={{
+              dataset: createDatasetFixture({
+                embedding_available: true,
+                permission_keys: [
+                  DatasetACLPermission.Use,
+                  DatasetACLPermission.Edit,
+                  DatasetACLPermission.DeleteFile,
+                ],
+              }),
+            }}
+          >
+            <div className="isolate h-screen">
+              <Documents datasetId={TEST_DATASET_ID} />
+            </div>
+          </DatasetDetailContext.Provider>
+        </NuqsTestingAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
   const open = async (id: string) => {
     const link = screen.getByRole('link', { name: id, exact: true })
@@ -109,22 +102,20 @@ async function setup(ids: string[]) {
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
   }
-  return { screen, open }
+  return { screen, open, fake }
 }
 describe('Classic document deletion', () => {
   it('removes the item before a slow list refresh completes', async () => {
-    const { screen, open } = await setup(['Alpha', 'Beta'])
+    const { screen, open, fake } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const list = api.list.getMockImplementation()!
-    const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-    api.list.mockReturnValueOnce(refresh.promise)
+    const refresh = hold(fake.console.datasets.byDatasetId.documents.get)
     await screen.getByRole('button', { name: 'common.operation.sure' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await list({ params: { dataset_id: 'dataset-1' } }))
+    refresh.release()
   })
 
   it.each([
@@ -146,9 +137,8 @@ describe('Classic document deletion', () => {
       .toHaveFocus()
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
-    const { screen, open } = await setup(['Alpha'])
-    const request = createDeferred<{ result: string }>()
-    api.remove.mockReturnValueOnce(request.promise)
+    const { screen, open, fake } = await setup(['Alpha'])
+    const request = hold(fake.console.datasets.byDatasetId.documents.delete)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.sure' })
     await confirm.click()
@@ -158,8 +148,10 @@ describe('Classic document deletion', () => {
       .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Failed'))
-    await expect.element(screen.getByRole('alert')).toBeVisible()
+    request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
+    await expect
+      .element(screen.getByRole('alert'))
+      .toHaveTextContent('common.actionMsg.modifiedUnsuccessfully')
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect.element(screen.getByRole('region')).toHaveFocus()
@@ -169,6 +161,8 @@ describe('Classic document deletion', () => {
 it.each(['pencil', 'menu'])(
   'returns focus to the selected row after cancelling rename from its %s entry',
   async (entry) => {
+    // The exit transition is where the draft must survive.
+    await emulateReducedMotion(false)
     const { screen } = await setup(['Alpha', 'Beta'])
     const row = screen.getByRole('row', { name: /Beta/ })
     await row.getByRole('link', { name: 'Beta' }).hover()

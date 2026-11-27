@@ -16,6 +16,7 @@ from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.tool_call_limits import ToolCallLimitSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     EmptyRunEventData,
@@ -169,6 +170,7 @@ async def emit_run_succeeded(
     output: JsonValue,
     session_snapshot: SessionSnapshot,
     usage: AgentRunUsage | None = None,
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
 ) -> RunFinalizationResult:
     """Finalize a successful run, including explicitly null output."""
     data: dict[str, JsonValue | SessionSnapshot | AgentRunUsage | None] = {
@@ -183,6 +185,7 @@ async def emit_run_succeeded(
             run_id=run_id,
             data=RunSucceededEventData.model_validate(data),
             created_at=utc_now(),
+            tool_call_limits=tool_call_limits or {},
         ),
     )
 
@@ -196,6 +199,7 @@ async def emit_run_failed(
     reason: str | None = None,
     session_snapshot: SessionSnapshot | None = None,
     usage: AgentRunUsage | None = None,
+    tool_call_limits: dict[str, ToolCallLimitSnapshot] | None = None,
 ) -> RunFinalizationResult:
     """Finalize a run with a failed terminal event."""
     return await sink.finalize_run(
@@ -209,6 +213,7 @@ async def emit_run_failed(
                 usage=usage,
             ),
             created_at=utc_now(),
+            tool_call_limits=tool_call_limits or {},
         ),
     )
 

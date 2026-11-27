@@ -642,6 +642,25 @@ describe('InviteModal', () => {
     })
   })
 
+  it('shows the invite failure for an unknown code without a field', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'bad_request',
+        message: 'Server says why',
+      }),
+    )
+    await renderModal()
+
+    await addRecipients(user, 'user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'workspaceMembers.members.inviteFailed',
+    )
+  })
+
   it('keeps request failures visible until the user closes, then starts a fresh draft', async () => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValue(new Error('Network failed'))

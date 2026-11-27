@@ -16,6 +16,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleClient } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { connectedInitialSource } from './connected-source-selection'
 import { DatasourceParameterForm } from './datasource-parameter-form'
 import {
@@ -139,6 +140,7 @@ function ConnectedSourceConfigurationFields({
   onSelectionChange?: (selection: ConnectedSourceSelection) => void
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
+  const describeRequestError = useRequestErrorDescriber()
   const { credentialId, datasource, pluginId, provider } = previewBinding
   const [resources, setResources] = useState<PreviewResource[]>([])
   const [localSelection, setLocalSelection] = useState<ConnectedSourceSelection>([])
@@ -152,7 +154,7 @@ function ConnectedSourceConfigurationFields({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<{ error: unknown } | false>(false)
   const [previewed, setPreviewed] = useState(false)
   const [nextPageRequests, setNextPageRequests] = useState<Map<string, NextPageRequest>>(
     () => new Map(),
@@ -283,8 +285,8 @@ function ConnectedSourceConfigurationFields({
           return next
         })
         setPreviewed(true)
-      } catch {
-        if (previewSessionRef.current === session) setError(true)
+      } catch (error) {
+        if (previewSessionRef.current === session) setError({ error })
       } finally {
         if (previewSessionRef.current === session) {
           setLoading(false)
@@ -404,7 +406,12 @@ function ConnectedSourceConfigurationFields({
       )}
       {!githubTreePreview && error && (
         <div role="alert" className="rounded-lg bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <p className="system-sm-semibold text-text-primary">
+            {describeRequestError(
+              error.error,
+              t(($) => $.providerLoadFailed),
+            )}
+          </p>
           <Button className="mt-3" type="button" onClick={() => void requestPreview()}>
             {t(($) => $.retryProviderLoad)}
           </Button>

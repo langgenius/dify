@@ -28,6 +28,7 @@ import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
 import {
   newKnowledgeDetailPath,
@@ -37,6 +38,7 @@ import {
   newKnowledgeQualityPath,
   newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
+  newKnowledgeTidyPath,
 } from '../routes'
 import { KnowledgeFsApiAccessDialog } from './api-access-dialog'
 import { KnowledgeSpaceProvider } from './provider'
@@ -54,6 +56,7 @@ const knowledgeSpacePageTitle = (
   if (section === 'sources') return t(($) => $.sources)
   if (section === 'documents') return t(($) => $.documents)
   if (section === 'retrieval') return t(($) => $['retrievalTest.title'])
+  if (section === 'tidy') return t(($) => $['tidy.name'])
   if (section === 'quality') return t(($) => $.quality)
   if (section === 'settings') return tCommon(($) => $['datasetMenus.settings'])
 
@@ -80,6 +83,7 @@ export function KnowledgeSpaceShell({
   const { t: tDataset } = useTranslation(['dataset'])
   const { t: tCommon } = useTranslation(['common', 'navigation'])
   const { t: tApp } = useTranslation(['app'])
+  const describeRequestError = useRequestErrorDescriber()
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
   // Keep the dialog mounted after first use so closing transitions and its API-key handoff survive.
   const [apiAccessDialogOpen, setApiAccessDialogOpen] = useState<boolean>()
@@ -87,8 +91,9 @@ export function KnowledgeSpaceShell({
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
     }),
+    // Any failure replaces the space with its own error page, even over cached data.
+    meta: { errorToast: false },
     refetchInterval: (query) => (query.state.data?.state === 'provisioning' ? 1000 : false),
     retry: (failureCount, error) => {
       const status = getHttpErrorStatus(error)
@@ -150,7 +155,12 @@ export function KnowledgeSpaceShell({
             {t(($) => (notFound ? $.notFoundTitle : $.detailErrorTitle))}
           </h1>
           <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-            {t(($) => (notFound ? $.notFoundDescription : $.detailErrorDescription))}
+            {notFound
+              ? t(($) => $.notFoundDescription)
+              : describeRequestError(
+                  knowledgeSpaceQuery.error,
+                  t(($) => $.detailErrorDescription),
+                )}
           </p>
           <div className="mt-5 flex gap-2">
             <Link href={newKnowledgeListPath} className={buttonVariants()}>
@@ -171,6 +181,8 @@ export function KnowledgeSpaceShell({
   const overviewPath = newKnowledgeOverviewPath(knowledgeSpaceId)
   const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const retrievalTestPath = newKnowledgeRetrievalTestPath(knowledgeSpaceId)
+  const tidyPath = newKnowledgeTidyPath(knowledgeSpaceId)
+  const tidyActive = pathname === tidyPath
   const qualityPath = newKnowledgeQualityPath(knowledgeSpaceId)
   const settingsPath = newKnowledgeSettingsPath(knowledgeSpaceId)
   const overviewActive = pathname === overviewPath
@@ -384,6 +396,21 @@ export function KnowledgeSpaceShell({
             >
               {navIcon(qualityActive ? 'i-ri-shield-check-fill' : 'i-ri-shield-check-line')}
               {sidebarExpanded && t(($) => $.quality)}
+            </Link>
+            <Link
+              href={tidyPath}
+              aria-label={t(($) => $['tidy.name'])}
+              aria-current={tidyActive ? 'page' : undefined}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                tidyActive
+                  ? 'bg-components-menu-item-bg-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
+              )}
+            >
+              {navIcon(tidyActive ? 'i-ri-sparkling-fill' : 'i-ri-sparkling-line')}
+              {sidebarExpanded && t(($) => $['tidy.name'])}
             </Link>
             <Link
               href={settingsPath}

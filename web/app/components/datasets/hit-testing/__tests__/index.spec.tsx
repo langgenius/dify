@@ -6,8 +6,11 @@ import type { ReactElement } from 'react'
 import type { consoleClient } from '@/service/console'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -87,7 +90,8 @@ const createDataset = () =>
 let mockDataset = createDataset()
 let recordsData: Awaited<ReturnType<typeof getRecords>> | undefined
 function renderWithProviders(ui: ReactElement) {
-  const queryClient = createConsoleQueryClient()
+  // The app's cache-level error toasts, so a failure's messages can be counted.
+  const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
   seedModelProviderQueries(queryClient)
   if (recordsData)
     queryClient.setQueryData(
@@ -180,6 +184,31 @@ describe('HitTestingPage', () => {
       await waitFor(() => expect(status).toHaveTextContent('common.api.actionFailed'))
       expect(screen.getByRole('status')).toBe(status)
       expect(status).not.toHaveTextContent('common.loading')
+    },
+  )
+
+  it.each(['vendor', 'external'])(
+    'announces the translated reason for a failed %s retrieval once, without a toast',
+    async (provider) => {
+      const errorToast = vi.spyOn(toast, 'error')
+      mockDataset.provider = provider
+      const request =
+        provider === 'external' ? mockExternalHitTestingMutateAsync : mockHitTestingMutateAsync
+      request.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_input',
+          message: 'The embedding model is not configured',
+        }),
+      )
+      renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+      const user = userEvent.setup()
+      await user.type(screen.getByRole('textbox'), 'Test query')
+      await user.click(screen.getByRole('button', { name: /input.testing/ }))
+
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent('requestErrors.code.invalid_input'),
+      )
+      expect(errorToast).not.toHaveBeenCalled()
     },
   )
 

@@ -5,22 +5,25 @@ import { usePrefetchQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { billingErrorMessageKey } from '../billing-error'
-import PlanComp from '../plan'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { getBillingErrorMessage } from '../billing-error'
+import PlanComp, { PlanLoading } from '../plan'
 
 const Billing: FC = () => {
   const { t } = useTranslation(['billing'])
+  const describeRequestError = useRequestErrorDescriber()
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  usePrefetchQuery(consoleQuery.features.vectorSpace.get.queryOptions())
+  usePrefetchQuery(
+    consoleQuery.features.vectorSpace.get.queryOptions({ meta: { errorToast: false } }),
+  )
   const billingQuery = useQuery(
     consoleQuery.billing.invoices.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const billingUrl = billingQuery.data?.url
@@ -28,11 +31,7 @@ const Billing: FC = () => {
   return (
     <div>
       <div className="grid min-h-132 xl:min-h-120">
-        <React.Suspense
-          fallback={
-            <LoadingPlaceholder className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn" />
-          }
-        >
+        <React.Suspense fallback={<PlanLoading />}>
           <PlanComp loc="billing-page" />
         </React.Suspense>
       </div>
@@ -53,7 +52,7 @@ const Billing: FC = () => {
             </div>
             <div className="system-sm-regular text-text-secondary">
               {!billingUrl && billingQuery.isError
-                ? t(($) => $[billingErrorMessageKey(billingQuery.error)], { ns: 'billing' })
+                ? getBillingErrorMessage(billingQuery.error, t, describeRequestError)
                 : t(($) => $.viewBillingDescription, { ns: 'billing' })}
             </div>
           </div>

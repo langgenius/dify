@@ -98,10 +98,14 @@ class KnowledgeFSProductService:
         creator_ids: list[str] | None = None,
         tag_ids: list[str] | None = None,
         query: str | None = None,
+        control_space_ids: list[str] | None = None,
     ) -> KnowledgeFSSpaceListResponse:
+        """List the Spaces the member can read; ``control_space_ids`` restricts the listing to those ids."""
         self.require_product_routes(tenant_id=tenant_id)
         with self._session_maker() as session:
             statement = visible_control_space_statement(tenant_id=tenant_id, account_id=account_id)
+            if control_space_ids is not None:
+                statement = statement.where(KnowledgeFSControlSpace.id.in_(control_space_ids))
             if creator_ids:
                 statement = statement.where(KnowledgeFSControlSpace.owner_account_id.in_(creator_ids))
             if tag_ids:
@@ -115,7 +119,6 @@ class KnowledgeFSProductService:
             statement = statement.order_by(KnowledgeFSControlSpace.created_at.desc(), KnowledgeFSControlSpace.id.desc())
             candidates = tuple(session.scalars(statement))
             rbac_permissions = self._rbac.permission_keys_by_control_space(
-                session=session,
                 tenant_id=tenant_id,
                 account_id=account_id,
                 control_space_ids=[space.id for space in candidates],
@@ -248,7 +251,6 @@ class KnowledgeFSProductService:
             raise KnowledgeFSProductNotFoundError("KnowledgeFS space was not found")
         role = resolve_local_role(session, control_space=control_space, account_id=account_id)
         rbac_permissions = self._rbac.permission_keys_by_control_space(
-            session=session,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_ids=(control_space.id,),

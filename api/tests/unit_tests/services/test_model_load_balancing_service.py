@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import Engine, event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
@@ -218,13 +218,14 @@ def test_enable_disable_persists_provider_model_setting(
     enabled: bool,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _config(sqlite_session, name="primary")
     _config(sqlite_session, name="secondary")
     configuration = _provider_configuration()
     configurations = ProviderConfigurations(tenant_id="tenant-1")
     configurations[str(ModelProviderID("openai"))] = configuration
-    manager = ProviderManager(cast(ModelRuntime, object()))
+    manager = ProviderManager(cast(ModelRuntime, object()), session_maker=sqlite_session_factory)
     manager._configurations_cache["tenant-1"] = configurations
     svc = ModelLoadBalancingService()
     monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: manager)

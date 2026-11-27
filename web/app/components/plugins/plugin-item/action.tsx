@@ -21,6 +21,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
+import { reportRequestError } from '@/app/query-error-toast'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import PluginInfoContent from '../plugin-page/plugin-info'
@@ -89,7 +90,7 @@ const Action: FC<Props> = ({
         onDelete()
       }
     } catch (error) {
-      console.error('uninstallPlugin error', error)
+      reportRequestError(error)
     } finally {
       hideDeleting()
     }

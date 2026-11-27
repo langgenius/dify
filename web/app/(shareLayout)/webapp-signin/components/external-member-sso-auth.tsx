@@ -7,6 +7,7 @@ import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/lo
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
@@ -31,27 +32,31 @@ const ExternalMemberSSOAuth = () => {
       return
     }
 
-    switch (protocol) {
-      case zSsoProtocol.enum.saml: {
-        const samlRes = await fetchWebSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
-        router.push(samlRes.url)
-        break
+    try {
+      switch (protocol) {
+        case zSsoProtocol.enum.saml: {
+          const samlRes = await fetchWebSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
+          router.push(samlRes.url)
+          break
+        }
+        case zSsoProtocol.enum.oidc: {
+          const oidcRes = await fetchWebOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
+          router.push(oidcRes.url)
+          break
+        }
+        case zSsoProtocol.enum.oauth2: {
+          const oauth2Res = await fetchWebOAuth2SSOUrl(
+            loginRedirect.appCode,
+            loginRedirect.target.href,
+          )
+          router.push(oauth2Res.url)
+          break
+        }
+        default:
+          toast.error('SSO protocol is not supported.')
       }
-      case zSsoProtocol.enum.oidc: {
-        const oidcRes = await fetchWebOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
-        router.push(oidcRes.url)
-        break
-      }
-      case zSsoProtocol.enum.oauth2: {
-        const oauth2Res = await fetchWebOAuth2SSOUrl(
-          loginRedirect.appCode,
-          loginRedirect.target.href,
-        )
-        router.push(oauth2Res.url)
-        break
-      }
-      default:
-        toast.error('SSO protocol is not supported.')
+    } catch (error) {
+      reportRequestError(error)
     }
   }, [protocol, redirectUrl, router])
 

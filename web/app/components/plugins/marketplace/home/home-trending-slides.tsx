@@ -19,6 +19,7 @@ import Partner from '@/app/components/plugins/base/badges/partner'
 import Verified from '@/app/components/plugins/base/badges/verified'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { resolveMarketplaceAssetUrl } from '@/features/marketplace/api'
 import {
   getPluginDetailPath,
@@ -382,7 +383,8 @@ function CloudRecommendPluginCard({
                 category: (info.category as Plugin['category']) ?? current.category,
               }))
             })
-            .catch(() => {})
+            // The dialog stays open without an installable version, so the lookup failure is reported.
+            .catch(reportRequestError)
         }}
       >
         <RecommendCardFace card={card} />

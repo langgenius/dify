@@ -14,12 +14,13 @@ import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
+  chatMessagesSender,
   fetchChatList,
   fetchSuggestedQuestions,
-  getUrl,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
@@ -220,7 +221,7 @@ const ChatWrapper = () => {
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
 
-      handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+      handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetConversationMessages: isNewAgent
           ? (conversationId) => fetchChatList(conversationId, appSourceType, appId)
           : undefined,
@@ -292,8 +293,13 @@ const ChatWrapper = () => {
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       const { form_version: formVersion, ...submission } = formData
       await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
-      else await submitHumanInputForm(formToken, submission, formVersion)
+      try {
+        if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+        else await submitHumanInputForm(formToken, submission, formVersion)
+      } catch (error) {
+        reportRequestError(error)
+        throw error
+      }
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )

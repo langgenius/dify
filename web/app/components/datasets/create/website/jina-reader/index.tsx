@@ -11,6 +11,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
 import Crawling from '../base/crawling'
@@ -22,6 +23,9 @@ import Options from './options'
 
 const ERROR_I18N_PREFIX = 'errorMsg'
 const I18N_PREFIX = 'stepOne.website'
+
+type CrawlFailure = { error: unknown } | { message?: string }
+
 type Props = Readonly<{
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
@@ -45,6 +49,7 @@ const JinaReader: FC<Props> = ({
   onCrawlOptionsChange,
 }) => {
   const { t } = useTranslation(['common', 'datasetCreation'])
+  const describeRequestError = useRequestErrorDescriber()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -92,7 +97,13 @@ const JinaReader: FC<Props> = ({
       }
     | undefined
   >(undefined)
-  const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
+  const [crawlFailure, setCrawlFailure] = useState<CrawlFailure>()
+  const unknownErrorMessage = t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' })
+  const crawlErrorMessage = !crawlFailure
+    ? ''
+    : 'error' in crawlFailure
+      ? describeRequestError(crawlFailure.error, unknownErrorMessage)
+      : crawlFailure.message || unknownErrorMessage
   const showError = isCrawlFinished && crawlErrorMessage
   const waitForCrawlFinished = useCallback(
     async (jobId: string) => {
@@ -170,30 +181,28 @@ const JinaReader: FC<Props> = ({
           }
           setCrawlResult(data)
           onCheckedCrawlResultChange(data.data || [])
-          setCrawlErrorMessage('')
+          setCrawlFailure(undefined)
         } else if (res.job_id) {
           const jobId = res.job_id
           onJobIdChange(jobId)
           const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
           if (isError) {
-            setCrawlErrorMessage(
-              errorMessage || t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),
-            )
+            setCrawlFailure({ message: errorMessage })
           } else {
             setCrawlResult(data)
             onCheckedCrawlResultChange(data.data || []) // default select the crawl result
-            setCrawlErrorMessage('')
+            setCrawlFailure(undefined)
           }
         }
       } catch (e) {
-        setCrawlErrorMessage(t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' })!)
+        setCrawlFailure({ error: e })
         console.log(e)
       } finally {
         setStep(Step.finished)
         setControlFoldOptions(Date.now())
       }
     },
-    [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished],
+    [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, waitForCrawlFinished],
   )
   return (
     <div>

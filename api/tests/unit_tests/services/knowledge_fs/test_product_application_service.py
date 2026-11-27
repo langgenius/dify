@@ -312,6 +312,7 @@ def test_product_application_delegates_reads_without_reauthorizing() -> None:
             "creator_ids": ["creator-1", "creator-2"],
             "tag_ids": None,
             "query": "support",
+            "control_space_ids": None,
         }
     ]
     assert product.get_space_calls == [

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { downloadUrl } from '@/utils/download'
 import { getEvaluationFile, useEvaluationActions, useEvaluationLogsQuery } from '../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
@@ -28,11 +29,14 @@ const STATUS_ICON_CLASS_NAMES: Record<string, string> = {
   completed: 'i-ri-checkbox-circle-fill text-util-colors-green-green-600',
   partiallyFailed: 'i-ri-error-warning-fill text-text-warning-secondary',
   failed: 'i-ri-close-circle-fill text-text-destructive',
+  notCompleted: 'i-ri-alert-fill text-text-destructive',
   cancelled: 'i-ri-forbid-2-line text-text-tertiary',
 }
 
-// A finished run can still have failed rows; surface that instead of a plain success state.
+// A run the backend marks failed stopped before finishing, which differs from a finished run
+// whose rows all failed. A finished run can still have failed rows; surface that too.
 const getDisplayStatus = (record: EvaluationRunResponse) => {
+  if (record.status === 'failed') return 'notCompleted'
   if (record.status !== 'completed' || record.failed_items <= 0) return record.status
   if (record.total_items > 0 && record.failed_items >= record.total_items) return 'failed'
   return 'partiallyFailed'
@@ -46,6 +50,7 @@ const formatCreatedAt = (createdAt: number | null | undefined, formatTime: Forma
 
 const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const { t } = useTranslation(['evaluation'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp()
   const { data: membersData } = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
@@ -63,11 +68,18 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   )
   const evaluationActions = useEvaluationActions({ resourceType, resourceId })
   const fileDownloadMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (fileId: string) => {
       const fileInfo = await getEvaluationFile({ resourceType, resourceId }, fileId)
       downloadUrl({ url: fileInfo.download_url, fileName: fileInfo.name })
     },
-    onError: () => toast.error(t(($) => $['history.actions.downloadFailed'])),
+    onError: (error) =>
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['history.actions.downloadFailed']),
+        ),
+      ),
   })
   const records = useMemo(() => logsQuery.data?.data ?? [], [logsQuery.data?.data])
   const memberNameById = useMemo(() => {
@@ -79,6 +91,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     completed: t(($) => $['history.status.completed']),
     partiallyFailed: t(($) => $['history.status.partiallyFailed']),
     failed: t(($) => $['history.status.failed']),
+    notCompleted: t(($) => $['history.status.notCompleted']),
     cancelled: t(($) => $['history.status.cancelled']),
   }
   const getStatusDescription = (record: EvaluationRunResponse) => {
@@ -116,8 +129,13 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
     try {
       await evaluationActions.cancelRun(record.id)
       toast.success(t(($) => $['history.cancelSuccess']))
-    } catch {
-      toast.error(t(($) => $['history.cancelFailed']))
+    } catch (error) {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['history.cancelFailed']),
+        ),
+      )
     }
   }
 
@@ -126,8 +144,13 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
       await evaluationActions.retryRun(record.id)
       setSelectedRunId(resourceType, resourceId, record.id)
       toast.success(t(($) => $['history.retrySuccess']))
-    } catch {
-      toast.error(t(($) => $['history.retryFailed']))
+    } catch (error) {
+      toast.error(
+        describeRequestError(
+          error,
+          t(($) => $['history.retryFailed']),
+        ),
+      )
     }
   }
 

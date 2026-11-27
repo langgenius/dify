@@ -68,6 +68,7 @@ def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> No
 
     assert config.EVALUATION_RUN_MAX_RETRIES == 3
     assert config.EVALUATION_RUN_RETRY_DELAY == 30
+    assert config.EVALUATION_APP_CONCURRENCY_WAIT_TIMEOUT == 300
 
 
 class _IsolatedDifyConfig(DifyConfig):
@@ -130,6 +131,7 @@ def test_dify_config() -> None:
 
     # default values
     assert config.DEPLOYMENT_EDITION is DeploymentEdition.COMMUNITY
+    assert config.ENABLE_EVALUATION is False
     assert config.API_COMPRESSION_ENABLED is False
     assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0

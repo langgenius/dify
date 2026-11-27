@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
 import Recipients from '../components/recipients'
 import {
   contact,
@@ -255,6 +256,21 @@ describe('recipient selection through generated queries', () => {
     await openPicker(user)
     await user.click(await screen.findByRole('button', { name: 'common.operation.retry' }))
     expect(await screen.findByRole('option', { name: /Evan Zhang/ })).toBeVisible()
+  })
+
+  it('shows the load failure over a generic server message', async () => {
+    const user = userEvent.setup()
+    contactApi.options.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), {
+        code: 'bad_request',
+        message: 'Server says why',
+      }),
+    )
+    renderContactOwner(<Harness />)
+    await openPicker(user)
+    expect(
+      await screen.findByText('workflow.nodes.humanInputV2.recipients.loadError'),
+    ).toBeVisible()
   })
 
   it.each(['one@example.com', 'one@example.com, two@example.com'])(

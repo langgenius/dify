@@ -27,6 +27,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ContactImBindingContent } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { providerMetadata, toDetailView } from './credentials'
@@ -53,6 +54,7 @@ function ConfigurationSession({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const channels = consoleQuery.workspaces.current.humanInput.v2.channels
   const email = useQuery(
     channels.email.byChannelId.get.queryOptions({
@@ -60,7 +62,7 @@ function ConfigurationSession({
         target.integration?.kind === 'email'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const im = useQuery(
@@ -69,7 +71,7 @@ function ConfigurationSession({
         target.integration?.kind === 'im'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const detail = target.integration?.kind === 'email' ? email : im
@@ -82,7 +84,12 @@ function ConfigurationSession({
         </DialogHeader>
         {detail.isError ? (
           <div role="alert" className="p-6">
-            <p>{t(($) => $['imPlatform.loadError.description'])}</p>
+            <p>
+              {describeRequestError(
+                detail.error,
+                t(($) => $['imPlatform.loadError.description']),
+              )}
+            </p>
             <Button onClick={() => detail.refetch()}>
               {t(($) => $['imPlatform.action.retry'])}
             </Button>
@@ -116,6 +123,7 @@ function ConfigurationSession({
 export function ContactsImPlatformManagementSurface() {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const organization = useContactsImPlatformOrganization()
   const { data: deploymentEdition } = useQuery({
     ...systemFeaturesQueryOptions(),
@@ -124,19 +132,23 @@ export function ContactsImPlatformManagementSurface() {
   })
   const api = consoleQuery.workspaces.current.humanInput.v2
   const integrationsQuery = useQuery(
-    api.channels.get.queryOptions({ enabled: organization.canManage, context: { silent: true } }),
+    api.channels.get.queryOptions({ enabled: organization.canManage, meta: { errorToast: false } }),
   )
   const providersQuery = useQuery(
     api.channelProviders.get.queryOptions({
       enabled: organization.canManage,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const deleteEmail = useMutation(
-    api.channels.email.byChannelId.delete.mutationOptions({ context: { silent: true } }),
+    api.channels.email.byChannelId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const deleteIM = useMutation(
-    api.channels.im.byChannelId.delete.mutationOptions({ context: { silent: true } }),
+    api.channels.im.byChannelId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const pendingCredentials = useIsMutating({ mutationKey: api.channels.key() }) > 0
   const [bindingTarget, setBindingTarget] = useState<BindingTarget | null>(null)
@@ -224,7 +236,12 @@ export function ContactsImPlatformManagementSurface() {
         className="max-w-190 rounded-xl border border-divider-subtle bg-background-default-subtle p-5"
       >
         <div className="system-md-semibold">{t(($) => $['imPlatform.loadError.title'])}</div>
-        <p>{t(($) => $['imPlatform.loadError.description'])}</p>
+        <p>
+          {describeRequestError(
+            integrationsQuery.error ?? providersQuery.error,
+            t(($) => $['imPlatform.loadError.description']),
+          )}
+        </p>
         <Button
           onClick={() => {
             void integrationsQuery.refetch()
@@ -387,7 +404,10 @@ export function ContactsImPlatformManagementSurface() {
                 {channelError(deleteMutation.error).code ===
                 ContactImRepositoryErrorCode.ConfigurationUpdated
                   ? t(($) => $['imPlatform.configurationUpdated'])
-                  : t(($) => $['imPlatform.delete.failed'])}
+                  : describeRequestError(
+                      deleteMutation.error,
+                      t(($) => $['imPlatform.delete.failed']),
+                    )}
               </div>
             </AlertDialogBody>
           )}

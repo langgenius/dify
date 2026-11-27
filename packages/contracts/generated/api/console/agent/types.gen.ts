@@ -253,6 +253,11 @@ export type AgentSoulLockedError = ErrorResponse & {
   status: 400
 }
 
+export type InvalidComposerConfigError = ErrorResponse & {
+  code: 'invalid_composer_config_error'
+  status: 400
+}
+
 export type AgentBuildDraftApplyResponse = {
   draft: {
     [key: string]: unknown
@@ -260,14 +265,14 @@ export type AgentBuildDraftApplyResponse = {
   result: string
 }
 
-export type InvalidComposerConfigError = ErrorResponse & {
-  code: 'invalid_composer_config_error'
-  status: 400
-}
-
 export type PlaintextSecretNotAllowedError = ErrorResponse & {
   code: 'plaintext_secret_not_allowed_error'
   status: 400
+}
+
+export type AgentVersionConflictError = ErrorResponse & {
+  code: 'agent_version_conflict_error'
+  status: 409
 }
 
 export type AgentHomeSnapshotTooLargeError = ErrorResponse & {
@@ -948,6 +953,7 @@ export type AgentInviteOptionResponse = {
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
+  tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
   workflow_id?: string | null
@@ -993,6 +999,7 @@ export type ComposerBindingPayload = {
 export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type WorkflowNodeJobConfig = {
+  continue_agent_session?: boolean
   declared_outputs?: Array<DeclaredOutputConfig>
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
@@ -1000,6 +1007,7 @@ export type WorkflowNodeJobConfig = {
   output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
+  readonly session_generation?: string
   workflow_prompt?: string
 }
 
@@ -1194,6 +1202,7 @@ export type AgentLogConversationItemResponse = {
 }
 
 export type AgentLogMessageItemResponse = {
+  agent_thoughts?: Array<AgentThought>
   answer: string
   answer_tokens: number
   conversation_id: string
@@ -1226,6 +1235,7 @@ export type AgentThought = {
   position: number
   thought?: string | null
   tool?: string | null
+  tool_activity?: AgentToolActivity | null
   tool_input?: string | null
   tool_labels: AnyJsonValue
 }
@@ -1817,6 +1827,16 @@ export type AgentLogFeedbackResponse = {
   rating: 'dislike' | 'like'
 }
 
+export type AgentToolActivity = {
+  call_limit?: ToolCallLimitMetadata | null
+  error?: string | null
+  id: string
+  run_id: string
+  status: 'cancelled' | 'failed' | 'not_executed' | 'running' | 'started' | 'succeeded'
+  tool_call_id: string
+  tool_name: string
+}
+
 export type SimpleAccount = {
   email: string
   id: string
@@ -2192,6 +2212,8 @@ export type AgentSoulDifyToolConfig = {
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
   description?: string | null
   enabled?: boolean
+  last_max_calls_per_run?: number | null
+  max_calls_per_run?: number | null
   name?: string | null
   plugin_id?: string | null
   provider?: string | null
@@ -2309,6 +2331,14 @@ export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
   [key: string]: unknown
+}
+
+export type ToolCallLimitMetadata = {
+  execution_status: 'executed' | 'not_executed' | 'unconfirmed'
+  limit: number
+  reason?: 'call_limit_reached' | 'duplicate_tool_call' | null
+  tool_identity: string
+  used: number
 }
 
 export type UserActionConfig = {
@@ -2600,6 +2630,24 @@ export type AgentAppDetailWithSiteWritable = {
   workflow_type?: string | null
 }
 
+export type ComposerSavePayloadWritable = {
+  agent_soul?: AgentSoulConfig | null
+  binding?: ComposerBindingPayload | null
+  client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  idempotency_key?: string | null
+  new_agent_name?: string | null
+  node_job?: WorkflowNodeJobConfigWritable | null
+  role?: string | null
+  save_strategy: ComposerSaveStrategy
+  soul_lock?: ComposerSoulLockPayload
+  variant: ComposerVariant
+  version_note?: string | null
+}
+
 export type AgentAppPartialWritable = {
   access_mode?: WebAppAccessMode | null
   active_config_is_published?: boolean
@@ -2663,6 +2711,18 @@ export type AppDetailSiteResponseWritable = {
   updated_at: number
   updated_by: string | null
   use_icon_as_answer_icon: boolean
+}
+
+export type WorkflowNodeJobConfigWritable = {
+  continue_agent_session?: boolean
+  declared_outputs?: Array<DeclaredOutputConfig>
+  human_contacts?: Array<AgentHumanContactConfig>
+  metadata?: WorkflowNodeJobMetadata
+  mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
+  previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
+  schema_version?: number
+  workflow_prompt?: string
 }
 
 export type GetAgentData = {
@@ -2735,6 +2795,7 @@ export type GetAgentInviteOptionsData = {
     keyword?: string
     limit?: number
     page?: number
+    tag_ids?: Array<string>
   }
   url: '/agent/invite-options'
 }
@@ -3066,7 +3127,7 @@ export type GetAgentByAgentIdBuildDraftResponse =
   GetAgentByAgentIdBuildDraftResponses[keyof GetAgentByAgentIdBuildDraftResponses]
 
 export type PutAgentByAgentIdBuildDraftData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }
@@ -3075,7 +3136,7 @@ export type PutAgentByAgentIdBuildDraftData = {
 }
 
 export type PutAgentByAgentIdBuildDraftErrors = {
-  400: AgentSoulLockedError | ErrorResponse
+  400: AgentSoulLockedError | InvalidComposerConfigError | ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -3106,6 +3167,7 @@ export type PostAgentByAgentIdBuildDraftApplyErrors = {
     | AgentNotFoundError
     | AgentVersionNotFoundError
     | ErrorResponse
+  409: AgentVersionConflictError | ErrorResponse
   413: AgentHomeSnapshotTooLargeError | ErrorResponse
   502: AgentHomeSnapshotCreateFailedError | ErrorResponse
   default: ErrorResponse
@@ -3263,7 +3325,7 @@ export type GetAgentByAgentIdComposerResponse =
   GetAgentByAgentIdComposerResponses[keyof GetAgentByAgentIdComposerResponses]
 
 export type PutAgentByAgentIdComposerData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }
@@ -3316,7 +3378,7 @@ export type GetAgentByAgentIdComposerCandidatesResponse =
   GetAgentByAgentIdComposerCandidatesResponses[keyof GetAgentByAgentIdComposerCandidatesResponses]
 
 export type PostAgentByAgentIdComposerValidateData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }
@@ -4003,6 +4065,7 @@ export type PostAgentByAgentIdPublishErrors = {
     | ErrorResponse
   403: ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentVersionConflictError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -47,6 +47,8 @@
   "noMatchingDocuments": "Bu aramayla eşleşen belge yok.",
   "parentChildChunkCount": "{{parentCount}} üst / {{childCount}} alt",
   "partialDocumentResults": "Eşleşen başka belgeler olabilir. Aramaya devam etmek için daha fazla yükleyin.",
+  "reindexConfirmDescription": "Yeniden dizinleme, tüm parçaları ve dizin girdilerini kaynak dosyadan yeniden oluşturur. Bilgi tabanında parçalara yapılan düzenlemelerin, örneğin bir çakışmayı çözerken başka bir belgenin ifadesinin kullanılmasının üzerine kaynak dosyanın içeriği yazılır. Yeniden dizinleme tamamlanana kadar arama mevcut dizini kullanmaya devam eder.",
+  "reindexConfirmTitle": "Kaynak dosyadan yeniden dizinlensin mi?",
   "reindexDocument": "Yeniden dizinle",
   "retrievalCountValue": "Son 7 günde {{value}}",
   "retryReindexDocument": "Yeniden indeksle",

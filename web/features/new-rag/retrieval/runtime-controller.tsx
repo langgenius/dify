@@ -4,12 +4,13 @@ import type { KnowledgeFsResearchTaskResponse } from '@dify/contracts/api/consol
 import type { RetrievalTestMode } from './model'
 import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
 import type { RetrievalComposerImage } from './state/scoped'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { toast } from '@/app/notifications'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
@@ -28,6 +29,7 @@ import {
   retrievalComposerModeAtom,
   retrievalComposerQueryAtom,
   retrievalComposerQueryImagesAtom,
+  retrievalComposerUploadPendingAtom,
   retrievalRetainedImagesAtom,
   retrievalRuntimeQueryFactsAtom,
   retrievalSelectedAtom,
@@ -43,7 +45,6 @@ import { retrievalRuntimeBridgeAtom } from './state/runtime'
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
-  retrievalComposerUploadPendingAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
   retrievalRecordImagesAtom,
@@ -114,6 +115,16 @@ export function RetrievalRuntimeController() {
   const { refetchResearchDetail, refetchResearchPartials, refetchResearchTasks, refetchTraces } =
     useAtomValueRawSync(retrievalRuntimeQueryFactsAtom)
   const setRuntimeBridge = useSetAtom(retrievalRuntimeBridgeAtom)
+  const { mutateAsync: createResearchTask } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutateAsync: deleteResearchTask } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
   const setComposerDraft = useSetAtom(retrievalComposerDraftAtom)
   const setLocalRun = useSetAtom(retrievalLocalRunAtom)
   const setLocalSelected = useSetAtom(retrievalLocalSelectedAtom)
@@ -420,31 +431,25 @@ export function RetrievalRuntimeController() {
           return
         if (session.signal.aborted) return
         const plan =
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post(
-            {
-              body: {
-                mode: 'research',
-                query: cleanQuery,
-                ...(imageReferences.length ? { queryImages: imageReferences } : {}),
-              },
-              params: { control_space_id: knowledgeSpaceId },
-            },
-            { context: { silent: true } },
-          )
-        if (session.signal.aborted) return
-        const task = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.post(
-          {
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
             body: {
-              budgetUsd: plan.budget.budget_usd,
               mode: 'research',
               query: cleanQuery,
               ...(imageReferences.length ? { queryImages: imageReferences } : {}),
-              topK: plan.retrieval_plan.top_k,
             },
             params: { control_space_id: knowledgeSpaceId },
+          })
+        if (session.signal.aborted) return
+        const task = await createResearchTask({
+          body: {
+            budgetUsd: plan.budget.budget_usd,
+            mode: 'research',
+            query: cleanQuery,
+            ...(imageReferences.length ? { queryImages: imageReferences } : {}),
+            topK: plan.retrieval_plan.top_k,
           },
-          { context: { silent: true } },
-        )
+          params: { control_space_id: knowledgeSpaceId },
+        })
         if (session.signal.aborted) return
         setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
         setResearchPlans((current) => ({ ...current, [task.id]: plan }))
@@ -473,6 +478,7 @@ export function RetrievalRuntimeController() {
     },
     [
       canQuery,
+      createResearchTask,
       ensureModelReady,
       knowledgeSpaceId,
       query,
@@ -492,18 +498,22 @@ export function RetrievalRuntimeController() {
     async (taskId: string) => {
       if (!canQuery) return
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete(
-          {
-            params: { control_space_id: knowledgeSpaceId, task_id: taskId },
-          },
-          { context: { silent: true } },
-        )
+        await deleteResearchTask({
+          params: { control_space_id: knowledgeSpaceId, task_id: taskId },
+        })
         await Promise.all([refetchResearchTasks(), refetchResearchPartials()])
       } catch (error) {
         toast.error(getErrorMessage(error) ?? t(($) => $.taskActionFailed))
       }
     },
-    [canQuery, knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, t],
+    [
+      canQuery,
+      deleteResearchTask,
+      knowledgeSpaceId,
+      refetchResearchPartials,
+      refetchResearchTasks,
+      t,
+    ],
   )
 
   const run = useCallback(() => {

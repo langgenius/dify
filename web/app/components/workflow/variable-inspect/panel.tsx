@@ -7,6 +7,7 @@ import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
@@ -15,6 +16,7 @@ import { useStore } from '../store'
 import Empty from './empty'
 import Left from './left'
 import Listening from './listening'
+import styles from './panel.module.css'
 import Right from './right'
 
 export type currentVarType = {
@@ -29,7 +31,6 @@ export type currentVarType = {
 const Panel: FC = () => {
   const { t } = useTranslation(['common', 'workflowDebug'])
 
-  const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
   const isListening = useStore((s) => s.isListening)
@@ -157,7 +158,9 @@ const Panel: FC = () => {
     if (currentFocusNodeId && currentVarId && !isLoading) {
       const targetNode = nodesWithInspectVars.find((node) => node.nodeId === currentFocusNodeId)
       if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
+        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!).catch((error) =>
+          reportRequestError(error),
+        )
     }
   }, [
     currentFocusNodeId,
@@ -211,30 +214,13 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('relative flex h-full')}>
-      {/* left */}
-      {bottomPanelWidth < 488 && showLeftPanel && (
-        <div
-          className="absolute inset-s-0 top-0 size-full"
-          onClick={() => setShowLeftPanel(false)}
-        ></div>
-      )}
-      <div
-        className={cn(
-          'w-60 shrink-0 border-e border-divider-burn',
-          bottomPanelWidth < 488
-            ? showLeftPanel
-              ? 'absolute inset-s-0 top-0 z-10 h-full w-54.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
-              : 'hidden'
-            : 'block',
-        )}
-      >
+    <div className="relative isolate flex h-full">
+      <div className={styles.sidebar} data-open={showLeftPanel || undefined}>
         <Left
           currentNodeVar={currentNodeInfo as currentVarType}
           handleVarSelect={handleNodeVarSelect}
         />
       </div>
-      {/* right */}
       <div className="w-0 grow">
         <Right
           nodeId={currentFocusNodeId!}
@@ -243,6 +229,7 @@ const Panel: FC = () => {
           handleOpenMenu={() => setShowLeftPanel(true)}
         />
       </div>
+      {showLeftPanel && <div className={styles.backdrop} onClick={() => setShowLeftPanel(false)} />}
     </div>
   )
 }

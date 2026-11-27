@@ -11,13 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -35,6 +29,7 @@ import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -446,9 +441,9 @@ export function AgentSkills() {
   const { t } = useTranslation(['agentV2'])
   const { t: tSkill } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
 
   const skillsListId = 'agent-configure-skills-list'
-  const queryClient = useQueryClient()
   const readOnly = useAgentOrchestrateReadOnly()
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuView, setAddMenuView] = useState<'menu' | 'workspace-selector'>('menu')
@@ -485,26 +480,13 @@ export function AgentSkills() {
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
     useMutation(
       consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions({
-        context: { silent: true },
+        meta: { errorToast: false },
       }),
     )
   const workspaceSkills = agentSkillBindingsQuery.data?.data ?? []
   const boundSkillIds =
     agentSkillBindingsQuery.data?.skill_ids ?? workspaceSkills.map((skill) => skill.id)
   const hasSkills = skills.length > 0 || workspaceSkills.length > 0
-  const invalidateAgentSkillBindings = useCallback(() => {
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key({
-        type: 'query',
-        input: {
-          params: {
-            agent_id: apiContext.agentId,
-          },
-        },
-      }),
-    })
-  }, [apiContext.agentId, queryClient])
-
   const replaceWorkspaceSkillBindings = useCallback(
     (skillIds: string[], onSuccess?: () => void) => {
       if (readOnly || !hasLoadedAgentSkillBindings) return
@@ -535,20 +517,14 @@ export function AgentSkills() {
               )
               return
             }
-            toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
+            toast.error(
+              describeRequestError(
+                error,
+                t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']),
+              ),
+            )
           },
           onSuccess: () => {
-            invalidateAgentSkillBindings()
-            void queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.composer.get.key({
-                type: 'query',
-                input: {
-                  params: {
-                    agent_id: apiContext.agentId,
-                  },
-                },
-              }),
-            })
             onSuccess?.()
           },
         },
@@ -556,9 +532,8 @@ export function AgentSkills() {
     },
     [
       apiContext.agentId,
+      describeRequestError,
       hasLoadedAgentSkillBindings,
-      invalidateAgentSkillBindings,
-      queryClient,
       readOnly,
       replaceAgentSkillBindings,
       t,

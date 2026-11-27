@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event'
 import { createElement, StrictMode, useEffect, useRef, useState } from 'react'
 import { useNodes } from 'reactflow'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { createNode } from '../../../../__tests__/fixtures'
 import {
   renderWorkflowCanvasHook,
@@ -163,6 +164,26 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     expect(mockToastError).toHaveBeenCalledWith(
       'workflow.nodes.humanInputV2.template.testSaveFailed',
     )
+  })
+
+  it('reports the translated reason when the V2 draft save fails', async () => {
+    const subject = renderSubject(
+      createPayload({ version: '2' }),
+      vi.fn(async (_notRefresh, callbacks) => {
+        callbacks?.onError?.(
+          createHttpError(new Response(null, { status: 400 }), {
+            code: 'draft_workflow_not_sync',
+            message: 'Server says why',
+          }),
+        )
+        return null
+      }),
+    )
+    await act(async () => subject.result.current.form.handleShowGeneratedForm({}))
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith('requestErrors.code.draft_workflow_not_sync'),
+    )
+    expect(mockFetchHumanInputNodeStepRunForm).not.toHaveBeenCalled()
   })
 
   it('keeps the input screen available after a failed preview and allows retry', async () => {

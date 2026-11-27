@@ -10,6 +10,7 @@ import { use } from 'react'
 import { useStoreApi } from 'reactflow'
 import { createDefaultFormInputByType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createEdge, createNode } from '../../../../__tests__/fixtures'
@@ -176,12 +177,9 @@ it('migrates the real graph through one shared dialog and updates the insertion 
   expect(view.graph().nodes[0]!.data).not.toHaveProperty('delivery_methods')
   expect(view.graph().nodes[1]!.data).toEqual(unrelated.data)
   expect(view.graph().edges).toEqual(edges)
-  expect(postMigration).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: { nodes: [{ node_id: 'legacy-human-input', node_data: createLegacyNode().data }] },
-    },
-    { context: { silent: true } },
-  )
+  expect(postMigration).toHaveBeenCalledExactlyOnceWith({
+    body: { nodes: [{ node_id: 'legacy-human-input', node_data: createLegacyNode().data }] },
+  })
   expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   await act(async () => vi.advanceTimersByTime(500))
@@ -227,6 +225,22 @@ it('reports the server preflight blocker without changing the graph', async () =
   )
   expect(view.graph()).toEqual(original)
   expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
+})
+
+it('reports the preflight failure over a generic server message', async () => {
+  const view = setup({ nodes: [createLegacyNode(true)] })
+  const original = view.graph()
+  postMigration.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 500 }), {
+      code: 'internal_server_error',
+      message: 'Server says why',
+    }),
+  )
+  await confirmMigration(newUser())
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'workflow.nodes.humanInputMigration.error.preflight',
+  )
+  expect(view.graph()).toEqual(original)
 })
 
 it('preserves a supported select field through migration', async () => {

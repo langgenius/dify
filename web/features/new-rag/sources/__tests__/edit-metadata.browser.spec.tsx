@@ -1,138 +1,171 @@
 import type { SourceSyncPolicy } from '../source-models'
-import { page } from 'vite-plus/test/browser'
+import type { SourceApi } from './source-server'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { createDeferred } from '@/test/deferred'
 import { SourcesPage } from '../page'
-import {
-  clearSourceClients,
-  lastInput,
-  renderSources as render,
-  settle,
-} from './source-browser-env'
+import { clearSourceClients, renderSources as render, settle } from './source-browser-env'
 import { firecrawlDatasourcePlugin, notionDatasourcePlugin, source } from './source-fixtures'
 import {
-  clientMock,
   connectionResponses,
   pluginResponses,
   resetSourceServer,
   serveNotionConnection,
   serveWebsitePreview,
+  sourceResponse,
   sourceResponses,
 } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
-
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: edit-metadata', () => {
-  it.each(['upload', 'web'] as const)(
-    'edits a %s source name and sync policy without previewing',
-    async (type) => {
-      pluginResponses.data = [firecrawlDatasourcePlugin]
-      const manualPolicy: SourceSyncPolicy = {
-        createdAt: '2026-07-20T10:00:00Z',
-        enabled: false,
-        expectedSourceVersion: 3,
-        id: 'policy-1',
-        knowledgeSpaceId: 'space-1',
-        mode: 'manual',
-        revision: 1,
-        sourceId: 'source-1',
-        updatedAt: '2026-07-20T10:00:00Z',
-      }
-      const dailyPolicy: SourceSyncPolicy = {
-        ...manualPolicy,
-        enabled: true,
-        expectedSourceVersion: 4,
-        mode: 'interval',
-        revision: 2,
-        updatedAt: '2026-07-20T10:01:00Z',
-      }
-      sourceResponses.data = {
-        pages: [
-          {
-            items: [
-              source({
-                ...(type === 'web'
-                  ? {
-                      connectionId: 'connection-1',
-                      metadata: {
-                        datasourceParameterMode: 'exact',
-                        parameters: { url: 'https://docs.example.com/' },
-                        providerName: 'Firecrawl',
-                      },
-                    }
-                  : {}),
-                syncPolicy: manualPolicy,
-                type,
-                uri: type === 'web' ? 'https://docs.example.com/' : 'upload://1',
-              }),
-            ],
-          },
-        ],
-      }
-      clientMock.patchSource.mockResolvedValue(
+  const editsSourceMetadata = async (type: 'upload' | 'web') => {
+    pluginResponses.data = [firecrawlDatasourcePlugin]
+    const manualPolicy: SourceSyncPolicy = {
+      createdAt: '2026-07-20T10:00:00Z',
+      enabled: false,
+      expectedSourceVersion: 3,
+      id: 'policy-1',
+      knowledgeSpaceId: 'space-1',
+      mode: 'manual',
+      revision: 1,
+      sourceId: 'source-1',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    const dailyPolicy: SourceSyncPolicy = {
+      ...manualPolicy,
+      enabled: true,
+      expectedSourceVersion: 4,
+      mode: 'interval',
+      revision: 2,
+      updatedAt: '2026-07-20T10:01:00Z',
+    }
+    sourceResponses.data = {
+      pages: [
+        {
+          items: [
+            source({
+              ...(type === 'web'
+                ? {
+                    connectionId: 'connection-1',
+                    metadata: {
+                      datasourceParameterMode: 'exact',
+                      parameters: { url: 'https://docs.example.com/' },
+                      providerName: 'Firecrawl',
+                    },
+                  }
+                : {}),
+              syncPolicy: manualPolicy,
+              type,
+              uri: type === 'web' ? 'https://docs.example.com/' : 'upload://1',
+            }),
+          ],
+        },
+      ],
+    }
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
         source({
           name: 'Renamed documentation',
           syncPolicy: dailyPolicy,
           type,
           version: 4,
         }),
-      )
+      ),
+    )
 
-      await render(<SourcesPage knowledgeSpaceId="space-1" />)
-      await page
-        .getByRole('button', {
-          name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
-        })
-        .click()
-      await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
-
-      const nameInput = page.getByRole('textbox', {
-        name: 'knowledgeSources.sourceName',
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await page
+      .getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
       })
-      await nameInput.fill('Renamed documentation')
-      await page.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' }).click()
-      await page.getByRole('option', { name: 'knowledgeSources.syncPolicyDaily' }).click()
-      await page.getByRole('button', { name: 'common.operation.save' }).click()
+      .click()
+    await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
 
-      await vi.waitFor(async () =>
-        expect(clientMock.patchSource).toHaveBeenCalledWith({
-          body: {
-            expectedVersion: 3,
-            name: 'Renamed documentation',
-            syncPolicy: { enabled: true, mode: 'interval' },
-          },
-          params: { control_space_id: 'space-1', source_id: 'source-1' },
-        }),
+    const nameInput = page.getByRole('textbox', {
+      name: 'knowledgeSources.sourceName',
+    })
+    await nameInput.fill('Renamed documentation')
+    await page.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' }).click()
+    await page.getByRole('option', { name: 'knowledgeSources.syncPolicyDaily' }).click()
+    await page.getByRole('button', { name: 'common.operation.save' }).click()
+
+    await vi.waitFor(async () =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
+        body: {
+          expectedVersion: 3,
+          name: 'Renamed documentation',
+          syncPolicy: { enabled: true, mode: 'interval' },
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+    expect(fake.console.knowledgeFs.sourceProviderPreview.jobs.post).not.toHaveBeenCalled()
+    await expect
+      .element(page.getByRole('row', { name: /Renamed documentation/ }))
+      .toBeInTheDocument()
+    await expect
+      .element(
+        page
+          .getByRole('row', { name: /Renamed documentation/ })
+          .getByText('knowledgeSources.syncPolicyDaily'),
       )
-      expect(clientMock.startPreviewJob).not.toHaveBeenCalled()
-      await expect
-        .element(page.getByRole('row', { name: /Renamed documentation/ }))
-        .toBeInTheDocument()
-      await expect
-        .element(
-          page
-            .getByRole('row', { name: /Renamed documentation/ })
-            .getByText('knowledgeSources.syncPolicyDaily'),
-        )
-        .toBeInTheDocument()
-    },
+      .toBeInTheDocument()
+  }
+
+  it.each(['upload', 'web'] as const)(
+    'edits a %s source name and sync policy without previewing',
+    editsSourceMetadata,
   )
+
+  it('keeps typing in the web source name while the provider declaration loads', async () => {
+    const plugins = createDeferred<[typeof firecrawlDatasourcePlugin]>()
+    fake.console.rag.pipelines.datasourcePlugins.get.mockReturnValue(plugins.promise)
+    sourceResponses.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+              type: 'web',
+              uri: 'https://docs.example.com/',
+            }),
+          ],
+        },
+      ],
+    }
+
+    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await page
+      .getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      })
+      .click()
+    await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
+    await expect.element(page.getByRole('status', { name: 'common.loading' })).toBeVisible()
+    const nameInput = page.getByRole('textbox', { name: 'knowledgeSources.sourceName' })
+    await nameInput.fill('Renamed')
+    plugins.resolve([firecrawlDatasourcePlugin])
+    await expect
+      .element(page.getByRole('status', { name: 'common.loading' }))
+      .not.toBeInTheDocument()
+    await expect.element(nameInput).toHaveFocus()
+    await userEvent.keyboard(' documentation')
+    await expect.element(nameInput).toHaveValue('Renamed documentation')
+  })
 
   it.each(['missing required parameter', 'out-of-range parameter'] as const)(
     'saves metadata without previewing despite a provider constraint: %s',
@@ -169,8 +202,8 @@ describe('Sources: edit-metadata', () => {
           },
         ],
       }
-      clientMock.patchSource.mockResolvedValue(
-        source({ name: 'Renamed documentation', version: 4 }),
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+        sourceResponse(source({ name: 'Renamed documentation', version: 4 })),
       )
 
       await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -205,7 +238,9 @@ describe('Sources: edit-metadata', () => {
       await page.getByRole('button', { name: 'common.operation.save' }).click()
 
       await vi.waitFor(async () =>
-        expect(clientMock.patchSource).toHaveBeenCalledWith({
+        expect(
+          fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+        ).toHaveBeenCalledWith({
           body: {
             expectedVersion: 3,
             name: 'Renamed documentation',
@@ -214,7 +249,7 @@ describe('Sources: edit-metadata', () => {
           params: { control_space_id: 'space-1', source_id: 'source-1' },
         }),
       )
-      expect(clientMock.startPreviewJob).not.toHaveBeenCalled()
+      expect(fake.console.knowledgeFs.sourceProviderPreview.jobs.post).not.toHaveBeenCalled()
     },
   )
 
@@ -242,8 +277,10 @@ describe('Sources: edit-metadata', () => {
       uri: 'upload://1',
     })
     sourceResponses.data = { pages: [{ items: [websiteSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
+      ),
     )
 
     const { refresh } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -283,7 +320,9 @@ describe('Sources: edit-metadata', () => {
     await saveButton.click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Renamed documentation',
@@ -396,7 +435,9 @@ describe('Sources: edit-metadata', () => {
       await page.getByRole('button', { name: /knowledgeSources.sourceActions/ }).click()
       await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
       const dialog = page.getByRole('dialog')
-      await expect.element(dialog.getByText('knowledgeSpace.providerLoadFailed')).toBeVisible()
+      await expect
+        .element(dialog.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' }))
+        .toBeVisible()
       connectionResponses.nextPageError = false
       await dialog.getByRole('button', { name: 'common.operation.retry' }).click()
       await expect
@@ -405,7 +446,7 @@ describe('Sources: edit-metadata', () => {
         )
         .toBeVisible()
       await expect
-        .element(dialog.getByText('knowledgeSpace.providerLoadFailed'))
+        .element(dialog.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' }))
         .not.toBeInTheDocument()
     },
   )
@@ -435,7 +476,9 @@ describe('Sources: edit-metadata', () => {
     await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
 
     await settle()
-    expect(lastInput('connections')).toEqual({
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.mock.lastCall?.[0],
+    ).toEqual({
       params: { control_space_id: 'control-space-1' },
       query: { limit: 200 },
     })

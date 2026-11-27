@@ -6,7 +6,7 @@ import socket
 import time
 import uuid
 from collections.abc import Mapping
-from typing import Any, override
+from typing import Any, NamedTuple, override
 
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError  # type: ignore[reportMissingTypeStubs]
 from sqlalchemy import select
@@ -31,6 +31,13 @@ _PROCESS_SERVER_ID_PID: int | None = None
 
 class WorkflowCollaborationNotEntitledError(Exception):
     """The workspace cannot use workflow collaboration."""
+
+
+class WorkflowPageResume(NamedTuple):
+    """Browser page UUID and positive join sequence, validated at the transport boundary."""
+
+    page_id: str
+    sequence: int
 
 
 def _get_process_server_id() -> str:
@@ -107,16 +114,20 @@ class WorkflowCollaborationService:
         )
 
     def authorize_and_join_workflow_room(
-        self, workflow_id: str, sid: str, *, session: Session
+        self, workflow_id: str, sid: str, *, session: Session, resume: WorkflowPageResume | None = None
     ) -> tuple[str, bool] | None:
         """
         Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
-        `App.id`. Missing access returns `None`; an ineligible workspace raises
-        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
+        `App.id`. Missing access, an outdated join, or a closed socket returns `None`. An ineligible workspace
+        raises `WorkflowCollaborationNotEntitledError`. With no resume credential, the SID joins as an
+        independent editor. A resume can replace the prior SID only for this workflow, account, and page.
         """
-        socket_session = self._socketio.get_session(sid)
+        try:
+            socket_session = self._socketio.get_session(sid)
+        except KeyError:
+            return None
         user_id = socket_session.get("user_id")
         tenant_id = socket_session.get("tenant_id")
         if not user_id or not tenant_id:
@@ -149,15 +160,52 @@ class WorkflowCollaborationService:
             "graph_active": True,
         }
 
-        self._repository.set_session_info(workflow_id, session_info)
+        previous_sid = None
+        replaced_sid = None
+        with self._repository.room_state_lock(workflow_id):
+            if not self._is_socket_connected_locally(sid):
+                return None
+            if resume is not None:
+                previous = self._repository.get_page_session(workflow_id, session_info["user_id"], resume.page_id)
+                if previous is not None:
+                    if resume.sequence < previous["sequence"]:
+                        return None
+                    if previous["sid"] != sid:
+                        if resume.sequence == previous["sequence"]:
+                            return None
+                        previous_sid = previous["sid"]
+                        mapping = self._repository.get_sid_mapping(previous_sid)
+                        if mapping is not None and (
+                            mapping["workflow_id"],
+                            mapping["user_id"],
+                            mapping.get("page_id"),
+                        ) == (workflow_id, session_info["user_id"], resume.page_id):
+                            replaced_sid = previous_sid
 
-        leader_sid = self.get_or_set_leader(workflow_id, sid)
-        is_leader = leader_sid == sid
+            self._socketio.enter_room(sid, workflow_id)
+            self._repository.set_session_info(workflow_id, session_info, page_id=resume.page_id if resume else None)
+            if resume is not None:
+                self._repository.set_page_session(
+                    workflow_id, session_info["user_id"], resume.page_id, {"sid": sid, "sequence": resume.sequence}
+                )
+            if replaced_sid is not None:
+                self._repository.delete_session(workflow_id, replaced_sid)
+            if previous_sid is not None:
+                self.handle_leader_disconnect(workflow_id, previous_sid, joining_sid=sid)
 
-        self._socketio.enter_room(sid, workflow_id)
-        self.broadcast_online_users(workflow_id)
+            self.get_or_set_leader(workflow_id, sid)
+            is_leader = self.broadcast_online_users(workflow_id, joining_sid=sid) == sid
+            status = {"isLeader": is_leader}
+            if is_leader and previous_sid is not None:
+                status["requiresGraphReload"] = True
+            self._socketio.emit("status", status, room=sid)
 
-        self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
+        # Socket.IO can run the disconnect handler synchronously. Room state already fences this SID.
+        if replaced_sid is not None:
+            try:
+                self._socketio.disconnect(replaced_sid)
+            except Exception:
+                logger.exception("Failed to close superseded workflow collaboration session: sid=%s", replaced_sid)
 
         return str(user_id), is_leader
 
@@ -184,18 +232,28 @@ class WorkflowCollaborationService:
         )
 
     def disconnect_session(self, sid: str) -> None:
+        """Remove an admitted socket and update leadership and presence under the room lock.
+
+        Unknown and superseded SIDs leave room state untouched, including when a replacement
+        joins after cleanup reads the SID mapping.
+        """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return
 
         workflow_id = mapping["workflow_id"]
-        self._repository.delete_session(workflow_id, sid)
-
-        self.handle_leader_disconnect(workflow_id, sid)
-        self.broadcast_online_users(workflow_id)
+        with self._repository.room_state_lock(workflow_id):
+            if self._repository.get_sid_mapping(sid) != mapping:
+                return
+            self._repository.delete_session(workflow_id, sid)
+            self.handle_leader_disconnect(workflow_id, sid)
+            self.broadcast_online_users(workflow_id)
 
     def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, object], int]:
-        """Route collaboration control events, directing save and graph-resync requests to the active leader."""
+        """Require current room admission to route collaboration control events.
+
+        Select leaders for save and graph resync under the same lock that updates room membership.
+        """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return {"msg": "unauthorized"}, 401
@@ -224,7 +282,7 @@ class WorkflowCollaborationService:
 
             # Sequence the visibility write together with its leader side effect. Otherwise a newer
             # visible event can land after the Lua write but before an older hidden handler demotes.
-            with self._repository.graph_view_state_lock(workflow_id):
+            with self._repository.room_state_lock(workflow_id):
                 applied = self._repository.update_session_graph_active(workflow_id, sid, graph_active, sequence)
                 if not applied:
                     return {"msg": "graph_view_state_ignored"}, 200
@@ -242,30 +300,10 @@ class WorkflowCollaborationService:
             if not isinstance(request_id, str) or not request_id.strip():
                 return {"msg": "invalid sync_request"}, 400
 
-            leader_sid = self._repository.get_current_leader(workflow_id)
-            target_sid: str | None
-            if leader_sid and self.is_session_active(workflow_id, leader_sid):
-                if self._is_session_graph_active(workflow_id, leader_sid):
-                    target_sid = leader_sid
-                else:
-                    # The leader is connected but its tab is hidden: its canvas is frozen
-                    # (rAF paused), so saving through it would persist stale data. Hand
-                    # leadership to a visible session — or, if every tab is hidden, to the
-                    # requester, whose canvas at least contains its own edits.
-                    replacement = self._select_graph_leader(workflow_id, preferred_sid=sid)
-                    if replacement and replacement != leader_sid:
-                        self._repository.set_leader(workflow_id, replacement)
-                        self.broadcast_leader_change(workflow_id, replacement)
-                        target_sid = replacement
-                    else:
-                        target_sid = leader_sid
-            else:
-                if leader_sid:
-                    self._repository.delete_leader(workflow_id)
-                target_sid = self._select_graph_leader(workflow_id, preferred_sid=sid)
-                if target_sid:
-                    self._repository.set_leader(workflow_id, target_sid)
-                    self.broadcast_leader_change(workflow_id, target_sid)
+            with self._repository.room_state_lock(workflow_id):
+                if self._repository.get_sid_mapping(sid) != mapping:
+                    return {"msg": "unauthorized"}, 401
+                target_sid = self._select_sync_target(workflow_id, sid, require_visible_leader=True)
 
             if not target_sid:
                 return {"msg": "no_active_leader", "requestId": request_id}, 503
@@ -314,17 +352,10 @@ class WorkflowCollaborationService:
             }, 200
 
         if event_type == "graph_resync_request":
-            leader_sid = self._repository.get_current_leader(workflow_id)
-            resync_target_sid: str | None
-            if leader_sid and self.is_session_active(workflow_id, leader_sid):
-                resync_target_sid = leader_sid
-            else:
-                if leader_sid:
-                    self._repository.delete_leader(workflow_id)
-                resync_target_sid = self._select_graph_leader(workflow_id, preferred_sid=sid)
-                if resync_target_sid:
-                    self._repository.set_leader(workflow_id, resync_target_sid)
-                    self.broadcast_leader_change(workflow_id, resync_target_sid)
+            with self._repository.room_state_lock(workflow_id):
+                if self._repository.get_sid_mapping(sid) != mapping:
+                    return {"msg": "unauthorized"}, 401
+                resync_target_sid = self._select_sync_target(workflow_id, sid, require_visible_leader=False)
 
             if not resync_target_sid:
                 return {"msg": "no_active_leader"}, 503
@@ -345,6 +376,26 @@ class WorkflowCollaborationService:
 
         return {"msg": "event_broadcasted"}, 200
 
+    def _select_sync_target(self, workflow_id: str, sid: str, *, require_visible_leader: bool) -> str | None:
+        """Route an admitted request under the room lock; publish any necessary leader change."""
+        leader_sid = self._repository.get_current_leader(workflow_id)
+        if leader_sid and self.is_session_active(workflow_id, leader_sid):
+            if not require_visible_leader or self._is_session_graph_active(workflow_id, leader_sid):
+                return leader_sid
+            # A hidden tab's canvas may be stale even when its CRDT can serve snapshots.
+            # Saves prefer a visible editor, or the requester if all tabs are hidden.
+            target_sid = self._select_graph_leader(workflow_id, preferred_sid=sid) or leader_sid
+        else:
+            target_sid = self._select_graph_leader(workflow_id, preferred_sid=sid)
+
+        if target_sid != leader_sid:
+            if target_sid is None:
+                self._repository.delete_leader(workflow_id)
+            else:
+                self._repository.set_leader(workflow_id, target_sid)
+                self.broadcast_leader_change(workflow_id, target_sid)
+        return target_sid
+
     def relay_graph_event(self, sid: str, data: object) -> tuple[dict[str, str], int]:
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
@@ -358,6 +409,7 @@ class WorkflowCollaborationService:
         return {"msg": "graph_update_broadcasted"}, 200
 
     def get_or_set_leader(self, workflow_id: str, sid: str) -> str:
+        """Keep the current leader or elect the joining SID while the room is locked."""
         current_leader = self._repository.get_current_leader(workflow_id)
 
         if current_leader:
@@ -370,7 +422,7 @@ class WorkflowCollaborationService:
 
         if was_set:
             if current_leader:
-                self.broadcast_leader_change(workflow_id, sid)
+                self.broadcast_leader_change(workflow_id, sid, skip_sid=sid)
             return sid
 
         current_leader = self._repository.get_current_leader(workflow_id)
@@ -379,7 +431,10 @@ class WorkflowCollaborationService:
 
         return sid
 
-    def handle_leader_disconnect(self, workflow_id: str, disconnected_sid: str) -> None:
+    def handle_leader_disconnect(
+        self, workflow_id: str, disconnected_sid: str, *, joining_sid: str | None = None
+    ) -> None:
+        """Transfer leadership if the removed SID was leader. A joining SID is chosen later, if needed."""
         current_leader = self._repository.get_current_leader(workflow_id)
         if not current_leader:
             return
@@ -387,20 +442,24 @@ class WorkflowCollaborationService:
         if current_leader != disconnected_sid:
             return
 
-        new_leader_sid = self._select_graph_leader(workflow_id)
+        new_leader_sid = self._select_graph_leader(workflow_id, excluded_sid=joining_sid)
         if new_leader_sid:
             self._repository.set_leader(workflow_id, new_leader_sid)
-            self.broadcast_leader_change(workflow_id, new_leader_sid)
+            self.broadcast_leader_change(workflow_id, new_leader_sid, skip_sid=joining_sid)
         else:
             self._repository.delete_leader(workflow_id)
 
-    def broadcast_leader_change(self, workflow_id: str, new_leader_sid: str | None) -> None:
+    def broadcast_leader_change(
+        self, workflow_id: str, new_leader_sid: str | None, *, skip_sid: str | None = None
+    ) -> None:
+        """Notify existing editors. A joining SID receives its own status with recovery instructions."""
         for sid in self._repository.get_session_sids(workflow_id):
-            try:
-                is_leader = new_leader_sid is not None and sid == new_leader_sid
-                self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
-            except Exception:
-                logging.exception("Failed to emit leader status to session %s", sid)
+            if sid != skip_sid:
+                try:
+                    is_leader = new_leader_sid is not None and sid == new_leader_sid
+                    self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
+                except Exception:
+                    logging.exception("Failed to emit leader status to session %s", sid)
 
     def get_current_leader(self, workflow_id: str) -> str | None:
         return self._repository.get_current_leader(workflow_id)
@@ -425,7 +484,8 @@ class WorkflowCollaborationService:
 
         return active_sessions
 
-    def broadcast_online_users(self, workflow_id: str) -> None:
+    def broadcast_online_users(self, workflow_id: str, *, joining_sid: str | None = None) -> str | None:
+        """Prune and publish the online list under the room lock, returning its final leader."""
         users = self._prune_inactive_sessions(workflow_id)
         users.sort(key=lambda x: x.get("connected_at") or 0)
 
@@ -442,19 +502,20 @@ class WorkflowCollaborationService:
                 self._repository.set_leader(workflow_id, leader_sid)
 
         if leader_sid != previous_leader:
-            self.broadcast_leader_change(workflow_id, leader_sid)
+            self.broadcast_leader_change(workflow_id, leader_sid, skip_sid=joining_sid)
 
         self._socketio.emit(
             "online_users",
             {"workflow_id": workflow_id, "users": users, "leader": leader_sid},
             room=workflow_id,
         )
+        return leader_sid
 
     def get_online_user_avatars(self, sid: str, *, avatar_service: AccountAvatarService) -> dict[str, str]:
-        """Resolve current-room avatars for an admitted socket; an unjoined socket receives no URLs.
+        """Resolve current profiles for active room sessions; an unjoined socket receives no URLs.
 
-        The room, account IDs, and profile avatars come from server-managed sessions.
-        Missing or unowned uploads are omitted so clients can show initials.
+        The room and account IDs come from server-managed sessions; profile avatars are read in one batch.
+        Missing or unowned uploads are omitted so clients can show initials. Redis avatar snapshots are ignored.
         """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
@@ -463,21 +524,15 @@ class WorkflowCollaborationService:
         if not self.is_session_active(workflow_id, sid):
             return {}
 
-        urls: dict[str, str] = {}
-        for user in self._repository.list_sessions(workflow_id):
-            avatar = user["avatar"]
-            if avatar and self.is_session_active(workflow_id, user["sid"]):
-                # The profile accepts arbitrary strings, but the upload lookup requires a valid UUID.
-                if not avatar.startswith(("http://", "https://")):
-                    try:
-                        avatar = str(uuid.UUID(avatar))
-                    except ValueError:
-                        avatar = ""
-
-                if avatar and (url := avatar_service.resolve_for_account(account_id=user["user_id"], avatar=avatar)):
-                    urls[user["sid"]] = url
-
-        return urls
+        active_users = [
+            user
+            for user in self._repository.list_sessions(workflow_id)
+            if self.is_session_active(workflow_id, user["sid"])
+        ]
+        urls_by_account = avatar_service.resolve_current_for_accounts(
+            account_ids=tuple(dict.fromkeys(user["user_id"] for user in active_users))
+        )
+        return {user["sid"]: url for user in active_users if (url := urls_by_account.get(user["user_id"])) is not None}
 
     def refresh_session_state(self, workflow_id: str, sid: str) -> None:
         self._refresh_server_heartbeat()
@@ -485,16 +540,23 @@ class WorkflowCollaborationService:
         self._ensure_leader(workflow_id, sid)
 
     def _ensure_leader(self, workflow_id: str, sid: str) -> None:
+        """Keep a live leader; elect a requester only while its SID is still admitted."""
         current_leader = self._repository.get_current_leader(workflow_id)
         if current_leader and self.is_session_active(workflow_id, current_leader):
             self._repository.expire_leader(workflow_id)
             return
 
-        if current_leader:
-            self._repository.delete_leader(workflow_id)
+        with self._repository.room_state_lock(workflow_id):
+            mapping = self._repository.get_sid_mapping(sid)
+            if mapping is None or mapping["workflow_id"] != workflow_id:
+                return
+            current_leader = self._repository.get_current_leader(workflow_id)
+            if current_leader and self.is_session_active(workflow_id, current_leader):
+                self._repository.expire_leader(workflow_id)
+                return
 
-        self._repository.set_leader(workflow_id, sid)
-        self.broadcast_leader_change(workflow_id, sid)
+            self._repository.set_leader(workflow_id, sid)
+            self.broadcast_leader_change(workflow_id, sid)
 
     def _select_graph_leader(
         self,
@@ -502,6 +564,7 @@ class WorkflowCollaborationService:
         preferred_sid: str | None = None,
         *,
         require_graph_active: bool = False,
+        excluded_sid: str | None = None,
     ) -> str | None:
         """Pick a leader, preferring sessions whose canvas tab is visible.
 
@@ -513,7 +576,7 @@ class WorkflowCollaborationService:
         active_sessions = [
             session
             for session in self._repository.list_sessions(workflow_id)
-            if self.is_session_active(workflow_id, session["sid"])
+            if session["sid"] != excluded_sid and self.is_session_active(workflow_id, session["sid"])
         ]
         visible_sids = [session["sid"] for session in active_sessions if session.get("graph_active", True)]
 
@@ -548,11 +611,12 @@ class WorkflowCollaborationService:
         self.broadcast_leader_change(workflow_id, new_leader)
 
     def is_session_active(self, workflow_id: str, sid: str) -> bool:
+        """Check that the SID still owns its workflow membership and its worker is live."""
         if not sid:
             return False
 
         mapping = self._repository.get_sid_mapping(sid)
-        if not mapping:
+        if not mapping or mapping["workflow_id"] != workflow_id:
             return False
 
         if not self._repository.session_exists(workflow_id, sid):

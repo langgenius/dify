@@ -13,14 +13,16 @@ from collections.abc import Iterable
 
 from celery import shared_task
 
-from services.agent.deletion_service import AgentDeletionService
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.workspace_service import AgentWorkspaceService
-
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="retention")
+@shared_task(
+    queue="retention",
+    autoretry_for=(Exception,),
+    max_retries=5,
+    retry_backoff=30,
+    retry_backoff_max=10 * 60,
+)
 def collect_agent_resources(
     *,
     tenant_id: str,
@@ -33,8 +35,15 @@ def collect_agent_resources(
 
     Collection is best-effort across the complete explicit batch so one failed
     resource does not hide later failures. If any resource fails, aggregate
-    purge is skipped and one summary error is raised after all attempts.
+    purge is skipped and the summary error retries the batch. The resource
+    collectors accept already-removed IDs so redelivering the batch is safe.
+    The task stops retrying after five attempts beyond the initial delivery.
     """
+
+    # Agent retirement services also import the enqueue function in this module.
+    from services.agent.deletion_service import AgentDeletionService
+    from services.agent.home_snapshot_service import AgentHomeSnapshotService
+    from services.agent.workspace_service import AgentWorkspaceService
 
     collectors = (
         (workspace_ids, "workspace_id", AgentWorkspaceService.collect_retired_workspace),

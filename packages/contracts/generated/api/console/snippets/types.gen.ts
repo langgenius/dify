@@ -508,6 +508,7 @@ export type DeclaredOutputConfig = {
 }
 
 export type WorkflowNodeJobConfig = {
+  continue_agent_session?: boolean
   declared_outputs?: Array<DeclaredOutputConfig>
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
@@ -515,6 +516,7 @@ export type WorkflowNodeJobConfig = {
   output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
+  readonly session_generation?: string
   workflow_prompt?: string
 }
 
@@ -992,6 +994,8 @@ export type AgentSoulDifyToolConfig = {
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
   description?: string | null
   enabled?: boolean
+  last_max_calls_per_run?: number | null
+  max_calls_per_run?: number | null
   name?: string | null
   plugin_id?: string | null
   provider?: string | null
@@ -1208,6 +1212,72 @@ export type AgentKnowledgeMetadataCondition = {
   name: string
   value?: string | Array<string> | number | null
 }
+
+export type GeneratedAppResponseWritable = ShallowJsonValue
+
+export type WorkflowAgentComposerResponseWritable = {
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
+  agent?: AgentComposerAgentResponse | null
+  agent_soul: AgentSoulConfig
+  app_id?: string | null
+  backing_app_id?: string | null
+  binding?: AgentComposerBindingResponse | null
+  chat_endpoint?: string | null
+  debug_conversation_has_messages?: boolean
+  debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
+  effective_declared_outputs?: Array<DeclaredOutputConfig>
+  hidden_app_backed?: boolean
+  impact_summary?: AgentComposerImpactResponse | null
+  node_id?: string | null
+  node_job: WorkflowNodeJobConfigWritable
+  save_options: Array<ComposerSaveStrategy>
+  soul_lock: AgentComposerSoulLockResponse
+  validation?: ComposerValidationFindingsResponse | null
+  variant: 'workflow'
+  workflow_id?: string | null
+}
+
+export type ComposerSavePayloadWritable = {
+  agent_soul?: AgentSoulConfig | null
+  binding?: ComposerBindingPayload | null
+  client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  idempotency_key?: string | null
+  new_agent_name?: string | null
+  node_job?: WorkflowNodeJobConfigWritable | null
+  role?: string | null
+  save_strategy: ComposerSaveStrategy
+  soul_lock?: ComposerSoulLockPayload
+  variant: ComposerVariant
+  version_note?: string | null
+}
+
+export type WorkflowNodeJobConfigWritable = {
+  continue_agent_session?: boolean
+  declared_outputs?: Array<DeclaredOutputConfig>
+  human_contacts?: Array<AgentHumanContactConfig>
+  metadata?: WorkflowNodeJobMetadata
+  mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
+  previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
+  schema_version?: number
+  workflow_prompt?: string
+}
+
+export type RecursiveJsonValueWritable =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValueWritable
+    }
+  | Array<RecursiveJsonValueWritable>
+  | null
 
 export type GetSnippetsBySnippetIdWorkflowRunsData = {
   body?: never
@@ -1555,7 +1625,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerRespon
   GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponses]
 
 export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     node_id: string
     snippet_id: string
@@ -1638,7 +1708,7 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyF
   PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     node_id: string
     snippet_id: string
@@ -1662,7 +1732,7 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpac
   PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     node_id: string
     snippet_id: string
@@ -1693,7 +1763,7 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveT
   PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     node_id: string
     snippet_id: string

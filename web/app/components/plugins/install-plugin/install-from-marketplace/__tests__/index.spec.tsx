@@ -4,6 +4,7 @@ import type { Dependency, Plugin, PluginManifestInMarket } from '../../../types'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createPluginDeclarationFixture, createPluginEntity } from '@/test/fixtures/plugin'
@@ -20,32 +21,29 @@ const { install, upgrade, installedPlugins, declaration, pollTask, marketplace, 
     marketplace: vi.fn(),
     refresh: vi.fn(),
   }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: marketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: marketplace })
+})
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
   checkTaskStatus: pollTask,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': async () => ({
-        install_permission: PermissionType.everyone,
-        debug_permission: PermissionType.everyone,
-      }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': installedPlugins,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.marketplace.pkg.get': declaration,
       'workspaces.current.plugin.install.marketplace.post': install,
       'workspaces.current.plugin.upgrade.marketplace.post': upgrade,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': installedPlugins,
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: PermissionType.everyone,
+        debug_permission: PermissionType.everyone,
+      }),
     }),
   }
 })
@@ -254,7 +252,13 @@ it('hands a started task to the task list and closes without claiming installati
   const { onClose, onSuccess, queryClient } = renderInstaller()
   await user.click(installButton())
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-  expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
+  expect(
+    queryClient.getQueryData(
+      consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
+        input: { query: { page: 1, page_size: 100 } },
+      }),
+    ),
+  ).toEqual({
     tasks: [expect.objectContaining({ id: task.id, status: TaskStatus.running })],
   })
   expect(pollTask).not.toHaveBeenCalled()
@@ -365,7 +369,11 @@ it.each([
   const { queryClient } = renderInstaller()
   await waitFor(() =>
     expect(
-      queryClient.getQueryData(['plugins', 'pluginDeclaration', 'test-unique-identifier']),
+      queryClient.getQueryData(
+        consoleQuery.workspaces.current.plugin.marketplace.pkg.get.queryKey({
+          input: { query: { plugin_unique_identifier: 'test-unique-identifier' } },
+        }),
+      ),
     ).toEqual(response),
   )
   if (warns) expect(await screen.findByText(/plugin.difyVersionNotCompatible/)).toBeInTheDocument()

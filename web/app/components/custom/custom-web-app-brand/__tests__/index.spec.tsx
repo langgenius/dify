@@ -1,15 +1,18 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
-import { ORPCError } from '@orpc/client'
+import type { ConsoleClient } from '@/service/console'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import CustomWebAppBrand from '../index'
 
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
+const upload = vi.hoisted(() =>
+  vi.fn<ConsoleClient['workspaces']['customConfig']['webappLogo']['upload']['post']>(),
+)
 const updateConfig = vi.hoisted(() =>
   vi.fn<(input: { body: WorkspaceCustomConfigPayload }) => Promise<WorkspaceCustomConfigPayload>>(),
 )
@@ -17,19 +20,19 @@ let config: WorkspaceCustomConfigPayload
 const getConfig = vi.hoisted(() => vi.fn<() => Promise<WorkspaceCustomConfigPayload>>())
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.customConfig.webappLogo.upload.post': upload,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.customConfig.get': getConfig,
       'workspaces.customConfig.post': updateConfig,
     }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload,
-}))
 
 const renderBrand = ({
   canReplace = true,
@@ -103,11 +106,10 @@ it('cancels an upload, accepts the same file again, then applies and restores th
   await user.upload(uploadInput(), file)
   expect(upload).toHaveBeenCalledTimes(2)
   expect(upload).toHaveBeenLastCalledWith(
-    expect.objectContaining({ data: expect.any(FormData) }),
-    false,
-    '/workspaces/custom-config/webapp-logo/upload',
+    { body: { file: expect.any(File) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
-  const uploadedFile = upload.mock.lastCall?.[0].data.get('file')
+  const uploadedFile = upload.mock.lastCall?.[0].body.file
   expect(uploadedFile).toBeInstanceOf(File)
   expect(uploadedFile).toMatchObject({ name: file.name, size: file.size, type: file.type })
   await user.click(await screen.findByRole('button', { name: 'custom.apply' }))
@@ -209,11 +211,8 @@ it.each([0, 100])(
   'announces uploading and waits for the response at %s percent',
   async (loaded) => {
     const request = createDeferred<Awaited<ReturnType<typeof upload>>>()
-    upload.mockImplementation((options) => {
-      options.onprogress?.call(
-        options.xhr,
-        new ProgressEvent('progress', { lengthComputable: true, loaded, total: 100 }),
-      )
+    upload.mockImplementation((_input, options) => {
+      options?.context?.onUploadProgress?.({ loaded, total: 100 })
       return request.promise
     })
     const { user } = renderBrand()
@@ -239,23 +238,43 @@ it.each([0, 100])(
 
 it.each([
   {
-    error: new ORPCError('forbidden', { message: 'Workspace upload denied' }),
-    message: 'Workspace upload denied',
+    error: createHttpError(new Response(null, { status: 403 }), {
+      code: 'bad_request',
+      message: 'Workspace upload denied',
+    }),
+    message: 'common.imageUploader.uploadFromComputerUploadError',
+  },
+  {
+    error: createHttpError(new Response(null, { status: 415 }), {
+      code: 'unsupported_file_type',
+      message: 'File type not allowed.',
+    }),
+    message: 'requestErrors.code.unsupported_file_type',
+  },
+  {
+    error: createHttpError(new Response(null, { status: 413 }), {
+      code: 'file_too_large',
+      message: 'File size exceeded.',
+    }),
+    message: 'File size exceeded.',
   },
   {
     error: new Error('Network unavailable'),
     message: 'common.imageUploader.uploadFromComputerUploadError',
   },
-])('shows $message and allows retry after an upload failure', async ({ error, message }) => {
-  upload.mockRejectedValueOnce(error)
-  const { user } = renderBrand()
-  const file = logoFile()
-  await user.upload(uploadInput(), file)
-  expect(await screen.findByText(message)).toBeVisible()
-  expect(screen.getByText('custom.uploadedFail')).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
-  expect(updateConfig).not.toHaveBeenCalled()
-  await user.upload(uploadInput(), file)
-  expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
-  expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
-})
+])(
+  'shows $message for $error.message and allows retry after an upload failure',
+  async ({ error, message }) => {
+    upload.mockRejectedValueOnce(error)
+    const { user } = renderBrand()
+    const file = logoFile()
+    await user.upload(uploadInput(), file)
+    expect(await screen.findByText(message)).toBeVisible()
+    expect(screen.getByText('custom.uploadedFail')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+    expect(updateConfig).not.toHaveBeenCalled()
+    await user.upload(uploadInput(), file)
+    expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
+    expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
+  },
+)

@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { ComponentProps, RefObject } from 'react'
 import {
   AlertDialog,
@@ -16,6 +17,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
+import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
@@ -29,13 +31,16 @@ import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
 import { DeleteAgentForm } from '@/features/agent-v2/delete-agent-form'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
-import { DuplicateAgentDialog } from './duplicate-agent-dialog'
-import { EditAgentDialog } from './edit-agent-dialog'
+import { DuplicateAgentDialogContent } from './duplicate-agent-dialog'
+import { EditAgentDialogContent } from './edit-agent-dialog'
+import { ReadOnlyAgentTags } from './read-only-agent-tags'
 
 type AgentRosterListFooterState =
   | { status: 'none' }
@@ -48,13 +53,14 @@ export type AgentRosterListState =
   | {
       status: 'ready'
       agents: AgentAppPartial[]
-      emptyState: 'roster' | 'filtered'
+      emptyState: 'roster' | { type: 'filtered'; onClearFilters: () => void }
       footer: AgentRosterListFooterState
       isFetching: boolean
     }
 
 type AgentRosterListProps = {
   state: AgentRosterListState
+  onOpenTagManagement: () => void
 } & Pick<ComponentProps<'div'>, 'aria-labelledby'>
 
 type DeleteAgentDialogPayload = Pick<AgentAppPartial, 'id' | 'name'> & {
@@ -83,7 +89,7 @@ function AgentRosterSkeleton() {
       {skeletonCardIds.map((id) => (
         <div
           key={id}
-          className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
+          className="relative h-43 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
         >
           <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
             <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
@@ -98,6 +104,10 @@ function AgentRosterSkeleton() {
               <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
             </div>
           </div>
+          <div className="flex h-6.5 items-center gap-1 px-4">
+            <SkeletonRectangle className="my-0 h-4 w-14 rounded-md opacity-12" />
+            <SkeletonRectangle className="my-0 h-4 w-20 rounded-md opacity-12" />
+          </div>
           <div className="flex items-center ps-4 pe-3 pt-2 pb-3">
             <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
             <SkeletonRectangle className="my-0 ms-2.5 h-3 w-28 rounded-md opacity-10" />
@@ -109,22 +119,18 @@ function AgentRosterSkeleton() {
 }
 
 function AgentRosterPlaceholderState({
-  onRetry,
+  action,
+  description,
   role,
   title,
 }: {
-  onRetry?: () => void
+  action?: { label: string; onClick: () => void }
+  description?: string
   role?: 'alert' | 'status'
   title: string
 }) {
-  const { t } = useTranslation(['common'])
-
   return (
-    <div
-      aria-labelledby="agent-roster-placeholder-title"
-      className="relative min-h-[calc(100vh-142px)] overflow-hidden"
-      role={role}
-    >
+    <div className="relative min-h-[calc(100vh-142px)] overflow-hidden">
       <div
         className={cn(
           'pointer-events-none absolute inset-0 grid-rows-4',
@@ -137,21 +143,24 @@ function AgentRosterPlaceholderState({
       </div>
       <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden p-2">
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex size-14 items-center justify-center rounded-[10px]">
-            <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
-              <span aria-hidden className="i-ri-robot-2-line size-6 text-text-tertiary" />
-            </div>
-          </div>
-          <h2
-            id="agent-roster-placeholder-title"
-            className="system-sm-regular whitespace-nowrap text-text-tertiary"
+        <div className="flex max-w-full flex-col items-center gap-3 text-center system-sm-regular text-text-tertiary">
+          <div
+            role={role}
+            aria-labelledby="agent-roster-placeholder-title"
+            className="flex flex-col items-center gap-3"
           >
-            {title}
-          </h2>
-          {onRetry && (
-            <Button size="small" variant="secondary" onClick={onRetry}>
-              {t(($) => $['operation.retry'])}
+            <span
+              aria-hidden
+              className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md"
+            >
+              <span className="i-ri-robot-line size-6" />
+            </span>
+            <h2 id="agent-roster-placeholder-title">{title}</h2>
+            {description && <p>{description}</p>}
+          </div>
+          {action && (
+            <Button size="small" variant="secondary" onClick={action.onClick}>
+              {action.label}
             </Button>
           )}
         </div>
@@ -216,10 +225,16 @@ function AgentCardActionMenuItems({
 
 function AgentRosterItem({
   agent,
+  duplicateDialog,
+  editDialog,
   onDelete,
+  onOpenTagManagement,
 }: {
   agent: AgentAppPartial
+  duplicateDialog: DialogHandle<AgentAppPartial>
+  editDialog: DialogHandle<AgentAppPartial>
   onDelete: (item: HTMLLIElement | null) => void
+  onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
@@ -228,7 +243,6 @@ function AgentRosterItem({
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
-  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | null>(null)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)
   const isPreviewOnly = agent.permission_keys?.length === 1 && capabilities.canPreview
@@ -257,20 +271,7 @@ function AgentRosterItem({
     .filter(Boolean)
     .join(' ')
 
-  const handleEditOpen = () => {
-    setActiveDialog('edit')
-  }
-
-  const handleDuplicateOpen = () => {
-    setActiveDialog('duplicate')
-  }
-
-  const handleDialogOpenChange = (open: boolean) => {
-    if (!open) setActiveDialog(null)
-  }
-
   const handleExport = () => {
-    if (!capabilities.canImportExportDSL) return
     if (!agent.app_id) {
       toast.error(tApp(($) => $.exportFailed))
       return
@@ -326,7 +327,7 @@ function AgentRosterItem({
       aria-labelledby={nameId}
       aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
       className={cn(
-        "group relative isolate col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+        "group relative isolate col-span-1 h-43 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
         isPreviewOnly
           ? 'opacity-60'
           : 'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md has-data-popup-open:shadow-shadow-shadow-5 [@media(hover:none)]:bg-components-card-bg-alt',
@@ -364,8 +365,8 @@ function AgentRosterItem({
             <AgentCardActionMenuItems
               kind="context"
               isExporting={isExporting}
-              onEdit={capabilities.canEdit ? handleEditOpen : undefined}
-              onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
+              onEdit={capabilities.canEdit ? () => editDialog.openWithPayload(agent) : undefined}
+              onDuplicate={canDuplicate ? () => duplicateDialog.openWithPayload(agent) : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
               onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
             />
@@ -394,8 +395,12 @@ function AgentRosterItem({
                 <AgentCardActionMenuItems
                   kind="menu"
                   isExporting={isExporting}
-                  onEdit={capabilities.canEdit ? handleEditOpen : undefined}
-                  onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
+                  onEdit={
+                    capabilities.canEdit ? () => editDialog.openWithPayload(agent) : undefined
+                  }
+                  onDuplicate={
+                    canDuplicate ? () => duplicateDialog.openWithPayload(agent) : undefined
+                  }
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
                   onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
                 />
@@ -404,6 +409,25 @@ function AgentRosterItem({
           </div>
         </div>
       )}
+      <div
+        className={cn(
+          'absolute inset-x-3 bottom-9',
+          !capabilities.canEdit && 'pointer-events-none',
+        )}
+      >
+        {capabilities.canEdit ? (
+          <TagSelector
+            type="agent"
+            targetId={agent.id}
+            contextLabel={agent.name}
+            value={agent.tags ?? []}
+            canBindOrUnbindTags
+            onOpenTagManagement={onOpenTagManagement}
+          />
+        ) : (
+          <ReadOnlyAgentTags agent={agent} />
+        )}
+      </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
@@ -435,35 +459,29 @@ function AgentRosterItem({
           )}
         </div>
       </div>
-      {capabilities.canEdit && (
-        <EditAgentDialog
-          agent={agent}
-          open={activeDialog === 'edit'}
-          onOpenChange={handleDialogOpenChange}
-        />
-      )}
-      {canDuplicate && (
-        <DuplicateAgentDialog
-          agent={agent}
-          open={activeDialog === 'duplicate'}
-          onOpenChange={handleDialogOpenChange}
-        />
-      )}
     </li>
   )
 }
 
 export function AgentRosterList({
   state,
+  onOpenTagManagement,
   'aria-labelledby': ariaLabelledBy,
 }: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
+  const describeRequestError = useRequestErrorDescriber()
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAgentDialogPayload>())
+  const [editDialog] = useState(() => createDialogHandle<AgentAppPartial>())
+  const [duplicateDialog] = useState(() => createDialogHandle<AgentAppPartial>())
+  const agentUpdate = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
+  const agentCopy = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const regionRef = useRef<HTMLDivElement>(null)
   const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   return (
@@ -483,21 +501,26 @@ export function AgentRosterList({
         )}
         {state.status === 'error' && (
           <AgentRosterPlaceholderState
-            onRetry={state.onRetry}
+            action={{ label: tCommon(($) => $['operation.retry']), onClick: state.onRetry }}
             role="alert"
             title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
           />
         )}
-        {state.status === 'ready' && state.agents.length === 0 && (
-          <AgentRosterPlaceholderState
-            role={state.emptyState === 'filtered' ? 'status' : undefined}
-            title={
-              state.emptyState === 'filtered'
-                ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
-                : t(($) => $['roster.empty'], { ns: 'agentRoster' })
-            }
-          />
-        )}
+        {state.status === 'ready' &&
+          state.agents.length === 0 &&
+          (state.emptyState === 'roster' ? (
+            <AgentRosterPlaceholderState title={t(($) => $['roster.empty'])} />
+          ) : (
+            <AgentRosterPlaceholderState
+              role="status"
+              title={t(($) => $['roster.emptySearch'])}
+              description={t(($) => $['roster.emptySearchDescription'])}
+              action={{
+                label: t(($) => $['roster.clearFilters']),
+                onClick: state.emptyState.onClearFilters,
+              }}
+            />
+          ))}
         {state.status === 'ready' && state.agents.length > 0 && (
           <ul
             // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
@@ -510,6 +533,9 @@ export function AgentRosterList({
               <AgentRosterItem
                 key={agent.id}
                 agent={agent}
+                duplicateDialog={duplicateDialog}
+                editDialog={editDialog}
+                onOpenTagManagement={onOpenTagManagement}
                 onDelete={(item) => {
                   deleteDialog.openWithPayload({
                     id: agent.id,
@@ -543,6 +569,60 @@ export function AgentRosterList({
           </div>
         )}
       </div>
+      <Dialog
+        handle={editDialog}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && agentUpdate.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) agentUpdate.reset()
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <EditAgentDialogContent
+              agent={payload}
+              pending={agentUpdate.isPending}
+              onSubmit={(body) => {
+                if (agentUpdate.isPending) return
+                agentUpdate.mutate(
+                  { params: { agent_id: payload.id }, body },
+                  { onSuccess: () => editDialog.close() },
+                )
+              }}
+            />
+          )
+        }
+      </Dialog>
+      <Dialog
+        handle={duplicateDialog}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && agentCopy.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) agentCopy.reset()
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <DuplicateAgentDialogContent
+              agent={payload}
+              pending={agentCopy.isPending}
+              onSubmit={(body) => {
+                if (agentCopy.isPending) return
+                agentCopy.mutate(
+                  { params: { agent_id: payload.id }, body },
+                  { onSuccess: () => duplicateDialog.close() },
+                )
+              }}
+            />
+          )
+        }
+      </Dialog>
       <AlertDialog
         handle={deleteDialog}
         onOpenChange={(open, details) => {
@@ -568,7 +648,14 @@ export function AgentRosterList({
               <DeleteAgentForm
                 agentName={payload.name}
                 isPending={deletion.isPending}
-                error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+                error={
+                  deletion.isError
+                    ? describeRequestError(
+                        deletion.error,
+                        t(($) => $['roster.deleteFailed']),
+                      )
+                    : undefined
+                }
                 onSubmit={() => {
                   if (deletion.isPending) return
                   deletion.mutate(

@@ -198,6 +198,111 @@ def test_evaluation_records_deepeval_reason(monkeypatch: pytest.MonkeyPatch) -> 
     assert results[0].metrics[0].details == {"reason": "The response matches the supplied evidence."}
 
 
+def test_evaluation_omits_empty_deepeval_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    def measure_without_reason(
+        metric: _FakeMetric,
+        test_case: _FakeTestCase,
+        *,
+        _show_indicator: bool,
+    ) -> float:
+        assert _show_indicator is False
+        assert test_case.actual_output == "Paris"
+        metric.score = 0.875
+        metric.reason = None
+        return metric.score
+
+    monkeypatch.setattr(_FakeMetric, "measure", measure_without_reason)
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components",
+        _fake_components,
+    )
+
+    result = DeepEvalEvaluator(DeepEvalConfig()).evaluate_llm(
+        [
+            EvaluationItemInput(
+                index=7,
+                inputs={"prompt": "What is the capital of France?"},
+                output="Paris",
+                context=["Paris is the capital of France."],
+            )
+        ],
+        ["faithfulness"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.metrics[0].details == {}
+
+
+@pytest.mark.parametrize("context", [None, ["", " \t "]])
+@pytest.mark.parametrize(
+    ("metric_name", "category"),
+    [
+        ("faithfulness", EvaluationCategory.LLM),
+        ("context_precision", EvaluationCategory.RETRIEVAL),
+        ("context_recall", EvaluationCategory.RETRIEVAL),
+        ("context_relevance", EvaluationCategory.RETRIEVAL),
+    ],
+)
+def test_missing_text_context_skips_deepeval_metric(
+    monkeypatch: pytest.MonkeyPatch,
+    context: list[str] | None,
+    metric_name: str,
+    category: EvaluationCategory,
+) -> None:
+    monkeypatch.setattr(DifyDeepEvalModel, "load_model", lambda _self: object())
+
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+    evaluate = evaluator.evaluate_llm if category == EvaluationCategory.LLM else evaluator.evaluate_retrieval
+    result = evaluate(
+        [
+            EvaluationItemInput(
+                index=3,
+                inputs={"prompt": "Where is Paris?", "query": "Where is Paris?"},
+                output="Paris",
+                expected_output="Paris",
+                context=context,
+            )
+        ],
+        [metric_name],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.metrics == []
+    assert result.error is not None
+    assert result.error.startswith("EVAL_CONTEXT_MISSING:")
+
+
+def test_missing_text_context_keeps_independent_deepeval_metric(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components",
+        _fake_components,
+    )
+
+    result = DeepEvalEvaluator(DeepEvalConfig()).evaluate_llm(
+        [EvaluationItemInput(index=4, inputs={"prompt": "Where is Paris?"}, output="Paris")],
+        ["faithfulness", "answer_relevancy"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert [(metric.name, metric.value) for metric in result.metrics] == [("answer_relevancy", 0.875)]
+    assert result.error is not None
+    assert result.error.startswith("EVAL_CONTEXT_MISSING:")
+
+
 def test_evaluation_limits_metric_plugin_requests_to_180_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
     evaluator = DeepEvalEvaluator(DeepEvalConfig())
     observed_timeouts: list[int] = []
@@ -352,7 +457,14 @@ def test_non_finite_deepeval_score_is_a_row_error(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(_FakeMetric, "measure", lambda *_args, **_kwargs: float("nan"))
 
     result = DeepEvalEvaluator(DeepEvalConfig()).evaluate_retrieval(
-        [EvaluationItemInput(index=2, inputs={"query": "What?"}, output="Paris")],
+        [
+            EvaluationItemInput(
+                index=2,
+                inputs={"query": "What?"},
+                output="Paris",
+                context=["Paris is the capital of France."],
+            )
+        ],
         ["context_relevance", "unsupported_metric"],
         "provider",
         "model",

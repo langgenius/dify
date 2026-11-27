@@ -16,6 +16,8 @@
   "settings.membersRequired": "Select at least one team member.",
   "settings.nameRequired": "Agent Knowledge Base name is required.",
   "settings.pageDescription": "Manage basic info, API access, and retrieval.",
+  "settings.personalAgentDescription": "Members can let their own agents (Claude Code, Codex, MCP clients) read this knowledge base with their permissions.",
+  "settings.personalAgentLabel": "Personal agents",
   "settings.reloadLatest": "Reload latest settings",
   "settings.rerankModelRequired": "Select a rerank model.",
   "settings.retrievalDepth": "Retrieval depth",

@@ -4,7 +4,7 @@ from .test_utils import CodeExecutorTestMixin
 class TestJinja2CodeExecutor(CodeExecutorTestMixin):
     """Exercise Jinja2 workflow templates through the real Sandbox."""
 
-    def test_jinja2_with_code_template(self):
+    def test_jinja2_with_code_template(self) -> None:
         """Test Jinja2 workflow code template execution with inputs"""
         code_executor, code_language = self.code_executor_imports
 

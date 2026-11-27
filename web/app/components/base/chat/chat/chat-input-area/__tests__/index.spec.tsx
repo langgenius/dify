@@ -8,6 +8,7 @@ import { FeaturesProvider } from '@/app/components/base/features/context'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { InputVarType } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
@@ -415,6 +416,55 @@ describe('ChatInputArea', () => {
 
       expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
       expect(recorderCancel).not.toHaveBeenCalled()
+    })
+
+    it('should toast the translated reason when transcription fails with an HTTP error', async () => {
+      const user = userEvent.setup({ delay: null })
+      vi.mocked(transcribeAudio).mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 415 }), {
+          code: 'unsupported_audio_type',
+          message: 'Audio type not allowed.',
+        }),
+      )
+      render(
+        <ChatInputArea
+          speechToTextConfig={{ enabled: true }}
+          speechToTextTarget={speechToTextTarget}
+          visionConfig={mockVisionConfig}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'requestErrors.code.unsupported_audio_type',
+        }),
+      )
+    })
+
+    it('should toast the generic message when transcription fails without a response', async () => {
+      const user = userEvent.setup({ delay: null })
+      vi.mocked(transcribeAudio).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      render(
+        <ChatInputArea
+          speechToTextConfig={{ enabled: true }}
+          speechToTextTarget={speechToTextTarget}
+          visionConfig={mockVisionConfig}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'common.api.actionFailed',
+        }),
+      )
     })
 
     it('should focus the textarea at the end of converted voice text', async () => {

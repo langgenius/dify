@@ -11,6 +11,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
 import Crawling from '../base/crawling'
@@ -22,6 +23,9 @@ import Options from './options'
 
 const ERROR_I18N_PREFIX = 'errorMsg'
 const I18N_PREFIX = 'stepOne.website'
+
+type CrawlFailure = { error: unknown } | { message?: string }
+
 type Props = Readonly<{
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
@@ -64,6 +68,7 @@ const FireCrawl: FC<Props> = ({
   onCrawlOptionsChange,
 }) => {
   const { t } = useTranslation(['common', 'datasetCreation'])
+  const describeRequestError = useRequestErrorDescriber()
   const [step, setStep] = useState<Step>(Step.init)
   const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const isMountedRef = useRef(true)
@@ -109,7 +114,13 @@ const FireCrawl: FC<Props> = ({
   const isCrawlFinished = step === Step.finished
   const isRunning = step === Step.running
   const [crawlResult, setCrawlResult] = useState<CrawlState | undefined>(undefined)
-  const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
+  const [crawlFailure, setCrawlFailure] = useState<CrawlFailure>()
+  const unknownErrorMessage = t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' })
+  const crawlErrorMessage = !crawlFailure
+    ? ''
+    : 'error' in crawlFailure
+      ? describeRequestError(crawlFailure.error, unknownErrorMessage)
+      : crawlFailure.message || unknownErrorMessage
   const showError = isCrawlFinished && crawlErrorMessage
   const waitForCrawlFinished = useCallback(
     async (jobId: string): Promise<CrawlFinishedResult> => {
@@ -191,23 +202,21 @@ const FireCrawl: FC<Props> = ({
         const { isCancelled, isError, data, errorMessage } = await waitForCrawlFinished(jobId)
         if (isCancelled || !isMountedRef.current) return
         if (isError) {
-          setCrawlErrorMessage(
-            errorMessage || t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),
-          )
+          setCrawlFailure({ message: errorMessage })
         } else {
           setCrawlResult(data as CrawlState)
           onCheckedCrawlResultChange(data.data || []) // default select the crawl result
-          setCrawlErrorMessage('')
+          setCrawlFailure(undefined)
         }
       } catch (e) {
         if (!isMountedRef.current) return
-        setCrawlErrorMessage(t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' })!)
+        setCrawlFailure({ error: e })
         console.log(e)
       } finally {
         if (isMountedRef.current) setStep(Step.finished)
       }
     },
-    [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished, onCheckedCrawlResultChange],
+    [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, waitForCrawlFinished],
   )
   return (
     <div>

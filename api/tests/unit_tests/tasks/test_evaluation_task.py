@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
+from core.errors.error import AppInvokeQuotaWaitTimeoutError
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     CustomizedMetricOutputField,
@@ -40,6 +42,7 @@ from core.evaluation.exceptions import (
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from core.model_context import get_credit_usage_metadata
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -55,6 +58,7 @@ from models.evaluation import (
 from models.model import UploadFile
 from models.workflow import WorkflowKind
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
+from services.errors.app import QuotaExceededError
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     EvaluationRunCancelledError,
@@ -63,6 +67,7 @@ from tasks.evaluation_task import (
     _apply_judgment,
     _build_missing_result_errors,
     _collect_retrieval_contexts,
+    _collect_selected_contexts,
     _compute_metrics_summary,
     _create_runner,
     _delete_stored_result_file,
@@ -107,6 +112,98 @@ def test_collect_retrieval_contexts_keeps_only_content_from_requested_nodes() ->
 
     assert _collect_retrieval_contexts(node_results, []) is None
     assert _collect_retrieval_contexts(node_results, ["missing", "first", "second", "third"]) == ["alpha", "3"]
+    assert _collect_selected_contexts(node_results, ["first", "result"]) == ["alpha"]
+
+
+def test_collect_selected_contexts_accepts_text_arrays_without_stringifying_other_values() -> None:
+    """Selected text arrays preserve evidence order; unrelated values stay unusable."""
+    node_results = {
+        "start": NodeRunResult(
+            outputs={
+                "texts": ["first", "", "   ", "second"],
+                "nested": {"texts": ["nested"]},
+                "files": [{"name": "document.txt"}],
+                "number": 42,
+            }
+        )
+    }
+
+    assert _collect_selected_contexts(node_results, ["start", "texts"]) == ["first", "second"]
+    assert _collect_selected_contexts(node_results, ["start", "nested", "texts"]) == ["nested"]
+    assert _collect_selected_contexts(node_results, ["start", "files"]) == []
+    assert _collect_selected_contexts(node_results, ["start", "number"]) == []
+    assert _collect_selected_contexts(node_results, ["sys", "user_id"]) == []
+    assert _collect_selected_contexts(node_results, ["start"]) == []
+    assert _collect_selected_contexts(node_results, ["start", "texts", "content"]) == []
+
+
+def test_collect_selected_contexts_preserves_retrieval_summary_before_content() -> None:
+    """Selected retrieval chunks contain the same ordered text as the LLM context."""
+    node_results = {
+        "retrieval": NodeRunResult(
+            outputs={
+                "result": [
+                    {"summary": "short summary", "content": "source text"},
+                    {"summary": "summary only", "content": ""},
+                    {"content": "second source"},
+                    {"summary": "not a retrieval chunk"},
+                ]
+            }
+        )
+    }
+
+    assert _collect_selected_contexts(node_results, ["retrieval", "result"]) == [
+        "short summary\nsource text",
+        "summary only",
+        "second source",
+    ]
+
+
+def test_workflow_faithfulness_receives_selected_llm_text_as_context(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A selected LLM output reaches the judge even without a context placeholder in the prompt."""
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._persist_results", lambda *_args: None)
+    evaluator = CapturingEvaluationInstance(
+        llm_result_factory=lambda items: [
+            EvaluationItemResult(index=item.index, metrics=[EvaluationMetric(name="faithfulness", value=1.0)])
+            for item in items
+        ]
+    )
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(metric="faithfulness", node_info_list=[NodeInfo(node_id="llm-2", title="LLM 2", type="llm")])
+        ],
+        llm_context_selector_mapping={"llm-2": ["llm-1", "text"]},
+        input_list=[EvaluationDatasetInput(index=0, inputs={"query": "question"})],
+    )
+
+    results = _execute_evaluation_runner(
+        sqlite_session,
+        EvaluationRunData.model_validate(run_data.model_dump(mode="json")),
+        evaluator,
+        [
+            {
+                "llm-1": NodeRunResult(outputs={"text": "Source answer"}),
+                "llm-2": NodeRunResult(
+                    process_data={"prompts": [{"role": "system", "text": "Refine Source answer"}]},
+                    outputs={"text": "Refined answer"},
+                ),
+            }
+        ],
+        _lease(run_data.evaluation_run_id),
+    )
+
+    assert evaluator.llm_items[0].context == ["Source answer"]
+    assert results[0].metrics[0].value == 1.0
 
 
 def test_store_result_file_persists_upload_matching_saved_bytes(
@@ -226,13 +323,67 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     assert results[0].metrics[0].name == "score"
     assert results[0].metrics[0].value == 0.8
     _assert_public_error(results[1].error, EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
-    assert len(cancellation_checks) == 4
+    assert len(cancellation_checks) == 10
 
 
-def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
+def test_customized_workflow_propagates_concurrency_timeout(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from models.model import AppMode
+    from services.workflow_service import WorkflowService
+
+    account = make_account()
+    tenant = make_tenant()
+    workflow = make_workflow(
+        workflow_id="workflow-1", app_id="evaluator-app-1", version="1", kind=WorkflowKind.EVALUATION
+    )
+    app = make_app(app_id="evaluator-app-1", mode=AppMode.WORKFLOW, created_by=account.id, workflow_id=workflow.id)
+    sqlite_session.add_all(
+        [
+            account,
+            tenant,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.NORMAL),
+            app,
+            workflow,
+        ]
+    )
+    sqlite_session.commit()
+
+    @contextmanager
+    def create_session() -> Generator[Session]:
+        yield sqlite_session
+
+    def fail_run(**_kwargs: object) -> dict[str, object]:
+        raise AppInvokeQuotaWaitTimeoutError("wait expired")
+
+    monkeypatch.setattr("tasks.evaluation_task.session_factory.create_session", create_session)
+    monkeypatch.setattr(
+        "services.workflow_service.WorkflowService",
+        partial(WorkflowService, session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
+    )
+    monkeypatch.setattr(EvaluationService, "run_app_for_evaluation", fail_run)
+    metrics = CustomizedMetrics(
+        evaluation_workflow_id=app.id,
+        evaluation_workflow_version_id=workflow.id,
+        input_fields={"prompt": "{{#node.text#}}"},
+        output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+    )
+
+    with pytest.raises(AppInvokeQuotaWaitTimeoutError, match="wait expired"):
+        _evaluate_with_customized_workflow(
+            CapturingEvaluationInstance(),
+            [{"node": NodeRunResult(outputs={"text": "first"})}],
+            metrics,
+            tenant.id,
+        )
+
+
+@pytest.mark.parametrize("target_type", [EvaluationTargetType.APPS, EvaluationTargetType.SNIPPETS])
+def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, target_type: EvaluationTargetType
+) -> None:
     def evaluate(items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
+        assert get_evaluation_credit_usage_metadata() == {"app_type": "workflow", "created_by": "evaluation"}
         return [
             EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="answer_relevancy", value=0.9)])
             for _item in items
@@ -252,7 +403,7 @@ def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
     run_data = EvaluationRunData(
         evaluation_run_id="run-1",
         tenant_id="tenant-1",
-        target_type="apps",
+        target_type=target_type.value,
         target_id="app-1",
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -284,10 +435,13 @@ def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
 def test_workflow_metric_failures_remain_row_local_when_customized_evaluator_fails(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    customized_inherited_metadata: list[bool] = []
+
     def fail_metric(_items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
         raise RuntimeError("judge unavailable")
 
     def fail_customized(**_kwargs: object) -> list[EvaluationItemResult]:
+        customized_inherited_metadata.append(get_credit_usage_metadata() is not None)
         raise RuntimeError("evaluator unavailable")
 
     persisted: list[list[EvaluationItemResult]] = []
@@ -328,6 +482,7 @@ def test_workflow_metric_failures_remain_row_local_when_customized_evaluator_fai
     assert "judge unavailable" not in results[0].error
     assert "evaluator unavailable" not in results[0].error
     assert safe_evaluation_error_text(results[0].error) == results[0].error
+    assert customized_inherited_metadata == [False]
     assert persisted == [results]
 
 
@@ -345,7 +500,10 @@ def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
         lambda _session, _lease, results, *_args: persisted.append(results),
     )
 
+    scoring_metadata: list[dict[str, object]] = []
+
     def fail_scoring(*_args: object, **_kwargs: object) -> list[EvaluationItemResult]:
+        scoring_metadata.append(get_evaluation_credit_usage_metadata())
         raise RuntimeError("provider unavailable")
 
     monkeypatch.setattr("tasks.evaluation_task.RetrievalEvaluationRunner.evaluate_metrics", fail_scoring)
@@ -374,6 +532,7 @@ def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
 
     _assert_public_error(results[0].error, EvaluationErrorCode.METRIC_FAILED)
     assert results[1].error == "Evaluation failed. Please retry or contact support."
+    assert scoring_metadata == [{"app_type": "unknown", "created_by": "evaluation"}]
     assert progress == [0.85]
     assert persisted == [results]
 
@@ -574,14 +733,32 @@ def test_customized_evaluator_skips_rows_where_target_execution_failed(
     assert persisted_results == [results]
 
 
-def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_error(
+@pytest.mark.parametrize(
+    ("failure", "expected_type", "expected_message"),
+    [
+        (
+            EvaluationWorkflowVersionNotFoundError("Pinned evaluation workflow version was deleted."),
+            EvaluationWorkflowVersionNotFoundError,
+            "was deleted",
+        ),
+        (
+            AppInvokeQuotaWaitTimeoutError("wait expired"),
+            AppInvokeQuotaWaitTimeoutError,
+            "wait expired",
+        ),
+    ],
+)
+def test_customized_evaluator_control_failures_are_not_materialized_as_row_errors(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    failure: Exception,
+    expected_type: type[Exception],
+    expected_message: str,
 ) -> None:
     evaluation_instance = CapturingEvaluationInstance()
 
     def customized_evaluator(**_kwargs: object) -> list[EvaluationItemResult]:
-        raise EvaluationWorkflowVersionNotFoundError("Pinned evaluation workflow version was deleted.")
+        raise failure
 
     monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
     persisted_results: list[list[EvaluationItemResult]] = []
@@ -610,7 +787,7 @@ def test_customized_evaluator_missing_pinned_version_is_not_materialized_as_row_
         input_list=[EvaluationDatasetInput(index=10, inputs={"query": "hello"})],
     )
 
-    with pytest.raises(EvaluationWorkflowVersionNotFoundError, match="was deleted"):
+    with pytest.raises(expected_type, match=expected_message):
         _execute_evaluation_runner(
             session=sqlite_session,
             run_data=run_data,
@@ -929,6 +1106,11 @@ def test_execute_evaluation_rejects_invalid_or_terminal_task_deliveries(
         (EvaluationRunCancelledError(), None),
         (EvaluationRunOwnershipLostError("stale task"), None),
         (ValueError("invalid payload"), EvaluationErrorCode.INVALID_CONFIG),
+        (
+            QuotaExceededError(feature="workflow", tenant_id="tenant-1", required=1),
+            EvaluationErrorCode.RUN_QUOTA_EXCEEDED,
+        ),
+        (AppInvokeQuotaWaitTimeoutError("wait expired"), EvaluationErrorCode.APP_CONCURRENCY_TIMEOUT),
         (RuntimeError("backend unavailable"), EvaluationErrorCode.RUN_FAILED),
     ],
 )
@@ -2045,11 +2227,12 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(
 ) -> None:
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
     agent_item = AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done")
-    evaluation_instance = CapturingEvaluationInstance(
-        agent_result_factory=lambda _items: [
-            EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="task_completion", value=0.9)])
-        ]
-    )
+
+    def evaluate_agent(_items: list[AgentEvaluationItem]) -> list[EvaluationItemResult]:
+        assert get_evaluation_credit_usage_metadata() == {"app_type": "agent_v2", "created_by": "evaluation"}
+        return [EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="task_completion", value=0.9)])]
+
+    evaluation_instance = CapturingEvaluationInstance(agent_result_factory=evaluate_agent)
     persisted_results: list[list[EvaluationItemResult]] = []
 
     def persist_results(
@@ -2182,6 +2365,44 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
     assert persisted_result.actual_output == "done"
     assert persisted_result.metrics[0].name == "score"
     assert persisted_result.overall_score == 0.8
+
+
+def test_evaluate_agent_row_propagates_customized_evaluator_concurrency_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    def customized_evaluator(**_kwargs: object) -> list[EvaluationItemResult]:
+        raise AppInvokeQuotaWaitTimeoutError("wait expired")
+
+    monkeypatch.setattr("tasks.evaluation_task._evaluate_with_customized_workflow", customized_evaluator)
+    monkeypatch.setattr("tasks.evaluation_task._clear_workflow_cancellation_signals", lambda *_args: None)
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="agents",
+        target_id="agent-1",
+        target_agent_config_snapshot_id="snapshot-1",
+        evaluation_model_provider="",
+        evaluation_model="",
+        customized_metrics=CustomizedMetrics(
+            evaluation_workflow_id="evaluator-app",
+            evaluation_workflow_version_id="evaluator-version-1",
+            input_fields={},
+            output_fields=[CustomizedMetricOutputField(variable="score", value_type="number")],
+        ),
+        input_list=[EvaluationDatasetInput(index=7, inputs={"query": "hello"})],
+    )
+
+    with pytest.raises(AppInvokeQuotaWaitTimeoutError, match="wait expired"):
+        _evaluate_agent_row(
+            session=sqlite_session,
+            run_data=run_data,
+            evaluation_instance=CapturingEvaluationInstance(),
+            agent_item=AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done"),
+            target_error=None,
+            task_position=4,
+            lease=_lease("run-1"),
+        )
 
 
 def test_evaluate_agent_row_keeps_native_and_customized_failures_on_the_row(

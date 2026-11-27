@@ -167,11 +167,11 @@ export type PluginManifestInMarket = {
   name: string
   org: string
   icon: string
-  label: Record<Locale | PluginLanguage, string>
+  label: Record<string, string>
   category: PluginCategoryEnum
   version: string // combine the other place to it
   latest_version: string
-  brief: Record<Locale | PluginLanguage, string>
+  brief: Record<string, string>
   introduction: string
   verified: boolean
   install_count: number

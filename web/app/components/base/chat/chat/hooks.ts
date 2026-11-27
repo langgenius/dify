@@ -3,7 +3,7 @@ import type { InputForm, ThoughtItem } from './type'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
-import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
+import type { IOnDataMoreInfo, StreamCallbacks, StreamSender } from '@/service/event-stream'
 import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
@@ -26,6 +26,7 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { reportRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -33,7 +34,9 @@ import {
 } from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
-import { sseGet, ssePost } from '@/service/base'
+import { streamEvents } from '@/service/event-stream'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
+import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
 import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
@@ -77,9 +80,9 @@ type SendCallback = {
     getAbortController: GetAbortController,
   ) => Promise<unknown>
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
-  onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
+  onUnhandledEvent?: StreamCallbacks['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
-  onNotifyError?: IOtherOptions['onNotifyError']
+  onNotifyError?: StreamCallbacks['onNotifyError']
   isPublicAPI?: boolean
 }
 
@@ -204,6 +207,27 @@ function getConversationMessagesData(response: unknown): ConversationMessagesRes
   return Array.isArray(data) ? data.filter(isHistoryConversationMessage) : []
 }
 
+function hasPendingAgentHistory(
+  message: HistoryConversationMessage | undefined,
+  streamedThoughts: ThoughtItem[] | undefined,
+) {
+  if (!message) return true
+  const thoughts = getHistoryAgentThoughts(message)
+  const isPending = (thought: ThoughtItem) =>
+    thought.tool_activity?.status === 'started' || thought.tool_activity?.status === 'running'
+
+  return (
+    thoughts.some(isPending) ||
+    (streamedThoughts ?? []).some(
+      (streamed) =>
+        streamed.tool_activity &&
+        !thoughts.some(
+          (thought) => thought.id === streamed.id && thought.tool_activity && !isPending(thought),
+        ),
+    )
+  )
+}
+
 function abortWorkflowEventsRequest(abortController: AbortController | null) {
   abortController?.abort(new DOMException('The user aborted a request.', 'AbortError'))
 }
@@ -222,6 +246,7 @@ export const useChat = (
   options: UseChatOptions = {},
 ) => {
   const { t } = useTranslation(['appDebug', 'common'])
+  const describeRequestError = useRequestErrorDescriber()
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
@@ -230,6 +255,7 @@ export const useChat = (
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
   const stopPendingRef = useRef<number | null>(null)
+  const completeStoppedAgentRef = useRef<(() => Promise<void>) | null>(null)
   const pausedStateRef = useRef(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
@@ -238,7 +264,7 @@ export const useChat = (
   const pausedWorkflowEventsAbortControllerRef = useRef<AbortController | null>(null)
   const pausedWorkflowEventsRef = useRef<{
     workflowRunId: string
-    options: IOtherOptions
+    options: StreamCallbacks
   } | null>(null)
   const workflowEventsSubscriptionActiveRef = useRef(false)
   const workflowEventsSubscriptionRunIdRef = useRef<string | null>(null)
@@ -253,7 +279,7 @@ export const useChat = (
     }>
   >([])
   const startWorkflowEventsSubscriptionRef = useRef<
-    ((workflowRunId: string, options: IOtherOptions) => void) | null
+    ((workflowRunId: string, options: StreamCallbacks) => void) | null
   >(null)
   const params = useParams()
   const pathname = usePathname()
@@ -404,7 +430,7 @@ export const useChat = (
   }, [])
 
   const startWorkflowEventsSubscription = useCallback(
-    (workflowRunId: string, options: IOtherOptions) => {
+    (workflowRunId: string, options: StreamCallbacks) => {
       const generation = ++workflowEventsSubscriptionGenerationRef.current
       abortWorkflowEventsRequest(pausedWorkflowEventsAbortControllerRef.current)
       pausedWorkflowEventsAbortControllerRef.current = null
@@ -423,7 +449,7 @@ export const useChat = (
         pausedWorkflowEventsAbortControllerRef.current = null
         return true
       }
-      const subscriptionOptions: IOtherOptions = {
+      const subscriptionOptions: StreamCallbacks = {
         ...options,
         getAbortController: (abortController) => {
           if (generation !== workflowEventsSubscriptionGenerationRef.current) {
@@ -478,9 +504,8 @@ export const useChat = (
         },
       }
 
-      void sseGet(
-        `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`,
-        {},
+      streamEvents(
+        workflowRunEventsRequest(workflowRunId, { isPublicAPI: options.isPublicAPI }),
         subscriptionOptions,
       )
     },
@@ -491,7 +516,7 @@ export const useChat = (
   }, [startWorkflowEventsSubscription])
 
   const ensureWorkflowEventsSubscription = useCallback(
-    (workflowRunId: string, options: IOtherOptions) => {
+    (workflowRunId: string, options: StreamCallbacks) => {
       pausedWorkflowEventsRef.current = { workflowRunId, options }
       if (
         workflowEventsSubscriptionActiveRef.current &&
@@ -548,18 +573,23 @@ export const useChat = (
 
   useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
 
-  const stopLocalResponse = useCallback(() => {
-    hasStopRespondedRef.current = true
-    handleResponding(false)
-    if (conversationMessagesAbortControllerRef.current)
-      conversationMessagesAbortControllerRef.current.abort()
-    if (suggestedQuestionsAbortControllerRef.current)
-      suggestedQuestionsAbortControllerRef.current.abort()
-    if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
-    resetWorkflowEventsSubscription()
-  }, [handleResponding, resetWorkflowEventsSubscription])
+  const stopLocalResponse = useCallback(
+    (preserveAgentRequest = false) => {
+      hasStopRespondedRef.current = true
+      handleResponding(false)
+      if (!preserveAgentRequest) conversationMessagesAbortControllerRef.current?.abort()
+      if (suggestedQuestionsAbortControllerRef.current)
+        suggestedQuestionsAbortControllerRef.current.abort()
+      if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
+      if (!preserveAgentRequest) resetWorkflowEventsSubscription()
+    },
+    [handleResponding, resetWorkflowEventsSubscription],
+  )
 
   const handleStop = useCallback(async () => {
+    const preserveAgentRequest = !!options.isNewAgent && isRespondingRef.current
+    const stoppedStream = conversationMessagesAbortControllerRef.current
+    const completeStoppedAgent = completeStoppedAgentRef.current
     if (options.isNewAgent && isRespondingRef.current) {
       const generation = workflowRequestGenerationRef.current
       if (stopPendingRef.current === generation) return
@@ -573,9 +603,12 @@ export const useChat = (
       stopPendingRef.current = generation
       try {
         await stopChat(taskId)
-      } catch {
+      } catch (error) {
         toast.error(
-          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${describeRequestError(
+            error,
+            t(($) => $['api.actionFailed'], { ns: 'common' }),
+          )}`,
         )
         return
       } finally {
@@ -587,14 +620,19 @@ export const useChat = (
       void (async () => {
         try {
           await stopChat(taskIdRef.current)
-        } catch {
-          // The request layer owns error feedback; stopping locally must still finish.
+        } catch (error) {
+          // Stopping locally must still finish; only the server stop failure is reported.
+          reportRequestError(error)
         }
       })()
     }
-    stopLocalResponse()
+    stopLocalResponse(preserveAgentRequest)
+    if (preserveAgentRequest) {
+      stoppedStream?.abort()
+      await completeStoppedAgent?.()
+    }
     return true
-  }, [stopChat, stopLocalResponse, options.isNewAgent, t])
+  }, [stopChat, stopLocalResponse, options.isNewAgent, t, describeRequestError])
 
   const handleRestart = useCallback(
     (cb?: () => void) => {
@@ -667,7 +705,7 @@ export const useChat = (
         hasSettled = true
         onSendSettled?.(hasError)
       }
-      const otherOptions: IOtherOptions = {
+      const otherOptions: StreamCallbacks = {
         isPublicAPI,
         onNotifyError,
         getAbortController: (abortController) => {
@@ -730,7 +768,8 @@ export const useChat = (
                     (suggestedQuestionsAbortControllerRef.current = newAbortController),
                 )
                 setSuggestedQuestions(data)
-              } catch {
+              } catch (error) {
+                reportRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -1100,7 +1139,7 @@ export const useChat = (
 
   const handleSend = useCallback(
     async (
-      url: string,
+      send: StreamSender,
       data: {
         query: string
         files?: FileEntity[]
@@ -1203,6 +1242,7 @@ export const useChat = (
       let hasSettled = false
       let hasPaused = false
       let hasNotifiedConversationComplete = false
+      let completionStarted = false
       let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
         if (hasSettled || !isCurrentRequest()) return
@@ -1219,7 +1259,7 @@ export const useChat = (
 
       const getOrCreatePlayer = createAudioPlayerManager()
 
-      const otherOptions: IOtherOptions = {
+      const otherOptions: StreamCallbacks = {
         isPublicAPI,
         onNotifyError,
         onUnhandledEvent,
@@ -1278,7 +1318,8 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          if (!isCurrentRequest()) return
+          if (!isCurrentRequest() || completionStarted) return
+          completionStarted = true
 
           handleResponding(false)
 
@@ -1289,27 +1330,41 @@ export const useChat = (
 
             if (
               conversationIdRef.current &&
-              !hasStopRespondedRef.current &&
+              (!hasStopRespondedRef.current || options.isNewAgent) &&
               onGetConversationMessages
             ) {
-              let conversationMessagesResponse: unknown
-              try {
-                conversationMessagesResponse = await onGetConversationMessages(
-                  conversationIdRef.current,
-                  (newAbortController) => {
-                    if (isCurrentRequest())
-                      conversationMessagesAbortControllerRef.current = newAbortController
-                    else newAbortController.abort()
-                  },
-                )
-              } catch {
-                // Keep the streamed answer and its settlement when history cannot be refreshed.
-                return
-              }
-              if (!isCurrentRequest()) return
+              let newResponseItem: HistoryConversationMessage | undefined
+              // Stop acknowledges the cancellation request before terminal thoughts are persisted.
+              for (let attempt = 0; attempt < 20; attempt++) {
+                if (!isCurrentRequest()) return
+                let conversationMessagesResponse: unknown
+                try {
+                  conversationMessagesResponse = await onGetConversationMessages(
+                    conversationIdRef.current,
+                    (newAbortController) => {
+                      if (isCurrentRequest())
+                        conversationMessagesAbortControllerRef.current = newAbortController
+                      else newAbortController.abort()
+                    },
+                  )
+                } catch (error) {
+                  // Keep the streamed answer and its settlement when history cannot be refreshed.
+                  if (isCurrentRequest()) reportRequestError(error)
+                  return
+                }
+                if (!isCurrentRequest()) return
 
-              const data = getConversationMessagesData(conversationMessagesResponse)
-              const newResponseItem = data.find((item) => item.id === responseItem.id)
+                const data = getConversationMessagesData(conversationMessagesResponse)
+                newResponseItem = data.find((item) => item.id === responseItem.id)
+                if (
+                  !options.isNewAgent ||
+                  !hasStopRespondedRef.current ||
+                  !hasPendingAgentHistory(newResponseItem, responseItem.agent_thoughts)
+                )
+                  break
+                if (attempt === 19) return notifyConversationComplete(completedWorkflowRunId)
+                await new Promise<void>((resolve) => setTimeout(resolve, 500))
+              }
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
               if (!newResponseItem) return notifyConversationComplete(completedWorkflowRunId)
 
@@ -1389,8 +1444,11 @@ export const useChat = (
                   },
                 )
                 if (isCurrentRequest()) setSuggestedQuestions(data)
-              } catch {
-                if (isCurrentRequest()) setSuggestedQuestions([])
+              } catch (error) {
+                if (isCurrentRequest()) {
+                  reportRequestError(error)
+                  setSuggestedQuestions([])
+                }
               }
             }
           } finally {
@@ -1802,7 +1860,7 @@ export const useChat = (
       // Abort the previous workflow events SSE request
       if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
 
-      const postOptions: IOtherOptions = {
+      const postOptions: StreamCallbacks = {
         ...otherOptions,
         onError: (...args) => {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
@@ -1824,13 +1882,12 @@ export const useChat = (
           return otherOptions.onCompleted?.(hasError, errorMessage)
         },
       }
-      ssePost(
-        url,
-        {
-          body: bodyParams,
-        },
-        postOptions,
-      )
+      completeStoppedAgentRef.current = options.isNewAgent
+        ? async () => {
+            await otherOptions.onCompleted?.(true)
+          }
+        : null
+      streamEvents((requestOptions) => send(bodyParams, requestOptions), postOptions)
       return true
     },
     [

@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { useFileScanEnabled } from './provider-types'
 
 export type FileScanProduct = 'dataset' | 'knowledge-fs'
@@ -25,9 +27,12 @@ type FileScanPolicyControllerOptions = {
 /**
  * - `unchanged`: there was nothing to save.
  * - `invalid`: the draft cannot be saved as it is; the section shows what is missing.
- * - `failed`: the request failed; the section shows the reason.
+ * - `failed`: the request failed; the section shows the reason, and `errorMessage` describes the
+ *   failure.
  */
-export type FileScanPolicySaveResult = 'failed' | 'invalid' | 'saved' | 'unchanged'
+export type FileScanPolicySaveResult =
+  | { status: 'failed'; errorMessage: string | undefined }
+  | { status: 'invalid' | 'saved' | 'unchanged' }
 
 export type FileScanPolicyController = ReturnType<typeof useFileScanPolicyController>
 
@@ -57,9 +62,11 @@ function useFileScanPolicy(product: FileScanProduct, resourceId: string, active:
     }),
   )
   const datasetMutation = useMutation(
-    datasetPolicy.put.mutationOptions({ context: { silent: true } }),
+    datasetPolicy.put.mutationOptions({ meta: { errorToast: false } }),
   )
-  const spaceMutation = useMutation(spacePolicy.put.mutationOptions({ context: { silent: true } }))
+  const spaceMutation = useMutation(
+    spacePolicy.put.mutationOptions({ meta: { errorToast: false } }),
+  )
   const query = product === 'dataset' ? datasetQuery : spaceQuery
   const mutation = product === 'dataset' ? datasetMutation : spaceMutation
 
@@ -98,6 +105,8 @@ export function useFileScanPolicyController({
   readonly,
   resourceId,
 }: FileScanPolicyControllerOptions) {
+  const { t } = useTranslation(['fileScan'])
+  const describeRequestError = useRequestErrorDescriber()
   const featureEnabled = useFileScanEnabled()
   const active = featureEnabled && requested
   const { isError, isPending, isSaving, policy, refetch, resetSaveError, save, saveError } =
@@ -129,18 +138,24 @@ export function useFileScanPolicyController({
       resetSaveError()
     },
     save: async (): Promise<FileScanPolicySaveResult> => {
-      if (!dirty) return 'unchanged'
+      if (!dirty) return { status: 'unchanged' }
       if (current.enabled && !current.provider_id) {
         setScannerMissing(true)
-        return 'invalid'
+        return { status: 'invalid' }
       }
       try {
         await save(current)
-      } catch {
-        return 'failed'
+      } catch (error) {
+        return {
+          status: 'failed',
+          errorMessage: describeRequestError(
+            error,
+            t(($) => $['policy.saveFailed']),
+          ),
+        }
       }
       setDraft(undefined)
-      return 'saved'
+      return { status: 'saved' }
     },
     saveError,
     scannerMissing,

@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import {
@@ -59,33 +60,25 @@ const createBackupDraft = (): NonNullable<Shape['backupDraft']> => ({
   environmentVariables: [],
 })
 
-const createCurrentVersion = (): NonNullable<Shape['currentVersion']> => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'Tester',
-    email: 'tester@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 0,
-  updated_by: {
-    id: 'user-1',
-    name: 'Tester',
-    email: 'tester@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  version: WorkflowVersion.Latest,
-  version_number: 5,
-  marked_name: '',
-  marked_comment: '',
-})
+const createCurrentVersion = () =>
+  createWorkflowResponseFixture({
+    id: 'version-1',
+    created_at: 0,
+    created_by: {
+      id: 'user-1',
+      name: 'Tester',
+      email: 'tester@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 0,
+    updated_by: {
+      id: 'user-1',
+      name: 'Tester',
+      email: 'tester@example.com',
+    },
+    version: WorkflowVersion.Latest,
+    version_number: 5,
+  })
 
 describe('Header layout components', () => {
   beforeEach(() => {
@@ -309,6 +302,33 @@ describe('Header layout components', () => {
       })
     })
 
+    it('reports the translated reason when restoration is rejected', async () => {
+      const user = userEvent.setup()
+      mockRestoreWorkflow.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'draft_workflow_not_sync',
+          message: 'Server says why',
+        }),
+      )
+      const onRestoreSettled = vi.fn()
+      renderWorkflowComponent(<HeaderInRestoring onRestoreSettled={onRestoreSettled} />, {
+        initialStoreState: {
+          isRestoring: true,
+          backupDraft: createBackupDraft(),
+          currentVersion: createCurrentVersion(),
+        },
+        resource: { kind: 'app', appId: 'flow-1', mode: 'workflow' },
+      })
+
+      await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+
+      await waitFor(() => expect(onRestoreSettled).toHaveBeenCalledTimes(1))
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'requestErrors.code.draft_workflow_not_sync',
+      })
+    })
+
     it('should restore rag pipeline versions without emitting collaboration events', async () => {
       const user = userEvent.setup()
       const currentVersion = createCurrentVersion()
@@ -373,17 +393,14 @@ describe('Header layout components', () => {
   describe('HeaderInHistory', () => {
     it('exits run history and restores the backup draft', async () => {
       const user = userEvent.setup()
-      const { store } = renderWorkflowComponent(
-        <HeaderInHistory viewHistoryProps={{ historyUrl: '/history' }} />,
-        {
-          initialStoreState: {
-            historyWorkflowData: {
-              id: 'history-1',
-              status: 'succeeded',
-            },
+      const { store } = renderWorkflowComponent(<HeaderInHistory />, {
+        initialStoreState: {
+          historyWorkflowData: {
+            id: 'history-1',
+            status: 'succeeded',
           },
         },
-      )
+      })
 
       expect(screen.getByText('workflow.common.viewOnly')).toBeVisible()
       expect(screen.getByRole('button', { name: 'workflow.common.showRunHistory' })).toBeVisible()

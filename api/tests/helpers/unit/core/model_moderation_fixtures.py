@@ -4,6 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, override
 
 from pydantic.json_schema import JsonValue
+from sqlalchemy.orm import sessionmaker
 
 from core.app.llm.quota import ModelQuotaReservation
 from core.credit_usage import CreditUsageAppTypeInput, CreditUsageCreatedByInput
@@ -37,6 +38,7 @@ class RecordingLLM(LargeLanguageModel):
         super().__init__(provider_schema=template.provider_schema, model_runtime=template.model_runtime)
         self.parts = parts
         self.invocations = 0
+        self.credential_calls: list[dict[str, Any]] = []
         self.stream_closed = False
         self.last_prompt_messages: list[PromptMessage] | None = None
 
@@ -55,6 +57,7 @@ class RecordingLLM(LargeLanguageModel):
         request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult | Generator[LLMResultChunk]:
         self.invocations += 1
+        self.credential_calls.append(dict(credentials))
         self.last_prompt_messages = prompt_messages
         if stream:
             return self._stream(model)
@@ -177,7 +180,8 @@ def make_failing_moderated_model(
 
 class RecordingProviderManager(ProviderManager):
     def __init__(self, bundle: ProviderModelBundle) -> None:
-        super().__init__(model_runtime=bundle.model_type_instance.model_runtime)
+        # The recorded bundle answers every lookup, so an unbound maker makes any database access fail loudly.
+        super().__init__(model_runtime=bundle.model_type_instance.model_runtime, session_maker=sessionmaker())
         self.bundle = bundle
         self.lookups = 0
 

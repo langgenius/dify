@@ -44,6 +44,7 @@ import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-syn
 import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { syncHumanInputDraft } from '../../human-input/shared/sync-draft'
 import { isOutput } from '../../human-input/utils'
 import { getRequestURLCount } from '../message-template-utils'
@@ -91,6 +92,7 @@ const MessageTemplateSession = ({
   mutationKey: MutationKey
 }) => {
   const { t } = useTranslation(['workflow', 'common', 'workflowAgent', 'contacts'])
+  const describeRequestError = useRequestErrorDescriber()
   const [draft, setDraft] = useState(value)
   const [errors, setErrors] = useState({ subject: false, body: false })
   const [showTest, setShowTest] = useState(initialShowTest)
@@ -118,6 +120,7 @@ const MessageTemplateSession = ({
   }, [canTest, testContext])
   const testMutation = useMutation({
     mutationKey,
+    meta: { errorToast: false },
     retry: false,
     mutationFn: async ({
       inputs,
@@ -143,30 +146,22 @@ const MessageTemplateSession = ({
             .messageTemplate.test.post
         : consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test
             .post
-      await operation(
-        { params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } },
-        { context: { silent: true } },
-      )
+      await operation({ params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } })
       return true
     },
   })
   const pending = testMutation.isPending
-  const mutationError = testMutation.error
-    ? t(
-        ($) =>
-          $[
-            testMutation.error instanceof Error &&
-            testMutation.error.message === 'template-draft-not-saved'
-              ? 'nodes.humanInputV2.template.testSaveFailed'
-              : typeof testMutation.error === 'object' &&
-                  'status' in testMutation.error &&
-                  testMutation.error.status === 501
-                ? 'nodes.humanInputV2.template.testUnavailable'
-                : 'nodes.humanInputV2.template.testFailed'
-          ],
-        { ns: 'workflow' },
-      )
-    : undefined
+  const testError = testMutation.error
+  const mutationError = !testError
+    ? undefined
+    : testError instanceof Error && testError.message === 'template-draft-not-saved'
+      ? t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' })
+      : typeof testError === 'object' && 'status' in testError && testError.status === 501
+        ? t(($) => $['nodes.humanInputV2.template.testUnavailable'], { ns: 'workflow' })
+        : describeRequestError(
+            testError,
+            t(($) => $['nodes.humanInputV2.template.testFailed'], { ns: 'workflow' }),
+          )
 
   const variables = Array.from(
     new Map(

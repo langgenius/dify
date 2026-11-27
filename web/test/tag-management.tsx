@@ -7,11 +7,11 @@ import { seedTags } from '@/test/console/tags'
 
 export async function renderWithTags(
   ui: ReactElement,
-  tags: TagResponse[],
+  tags: TagResponse[] | undefined,
   workspacePermissionKeys = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'],
 ) {
   const { wrapper: Wrapper, queryClient } = createConsoleQueryWrapper({ workspacePermissionKeys })
-  seedTags(queryClient, tags)
+  if (tags) seedTags(queryClient, tags)
   return {
     ...(await render(
       <Wrapper>

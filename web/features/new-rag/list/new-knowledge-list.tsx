@@ -106,7 +106,7 @@ export function NewKnowledgeList() {
   )
   const deletion = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
@@ -276,8 +276,8 @@ export function NewKnowledgeList() {
             onValueChange={(value) => void setSearchValue(value || null)}
           />
         </div>
-        {canCreate && (
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          {canCreate && (
             <Link
               href="/datasets/new/create"
               className={cn(
@@ -288,8 +288,8 @@ export function NewKnowledgeList() {
               <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
               <span className="ps-1">{createLabel}</span>
             </Link>
-          </div>
-        )}
+          )}
+        </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
         {knowledgeSpacesQuery.isPending || (upgradeRecoveryPending && !hasVisibleKnowledge) ? (

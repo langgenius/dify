@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import dataclass
+from hashlib import sha256
+from time import sleep
 
 from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
-from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
+from core.workflow.node_execution_process_data import (
+    AGENT_SESSION_BRANCH_KEY,
+    AGENT_SESSION_GENERATION_KEY,
+    CONTINUE_AGENT_SESSION_KEY,
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    read_workflow_agent_session_branch,
+    read_workflow_agent_session_policy,
+)
 from models.agent import (
     AgentConfigVersionKind,
     AgentWorkspaceBinding,
@@ -38,19 +46,31 @@ def resolve_workflow_agent_workspace_owner_scope(
     workflow_agent_binding_id: str,
     node_execution_id: str | None = None,
     workflow_tool_invocation_id: str | None = None,
+    continue_agent_session: bool = True,
+    session_generation: str = "",
+    session_branch: str = "",
 ) -> WorkspaceOwnerScope:
     """Choose the Workspace owner for a workflow Agent participant.
 
-    Chatflow runs carry ``conversation_id`` and should persist Agent memory across
-    turns the same way standalone Agent Apps do. Workflow Tool participants keep
-    their invocation scope and the owning run's lifetime, even inside Chatflows.
+    Pre: caller identity and session policy have been validated. Missing run ID
+    denotes a single-node preview, owned by its node execution instead.
+    Post: enabled Chatflow nodes share their generation within one conversation;
+    disabled nodes share only the current run. Different generations cannot
+    share history or working files. Legacy keys and Workflow Tool scopes are
+    unchanged. This function performs no I/O.
     """
 
     owner_scope_key = f"{node_id}:{workflow_agent_binding_id}"
+    if conversation_id and workflow_tool_invocation_id is None and (session_generation or session_branch):
+        # Hash the whole generation key so even long node IDs fit the 255-byte ledger key.
+        generation_key = f"{owner_scope_key}:{session_generation}"
+        if session_branch:
+            generation_key = f"{generation_key}:branch:{session_branch}"
+        owner_scope_key = f"session:{sha256(generation_key.encode()).hexdigest()}"
     if workflow_tool_invocation_id is not None:
         # Partition repeated Tool calls without splitting loop executions inside a call.
         owner_scope_key = f"workflow-tool:{workflow_tool_invocation_id}:{owner_scope_key}"
-    if conversation_id and workflow_tool_invocation_id is None:
+    if conversation_id and workflow_tool_invocation_id is None and continue_agent_session:
         return WorkspaceOwnerScope(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -80,6 +100,9 @@ class WorkflowAgentSessionScope:
     agent_config_snapshot_id: str
     conversation_id: str | None = None
     workflow_tool_invocation_id: str | None = None
+    continue_agent_session: bool = True
+    session_generation: str = ""
+    session_branch: str = ""
 
     @property
     def workspace_owner(self) -> WorkspaceOwnerScope:
@@ -92,6 +115,9 @@ class WorkflowAgentSessionScope:
             workflow_agent_binding_id=self.workflow_agent_binding_id,
             node_execution_id=self.node_execution_id,
             workflow_tool_invocation_id=self.workflow_tool_invocation_id,
+            continue_agent_session=self.continue_agent_session,
+            session_generation=self.session_generation,
+            session_branch=self.session_branch,
         )
 
 
@@ -134,7 +160,13 @@ class WorkflowAgentWorkspaceStore:
         conversation_id: str | None = None,
         workflow_tool_invocation_id: str | None = None,
     ) -> WorkflowAgentSessionScope | None:
-        """Return the generation pinned by an existing node execution participant."""
+        """Recover the participant and policy pinned by this exact caller.
+
+        Pre: identifiers name the owning tenant/app/run/node execution.
+        Post: an existing participant retains its original policy after pause,
+        retry, or draft edits. Legacy rows use enabled/empty settings. Invalid
+        stored identity or policy fails closed without modifying resources.
+        """
 
         with session_factory.create_session() as session:
             execution = self._load_execution_by_identity(
@@ -157,6 +189,11 @@ class WorkflowAgentWorkspaceStore:
                 raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is missing")
             if process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY) != workflow_tool_invocation_id:
                 raise AgentWorkspaceNotFoundError("Workflow node execution caller invocation does not match")
+            try:
+                continue_agent_session, session_generation = read_workflow_agent_session_policy(process_data)
+                session_branch = read_workflow_agent_session_branch(process_data)
+            except ValueError as error:
+                raise AgentWorkspaceNotFoundError("Workflow node execution session policy is invalid") from error
             owner_scope = resolve_workflow_agent_workspace_owner_scope(
                 tenant_id=tenant_id,
                 app_id=app_id,
@@ -166,6 +203,9 @@ class WorkflowAgentWorkspaceStore:
                 workflow_agent_binding_id=workflow_agent_binding_id,
                 node_execution_id=node_execution_id,
                 workflow_tool_invocation_id=workflow_tool_invocation_id,
+                continue_agent_session=continue_agent_session,
+                session_generation=session_generation,
+                session_branch=session_branch,
             )
             binding = AgentWorkspaceService.get_active_binding(
                 session=session,
@@ -187,11 +227,21 @@ class WorkflowAgentWorkspaceStore:
                 agent_config_snapshot_id=binding.agent_config_version_id,
                 conversation_id=conversation_id,
                 workflow_tool_invocation_id=workflow_tool_invocation_id,
+                continue_agent_session=continue_agent_session,
+                session_generation=session_generation,
+                session_branch=session_branch,
             )
 
     def load_or_create_node_execution_session(
         self, scope: WorkflowAgentSessionScope, *, home_snapshot_id: str | None
     ) -> StoredWorkflowAgentSession:
+        """Allocate or recover the participant for a validated frozen scope.
+
+        Pre: the node-start caller row exists and scope belongs to this run.
+        Post: the caller pins policy and participant atomically; repeated
+        sequential Chatflow executions reuse only the permitted owner scope.
+        Identity or policy conflicts fail without changing the caller row.
+        """
         with session_factory.create_session() as session:
             execution = self._load_execution(session=session, scope=scope)
             process_data = execution.process_data_dict
@@ -205,6 +255,16 @@ class WorkflowAgentWorkspaceStore:
             stored_invocation_id = process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY)
             if stored_invocation_id is not None and stored_invocation_id != scope.workflow_tool_invocation_id:
                 raise AgentWorkspaceNotFoundError("Workflow node execution caller invocation does not match")
+            if execution.agent_workspace_binding_id is not None:
+                try:
+                    persisted_policy = read_workflow_agent_session_policy(process_data)
+                    persisted_branch = read_workflow_agent_session_branch(process_data)
+                except ValueError as error:
+                    raise AgentWorkspaceNotFoundError("Workflow node execution session policy is invalid") from error
+                if persisted_policy != (scope.continue_agent_session, scope.session_generation):
+                    raise AgentWorkspaceNotFoundError("Workflow node execution session policy does not match")
+                if persisted_branch != scope.session_branch:
+                    raise AgentWorkspaceNotFoundError("Workflow node execution session branch does not match")
 
             binding_id = execution.agent_workspace_binding_id
             if binding_id is None:
@@ -220,6 +280,9 @@ class WorkflowAgentWorkspaceStore:
                     {
                         **process_data,
                         "workflow_agent_binding_id": scope.workflow_agent_binding_id,
+                        CONTINUE_AGENT_SESSION_KEY: scope.continue_agent_session,
+                        AGENT_SESSION_GENERATION_KEY: scope.session_generation,
+                        AGENT_SESSION_BRANCH_KEY: scope.session_branch,
                     },
                     ensure_ascii=False,
                 )
@@ -301,7 +364,11 @@ class WorkflowAgentWorkspaceStore:
         node_id: str,
         node_execution_id: str,
     ) -> WorkflowNodeExecutionModel:
-        """Wait briefly for the already-emitted node-start event to persist its caller row."""
+        """Return the caller row after the node-start event persists it.
+
+        The caller must have emitted the node-start event before this lookup.
+        Raise AgentWorkspaceNotFoundError if the row stays absent through the retry window.
+        """
 
         stmt = select(WorkflowNodeExecutionModel).where(
             WorkflowNodeExecutionModel.id == node_execution_id,
@@ -316,7 +383,7 @@ class WorkflowAgentWorkspaceStore:
             if execution is not None:
                 return execution
             if attempt < _CALLER_VISIBILITY_ATTEMPTS - 1:
-                time.sleep(_CALLER_VISIBILITY_INTERVAL_SECONDS)
+                sleep(_CALLER_VISIBILITY_INTERVAL_SECONDS)
 
         raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
 
@@ -327,9 +394,19 @@ class WorkflowAgentWorkspaceStore:
         scope: WorkflowAgentSessionScope,
         home_snapshot_id: str | None,
     ) -> AgentWorkspaceBinding:
-        """Reuse a conversation-scoped participant or allocate a new one."""
+        """Resolve the current Chatflow participant or allocate its initial state.
 
-        if scope.workspace_owner.owner_type == AgentWorkspaceOwnerType.CONVERSATION:
+        Pre: scope contains the run-frozen policy. Post: sequential executions
+        of a Chatflow node share its allowed conversation/run participant.
+        Workflow and Workflow Tool participants retain their existing behavior.
+        """
+
+        is_chatflow_run_session = (
+            scope.conversation_id is not None
+            and scope.workflow_tool_invocation_id is None
+            and not scope.continue_agent_session
+        )
+        if scope.workspace_owner.owner_type == AgentWorkspaceOwnerType.CONVERSATION or is_chatflow_run_session:
             existing_binding = WorkflowAgentWorkspaceStore.load_active_participant(
                 session=session,
                 scope=scope.workspace_owner,

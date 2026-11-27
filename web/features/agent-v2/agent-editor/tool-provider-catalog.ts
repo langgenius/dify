@@ -10,7 +10,7 @@ import { selectToolsWithProvider } from '@/app/components/tools/utils/query-sele
 import { useGetLanguage } from '@/context/i18n'
 import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
-import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
+import { marketplacePluginsByInfoQueryOptions } from '@/service/plugin-list-queries'
 import { getProviderReference } from '@/utils/provider-reference'
 
 type AgentToolPresentationProvider = Pick<
@@ -181,8 +181,8 @@ export function useAgentToolPresentation(
       return info ? [info] : []
     })
   }, [providerById, resolvedProviderTypes, tools])
-  const { data: missingMarketplacePluginsData } = useFetchPluginsInMarketPlaceByInfo(
-    missingMarketplacePluginInfos,
+  const { data: missingMarketplacePluginsData } = useQuery(
+    marketplacePluginsByInfoQueryOptions(missingMarketplacePluginInfos),
   )
   const marketplacePluginById = useMemo(
     () =>

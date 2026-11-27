@@ -8,11 +8,6 @@ class HostedCreditConfig(BaseSettings):
         default="",
     )
 
-    HOSTED_POOL_CREDITS: int = Field(
-        description="Pool credits for hosted service",
-        default=200,
-    )
-
     def get_model_credits(self, model_name: str) -> int:
         """
         Get credit value for a specific model name.

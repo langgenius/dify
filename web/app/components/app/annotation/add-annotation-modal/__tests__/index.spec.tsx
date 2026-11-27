@@ -2,6 +2,7 @@ import type { consoleClient } from '@/service/console'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import AddAnnotationDialog from '../index'
@@ -159,6 +160,20 @@ it.each([
   await setup(quota)
   if (disabled) expect(submit()).toBeDisabled()
   else expect(submit()).toBeEnabled()
+})
+
+it('shows the translated reason when creation fails', async () => {
+  api.add.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 400 }), {
+      code: 'app_unavailable',
+      message: 'Server says why',
+    }),
+  )
+  const { user, onAdded } = await setup()
+  await fill(user)
+  await user.click(submit())
+  expect(await screen.findByRole('alert')).toHaveTextContent('requestErrors.code.app_unavailable')
+  expect(onAdded).not.toHaveBeenCalled()
 })
 
 it('blocks saving until quota loads and lets a failed quota request retry', async () => {

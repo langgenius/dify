@@ -1,6 +1,7 @@
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { ComponentProps } from 'react'
 import type { FileItem } from '@/models/datasets'
+import type { ConsoleClient } from '@/service/console'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -12,11 +13,17 @@ import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import FileUploader from '../index'
 
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload,
-}))
+const upload = vi.hoisted(() => vi.fn<ConsoleClient['files']['upload']['post']>())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': upload,
+    }),
+  }
+})
 
 const file = (name = 'Guide.pdf') => new File(['document'], name, { type: 'application/pdf' })
 const response = (name = 'Guide.pdf'): FileResponse => ({
@@ -93,10 +100,9 @@ const setup = ({
 }
 
 beforeEach(() => {
-  upload.mockReset().mockImplementation(async ({ data }) => {
-    const selected = data.get('file')
-    if (!(selected instanceof File)) throw new TypeError('Expected an uploaded file')
-    return response(selected.name)
+  upload.mockReset().mockImplementation(async ({ body }) => {
+    if (!(body.file instanceof File)) throw new TypeError('Expected an uploaded file')
+    return response(body.file.name)
   })
 })
 afterEach(() => {
@@ -114,20 +120,17 @@ it('preserves existing documents through upload progress, server acceptance, pre
   expect(preview('Existing.pdf')).toBeEnabled()
   expect(screen.getByRole('status')).toHaveTextContent('Guide.pdf: common.loading')
   expect(upload).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ data: expect.any(FormData) }),
-    false,
-    undefined,
-    '?source=datasets',
+    {
+      body: {
+        file: expect.objectContaining({ name: selected.name, size: selected.size }),
+        source: 'datasets',
+      },
+    },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
-  const request = upload.mock.calls[0]![0]
-  expect(request.data.get('file')).toMatchObject({ name: selected.name, size: selected.size })
+  const onUploadProgress = upload.mock.calls[0]![1]!.context!.onUploadProgress!
   for (const loaded of [53, 100]) {
-    act(() =>
-      request.onprogress?.call(
-        request.xhr,
-        new ProgressEvent('progress', { lengthComputable: true, loaded, total: 100 }),
-      ),
-    )
+    act(() => onUploadProgress({ loaded, total: 100 }))
     expect(screen.getByRole('status')).toHaveTextContent('Guide.pdf: common.loading')
     expect(preview()).toBeDisabled()
   }

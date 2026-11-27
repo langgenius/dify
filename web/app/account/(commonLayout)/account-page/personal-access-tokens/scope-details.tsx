@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 import WorkspaceRole from './workspace-role'
 
 export default function ScopeDetails({ tokenId }: { tokenId: string }) {
@@ -12,10 +13,13 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
   const [now] = useState(Date.now)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       input: { params: { token_id: tokenId } },
-      staleTime: 0,
     }),
+  )
+  const loadErrorMessage = useRequestErrorMessage(
+    query.error,
+    t(($) => $['resourceAccessToken.loadError']),
   )
   const detail = query.data
   const expiresAt = detail?.token.expires_at ? new Date(detail.token.expires_at) : null
@@ -56,7 +60,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
       )}
       {query.isError && (
         <div role="alert" className="p-6">
-          {t(($) => $['resourceAccessToken.loadError'])}
+          {loadErrorMessage}
           <Button onClick={() => query.refetch()}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>

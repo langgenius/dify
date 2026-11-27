@@ -52,7 +52,7 @@ class PreparedTextToAudio:
     voice: str | None
 
 
-def _create_tts_response(
+def create_tts_response(
     audio: Iterable[bytes] | bytes | bytearray | memoryview, declared_mime_type: str | None
 ) -> Response:
     """Create a response whose Content-Type matches the returned audio container."""
@@ -67,6 +67,11 @@ def _create_tts_response(
     )
     response.call_on_close(audio_stream.close)
     return response
+
+
+def _audio_ref(app: App) -> AudioAppRef:
+    """Detach the routing data needed by the model provider from a loaded App."""
+    return AudioAppRef(app_id=app.id, tenant_id=app.tenant_id, app_mode=app.mode.value)
 
 
 class AudioService:
@@ -101,7 +106,7 @@ class AudioService:
         """
         cls.prepare_asr(app_model, session=session)
         return cls.invoke_speech_to_text(
-            app_model=app_model,
+            app=_audio_ref(app_model),
             audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
             end_user=end_user,
         )
@@ -115,7 +120,7 @@ class AudioService:
                 app_id=app_model.id,
             )
             if agent_soul is not None:
-                cls._prepare_agent_asr(
+                cls.prepare_agent_asr(
                     app_model=app_model,
                     agent_soul=agent_soul,
                     session=session,
@@ -153,15 +158,16 @@ class AudioService:
         Raises:
             SpeechToTextDisabledServiceError: If the merged Agent feature configuration disables STT.
         """
-        cls._prepare_agent_asr(app_model=app_model, agent_soul=agent_soul, session=session)
+        cls.prepare_agent_asr(app_model=app_model, agent_soul=agent_soul, session=session)
         return cls.invoke_speech_to_text(
-            app_model=app_model,
+            app=_audio_ref(app_model),
             audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
             end_user=end_user,
         )
 
     @staticmethod
-    def _prepare_agent_asr(app_model: App, agent_soul: AgentSoulConfig, *, session: Session) -> None:
+    def prepare_agent_asr(app_model: App, agent_soul: AgentSoulConfig, *, session: Session) -> None:
+        """Validate effective Soul-first ASR settings before contacting the provider."""
         app_model_config = app_model.app_model_config_with_session(session=session)
         annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
         features = merge_agent_app_features(
@@ -172,9 +178,9 @@ class AudioService:
         if not features.get("speech_to_text", {}).get("enabled"):
             raise SpeechToTextDisabledServiceError()
 
-    @classmethod
+    @staticmethod
     def invoke_speech_to_text(
-        cls, app_model: App, audio: AudioUpload | None, *, end_user: str | None = None
+        app: AudioAppRef, audio: AudioUpload | None, *, end_user: str | None = None
     ) -> dict[str, str]:
         """Validate the upload and invoke ASR after application configuration is resolved."""
         if audio is None:
@@ -191,8 +197,7 @@ class AudioService:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
 
-        app_ref = AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode.value)
-        return {"text": audio_provider_gateway.speech_to_text(app=app_ref, content=file_content, end_user=end_user)}
+        return {"text": audio_provider_gateway.speech_to_text(app=app, content=file_content, end_user=end_user)}
 
     @classmethod
     def transcript_tts(
@@ -216,8 +221,8 @@ class AudioService:
         )
         if prepared is None:
             return None
-        output = cls.invoke_tts(app_model, text=prepared.text, voice=prepared.voice, end_user=end_user)
-        return _create_tts_response(output.data, output.mime_type)
+        output = cls.invoke_tts(_audio_ref(app_model), text=prepared.text, voice=prepared.voice, end_user=end_user)
+        return create_tts_response(output.data, output.mime_type)
 
     @classmethod
     def prepare_tts(
@@ -272,18 +277,16 @@ class AudioService:
 
         return PreparedTextToAudio(text=text, voice=voice)
 
-    @classmethod
+    @staticmethod
     def invoke_tts(
-        cls,
-        app_model: App,
+        app: AudioAppRef,
         *,
         text: str,
         voice: str | None,
         end_user: str | None = None,
     ) -> AudioOutput:
         """Invoke the provider using text and voice resolved by preparation."""
-        app_ref = AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode.value)
-        return audio_provider_gateway.text_to_speech(app=app_ref, text=text.strip(), voice=voice, end_user=end_user)
+        return audio_provider_gateway.text_to_speech(app=app, text=text.strip(), voice=voice, end_user=end_user)
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str) -> list[TTSModelVoice]:

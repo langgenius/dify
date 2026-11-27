@@ -1,43 +1,34 @@
-import { ORPCError } from '@orpc/client'
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import InitPasswordPopup from '../InitPasswordPopup'
 
-const { validatePassword, getInitStatus, replace } = vi.hoisted(() => ({
-  validatePassword: vi.fn(),
-  getInitStatus: vi.fn(),
-  replace: vi.fn(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'init.get': getInitStatus,
-      'init.post': validatePassword,
-    }),
-  }
-})
-// boundary: Next.js navigation context is not mounted in a focused Browser Mode component render.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace }) }))
+let navigation: TestNavigation
 
 const renderPopup = () => {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({ url: '/init' })
+  const { NavigationProvider } = navigation
   return render(
-    <ConsoleProvider>
-      <InitPasswordPopup />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <InitPasswordPopup />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
-beforeEach(() => {
-  validatePassword.mockReset()
-  replace.mockReset()
-  getInitStatus.mockReset().mockResolvedValue({ status: 'not_started' })
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    init: {
+      get: () => ({ status: 'not_started' }),
+      post: () => ({ result: 'success' }),
+    },
+  },
+}))
 
 it('puts the cursor in the password field on arrival', async () => {
   const screen = await renderPopup()
@@ -54,11 +45,13 @@ it('asks for the password before submitting', async () => {
   await expect
     .element(screen.getByLabelText('login.adminInitPassword'))
     .toHaveAccessibleDescription('login.error.passwordEmpty')
-  expect(validatePassword).not.toHaveBeenCalled()
+  expect(fake.console.init.post).not.toHaveBeenCalled()
 })
 
 it('reports an incorrect password on the field until it is edited', async () => {
-  validatePassword.mockRejectedValue(new ORPCError('init_validate_failed', { status: 401 }))
+  fake.console.init.post.mockRejectedValue(
+    apiError({ status: 401, code: 'init_validate_failed', message: 'Invalid password' }),
+  )
   const screen = await renderPopup()
   const password = screen.getByLabelText('login.adminInitPassword')
 
@@ -71,11 +64,29 @@ it('reports an incorrect password on the field until it is edited', async () => 
   await userEvent.type(password, '!')
 
   await expect.element(password).not.toHaveAttribute('aria-invalid', 'true')
-  expect(replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
+})
+
+it('sends an instance that finished setup to sign in', async () => {
+  fake.console.init.post.mockRejectedValue(
+    apiError({
+      status: 403,
+      code: 'already_setup',
+      message: 'Dify has been successfully installed.',
+    }),
+  )
+  const screen = await renderPopup()
+
+  await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'secret')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.poll(() => navigation.router.replace).toHaveBeenCalledWith('/signin')
 })
 
 it('reports other failures inside the form until the password is edited', async () => {
-  validatePassword.mockRejectedValue(new ORPCError('internal_error', { status: 500 }))
+  fake.console.init.post.mockRejectedValue(
+    apiError({ status: 500, code: 'internal_error', message: 'Internal error' }),
+  )
   const screen = await renderPopup()
   const password = screen.getByLabelText('login.adminInitPassword')
 
@@ -90,22 +101,31 @@ it('reports other failures inside the form until the password is edited', async 
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
 })
 
+it('falls back to a generic message when the failure carries no server message', async () => {
+  fake.console.init.post.mockRejectedValue(networkError())
+  const screen = await renderPopup()
+
+  await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'secret')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+})
+
 it('continues to install once after a correct password', async () => {
-  validatePassword.mockResolvedValue({ result: 'success' })
   const screen = await renderPopup()
 
   await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'correct')
   await userEvent.click(screen.getByRole('button', { name: 'login.validate' }))
 
-  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/install'))
-  expect(replace).toHaveBeenCalledTimes(1)
+  await vi.waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith('/install'))
+  expect(navigation.router.replace).toHaveBeenCalledTimes(1)
 })
 
 it('sends an already validated instance to install', async () => {
-  getInitStatus.mockResolvedValue({ status: 'finished' })
+  fake.console.init.get.mockResolvedValue({ status: 'finished' })
 
   await renderPopup()
 
-  await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/install'))
-  expect(validatePassword).not.toHaveBeenCalled()
+  await vi.waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith('/install'))
+  expect(fake.console.init.post).not.toHaveBeenCalled()
 })

@@ -5,12 +5,13 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { isDefinedError } from '@orpc/client'
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getAvatarInitial } from '@/utils/avatar'
 import { InvitationResultsContent } from './invitation-results-content'
 import { RoleBadges } from './role-badges'
@@ -56,19 +57,16 @@ type InvitedRowProps = {
 
 export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
+  const describeRequestError = useRequestErrorDescriber()
   const locale = useLocale()
-  const queryClient = useQueryClient()
   const { data: isEmailSetup } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ is_email_setup }) => is_email_setup,
   })
   const resend = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (response) => {
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key(),
-        })
         const result = response.invitation_results.find(
           ({ email }) => email.toLowerCase() === invitee.email.toLowerCase(),
         )
@@ -83,9 +81,6 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
           return
         }
         if (result?.status === 'already_member') {
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.members.get.key(),
-          })
           toast.warning(
             t(($) => $['members.alreadyJoined'], { ns: 'workspaceMembers', email: invitee.email }),
           )
@@ -100,7 +95,10 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
             ? t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' })
             : code === 'invalid_role'
               ? t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' })
-              : t(($) => $['api.actionFailed'], { ns: 'common' }),
+              : describeRequestError(
+                  error,
+                  t(($) => $['api.actionFailed'], { ns: 'common' }),
+                ),
         )
       },
     }),

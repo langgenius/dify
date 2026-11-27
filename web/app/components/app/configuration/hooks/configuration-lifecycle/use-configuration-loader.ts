@@ -4,6 +4,7 @@ import type { ConfigurationAppMode } from '@/app/components/app/configuration/ho
 import type { Collection } from '@/app/components/tools/types'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { useEffect, useRef, useState } from 'react'
+import { reportRequestError } from '@/app/query-error-toast'
 import { basePath } from '@/utils/var'
 import { loadConfigurationState } from './load'
 
@@ -48,7 +49,10 @@ export function useConfigurationLoader({
       current.setPublishedConfig(configurationState.publishedConfig)
       current.setHasFetchedDetail(true)
     })().catch((error: unknown) => {
-      if (!cancelled) setLoadFailure({ error })
+      if (cancelled) return
+      // The error boundary shows only generic copy, so the server's message is toasted here.
+      reportRequestError(error)
+      setLoadFailure({ error })
     })
     return () => {
       cancelled = true
